@@ -290,6 +290,19 @@ work on." His order, with the work under way:
       - the car on Jazzy (Q24): a Jazzy Mac can't join the car's Humble;
       - the HUD on a Mac: raylib's runs there as it is; the Flutter app needs CocoaPods (archived 25 Oct);
       - the car's WiFi, measured: how late the pictures arrive, and how often it drops.
+- [ ] **One model-based controller instead of many** (Ben, 27 Oct): investigate LQR, and
+      collapse today's controllers (pure pursuit, the stopping law in
+      `aav_drive_to_point`, the spine's PI and P-only brake) into one controller built
+      from `vehicle_model.py`, closed loop, maybe running on the ESP32. Questions:
+      - **speed:** throttle and brake as one signed acceleration, LQR with integral action
+        (LQI), on the ESP32 where wheel speed and the actuators are;
+      - **steering:** a lateral LQR on the path errors (sideways, heading, wheel angle),
+        scheduled by speed; it needs the car's pose and path, which live on the Orin;
+      - **stop on B:** distance-to-go as a state; the ESP32 could count the last metres on
+        wheel odometry, independent of GPS lag (a CAN contract change: D4);
+      - **MPC** if the limits matter (brake, steering rate): LQR doesn't know them;
+      - scored with `atob-score` against pure pursuit and MPPI; needs the measured car first.
+      *Saved, not started (`docs/vehicle-model.md`, "After state space").*
 - [ ] **Learned state-space models, Mamba-style** (Ben, 27 Oct): Mamba (and S4 before it)
       runs the same `x' = Ax + Bu` as `vehicle_model.py`, but learns `A`, `B`, `C` and lets
       them depend on the input. Its diagonal `A` is a bank of first-order lags (τ = -1/a),
