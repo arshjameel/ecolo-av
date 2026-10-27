@@ -22,6 +22,22 @@ speed and brake  feed-forward + PI on wheel speed  ← wheel speed (Arduino CAN)
 steering         the Jrk G2's position PID, ~1 kHz ← the steering motor's position
 ```
 
+## Where each lives, and what can be swapped
+
+| Layer | Where | Swap |
+|---|---|---|
+| Where to drive (Nav2): MPPI, Regulated Pure Pursuit | `aav_navigation`, `nav2.yaml` | `controller:=mppi\|rpp` at launch |
+| A to B: pure pursuit + stopping law | `aav_drive_to_point` | add `controller: pure_pursuit\|lqr\|mpc` (maths in a pure module) |
+| Whole drivers (joystick, Nav2, scripted, drive-to-point...) | one node each, its own twist_mux slot | run another; twist_mux picks by priority |
+| Speed and brake | `spine-core` (later), the ROS bridge (step 1) | one at a time; PI or LQI by config |
+| Steering motor | the Jrk G2 | tune, don't swap |
+| The car's numbers | `vehicle.yaml` only | every controller reads them |
+
+LQR or MPC as a Nav2 plugin would be C++ ("no C++ of our own"): they go into
+`aav_drive_to_point` as options first, and a winner can become a driver node of its own.
+The speed-and-brake loop stays the same under every outer controller, so a comparison
+tests only the outer one.
+
 ## Why
 
 | Finding | So |
