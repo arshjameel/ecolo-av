@@ -6,10 +6,11 @@ Ben's messages, word for word: `docs/history/messages-*.md`.
 ## Thursday 29 October: control (Ben, 27 Oct)
 
 Ben: "investigate LQR and maybe collapse all these various controllers into a single
-controller ... closed loop". The ideas: "Ideas to keep" below.
+controller ... closed loop". The plan: `docs/designs/2026-10-27_control-plan.md`; the ideas: "Ideas to keep" below.
 
 | # | Task | Needs |
 |---|---|---|
+| 0 | **The plan's step 1: the bridge uses ego's acceleration**, feed-forward + PI for throttle and brake (`docs/designs/2026-10-27_control-plan.md`); scored with `atob-score` | Gazebo, bench |
 | 1 | **A page that explains it all:** PID, LQR, MPC and MPPI, with pictures; which loop runs where (ESP32, Jrk, Orin); what each knows. The next chapter of `docs/learn-control.md` ("Control from zero") | nothing |
 | 2 | **LQR for steering:** from `vehicle_model.lateral()`, scheduled by speed; follows the planner's path (Smac), in place of pure pursuit; scored with `atob-score` and `controller-compare` | Gazebo |
 | 3 | **LQR for speed and brake (LQI):** one signed acceleration, in `spine-core`; scored against today's PI and P-only brake | bench, Gazebo |
