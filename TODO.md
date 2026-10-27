@@ -3,6 +3,21 @@
 The current work list, newest first. Tick items off as they land; each tick = a commit.
 Ben's messages, word for word: `docs/history/messages-*.md`.
 
+## Thursday 29 October: control (Ben, 27 Oct)
+
+Ben: "investigate LQR and maybe collapse all these various controllers into a single
+controller ... closed loop". The ideas: "Ideas to keep" below.
+
+| # | Task | Needs |
+|---|---|---|
+| 1 | **A page that explains it all:** PID, LQR, MPC and MPPI, with pictures; which loop runs where (ESP32, Jrk, Orin); what each knows. The next chapter of `docs/learn-control.md` ("Control from zero") | nothing |
+| 2 | **LQR for steering:** from `vehicle_model.lateral()`, scheduled by speed; follows the planner's path (Smac), in place of pure pursuit; scored with `atob-score` and `controller-compare` | Gazebo |
+| 3 | **LQR for speed and brake (LQI):** one signed acceleration, in `spine-core`; scored against today's PI and P-only brake | bench, Gazebo |
+| 4 | **MPC for the whole A-to-B:** speed and steering together, with the brake's and steering's limits; scored against 2 and 3, and MPPI | 2, 3 |
+| 5 | Unfinished from 26 Oct: goal circling (TODO 17, `wt/goals-steering`), the F6 geofence, the QEMU and NaN fixes (`small-fixes`), the bench fixes (`bench-fixes`) | |
+
+Every gain still comes from guessed numbers until the car is measured (`docs/measure-the-car.md`).
+
 ## 24 October, night: the car as a linear model
 
 Ben, 24 Oct: "Do we have a mathematical model for the car now for the ego? ... a matrix
