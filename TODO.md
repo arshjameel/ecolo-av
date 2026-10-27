@@ -290,6 +290,12 @@ work on." His order, with the work under way:
       - the car on Jazzy (Q24): a Jazzy Mac can't join the car's Humble;
       - the HUD on a Mac: raylib's runs there as it is; the Flutter app needs CocoaPods (archived 25 Oct);
       - the car's WiFi, measured: how late the pictures arrive, and how often it drops.
+- [ ] **Learned state-space models, Mamba-style** (Ben, 27 Oct): Mamba (and S4 before it)
+      runs the same `x' = Ax + Bu` as `vehicle_model.py`, but learns `A`, `B`, `C` and lets
+      them depend on the input. Its diagonal `A` is a bank of first-order lags (τ = -1/a),
+      like our steering lag. Worth a closer look once hours of car logs exist: a learned
+      model of what the linear one misses (drag, slope, the brake's play), checked against
+      the fits from the actuator tests. *Saved, not started; needs car data first.*
 - [ ] **micro-ROS, again** (Ben, 11 Oct): "lets rethink thinks later after we see the
       hardware". No micro-ROS for now (Tentative).
 
