@@ -237,6 +237,25 @@ def test_one_stop_sign_watcher_next_to_the_mux():
         assert watcher == bool(parts.get('mux')), machine
 
 
+def test_the_geofence_runs_wherever_the_mux_does():
+    # The mux's geofence lock is fail-safe too: silence holds every program.
+    for machine in MACHINES:
+        parts = CAR.load_machine(machine)['parts']
+        sent = included(started(CAR, machine=machine))
+        assert ('geofence.launch.py' in sent) == bool(parts.get('mux')), machine
+        if parts.get('mux'):
+            assert sent['mux.launch.py'].get('geofence_lock', 'true') == 'true', machine
+            # The car's default fence: a 30 m circle round the marked start spot, and
+            # today's backend (the 2025-26 ESP32, which coasts: geofence.py coasts).
+            assert sent['geofence.launch.py'] == {
+                'backend': 'uart', 'radius': '30.0', 'centre_x': '0.0', 'centre_y': '0.0',
+                'site': '', 'max_speed': '', 'gps': 'true', 'stands': 'false'}, machine
+    lot = included(started(CAR, machine='all', geofence_site='bench_road', start_x='5',
+                           actuators='can', stands='true'))['geofence.launch.py']
+    assert (lot['site'], lot['centre_x'], lot['backend'], lot['stands']) == (
+        'bench_road', '5', 'spine', 'true')
+
+
 def test_the_sensor_watchdog_runs_wherever_the_mux_does():
     # The mux's sensors lock needs the watchdog's heartbeat (fail-safe: silence holds Nav2),
     # so the two always start together, whichever machine Nav2 is on.

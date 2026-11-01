@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_hud</name>
   <version>0.1.0</version>
-  <description>hud: the in-car screen in Rust, one raylib program that is also its ROS node (rclrs). Speed, mode, the e-stop button, steering, throttle and brake, the GPS fix, topic health, the stop-sign alert and the camera. Topic names in config/hud.yaml. Also map: the big screen's map window (Nav2's map, the car, the plan, the distance left), topic names in config/map.yaml.</description>
+  <description>hud: the in-car screen in Rust, one raylib program that is also its ROS node (rclrs). Speed, mode, the e-stop button, steering, throttle and brake, the GPS fix, topic health, the stop-sign alert and the camera. Topic names in config/hud.yaml. Also map: the big screen's map window (Nav2's map, the car, the plan, the distance left), topic names in config/map.yaml. And debug_hud: the debug screen (the lidar's cubes in 3D, where each localizer puts the car, every sensor from its own topic), topic names in config/debug_hud.yaml. And hw_panel: the hardware screen (every sensor's number, simple buttons for the actuators through twist_mux's buttons slot), topic names in config/hw_panel.yaml.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 
@@ -17,6 +17,13 @@
   <depend>aav_interfaces</depend>
   <depend>nav_msgs</depend>
   <depend>geometry_msgs</depend>
+  <!-- debug_hud: /tf and /tf_static (tf2_msgs), aav_track's status (diagnostic_msgs). -->
+  <depend>tf2_msgs</depend>
+  <depend>diagnostic_msgs</depend>
+  <!-- debug_hud: AMCL's particles (nav2_msgs/ParticleCloud). -->
+  <depend>nav2_msgs</depend>
+  <!-- debug_hud: keys 1-4 call aav_track's parameter service (sim only). -->
+  <depend>rcl_interfaces</depend>
   <!-- map: the car's outline, from vehicle.yaml (a copy built in, the installed one at launch). -->
   <depend>aav_description</depend>
   <!-- map: the datum (map 0,0 on the Earth) for the street map, from navsat.yaml (a copy

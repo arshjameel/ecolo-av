@@ -7,7 +7,7 @@
 <!-- Generated from docs/decisions.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Decisions and open questions</h1>
-<div class="meta">41 min read · 13 sections</div></header>
+<div class="meta">42 min read · 14 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -37,15 +37,20 @@
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
 <a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
 <a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
 <a href="maps-and-position.html">Maps and position</a>
 <a href="learn-nav2.html">Learn: Nav2</a>
-<span class="sep">Reference:</span>
 <a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
 <a href="costmaps.html">Costmaps</a>
-<a href="controllers.html">Path followers</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
@@ -69,6 +74,7 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
@@ -88,7 +94,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-to-read-the-labels">How to read the labels</a><a href="#decided">Decided</a><a href="#tentative">Tentative</a><a href="#proposed-for-the-next-team-meeting">Proposed: for the next team meeting</a><a href="#ground-rules">Ground rules</a><a href="#decided-on-10-october-on-the-mac">Decided on 10 October, on the Mac</a><a href="#decided-on-11-october">Decided on 11 October</a><a href="#decided-on-15-october">Decided on 15 October</a><a href="#decided-on-22-and-23-october">Decided on 22 and 23 October</a><a href="#decided-on-24-october">Decided on 24 October</a><a href="#decided-on-25-october">Decided on 25 October</a><a href="#open-questions">Open questions</a><a href="#also-waiting-on-the-team">Also waiting on the team</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-to-read-the-labels">How to read the labels</a><a href="#decided">Decided</a><a href="#tentative">Tentative</a><a href="#proposed-for-the-next-team-meeting">Proposed: for the next team meeting</a><a href="#ground-rules">Ground rules</a><a href="#decided-on-10-october-on-the-mac">Decided on 10 October, on the Mac</a><a href="#decided-on-11-october">Decided on 11 October</a><a href="#decided-on-15-october">Decided on 15 October</a><a href="#decided-on-22-and-23-october">Decided on 22 and 23 October</a><a href="#decided-on-24-october">Decided on 24 October</a><a href="#decided-on-25-october">Decided on 25 October</a><a href="#decided-on-29-october">Decided on 29 October</a><a href="#open-questions">Open questions</a><a href="#also-waiting-on-the-team">Also waiting on the team</a></nav>
 <div class="lead"><p>What the team has decided, what's still open, and the 34 numbered questions. The source
 is the team design doc, <em>AAV 2026–27 Autonomy Stack — Architecture &amp; Plan</em> (a Claude Doc,
 revision 61 on 10 October 2026). This page is a short copy, so you don't have to hunt.
@@ -494,7 +500,7 @@ answer.</p>
 </tr>
 <tr>
 <td><strong>MPPI is Nav2's default path follower</strong>; Regulated Pure Pursuit stays as <code>controller:=rpp</code></td>
-<td>In every lot run in Gazebo it did at least as well. It reached the first goal cleanly in 4 of 4 runs; Pure Pursuit looped there in 2 of 3, as it aims at a point and arrives facing the wrong way (<a href="controllers.html">Path followers</a>)</td>
+<td>In every lot run in Gazebo it did at least as well. It reached the first goal cleanly in 4 of 4 runs; Pure Pursuit looped there in 2 of 3, as it aims at a point and arrives facing the wrong way (<a href="path-followers.html">Path followers</a>)</td>
 <td>Ben, 22 Oct: "I thought we decided to go mppi"</td>
 </tr>
 <tr>
@@ -652,6 +658,24 @@ answer.</p>
 <td><strong><a href="../../CONTRIBUTING.md">CONTRIBUTING.md</a> is the git rule</strong>: fork, branch, pull request, one approval and green CI, then the merge queue</td>
 <td>One way into <code>main</code> for everyone, maintainers included</td>
 <td>Arsh, 25 Oct</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="decided-on-29-october">Decided on 29 October</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Why</th>
+<th>By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Nav2 keeps its path for the last 8 m to a goal</strong> (<code>navigate_to_pose_car*.xml</code>): it replans every second elsewhere, but near the goal only if the path is blocked, for another goal, or 20 s old. 8 m = <code>vehicle.final_approach</code>, 2 of the planner's turning radii</td>
+<td>Replanning there made the car circle goals: a new path from a little behind on the last bend is a 21-25 m loop for a car, and each new path resets Nav2's goal checker. Gazebo, first leg, 12 runs each way: loop plans in 10 before, none after; 3 loops driven before, none after (<a href="path-followers.html#circling-a-goal-found-and-fixed-29-october-todo-17">Path followers</a>)</td>
+<td>TODO 17, from the Gazebo runs</td>
 </tr>
 </tbody>
 </table></div>

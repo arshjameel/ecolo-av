@@ -264,7 +264,7 @@ The test checks A against a finite-difference Jacobian of the nonlinear bicycle.
 ### Closing the loop: pure pursuit
 
 These margins are for Regulated Pure Pursuit (`controller:=rpp`). MPPI, the default since
-22 Oct ([Path followers](controllers.md)), isn't modelled here.
+22 Oct ([Path followers](path-followers.md)), isn't modelled here.
 
 Regulated Pure Pursuit steers for the curvature 2 sin α / ld toward a point ld ahead on
 the path. For small errors:
@@ -516,6 +516,7 @@ Each cell is the worst of 6 runs (0.5, 1 and 2 m/s; lag 0.1 s with 30 ms of dela
 | pole placement (kp 1.13, ki 0.67) | 30 % | 5.8 s | 11 %, 13 % short | 31° |
 | pole placement + weight 0.3 | 0 % | 4.3 s | **22 %** | 31° |
 | **`smooth`: kp 1.0, ki 0.25, weight 0.75** | **0 %** | **5.7 s** | **8 %, reaches 2 m/s** | **42°** |
+| `lqi` (TODO 3, 29 Oct): LQI, throttle and brake | 0 % | 5.0 s | 15 %, reaches 2 m/s | 44° |
 
 Why not the others:
 
@@ -590,6 +591,13 @@ Both copies of the loop, the Rust and Gazebo's Python, check the same examples
 (`firmware/spine/speed_loop_vectors.txt`, both profiles). Where to try it on the car:
 [Actuator tests](actuator-tests.md#the-speed-loops-profile-todo-27).
 
+#### The LQI (TODO 3)
+
+`spine-core` also has an LQI (`speed_loop:=lqi`): one signed acceleration for throttle
+and brake, its gains from this model by the discrete Riccati equation
+(`VehicleModel.speed_lqi`). It sits in the study above as `'lqi'`, and in the figure.
+The design and the results: [Controllers, 2a](controllers.md#2a-lqi-against-the-pi-results-29-oct).
+
 #### Pole placement, after the car day
 
 Match the closed loop (no throttle lag) to the poles you want:
@@ -628,6 +636,7 @@ section 6), then compare the same step in both: that's the sim-versus-real repor
 pixi run vehicle-model                  # the tables, and the three figures
 pixi run vehicle-model --no-figures     # the tables only
 pixi run vehicle-model --speed-loop     # TODO 27: the speed loop's designs, the uncertainty
+pixi run vehicle-model --lqi            # TODO 3: the speed LQI's gains, as spine-core's constants
 ```
 
 | File | What |

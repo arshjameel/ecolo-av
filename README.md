@@ -104,6 +104,9 @@ reaches a real car on the same network. The full list, with every option: `pixi 
 | `keyboard` | drive from the keyboard, in a second terminal: `keyboard --local` with `turtle` or `bench`, `keyboard --sim` with `sim`. With no flag it drives whatever shares the ROS domain: on the car's network, the car |
 | `sim` | Gazebo plays the car (`world:=road`, `hud:=true`, `sim_speed:=3`...) |
 | `demo` | the whole simulated car at once: Gazebo, RViz, the HUD and the map window (`demo fullscreen`) |
+| `debugdemo` | `demo` plus the debug HUD, which opens as the seeing screen: the lidar's cubes, NDT's map and match from above, where each localizer puts the car (key L: every sensor) |
+| `pick` | a menu of the switches (who steers, where-am-I, speed loop), so you needn't remember them: prints the command, saves it, runs it; `pick last` runs it again ([Switches](docs/switches.md)) |
+| `hw-panel` | the hardware panel: every sensor's number, and simple buttons (hold Space to drive) for Gazebo or the bench, beside `sim` or `debugdemo` |
 | `bench` | the real car's software, with stand-ins for the hardware |
 | `view` | the car's model in RViz |
 | `rviz` | RViz with the driving layout: map, costmaps, path, car |
@@ -112,7 +115,7 @@ reaches a real car on the same network. The full list, with every option: `pixi 
 | `ghost` | a pretend person in Nav2's view, to test stopping: `ghost ahead 10` |
 | `sim-fault` | make a Gazebo sensor fail on purpose: `sim-fault gps stop`, then `sim-fault gps ok` |
 | `carla-car` | CARLA plays the car: `carla-car host:=<the CARLA computer>` |
-| `hud-demo`, `map-demo` | the in-car screen and the map window, with pretend data: no ROS |
+| `hud-demo`, `map-demo`, `debug-hud-demo`, `hw-panel-demo` | the in-car screen, the map window, the debug HUD and the hardware panel, with pretend data: no ROS |
 
 ### Check that it works
 
@@ -121,7 +124,9 @@ reaches a real car on the same network. The full list, with every option: `pixi 
 | `check` | the running graph against the contract: `check turtle` (or `sim`, `road`, `spine`, `car`, `replay`, `bench`) |
 | `bench-check` | starts bench mode and tests the whole graph: contract, drive, e-stops (2 min) |
 | `sim-check` | starts Gazebo's road world headless and tests the whole graph in it (2 min) |
-| `controller-compare` | Regulated Pure Pursuit against MPPI on the same routes, headless |
+| `controller-compare` | Regulated Pure Pursuit against MPPI on the same routes, headless; the trials too (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt`: docs/trials.md) |
+| `ndt-map` | NDT's map of Gazebo's test lot: `drive` the mapping route headless, or `build` from a bag; into `maps/ndt/` |
+| `lattice-primitives` | the State Lattice planner's moves for our car (`planner:=lattice`), from Nav2's own generator; `--check` says if `vehicle.yaml` has changed since |
 | `heading-check` | the global EKF's heading against Gazebo's truth, at walking pace |
 | `atob-score` | scores an A-to-B run from a bag or CSV: speeding up, holding, the stop on B (`atob-score bags/<run> --taped -0.1 0.05`) |
 | `timing-test` | are messages on time? 5 min parked, then 5 min driving |
@@ -139,8 +144,10 @@ reaches a real car on the same network. The full list, with every option: `pixi 
 | `estop`, `estop-clear` | block every driver (the car brakes); clear it |
 | `gate-clear` | a person reopens the output mux after it latched STOP |
 | `watchdog-clear` | a person clears the sensor watchdog's latched faults |
-| `hud`, `map` | the in-car screen and the map window, as ROS nodes (`fullscreen:=true`) |
+| `geofence-clear` | a person clears the geofence's OUTSIDE or JUMP, once the car is back inside |
+| `hud`, `map`, `debug-hud` | the in-car screen, the map window and the debug HUD, as ROS nodes (`fullscreen:=true`) |
 | `actuator-test` | the actuator tests, on stands and in a lot: `actuator-test --list` |
+| `preflight` | on stands, before the ground: one run (speed up, hold, slow, brake, steer) with every sensor checked, PASS / FAIL; `--sim`, `--bench`, `--no-drive`, `--skip` |
 | `calibrate-camera` | calibrate a streamed camera: `calibrate-camera board` prints the checkerboard |
 | `doctor` | can this computer join the car's ROS network? Says what to fix |
 | `net-map` | maps the network you're on: machines, ports, ROS domains. Read-only |
@@ -183,6 +190,8 @@ reaches a real car on the same network. The full list, with every option: `pixi 
 |---|---|
 | `vehicle-model` | the car as a linear model: poles, step responses, Bode margins |
 | `state-space-demo` | the state-space primer's simulator |
+| `measure-map` | the measuring map: the tape route round the car, its pictures, readings into `vehicle.yaml` |
+| `ndt-demo` | NDT and ICP from above: the pictures in Learn: localization |
 
 ## What's where
 

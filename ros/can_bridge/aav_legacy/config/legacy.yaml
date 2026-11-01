@@ -32,6 +32,20 @@ legacy_uart_bridge:
     stop_speed: 0.05
     hold_brake: 0.3
     stop_brake: 1.0
+    # How ego's speed becomes throttle and brake (docs/designs/2026-10-27_control-plan.md):
+    #   open  the 2025-26 mapping above: speed / full_throttle_speed, the brake only
+    #         below stop_speed. The car's setting until pi is tried on stands
+    #   pi    speed_control: feed-forward from ego's speed profile plus PI on the wheel
+    #         speed (/vehicle/odom), out as throttle OR brake. The model's max_accel,
+    #         max_brake and drag come from vehicle.yaml's actuators: (legacy.launch.py)
+    speed_loop.mode: open
+    speed_loop.kp: 2.0              # m/s^2 per m/s. GUESS: tune on stands, then the lot
+    speed_loop.ki: 0.5              # m/s^2 per (m/s x s). GUESS
+    speed_loop.response_lag: 0.3    # s the car runs behind ego (the actuators' lag). GUESS
+    speed_loop.hold_brake: 0.2      # brake travel while stopped (about -0.3 as above)
+    speed_loop.smooth_stop_speed: 0.3  # m/s: the smooth stop (Autoware's design); 0: off
+    speed_loop.stopped_brake: 0.5   # brake held once stopped by the smooth stop. GUESS
+    speed_loop.odom_timeout: 0.3    # s: an older wheel speed means feed-forward alone
 
 encoder_udp:
   ros__parameters:

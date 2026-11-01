@@ -13,7 +13,8 @@
 //!                                                        a banner unless OK
 //! Publishes   goal_topic    geometry_msgs/PoseStamped    the place search's goal, map frame,
 //!                                                        only after DRIVE HERE then CONFIRM
-//! Parameters  the topics above, stale_after, plan_stale_after (s), arrive_within (m),
+//! Parameters  the topics above, stale_after, plan_stale_after (s), final_approach (m),
+//!             plan_kept_for (s), arrive_within (m),
 //!             street_map (the offline street map's file), places (the place database)
 //!
 //! Under Nav2's map: OpenStreetMap's streets, from an offline file (streets.rs), placed

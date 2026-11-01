@@ -83,6 +83,46 @@ def noisy(values: Sequence[float], stddev: float, rng: random.Random,
     return tuple(v + b + rng.gauss(0.0, stddev) for v, b in zip(values, bias))
 
 
+class GpsError:
+    """
+    A GPS receiver's position error, east and north (m): a slow drift and a little jitter.
+
+    A real receiver without RTK is wrong by about the same metre for a while: the error
+    follows the satellites and the air, over tens of seconds. Only a few centimetres of it
+    are fresh on each fix. Each axis's drift is a first-order Gauss-Markov process: it
+    wanders round 0 with a steady spread of `drift_stddev`, and forgets where it was over
+    `drift_time` seconds (it keeps exp(-dt / drift_time) of itself each step). On top,
+    `jitter_stddev` of fresh Gaussian noise per fix. A `drift_time` of 0 makes the drift
+    fresh on every fix too: white noise, as the bench had before (TODO N7).
+
+    The drift starts with its steady spread, so the very first fix is as wrong as any.
+    """
+
+    def __init__(self, drift_stddev: float, drift_time: float, jitter_stddev: float,
+                 rng: random.Random):
+        if drift_stddev < 0.0 or drift_time < 0.0 or jitter_stddev < 0.0:
+            raise ValueError('the GPS error needs drift_stddev, drift_time and jitter_stddev '
+                             '>= 0')
+        self.drift_stddev = drift_stddev
+        self.drift_time = drift_time
+        self.jitter_stddev = jitter_stddev
+        self.rng = rng
+        self.drift = [rng.gauss(0.0, drift_stddev), rng.gauss(0.0, drift_stddev)]
+
+    @property
+    def stddev(self) -> float:
+        """Return the whole error's spread on each axis (m): what the receiver reports."""
+        return math.hypot(self.drift_stddev, self.jitter_stddev)
+
+    def step(self, dt: float) -> Tuple[float, float]:
+        """Move the drift on by dt seconds; return this fix's (east, north) error, m."""
+        keep = math.exp(-dt / self.drift_time) if self.drift_time > 0.0 else 0.0
+        fresh = self.drift_stddev * math.sqrt(1.0 - keep * keep)
+        self.drift = [keep * d + self.rng.gauss(0.0, fresh) for d in self.drift]
+        return (self.drift[0] + self.rng.gauss(0.0, self.jitter_stddev),
+                self.drift[1] + self.rng.gauss(0.0, self.jitter_stddev))
+
+
 def battery_voltage(hours_driven: float, full: float, empty: float, hours: float) -> float:
     """Return a steady drain from full to empty over `hours` of driving, never below empty."""
     left = max(0.0, 1.0 - hours_driven / hours)

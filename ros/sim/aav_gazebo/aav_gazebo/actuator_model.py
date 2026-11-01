@@ -34,7 +34,9 @@ import math
 # by the actuator tests and used by the linear model (aav_ego vehicle_model.py), not yet
 # here: Gazebo's own pipeline already adds about 20 ms (docs/vehicle-model.md section 6).
 # tools/tests/test_vehicle_model_tool.py checks every key is a field or in here.
-IGNORED = frozenset({'throttle_dead_time', 'brake_dead_time', 'steer_dead_time'})
+# open_loop_decel is for the geofence only (aav_safety geofence.py coasts).
+IGNORED = frozenset({'throttle_dead_time', 'brake_dead_time', 'steer_dead_time',
+                     'open_loop_decel'})
 
 
 @dataclass(frozen=True)
@@ -63,10 +65,48 @@ class ActuatorConfig:
 
 
 @dataclass(frozen=True)
+class LqiConfig:
+    """The spine's LQI (speed_loop.rs LqiConfig, TODO 3): one signed acceleration."""
+
+    k_speed: float          # m/s^2 per m/s of speed error
+    k_accel: float          # per m/s^2 of the pedals' lagged acceleration beyond the drag's
+    k_integral: float       # m/s^2 per (m/s x s)
+    setpoint_weight: float  # b: the share of the set speed the speed term sees
+    integral_limit: float   # m/s^2 the integral may add or take, beyond (1 - b) k_speed r
+    dead_band: float        # m/s^2 either side of zero: coast
+    max_accel: float        # m/s^2 at full throttle (the model the LQI inverts)
+    max_brake: float        # m/s^2 at full brake
+    drag: float             # 1/s
+    throttle_lag: float     # s
+    brake_lag: float        # s
+
+    def pedals(self, accel):
+        """Return (throttle, brake) for a signed acceleration: never both."""
+        if accel > self.dead_band:
+            return clamp(accel / self.max_accel, 0.0, 1.0), 0.0
+        if accel < -self.dead_band:
+            return 0.0, clamp(-accel / self.max_brake, 0.0, 1.0)
+        return 0.0, 0.0
+
+    def lagged(self, pedals, throttle, brake, dt):
+        """Return the pedals' acceleration a tick later: dt / (lag + dt) of the way."""
+        sent = throttle * self.max_accel - brake * self.max_brake
+        lag = self.throttle_lag if sent > 0.0 else self.brake_lag
+        return pedals + (sent - pedals) * dt / (lag + dt)
+
+
+# spine-core's LqiConfig::MODEL: the gains `pixi run vehicle-model --lqi` gives for
+# vehicle.yaml's guesses (test_actuator_model.py checks both copies and the tool agree).
+LQI_MODEL = LqiConfig(k_speed=1.832, k_accel=0.3169, k_integral=0.7015, setpoint_weight=0.5,
+                      integral_limit=1.5, dead_band=0.05, max_accel=1.5, max_brake=3.0,
+                      drag=0.1, throttle_lag=0.1, brake_lag=0.2)
+
+
+@dataclass(frozen=True)
 class SpeedLoopConfig:
     """The spine's speed loop gains (firmware/spine/crates/spine-core/src/speed_loop.rs)."""
 
-    kp: float = 0.3              # throttle per m/s of error
+    kp: float = 0.3             # throttle per m/s of error
     ki: float = 0.1              # throttle per (m/s x s)
     integral_limit: float = 0.3  # the most throttle the integral may add (beyond its share)
     setpoint_weight: float = 1.0  # b: the share of the target the P term sees (1: plain PI)
@@ -75,6 +115,7 @@ class SpeedLoopConfig:
     coast_band: float = 0.2      # m/s too fast that coasting handles
     stopped_speed: float = 0.05  # m/s: slower counts as stopped
     hold_brake: float = 0.3      # brake held while stopped with a zero target
+    lqi: object = None           # an LqiConfig: the LQI (SpeedLaw::Lqi); None: the PI
 
 
 # The named parameter sets: spine-core's SpeedLoopProfile (the same names and numbers;
@@ -83,11 +124,12 @@ SPEED_LOOP_PROFILES = {
     'default': SpeedLoopConfig(),
     'smooth': SpeedLoopConfig(kp=1.0, ki=0.25, integral_limit=1.0, setpoint_weight=0.75,
                               anti_windup='clamp'),
+    'lqi': SpeedLoopConfig(lqi=LQI_MODEL),
 }
 
 
 def speed_loop_profile(name):
-    """Return a profile's SpeedLoopConfig by name: 'default' or 'smooth'."""
+    """Return a profile's SpeedLoopConfig by name: 'default', 'smooth' or 'lqi'."""
     try:
         return SPEED_LOOP_PROFILES[name]
     except KeyError:
@@ -138,6 +180,13 @@ class SpeedLoop:
         self.cfg = cfg
         self.integral = 0.0
         self.reverse = False
+        self.lqi_integral = 0.0   # the LQI's integral of the speed error (m/s x s)
+        self.pedals = 0.0         # the LQI's model of the pedals' lagged acceleration
+
+    def reset(self):
+        self.integral = 0.0
+        self.lqi_integral = 0.0
+        self.pedals = 0.0
 
     def update(self, target, measured, dt):
         c = self.cfg
@@ -145,7 +194,7 @@ class SpeedLoop:
         want_reverse = target < 0.0
         # The gear only changes while stopped; until then, brake.
         if target != 0.0 and want_reverse != self.reverse:
-            self.integral = 0.0
+            self.reset()
             if stopped:
                 self.reverse = want_reverse
             else:
@@ -153,6 +202,8 @@ class SpeedLoop:
                                          0.0, 1.0), self.reverse)
         sign = -1.0 if self.reverse else 1.0
         t, m = target * sign, measured * sign
+        if c.lqi is not None:
+            return Demand(*self._lqi(c.lqi, t, m, stopped, dt), self.reverse)
         # A stop: brake until stopped, then hold; never coast (the spine's own rule).
         if t <= 0.0:
             self.integral = 0.0
@@ -174,6 +225,32 @@ class SpeedLoop:
             self.integral = 0.0
             return Demand(0.0, clamp(c.brake_gain * overspeed, 0.0, 1.0), self.reverse)
         return Demand(clamp(proportional + self.integral, 0.0, 1.0), 0.0, self.reverse)
+
+    def _lqi(self, q, t, m, stopped, dt):
+        """Return the LQI's (throttle, brake): spine-core SpeedLoop::lqi, line for line."""
+        c = self.cfg
+        stopping = t <= 0.0
+        if stopping and stopped:
+            throttle, brake = 0.0, c.hold_brake
+        else:
+            r = max(0.0, t)
+            error = r - m
+            b = q.setpoint_weight
+            ceiling = q.integral_limit + (1.0 - b) * q.k_speed * r
+            integral = 0.0 if stopping else self.lqi_integral + error * dt
+            share = clamp(q.k_integral * integral, -q.integral_limit, ceiling)
+            accel = (q.drag * r + q.k_speed * (b * r - m) - q.k_accel * (self.pedals - q.drag * r)
+                     + share)
+            if stopping:
+                accel = min(accel, -c.hold_brake * q.max_brake)
+            throttle, brake = q.pedals(accel)
+            pinned = (throttle >= 1.0 and error > 0.0) or (brake >= 1.0 and error < 0.0)
+            if not pinned and q.k_integral > 0.0:
+                self.lqi_integral = share / q.k_integral
+        if stopping:
+            self.lqi_integral = 0.0
+        self.pedals = q.lagged(self.pedals, throttle, brake, dt)
+        return throttle, brake
 
 
 class Actuators:

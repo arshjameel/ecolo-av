@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Path followers: Regulated Pure Pursuit and MPPI · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/path-followers.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Path followers: Regulated Pure Pursuit and MPPI</h1>
+<div class="meta">23 min read · 10 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-day.html">Car day</a>
+<a href="tests.html">Every test</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<span class="sep">Learn:</span>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a class="here" href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#what-each-one-does">What each one does</a><a href="#switch-between-them">Switch between them</a><a href="#compare-them">Compare them</a><a href="#circling-a-goal-found-and-fixed-29-october-todo-17">Circling a goal: found and fixed, 29 October (TODO 17)</a><a href="#after-the-fixes-night-of-22-october">After the fixes, night of 22 October</a><a href="#with-reversing-three-point-turns-22-october-0435">With reversing: three-point turns, 22 October, 04:35</a><a href="#results-22-october-first-runs">Results, 22 October, first runs</a><a href="#making-mppi-drive">Making MPPI drive</a><a href="#found-on-the-way">Found on the way</a><a href="#limits-of-this-comparison">Limits of this comparison</a></nav>
+<div class="lead"><p>Nav2's planner draws a path; a <strong>controller</strong> turns it into a speed and a turn, 20 times a
+second. We have two, and a script that compares them on the same drives in Gazebo.</p>
+<blockquote>
+<p><strong>The short version</strong>
+- <strong>MPPI</strong> is the default (since 22 Oct): it tries 2000 possible futures every cycle through a model of the car, and picks the best blend. It turns to a goal's heading; it costs more computer.
+- <strong>Regulated Pure Pursuit (RPP)</strong> is the other choice: it chases a point 2-4 m ahead on the path. Simple and light, but it aims only at a point, so it often arrives at a goal facing the wrong way.
+- <strong>Switch:</strong> <code>controller:=rpp</code> on <code>sim.launch.py</code> or <code>navigation.launch.py</code>.
+- <strong>Compare:</strong> <code>pixi run controller-compare</code> (about 25 min, headless, on this computer only; <code>--legs 1</code> for a quick check).
+- <strong>Results, night of 22 Oct (Gazebo's lot, four runs):</strong> after five fixes (below), MPPI reached the first goal in 29-30 s in every run; Pure Pursuit looped there in two of three. In the best run both reached all 4 goals. MPPI uses twice the CPU (20% of a Mac core).
+- <strong>No more circling goals (29 Oct, TODO 17):</strong> Nav2 planned a new path every second, also in the last metres, where a new path is often a loop for a car. Now it keeps its path for the last 8 m (<a href="#circling-a-goal-found-and-fixed-29-october-todo-17">below</a>).</p>
+</blockquote></div>
+<section class="card"><h2 id="what-each-one-does">What each one does</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Regulated Pure Pursuit</th>
+<th>MPPI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Idea</td>
+<td>aim at a point ahead on the path; steer the arc that reaches it</td>
+<td>imagine 2000 futures 2.8 s long, score each, blend the best</td>
+</tr>
+<tr>
+<td>Knows the car's shape</td>
+<td>no: only its turning radius, through the planner</td>
+<td>yes: the Ackermann turning radius and the outline (footprint)</td>
+</tr>
+<tr>
+<td>An obstacle on the path</td>
+<td>slows, then stops before it</td>
+<td>may steer around it, if there's room</td>
+</tr>
+<tr>
+<td>Settings to tune</td>
+<td>a few (lookahead, speeds)</td>
+<td>many (noise, temperature, eight scoring rules)</td>
+</tr>
+<tr>
+<td>Computer</td>
+<td>light</td>
+<td>heavy: one of the reasons for a second Orin</td>
+</tr>
+<tr>
+<td>Paper</td>
+<td>Macenski et al., 2023</td>
+<td>Williams et al., 2017</td>
+</tr>
+</tbody>
+</table></div>
+<p>Both read the same costmap and send the same message to the same velocity smoother,
+collision monitor, twist_mux and ego. Everything after the controller is the same.</p>
+</section>
+<section class="card"><h2 id="switch-between-them">Switch between them</h2>
+<pre class="highlight"><code class="language-bash">pixi run sim world:=test_lot controller:=rpp       # Gazebo, Pure Pursuit following the path
+ros2 launch aav_navigation navigation.launch.py controller:=rpp</code></pre>
+<p><code>controller:=</code> takes <code>mppi</code> (the default) or <code>rpp</code>. For MPPI, the launch file copies the <code>MPPI</code> block
+of <code>nav2.yaml</code> under the name the behaviour trees ask for, <code>FollowPath</code>, and sets its
+turning radius, its reverse speed and its top speed from <code>vehicle.yaml</code>
+(<code>aav_description/vehicle.py</code>, <code>nav2_tuned</code>).</p>
+</section>
+<section class="card"><h2 id="compare-them">Compare them</h2>
+<pre class="highlight"><code class="language-bash">pixi run controller-compare                    # both controllers, both tours
+pixi run controller-compare --tours obstacle   # only the box in the lane
+pixi run controller-compare --controllers mppi --speed 2
+pixi run controller-compare --trackers lqr mpc --runs 3   # the trial trackers (docs/trials.md)</code></pre>
+<p>For each tour and controller the script starts Gazebo's test lot with no windows, on a ROS
+domain of its own (this computer only), sends the same goals, and records where the car
+really was (Gazebo's ground truth). Forward only by default; <code>--reversing</code> lets Nav2 back
+up, as it may on the car since 22 Oct. The results go to
+<code>log/controller-compare/&lt;time&gt;/</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>File</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>results.md</code></td>
+<td>a table per goal: one column per controller</td>
+</tr>
+<tr>
+<td><code>lot.svg</code>, <code>obstacle.svg</code></td>
+<td>where each controller took the car, on the map</td>
+</tr>
+<tr>
+<td><code>results.json</code></td>
+<td>the numbers, and each drive's track</td>
+</tr>
+<tr>
+<td><code>sim-&lt;tour&gt;-&lt;controller&gt;.log</code></td>
+<td>everything the simulator said</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tour</th>
+<th>Goals</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lot</code></td>
+<td>a left turn; round the building; a turn back in the 14 m lane; home</td>
+</tr>
+<tr>
+<td><code>obstacle</code></td>
+<td>30 m east, with a 1 m box in the lane at 15.5 m. The planner's map has no box in it, so only the controller and the collision monitor can deal with it</td>
+</tr>
+</tbody>
+</table></div>
+<p>What the numbers mean (<code>tools/drive_metrics.py</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Time</td>
+<td>from the goal sent to Nav2's answer</td>
+</tr>
+<tr>
+<td>Controller asked to move after</td>
+<td>the controller's first speed command over 0.05 m/s</td>
+</tr>
+<tr>
+<td>Car moving after</td>
+<td>the car 0.1 m from where it started</td>
+</tr>
+<tr>
+<td>Off the path</td>
+<td>from the planner's newest path (it replans every second)</td>
+</tr>
+<tr>
+<td>Off the first route</td>
+<td>from the first path: shows a car that wanders off</td>
+</tr>
+<tr>
+<td>End: off the goal</td>
+<td>where the car stopped, against the goal</td>
+</tr>
+<tr>
+<td>Steering work</td>
+<td>how fast the steering command changes (RMS): lower is smoother</td>
+</tr>
+<tr>
+<td>Stops, reversals</td>
+<td>stand-stills of 1 s or more; changes of direction</td>
+</tr>
+<tr>
+<td>Closest to the box</td>
+<td>the car's outline to the box's</td>
+</tr>
+<tr>
+<td>Controller CPU</td>
+<td><code>controller_server</code>'s share of one core</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="circling-a-goal-found-and-fixed-29-october-todo-17">Circling a goal: found and fixed, 29 October (TODO 17)</h2>
+<p>Now and then the car drove a full loop at a goal it had nearly reached: about 50 m
+for a 21 m leg. Always the first leg (the left turn to 15, 15, facing north), any follower.</p>
+<p><strong>How it was found:</strong> <code>pixi run controller-compare --tours lot --legs 1 --plans</code>, 3 runs
+each of RPP, MPPI and <code>aav_track</code>'s pure_pursuit and lqr. <code>--plans</code> keeps every plan, so
+each plan can be set against where the car really was when it came.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Why it looped</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A new path every second, from wherever the car is</strong></td>
+<td>the tree replanned at 1 Hz, also 1-4 m from the goal</td>
+</tr>
+<tr>
+<td><strong>There, a new path is a loop</strong></td>
+<td>the car runs a little behind on the last bend (heading 50-60°, the path 70-90°). To reach the goal's heading from there at the planner's 3.6 m radius, Smac's only path is a 21-25 m loop. An S-bend back onto the line needs up to 2 radii ahead (<code>vehicle.final_approach</code>): 7.2 m</td>
+</tr>
+<tr>
+<td><strong>Each new path resets the goal checker</strong></td>
+<td><code>controller_server</code> resets it with every path (<code>setPlannerPath</code>)</td>
+</tr>
+<tr>
+<td>Not the cause</td>
+<td>the tolerances (1.0 m, 0.75 rad), the EKF's heading (worst 5-16° per leg), the trackers' own goal check (it already survives a new path)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The fix</strong> (<code>navigate_to_pose_car*.xml</code>): within 8 m of the goal the tree keeps the
+path it has, as long as it still ends at this goal, nothing blocks it (<code>IsPathValid</code>) and
+it is under 20 s old. Everywhere else it still replans every second. Stock Nav2 tree
+nodes only. The map window waits 25 s, not 3, before NO NEW PLAN there.</p>
+<p><strong>Before and after</strong>, the first leg, 3 runs each (<code>log/gcf-before</code>, <code>log/gcf-after</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Loop plans (runs)</th>
+<th>Loops driven</th>
+<th>Driven / the first route</th>
+<th>Time (s)</th>
+<th>Heading off at the end</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RPP, before</td>
+<td>2 of 3</td>
+<td>1</td>
+<td>0.97, 0.97, <strong>2.22</strong></td>
+<td>23, 25, <strong>59</strong></td>
+<td>20-34°</td>
+</tr>
+<tr>
+<td>RPP, after</td>
+<td>0</td>
+<td>0</td>
+<td>0.94-0.98</td>
+<td>24</td>
+<td>3-26°</td>
+</tr>
+<tr>
+<td>MPPI, before</td>
+<td>3 of 3</td>
+<td>2</td>
+<td>0.96, <strong>2.26, 2.26</strong></td>
+<td>29, <strong>64, 65</strong></td>
+<td>6-38°</td>
+</tr>
+<tr>
+<td>MPPI, after</td>
+<td>0</td>
+<td>0</td>
+<td>0.96-0.98</td>
+<td>29-30</td>
+<td>8-21°</td>
+</tr>
+<tr>
+<td>pure_pursuit, before</td>
+<td>3 of 3</td>
+<td>0</td>
+<td>0.95-0.99</td>
+<td>23-24</td>
+<td>19-41°</td>
+</tr>
+<tr>
+<td>pure_pursuit, after</td>
+<td>0</td>
+<td>0</td>
+<td>0.96-0.98</td>
+<td>23</td>
+<td>9-13°</td>
+</tr>
+<tr>
+<td>lqr, before</td>
+<td>2 of 3</td>
+<td>0</td>
+<td>0.95-0.97</td>
+<td>23-24</td>
+<td>17-31°</td>
+</tr>
+<tr>
+<td>lqr, after</td>
+<td>0</td>
+<td>0</td>
+<td>0.94-0.97</td>
+<td>23</td>
+<td>18-20°</td>
+</tr>
+</tbody>
+</table></div>
+<p>The trackers drove no loop in these runs, but did earlier the same night (pure_pursuit,
+lqr and mpc: 4 of 12, run 02:42): the loop plans were there for them too.</p>
+<p><strong>Whole tours after the fix</strong>, one run each (<code>log/gcf-tour-fwd</code>, <code>log/gcf-tour-rev</code>): no goal circled.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Forward only</th>
+<th>Reversing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RPP</td>
+<td>4 of 4 goals; the U-turn 1.22 × its route (as before: 1.18-1.27)</td>
+<td>4 of 4</td>
+</tr>
+<tr>
+<td>MPPI</td>
+<td>2 of 4: the U-turn stopped facing the wall, then home gave up (the known forward-only U-turn, 2 of 3 failed before the fix too)</td>
+<td>4 of 4</td>
+</tr>
+<tr>
+<td>The box in the lane</td>
+<td>both past it</td>
+<td>-</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="after-the-fixes-night-of-22-october">After the fixes, night of 22 October</h2>
+<p>Five changes, each found from a run that failed (all in <code>nav2.yaml</code> or <code>vehicle.py</code>, with
+the reason beside each):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What went wrong</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MPPI reached the goal, then drove a full circle to face the right way</td>
+<td>MPPI turns to the goal's heading from 2.5 m out (<code>GoalAngleCritic</code>), not 0.5 m</td>
+</tr>
+<tr>
+<td>The planner's path passed the building's corner 0.86 m away; the collision monitor's box stopped the car</td>
+<td>the planner's costmap inflates 3.0 m, gently: paths keep to the middle of a lane</td>
+</tr>
+<tr>
+<td>The plan ended in a full-lock turn; both controllers cut it and missed</td>
+<td>the planner plans turns 1.25 x wider than full lock (<code>vehicle.PLAN_TURN_MARGIN</code>)</td>
+</tr>
+<tr>
+<td>The car looped at goals it had reached: the EKF put it 0.6 m off (GPS noise 0.5 m), over the 0.5 m tolerance</td>
+<td>goals count within 1.0 m: as good as GPS without RTK. Tighten with RTK</td>
+</tr>
+<tr>
+<td>Pure Pursuit arrives facing the wrong way (it aims only at a point)</td>
+<td>MPPI is the default</td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="Run e: both controllers reach all four goals. Pure Pursuit loops twice at the first; for the U-turn both swing out east" src="../img/controllers-lot-after.svg" /></p>
+<p>Four lot runs after them (the EKF recorded too). The Fast DDS stalls (see "Found on the
+way") spoiled one:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Run</th>
+<th>Regulated Pure Pursuit</th>
+<th>MPPI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>c (01:58)</td>
+<td>3 of 4 goals; first goal 29 s</td>
+<td>3 of 4; first goal 29 s</td>
+</tr>
+<tr>
+<td>d (02:10)</td>
+<td>stopped by a stall at the first goal</td>
+<td>1 of 4: stalls</td>
+</tr>
+<tr>
+<td>e (02:20)</td>
+<td><strong>4 of 4</strong>, but looped at the first goal (81 m for 21)</td>
+<td><strong>4 of 4</strong></td>
+</tr>
+<tr>
+<td>f (02:45)</td>
+<td>0 of 4: looped at the first goal, stopped facing the building</td>
+<td>2 of 4: its U-turn went round the building, stopped facing it</td>
+</tr>
+</tbody>
+</table></div>
+<p>Still open:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Stuck facing a wall</strong></td>
+<td>after a loop or a wide turn the collision monitor stops the car facing a wall, and forward only it can't get out. A person has to. These were real near misses, not false stops, so the fix is a way out: reversing (Nav2's back-up). <strong>On for the car since 22 Oct</strong>, where the lidar watches behind it</td>
+</tr>
+<tr>
+<td><strong>The U-turn, forward only</strong></td>
+<td>in the 14 m lane, MPPI went wide or round the building in 3 of 4 runs; Pure Pursuit managed it in 2. With reversing it works (below)</td>
+</tr>
+<tr>
+<td>~~The box in the lane~~</td>
+<td>done, 03:40: the planner now sees the radar and lidar. Both controllers drove round the box, 2.6 m (Pure Pursuit) and 3.8 m (MPPI) clear, and reached the goal (<a href="costmaps.html">Costmaps</a>)</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="with-reversing-three-point-turns-22-october-0435">With reversing: three-point turns, 22 October, 04:35</h2>
+<p><code>--reversing</code> lets Nav2 back up, as it may in Gazebo, on the bench, and since 22 Oct on
+the car, where the lidar watches behind it (<a href="learn-nav2.html#reversing">Reversing</a>). At first MPPI never reversed. Three settings stopped it:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What went wrong</th>
+<th>Fix (only when reversing)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MPPI never backed up, though the plan did (runs h, k)</td>
+<td>no <code>PreferForwardCritic</code>: the planner already decides where to reverse (<code>reverse_penalty</code>)</td>
+</tr>
+<tr>
+<td>It ignored which way the path pointed</td>
+<td><code>PathAngleCritic</code> mode 2 (follow the path's own direction); a cusp counts within 0.5 m and 0.6 rad</td>
+</tr>
+<tr>
+<td>Nav2 cancelled the turn 10 times as "stuck": rocking back and forth moves less than 0.5 m</td>
+<td><code>PoseProgressChecker</code> (always on): turning 0.5 rad counts as moving too</td>
+</tr>
+</tbody>
+</table></div>
+<p>Run n, the whole lot tour, both controllers: <strong>all 8 goals reached</strong>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Turn back (14 m lane)</th>
+<th>Pure Pursuit</th>
+<th>MPPI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Time</td>
+<td>74 s</td>
+<td>71 s</td>
+</tr>
+<tr>
+<td>Driven</td>
+<td>22.9 m</td>
+<td>34.9 m</td>
+</tr>
+<tr>
+<td>Reversals</td>
+<td>10, with 4 stops: it dithers at each cusp</td>
+<td>2: one clean three-point turn, but wide</td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="Run r, reversing allowed: both make the U-turn by backing up; MPPI's turn is wider" src="../img/controllers-lot-reversing.svg" /></p>
+<p>Run q (05:10), the same with ego's new jerk limit: <strong>all 8 goals again</strong>. MPPI's first goal
+cost it a back-up (72 s, was 30): it drove past the goal (the EKF was right then, within
+0.4 m and 10°), and while it backed up the EKF's heading swung to 57° off.</p>
+<p>That swing is not a reversing bug. A probe in Gazebo (22 Oct) drove 15 s each way: the
+wheel speed keeps its sign and the turn rates match the truth backwards too, and the
+global EKF's heading wandered up to ±25° at 0.5 m/s <strong>in both directions</strong>. Over all
+tonight's runs it is worse in reverse (median 11° off, against 4° forward at the same
+speed) because reversing comes slowly, just after a stop: where GPS tells the heading
+least. The fix is a heading source (PLAN M9).</p>
+<p>Run r (06:04), after the global EKF's heading was fixed (yaw noise 0.01,
+<a href="learn-localization.html">Learn: localization</a>): <strong>all 8 goals</strong>, and the EKF's worst
+heading per leg 7-16° (runs n and q: 14-76°). MPPI's tour: 29, 53, 71 and 65 s, no
+detours; its way home took 65 s (was 94-102). The picture above is this run.</p>
+<p>Forward only (run o, 04:46, same settings): the first two goals for both, but the U-turn
+failed for both again, as in run j: each swung wide and stopped facing the east wall.</p>
+<p>Forward only <strong>after the EKF fix</strong>, two runs:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Run</th>
+<th>Pure Pursuit</th>
+<th>MPPI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>s (06:16)</td>
+<td>4 of 4; the U-turn as a tight loop (45 m)</td>
+<td>4 of 4; the U-turn as a wide loop (67 m)</td>
+</tr>
+<tr>
+<td>t (06:26)</td>
+<td>4 of 4, but two loops at the first goal (104 m for 21)</td>
+<td>2 of 4: its U-turn loop ran into the north wall, stopped facing it</td>
+</tr>
+</tbody>
+</table></div>
+<p>The EKF's heading was good in both (worst 12°), so it was not the only cause. Forward
+only, a U-turn in a 14 m lane is still about a coin toss; backing up makes it reliable.</p>
+<p><img alt="Run s, forward only, after the EKF fix: both make the U-turn as a loop; MPPI's is wider. In run t MPPI's loop met the north wall" src="../img/controllers-lot-forward-ekf.svg" /></p>
+<p>Still to do: MPPI drives on east a few metres before it backs up, where the plan backs
+up at once. The car may reverse since 22 Oct (Ben), where the lidar watches behind it; off by
+default on the car since 26 Oct, until the wheels tell direction (H5).</p>
+</section>
+<section class="card"><h2 id="results-22-october-first-runs">Results, 22 October, first runs</h2>
+<p>Gazebo's test lot on Ben's Mac (M4 Max), headless, 1 m/s, forward only, with MPPI's
+settings from "Making MPPI drive" below. One run each: read small differences as noise.</p>
+<p><img alt="Where each controller took the car in the test lot" src="../img/controllers-lot.svg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Regulated Pure Pursuit</th>
+<th>MPPI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A left turn (15, 15), 21 m</td>
+<td>✅ 28 s, drove 21.5 m, 0.32 m from the goal</td>
+<td>✅ 58 s, drove <strong>47.5 m</strong>: it reached the point, then drove a full circle to face north</td>
+</tr>
+<tr>
+<td>Round the building (35, 42)</td>
+<td>❌ stopped at the building's north-west corner: the collision monitor saw the wall in its 1 m stop box</td>
+<td>✅ 45 s, 0.57 m from the goal: it kept further from the corner</td>
+</tr>
+<tr>
+<td>Turn back in the 14 m lane (20, 42, facing west)</td>
+<td>❌ still stuck at the corner (forward only, no way out)</td>
+<td>❌ drove 16 m east and round; stopped by the collision monitor near the building</td>
+</tr>
+<tr>
+<td>Home (0, 0)</td>
+<td>❌ still stuck</td>
+<td>❌ the sensor watchdog stopped Nav2: the IMU and wheel speed silent for 0.5-0.8 s (see "Found on the way")</td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="The box in the lane" src="../img/controllers-box.svg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>The box in the lane</th>
+<th>Regulated Pure Pursuit</th>
+<th>MPPI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What happened</td>
+<td>drove at it; stopped 0.36 m before it</td>
+<td>drove at it; stopped 0.25 m before it</td>
+</tr>
+<tr>
+<td>Who stopped it</td>
+<td>the collision monitor</td>
+<td>the collision monitor</td>
+</tr>
+<tr>
+<td>Steered round?</td>
+<td>no: it follows the path</td>
+<td>no: its path goes through the box, and its path rules outweigh its cost rule</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>On average</th>
+<th>Regulated Pure Pursuit</th>
+<th>MPPI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Off the path (mean)</td>
+<td>0.12-0.18 m</td>
+<td>0.13-0.16 m</td>
+</tr>
+<tr>
+<td>Steering work (lower is smoother)</td>
+<td>0.39-0.54 rad/s</td>
+<td>0.14-0.41 rad/s: smoother</td>
+</tr>
+<tr>
+<td><code>controller_server</code> CPU</td>
+<td>10-11% of a core</td>
+<td>21-32% of a core: twice to three times</td>
+</tr>
+</tbody>
+</table></div>
+<p>What it means:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Default</strong></td>
+<td>Regulated Pure Pursuit stayed the default then: quicker, cheaper, and no loops at goals. After the fixes above, MPPI is the default since 22 Oct</td>
+</tr>
+<tr>
+<td><strong>MPPI next</strong></td>
+<td>stop the loops: drop or soften <code>GoalAngleCritic</code>, or widen its angle threshold, so it accepts the heading it arrives with (the goal checker allows 0.5 rad anyway)</td>
+</tr>
+<tr>
+<td><strong>Both</strong></td>
+<td>the corner problem: the planner's paths pass walls closer than the collision monitor allows (plan.md M8)</td>
+</tr>
+<tr>
+<td><strong>Both</strong></td>
+<td>steering round the box needs the obstacle in the planner's map (plan.md M5)</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="making-mppi-drive">Making MPPI drive</h2>
+<p>With the settings first written for it (Nav2's examples for a small robot), MPPI in Gazebo
+sat still for 13 s, then crept at 0.2 m/s and drifted metres off a straight path. Found on
+22 October, one cause at a time, by printing each layer's command twice a second:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What we saw</th>
+<th>Why</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Its speed flipped between forward and back for 12 s</td>
+<td>the simulator let Nav2 reverse (<code>reversing:=true</code> by default), and MPPI dithered around zero</td>
+<td>the comparison runs forward only by default (<code>--reversing</code> to allow it)</td>
+</tr>
+<tr>
+<td>Nav2 warned "Inconsistent configuration in collision checking"</td>
+<td>MPPI checked a circle; the costmaps use the car's 2 x 1 m outline</td>
+<td><code>CostCritic.consider_footprint: true</code></td>
+</tr>
+<tr>
+<td>Fast samples all swerved</td>
+<td>it tried turn rates of ±0.4 rad/s, but the car turns at most 0.35 rad/s at 1 m/s (full lock): fast samples left the path, slow ones won</td>
+<td><code>wz_std</code> 0.4 → 0.1</td>
+</tr>
+<tr>
+<td>Speed built up by only 0.015 m/s each second</td>
+<td>its samples' speed changes were clipped by the 1 m/s² limit (0.05 m/s per step up, but 0.1 down), so its futures drifted slower</td>
+<td><code>ax_max</code> 1.0 → 3.0 for its planning only (ego and the smoother still hold the car to 1 m/s²); <code>ax_min</code> stays at ego's -2.0</td>
+</tr>
+<tr>
+<td>Still slow to commit</td>
+<td>small speed samples, a soft blend</td>
+<td><code>vx_std</code> 0.2 → 0.4, <code>temperature</code> 0.3 → 0.15</td>
+</tr>
+</tbody>
+</table></div>
+<p>After the changes: moving within 0.5 s, about 0.95 m/s, within about 0.5 m of a straight
+path. The settings and their reasons are in <code>nav2.yaml</code>, above the <code>MPPI</code> block.</p>
+</section>
+<section class="card"><h2 id="found-on-the-way">Found on the way</h2>
+<ul>
+<li><strong>The global EKF's heading jumps at walking pace.</strong> GPS gives only a position; the
+  filter reads each fix's error (0.5 m in Gazebo) partly as a heading error, and the slower
+  the car the bigger it reads it: ±20° at 0.2 m/s. Nav2 places its path with that pose, so
+  the path swings round the car. Regulated Pure Pursuit, aiming 2-4 m ahead, barely
+  notices; a slow MPPI did. It is probably also why a "straight" 10 m drive turned 38° on
+  21 October. Lowering the filter's heading noise helped but didn't cure it: a heading
+  source (two GPS antennas, or the F9R's own fused heading) is the real fix. Open, for
+  localization (proposal T6.3).</li>
+<li><strong>Late data: it was the messaging, not the Mac.</strong> Several runs were stopped by the
+  sensor watchdog: the IMU, the wheels and both EKFs silent for 0.5-2 s at once, with the
+  Mac 77% idle. Splitting Gazebo's adapter into one node per sensor (as on the car) didn't
+  stop it. A bare publisher and subscriber beside Gazebo showed why: the publisher always
+  on time, its messages up to 0.48 s late through Fast DDS, never over 0.05 s through
+  Cyclone DDS. Cyclone is the default since 23 Oct (<a href="mac.html#why-we-use-cyclone-dds">Your Mac</a>).</li>
+<li><strong>The global EKF is up to 0.7 m off</strong> in Gazebo (0.5 m GPS noise), its heading up to
+  25°. In the slow stretches of the night's drives its heading stayed under 6°: the ±20°
+  above was a car creeping for many seconds. The comparison now reports both per leg.</li>
+</ul>
+</section>
+<section class="card"><h2 id="limits-of-this-comparison">Limits of this comparison</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>One run each</td>
+<td>the numbers vary from run to run: read differences under about 20% as noise</td>
+</tr>
+<tr>
+<td>Gazebo on a Mac</td>
+<td>CPU numbers are the Mac's, not the Orin's</td>
+</tr>
+<tr>
+<td>The car's numbers are guesses</td>
+<td>the same guesses for both controllers (<code>vehicle.yaml</code>)</td>
+</tr>
+<tr>
+<td>1 m/s</td>
+<td>the car's limit this year; <code>--speed</code> goes up to 5 in the simulator</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="costmaps.html"><small>Previous</small>← Costmaps</a>
+<a class="next" href="switches.html"><small>Next</small>Switches →</a></nav>
+</main>
+<footer>Source: <code>docs/path-followers.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

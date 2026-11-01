@@ -9,7 +9,7 @@ ROOF = ([0.9, 0.0, 1.8], [0.0, 0.0, 0.0])   # vehicle.yaml's lidar_link
 
 
 def direction(angle):
-    return int(math.floor((angle - SHAPE.angle_min) / SHAPE.angle_increment))
+    return int(round((angle - SHAPE.angle_min) / SHAPE.angle_increment)) % SHAPE.count
 
 
 def test_720_directions_all_the_way_round():
@@ -37,7 +37,17 @@ def test_left_is_positive_and_behind_wraps():
     points = to_base(numpy.array([[0.0, 3.0, -1.0], [-4.0, 0.001, -1.0]]), *ROOF)
     ranges = flatten(points, SHAPE)
     assert math.isfinite(ranges[direction(math.atan2(3.0, 0.9))])
-    assert math.isfinite(ranges[-1])      # just under +pi: straight behind
+    assert math.isfinite(ranges[0])       # just under +pi: straight behind, as -pi is
+
+
+def test_each_point_goes_to_its_nearest_direction():
+    # 0.4 degrees left is nearer 0.5 than 0: rounding down put it at 0 (half a step off).
+    angle = math.radians(0.4)
+    points = to_base(numpy.array([[10.0 * math.cos(angle), 10.0 * math.sin(angle), -1.0]]),
+                     [0.0, 0.0, 1.8], [0.0, 0.0, 0.0])
+    ranges = flatten(points, SHAPE)
+    assert math.isfinite(ranges[direction(math.radians(0.5))])
+    assert direction(math.radians(0.5)) == direction(0.0) + 1
 
 
 def test_a_turned_lidar_turns_its_points():

@@ -1,0 +1,34 @@
+[package]
+name = "panel-app"
+description = "hw_panel: the hardware screen (every sensor's number, simple buttons for the actuators), one raylib program that is also its ROS node"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "hw_panel"
+path = "src/main.rs"
+
+[features]
+# colcon builds with ROS. `--no-default-features` builds a window that only runs --demo,
+# on any computer, with no ROS sourced.
+default = ["ros"]
+ros = ["dep:rclrs", "dep:ros-env", "dep:ctrlc"]
+
+[dependencies]
+anyhow = "1"
+panel-core = { path = "../panel-core" }
+hud-core = { path = "../hud-core" }
+# Only its library: the window's monitor and full screen, shared with the HUD.
+hud-app = { path = "../hud-app", default-features = false }
+# The same raylib as hud-app: TrueType fonts, and --screenshot.
+raylib = { version = "6", features = [
+  "SUPPORT_IMAGE_GENERATION",
+  "SUPPORT_FILEFORMAT_TTF",
+  "SUPPORT_SCREEN_CAPTURE",
+] }
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"], optional = true }
+rclrs = { version = "0.8", optional = true }
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = { version = "0.3", optional = true }

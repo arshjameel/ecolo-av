@@ -320,6 +320,56 @@ mod tests {
         assert!((end - 1.0).abs() < 0.05, "smooth: {end}");
     }
 
+    fn with_profile(profile: spine_core::speed_loop::SpeedLoopProfile) -> SpineConfig {
+        SpineConfig {
+            speed_loop: profile.config(),
+            ..SpineConfig::default()
+        }
+    }
+
+    /// Drive at 1 m/s for 8 s, then ask for 0: (metres rolled, seconds to stand still).
+    fn stop_from_1(spine: SpineConfig) -> (f32, f32) {
+        let mut rig = Rig::with_spine(spine);
+        rig.arm();
+        rig.run(8.0, Some((1.0, 0.0, true)));
+        let x = rig.bench.pose().x;
+        let mut t = 0.0;
+        while rig.bench.pose().speed > 0.0 && t < 5.0 {
+            rig.run(0.01, Some((0.0, 0.0, true)));
+            t += 0.01;
+        }
+        ((rig.bench.pose().x - x) as f32, t)
+    }
+
+    #[test]
+    fn the_lqi_reaches_1_m_s_without_overshoot_and_stops_on_the_bench() {
+        // TODO 3: spine-core's LQI, through the encoder, on the bench's model car.
+        use spine_core::speed_loop::SpeedLoopProfile;
+        let (peak, end) = peak_and_end(with_profile(SpeedLoopProfile::Lqi));
+        assert!(peak < 1.03, "lqi: {peak}");
+        assert!((end - 1.0).abs() < 0.05, "lqi: {end}");
+        let (rolled, took) = stop_from_1(with_profile(SpeedLoopProfile::Lqi));
+        let (rolled_pi, _) = stop_from_1(SpineConfig::default());
+        assert!(took < 2.0, "stopped in {took} s");
+        assert!(
+            rolled <= rolled_pi + 0.05,
+            "lqi {rolled} m, pi {rolled_pi} m"
+        );
+    }
+
+    /// The bench's scores for each profile: `cargo test -p bench-car scores -- --nocapture`.
+    #[test]
+    fn scores() {
+        for p in spine_core::speed_loop::SpeedLoopProfile::ALL {
+            let (peak, end) = peak_and_end(with_profile(p));
+            let (rolled, took) = stop_from_1(with_profile(p));
+            std::println!(
+                "{:8} peak {peak:.3} m/s, at 25 s {end:.3}; stop from 1 m/s: {rolled:.3} m in {took:.2} s",
+                p.name()
+            );
+        }
+    }
+
     #[test]
     fn asked_to_stop_it_stops_instead_of_creeping() {
         let mut rig = Rig::new();

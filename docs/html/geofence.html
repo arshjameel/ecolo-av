@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The geofence · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/geofence.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>The geofence</h1>
+<div class="meta">5 min read · 8 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-day.html">Car day</a>
+<a href="tests.html">Every test</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<span class="sep">Learn:</span>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a class="here" href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#in-one-picture">In one picture</a><a href="#who-it-stops">Who it stops</a><a href="#the-stopping-path">The stopping path</a><a href="#the-states">The states</a><a href="#on-the-car">On the car</a><a href="#other-parts-that-know-the-fence">Other parts that know the fence</a><a href="#what-we-measured-bench-29-oct">What we measured (bench, 29 Oct)</a><a href="#try-it">Try it</a></nav>
+<div class="lead"><p>An area the computer's drivers may not leave. It works <strong>without Nav2</strong>: it stops the
+point driver, a script, a replay and the language server the same way it stops Nav2.</p>
+<p>People are never held. The safety driver on the joystick can always drive.</p></div>
+<section class="card"><h2 id="in-one-picture">In one picture</h2>
+<pre class="highlight"><code>            the fence (a 30 m circle round the start spot, or the lot's polygon)
+     ┌───────────────────────────────────────────────────────────┐
+     │                                               margin + σ   │
+     │     start ●                                          ┆     │
+     │                 car ▶▶▶▶ stopping path ▶▶▶▶ ✋ NEAR  ┆     │
+     │                                                      ┆     │
+     └───────────────────────────────────────────────────────────┘</code></pre>
+<p>The lock closes when any <strong>stopping path</strong> of the car brings a corner within the
+<strong>margin</strong> (1 m) plus the pose's <strong>spread</strong> (σ) of the edge.</p>
+</section>
+<section class="card"><h2 id="who-it-stops">Who it stops</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Driver</th>
+<th>Priority</th>
+<th>Held by the geofence (51)?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>joystick, RC, keyboard</td>
+<td>100, 95, 90</td>
+<td><strong>never</strong></td>
+</tr>
+<tr>
+<td>actuator tests</td>
+<td>60</td>
+<td>no: they <strong>stop themselves</strong> on its state</td>
+</tr>
+<tr>
+<td>scripted, replay, point, Nav2, AI</td>
+<td>50 … 10</td>
+<td><strong>yes</strong></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-stopping-path">The stopping path</h2>
+<p>Each tick it works out how far the car could go before it stands still (RSS):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Value today</th>
+<th>From</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>reaction ρ</td>
+<td>0.9 s on the spine</td>
+<td>the geofence's tick 0.1 + ego's <code>cmd_timeout</code> 0.3 + the backend's timeout 0.2 + <code>brake_lag</code> 0.2 + pose lag 0.1</td>
+</tr>
+<tr>
+<td>braking b</td>
+<td>1.0 m/s²</td>
+<td>half of the softer of ego's 2.0 and <code>max_brake</code> 3.0</td>
+</tr>
+<tr>
+<td>speeding up</td>
+<td>1.0 m/s² for ρ</td>
+<td>ego's <code>max_acceleration</code>, up to its <code>max_speed</code></td>
+</tr>
+</tbody>
+</table></div>
+<pre class="highlight"><code>from 1 m/s (at the cap): 1.0 × 0.9 + 1.0² / (2 × 1.0) = 1.4 m</code></pre>
+<p>It checks that path <strong>forward and back</strong>, <strong>straight and at full lock</strong> either way.
+No car number is copied: the launch reads <code>ego.yaml</code>, <code>vehicle.yaml</code> and the backend's
+config.</p>
+<p>So a 30 m circle leaves about <strong>26 m</strong> usable round the start: 30 m, less the stopping
+path, the margin and σ.</p>
+</section>
+<section class="card"><h2 id="the-states">The states</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>State</th>
+<th>Lock</th>
+<th>Means</th>
+<th>Lets go</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OK</code></td>
+<td>open</td>
+<td>inside, with room to stop</td>
+<td></td>
+</tr>
+<tr>
+<td><code>STARTING</code></td>
+<td><strong>on</strong></td>
+<td>under 3 s of good poses</td>
+<td>by itself</td>
+</tr>
+<tr>
+<td><code>NEAR</code></td>
+<td><strong>on</strong></td>
+<td>a stopping path reaches the margin</td>
+<td>when 0.5 m further in</td>
+</tr>
+<tr>
+<td><code>LOST</code></td>
+<td><strong>on</strong></td>
+<td>no pose for 1 s; σ over 3 m; NaN; <strong>no GPS into the EKF for 2 s</strong></td>
+<td>by itself, once good</td>
+</tr>
+<tr>
+<td><code>OUTSIDE</code></td>
+<td><strong>on</strong></td>
+<td>the car itself is outside</td>
+<td>a person drives in, then <code>pixi run geofence-clear</code></td>
+</tr>
+<tr>
+<td><code>JUMP</code></td>
+<td><strong>on</strong></td>
+<td>the pose jumped further than speed × time + 2 m</td>
+<td>a person: <code>pixi run geofence-clear</code></td>
+</tr>
+<tr>
+<td><code>COASTING</code></td>
+<td><strong>on</strong></td>
+<td>the backend can't brake to a stop (below)</td>
+<td>when test 4.3 measures it</td>
+</tr>
+<tr>
+<td><code>STANDS</code></td>
+<td>open</td>
+<td>stands mode: <strong>no fence</strong> (logged every 5 s)</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>At a standstill near the edge, NEAR holds: a person drives the car back in.</p>
+</section>
+<section class="card"><h2 id="on-the-car">On the car</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the fence</td>
+<td>a 30 m circle round <code>start_x</code>, <code>start_y</code></td>
+<td><code>car.launch.py geofence_radius:=</code></td>
+</tr>
+<tr>
+<td>a site's polygon instead</td>
+<td>none yet</td>
+<td><code>geofence_site:=</code>, or the machine file's <code>geofence: site:</code></td>
+</tr>
+<tr>
+<td>stands mode</td>
+<td>off</td>
+<td><code>car.launch.py stands:=true</code>; needed with <code>gps:=false</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Mark the start spot.</strong> The circle's centre is the start pose you give car.launch.py.</p>
+<p><strong>Today's car coasts.</strong> <code>legacy_uart_bridge</code> in <code>speed_loop.mode: open</code> brakes only
+below <code>stop_speed</code>, so from 1 m/s the car rolls about 10 m. The geofence keeps every
+program held (<code>COASTING</code>) until test 4.3 measures the stop and someone writes
+<code>actuators.open_loop_decel</code> into <code>vehicle.yaml</code>. (The no-timeout lock holds them on
+today's firmware anyway.)</p>
+<h3 id="a-sites-polygon-a-todo-for-the-team">A site's polygon (a TODO for the team)</h3>
+<ol>
+<li>Survey the datum (the 26 Oct review's W3) and set it in <code>navsat.yaml</code>.</li>
+<li>Drive or walk the lot's corners; read each one's map x, y.</li>
+<li>Add <code>sites.&lt;name&gt;: {datum: [lat, lon], corners: [x0, y0, ...]}</code> to
+   <code>ros/safety/aav_safety/config/geofence.yaml</code>.</li>
+<li>Put <code>site: &lt;name&gt;</code> in <code>orin.yaml</code>'s <code>geofence:</code>.</li>
+</ol>
+<p>A site drawn on another datum is refused at start-up.</p>
+</section>
+<section class="card"><h2 id="other-parts-that-know-the-fence">Other parts that know the fence</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the point driver</td>
+<td>refuses a B outside the fence</td>
+</tr>
+<tr>
+<td>the drive server (<code>aav_language</code>)</td>
+<td>refuses a drive, turn or GPS goal that ends outside; never clears it</td>
+</tr>
+<tr>
+<td>the actuator tests</td>
+<td>stop on NEAR, OUTSIDE, JUMP or LOST on the ground; refuse STANDS there</td>
+</tr>
+<tr>
+<td>RViz, Lichtblick</td>
+<td>draw <code>/safety/geofence/fence</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="what-we-measured-bench-29-oct">What we measured (bench, 29 Oct)</h2>
+<p><code>pixi run bench-check --geofence</code>, on the spine's model car, a 12 m fence:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a scripted drive at 1 m/s</td>
+<td>the lock closed at 1.08 m/s; the car stopped <strong>1.06 m</strong> on (the geofence counts on 1.56 m)</td>
+</tr>
+<tr>
+<td>where it stopped</td>
+<td>its furthest corner 9.3 m from the start: inside the 12 m fence, in NEAR</td>
+</tr>
+<tr>
+<td>a person backs it in (keyboard)</td>
+<td>not held: 3.4 m back, then OK</td>
+</tr>
+</tbody>
+</table></div>
+<p>Not yet run: Gazebo with a fence you can reach, and the real car.</p>
+</section>
+<section class="card"><h2 id="try-it">Try it</h2>
+<pre class="highlight"><code class="language-sh">pixi run bench-check --geofence     # a scripted drive at a 12 m fence must stop inside it
+pixi run sim world:=test_lot geofence_radius:=15   # watch /safety/geofence/state
+pixi run geofence-clear             # after OUTSIDE or JUMP, once the car is back in</code></pre>
+<p>Design: <code>docs/designs/2026-10-29_geofence.md</code>.</p></section>
+<nav class="prevnext"><a class="prev" href="ghost-obstacles.html"><small>Previous</small>← Ghost obstacles</a>
+<a class="next" href="sources-and-targets.html"><small>Next</small>Sources and targets →</a></nav>
+</main>
+<footer>Source: <code>docs/geofence.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

@@ -933,7 +933,7 @@ def context(cfg: Mapping) -> Context:
 # The nodes whose parameters shape what reaches the actuators, and those parameters.
 SHAPING_PARAMS = {
     'legacy_uart_bridge': ('full_throttle_speed', 'stop_speed', 'hold_brake', 'frame_version',
-                           'uplink', 'rate_hz'),
+                           'uplink', 'rate_hz', 'speed_loop.mode'),
     'gazebo_adapter': ('speed_loop', 'spine', 'actuator_model', 'rate_hz'),
     'spine_sim': ('speed_loop',),
     'spine_bridge': ('role', 'drive_rate_hz', 'cmd_timeout'),

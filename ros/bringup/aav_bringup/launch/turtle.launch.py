@@ -33,7 +33,9 @@ def generate_launch_description():
                               description='true if a joystick is plugged in'),
         include('aav_turtlesim', 'turtlesim.launch.py'),
         # No sensor watchdog here, so no heartbeat for the mux's sensors lock to need.
-        include('aav_command_mux', 'mux.launch.py', sensor_lock='false'),
+        # No global EKF either, so no geofence: its lock stays open too.
+        include('aav_command_mux', 'mux.launch.py', sensor_lock='false',
+                geofence_lock='false'),
         include('aav_ego', 'ego.launch.py'),
         # ego's commands go to the turtle only while everything is SIM (aav_io_mux).
         include('aav_io_mux', 'io_mux.launch.py', target='turtle', source='sim'),

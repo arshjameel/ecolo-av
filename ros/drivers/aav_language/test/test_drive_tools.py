@@ -221,3 +221,31 @@ def test_a_stop_sign_lock_refuses_go_to_gps_but_not_drive():
     r = tools.go_to_gps(45.3860, -75.6960)
     assert not r['ok'] and 'stop_sign' in r['message'], r
     assert tools.drive(5)['ok']
+
+
+def test_a_move_that_would_end_outside_the_geofence_is_refused():
+    car = FakeBackend()
+    car.fence = [(-10.0, -10.0), (10.0, -10.0), (10.0, 10.0), (-10.0, 10.0)]
+    tools = DriveTools(car)
+    r = tools.drive(15)
+    assert not r['ok'] and 'geofence' in r['message'], r
+    assert tools.drive(5)['ok']
+    # The GPS goal is about 80 m away: outside.
+    assert 'geofence' in tools.check_go_to_gps(45.3860, -75.6960)
+    car.fence = None              # no fence heard: the lock still holds near the edge
+    assert tools.check_drive(15) is None
+
+
+def test_the_drive_tools_never_clear_a_safety_latch():
+    # Only people clear the geofence and the watchdog (Ben's rule: nothing in software
+    # clears a stop on its own). The MCP drive tools are this package's drive_server.
+    from pathlib import Path
+    package = Path(__file__).resolve().parents[1] / 'aav_language'
+    for path in package.glob('*.py'):
+        text = path.read_text()
+        for service in ('/safety/geofence/clear', '/safety/sensor_watchdog/clear',
+                        'geofence/clear', 'geofence-clear'):
+            if service in text:
+                # Only in a docstring that says it never calls it.
+                assert all('Never calls' in line or 'never' in line.lower()
+                           for line in text.splitlines() if service in line), (path, service)

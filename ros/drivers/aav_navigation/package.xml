@@ -15,6 +15,8 @@
   <exec_depend>nav2_map_server</exec_depend>
   <exec_depend>nav2_planner</exec_depend>
   <exec_depend>nav2_smac_planner</exec_depend>
+  <exec_depend>nav2_navfn_planner</exec_depend>
+  <exec_depend>nav2_theta_star_planner</exec_depend>
   <exec_depend>nav2_controller</exec_depend>
   <exec_depend>nav2_regulated_pure_pursuit_controller</exec_depend>
   <exec_depend>nav2_mppi_controller</exec_depend>
@@ -27,6 +29,10 @@
   <exec_depend>nav2_costmap_2d</exec_depend>
   <exec_depend>aav_lidar</exec_depend>
   <exec_depend>aav_ghost</exec_depend>
+  <exec_depend>aav_safety</exec_depend>
+  <exec_depend>aav_track</exec_depend>
+  <exec_depend>aav_ego</exec_depend>
+  <exec_depend>nav2_amcl</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 

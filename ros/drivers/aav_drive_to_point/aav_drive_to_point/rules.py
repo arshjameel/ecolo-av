@@ -121,6 +121,19 @@ def refuse_target(pose: Pose, target: Point, limits: Limits, radius: float) -> O
     return None
 
 
+def refuse_outside(depth: Optional[float]) -> Optional[str]:
+    """
+    Why B is refused for the geofence, or None.
+
+    depth: how far B is inside /safety/geofence/fence (m, negative outside; aav_safety
+    geofence.py), or None with no fence heard (the geofence's lock still holds the drive).
+    """
+    if depth is not None and depth < 0.0:
+        return (f'B is {-depth:.1f} m outside the geofence (/safety/geofence/fence): the '
+                'geofence would stop the car before it, on the way')
+    return None
+
+
 def not_moving(commanded: float, measured: float, still: float = 0.05,
                asked: float = 0.2) -> bool:
     """Return True if the car stands still though asked for at least `asked` m/s."""

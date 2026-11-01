@@ -173,7 +173,7 @@ impl MapState {
     pub fn health(&self, topic: Topic, now: Instant) -> Health {
         let limit = match topic {
             Topic::Odom | Topic::Watchdog => self.config.stale_after(),
-            Topic::Plan => self.config.plan_stale_after(),
+            Topic::Plan => self.plan_limit(),
             Topic::Map | Topic::Goal | Topic::Source | Topic::StreetRoute => Duration::MAX,
         };
         self.seen
@@ -181,6 +181,21 @@ impl MapState {
             .copied()
             .unwrap_or_default()
             .health(now, limit)
+    }
+
+    /// How old a plan may be. Nav2 replans every second, except on the final approach
+    /// (the car within `final_approach` of the plan's end), where its behaviour trees
+    /// keep the path they have (TODO 17).
+    fn plan_limit(&self) -> Duration {
+        let near = match (self.car_position(), self.route.goal()) {
+            (Some(car), Some(end)) => car.distance(end) <= Metres(self.config.final_approach),
+            _ => false,
+        };
+        if near {
+            self.config.plan_kept_for()
+        } else {
+            self.config.plan_stale_after()
+        }
     }
 
     /// What the sensor watchdog says is wrong, for a banner; None when all is well. The
@@ -339,6 +354,18 @@ mod tests {
         s.apply(plan(&[(0.0, 0.0), (20.0, 0.0)]), t0);
         assert_eq!(s.trip(t0 + Duration::from_secs(10)), Trip::PlanStopped);
         assert!(!s.health(Topic::Plan, t0 + Duration::from_secs(10)).is_ok());
+        // On the final approach Nav2 keeps its path (TODO 17): an older plan is fine there.
+        let config = MapConfig::default();
+        let kept = config.plan_kept_for();
+        let mut s = MapState::new(config);
+        s.apply(car_at(15.0, 0.0), t0);
+        s.apply(plan(&[(0.0, 0.0), (20.0, 0.0)]), t0);
+        assert_eq!(s.trip(t0 + Duration::from_secs(10)), Trip::Driving);
+        assert!(s.health(Topic::Plan, t0 + Duration::from_secs(10)).is_ok());
+        assert_eq!(
+            s.trip(t0 + kept + Duration::from_secs(1)),
+            Trip::PlanStopped
+        );
         // The map never goes stale: it's sent once.
         let info = GridInfo {
             width: 1,

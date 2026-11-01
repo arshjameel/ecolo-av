@@ -1,0 +1,43 @@
+# debug_hud: the debug screen (aav_hud): the lidar's cubes, where each localizer thinks
+# the car is, and every sensor straight from its own node (docs/hud.md, "The debug HUD").
+# Every topic name it uses lives here, not in the code: rename a topic here (or with
+# `--ros-args -p lidar_topic:=...`), never in Rust. Built into the program as its
+# defaults, so --demo shows the same names.
+debug_hud:
+  ros__parameters:
+    # --- the 3D view ---
+    lidar_topic: /sensors/lidar/points            # sensor_msgs/msg/PointCloud2: reliable, keep last 1, the cubes
+    local_odom_topic: /localization/odom/local    # nav_msgs/msg/Odometry, odom frame: EKF local (blue); places the cubes
+    global_odom_topic: /localization/odom/global  # nav_msgs/msg/Odometry, map frame: EKF global (green)
+    truth_topic: /vehicle/gazebo/truth            # nav_msgs/msg/Odometry, map frame: Gazebo's truth (white), sim only
+    amcl_topic: /localization/amcl/pose           # geometry_msgs/msg/PoseWithCovarianceStamped, map frame: AMCL (orange)
+    amcl_particles_topic: /localization/amcl/particles  # nav2_msgs/msg/ParticleCloud, best effort, map frame: AMCL's particles (small orange arrows)
+    ndt_pose_topic: /localization/ndt/pose        # geometry_msgs/msg/PoseWithCovarianceStamped, map frame: NDT (purple), ndt:=true; good fits only
+    plan_topic: /plan                             # nav_msgs/msg/Path: Nav2's plan (yellow)
+    tf_topic: /tf                                 # tf2_msgs/msg/TFMessage: map -> odom
+    tf_static_topic: /tf_static                   # tf2_msgs/msg/TFMessage, latched: base_link -> lidar_link
+    # --- the panel: each sensor and actuator from its own node ---
+    imu_topic: /sensors/imu/data                  # sensor_msgs/msg/Imu
+    gps_topic: /sensors/gps/fix                   # sensor_msgs/msg/NavSatFix, the receiver itself
+    wheels_topic: /vehicle/wheels                 # aav_interfaces/msg/WheelSpeeds
+    wheel_odom_topic: /vehicle/odom               # nav_msgs/msg/Odometry: the wheels' (or Gazebo's) odometry
+    vehicle_status_topic: /vehicle/status         # aav_interfaces/msg/VehicleStatus: mode, armed, steering
+    track_status_topic: /drivers/nav/track/status # diagnostic_msgs/msg/DiagnosticStatus: the trial tracker, tracker:= on
+    ndt_status_topic: /localization/ndt/status    # diagnostic_msgs/msg/DiagnosticStatus: NDT's score per point, ms per match, LOST
+    source_topic: /system/source                  # aav_interfaces/msg/DataSource, latched: the SIMULATED banner
+    # --- keys 1-4 (sim only): the trial tracker's parameter service (aav_track, live_swap) ---
+    track_parameters_service: /track/set_parameters   # rcl_interfaces/srv/SetParameters
+    # --- NDT's map (key M): its occupied cells as faint wireframes, in the map frame ---
+    ndt_map: maps/ndt/test_lot.pcd   # the PCD `pixi run ndt-map drive` makes; relative to where debug_hud starts (the repo). Missing: the panel says how to make it
+    # --- frames (REP-105) ---
+    odom_frame: odom
+    base_frame: base_link
+    map_frame: map
+    # --- limits ---
+    stale_after: 1.0      # s: a topic this quiet shows STALE
+    cube_size: 0.2        # m: one cube's edge
+    max_cubes: 20000      # more than this: the nearest are kept, and the panel says how many were cut
+    pose_window: 1.0      # s of local EKF poses kept to place a cloud at its own stamp
+    ground_height: 0.25   # m above base_link: lower cubes are ground (darker)
+    keep_cubes_for: 2.0   # s, by the clouds' stamps: key K's kept cubes fade over this, then go (the "occupancy network" look)
+    ndt_map_cell: 1.0     # m: one NDT map cube's edge (key M)

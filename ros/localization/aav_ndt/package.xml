@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_ndt</name>
+  <version>0.1.0</version>
+  <description>NDT in Rust (rclrs), a trial: where the car is on a saved lidar map (maps/ndt/*.pcd, made by tools/ndt_map.py), in x, y and yaw. /sensors/lidar/points and /localization/odom/local in; /localization/ndt/pose and /localization/ndt/status out. Never TF; nothing drives by it until it wins the trials (docs/designs/2026-10-29_ndt.md). The maths is the ndt-core crate, with no ROS.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>diagnostic_msgs</depend>
+  <exec_depend>aav_description</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>launch_testing</test_depend>
+  <test_depend>launch_testing_ros</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

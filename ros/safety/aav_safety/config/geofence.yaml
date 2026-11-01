@@ -1,0 +1,32 @@
+# geofence (aav_safety): every program stops before the car's stopping distance reaches
+# the fence's edge. Its lock is twist_mux's geofence (priority 51).
+#
+# geofence.launch.py sets the rest, each profile's own, so they are not here (the file
+# would win): the fence (centre_x, centre_y, radius, or site), stands, gps, the datum, and
+# the stopping numbers (reaction_time, braking, max_accel, max_speed, max_reverse_speed,
+# max_curvature, coasting), worked out from ego.yaml, vehicle.yaml and the backend's
+# config (aav_safety geofence.py motion_from). No car numbers are copied here.
+# Design: docs/designs/2026-10-29_geofence.md. Units: m, s, m/s.
+geofence:
+  ros__parameters:
+    margin: 1.0          # m kept between the car's stopping paths and the edge
+    hysteresis: 0.5      # m further in before NEAR lets go, so the edge can't flicker it
+    max_std: 3.0         # m: the global EKF's position spread (1 sigma) over this: LOST
+    max_age: 1.0         # s without a global pose: LOST (ekf_global sends 30 a second)
+    gps_max_age: 2.0     # s without a GPS position into the EKF (/localization/gps/odom):
+                         # LOST. The EKF goes on from the wheels and IMU, and drifts
+    settle_time: 3.0     # s of good poses before the fence is used
+    jump_margin: 2.0     # m a pose may move beyond speed x time before it's a JUMP
+    pose_lag: 0.1        # s the global pose is old when it arrives (the EKF, the network):
+                         # part of the reaction time
+    rate_hz: 10.0        # Hz of the lock and the state
+    # Each site's fence: corners in the map frame, [x0, y0, x1, y1, ...], in order round
+    # it, and the datum [lat, lon] (navsat.yaml) they were drawn for: a site drawn on
+    # another datum is refused. A machine file picks one (geofence: site:), or
+    # car.launch.py geofence_site:=<name>.
+    # TODO (the team): the test lot's corners, once its datum is surveyed (W3).
+    sites:
+      # The bench's and Gazebo's road, 60 x 20 m round the start: an example to copy.
+      bench_road:
+        datum: [45.3860, -75.6960]
+        corners: [-20.0, -10.0, 40.0, -10.0, 40.0, 10.0, -20.0, 10.0]

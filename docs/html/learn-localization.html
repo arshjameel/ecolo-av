@@ -7,7 +7,7 @@
 <!-- Generated from docs/learn-localization.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Localization from zero</h1>
-<div class="meta">15 min read · 9 sections</div></header>
+<div class="meta">18 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -37,15 +37,20 @@
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
 <a class="here" href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
 <a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
 <a href="maps-and-position.html">Maps and position</a>
 <a href="learn-nav2.html">Learn: Nav2</a>
-<span class="sep">Reference:</span>
 <a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
 <a href="costmaps.html">Costmaps</a>
-<a href="controllers.html">Path followers</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
@@ -69,6 +74,7 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
@@ -88,7 +94,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#1-odometry-counting-your-steps">1. Odometry: counting your steps</a><a href="#2-the-imu">2. The IMU</a><a href="#3-fusion-two-weak-answers-make-one-good-one">3. Fusion: two weak answers make one good one</a><a href="#4-the-kalman-filter-in-one-tiny-example">4. The Kalman filter, in one tiny example</a><a href="#5-robot_localization-the-stock-ekf">5. robot_localization: the stock EKF</a><a href="#6-frames-map-odom-base_link-rep-105">6. Frames: map, odom, base_link (REP-105)</a><a href="#7-our-two-ekfs-their-real-inputs">7. Our two EKFs: their real inputs</a><a href="#try-it">Try it</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#1-odometry-counting-your-steps">1. Odometry: counting your steps</a><a href="#2-the-imu">2. The IMU</a><a href="#3-fusion-two-weak-answers-make-one-good-one">3. Fusion: two weak answers make one good one</a><a href="#4-the-kalman-filter-in-one-tiny-example">4. The Kalman filter, in one tiny example</a><a href="#5-robot_localization-the-stock-ekf">5. robot_localization: the stock EKF</a><a href="#6-frames-map-odom-base_link-rep-105">6. Frames: map, odom, base_link (REP-105)</a><a href="#7-our-two-ekfs-their-real-inputs">7. Our two EKFs: their real inputs</a><a href="#8-next-matching-the-lidar-to-a-map-ndt-and-icp">8. Next: matching the lidar to a map (NDT and ICP)</a><a href="#try-it">Try it</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
 <div class="lead"><p>"Localization" means: <strong>where is the car, which way is it facing, and how fast is it
 going?</strong> No one sensor answers that well. This page shows how our car mixes several
 weak answers into one good one.</p>
@@ -103,7 +109,8 @@ weak answers into one good one.</p>
 <li>how to look at all of it on your own computer.</li>
 </ul>
 <p><a href="maps-and-position.html">Maps and position</a> has the big picture of the two EKFs
-and the map. This page explains <strong>why</strong> it works.</p></div>
+and the map. This page explains <strong>why</strong> it works.</p>
+<p><a href="learn-speed.html">How the car knows its speed</a> builds on this page.</p></div>
 <section class="card"><h2 id="1-odometry-counting-your-steps">1. Odometry: counting your steps</h2>
 <p><strong>Odometry</strong> = working out where you are from how you've moved.</p>
 <pre class="highlight"><code class="language-text">start ──► 1.0 m/s for 2 s, turning 0.1 rad/s ──► "I'm about 2 m ahead, a bit to the left"</code></pre>
@@ -629,6 +636,109 @@ setting (u-center, once), for whoever sets it up (Q18).</p>
 that hurts the heading from fixes more than the heading from velocity, so on the car the
 gain should be at least as big. To check with the first drive's bag.</p>
 </section>
+<section class="card"><h2 id="8-next-matching-the-lidar-to-a-map-ndt-and-icp">8. Next: matching the lidar to a map (NDT and ICP)</h2>
+<p>Not built yet: a research pick (<a href="../designs/2026-10-28_research-picks.md">research picks</a>,
+pick 2). GPS gets the car to within a metre or two. To get to centimetres without RTK,
+match what the lidar sees now against a map of the lot.</p>
+<h3 id="ndt-blobs">NDT: blobs</h3>
+<p><strong>NDT</strong> (Normal Distributions Transform) keeps a blob per square, not every point.</p>
+<p><img alt="NDT in four steps: the map, its blobs, a scan off by 1.4 m and 9°, and the scan slid onto the blobs" src="../img/learn-ndt.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Drive the lot once and keep the lidar's points: the map</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Cut the map into squares (cubes, in 3D). In each, keep only the points' centre and spread: a blob</td>
+</tr>
+<tr>
+<td>3</td>
+<td>A new scan arrives. Dead reckoning has drifted, so it lands in the wrong place</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Slide and turn the scan until its points sit inside the blobs. That slide is the car's error</td>
+</tr>
+</tbody>
+</table></div>
+<p>Big squares first, then smaller: big ones see far, small ones are precise.</p>
+<h3 id="icp-nearest-points">ICP: nearest points</h3>
+<p><strong>ICP</strong> (Iterative Closest Point) keeps every map point.</p>
+<p><img alt="ICP: pair each scan point with its nearest map point, move to close the pairs, repeat" src="../img/learn-icp.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Pair each scan point with the nearest map point (the black lines)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Find the one slide and turn that closes the pairs best</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Repeat. The pairs get better each time</td>
+</tr>
+</tbody>
+</table></div>
+<p>Look at the posts on the left: some pairs are wrong at first. ICP still gets there
+because most pairs are right; start it too far off and it locks onto the wrong post.</p>
+<h3 id="which-to-use">Which to use</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>NDT</th>
+<th>ICP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The map holds</td>
+<td>one blob per square: small</td>
+<td>every point: big</td>
+</tr>
+<tr>
+<td>Starting far off</td>
+<td>copes better (big squares first)</td>
+<td>needs a close start</td>
+</tr>
+<tr>
+<td>Speed</td>
+<td>fast, the same for any map</td>
+<td>slower as the map grows</td>
+</tr>
+<tr>
+<td>Used by</td>
+<td>Autoware (<code>ndt_scan_matcher</code>) to find the car in a map</td>
+<td>KISS-ICP, to <strong>make</strong> the map (scan after scan)</td>
+</tr>
+</tbody>
+</table></div>
+<p>So: <strong>make</strong> the map with KISS-ICP, <strong>find</strong> the car in it with NDT, and give that
+pose to <code>ekf_global</code> beside GPS.</p>
+<p>Not Tesla's way: Tesla has no lidar. Its "occupancy network" turns camera images into
+3D cubes, each marked filled or empty. That looks like NDT's squares, but it doesn't
+match a scan to a map.</p>
+<p><code>pixi run ndt-demo</code> draws both pictures with real NDT and ICP (<code>tools/ndt_demo.py</code>,
+numpy only). Each ends within about 2 cm.</p>
+<p>From the lidar's points to cubes, the costmap and NDT, step by step:
+<a href="learn-lidar.html">Learn: lidar</a>.</p>
+</section>
 <section class="card"><h2 id="try-it">Try it</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -723,7 +833,7 @@ That's the GPS soaking up the drift.</p>
 </tbody>
 </table></div></section>
 <nav class="prevnext"><a class="prev" href="learn-gps.html"><small>Previous</small>← Learn: GPS</a>
-<a class="next" href="learn-control.html"><small>Next</small>Learn: control →</a></nav>
+<a class="next" href="learn-speed.html"><small>Next</small>Learn: speed →</a></nav>
 </main>
 <footer>Source: <code>docs/learn-localization.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

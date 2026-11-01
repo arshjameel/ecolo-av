@@ -9,7 +9,24 @@ resolver = "2"
 #   No ROS, no raylib: `cargo test -p map-core`.
 # map-app: the map window for the big screen, binary `map`, built like hud-app:
 #   `cargo run -p map-app --no-default-features -- --demo`
-members = ["crates/hud-core", "crates/hud-app", "crates/map-core", "crates/map-app"]
+# debug-core: the debug HUD's logic (cubes, frames, poses at a stamp, the camera). No ROS, no
+#   raylib: `cargo test -p debug-core`.
+# debug-app: the debug HUD, binary `debug_hud`, built like hud-app:
+#   `cargo run -p debug-app --no-default-features -- --demo`
+# panel-core: the hardware panel's logic (the buttons, where they may drive, the sensors'
+#   numbers, safety.py's rules). No ROS, no raylib: `cargo test -p panel-core`.
+# panel-app: the hardware panel, binary `hw_panel`, built like hud-app:
+#   `cargo run -p panel-app --no-default-features -- --demo`
+members = [
+  "crates/hud-core",
+  "crates/hud-app",
+  "crates/map-core",
+  "crates/map-app",
+  "crates/debug-core",
+  "crates/debug-app",
+  "crates/panel-core",
+  "crates/panel-app",
+]
 
 [workspace.package]
 version = "0.1.0"

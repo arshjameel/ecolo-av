@@ -75,7 +75,13 @@ def flatten(points: numpy.ndarray, shape: ScanShape) -> numpy.ndarray:
             & (z <= shape.max_height) & (flat >= shape.range_min) & (flat <= shape.range_max)
             & ~own)
     angle = numpy.arctan2(y[keep], x[keep])
-    index = numpy.floor((angle - shape.angle_min) / shape.angle_increment).astype(int)
+    # The nearest direction, not the one below: a LaserScan's range i lies AT angle_min +
+    # i * increment, so rounding down turned every point half a step (0.25 degrees)
+    # clockwise: 13 cm at 30 m, which AMCL read as a heading error (29 Oct). All the way
+    # round, the last half step is the first direction again (-pi and pi are one).
+    index = numpy.rint((angle - shape.angle_min) / shape.angle_increment).astype(int)
+    if shape.angle_max - shape.angle_min >= 2.0 * math.pi - 1e-6:
+        index %= shape.count
     inside = (index >= 0) & (index < shape.count)
     numpy.minimum.at(ranges, index[inside], flat[keep][inside])
     return ranges

@@ -7,6 +7,10 @@ Bench check: start bench mode, then test the whole car graph on this computer.
     pixi run bench-check --obstacle            (adds a box for the radar: 3 minutes)
     pixi run bench-check --lidar               (adds a box for the lidar alone: 3 minutes)
     pixi run bench-check --lane   (adds lane keeping, in a second bench run: 1 more minute)
+    pixi run bench-check --weave              (adds a straight 40 m Nav2 drive: 1 more minute)
+    pixi run bench-check --zone-edge          (adds a box at the stop zone's edge: 1 more minute)
+    pixi run bench-check --geofence           (a scripted drive at a 12 m geofence, in a second
+                                               bench run: 2 more minutes)
     pixi run bench-check --python-bridge       (aav_spine's Python spine_bridge, not the Rust one)
 
 1. Starts bench.launch.py on a private ROS domain, local to this computer.
@@ -24,7 +28,19 @@ Bench check: start bench mode, then test the whole car graph on this computer.
    box; once the box is taken away, the car must go on to the goal.
    With --lidar: bench mode with lidar:=true, and the same again with a box only the
    pretend lidar sees (mock_lidar's VLP-16 packets, read by the stock velodyne driver).
-8. With --lane: the bench again, with lane keeping (lane:=true) and nothing else driving,
+8. With --weave (TODO N7), before the other Nav2 checks: Nav2 drives 40 m straight ahead,
+   with nothing in the way. Says how much the car swung from side to side (the weave),
+   apart from any slow drift off its line, and how often Nav2's turn command changed sign.
+9. With --zone-edge: the car stands still with a box as wide as the lane right at the far
+   edge of collision_monitor's stop zone, and Nav2 asks it to drive on. The stop must hold:
+   no forward command may reach ego after the first stop, and the car must not creep on.
+10. With --geofence: the bench again, its geofence a 12 m circle round the start
+   (geofence_radius:=12). A scripted drive at 1 m/s straight ahead: the geofence's lock
+   must stop it with every corner of the car inside the circle (by the truth), standing
+   in NEAR, and the stop from the lock closing no longer than the stopping distance the
+   geofence counts on (RSS, with the spine's numbers). Then the keyboard, a person, backs
+   the car 4 m: the lock must not hold it, and must open again (OK).
+11. With --lane: the bench again, with lane keeping (lane:=true) and nothing else driving,
    the car 0.3 m left of the road's centre. lane_finder and control_interface must bring it
    back within 5 cm, and keep it there. Its own start-up and graph checks come first.
 
@@ -58,6 +74,8 @@ from aav_description import vehicle  # noqa: E402
 from aav_interfaces.action import ScriptedDrive  # noqa: E402
 from aav_interfaces.msg import VehicleStatus  # noqa: E402
 from aav_lane_geometry.msg import LaneGeometry  # noqa: E402
+from aav_safety import geofence  # noqa: E402
+from geometry_msgs.msg import TwistStamped  # noqa: E402
 from nav2_msgs.action import NavigateToPose  # noqa: E402
 from nav2_msgs.msg import CollisionMonitorState  # noqa: E402
 from nav_msgs.msg import Odometry  # noqa: E402
@@ -71,6 +89,9 @@ from std_msgs.msg import Bool, String  # noqa: E402
 from std_srvs.srv import SetBool  # noqa: E402
 import yaml  # noqa: E402
 
+sys.path.insert(0, os.path.join(ROOT, 'tools'))
+import drive_metrics  # noqa: E402, I100
+
 RESULTS = []
 
 # Lane keeping (--lane): where the car starts, what counts as back on the centre line,
@@ -78,7 +99,9 @@ RESULTS = []
 LANE_START = 0.3        # m left of the road's centre
 LANE_BAND = 0.05        # m either side of the centre
 LANE_TIME = 30.0        # s of driving, from when the car starts moving
+WEAVE_LIMIT = 0.1       # m RMS: the most the car may swing round its own path (--weave)
 LOOKAHEAD = 3.0         # m: where lane_finder measures the offset (its config, lookahead)
+GEOFENCE_RADIUS = 12.0  # m: --geofence's fence round the start, short of the bench's sign
 with open(os.path.join(ROOT, 'ros', 'sim', 'aav_bench', 'config', 'bench.yaml')) as f:
     ROAD = yaml.safe_load(f)['mock_camera']['ros__parameters']
 ROAD_Y = ROAD['road_y']            # m: the centre
@@ -123,8 +146,26 @@ class Probe(Node):
         self.create_subscription(CollisionMonitorState, '/safety/collision_monitor/state',
                                  lambda m: self.monitor.append(
                                      (time.monotonic(), m.action_type, m.polygon_name)), 10)
+        # Nav2's controller's turn command (rad/s), on the clock of the truth's stamps (the
+        # bench runs on the computer's clock), for --weave; and the mux's command to ego
+        # (m/s), on the steady clock of `monitor`, for --zone-edge.
+        self.turns, self.commands = [], []
+        self.create_subscription(TwistStamped, '/control/cmd_vel',
+                                 lambda m: self.commands.append(
+                                     (time.monotonic(), m.twist.linear.x)), 10)
+        self.create_subscription(TwistStamped, '/cmd_vel_nav',
+                                 lambda m: self.turns.append(
+                                     (self.get_clock().now().nanoseconds * 1e-9,
+                                      m.twist.angular.z)), 10)
         self.box_params = {s: self.create_client(SetParameters, f'/mock_{s}/set_parameters')
                            for s in ('radar', 'lidar')}
+        # The geofence: its state's line, and (time, x, y, speed) by the truth when its
+        # lock first closed after fence_on was set to None (--geofence).
+        self.fence_state, self.fence_on, self.fence_locked = '', None, None
+        self.create_subscription(String, '/safety/geofence/state',
+                                 lambda m: setattr(self, 'fence_state', m.data), 10)
+        self.create_subscription(Bool, '/safety/geofence/lock', self.on_fence_lock, 10)
+        self.keyboard = self.create_publisher(TwistStamped, '/drivers/keyboard/cmd_vel', 10)
         self.output_mux = ''   # the output mux's state: OPEN, WAIT or STOP (aav_io_mux)
         self.create_subscription(String, '/safety/output_mux/state',
                                  lambda m: setattr(self, 'output_mux', m.data), 10)
@@ -135,6 +176,12 @@ class Probe(Node):
         self.track.append((seconds(msg.header.stamp), msg.pose.pose.position.x,
                            msg.pose.pose.position.y, 2.0 * math.atan2(q.z, q.w),
                            msg.twist.twist.linear.x))
+
+    def on_fence_lock(self, msg):
+        if msg.data and not self.fence_locked and self.fence_on is None and self.truth:
+            x, y = self.xy(self.truth)
+            self.fence_on = (time.monotonic(), x, y, self.truth.twist.twist.linear.x)
+        self.fence_locked = msg.data
 
     def on_status(self, msg):
         if self.status is not None and self.status.armed and not msg.armed:
@@ -373,6 +420,160 @@ def check_obstacle(probe, ahead=15.0, goal=30.0, sensor='radar'):
     probe.set_box(sensor, False)
 
 
+def nav_goal(probe, x, y, h):
+    """Send Nav2 a goal on the map; return its goal handle, or None if refused."""
+    target = NavigateToPose.Goal()
+    target.pose.header.frame_id = 'map'
+    target.pose.pose.position.x, target.pose.pose.position.y = x, y
+    orientation = target.pose.pose.orientation
+    orientation.z, orientation.w = math.sin(h / 2.0), math.cos(h / 2.0)
+    if not probe.nav.wait_for_server(timeout_sec=30.0):
+        return None
+    sent = probe.nav.send_goal_async(target)
+    probe.spin_for(10.0, lambda: sent.done())
+    if not sent.done() or not sent.result().accepted:
+        return None
+    return sent.result()
+
+
+def drive_rearming(probe, seconds, until=None):
+    """
+    Spin for `seconds` (or until `until()`), arming the spine again whenever it latches.
+
+    On a busy computer a gap in commands latches the spine, as it should; a safety driver
+    would arm it again (as check_obstacle does). Returns how many times that happened.
+    """
+    end, latches = time.monotonic() + seconds, 0
+    while time.monotonic() < end and not (until is not None and until()):
+        probe.spin_for(0.1)
+        if probe.status is not None and not probe.status.armed:
+            latches += 1
+            probe.arm_and_hold()
+    return latches
+
+
+def latched_note(latches):
+    """Say in a result's detail that the spine latched and was armed again."""
+    if not latches:
+        return ''
+    times = 'once' if latches == 1 else f'{latches} times'
+    return (f'; the spine latched {times} (gaps in the commands: a busy computer?) and was '
+            'armed again')
+
+
+def check_weave(probe, goal=40.0, margin=5.0):
+    """
+    Drive `goal` m straight ahead with Nav2, and measure the weave (TODO N7).
+
+    Measured on the truth, over the straight part (`margin` m in from each end, so the
+    start and the stop don't count):
+      weave       how far the car's sideways offset swings round its own 4 s average
+                  (drive_metrics.weave): side to side, faster than a GPS bias drifts
+      off line    the RMS and the most it strays from the straight line that fits its
+                  track best: the weave, and slower wander too
+      turn flips  how often a second the controller's turn command changes sign (N7's
+                  first sign: "flips sign about once a second"), and its RMS
+    Runs first, from the start spot facing along the road, before the other Nav2 checks.
+    """
+    if not probe.arm_and_hold():
+        result('weave', False, 'the spine would not stay armed')
+        return
+    t = probe.truth
+    x0, y0, h = t.pose.pose.position.x, t.pose.pose.position.y, yaw_of(t)
+    c, s = math.cos(h), math.sin(h)
+    since = probe.track[-1][0]
+    handle = nav_goal(probe, x0 + goal * c, y0 + goal * s, h)
+    if handle is None:
+        result('weave', False, 'Nav2 refused the goal')
+        return
+    done = handle.get_result_async()
+    latches = drive_rearming(probe, 120.0, lambda: done.done())
+    reached = done.done() and done.result().status == 4
+    if not done.done():
+        handle.cancel_goal_async()
+        probe.spin_for(2.0)
+    run = [p for p in probe.track if p[0] >= since
+           and margin <= (p[1] - x0) * c + (p[2] - y0) * s <= goal - margin]
+    if len(run) < 2:
+        result('weave', False, f'too little of the drive recorded ({len(run)} truth samples)'
+                               + latched_note(latches))
+        return
+    t0, t1 = run[0][0], run[-1][0]
+    turns = [w for w in probe.turns if t0 <= w[0] <= t1]   # while on the straight part
+    swing = drive_metrics.weave(drive_metrics.lateral(run, (x0, y0), (x0 + c, y0 + s)))
+    stray = drive_metrics.off_line([(p[1], p[2]) for p in run])
+    flips = drive_metrics.sign_flips(turns) / max(t1 - t0, 1e-9)
+    turn_rms = drive_metrics.rms([w for _, w in turns])
+    ok = reached and swing < WEAVE_LIMIT
+    result('weave', ok, f'weave {swing:.3f} m RMS (limit {WEAVE_LIMIT}); off its best line '
+                        f'{drive_metrics.rms(stray):.2f} m RMS, {max(map(abs, stray)):.2f} m '
+                        f'at most; the turn command changed sign {flips:.2f} times a second, '
+                        f'{turn_rms:.3f} rad/s RMS; Nav2 goal '
+                        f'{"reached" if reached else "not reached"}' + latched_note(latches))
+
+
+def check_zone_edge(probe, hold=20.0):
+    """
+    Put a box at the stop zone's far edge, the car standing still: the stop must hold.
+
+    The box spans the lane, its near face exactly where the stop zone ends (1 m past the
+    bumper). The pretend radar's range noise puts some of its points inside, some out, as
+    a real one does. Nav2 is asked to drive on through it. Counted over `hold` s:
+      monitor   collision_monitor's own stops that let go (its state topic)
+      car       forward commands that reached ego (/control/cmd_vel) after the first stop
+      crept     the most the car moved toward the box after its first stop (1 s after
+                it, so the braking up to the stop doesn't count)
+    collision_monitor (Jazzy) decides afresh on every command, so its own state still
+    flickers; stop_hold (aav_safety) must keep the flicker from reaching the car.
+    """
+    if not probe.arm_and_hold():
+        result('stop zone edge', False, 'the spine would not stay armed')
+        return
+    car = vehicle.load()['vehicle']
+    front = car['body']['length'] - car['body']['rear_overhang']   # base_link to the bumper
+    near = max(x for x, _ in vehicle.stop_zone_points(car))       # the zone's far edge
+    t = probe.truth
+    x0, y0, h = t.pose.pose.position.x, t.pose.pose.position.y, yaw_of(t)
+    c, s = math.cos(h), math.sin(h)
+    bx, by = x0 + (near + 0.5) * c, y0 + (near + 0.5) * s
+    half = LANE_WIDTH / 2.0
+    if not probe.set_box('radar', True, [bx - 0.5, by - half, bx + 0.5, by + half]):
+        result('stop zone edge', False, 'could not place the box (mock_radar parameters)')
+        return
+    probe.spin_for(2.0)
+    seen, track_from, sent_from = len(probe.monitor), probe.track[-1][0], len(probe.commands)
+    handle = nav_goal(probe, x0 + 30.0 * c, y0 + 30.0 * s, h)
+    if handle is None:
+        result('stop zone edge', False, 'Nav2 refused the goal')
+        probe.set_box('radar', False)
+        return
+    latches = drive_rearming(probe, hold)
+    along = [(p[0], (p[1] - x0) * c + (p[2] - y0) * s) for p in probe.track if p[0] >= track_from]
+    # From the state before the goal (collision_monitor publishes only changes) to now.
+    states = probe.monitor[max(0, seen - 1):]
+    actions = [a for _, a, _ in states]
+    flickers = drive_metrics.stop_go(actions, CollisionMonitorState.STOP)
+    first = next((w for w, a, _ in states if a == CollisionMonitorState.STOP), None)
+    goes = (drive_metrics.starts([cmd for cmd in probe.commands[sent_from:] if cmd[0] > first])
+            if first is not None else 0)
+    # Creep is what the car moves after the first stop, not its braking up to it: the
+    # track's stamps are on the computer's clock (the bench), `first` on the steady one.
+    first_wall = first + time.time() - time.monotonic() if first is not None else None
+    before = [a for t, a in along if first_wall is None or t <= first_wall + 1.0]
+    after = [a for t, a in along if first_wall is not None and t > first_wall + 1.0]
+    stopped_at = max(before, default=0.0)
+    crept = max(after, default=stopped_at) - stopped_at
+    handle.cancel_goal_async()
+    probe.set_box('radar', False)
+    probe.spin_for(3.0)
+    ok = first is not None and goes == 0 and crept < 0.1
+    result('stop zone edge', ok, f'over {hold:.0f} s: collision_monitor let its stop go '
+                                 f'{flickers} times; {goes} forward starts reached ego after '
+                                 f'the first stop; it stopped {stopped_at:.2f} m on, then crept '
+                                 f'{crept:.2f} m more toward a box {near - front:.2f} m past '
+                                 f'its bumper' + latched_note(latches))
+
+
 def check_lane_keeping(probe):
     """
     Lane keeping alone: from LANE_START m left of the road's centre, the car must come back.
@@ -502,7 +703,88 @@ def check_drive(probe):
            f'{travelled:.2f} m (plan: 6.5 m; the speed loop trails it by about 1 s){again}')
     gx, gy = probe.xy(probe.glob)
     error = math.hypot(gx - x1, gy - y1)
-    result('global EKF vs truth', error < 1.5, f'{error:.2f} m apart (GPS noise is 0.5 m)')
+    result('global EKF vs truth', error < 1.5, f'{error:.2f} m apart (the GPS drifts 0.5 m)')
+
+
+def geofence_motion():
+    """Return the stopping numbers the bench's geofence uses (spine), as its launch does."""
+    def params(package, file, node):
+        path = os.path.join(ROOT, 'ros', *package, 'config', file)
+        with open(path) as f:
+            return yaml.safe_load(f)[node]['ros__parameters']
+    own = params(('safety', 'aav_safety'), 'geofence.yaml', 'geofence')
+    motion, _ = geofence.motion_from(
+        params(('ego', 'aav_ego'), 'ego.yaml', 'ego'), vehicle.load(), 'spine',
+        float(own['rate_hz']), float(own['pose_lag']),
+        spine=params(('can_bridge', 'aav_spine'), 'spine.yaml', 'spine_bridge'))
+    return motion
+
+
+def check_geofence(probe, radius=GEOFENCE_RADIUS):
+    """
+    Drive a script at 1 m/s straight at a 12 m fence: it must stop inside; then a person.
+
+    The geofence's lock (51) holds the scripted driver (50): the car must stop with every
+    corner inside the circle (by the truth), and the stop measured from the lock against
+    the stopping distance the geofence counts on. Then the keyboard (a person, 90) backs
+    the car in, which the lock never holds, and the lock must open again.
+    """
+    corners = vehicle.footprint_points(vehicle.load()['vehicle'])
+    probe.spin_for(30.0, lambda: probe.fence_state.startswith('OK'))
+    if not probe.fence_state.startswith('OK'):
+        result('geofence: ready', False, f'the geofence says {probe.fence_state!r}')
+        return
+    if not probe.status.armed:
+        probe.arm_and_hold()
+    x0, y0 = probe.xy(probe.truth)
+    handle = probe.send_drive(speed=1.0, hold=40.0)
+    if handle is None or not handle.accepted:
+        result('geofence: stops a scripted drive', False, 'the scripted drive was refused')
+        return
+    probe.fence_on = None
+    probe.spin_for(60.0, lambda: probe.fence_on is not None)
+    if probe.fence_on is None:
+        handle.cancel_goal_async()
+        result('geofence: stops a scripted drive', False,
+               f'the lock never closed (the geofence says {probe.fence_state!r})')
+        return
+    t_on, x_on, y_on, v_on = probe.fence_on
+    probe.spin_for(15.0, lambda: abs(probe.truth.twist.twist.linear.x) < 0.02)
+    probe.spin_for(1.0)
+    state = probe.fence_state
+    x1, y1 = probe.xy(probe.truth)
+    q = probe.truth.pose.pose.orientation
+    yaw = 2.0 * math.atan2(q.z, q.w)
+    worst = max(math.hypot(x1 + fx * math.cos(yaw) - fy * math.sin(yaw) - x0,
+                           y1 + fx * math.sin(yaw) + fy * math.cos(yaw) - y0)
+                for fx, fy in corners)
+    stop = math.hypot(x1 - x_on, y1 - y_on)
+    motion = geofence_motion()
+    counted = geofence.stopping_distance(v_on, motion.reaction_time, motion.max_accel,
+                                         motion.braking, motion.max_speed)
+    ok = worst < radius and stop <= counted and state.startswith('NEAR') and \
+        probe.status.armed
+    result('geofence: stops a scripted drive', ok,
+           f'the lock closed at {v_on:.2f} m/s; the car stopped {stop:.2f} m on (the geofence '
+           f'counts on {counted:.2f} m), its furthest corner {worst:.2f} m from the start of a '
+           f'{radius:g} m fence; state {state.split(":")[0]}')
+    handle.cancel_goal_async()
+    probe.spin_for(2.0)
+    # A person backs it in: never held by the lock.
+    xb, yb = probe.xy(probe.truth)
+    end = time.monotonic() + 8.0
+    while time.monotonic() < end:
+        msg = TwistStamped()
+        msg.header.stamp = probe.get_clock().now().to_msg()
+        msg.twist.linear.x = -0.5
+        probe.keyboard.publish(msg)
+        probe.spin_for(0.05)
+    probe.spin_for(5.0, lambda: probe.fence_state.startswith('OK'))
+    back = math.hypot(*(a - b for a, b in zip(probe.xy(probe.truth), (xb, yb))))
+    ok = back > 1.0 and probe.fence_state.startswith('OK')
+    result('geofence: a person drives it back in', ok,
+           f'the keyboard backed it {back:.2f} m; then the geofence says '
+           f'{probe.fence_state.split(":")[0]}')
 
 
 def session(launch_args, checks, log_path, label=''):
@@ -549,10 +831,14 @@ def main():
     checks = [check_drive,
               lambda probe: check_estop(probe, 'software e-stop', probe.estop),
               lambda probe: check_estop(probe, 'hardware e-stop', probe.hw_estop)]
+    if '--weave' in args:
+        checks.append(check_weave)     # first: from the start spot, along the road
     if perception:
         checks.append(check_stop_sign)
     if '--obstacle' in args:
         checks.append(check_obstacle)
+    if '--zone-edge' in args:
+        checks.append(check_zone_edge)
     lidar = '--lidar' in args
     if lidar:
         checks.append(lambda probe: check_obstacle(probe, sensor='lidar'))
@@ -563,15 +849,22 @@ def main():
     # is empty: it would plan off the road round it), so the stop zone must stop the car.
     bridge = ['bridge:=python'] if '--python-bridge' in args else []
     session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}']
-            + (['plan_around:=false'] if '--obstacle' in args else []) + bridge,
+            + (['plan_around:=false'] if {'--obstacle', '--zone-edge'} & set(args) else [])
+            + bridge,
             checks, logs[0])
+    if '--geofence' in args:
+        # Its own run: a 12 m fence would hold the other checks' drives.
+        stem, ext = os.path.splitext(log)
+        logs.append(f'{stem}-geofence{ext}')
+        session([f'geofence_radius:={GEOFENCE_RADIUS:g}'] + bridge, [check_geofence],
+                logs[-1], 'geofence')
     if '--lane' in args:
         # Its own run: control_interface drives whenever it sees the lane, so it would take
         # the wheel between the other checks. Nothing else drives here: no Nav2.
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-lane{ext}')
         session(['lane:=true', 'nav:=false', f'start_y:={ROAD_Y + LANE_START}'] + bridge,
-                [check_lane_keeping], logs[1], 'lane')
+                [check_lane_keeping], logs[-1], 'lane')
 
     print('\n| Check | Result | Detail |\n|---|---|---|')
     for name, ok, detail in RESULTS:

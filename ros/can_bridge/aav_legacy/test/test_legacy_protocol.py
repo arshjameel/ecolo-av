@@ -288,3 +288,29 @@ def test_rust_uplink_vectors_are_what_this_module_packs_and_reads():
         if c['error']:
             with pytest.raises(ValueError):
                 unpack_uplink(bytes(c['bytes']))
+
+
+def test_from_pedals_any_brake_lands_past_the_firmwares_dead_band():
+    from aav_legacy.legacy_protocol import BRAKE_FULL, BRAKE_RELEASED, from_pedals
+    m = LegacyMapping()
+    _, speed, accel = from_pedals(0.0, 0.0, 0.01, m)
+    assert speed == 0.0
+    # The firmware's brake: clamp(|accel| x 3500, 400, 3500); past released, and past -0.05.
+    assert abs(accel) * BRAKE_FULL > BRAKE_RELEASED and accel < -0.05
+    assert from_pedals(0.0, 0.0, 1.0, m)[2] == pytest.approx(-1.0)
+    assert from_pedals(0.0, 0.0, 0.5, m)[2] == pytest.approx(-(400 + 0.5 * 3100) / 3500)
+
+
+def test_from_pedals_throttle_is_the_speed_number_and_never_with_the_brake():
+    from aav_legacy.legacy_protocol import from_pedals
+    m = LegacyMapping()
+    assert from_pedals(0.0, 0.4, 0.0, m)[1:] == (0.4, 0.0)
+    assert from_pedals(0.0, 0.02, 0.0, m)[1:] == (0.0, 0.0)   # the firmware would ignore it
+    assert from_pedals(0.0, 0.4, 0.2, m)[1] == 0.0             # a brake wins
+
+
+def test_from_pedals_steers_as_to_legacy():
+    from aav_legacy.legacy_protocol import from_pedals
+    m = LegacyMapping(max_steering_angle=0.5)
+    for angle in (-0.5, -0.1, 0.0, 0.2, 0.5):
+        assert from_pedals(angle, 0.3, 0.0, m)[0] == to_legacy(1.0, angle, m)[0]

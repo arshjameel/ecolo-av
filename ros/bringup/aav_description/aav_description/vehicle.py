@@ -11,10 +11,12 @@ The launch files use this so the car's measurements live in one file:
     vehicle.rear_stop_zone_points(v) # ... and behind, reversing
     vehicle.blind_behind(reversing, lidar=..., rear_camera=...)  # may Nav2 reverse?
     vehicle.obstacle_heights(v)      # the lidar's band of obstacle heights (lidar_scan)
-    vehicle.nav2_rewrites(v, reversing)         # Nav2's file: forward only, or reversing too
+    vehicle.nav2_rewrites(v, reversing, planner)  # Nav2's file: forward only, or reversing too
+    vehicle.check_planner(name, real)  # planner:=, only the car-shaped ones on the car
     vehicle.nav2_tuned(nav2, v, reversing, max_speed, radar, lidar, ghost,  # what
                        controller)                              # RewrittenYaml can't write
     vehicle.ego_params(vehicle.load())          # ego: the whole file (the actuators too)
+    vehicle.track_params(nav2, cfg, ego, max_speed)  # aav_track: a trial tracker (tracker:=)
     vehicle.centre_of_mass(v, front, rear, front_lifted, lift)   # from the scales (M7, M7b)
     vehicle.wheel_angles(v, centre)  # each front wheel's angle for a centre (bicycle) angle
     vehicle.centre_angle(v, inner, outer)       # the reverse: from M5's two measured angles
@@ -220,7 +222,39 @@ def reverse_limit(v, reversing):
 # turn before a goal, arrived 0.5 m off and facing wrong, and drove round again (22 Oct).
 PLAN_TURN_MARGIN = 1.25
 
-# Nav2's path followers (docs/controllers.md): rpp, Regulated Pure Pursuit, chases a point
+
+def plan_turning_radius(v):
+    """Return the turning radius the planner plans with (m): full lock, PLAN_TURN_MARGIN wider."""
+    return min_turning_radius(v) * PLAN_TURN_MARGIN
+
+
+def s_bend_length(radius, offset):
+    """
+    Return how far ahead (m) a car needs to step `offset` m sideways and face the same way.
+
+    Two arcs of `radius`, one each way: the shortest forward move that does it. Beyond
+    2 x radius sideways it can't be done this way: it's a loop (math.inf).
+    """
+    d = abs(offset)
+    if d > 2.0 * radius:
+        return math.inf
+    return math.sqrt(4.0 * radius * d - d * d)
+
+
+def final_approach(v):
+    """
+    Return how near the goal (m) Nav2 must keep its path rather than plan again (TODO 17).
+
+    Planned from a few metres out, a little off the approach line, a car's path to the
+    goal's heading is a loop: an S-bend back onto the line needs more room ahead than is
+    left. The worst S-bend, 2 turning radii sideways, needs 2 radii ahead: within that,
+    a new path may be a loop, so the behaviour trees keep the one they have.
+    """
+    r = plan_turning_radius(v)
+    return s_bend_length(r, 2.0 * r)
+
+
+# Nav2's path followers (docs/path-followers.md): rpp, Regulated Pure Pursuit, chases a point
 # ahead on the path; mppi samples thousands of futures through its Ackermann model. MPPI is
 # the default since 22 Oct: in Gazebo it did at least as well in every run, and it turns to
 # a goal's heading, which Pure Pursuit can't (it aims only at a point).
@@ -228,7 +262,121 @@ CONTROLLERS = ('rpp', 'mppi')
 DEFAULT_CONTROLLER = 'mppi'
 
 
-def nav2_rewrites(v, reversing=False):
+# The trial path followers (docs/trials.md, aav_track): each stands in for controller_server's
+# FollowPath with tracker:=<name>. 'none' keeps controller_server (CONTROLLERS) following.
+# Apart from CONTROLLERS, not in it: nav2_tuned treats anything not mppi as RPP.
+TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full')
+DEFAULT_TRACKER = 'none'
+
+
+def check_tracker(tracker, reversing=False):
+    """Return the tracker's name (lower case), or raise ValueError saying what to pick."""
+    name = str(tracker).strip().lower()
+    if name not in TRACKERS:
+        raise ValueError(f'tracker:={tracker}: pick one of {", ".join(TRACKERS)}')
+    if name != 'none' and reversing:
+        raise ValueError(f'tracker:={name} drives forwards only: add reversing:=false '
+                         "(the planner would plan reversing it can't follow)")
+    return name
+
+
+# Nav2's planners (planner:=, docs/controllers.md "Planners"), each under the one plugin name
+# the behaviour trees ask for, GridBased. hybrid (SmacPlannerHybrid, the default) and lattice
+# (SmacPlannerLattice, on our own primitives: tools/lattice_primitives.py) keep to the car's
+# turning radius. smac2d (SmacPlanner2D), navfn (NavfnPlanner) and theta_star
+# (ThetaStarPlanner) plan on the grid as if the car could turn on the spot: their paths may
+# have corners the car can't drive, and the follower must round them. Trials only: refused
+# on the real car (check_planner real=True).
+PLANNERS = ('hybrid', 'lattice', 'smac2d', 'navfn', 'theta_star')
+CAR_PLANNERS = ('hybrid', 'lattice')
+DEFAULT_PLANNER = 'hybrid'
+# Each planner's block in nav2.yaml's planner_server (GridBased is hybrid's own).
+PLANNER_BLOCKS = {'hybrid': 'GridBased', 'lattice': 'Lattice', 'smac2d': 'Smac2D',
+                  'navfn': 'NavFn', 'theta_star': 'ThetaStar'}
+# The lattice's turning radius against plan_turning_radius: the file keeps 3 decimals.
+LATTICE_TOLERANCE = 0.005
+
+
+def check_planner(planner, real=False):
+    """
+    Return the planner's name (lower case), or raise ValueError saying what to pick.
+
+    real: the launch drives the real car (data source REAL, car.launch.py). There only
+    CAR_PLANNERS, whose paths keep to the turning radius: a corner from a grid planner is
+    a path the car can't drive, and the safest answer is not to offer it at all.
+    """
+    name = str(planner).strip().lower()
+    if name not in PLANNERS:
+        raise ValueError(f'planner:={planner}: pick one of {", ".join(PLANNERS)}')
+    if real and name not in CAR_PLANNERS:
+        raise ValueError(f"planner:={name} ignores the car's turning radius: a trial for "
+                         f'sim and bench only. On the car: {", ".join(CAR_PLANNERS)}')
+    return name
+
+
+def lattice_problems(meta, v, resolution):
+    """
+    Return what is wrong with a lattice primitives file for this car and map (empty: fine).
+
+    meta: the file's lattice_metadata; v: vehicle.yaml's vehicle; resolution: the map's
+    cells (m), which the global costmap takes. Nav2 measures the primitives in cells of
+    the file's own size, so another map's cells would stretch or shrink every move.
+    """
+    out = []
+    if meta.get('motion_model') != 'ackermann':
+        out.append(f"motion_model {meta.get('motion_model')}, not ackermann")
+    want = round(plan_turning_radius(v), 3)
+    if abs(float(meta.get('turning_radius', 0.0)) - want) > LATTICE_TOLERANCE:
+        out.append(f"turning radius {meta.get('turning_radius')} m, but the car plans with "
+                   f'{want} m (plan_turning_radius)')
+    if abs(float(meta.get('grid_resolution', 0.0)) - float(resolution)) > 1e-9:
+        out.append(f"cells of {meta.get('grid_resolution')} m, but the map's are "
+                   f'{resolution} m')
+    return out
+
+
+def track_params(nav2, cfg, ego=None, max_speed=None):
+    """
+    Return aav_track's parameters: the same speed and "done" as Nav2's controllers.
+
+    nav2: nav2.yaml as loaded (not tuned: nav2_tuned puts MPPI's block under FollowPath);
+    cfg: vehicle.yaml (load()); ego: ego.yaml's ros__parameters, for its steering rate.
+    The cruise speed is RPP's desired_linear_vel, or `max_speed` (sim_speed:=); the goal
+    and progress checks are controller_server's; speeding up is the velocity smoother's.
+    """
+    server = nav2['controller_server']['ros__parameters']
+    goal = server[server['goal_checker_plugins'][0]]
+    progress = server[server['progress_checker_plugins'][0]]
+    rpp = server['FollowPath']
+    smoother = nav2['velocity_smoother']['ros__parameters']
+    v, act = cfg['vehicle'], cfg['actuators']
+    rate = float(act['steer_rate'])
+    if ego and 'max_steering_rate' in ego:
+        # ego's own ramp is the tighter one today (0.6 against the motor's 0.8 rad/s).
+        rate = min(rate, float(ego['max_steering_rate']))
+    return {
+        'rate_hz': float(server['controller_frequency']),
+        'odom_topic': server['odom_topic'],
+        'cruise_speed': float(max_speed) if max_speed else float(rpp['desired_linear_vel']),
+        'acceleration': float(smoother['max_accel'][0]),
+        'max_brake': float(act['max_brake']),
+        'lookahead_min': float(rpp['min_lookahead_dist']),
+        'lookahead_max': float(rpp['max_lookahead_dist']),
+        'lookahead_time': float(rpp['lookahead_time']),
+        'transform_tolerance': float(rpp['transform_tolerance']),
+        'xy_goal_tolerance': float(goal['xy_goal_tolerance']),
+        'yaw_goal_tolerance': float(goal['yaw_goal_tolerance']),
+        'progress_radius': float(progress['required_movement_radius']),
+        'progress_angle': float(progress.get('required_movement_angle', math.inf)),
+        'progress_time': float(progress['movement_time_allowance']),
+        'wheelbase': float(v['wheelbase']),
+        'max_steering_angle': float(v['max_steering_angle']),
+        'max_steering_rate': rate,
+        'stamped': bool(server.get('enable_stamped_cmd_vel', False)),
+    }
+
+
+def nav2_rewrites(v, reversing=False, planner=DEFAULT_PLANNER):
     """
     Values to substitute into aav_navigation/config/nav2.yaml.
 
@@ -237,28 +385,33 @@ def nav2_rewrites(v, reversing=False):
     Reeds-Shepp paths (forward and back), the controller follows them backwards, and MPPI
     may go negative. Without it, the planner plans forward only (Dubins paths). The velocity
     smoother's limit is a list, which RewrittenYaml can't write: see nav2_tuned.
+    A whole path that isn't in the file is added (RewrittenYaml's add_params), so the
+    Hybrid planner's search model is written only with planner hybrid; the other planners'
+    settings are nav2_tuned's.
     """
     r = min_turning_radius(v)
     low, high = obstacle_heights(v)
+    hybrid = ({'planner_server.ros__parameters.GridBased.motion_model_for_search':
+               'REEDS_SHEPP' if reversing else 'DUBIN'} if planner == 'hybrid' else {})
     return {
+        **hybrid,
         'footprint': footprint(v),
         'lidar_scan.ros__parameters.min_height': f'{low:.3f}',
         'lidar_scan.ros__parameters.max_height': f'{high:.3f}',
-        'minimum_turning_radius': f'{r * PLAN_TURN_MARGIN:.3f}',  # SmacPlannerHybrid
+        'minimum_turning_radius': f'{plan_turning_radius(v):.3f}',  # SmacPlannerHybrid
         'min_turning_r': f'{r:.3f}',            # MPPI AckermannConstraints: the car's own
         'collision_monitor.ros__parameters.StopZone.forward.points':
             polygon(stop_zone_points(v)),
         'collision_monitor.ros__parameters.StopZone.backward.points':
             polygon(rear_stop_zone_points(v)),
-        'planner_server.ros__parameters.GridBased.motion_model_for_search':
-            'REEDS_SHEPP' if reversing else 'DUBIN',
         'controller_server.ros__parameters.FollowPath.allow_reversing': str(reversing).lower(),
         'controller_server.ros__parameters.MPPI.vx_min': f'{reverse_limit(v, reversing):.3f}',
     }
 
 
 def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False,
-               ghost=False, controller=DEFAULT_CONTROLLER, plan_around=True, camera=False):
+               ghost=False, controller=DEFAULT_CONTROLLER, plan_around=True, camera=False,
+               planner=DEFAULT_PLANNER, lattice_file=None):
     """
     Return a copy of nav2.yaml's settings (`nav2`, loaded) with what RewrittenYaml can't write.
 
@@ -283,11 +436,27 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
     - with `radar` or `lidar` and `plan_around`, the same sensor layers in the planner's
       costmap too, so it plans round what they see (the ghost stays out: the car must stop
       for it). Without plan_around the planner sees only the map, and the car stops for
-      what's in its way: the stop zone's tests.
+      what's in its way: the stop zone's tests;
+    - the planner (PLANNERS, DEFAULT_PLANNER): its block (PLANNER_BLOCKS) becomes GridBased,
+      the name the behaviour trees ask for, and the spare blocks go. lattice also takes
+      `lattice_file` (the primitives) and, with `reversing`, may expand backwards.
     """
     if controller not in CONTROLLERS:
         raise ValueError(f'controller:={controller}: pick one of {", ".join(CONTROLLERS)}')
+    planner = check_planner(planner)
+    if planner == 'lattice' and not lattice_file:
+        raise ValueError('planner:=lattice needs its primitives file (lattice_file)')
     out = copy.deepcopy(nav2)
+    # (A part of nav2.yaml with no planner_server, as some tests give, keeps none.)
+    plans = out.get('planner_server', {}).get('ros__parameters')
+    if plans is not None:
+        chosen = copy.deepcopy(plans[PLANNER_BLOCKS[planner]])
+        for block in PLANNER_BLOCKS.values():
+            plans.pop(block, None)
+        if planner == 'lattice':
+            chosen['lattice_filepath'] = lattice_file
+            chosen['allow_reverse_expansion'] = bool(reversing)
+        plans['GridBased'] = chosen
     servers = out['controller_server']['ros__parameters']
     if controller == 'mppi':
         # A copy, so the MPPI block stays where nav2_rewrites' MPPI.vx_min expects it.

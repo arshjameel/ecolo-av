@@ -39,6 +39,12 @@ twist_mux:
         topic: /drivers/scripted/cmd_vel
         timeout: 0.5
         priority: 50
+      buttons:                  # the hardware panel's simple buttons (aav_hud hw_panel, pixi
+        topic: /drivers/buttons/cmd_vel   # run hw-panel), only while GO is held. Below people,
+        timeout: 0.5            # the tests (60) and a script (50); above replay, point, Nav2
+        priority: 45            # and AI. The geofence (51) and no-timeout (60) locks hold it;
+                                # the stop-sign and sensor locks (30) don't, so it works on
+                                # stands (docs/designs/2026-10-29_two-screens.md, T3)
       replay:                   # a recorded drive played back (tools/replay_commands.sh)
         topic: /drivers/replay/cmd_vel
         timeout: 0.5
@@ -63,20 +69,39 @@ twist_mux:
       no_timeout:               # aav_legacy's legacy_uart_bridge: true while it drives the 2025-26
         topic: /safety/legacy_uart_bridge/lock  # C++ ESP32 (frame_version 1), which has NO
         timeout: 0.0            # command timeout: if the bridge or the Orin dies, the last
-        priority: 60            # throttle stays on. 60 holds every program (scripted 50, replay
-                                # 40, point 25, Nav2 20, AI 10); people (100, 95, 90) and the
+        priority: 60            # throttle stays on. 60 holds every program (scripted 50, the
+                                # buttons 45, replay 40, point 25, Nav2 20, AI 10); people (100, 95, 90) and the
                                 # actuator tests (60: a person runs them, types a confirmation,
                                 # their own speed cap) still drive. Timeout 0: where no legacy
                                 # bridge runs (spine, sim, bench, turtle), silence never locks.
                                 # The bridge sends it at 5 Hz, so a restarted mux hears it.
+      geofence:                 # aav_safety's geofence: true while the car's stopping
+        topic: /safety/geofence/lock   # distance would reach the fence's edge, the car
+        timeout: 1.0            # is outside it (latched), or the global pose can't be
+        priority: 51            # trusted (stale, unsure, settling). 51 holds every program
+                                # (scripted 50, the buttons 45, replay 40, point 25, Nav2 20,
+                                # AI 10), never
+                                # a person (100, 95, 90) or the actuator tests (60: a person
+                                # runs them, at their own cap). Fail-safe: the node sends 10
+                                # a second, so 1 s of silence holds them too. Profiles with
+                                # no geofence (the turtle, CARLA) start the mux with
+                                # geofence_lock:=false: no_geofence_lock.yaml, timeout 0.
+                                # docs/geofence.md
       stop_sign:                # aav_detector's stop_sign_watcher: true while the car stops for a
         topic: /perception/stop_sign # sign. Priority 30 holds Nav2 (20) and the AI slot (10), never a
-        timeout: 0.0            # person (100, 90) or a test (60, 50, 40). Never expires on silence:
+        timeout: 0.0            # person (100, 90), a test (60, 50, 40) or the buttons (45). Never expires on silence:
         priority: 30            # if the watcher dies while true, the car stays stopped.
       sensors:                  # aav_safety's sensor_watchdog: true while a sensor Nav2 or the
         topic: /safety/sensor_watchdog/lock  # AI slot needs is stale, NaN, frozen or jumped.
         timeout: 1.0            # Fail-safe: the watchdog sends false 10 times a second, so 1 s
         priority: 30            # of silence (it died, hung, or never started) holds them too.
-                                # Priority 30, as the stop sign: never a person or a test.
+                                # Priority 30, as the stop sign: never a person, a test or the
+                                # buttons (45).
                                 # Profiles with no watchdog (the turtle) start the mux with
                                 # sensor_lock:=false: no_sensor_lock.yaml sets this timeout to 0.
+      stop_zone:                # aav_safety's stop_hold: true from collision_monitor's stop
+        topic: /safety/stop_hold/lock  # until its zone has stayed clear for 1 s, so an
+        timeout: 0.0            # obstacle at the zone's edge can't flicker it between stop
+        priority: 21            # and go. Priority 21: Nav2 (20) and the AI slot (10) only,
+                                # as collision_monitor guards only Nav2. Never expires on
+                                # silence: profiles without collision_monitor never send it.

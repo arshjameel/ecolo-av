@@ -12,11 +12,22 @@ One leg is one Nav2 goal. It records, on Gazebo's clock:
   start, end                        s: the goal sent, and its result (or the time-out)
   goal      (x, y, yaw)             where it was sent, map frame, rad
   reached   bool                    Nav2 said it succeeded
-  cpu       percent or None         controller_server's share of one core over the leg
+  cpu       percent or None         the follower's share of one core over the leg:
+                                    controller_server's, or aav_track's with a tracker
+  amcl      [(t, x, y, yaw)]        optional: AMCL's pose (/localization/amcl/pose), a trial
+  ndt       [(t, x, y, yaw)]        optional: NDT's pose (/localization/ndt/pose), a trial
+  ndt_status [(t, ok, match_ms, restarts)]  optional: NDT's status, one per cloud
+  loops     [(t, loop_ms, loop_ms_max, missed)]  optional: aav_track's status, each tick
+  planned   optional: one plan asked of the planner alone before the leg, from where the
+            car stood (controller_compare.py --planners, /compute_path_to_pose):
+            {'path': [(x, y), ...], 'ms': the planner's own planning_time, 'wall_ms': the
+            whole call by the wall clock, 'lock_radius': the car's full-lock radius, m}
   obstacle  (x, y, side) or None    a square box on the road, m
   body      (length, width, rear_overhang)   the car's outline (vehicle.yaml), m
 
-summary() turns that into one row: see COLUMNS for what each number means. svg() draws the
+summary() turns that into one row: see COLUMNS for what each number means. combine()
+turns several runs' rows into one: the mean, and the spread of the main numbers. overall()
+turns a whole tour's legs into one row per column (the planners' table). svg() draws the
 drives on the map.
 
 The A-to-B numbers at the end (stop_error ... final_metre) are tools/atob_score.py's: how
@@ -201,6 +212,139 @@ def belief_errors(truth, belief):
     return gaps, turns
 
 
+# The localizers' grid (the NDT design: every localizer resampled onto one 10 Hz grid, so
+# one that publishes more often isn't scored on more samples) and "lost": over 1 m off.
+GRID_HZ = 10.0
+LOST_M = 1.0
+
+
+def grid_errors(truth, poses, start, end, hz=GRID_HZ):
+    """
+    Return [(t, gap m or None)]: on a grid from start to end, the newest pose so far.
+
+    Each pose holds until the next (what a reader of the topic would have); None until
+    the first. The gap is from the truth nearest in time.
+    """
+    if not truth or end <= start:
+        return []
+    times = [t for t, *_ in truth]
+    stamps = [t for t, *_ in poses]
+    out = []
+    for k in range(int((end - start) * hz) + 1):
+        t = start + k / hz
+        i = bisect.bisect_right(stamps, t) - 1
+        if i < 0:
+            out.append((t, None))
+            continue
+        _, x, y, _ = poses[i]
+        j = bisect.bisect_left(times, t)
+        near = min((n for n in (j - 1, j) if 0 <= n < len(truth)),
+                   key=lambda n: abs(times[n] - t))
+        _, tx, ty, _ = truth[near]
+        out.append((t, math.hypot(x - tx, y - ty)))
+    return out
+
+
+def lost_time(grid, over=LOST_M, hz=GRID_HZ):
+    """Return (s lost in all, the longest stretch lost s): no pose yet, or over `over` m off."""
+    total = longest = run = 0
+    for _, gap in grid:
+        if gap is None or gap > over:
+            run += 1
+            total += 1
+            longest = max(longest, run)
+        else:
+            run = 0
+    return total / hz, longest / hz
+
+
+def localizer_row(name, truth, poses, start, end):
+    """
+    Return one localizer's numbers, their keys starting with `name`.
+
+    Each pose against the truth (mean, worst, heading worst, how many), and on the 10 Hz
+    grid (mean, time lost over 1 m, the longest of those: the time to recover).
+    """
+    gaps, turns = belief_errors(truth, poses)
+    grid = grid_errors(truth, sorted(poses), start, end)
+    held = [g for _, g in grid if g is not None]
+    lost, recover = lost_time(grid)
+    return {
+        f'{name}_samples': len(gaps),
+        f'{name}_mean_m': sum(gaps) / len(gaps) if gaps else math.nan,
+        f'{name}_max_m': max(gaps) if gaps else math.nan,
+        f'{name}_heading_max_deg': math.degrees(max(turns)) if turns else math.nan,
+        f'{name}_grid_mean_m': sum(held) / len(held) if held else math.nan,
+        f'{name}_lost_s': lost if grid else math.nan,
+        f'{name}_recover_s': recover if grid else math.nan,
+    }
+
+
+# How tight a path turns: the circle through three points this far apart along it (m).
+# Over 1 m, a Hybrid or Lattice arc reads its own radius; a grid planner's corner reads
+# well under a metre.
+TURN_SPAN = 1.0
+TURN_STEP = 0.25    # m between the points the path is resampled to
+
+
+def resample(path, step=TURN_STEP):
+    """Return points every `step` m along a path [(x, y)], its first and last kept."""
+    if len(path) < 2:
+        return list(path)
+    out = [path[0]]
+    left = step
+    for (ax, ay), (bx, by) in zip(path, path[1:]):
+        length = math.hypot(bx - ax, by - ay)
+        at = 0.0
+        while length - at >= left:
+            at += left
+            out.append((ax + (bx - ax) * at / length, ay + (by - ay) * at / length))
+            left = step
+        left -= length - at
+    if out[-1] != tuple(path[-1]):
+        out.append(tuple(path[-1]))
+    return out
+
+
+def circle_radius(a, b, c):
+    """Return the radius of the circle through three points (m); inf on a straight line."""
+    ab = math.hypot(b[0] - a[0], b[1] - a[1])
+    bc = math.hypot(c[0] - b[0], c[1] - b[1])
+    ca = math.hypot(a[0] - c[0], a[1] - c[1])
+    cross = abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]))
+    return math.inf if cross < 1e-9 else ab * bc * ca / (2.0 * cross)
+
+
+def turn_radii(path, span=TURN_SPAN, step=TURN_STEP):
+    """Return [(metres along, radius)]: how tight the path turns at each resampled point."""
+    points = resample(path, step)
+    k = max(1, round(span / step))
+    return [(i * step, circle_radius(points[i - k], points[i], points[i + k]))
+            for i in range(k, len(points) - k)]
+
+
+def plan_row(planned):
+    """
+    Return the planner's numbers for one plan (controller_compare.py --planners).
+
+    plan_too_tight_m: metres of the path that turn tighter than the car's full lock: a car
+    can't drive them as drawn, and the follower has to cut or round them.
+    """
+    if not planned or not planned.get('path'):
+        return {'plan_found': False, 'plan_ms': (planned or {}).get('ms'),
+                'plan_wall_ms': (planned or {}).get('wall_ms')}
+    path, lock = planned['path'], planned['lock_radius']
+    radii = [r for _, r in turn_radii(path)]
+    return {
+        'plan_found': True,
+        'plan_ms': planned.get('ms'),
+        'plan_wall_ms': planned.get('wall_ms'),
+        'plan_m': path_length(path),
+        'plan_tightest_m': min(radii, default=math.inf),
+        'plan_too_tight_m': sum(1 for r in radii if r < lock) * TURN_STEP,
+    }
+
+
 def rms_rate(samples):
     """Return the root mean square (per s) of how fast a value changes, from [(t, value)]."""
     rates = [(b[1] - a[1]) / (b[0] - a[0]) for a, b in zip(samples, samples[1:])
@@ -268,12 +412,47 @@ def summary(leg):
         'belief_max_m': max(lost) if lost else math.nan,
         'belief_heading_max_deg': math.degrees(max(turned)) if turned else math.nan,
     }
+    trials = [n for n in ('amcl', 'ndt') if leg.get(n) is not None]
+    for name in trials:
+        # A trial localizer, scored as the EKF is. AMCL has few samples parked: it updates
+        # only once the car has moved (its update_min_d).
+        row.update(localizer_row(name, truth, leg[name], leg['start'], leg['end']))
+    if trials:
+        # The EKF on the same grid, to be fair to both.
+        ekf = localizer_row('belief', truth, leg.get('belief', []), leg['start'], leg['end'])
+        row.update({k: ekf[k] for k in ('belief_mean_m', 'belief_grid_mean_m',
+                                        'belief_lost_s')})
+    status = leg.get('ndt_status')
+    if status:
+        # One status per cloud: the share that gave a pose, and the match's own time
+        # (wall clock: simulated time could hide a slow match).
+        times = [ms for _, _, ms, _ in status]
+        row.update({
+            'ndt_available': sum(1 for _, ok, _, _ in status if ok) / len(status),
+            'ndt_match_ms_mean': sum(times) / len(times),
+            'ndt_match_ms_max': max(times),
+            'ndt_restarts': max(r for *_, r in status) - min(r for *_, r in status),
+        })
+    loops = leg.get('loops')
+    if loops:
+        row.update({
+            'loop_ms_mean': sum(r[1] for r in loops) / len(loops),
+            'loop_ms_max': max(max(r[1], r[2]) for r in loops),
+            'missed_ticks': max(r[3] for r in loops) - min(r[3] for r in loops),
+        })
+    if 'planned' in leg:
+        row.update(plan_row(leg['planned']))
     if truth:
         _, x, y, yaw = truth[-1]
         gx, gy, gyaw = leg['goal']
         row['end_error_m'] = math.hypot(gx - x, gy - y)
         row['end_heading_deg'] = abs(math.degrees(angle_diff(gyaw, yaw)))
     return row
+
+
+def radius_cell(value):
+    """Return a turn's radius for a table: 'straight' for a path with no turn."""
+    return 'straight' if math.isinf(value) else f'{value:.2f}'
 
 
 # (key, what it is, format): table()'s rows, in order. "The path" is the planner's newest
@@ -297,11 +476,121 @@ COLUMNS = [
     ('stops', 'Stops', '{:d}'),
     ('reversals', 'Reversals', '{:d}'),
     ('clearance_m', 'Closest to the box (m)', '{:.2f}'),
-    ('cpu_percent', 'controller CPU (%)', '{:.0f}'),
+    ('cpu_percent', 'follower CPU (%): controller_server, or aav_track', '{:.0f}'),
     ('route_switches', 'The planner changed its route (times)', '{:d}'),
+    ('plan_found', 'The planner alone: found a path', lambda v: 'yes' if v else '**no**'),
+    ('plan_ms', "The planner alone: planning time (ms, its own clock: Gazebo's)", '{:.0f}'),
+    ('plan_wall_ms', 'The planner alone: the whole call (ms, wall clock)', '{:.0f}'),
+    ('plan_m', 'The planner alone: path length (m)', '{:.1f}'),
+    ('plan_tightest_m', 'The planner alone: tightest turn (radius, m)', radius_cell),
+    ('plan_too_tight_m', "The planner alone: path tighter than the car's full lock (m)",
+     '{:.2f}'),
     ('belief_max_m', 'Where the EKF put the car: off, worst (m)', '{:.2f}'),
     ('belief_heading_max_deg', "The EKF's heading: off, worst (deg)", '{:.0f}'),
+    ('belief_mean_m', 'Where the EKF put the car: off, mean (m)', '{:.2f}'),
+    ('amcl_mean_m', 'Where AMCL put the car: off, mean (m)', '{:.2f}'),
+    ('amcl_max_m', 'Where AMCL put the car: off, worst (m)', '{:.2f}'),
+    ('amcl_heading_max_deg', "AMCL's heading: off, worst (deg)", '{:.0f}'),
+    ('amcl_samples', 'AMCL poses', '{:d}'),
+    ('ndt_mean_m', 'Where NDT put the car: off, mean (m)', '{:.3f}'),
+    ('ndt_max_m', 'Where NDT put the car: off, worst (m)', '{:.2f}'),
+    ('ndt_heading_max_deg', "NDT's heading: off, worst (deg)", '{:.1f}'),
+    ('ndt_samples', 'NDT poses', '{:d}'),
+    ('ndt_available', 'NDT: share of clouds that gave a pose', '{:.0%}'),
+    ('ndt_match_ms_mean', "NDT's match: mean (ms, wall clock)", '{:.1f}'),
+    ('ndt_match_ms_max', "NDT's match: worst (ms, wall clock)", '{:.1f}'),
+    ('ndt_restarts', 'NDT restarts after LOST', '{:d}'),
+    ('belief_grid_mean_m', 'The EKF on the 10 Hz grid: off, mean (m)', '{:.2f}'),
+    ('amcl_grid_mean_m', 'AMCL on the 10 Hz grid: off, mean (m)', '{:.2f}'),
+    ('ndt_grid_mean_m', 'NDT on the 10 Hz grid: off, mean (m)', '{:.3f}'),
+    ('belief_lost_s', 'The EKF over 1 m off (s)', '{:.1f}'),
+    ('amcl_lost_s', 'AMCL over 1 m off, or none yet (s)', '{:.1f}'),
+    ('ndt_lost_s', 'NDT over 1 m off, or none yet (s)', '{:.1f}'),
+    ('amcl_recover_s', 'AMCL: the longest of those (s)', '{:.1f}'),
+    ('ndt_recover_s', 'NDT: the longest of those (s)', '{:.1f}'),
+    ('loop_ms_mean', "The tracker's tick: mean (ms)", '{:.2f}'),
+    ('loop_ms_max', "The tracker's tick: worst (ms)", '{:.1f}'),
+    ('missed_ticks', 'Missed 20 Hz ticks', '{:d}'),
+    ('runs_reached', 'Runs that reached the goal', '{}'),
+    ('time_s_sd', 'Time: spread (s, SD)', '{:.1f}'),
+    ('off_path_mean_m_sd', 'Off the path, mean: spread (m, SD)', '{:.3f}'),
+    ('end_error_m_sd', 'End: off the goal: spread (m, SD)', '{:.2f}'),
 ]
+
+# The numbers whose spread over runs combine() reports (design: 3 runs, mean and spread).
+SPREAD = ('time_s', 'off_path_mean_m', 'end_error_m')
+
+
+def combine(rows):
+    """
+    Return one row for several runs of the same leg: each number's mean over the runs.
+
+    Counts (stops, missed ticks...) stay whole numbers, rounded. 'reached' is True only if
+    every run reached the goal; 'runs_reached' says how many ("2/3"); '<key>_sd' is the
+    sample standard deviation of each SPREAD number (with two runs or more).
+    """
+    rows = [r for r in rows if r]
+    if not rows:
+        return {}
+    out = {}
+    for key in dict.fromkeys(k for r in rows for k in r):
+        values = [r[key] for r in rows if isinstance(r.get(key), (int, float))
+                  and not isinstance(r.get(key), bool)
+                  and not (isinstance(r[key], float) and math.isnan(r[key]))]
+        if key == 'reached':
+            continue
+        if not values:
+            out[key] = None if all(r.get(key) is None for r in rows) else math.nan
+            continue
+        mean = sum(values) / len(values)
+        out[key] = round(mean) if all(isinstance(v, int) for v in values) else mean
+        if key in SPREAD and len(values) > 1:
+            out[key + '_sd'] = math.sqrt(sum((v - mean) ** 2 for v in values) /
+                                         (len(values) - 1))
+    hits = sum(1 for r in rows if r.get('reached'))
+    out['reached'] = hits == len(rows)
+    out['runs_reached'] = f'{hits}/{len(rows)}'
+    return out
+
+
+# overall()'s rows: a whole tour for each column (controller_compare.py --planners).
+OVERALL = [
+    ('legs', 'Legs finished', '{}'),
+    ('time_s', 'Time, all legs (s)', '{:.0f}'),
+    ('driven_m', 'Driven, all legs (m)', '{:.1f}'),
+    ('plan_m', 'The planner alone: path length, all legs (m)', '{:.1f}'),
+    ('plan_ms', 'The planner alone: planning time, mean (ms)', '{:.0f}'),
+    ('plan_ms_max', 'The planner alone: planning time, worst (ms)', '{:.0f}'),
+    ('plan_tightest_m', 'The planner alone: tightest turn (radius, m)', radius_cell),
+    ('plan_too_tight_m', "Path tighter than the car's full lock, all legs (m)", '{:.2f}'),
+    ('turns_ok', "Kept to the car's turning radius", lambda v: 'yes' if v else '**no**'),
+    ('off_path_mean_m', 'Off the path, mean of the legs (m)', '{:.2f}'),
+]
+
+
+def overall(rows):
+    """Return one row for a whole tour's legs (summary rows; None for a leg never driven)."""
+    done = [r for r in rows if r]
+    out = {'legs': f"{sum(1 for r in done if r.get('reached'))}/{len(rows)}"}
+
+    def numbers(key):
+        return [r[key] for r in done if isinstance(r.get(key), (int, float))
+                and not isinstance(r.get(key), bool) and not math.isnan(r[key])]
+
+    for key in ('time_s', 'driven_m', 'plan_m', 'plan_too_tight_m'):
+        if numbers(key):
+            out[key] = sum(numbers(key))
+    if numbers('plan_ms'):
+        out['plan_ms'] = sum(numbers('plan_ms')) / len(numbers('plan_ms'))
+        out['plan_ms_max'] = max(numbers('plan_ms'))
+    if numbers('plan_tightest_m'):
+        out['plan_tightest_m'] = min(numbers('plan_tightest_m'))
+    if 'plan_too_tight_m' in out:
+        out['turns_ok'] = out['plan_too_tight_m'] == 0.0
+    if numbers('off_path_mean_m'):
+        out['off_path_mean_m'] = (sum(numbers('off_path_mean_m')) /
+                                  len(numbers('off_path_mean_m')))
+    return out
 
 
 def cell(value, fmt):
@@ -611,3 +900,96 @@ def final_metre(speeds, still=STILL, creep=CREEP, metre=LAST_METRE):
         if part < 1.0:
             return end - (tb - part * (tb - ta)), crept
     return math.nan, math.nan
+
+
+# The weave (TODO N7): how much the car swings from side to side on a straight drive,
+# apart from any slow drift off its line. bench_check.py --weave reports these.
+
+WEAVE_WIDTH = 4.0   # s: a swing faster than this is weave; slower is drift
+TURN_DEADBAND = 0.02  # rad/s: a turn command smaller than this counts as straight
+
+
+def lateral(track, a, b):
+    """
+    Return [(t, m left of the line)] for track [(t, x, y, ...)] against the line a -> b.
+
+    a, b: (x, y) on the map. + is left of the way a looks at b (REP-103).
+    """
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    length = math.hypot(dx, dy)
+    if length == 0.0:
+        raise ValueError('the line needs two different points')
+    return [(s[0], ((s[2] - a[1]) * dx - (s[1] - a[0]) * dy) / length) for s in track]
+
+
+def value_at(series, t):
+    """Return the value of [(t, value)] at time t, read between its two nearest samples."""
+    times = [s[0] for s in series]
+    i = bisect.bisect_left(times, t)
+    if i == 0:
+        return series[0][1]
+    if i == len(series):
+        return series[-1][1]
+    (ta, va), (tb, vb) = series[i - 1], series[i]
+    return va if tb == ta else va + (vb - va) * (t - ta) / (tb - ta)
+
+
+def weave(series, width=WEAVE_WIDTH):
+    """
+    Return the RMS (the value's own unit) of how far [(t, value)] swings round its average.
+
+    The average is a `width` s moving average (smooth()): a slow drift moves the average
+    with it and counts nothing; a swing faster than `width` counts in full. NaN if the
+    series is shorter than one window.
+    """
+    means = smooth(series, width)
+    if not means:
+        return math.nan
+    swings = [value_at(series, t) - mean for t, mean in means]
+    return math.sqrt(sum(s * s for s in swings) / len(swings))
+
+
+def sign_flips(series, deadband=TURN_DEADBAND):
+    """Count the turns from left to right and back in [(t, value)], ignoring |value| < deadband."""
+    signs = [v > 0.0 for _, v in series if abs(v) >= deadband]
+    return sum(a != b for a, b in zip(signs, signs[1:]))
+
+
+def stop_go(actions, stop):
+    """
+    Count the times a stop let go: in a list of actions, each `stop` followed by another.
+
+    actions: collision_monitor's state, in order (it publishes only when it changes).
+    A clean stop that lets go once, when the obstacle goes, counts 1; a flicker counts more.
+    """
+    return sum(a == stop and b != stop for a, b in zip(actions, actions[1:]))
+
+
+def off_line(points):
+    """
+    Return each (x, y)'s signed distance (m) from the straight line that fits them best.
+
+    The line through their mean, along their main direction (the total least squares line),
+    so a drive that started a little crooked still counts as straight.
+    """
+    n = len(points)
+    if n < 2:
+        return []
+    mx, my = sum(p[0] for p in points) / n, sum(p[1] for p in points) / n
+    sxx = sum((p[0] - mx) ** 2 for p in points)
+    syy = sum((p[1] - my) ** 2 for p in points)
+    sxy = sum((p[0] - mx) * (p[1] - my) for p in points)
+    angle = 0.5 * math.atan2(2.0 * sxy, sxx - syy)
+    c, s = math.cos(angle), math.sin(angle)
+    return [-(p[0] - mx) * s + (p[1] - my) * c for p in points]
+
+
+def rms(values):
+    """Return the root mean square of a list of numbers; NaN for none."""
+    return math.sqrt(sum(v * v for v in values) / len(values)) if values else math.nan
+
+
+def starts(series, least=STILL):
+    """Count the times [(t, v)] went from below `least` to `least` or more: forward starts."""
+    moving = [v >= least for _, v in series]
+    return sum(b and not a for a, b in zip(moving, moving[1:]))

@@ -49,6 +49,9 @@ Why it matters:
 
 ## How to measure
 
+The tape-measure route, step by step, with pictures: [the measuring map](measure-the-car.md#the-measuring-map)
+(`pixi run measure-map`; `--readings` turns chained readings into these numbers).
+
 1. Park on level ground with the wheels straight.
 2. Mark `base_link`: plumb down from the centre of the rear axle and chalk the spot.
 3. Measure each item with a tape:

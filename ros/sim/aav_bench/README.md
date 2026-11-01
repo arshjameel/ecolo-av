@@ -49,7 +49,7 @@ Most defaults are in `config/bench.yaml`. Three kinds are not:
 | Node | Parameters |
 |---|---|
 | `mock_imu` | `frame_id`, `gyro_stddev` (rad/s), `accel_stddev` (m/s²), `gyro_bias` (rad/s), `seed` |
-| `mock_gps` | `frame_id`, `datum` (lat, lon, alt), `stddev` (m), `rate_hz`, `seed` |
+| `mock_gps` | `frame_id`, `datum` (lat, lon, alt), `drift_stddev` (m), `drift_time` (s), `jitter_stddev` (m), `rate_hz`, `seed`: the error is `models.GpsError`, a slow drift plus jitter |
 | `mock_battery` | `full_voltage`, `empty_voltage` (V), `hours` |
 | `mock_camera` | `frame_id`, `stop_signs` (x, y pairs), `sign_height`, `sign_size` (m), `width`, `height`, `focal_px`, `rate_hz`; the road: `road_y`, `lane_width`, `line_width`, `shoulder`, `bend_x`, `bend_radius` (m) |
 | `mock_radar` | `frame_id`, `obstacle`, `boxes` (x1, y1, x2, y2 each), `box_height`, `max_range` (m), `fov_deg`, `ray_step_deg`, `keep`, `range_noise`, `height_noise` (m), `rate_hz`, `seed` |
@@ -62,7 +62,7 @@ Most defaults are in `config/bench.yaml`. Three kinds are not:
 
 | Module | Holds |
 |---|---|
-| `models.py` | what each sensor would measure: `Truth`, `imu_reading`, `geo_from_map`, `magnetic_field`, `battery_voltage`, `Camera`, `sign_in_view`, `Road`, `Radar`, `radar_returns`, `Lidar`, `lidar_ranges` |
+| `models.py` | what each sensor would measure: `Truth`, `imu_reading`, `geo_from_map`, `GpsError`, `magnetic_field`, `battery_voltage`, `Camera`, `sign_in_view`, `Road`, `Radar`, `radar_returns`, `Lidar`, `lidar_ranges` |
 | `pictures.py` | the camera's picture: `road`, `scene`, `draw_stop_sign` (NumPy and OpenCV) |
 | `vlp16.py` | the VLP-16's 1206-byte UDP packet: `packet`, `decode`, `Sender` (also used by `tools/fake_vlp16.py`) |
 | `sensors.py` | the six ROS nodes and their entry points |

@@ -86,3 +86,46 @@ def test_programs_are_locked_out_of_the_firmware_with_no_timeout():
     assert programs_locked(2, allow_programs_without_timeout=True) is False
     with pytest.raises(ValueError):
         programs_locked(3)
+
+
+def looped():
+    from aav_legacy.speed_control import SpeedControl
+    return Relay(M, cmd_timeout=0.3, version=2, speed_loop=SpeedControl(), odom_timeout=0.3)
+
+
+def test_with_a_speed_loop_too_fast_brakes_while_moving():
+    r = looped()
+    r.command(1.0, 0.0, now=0.0)
+    r.wheel_speed(2.0, now=0.0)                # 1 m/s too fast
+    f = unpack_frame_v2(r.frame(now=0.02))
+    assert f.speed == 0.0 and f.accel < -400 / 3500
+    assert r.pedals.brake > 0.0
+
+
+def test_with_a_speed_loop_too_slow_opens_the_throttle_more_than_open_loop():
+    r = looped()
+    for i in range(50):                        # 1 s asking 1 m/s of a car stuck at 0.5
+        r.command(1.0, 0.0, now=0.02 * i)
+        r.wheel_speed(0.5, now=0.02 * i)
+        f = unpack_frame_v2(r.frame(now=0.02 * i))
+    assert f.accel == 0.0
+    assert f.speed > 1.0 / M.full_throttle_speed   # open loop would send 1 / 3
+
+
+def test_with_a_stale_wheel_speed_the_loop_runs_on_feed_forward_alone():
+    r = looped()
+    r.wheel_speed(0.0, now=0.0)
+    for i in range(50):
+        r.command(1.0, 0.0, now=1.0 + 0.02 * i)
+        r.frame(now=1.0 + 0.02 * i)            # the wheel speed is 1 s old
+    assert r.pedals.integral == 0.0
+    assert r.pedals.throttle == pytest.approx(0.1 * 1.0 / 1.5)   # drag x speed / max_accel
+
+
+def test_disarming_resets_the_speed_loop():
+    r = looped()
+    r.command(1.0, 0.0, now=0.0)
+    r.wheel_speed(0.9, now=0.0)
+    r.frame(now=0.02)
+    unpack_frame_v2(r.frame(now=1.0))          # the command went stale: brake, reset
+    assert (r.loop.integral, r.loop.last_target, r.pedals) == (0.0, None, None)

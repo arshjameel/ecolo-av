@@ -7,7 +7,7 @@
 <!-- Generated from docs/bench.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Bench mode: the whole car on one computer</h1>
-<div class="meta">15 min read · 11 sections</div></header>
+<div class="meta">16 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -37,15 +37,20 @@
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
 <a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
 <a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
 <a href="maps-and-position.html">Maps and position</a>
 <a href="learn-nav2.html">Learn: Nav2</a>
-<span class="sep">Reference:</span>
 <a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
 <a href="costmaps.html">Costmaps</a>
-<a href="controllers.html">Path followers</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
@@ -69,6 +74,7 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
@@ -291,7 +297,7 @@ can tell the difference.</p>
 <td><code>mock_gps</code></td>
 <td><code>aav_bench</code></td>
 <td><code>/sensors/gps/fix</code></td>
-<td>where the antenna is, as latitude and longitude, with 0.5 m of noise, 5 times a second</td>
+<td>where the antenna is, as latitude and longitude, 5 times a second, with a receiver's error: 0.5 m that drifts slowly (over about 60 s) and 0.05 m of fresh jitter on each fix</td>
 </tr>
 <tr>
 <td><code>mock_camera</code></td>
@@ -465,6 +471,16 @@ nothing on the network sees it. Then it runs these checks. Results on Ben's Mac,
 <td>Obstacle (<code>pixi run bench-check --obstacle</code>)</td>
 <td>a box as wide as the lane, 15 m ahead, Nav2 driving 30 m: <code>collision_monitor</code>'s stop zone stops the car before it; with the box gone, the car reaches the goal. If a busy computer latches the spine, the check arms it again</td>
 <td><span class="badge b-works">works</span> on <code>main</code>, 11 Oct: stood still 0.44 m before the box, from 0.95 m/s; reached the goal once the box was gone</td>
+</tr>
+<tr>
+<td>Weave (<code>pixi run bench-check --weave</code>)</td>
+<td>Nav2 drives 40 m straight, nothing in the way: the car's side-to-side swing round its own 4 s average is under 0.1 m RMS. Also says how far it strays from its best straight line, and how often a second Nav2's turn command changes sign (N7)</td>
+<td>untested</td>
+</tr>
+<tr>
+<td>Stop zone's edge (<code>pixi run bench-check --zone-edge</code>)</td>
+<td>the car stands still, a box as wide as the lane right at the far edge of the stop zone, Nav2 asked to drive on, for 20 s: after the first stop no forward command reaches ego, and the car creeps under 0.1 m. Says how often collision_monitor itself flickered (<code>stop_hold</code> keeps it from reaching the car)</td>
+<td>untested</td>
 </tr>
 </tbody>
 </table></div>

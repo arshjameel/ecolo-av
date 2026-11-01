@@ -63,13 +63,14 @@ class Run:
         self.mux = None
 
     def start_mux(self):
-        """Start twist_mux with the car's config; no sensor watchdog here, so its lock off."""
+        """Start twist_mux with the car's config; no watchdog or geofence here: their locks off."""
         config = os.path.join(get_package_share_directory('aav_command_mux'), 'config')
         exe = os.path.join(get_package_prefix('twist_mux'), 'lib', 'twist_mux', 'twist_mux')
         env = dict(os.environ, ROS_DOMAIN_ID=str(self.domain))
         self.mux = subprocess.Popen(
             [exe, '--ros-args', '--params-file', os.path.join(config, 'twist_mux.yaml'),
              '--params-file', os.path.join(config, 'no_sensor_lock.yaml'),
+             '--params-file', os.path.join(config, 'no_geofence_lock.yaml'),
              '-r', 'cmd_vel_out:=/control/cmd_vel'],
             env=env, start_new_session=True, stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL)

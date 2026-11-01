@@ -16,6 +16,8 @@ weak answers into one good one.
 [Maps and position](maps-and-position.md) has the big picture of the two EKFs
 and the map. This page explains **why** it works.
 
+[How the car knows its speed](learn-speed.md) builds on this page.
+
 ## 1. Odometry: counting your steps
 
 **Odometry** = working out where you are from how you've moved.
@@ -236,6 +238,64 @@ setting (u-center, once), for whoever sets it up (Q18).
 Real GPS errors drift slowly, not fresh each fix as in Gazebo ([Learn: GPS](learn-gps.md)):
 that hurts the heading from fixes more than the heading from velocity, so on the car the
 gain should be at least as big. To check with the first drive's bag.
+
+## 8. Next: matching the lidar to a map (NDT and ICP)
+
+Not built yet: a research pick ([research picks](designs/2026-10-28_research-picks.md),
+pick 2). GPS gets the car to within a metre or two. To get to centimetres without RTK,
+match what the lidar sees now against a map of the lot.
+
+### NDT: blobs
+
+**NDT** (Normal Distributions Transform) keeps a blob per square, not every point.
+
+![NDT in four steps: the map, its blobs, a scan off by 1.4 m and 9°, and the scan slid onto the blobs](img/learn-ndt.png)
+
+| Step | What happens |
+|---|---|
+| 1 | Drive the lot once and keep the lidar's points: the map |
+| 2 | Cut the map into squares (cubes, in 3D). In each, keep only the points' centre and spread: a blob |
+| 3 | A new scan arrives. Dead reckoning has drifted, so it lands in the wrong place |
+| 4 | Slide and turn the scan until its points sit inside the blobs. That slide is the car's error |
+
+Big squares first, then smaller: big ones see far, small ones are precise.
+
+### ICP: nearest points
+
+**ICP** (Iterative Closest Point) keeps every map point.
+
+![ICP: pair each scan point with its nearest map point, move to close the pairs, repeat](img/learn-icp.png)
+
+| Step | What happens |
+|---|---|
+| 1 | Pair each scan point with the nearest map point (the black lines) |
+| 2 | Find the one slide and turn that closes the pairs best |
+| 3 | Repeat. The pairs get better each time |
+
+Look at the posts on the left: some pairs are wrong at first. ICP still gets there
+because most pairs are right; start it too far off and it locks onto the wrong post.
+
+### Which to use
+
+| | NDT | ICP |
+|---|---|---|
+| The map holds | one blob per square: small | every point: big |
+| Starting far off | copes better (big squares first) | needs a close start |
+| Speed | fast, the same for any map | slower as the map grows |
+| Used by | Autoware (`ndt_scan_matcher`) to find the car in a map | KISS-ICP, to **make** the map (scan after scan) |
+
+So: **make** the map with KISS-ICP, **find** the car in it with NDT, and give that
+pose to `ekf_global` beside GPS.
+
+Not Tesla's way: Tesla has no lidar. Its "occupancy network" turns camera images into
+3D cubes, each marked filled or empty. That looks like NDT's squares, but it doesn't
+match a scan to a map.
+
+`pixi run ndt-demo` draws both pictures with real NDT and ICP (`tools/ndt_demo.py`,
+numpy only). Each ends within about 2 cm.
+
+From the lidar's points to cubes, the costmap and NDT, step by step:
+[Learn: lidar](learn-lidar.md).
 
 ## Try it
 

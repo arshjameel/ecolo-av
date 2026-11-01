@@ -1,0 +1,11 @@
+# example_lot_amcl: 80 m x 60 m at 0.05 m/pixel (1600 x 1200 pixels). Made by tools/make_map.py.
+image: example_lot_amcl.pgm
+mode: trinary
+resolution: 0.05
+origin:
+- -10.0
+- -10.0
+- 0.0
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.25

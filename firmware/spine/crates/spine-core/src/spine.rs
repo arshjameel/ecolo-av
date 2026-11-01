@@ -340,11 +340,29 @@ impl Spine {
             safety: self.safety,
             authority: self.authority,
             motion: self.motion,
-            confidence: match self.cfg.speed_feedback {
-                SpeedFeedback::Wheel => Confidence::Full,
-                SpeedFeedback::None { .. } => Confidence::Degraded,
-            },
+            confidence: self.confidence(),
         }
+    }
+
+    /// [5] Confidence: set by the configuration today.
+    fn confidence(&self) -> Confidence {
+        match self.cfg.speed_feedback {
+            SpeedFeedback::Wheel => Confidence::Full,
+            SpeedFeedback::None { .. } => Confidence::Degraded,
+        }
+    }
+
+    /// The test request the spine carries out: the latest, unless this confidence refuses
+    /// it ([`TestRequest::allowed`]), when it holds still instead.
+    fn allowed_test_request(&self) -> Option<TestRequest> {
+        let confidence = self.confidence();
+        self.test_request.map(|r| {
+            if r.allowed(confidence) {
+                r
+            } else {
+                TestRequest::Hold
+            }
+        })
     }
 
     fn decide(&mut self, i: &Inputs) -> Outputs {
@@ -412,7 +430,16 @@ impl Spine {
         if driver_fault {
             self.latch.trip_fault();
         }
-        if self.authority == Authority::Drive && !fresh && !estop {
+        // Like the computer's disarm, the test mode's Exit counts only after the latest
+        // e-stop, fault or lost RC.
+        if estop || driver_fault || rc_lost {
+            self.seen_test_exit = false;
+        }
+        // The computer went silent while armed: a timeout, whoever drove meanwhile (RC
+        // direct may have taken over), so it must re-arm after a crash or a reboot.
+        let computer_armed = self.authority == Authority::Drive
+            || (!self.latch.latched && self.last_cmd.is_some_and(|cmd| cmd.armed()));
+        if computer_armed && !fresh && !estop {
             self.latch.trip_timeout();
         }
 
@@ -448,6 +475,8 @@ impl Spine {
             && !rc_lost
             && !rc_direct
             && self.authority != Authority::Drive
+            // Nor on the tick the computer's arm releases the latch.
+            && (!armed_request || self.latch.latched)
             && i.measured_speed.abs() < crate::fsm::STANDSTILL_SPEED
         {
             // Exit, then Enter, while nothing stops the car and nobody drives it.
@@ -459,7 +488,10 @@ impl Spine {
         self.authority = if rc_direct {
             Authority::Rc
         } else if in_test {
-            Authority::Test(self.test_request.map_or(TestStage::Armed, |r| r.stage()))
+            Authority::Test(
+                self.allowed_test_request()
+                    .map_or(TestStage::Armed, |r| r.stage()),
+            )
         } else if armed_request && !self.latch.latched {
             Authority::Drive
         } else {
@@ -645,7 +677,8 @@ impl Spine {
 
     /// The hardware test mode: the latest request moves one actuator, inside the limits.
     /// Otherwise the car holds still: throttle 0, the stop brake, the steering where it is.
-    /// The throttle is forward only, capped at [`TEST_MAX_THROTTLE`], with the brake off.
+    /// The throttle is forward only, capped at [`TEST_MAX_THROTTLE`], with the brake off,
+    /// and only with a wheel speed ([`Confidence::Full`]).
     fn test(&mut self, dt: f32, out: &impl Fn(f32, f32, bool, f32, &Self) -> Outputs) -> Outputs {
         let c = self.cfg;
         self.speed_setpoint = 0.0;
@@ -653,7 +686,7 @@ impl Spine {
         let mut throttle = 0.0;
         let mut brake = c.stop_brake;
         let mut steering = self.steering_setpoint;
-        match self.test_request {
+        match self.allowed_test_request() {
             Some(TestRequest::Steering(a)) if !a.is_nan() => {
                 steering = a.clamp(-c.max_steering_angle, c.max_steering_angle);
             }
@@ -1664,5 +1697,209 @@ mod tests {
             assert_eq!(out.mode, Mode::Test);
             assert_eq!(out.throttle, 0.0);
         }
+    }
+
+    // The boot self-test, with each fault it must catch injected.
+
+    /// The faults that stop the car: each one alone must hold the self-test.
+    const STOP_FAULTS: [u16; 4] = [
+        faults::STEERING_DRIVER,
+        faults::BRAKE_DRIVER,
+        faults::THROTTLE_DAC,
+        faults::WHEEL_ENCODER,
+    ];
+
+    #[test]
+    fn the_self_test_catches_each_stop_fault() {
+        for fault in STOP_FAULTS {
+            let mut car = Car::new();
+            let faulty = Inputs {
+                driver_faults: fault,
+                ..Default::default()
+            };
+            for _ in 0..5 {
+                let out = car.tick(faulty);
+                assert_eq!((out.throttle, out.brake), (0.0, 1.0), "{fault}");
+                assert_ne!(out.faults & fault, 0, "{fault}");
+            }
+            assert_eq!(car.state().lifecycle, Lifecycle::SelfTest, "{fault}");
+            assert_eq!(car.state().safety, Safety::Faulted, "{fault}");
+            // The computer's arming edge, while the device is still faulty: no drive.
+            for armed in [false, false, true, true, true] {
+                let cmd = car.cmd(1.0, 0.0, armed);
+                let out = car.tick(Inputs {
+                    drive_cmd: Some(cmd),
+                    ..faulty
+                });
+                assert_ne!(out.mode, Mode::Computer, "{fault}");
+                assert_eq!(out.throttle, 0.0, "{fault}");
+            }
+            // Nor the test mode.
+            for req in [TestRequest::Exit, TestRequest::Exit, TestRequest::Enter] {
+                car.tick(Inputs {
+                    test_cmd: Some(req),
+                    ..faulty
+                });
+            }
+            assert!(!car.state().authority.in_test(), "{fault}");
+            assert_eq!(car.state().lifecycle, Lifecycle::SelfTest, "{fault}");
+        }
+    }
+
+    #[test]
+    fn the_self_test_passes_once_the_fault_clears_and_still_needs_an_arm() {
+        for fault in STOP_FAULTS {
+            let mut car = Car::new();
+            for _ in 0..3 {
+                car.tick(Inputs {
+                    driver_faults: fault,
+                    ..Default::default()
+                });
+            }
+            car.tick(Inputs::default());
+            assert_eq!(car.state().lifecycle, Lifecycle::Running, "{fault}");
+            // Armed commands alone don't drive: the fault latched.
+            assert_eq!(car.drive(1.0, 0.0, true, 3).mode, Mode::Manual, "{fault}");
+            car.arm();
+            assert_eq!(car.drive(1.0, 0.0, true, 3).mode, Mode::Computer, "{fault}");
+        }
+    }
+
+    #[test]
+    fn a_fault_on_the_first_tick_alone_still_latches() {
+        // The Boot tick moves to SelfTest whatever it sees, but the fault still latches.
+        let mut car = Car::new();
+        car.tick(Inputs {
+            driver_faults: faults::BRAKE_DRIVER,
+            ..Default::default()
+        });
+        assert!(car.spine.latch.fault);
+        car.tick(Inputs::default());
+        assert_eq!(car.state().lifecycle, Lifecycle::Running);
+        assert_eq!(car.drive(1.0, 0.0, true, 3).mode, Mode::Manual);
+    }
+
+    #[test]
+    fn faults_that_do_not_stop_the_car_do_not_hold_the_self_test() {
+        // CAN_BUS and the RC are not devices that stop the car (`faults::STOP`).
+        let mut car = Car::new();
+        for _ in 0..2 {
+            car.tick(Inputs {
+                driver_faults: faults::CAN_BUS,
+                ..Default::default()
+            });
+        }
+        assert_eq!(car.state().lifecycle, Lifecycle::Running);
+    }
+
+    #[test]
+    fn a_fault_after_the_self_test_is_the_safety_regions_not_a_new_test() {
+        let mut car = Car::new();
+        car.arm();
+        car.drive(1.0, 0.0, true, 10);
+        let out = car.tick(Inputs {
+            driver_faults: faults::THROTTLE_DAC,
+            ..Default::default()
+        });
+        assert_eq!((out.throttle, out.brake), (0.0, 1.0));
+        assert_eq!(car.state().lifecycle, Lifecycle::Running);
+        assert_eq!(car.state().safety, Safety::Faulted);
+    }
+
+    #[test]
+    fn without_a_wheel_speed_the_test_mode_refuses_the_throttle() {
+        // Today's board (esp32-umod) has no wheel speed: the "faster than
+        // TEST_MAX_SPEED" exit can never fire there, so no throttle test either.
+        let mut car = Car::with_config(open_loop_config());
+        car.tick(Inputs::default());
+        car.enter_test();
+        let out = car.test(TestRequest::Throttle(0.1), 5);
+        assert_eq!(out.mode, Mode::Test);
+        assert_eq!((out.throttle, out.brake), (0.0, 1.0));
+        assert_eq!(car.state().authority, Authority::Test(TestStage::Armed));
+        // The brake and the steering still work.
+        let out = car.test(TestRequest::Brake(0.4), 1);
+        assert_eq!((out.throttle, out.brake), (0.0, 0.4));
+        let out = car.test(TestRequest::Steering(0.3), 100);
+        assert!((out.steering_target - 0.3).abs() < 1e-4);
+        assert_eq!(car.state().authority, Authority::Test(TestStage::Active));
+    }
+
+    // Bugs found in review of the state machine, each with the test that showed it.
+
+    #[test]
+    fn no_test_mode_on_the_tick_the_computer_arms() {
+        // The entry check looked at last tick's authority (Idle), so an Enter on the very
+        // tick the computer's arm released the latch went into the test mode, armed.
+        let mut car = Car::new();
+        car.test(TestRequest::Exit, 1);
+        car.drive(0.0, 0.0, false, 2);
+        let cmd = car.cmd(1.0, 0.0, true);
+        let out = car.tick(Inputs {
+            drive_cmd: Some(cmd),
+            test_cmd: Some(TestRequest::Enter),
+            ..Default::default()
+        });
+        assert_eq!(out.mode, Mode::Computer);
+        assert!(!car.state().authority.in_test());
+    }
+
+    #[test]
+    fn an_exit_before_an_estop_does_not_count_for_the_entry_after_it() {
+        // Like the computer's disarm, the first half of the entry must come after the
+        // latest e-stop or fault: an old Exit must not complete a new Enter.
+        let unsafe_inputs = [
+            Inputs {
+                hw_estop: true,
+                ..Default::default()
+            },
+            Inputs {
+                driver_faults: faults::STEERING_DRIVER,
+                ..Default::default()
+            },
+        ];
+        for bad in unsafe_inputs {
+            let mut car = Car::new();
+            car.tick(Inputs::default());
+            car.test(TestRequest::Exit, 1);
+            for _ in 0..3 {
+                car.tick(bad);
+            }
+            car.tick(Inputs::default());
+            let out = car.test(TestRequest::Enter, 1);
+            assert_eq!(out.mode, Mode::Manual, "{bad:?}");
+            // A fresh Exit, then Enter, still works.
+            assert_eq!(car.enter_test().mode, Mode::Test, "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn the_computer_stopping_while_rc_direct_drives_still_latches() {
+        // The timeout latched only while the computer drove. Armed, then overridden by RC
+        // direct, then silent, it came back on the computer position without a re-arm.
+        let mut car = Car::new();
+        let computer = Some(sticks(RcSwitch::Computer));
+        car.drive_with_rc(0.0, false, computer, 2);
+        car.drive_with_rc(1.0, true, computer, 10);
+        // The person takes over; the computer's stream stops (a crash, a reboot).
+        let direct = RcInput {
+            throttle: 0.0,
+            ..sticks(RcSwitch::Direct)
+        };
+        for _ in 0..30 {
+            car.tick(Inputs {
+                rc: Some(direct),
+                ..Default::default()
+            });
+        }
+        // Back on the computer position; the computer sends armed commands again.
+        let out = car.drive_with_rc(1.0, true, computer, 5);
+        assert_eq!((out.mode, out.throttle), (Mode::Manual, 0.0));
+        assert_ne!(out.faults & faults::CMD_TIMEOUT, 0);
+        car.drive_with_rc(0.0, false, computer, 2);
+        assert_eq!(
+            car.drive_with_rc(1.0, true, computer, 5).mode,
+            Mode::Computer
+        );
     }
 }

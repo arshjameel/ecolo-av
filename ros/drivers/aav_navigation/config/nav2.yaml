@@ -127,10 +127,10 @@ controller_server:
       stateful: true
 
     # Alternative controller: controller:=mppi (navigation.launch.py, sim.launch.py) puts a
-    # copy of this block under FollowPath (docs/controllers.md). Its Ackermann model limits
+    # copy of this block under FollowPath (docs/path-followers.md). Its Ackermann model limits
     # curvature to 1 / min_turning_r.
     #
-    # Tuned in Gazebo on 22 Oct (docs/controllers.md, "Making MPPI drive"). With Nav2's
+    # Tuned in Gazebo on 22 Oct (docs/path-followers.md, "Making MPPI drive"). With Nav2's
     # robot settings it crept at 0.2 m/s and drifted off a straight path:
     #   wz_std 0.4 -> 0.1   the car turns at most 0.35 rad/s at 1 m/s (full lock), so 0.4 made
     #                       nearly every fast sample a full-lock swerve, and slow ones won
@@ -391,6 +391,62 @@ planner_server:
       cache_obstacle_heuristic: false
       smooth_path: true
       debug_visualizations: false
+    # The other planners (navigation.launch.py planner:=, docs/controllers.md "Planners").
+    # The launch file copies the chosen block into GridBased, the name the behaviour trees
+    # ask for, and drops the rest (vehicle.nav2_tuned), as it does with the MPPI block.
+    # State Lattice: car-shaped moves from our own primitives file, made for the car's
+    # turning radius and the maps' 25 cm cells (pixi run lattice-primitives). Its radius
+    # comes from that file. lattice_filepath and allow_reverse_expansion (reversing:=true)
+    # are set by the launch file.
+    Lattice:
+      plugin: "nav2_smac_planner::SmacPlannerLattice"
+      lattice_filepath: "set-by-launch"     # config/lattice_ackermann.json
+      allow_reverse_expansion: false        # set by the launch file: reversing:=
+      tolerance: 0.5
+      allow_unknown: true
+      max_iterations: 1000000
+      max_on_approach_iterations: 1000
+      max_planning_time: 5.0
+      reverse_penalty: 2.0                  # as Hybrid's
+      change_penalty: 0.05
+      non_straight_penalty: 1.05
+      cost_penalty: 2.0
+      retrospective_penalty: 0.015
+      analytic_expansion_ratio: 3.5
+      analytic_expansion_max_length: 3.0
+      analytic_expansion_max_cost: 200.0
+      analytic_expansion_max_cost_override: false
+      lookup_table_size: 20.0
+      cache_obstacle_heuristic: false
+      smooth_path: true
+      debug_visualizations: false
+    # The three below plan on the grid as if the car could turn on the spot: their paths
+    # may have corners tighter than the turning radius, which the follower has to round.
+    # Trials in sim and bench only: car.launch.py refuses them (vehicle.check_planner).
+    Smac2D:
+      plugin: "nav2_smac_planner::SmacPlanner2D"
+      tolerance: 0.5
+      downsample_costmap: false
+      downsampling_factor: 1
+      allow_unknown: true
+      max_iterations: 1000000
+      max_on_approach_iterations: 1000
+      max_planning_time: 2.0
+      cost_travel_multiplier: 2.0           # keep to the middle of the lane, as Hybrid's cost_penalty
+      use_final_approach_orientation: false
+    NavFn:
+      plugin: "nav2_navfn_planner::NavfnPlanner"
+      tolerance: 0.5
+      use_astar: false                      # Dijkstra: Nav2's oldest, simplest planner
+      allow_unknown: true
+      use_final_approach_orientation: false
+    ThetaStar:
+      plugin: "nav2_theta_star_planner::ThetaStarPlanner"
+      how_many_corners: 8
+      w_euc_cost: 1.0
+      w_traversal_cost: 2.0
+      allow_unknown: true
+      use_final_approach_orientation: false
 
 behavior_server:
   ros__parameters:

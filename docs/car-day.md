@@ -528,6 +528,13 @@ The HUD's GO / STOP panel says whether the car may move, and why not. A latched 
 | 3.10 | `pixi run actuator-test steer-sweep --stands` (the laptop) | it asks each wheel angle: the protractor | |
 | 3.11 | `pixi run actuator-test steer-centre --stands` | under 1°, or the offset written down | |
 | 3.12 | Wheel speed: `/vehicle/odom` against a phone tachometer app | within 10% | |
+| 3.P | `pixi run preflight --no-drive --skip steering gps lidar` (the Orin, ssh + tmux) | every sensor line PASS; nothing moves | a FAIL names the sensor: its driver, its cable, its rate |
+
+**The preflight's drive** (speed up, hold, brake, steer, every sensor at once) is refused
+on the car today: the wheel sensors are on the front, the motor drives the rear, so on
+stands nothing measures the spinning wheels (TODO 49b). Once a rear-wheel speed exists
+(`vehicle.yaml` `speed_wheels: rear`): `pixi run preflight --skip steering gps lidar`,
+with the e-stop person and someone on the rear wheels' tachometer ([the preflight](actuator-tests.md#the-preflight-on-stands)).
 
 **Not today: the car on the ground.** That waits for tests 4.2 (`coast`) and 4.4 (`throttle-map`): they measure the drag and the throttle, and settle the 5 times disagreement (TODO 52b).
 

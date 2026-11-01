@@ -1,0 +1,23 @@
+# aav_ndt's node, ndt: how it filters the lidar and matches it to the map. The car's own
+# measurements (the lidar's mount, the body's outline) come from vehicle.yaml through
+# launch/ndt.launch.py; the map file and the start pose are launch arguments.
+# The numbers' reasons: docs/designs/2026-10-29_ndt.md and ndt-core's README.
+ndt:
+  ros__parameters:
+    cubes: [4.0, 2.0, 1.0]      # m, biggest first: the 4 m cubes pull in a start 1.5 m off
+    ground: above               # above: flat ground (Gazebo); lowest: per ground_cell (the car)
+    min_height: 0.3             # m above base_link (or the cell's lowest point)
+    ground_cell: 1.0            # m
+    max_range: 45.0             # m from base_link, flat
+    thin: 1.0                   # m: one point per cube of the scan
+    min_score_per_point: 2.0    # below: a poor fit. Good fits scored 3.1-3.7 on the made-up
+                                # test lot, a wrong one 1.2 (ndt-core tests). TODO fit in Gazebo
+    lost_after: 5               # poor fits in a row, then LOST and a restart from ekf_global
+    max_iterations: 30          # Newton steps per cube size
+    step_m: 0.1                 # the step cap
+    step_deg: 2.0
+    outlier_ratio: 0.55         # Autoware's
+    covariance_scale: 1.0       # k in k(-H^-1). TODO fit so Gazebo's errors match (NEES)
+    variance_floor_xy: 0.0004   # m^2: (2 cm)^2
+    variance_floor_yaw: 7.6e-5  # rad^2: (0.5 deg)^2
+    cloud_period: 0.1           # s: the lidar's 10 Hz, to count dropped clouds

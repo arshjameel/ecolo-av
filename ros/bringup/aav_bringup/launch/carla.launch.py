@@ -59,7 +59,8 @@ def launch_setup(context):
         SetParameter(name='use_sim_time', value=True),
         include(context, 'aav_carla', 'carla.launch.py', **{k: arg(k) for k in BACKEND}),
         include(context, 'aav_command_mux', 'mux.launch.py', use_sim_time='true',
-                sensor_lock=flag['watchdog']),
+                # No geofence here yet (CARLA's towns are big): its lock stays open.
+                sensor_lock=flag['watchdog'], geofence_lock='false'),
         include(context, 'aav_ego', 'ego.launch.py', use_sim_time='true',
                 sim_max_speed=arg('sim_speed')),
         # ego's commands go to carla_adapter only while every source is SIM (aav_io_mux).

@@ -7,6 +7,8 @@ Subscribes  localization/odom/global   nav_msgs/Odometry: where the car is on th
             safety/estop               std_msgs/Bool: true stops the drive
             safety/sensor_watchdog/lock  std_msgs/Bool: true, or silent for watchdog_timeout,
                                        stops the drive (as twist_mux's sensors lock)
+            safety/geofence/fence      geometry_msgs/PolygonStamped, transient local: a B
+                                       outside it is refused before the car moves
             system/source              aav_interfaces/DataSource, latched: REAL needs a person
                                        to confirm (the goal's `confirmed`)
             control/cmd_vel            geometry_msgs/TwistStamped: twist_mux's choice, to
@@ -29,7 +31,8 @@ It steers by pure pursuit: first towards B, then along the straight line to it (
 It stops at once (zero commands; ego's own deceleration) on a cancel, the e-stop, the
 watchdog's lock or its silence, a stale position or GPS fix, someone else driving, or the
 car standing still though asked to move (rules.py). It
-refuses a B over max_distance away, or inside the car's tightest turn.
+refuses a B over max_distance away, inside the car's tightest turn, or outside the
+geofence (aav_safety, whose lock at 51 holds this driver too).
 """
 
 import collections
@@ -44,8 +47,9 @@ from aav_drive_to_point.drive import Drive, Steering
 from aav_drive_to_point.line import min_radius, Pose
 from aav_interfaces.action import DriveToPoint
 from aav_interfaces.msg import DataSource
+from aav_safety.geofence import Polygon
 from geographic_msgs.msg import GeoPoint
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import PolygonStamped, TwistStamped
 from nav_msgs.msg import Odometry
 import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
@@ -110,6 +114,8 @@ class PointDriver(Node):
                                  lambda m: setattr(self, 'estop', bool(m.data)), 10)
         self.create_subscription(Bool, 'safety/sensor_watchdog/lock', self.on_lock, 10)
         self.create_subscription(DataSource, 'system/source', self.on_source, latched)
+        self.fence = None
+        self.create_subscription(PolygonStamped, 'safety/geofence/fence', self.on_fence, latched)
         self.create_subscription(TwistStamped, 'control/cmd_vel', self.on_mux, 10)
         self.from_ll = self.create_client(FromLL, '/fromLL')
         self.ego = AsyncParameterClient(self, 'ego')
@@ -140,6 +146,12 @@ class PointDriver(Node):
     def on_lock(self, msg):
         self.locked = bool(msg.data)
         self.lock_time = self.seconds()
+
+    def on_fence(self, msg):
+        try:
+            self.fence = Polygon([(p.x, p.y) for p in msg.polygon.points])
+        except ValueError as e:
+            self.get_logger().warning(f'the geofence sent no usable fence: {e}')
 
     def on_source(self, msg):
         self.sources[msg.announcer] = [s.source for s in msg.sensors]
@@ -274,6 +286,7 @@ class PointDriver(Node):
             return self.refuse(handle, why, target)
         start, _ = self.pose
         why = rules.refuse_target(start, target, self.limits, self.radius) or \
+            rules.refuse_outside(None if self.fence is None else self.fence.depth(*target)) or \
             rules.refuse_start(self.now(), self.limits, goal.confirmed)
         if why:
             return self.refuse(handle, why, target)

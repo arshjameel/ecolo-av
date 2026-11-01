@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How the car knows how fast it&#x27;s going · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/learn-speed.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>How the car knows how fast it&#x27;s going</h1>
+<div class="meta">13 min read · 11 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-day.html">Car day</a>
+<a href="tests.html">Every test</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<span class="sep">Learn:</span>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a class="here" href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#1-three-words-speed-acceleration-braking">1. Three words: speed, acceleration, braking</a><a href="#2-the-wheels-counting-pulses">2. The wheels: counting pulses</a><a href="#3-the-imu-feeling-the-push">3. The IMU: feeling the push</a><a href="#4-gps-two-ways-to-a-speed">4. GPS: two ways to a speed</a><a href="#5-lidar-localization-planned">5. Lidar localization: planned</a><a href="#6-the-ekf-what-it-reads-today">6. The EKF: what it reads today</a><a href="#7-worked-example-stopping-from-1-ms">7. Worked example: stopping from 1 m/s</a><a href="#8-where-we-use-the-speed">8. Where we use the speed</a><a href="#9-on-stands-disagreeing-on-purpose">9. On stands: disagreeing on purpose</a><a href="#10-today-vs-planned">10. Today vs planned</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
+<div class="lead"><p>Ben's question (29 Oct): once localization works, can we speed up and slow down, read
+the sensors for acceleration and braking, <strong>and</strong> judge the speed from localization?</p>
+<p><strong>Yes.</strong> The car has several ways to tell its speed. Each one fails in its own way, so we
+use them together. This page shows each one, then a braking example with numbers.</p>
+<p><strong>You'll learn:</strong></p>
+<ul>
+<li>the four speed sources: wheels, IMU, GPS, lidar;</li>
+<li>how each one goes wrong;</li>
+<li>what the EKF does with them today;</li>
+<li>one stop from 1 m/s, as each sensor sees it;</li>
+<li>where we use the speed: measuring the car, the speed loop, the preflight on stands.</li>
+</ul>
+<p>The filter behind all this is in <a href="learn-localization.html">Learn: localization</a>. The loop
+that uses the speed is in <a href="learn-control.html">Learn: control</a>.</p></div>
+<section class="card"><h2 id="1-three-words-speed-acceleration-braking">1. Three words: speed, acceleration, braking</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Word</th>
+<th>Means</th>
+<th>Unit</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Speed</strong></td>
+<td>how far you go each second</td>
+<td>m/s</td>
+<td>1 m/s = a brisk walk</td>
+</tr>
+<tr>
+<td><strong>Acceleration</strong></td>
+<td>how fast the speed changes</td>
+<td>m/s²</td>
+<td>+1 m/s²: after 1 s you go 1 m/s faster</td>
+</tr>
+<tr>
+<td><strong>Braking</strong> (deceleration)</td>
+<td>acceleration backwards</td>
+<td>m/s²</td>
+<td>−1 m/s²: from 1 m/s to 0 in 1 s</td>
+</tr>
+</tbody>
+</table></div>
+<p>Two rules link them:</p>
+<pre class="highlight"><code class="language-text">  speed  = position changing      (so: position ÷ time ──► speed)
+  accel  = speed changing         (so: add up accel over time ──► speed)</code></pre>
+<p>Each sensor gives <strong>one</strong> of the three. To get the others you divide (noisy) or add up
+(drifts). That's the whole story of this page.</p>
+</section>
+<section class="card"><h2 id="2-the-wheels-counting-pulses">2. The wheels: counting pulses</h2>
+<p>A sensor on each front wheel clicks once per hole (or spoke) as the wheel turns.</p>
+<pre class="highlight"><code class="language-text">   ●  ●  ●            one click per hole
+ ●   wheel  ●   ──►   time between clicks ──► speed
+   ●  ●  ●</code></pre>
+<p>On our car: the hardware lead's Arduino reads both front wheels and sends
+<code>WHEEL_SPEED_L</code> and <code>WHEEL_SPEED_R</code> on CAN (0x200, 0x201, 100 Hz, <code>firmware/can/aav.dbc</code>).
+<code>spine_bridge</code> turns them into <code>/vehicle/odom</code>.</p>
+<p><strong>In numbers</strong> (<code>vehicle.yaml</code>; both are guesses until someone measures):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>wheel_diameter</code></td>
+<td>0.30 m, so one turn = 0.94 m</td>
+</tr>
+<tr>
+<td><code>encoder_counts_per_rev</code></td>
+<td>8, so one click every 0.12 m</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Speed</th>
+<th>Clicks a second</th>
+<th>Time between clicks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0 m/s</td>
+<td>8.5</td>
+<td>0.12 s</td>
+</tr>
+<tr>
+<td>0.2 m/s</td>
+<td>1.7</td>
+<td>0.59 s</td>
+</tr>
+</tbody>
+</table></div>
+<p>So at walking pace it's good. Near a stop, the clicks come too slowly to tell you much.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>How it goes wrong</th>
+<th>What you see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Slip</strong>: the wheel spins on gravel or wet paint</td>
+<td>the wheels say faster than the car</td>
+</tr>
+<tr>
+<td><strong>Lock</strong>: hard braking stops the wheel; the car slides</td>
+<td>the wheels say <strong>0</strong> while the car still moves</td>
+</tr>
+<tr>
+<td><strong>Wrong size</strong>: the diameter is 1 % off</td>
+<td>every speed 1 % off, forever</td>
+</tr>
+<tr>
+<td><strong>No direction</strong>: one Hall sensor can't tell forward from back</td>
+<td>the sign comes from the drive command (<code>direction_known</code> = 0)</td>
+</tr>
+<tr>
+<td><strong>On stands</strong>: the wheels spin, the car doesn't move</td>
+<td>the wheels say 1 m/s, the car is still (section 9)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Still the best everyday speed: direct, fast, no drift.</p>
+</section>
+<section class="card"><h2 id="3-the-imu-feeling-the-push">3. The IMU: feeling the push</h2>
+<p>The IMU's <strong>accelerometer</strong> feels acceleration, like you feel pushed into your seat.
+Ours is a Yahboom on USB, 200 Hz (<a href="learn-sensors.html">Learn: sensors</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good for</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>"How hard are we braking right now?"</strong></td>
+<td>it measures that directly, 200 times a second</td>
+</tr>
+<tr>
+<td>Spotting a wheel that lies</td>
+<td>a locked wheel says 0; the IMU still feels the car slowing</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>How it goes wrong</th>
+<th>In numbers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Adding up drifts</strong>: a small bias grows</td>
+<td>a bias of 0.05 m/s², added up for 10 s = <strong>0.5 m/s</strong> wrong</td>
+</tr>
+<tr>
+<td><strong>Gravity on a slope</strong> looks like a push</td>
+<td>a 1° slope = 9.81 × sin 1° = <strong>0.17 m/s²</strong></td>
+</tr>
+<tr>
+<td><strong>Bumps and vibration</strong></td>
+<td>noisy: average it over a few tenths of a second</td>
+</tr>
+</tbody>
+</table></div>
+<p>So: trust the IMU for <strong>changes</strong> in speed over a second or two, never for the speed itself.</p>
+</section>
+<section class="card"><h2 id="4-gps-two-ways-to-a-speed">4. GPS: two ways to a speed</h2>
+<h3 id="from-positions-noisy">From positions (noisy)</h3>
+<p>Speed = how far the fix moved ÷ the time. But each fix is off by 1-3 m on its own
+(<a href="learn-gps.html">Learn: GPS</a>).</p>
+<pre class="highlight"><code class="language-text"> true path:   ●────────●          1 m in 1 s
+ GPS says:      ✕          ✕      each fix off by up to 1 m
+                └──────────┘      looks like 0 to 3 m/s</code></pre>
+<p>At 1 fix a second (our receiver, from the factory), that speed is useless second by
+second. Over 10 s it gets good: the watchdog fits a straight line through 10 s of fixes
+(<code>wheel_check.py</code>).</p>
+<h3 id="from-doppler-clean">From Doppler (clean)</h3>
+<p>The receiver also measures its own velocity from the Doppler shift of the satellites'
+signals: good to about <strong>0.05 m/s</strong>. Our driver (<code>ublox_gps</code>) publishes it on
+<code>/sensors/gps/fix_velocity</code> (<code>docs/interfaces.yaml</code>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Today, that velocity is used for</th>
+<th>Not used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the <strong>heading</strong> (<code>gps_heading</code>, into <code>ekf_global</code>)</td>
+<td>the speed: no EKF reads it as a speed</td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition warning">
+<p class="admonition-title">Never seen from our receiver</p>
+<p><code>ublox_gps</code> has never run with the car's ZED-F9R. Gazebo makes a stand-in velocity.</p>
+</div>
+</section>
+<section class="card"><h2 id="5-lidar-localization-planned">5. Lidar localization: planned</h2>
+<p>Planned (research pick 2, <a href="../designs/2026-10-28_research-picks.md">research picks</a>).
+NDT matches each lidar scan against a saved map of the lot, to a few centimetres
+(<a href="learn-localization.html#8-next-matching-the-lidar-to-a-map-ndt-and-icp">Learn: localization §8</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>GPS</th>
+<th>Lidar on a map</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Position error</td>
+<td>1-3 m</td>
+<td>a few cm</td>
+</tr>
+<tr>
+<td>Speed from 2 positions 0.1 s apart</td>
+<td>useless</td>
+<td>0.03 m ÷ 0.1 s ≈ 0.3 m/s at worst, better averaged</td>
+</tr>
+<tr>
+<td>Fails when</td>
+<td>under trees, beside buildings</td>
+<td>a bare lot with nothing to match; no map yet</td>
+</tr>
+</tbody>
+</table></div>
+<p>It doesn't slip and doesn't drift. It's a separate check on the wheels.</p>
+<p>From the lidar's points to that map: <a href="learn-lidar.html">Learn: lidar</a>.</p>
+</section>
+<section class="card"><h2 id="6-the-ekf-what-it-reads-today">6. The EKF: what it reads today</h2>
+<p>From <code>ros/localization/aav_localization/config/</code> (more in
+<a href="learn-localization.html#7-our-two-ekfs-their-real-inputs">Learn: localization §7</a>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Gives</th>
+<th><code>ekf_local</code></th>
+<th><code>ekf_global</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/vehicle/odom</code> (wheels)</td>
+<td><strong>forward speed</strong>, turn rate</td>
+<td>speed, turn</td>
+<td>speed, turn</td>
+</tr>
+<tr>
+<td><code>/sensors/imu/data</code></td>
+<td>turn rate</td>
+<td>turn</td>
+<td>turn</td>
+</tr>
+<tr>
+<td><code>/localization/gps/odom</code></td>
+<td>position</td>
+<td>-</td>
+<td><strong>x, y</strong></td>
+</tr>
+<tr>
+<td><code>/localization/gps/heading</code></td>
+<td>heading</td>
+<td>-</td>
+<td><strong>yaw</strong></td>
+</tr>
+<tr>
+<td>IMU acceleration</td>
+<td>-</td>
+<td><strong>not fused</strong></td>
+<td><strong>not fused</strong></td>
+</tr>
+<tr>
+<td>GPS Doppler as a speed</td>
+<td>-</td>
+<td>not fused</td>
+<td>not fused</td>
+</tr>
+<tr>
+<td>NDT pose</td>
+<td>-</td>
+<td>-</td>
+<td>planned</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>So the EKF's speed today is the wheels' speed.</strong> The GPS only pulls the position back
+slowly. If the wheels lie, the EKF's speed lies too.</p>
+<p>The <strong>watchdog</strong> (<code>aav_safety</code>, <code>wheel_check.py</code>) is what catches a lying wheel today:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Compares</th>
+<th>Trips when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>speed</td>
+<td>the wheels' change in speed vs the IMU's push, over 1.5 s</td>
+<td>off by 0.3 m/s for 1 s</td>
+</tr>
+<tr>
+<td>gps</td>
+<td>the wheels' speed vs a line through 10 s of GPS</td>
+<td>off by 0.15 m/s</td>
+</tr>
+</tbody>
+</table></div>
+<p>Then it says DISAGREE and stops Nav2 (never a person or a test script).</p>
+</section>
+<section class="card"><h2 id="7-worked-example-stopping-from-1-ms">7. Worked example: stopping from 1 m/s</h2>
+<p>The car drives at 1.0 m/s and brakes gently at 1.0 m/s². It stops after <strong>1 s</strong>,
+in <strong>0.5 m</strong> (distance = speed² ÷ (2 × braking) = 1 ÷ 2).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Time</th>
+<th>Truth</th>
+<th>Wheels</th>
+<th>IMU</th>
+<th>GPS (positions)</th>
+<th>GPS Doppler</th>
+<th>Lidar + NDT (planned)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.0 s</td>
+<td>1.0 m/s</td>
+<td>1.0</td>
+<td>−1.0 m/s²</td>
+<td>"somewhere 0-3 m/s"</td>
+<td>1.00 ± 0.05</td>
+<td>1.0 ± 0.1</td>
+</tr>
+<tr>
+<td>0.5 s</td>
+<td>0.5 m/s</td>
+<td>0.5 (a click every 0.24 s)</td>
+<td>−1.0 m/s²</td>
+<td>no new fix yet</td>
+<td>no new fix yet</td>
+<td>0.5 ± 0.1</td>
+</tr>
+<tr>
+<td>1.0 s</td>
+<td>0</td>
+<td>0.1-0.2: still waiting for a click</td>
+<td>0</td>
+<td>one fix: no use</td>
+<td>0.00 ± 0.05</td>
+<td>0.0 ± 0.1</td>
+</tr>
+<tr>
+<td>1.5 s</td>
+<td>0</td>
+<td>0, after the stale timeout</td>
+<td>0</td>
+<td></td>
+<td></td>
+<td>0.0</td>
+</tr>
+</tbody>
+</table></div>
+<p>What to take from it:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Best answer from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>How hard did we brake?</td>
+<td>the <strong>IMU</strong>: −1.0 m/s², at once</td>
+</tr>
+<tr>
+<td>How fast at each moment?</td>
+<td>the <strong>wheels</strong>, until the last few tenths</td>
+</tr>
+<tr>
+<td>When did we really stop?</td>
+<td>the IMU (the push ends) and later the lidar</td>
+</tr>
+<tr>
+<td>Where did we stop?</td>
+<td>lidar + NDT (planned); today the EKF, ± GPS's metre</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-same-stop-wheels-locked">The same stop, wheels locked</h3>
+<p>Now a hard stop on gravel: the front wheels lock at 0.4 s, while the car still does 0.6 m/s.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Sensor</th>
+<th>Says</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Wheels</td>
+<td><strong>0</strong>, at 0.4 s. Wrong: the car slides on</td>
+</tr>
+<tr>
+<td>IMU</td>
+<td>still −1.x m/s² until the car really stops</td>
+</tr>
+<tr>
+<td>EKF today</td>
+<td>believes the wheels: "stopped" 0.6 s too early, about 0.2 m short</td>
+</tr>
+<tr>
+<td>Watchdog</td>
+<td>a gap for about 0.6 s, under its 1 s: it says nothing</td>
+</tr>
+</tbody>
+</table></div>
+<p>That's why the control plan wants <strong>the IMU's acceleration to help while braking</strong>.</p>
+</section>
+<section class="card"><h2 id="8-where-we-use-the-speed">8. Where we use the speed</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Use</th>
+<th>Reads</th>
+<th>Page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Measuring the car</strong>: <code>max_accel</code>, <code>max_brake</code>, <code>drag</code>, lags into <code>vehicle.yaml</code></td>
+<td>wheels for speed; the IMU for the g figures and the brake fit</td>
+<td><a href="actuator-tests.html">Actuator tests</a>, <a href="measure-the-car.html">Measure the car</a></td>
+</tr>
+<tr>
+<td><strong>Scoring a run</strong>: rise, overshoot, hold, stop error</td>
+<td>Gazebo's truth, else the wheels, else <code>ekf_global</code>; the stop from the EKF or a tape</td>
+<td><code>tools/atob_score.py</code>, <a href="a-to-b.html">A to B</a></td>
+</tr>
+<tr>
+<td><strong>The speed loop's feedback</strong>: feed-forward + PI</td>
+<td>wheel speed; the IMU to help while braking</td>
+<td><a href="../designs/2026-10-27_control-plan.md">the control plan</a>, <a href="learn-control.html">Learn: control</a></td>
+</tr>
+<tr>
+<td><strong>Catching a lying sensor</strong></td>
+<td>wheels vs IMU vs GPS</td>
+<td><code>aav_safety</code> <code>wheel_check.py</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><code>vehicle.yaml</code>'s <code>max_accel</code> (1.5 m/s²) and <code>max_brake</code> (3.0 m/s²) are <strong>guesses</strong> until
+tests 4.1 and 4.3 run in a lot.</p>
+</section>
+<section class="card"><h2 id="9-on-stands-disagreeing-on-purpose">9. On stands: disagreeing on purpose</h2>
+<p>The preflight on stands (<code>pixi run preflight</code>, 29 Oct; <a href="actuator-tests.html#the-preflight-on-stands">Actuator tests</a>)
+lifts the car, so the wheels spin in the air. On stands, <code>actuator-test</code> caps the speed
+at 0.3 m/s.</p>
+<div class="admonition warning">
+<p class="admonition-title">Today nothing measures the spinning wheels</p>
+<p>The motor drives the <strong>rear</strong> wheels; the sensors are on the <strong>front</strong> ones. On
+stands the front wheels stand still, so <code>/vehicle/odom</code> says 0 (TODO 49b). The table
+below needs a rear-wheel speed; until then the preflight only checks the sensors
+(<code>--no-drive</code>).</p>
+</div>
+<pre class="highlight"><code class="language-text">   wheels:  0.3 m/s  ──►  "we're moving"
+   IMU:     0         ──►  "nothing pushed me"
+   GPS:     still     ──►  "same place"</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The wheels</td>
+<td>read the motor's speed: exactly what we want to test</td>
+</tr>
+<tr>
+<td><code>ekf_local</code></td>
+<td>adds up the wheel speed: it thinks the car drove away. Ignore it on stands</td>
+</tr>
+<tr>
+<td>The watchdog</td>
+<td>expect <strong>DISAGREE</strong>, latched: 0.3 m/s of wheels against a still GPS is over its 0.15 m/s limit. It holds only Nav2 and friends, not <code>actuator-test</code>. Clear it after: <code>pixi run watchdog-clear</code></td>
+</tr>
+<tr>
+<td>The preflight's check</td>
+<td>wheels follow the command; the IMU's speed change stays under 0.4 x the wheels', the GPS's Doppler under 0.1 m/s: that's a <strong>pass</strong>. While it runs, an IMU that says the car moves stops it</td>
+</tr>
+</tbody>
+</table></div>
+<p>Off the stands, the same disagreement means a fault. On the stands, it means the wheels
+work and nothing else is fooled into moving.</p>
+</section>
+<section class="card"><h2 id="10-today-vs-planned">10. Today vs planned</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>Today</th>
+<th>Planned</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Wheel speed on CAN → <code>/vehicle/odom</code></td>
+<td>✅ built; bench-tested; never seen the Arduino's frames</td>
+<td>the rotor's holes counted, the diameter measured</td>
+</tr>
+<tr>
+<td>IMU acceleration</td>
+<td>read by the watchdog and actuator tests; <strong>not</strong> in the EKF</td>
+<td>helps the speed loop while braking</td>
+</tr>
+<tr>
+<td>GPS positions</td>
+<td>in <code>ekf_global</code> (x, y); the watchdog's 10 s check</td>
+<td></td>
+</tr>
+<tr>
+<td>GPS Doppler velocity</td>
+<td>the heading only</td>
+<td>maybe a speed input too: an idea, not planned</td>
+</tr>
+<tr>
+<td>Lidar + NDT</td>
+<td>❌</td>
+<td>research pick 2: a map with KISS-ICP, then NDT into <code>ekf_global</code></td>
+</tr>
+<tr>
+<td>Speed loop on wheel speed</td>
+<td>in <code>spine-core</code> and Gazebo; today's ESP32 is open loop</td>
+<td>the control plan, steps 1 and 3</td>
+</tr>
+<tr>
+<td>Preflight on stands</td>
+<td><code>actuator-test --stands</code> (steering only)</td>
+<td>TODO 29 Oct: speed up, hold, brake, every sensor live</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="where-this-lives-in-the-code">Where this lives in the code</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Wheel frames</td>
+<td><code>firmware/can/aav.dbc</code> (0x200, 0x201)</td>
+</tr>
+<tr>
+<td>Wheel frames → <code>/vehicle/odom</code></td>
+<td><code>ros/can_bridge/aav_spine</code> <code>spine_bridge.py</code>, <code>aav_spine_bridge</code> (Rust)</td>
+</tr>
+<tr>
+<td>Wheel size, the guesses</td>
+<td><code>ros/bringup/aav_description/config/vehicle.yaml</code></td>
+</tr>
+<tr>
+<td>The EKFs</td>
+<td><code>ros/localization/aav_localization/config/ekf_local.yaml</code>, <code>ekf_global.yaml</code></td>
+</tr>
+<tr>
+<td>GPS driver settings</td>
+<td><code>ros/sources/aav_sensors/config/ublox_gps.yaml</code></td>
+</tr>
+<tr>
+<td>Wheels vs IMU vs GPS</td>
+<td><code>ros/safety/aav_safety/aav_safety/wheel_check.py</code></td>
+</tr>
+<tr>
+<td>The speed loop</td>
+<td><code>firmware/spine/crates/spine-core/src/speed_loop.rs</code></td>
+</tr>
+<tr>
+<td>Scoring a run</td>
+<td><code>tools/atob_score.py</code></td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="learn-localization.html"><small>Previous</small>← Learn: localization</a>
+<a class="next" href="learn-lidar.html"><small>Next</small>Learn: lidar →</a></nav>
+</main>
+<footer>Source: <code>docs/learn-speed.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

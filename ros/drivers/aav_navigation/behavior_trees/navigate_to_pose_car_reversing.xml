@@ -7,7 +7,7 @@
     checks the local costmap before it reverses, but behind the car that is only what the
     radar saw on the way in.
   navigate_to_pose_car.xml is the same tree without BackUp; test_behavior_trees.py checks
-  that they stay the same otherwise. Replans at 1 Hz.
+  that they stay the same otherwise. Replans at 1 Hz, except on the final approach (below).
 -->
 <root BTCPP_format="4" main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
@@ -15,14 +15,35 @@
       <PipelineSequence name="NavigateWithReplanning">
         <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
         <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
+        <!-- Plans again once a second, as Nav2's own tree, except on the final approach:
+             within 8 m of the goal (vehicle.final_approach: 2 planned turning radii) it keeps
+             the path it has, as long as that still ends at this goal, nothing blocks it
+             (IsPathValid) and it is under 20 s old. Replanning there made the car circle
+             goals (TODO 17): from a few metres out, a little off the line or behind on the
+             last bend, the only path to the goal's heading at the planner's radius is a
+             loop (Smac planned 21-25 m loops 1-4 m out in 10 of 12 Gazebo runs), and each
+             new path resets controller_server's goal checker. The RateController stays
+             outside the Fallback: inside it, the Fallback would restart it every tick. -->
         <RateController hz="1.0">
-          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
-            <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
-            <Sequence>
-              <WouldAPlannerRecoveryHelp error_code="{compute_path_error_code}"/>
-              <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
-            </Sequence>
-          </RecoveryNode>
+          <Fallback name="PlanUnlessOnTheFinalApproach">
+            <ReactiveSequence name="OnTheFinalApproach">
+              <GetCurrentPose current_pose="{current_pose}"/>
+              <ArePosesNear ref_pose="{current_pose}" target_pose="{goal}" tolerance="8.0"/>
+              <GetPoseFromPath path="{path}" index="-1" pose="{path_end}"/>
+              <ArePosesNear ref_pose="{path_end}" target_pose="{goal}" tolerance="0.5"/>
+              <Inverter>
+                <PathExpiringTimer seconds="20.0" path="{path}"/>
+              </Inverter>
+              <IsPathValid path="{path}"/>
+            </ReactiveSequence>
+            <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+              <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
+              <Sequence>
+                <WouldAPlannerRecoveryHelp error_code="{compute_path_error_code}"/>
+                <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+              </Sequence>
+            </RecoveryNode>
+          </Fallback>
         </RateController>
         <RecoveryNode number_of_retries="1" name="FollowPath">
           <FollowPath path="{path}" controller_id="{selected_controller}" error_code_id="{follow_path_error_code}"/>

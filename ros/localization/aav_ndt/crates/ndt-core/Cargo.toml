@@ -1,0 +1,11 @@
+[package]
+name = "ndt-core"
+description = "NDT scan matching on a saved lidar map, in x, y and yaw, without ROS: the map's cubes, the score and its derivatives, Newton with a line search, the scan filters, the guess from odometry, and when it is lost"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# Apache-2.0 (docs/designs/2026-10-28_research-picks.md): 3x3 matrices, eigenvalues.
+nalgebra = { version = "0.35", default-features = false, features = ["std"] }

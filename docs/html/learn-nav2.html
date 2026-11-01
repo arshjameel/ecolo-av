@@ -7,7 +7,7 @@
 <!-- Generated from docs/learn-nav2.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Nav2 from zero</h1>
-<div class="meta">12 min read · 11 sections</div></header>
+<div class="meta">13 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -37,15 +37,20 @@
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
 <a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
 <a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
 <a href="maps-and-position.html">Maps and position</a>
 <a class="here" href="learn-nav2.html">Learn: Nav2</a>
-<span class="sep">Reference:</span>
 <a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
 <a href="costmaps.html">Costmaps</a>
-<a href="controllers.html">Path followers</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
@@ -69,6 +74,7 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
@@ -132,7 +138,7 @@ GPS is in <a href="maps-and-position.html">Maps and position</a>.</p></div>
 <tr>
 <td><strong>Controller</strong></td>
 <td>steers along that path</td>
-<td>MPPI (or Regulated Pure Pursuit: <code>controller:=rpp</code>), on the local costmap, 20 Hz (<a href="controllers.html">path followers</a>)</td>
+<td>MPPI (or Regulated Pure Pursuit: <code>controller:=rpp</code>), on the local costmap, 20 Hz (<a href="path-followers.html">path followers</a>)</td>
 </tr>
 <tr>
 <td><strong>Velocity smoother</strong></td>
@@ -225,7 +231,7 @@ paths with sharp corners: fine for a robot that spins on the spot, not for a car
 </section>
 <section class="card"><h2 id="2-the-controller-regulated-pure-pursuit">2. The controller: Regulated Pure Pursuit</h2>
 <p>Since 22 Oct the default is MPPI, which tries 2000 futures through a model of the car
-(<a href="controllers.html">path followers</a>). Pure pursuit is still the easiest way in, and
+(<a href="path-followers.html">path followers</a>). Pure pursuit is still the easiest way in, and
 <code>controller:=rpp</code> brings it back.</p>
 <p><strong>Pure pursuit</strong> is how you steer a bike: look at a point on the path a little ahead (the
 <strong>carrot</strong>), and turn so you'd arc through it.</p>
@@ -331,6 +337,7 @@ can tell (22 Oct; tighter, the car looped to fix misses it couldn't see). <stron
 standard tree, changed for a car.</p>
 <pre class="highlight"><code class="language-text">Navigate (up to 6 tries)
  ├─ every 1 s: plan a path  ── fails? clear the global costmap, try again
+ │    (not in the last 8 m: keep the path, unless blocked or 20 s old)
  ├─ follow the path         ── fails? clear the local costmap, try again
  └─ still failing? take turns: clear both costmaps, or wait 5 s</code></pre>
 <div class="table-wrap"><table>
@@ -352,6 +359,10 @@ standard tree, changed for a car.</p>
 <tr>
 <td>Server timeouts 1 s, not Nav2's 20 ms</td>
 <td>a busy computer failed whole goals (the bench, 11 Oct)</td>
+</tr>
+<tr>
+<td><strong>Keep the path for the last 8 m</strong></td>
+<td>a path planned a few metres from the goal is often a loop for a car, and each new path resets the goal checker: the car circled goals (<a href="path-followers.html#circling-a-goal-found-and-fixed-29-october-todo-17">TODO 17</a>)</td>
 </tr>
 </tbody>
 </table></div>

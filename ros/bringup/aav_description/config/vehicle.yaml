@@ -39,6 +39,10 @@ vehicle:
   tyre_grip: 0.7            # g: the most the tyres push before they slide. GUESS (dry asphalt
                             # 0.7-0.9): TODO test 4.3, if full brake skids the wheels
   encoder_counts_per_rev: 8 # spokes on the encoder wheel (Wheel_Encoders wiznet.ino:29)
+  speed_wheels: front       # which wheels /vehicle/odom measures: front (the Arduino's two
+                            # sensors, docs/learn-speed.md) or rear. The car is rear-wheel
+                            # drive, so on stands only "rear" sees the motor: the preflight
+                            # drives the real car only then. TODO 49b, the hardware lead
 
 # How the car answers its commands: the actuator model in Gazebo (aav_gazebo
 # actuator_model.py; docs/full-simulation.md, step 3). Units: m/s^2, s, rad, 1/s;
@@ -67,6 +71,10 @@ actuators:
   # throttle_dead_time: 0.0   # s. GUESS placeholder: TODO test 4.1
   # brake_dead_time: 0.0      # s. GUESS placeholder: TODO test 4.3
   # steer_dead_time: 0.0      # s. GUESS placeholder: TODO test 3.11
+  # How the car stops with legacy_uart_bridge's speed_loop.mode open (it brakes only below
+  # stop_speed). Not measured, so not set: the geofence holds every program (COASTING)
+  # until it is (aav_safety geofence.py coasts). Example of the form, NOT a value:
+  # open_loop_decel: 0.0      # m/s^2, the average from 1 m/s to a stop. TODO test 4.3
 
 # Sensor mounts, relative to base_link. xyz in metres, rpy in radians.
 sensors:
@@ -87,7 +95,7 @@ sensors:
     xyz: [1.75, 0.29, 1.55]   # TODO measure (stereo baseline about 0.58 m, cameras/right.ini:25)
     rpy: [0.0, 0.0, 0.0]
   camera_right_link:          # front right, the same. Not lower or further back: Gazebo's
-    xyz: [1.75, -0.29, 1.55]  # car is a solid box, and a camera inside it sees its walls
+    xyz: [1.75, -0.29, 1.55]  # car is a solid box, and a camera inside it sees its walls. TODO measure
     rpy: [0.0, 0.0, 0.0]
   camera_rear_link:           # the orange housing on the tailgate's DIN rail, looking back
     xyz: [-0.20, 0.00, 0.90]  # TODO measure

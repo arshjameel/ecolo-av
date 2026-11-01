@@ -79,12 +79,16 @@ The `Task` column is `pixi run <task>`; "-" means run the script itself.
 |---|---|---|
 | `ros.sh` | the workspace sourced; `--local` for stand-ins | (most tasks) |
 | `demo_all.sh` | Gazebo, RViz, the HUD and the map window in one go | `demo` |
+| `pick.py` | a plain-words menu of the sim's switches (route, follower, where-am-I, speed loop): prints, saves and runs the command (`docs/switches.md`) | `pick` |
 | `sim_fault.sh` | make a Gazebo sensor fail on purpose, or mend it | `sim-fault` |
 | `gz_window.sh` | Gazebo's window again, following the car | `gz-window` |
 | `software_gl.sh` | Mesa's software OpenGL, for Gazebo with no GPU | - (put in front) |
 | `fake_vlp16.py` | pretends to be the VLP-16 lidar: its UDP packets | - |
-| `controller_compare.py` | Regulated Pure Pursuit against MPPI, same routes | `controller-compare` |
+| `controller_compare.py` | Regulated Pure Pursuit against MPPI, and the trial trackers, planners, AMCL and NDT (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt`), same routes | `controller-compare` |
+| `lattice_primitives.py` | the State Lattice planner's primitives for our car, by Nav2's generator (`--check`: still right for `vehicle.yaml`?) | `lattice-primitives` |
 | `heading_check.py` | the global EKF's heading against Gazebo's truth | `heading-check` |
+| `ndt_map.py` | NDT's map of the test lot: drive the mapping route, or build from a bag (its maths without ROS) | `ndt-map` |
+| `gazebo_steering.py` | how much later Gazebo's wheels turn than the actuator model's (run with `tools/ros.sh --local`) | - |
 | `timing_test.py` | every topic's gaps and late messages, parked and driving | `timing-test` |
 | `stream_check.py` | the camera stream end to end, without the car | `stream-check` |
 | `sim_frames.py` | camera pictures of the sim's stop sign, for the detectors | - |
@@ -137,6 +141,7 @@ Each lands outside git, checksum pinned where the script says.
 | `export_model.py` | a detector to Core ML (Mac) or ONNX (Orin) | `-e ml export-coreml` |
 | `vehicle_model.py` | the car's linear model: poles, steps, margins | `vehicle-model` |
 | `state_space_demo.py` | the state-space teaching example | `state-space-demo` |
+| `measure_map.py` | the measuring map: tape route, pictures, readings into `vehicle.yaml` (no ROS) | `measure-map` |
 
 ### MCP server
 
@@ -183,7 +188,7 @@ Each lands outside git, checksum pinned where the script says.
 | `replay_commands.sh` (always: it has no `--sim`) | **moves whatever shares the ROS domain**: on the car's network, the car |
 | `get_*.sh`, `vendor.py`, `car_kit.sh` | download into `vendor/` (`car_kit.sh` caches in `vendor/car-kit-cache`), `models/`, `maps/`, `car-kit/` |
 | `car_day_build.sh` | writes `car-day/esp32/` and `docs/html/` |
-| `build_docs.py`, `graph_picture.py`, `vehicle_model.py`, `state_space_demo.py` | write `docs/html/`, `docs/img/` |
+| `build_docs.py`, `graph_picture.py`, `vehicle_model.py`, `state_space_demo.py`, `measure_map.py` | write `docs/html/`, `docs/img/` (`measure_map.py` also its table in `docs/measure-the-car.md`) |
 | `make_stop_sign.py`, `make_map.py` | write the stop sign's files in `ros/sim/aav_gazebo/models/`; a map's PGM and YAML |
 | `record.sh` | writes `bags/` |
 | `esp32.sh flash`, `legacy_firmware.sh -t upload` | write a board's flash (bench only) |

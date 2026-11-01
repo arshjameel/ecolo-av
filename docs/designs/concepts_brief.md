@@ -117,7 +117,7 @@ instead:
 - an A-to-B scorer on `drive_metrics.py`: stop error along the track, overshoot past B,
   speed error while holding, peak deceleration, jerk;
 - the same scorer for recorded car runs (replay);
-- at least 3 runs per variant (`controllers.md` treats one-run gaps under 20% as noise).
+- at least 3 runs per variant (`path-followers.md` treats one-run gaps under 20% as noise).
 
 ### 6. Structure and upkeep (structural, design)
 

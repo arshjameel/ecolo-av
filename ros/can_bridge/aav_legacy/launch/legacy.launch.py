@@ -25,7 +25,11 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     config = PathJoinSubstitution([FindPackageShare('aav_legacy'), 'config', 'legacy.yaml'])
-    v = vehicle.load()['vehicle']
+    car = vehicle.load()
+    v = car['vehicle']
+    # The speed loop's car model (speed_loop.mode: pi): vehicle.yaml's actuators:, as Gazebo's.
+    model = {f'speed_loop.{k}': float(car['actuators'][k])
+             for k in ('max_accel', 'max_brake', 'drag')}
     use_sim_time = {'use_sim_time': LaunchConfiguration('use_sim_time')}
     return LaunchDescription([
         DeclareLaunchArgument('uart', default_value='true'),
@@ -39,7 +43,7 @@ def generate_launch_description():
             executable='legacy_uart_bridge',
             name='legacy_uart_bridge',
             parameters=[config, {'max_steering_angle': float(v['max_steering_angle'])},
-                        use_sim_time],
+                        model, use_sim_time],
             condition=IfCondition(LaunchConfiguration('uart')),
         ),
         Node(

@@ -16,10 +16,12 @@ to ego. A person always outranks the computer.
 | [aav_scripted](./aav_scripted/README.md) | `/scripted_drive`: one speed profile | `/drivers/scripted/cmd_vel` | 50 |
 | [aav_drive_to_point](./aav_drive_to_point/README.md) | `/drive_to_point`: drive to one GPS or map point and stop | `/drivers/point/cmd_vel` | 25 |
 | [aav_navigation](./aav_navigation/README.md) | Nav2 (Smac Hybrid planner, MPPI), behaviour trees, maps | `/drivers/nav/cmd_vel` | 20 |
+| [aav_track](./aav_track/README.md) | trial path followers (pure pursuit, Stanley, LQR, MPC, MPC with speed) in controller_server's place: `tracker:=` (`docs/trials.md`) | `cmd_vel_nav`, inside Nav2's slot | (20) |
 | [aav_routes](./aav_routes/README.md) | street routes (Valhalla or OSRM) as Nav2 GPS waypoints | `/drivers/nav/route/*` | — |
 | [aav_language](./aav_language/README.md) | plain-English driving: MCP drive tools and a local-model agent | uses the actions above | — |
 
 The lane follower on the AI slot (priority 10) lives in `ros/perception/aav_lane_geometry`.
+The hardware panel's buttons (`/drivers/buttons/cmd_vel`, priority 45) live in `ros/hud/aav_hud` (`hw_panel`).
 
 ## Invariants
 

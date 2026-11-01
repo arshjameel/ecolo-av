@@ -12,7 +12,9 @@ shows each loop on our car and the limits and timeouts around them.
 - rate limits, timeouts and safe states.
 
 The maths under the loops (state space, transfer functions, poles, Bode) is in
-[Learn: state space](learn-state-space.md).
+[Learn: state space](learn-state-space.md). Every controller we use or are looking at
+(PI, feed-forward, LQR, MPC, pure pursuit, Stanley, MPPI, the Jrk's PID), side by side:
+[Controllers](controllers.md).
 
 ## 1. Open loop vs closed loop
 
@@ -76,6 +78,8 @@ I term, so it can't grow huge while the car is stuck.
 
 **The rule:** the inner loops are fast and simple, and sit next to the motor. If the
 Orin hiccups for 50 ms, the board keeps the speed steady.
+
+Which controller could go in each loop, and which we chose: [Controllers](controllers.md).
 
 ## 4. Ackermann and the bicycle model
 

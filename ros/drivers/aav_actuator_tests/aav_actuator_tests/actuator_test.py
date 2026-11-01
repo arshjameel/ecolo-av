@@ -26,6 +26,9 @@ Subscribes  vehicle/odom             nav_msgs/Odometry: the measured speed
             localization/odom/local  nav_msgs/Odometry: the pose (circles, straight)
             sensors/gps/fix          sensor_msgs/NavSatFix
             safety/estop             std_msgs/Bool: true stops the test
+            safety/geofence/state    std_msgs/String: NEAR, OUTSIDE, LOST or JUMP stops a
+                                     test on the ground (its slot, 60, is above the
+                                     geofence's lock); silent refuses one on the real car
             control/cmd_vel          geometry_msgs/TwistStamped: twist_mux's choice
             ego/actuator_cmd         ackermann_msgs/AckermannDriveStamped: what ego told the
                                      backend (logged: the fits' plant boundary)
@@ -70,7 +73,7 @@ from rclpy.parameter_client import AsyncParameterClient
 from rclpy.qos import DurabilityPolicy, qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
 from rclpy.signals import SignalHandlerOptions
 from sensor_msgs.msg import Imu, NavSatFix, NavSatStatus
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 import yaml
 
 NAN = float('nan')
@@ -103,6 +106,7 @@ class ActuatorTest(Node):
         self.arrived = {}                              # t_* column -> arrival (s, clock)
         self.odom_time = None
         self.estop = False
+        self.geofence = None          # (arrival s on the steady clock, the state's line)
         self.sources = {}
         self.mux = collections.deque(maxlen=200)       # (arrival s, v, w) from twist_mux
         self.sent = collections.deque(maxlen=50)       # our last commands (v, w)
@@ -121,6 +125,7 @@ class ActuatorTest(Node):
         self.create_subscription(Odometry, 'localization/odom/local', self.on_pose, sensor)
         self.create_subscription(NavSatFix, 'sensors/gps/fix', self.on_fix, sensor)
         self.create_subscription(Bool, 'safety/estop', self.on_estop, 10)
+        self.create_subscription(String, 'safety/geofence/state', self.on_geofence, 10)
         self.create_subscription(TwistStamped, 'control/cmd_vel', self.on_mux, 10)
         self.create_subscription(DataSource, 'system/source', self.on_source, latched)
         self.create_subscription(AckermannDriveStamped, 'ego/actuator_cmd', self.on_ego, sensor)
@@ -178,6 +183,15 @@ class ActuatorTest(Node):
 
     def on_estop(self, msg):
         self.estop = bool(msg.data)
+
+    def on_geofence(self, msg):
+        self.geofence = (time.monotonic(), msg.data)
+
+    def geofence_says(self):
+        """Return (state, age) of the geofence's last line, (None, None) if never heard."""
+        if self.geofence is None:
+            return None, None
+        return self.geofence[1], time.monotonic() - self.geofence[0]
 
     def on_mux(self, msg):
         self.mux.append((time.monotonic(), msg.twist.linear.x, msg.twist.angular.z))
@@ -249,10 +263,10 @@ class ActuatorTest(Node):
 class Run:
     """One test run: the checks before, the loop, the stop, the files."""
 
-    def __init__(self, node, args):
+    def __init__(self, node, args, test=None):
         self.node = node
         self.args = args
-        self.test = pr.TESTS[args.test]
+        self.test = test or pr.TESTS[args.test]
         self.rows = []
         self.driving = False
         self.abort = None
@@ -261,6 +275,9 @@ class Run:
         self.manual = False
         self.paused = 0.0
         self.shaping = {}
+        self.history = collections.deque(maxlen=250)   # (t, our last command, speed)
+        self.last_cmd = 0.0
+        self.checklist = None                          # None: the stage's own
 
     def say(self, text=''):
         print(text, flush=True)
@@ -278,7 +295,8 @@ class Run:
         node.spin_for(3.0, lambda: bool(node.sources))
         node.spin_for(0.5)   # the other announcers
         kind = safety.source_kind(node.sources)
-        self.decision = d = safety.decide(kind, a.sim, a.stands, self.test.stage, a.max_speed)
+        self.decision = d = safety.decide(kind, a.sim, a.stands, self.test.stage, a.max_speed,
+                                          bench=a.bench)
         self.kind = kind
         if not d.allowed:
             self.say(f'REFUSED: {d.reason}')
@@ -305,7 +323,7 @@ class Run:
         if note:
             self.say(f'NOTE: {note}')
         self.settings = settings
-        self.plan = pr.plan(self.test.name, settings, a.max_distance, a.max_time)
+        self.plan = pr.plan(self.test, settings, a.max_distance, a.max_time)
         self.envelope = safety.Envelope(safety.speed_limit(settings.cap), self.plan.distance,
                                         self.plan.time)
         self.say(f'Driving: {d.reason} ({kind.value}). Speed cap {settings.cap:g} m/s; '
@@ -314,7 +332,7 @@ class Run:
         if d.confirm:
             self.say()
             self.say('THE REAL CAR. Check, out loud:')
-            for item in safety.checklist(a.stands):
+            for item in self.checklist or safety.checklist(a.stands):
                 self.say(f'  [ ] {item}')
             if not a.stands:
                 self.say(f'  [ ] Room for up to {self.envelope.max_distance:.0f} m of driving')
@@ -340,6 +358,11 @@ class Run:
         node.spin_for(1.0)   # the rest of the sensors
         if node.estop:
             self.say('REFUSED: /safety/estop is true. Clear it first (pixi run estop-clear)')
+            return 1
+        why = safety.geofence_stop(*node.geofence_says(), self.args.stands, self.decision.real,
+                                   starting=True)
+        if why:
+            self.say(f'REFUSED: {why}')
             return 1
         if not math.isfinite(node.v['ax']):
             self.say('WARNING: no IMU (/sensors/imu/data_raw): no g figures from it')
@@ -405,12 +428,21 @@ class Run:
         grace = time.monotonic() < last['grace']
         if node.estop:
             raise Aborted('/safety/estop is true')
+        why = safety.geofence_stop(*node.geofence_says(), self.args.stands, self.decision.real)
+        if why:
+            raise Aborted(why)
         if not grace and not self.fresh_odom():
             raise Aborted(f'no /vehicle/odom for {ODOM_STALE} s: the speed is unknown')
         why = self.envelope.breach(speed, last['distance'], elapsed)
         if why:
             raise Aborted(why)
         self.check_mux()
+        # Told to drive but nothing measured (front sensors on stands), or a speed that
+        # rises while the command falls (a stuck throttle): stop.
+        self.history.append((elapsed, self.last_cmd, speed))
+        why = safety.unseen(self.history) or safety.runaway(self.history)
+        if why:
+            raise Aborted(why)
 
         obs = pr.Obs(elapsed, speed, last['distance'], last['heading'])
         cmd = self.runner.tick(obs)
@@ -419,6 +451,7 @@ class Run:
             return
         speed_cmd = min(cmd.speed, self.settings.cap)
         node.send(speed_cmd, cmd.steering, self.settings.wheelbase)
+        self.last_cmd = speed_cmd
         row = dict(v)
         row.update(t=elapsed, phase=cmd.phase, cmd_speed=speed_cmd, cmd_steer=cmd.steering,
                    heading=last['heading'], distance=last['distance'], manual_steer=NAN)
@@ -454,6 +487,9 @@ class Run:
         for d in new:
             if d.timed_out:
                 self.say(f'  step "{d.step.phase}" timed out after {d.end - d.start:.1f} s')
+                if d.step.must:
+                    raise Aborted(f'step "{d.step.phase}" did not finish in '
+                                  f'{d.end - d.start:.0f} s: stopping rather than going on')
             if self.manual and d.step.measure:
                 self.ask_angle(d.step)
 
@@ -478,6 +514,7 @@ class Run:
         self.paused += waited
         self.last['grace'] = time.monotonic() + 1.0
         self.last['started'] = time.monotonic()
+        self.history.clear()   # the wheels stopped while nothing was sent: start afresh
         self.last['wall'] = time.monotonic()
 
     # --- after -------------------------------------------------------------------------
@@ -596,6 +633,10 @@ def analyse_folder(folder):
     """Make a run's report again from its log.csv and meta.yaml (no ROS needed)."""
     with open(os.path.join(folder, 'meta.yaml')) as f:
         meta = yaml.safe_load(f)
+    if meta['test'] == 'preflight':   # its lines need the sensors' counts: kept as written
+        with open(os.path.join(folder, 'summary.txt')) as f:
+            print(f.read().rstrip())
+        return 0
     with open(os.path.join(folder, 'log.csv'), newline='') as f:
         rows = reports.parse_rows(list(csv.DictReader(f)))
     rep = reports.analyse(meta['test'], rows, reports.context_from_meta(meta))
@@ -620,8 +661,17 @@ def parse(argv):
         description="docs/tests.md's stage-3 and stage-4 tests: drive, log, report.")
     p.add_argument('test', nargs='?', choices=list(pr.TESTS), help='the test to run')
     p.add_argument('--list', action='store_true', help='list the tests')
-    p.add_argument('--sim', action='store_true',
-                   help='Gazebo: simulated time, this computer only (pixi run sim first)')
+    where = p.add_mutually_exclusive_group()
+    where.add_argument('--sim', action='store_true',
+                       help='Gazebo: simulated time, this computer only (pixi run sim first)')
+    where.add_argument('--bench', action='store_true',
+                       help='bench mode, this computer only (pixi run bench first)')
+    p.add_argument('--skip', nargs='+', default=[], metavar='SENSOR',
+                   help='preflight: sensors meant to be off (odom, wheels, steering, imu, '
+                        'imu_filtered, gps, lidar, radar, camera, battery)')
+    p.add_argument('--no-drive', action='store_true',
+                   help='preflight: the sensors only, nothing moves (the real car until it '
+                        'has a driven-wheel speed)')
     p.add_argument('--stands', action='store_true',
                    help='the wheels are off the ground (stage 3): speed capped at 0.3 m/s')
     p.add_argument('--max-speed', type=float, default=None,
@@ -639,6 +689,18 @@ def parse(argv):
     args = p.parse_args(argv)
     if not (args.list or args.analyse or args.test):
         p.error('name a test (--list shows them)')
+    if args.test != 'preflight' and (args.skip or args.no_drive):
+        p.error('--skip and --no-drive are for the preflight only')
+    if args.test == 'preflight':
+        from aav_actuator_tests.preflight import NAMES
+        unknown = sorted(set(args.skip) - set(NAMES))
+        if unknown:
+            p.error(f'--skip: no sensor {", ".join(unknown)} (pick from {", ".join(NAMES)})')
+        if not args.stands:
+            p.error('the preflight runs on stands: add --stands (pixi run preflight does)')
+        if args.speeds or args.angles or args.max_distance or args.max_time:
+            p.error('the preflight has fixed steps: no --speeds, --angles, --max-distance '
+                    'or --max-time')
     return args
 
 
@@ -654,8 +716,14 @@ def main(argv=None):
     warnings.filterwarnings('ignore', message="coroutine 'Executor._make_handler")
     # No rclpy signal handler: Ctrl-C must leave ROS working, to send the stop commands.
     rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
-    node = ActuatorTest(args.sim)
-    run = Run(node, args)
+    if args.test == 'preflight':
+        # Its own counters and report (preflight_node.py); the same Run underneath.
+        from aav_actuator_tests.preflight_node import PreflightNode, PreflightRun
+        node = PreflightNode(args.sim)
+        run = PreflightRun(node, args)
+    else:
+        node = ActuatorTest(args.sim)
+        run = Run(node, args)
     code = 0
     try:
         code = run.prepare()
@@ -684,7 +752,8 @@ def main(argv=None):
         finally:
             node.destroy_node()
             rclpy.try_shutdown()
-    return code or 0
+    # The preflight: 5 when a check failed, 6 when the car would not stop.
+    return max(code or 0, getattr(run, 'result', 0))
 
 
 if __name__ == '__main__':

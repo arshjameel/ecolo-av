@@ -8,6 +8,8 @@ The car's linear model: print its poles, step responses and margins, and draw th
     pixi run vehicle-model --no-figures         the tables only
     pixi run vehicle-model --speed-loop         TODO 27: the speed loop's designs against the
                                                 throttle's 5x uncertainty (and its figure)
+    pixi run vehicle-model --lqi                TODO 3: the speed LQI's gains, as the Rust
+                                                constants (paste into speed_loop.rs)
 
 The maths: ros/ego/aav_ego/aav_ego/vehicle_model.py. The page: docs/vehicle-model.md.
 The figures go to docs/img/vehicle-model-*.png, drawn with matplotlib (in Pixi's default
@@ -236,7 +238,45 @@ def designs():
          pp),
         ("'smooth' (kp 1.0, ki 0.25, weight 0.75)",
          lambda: am.SpeedLoop(am.SPEED_LOOP_PROFILES['smooth']), vm.SMOOTH),
+        ("'lqi' (TODO 3: throttle and brake, one law)",
+         lambda: am.SpeedLoop(am.SPEED_LOOP_PROFILES['lqi']), LQI),
     )
+
+
+LQI = 'lqi'   # designs()' marker: the margins come from speed_lqi_open_loop
+
+
+def lqi_gains_of(cfg):
+    """Return spine-core's LQI constants as the model's SpeedLqiGains (for its margins)."""
+    return vm.SpeedLqiGains(k_speed=cfg.k_speed, k_accel=cfg.k_accel,
+                            k_integral=cfg.k_integral, setpoint_weight=cfg.setpoint_weight,
+                            design_lag=cfg.brake_lag, tick=DT)
+
+
+def open_loop_of(plant_model, gains):
+    """Return a design's loop on a plant: the PI's, or the LQI's with spine-core's model."""
+    if gains is LQI:
+        q = am.LQI_MODEL
+        return plant_model.speed_lqi_open_loop(lqi_gains_of(q), q.max_accel, q.throttle_lag)
+    return plant_model.speed_open_loop(gains)
+
+
+def lqi_constants(model, weights=None):
+    """Return the LQI's gains for this model, as spine-core's and the port's constants."""
+    w = weights or vm.SpeedLqiWeights()
+    g = model.speed_lqi(w)
+    numbers = {'k_speed': g.k_speed, 'k_accel': g.k_accel, 'k_integral': g.k_integral,
+               'setpoint_weight': g.setpoint_weight, 'integral_limit': model.max_accel,
+               'dead_band': 0.05, 'max_accel': model.max_accel, 'max_brake': model.max_brake,
+               'drag': model.drag, 'throttle_lag': model.throttle_lag,
+               'brake_lag': model.brake_lag}
+    numbers = {k: float(f'{v:.4g}') for k, v in numbers.items()}
+    rust = ['    pub const MODEL: LqiConfig = LqiConfig {']
+    rust += [f'        {k}: {v!r},' for k, v in numbers.items()]
+    rust += ['    };']
+    python = ', '.join(f'{k}={v!r}' for k, v in numbers.items())
+    return (f'// LQI for {w} (tau {g.design_lag:g} s, tick {g.tick:g} s)\n'
+            + '\n'.join(rust) + f'\n\n# actuator_model.py\nLQI_MODEL = LqiConfig({python})')
 
 
 def replace_cfg(cfg, **changes):
@@ -293,8 +333,7 @@ def speed_loop_rows(model):
                              min(worst[3], e)]
             worst_lag = LAGS[-1][1] * model.throttle_lag / 0.1
             plant_model = vm.VehicleModel(throttle_lag=worst_lag, **lin)
-            pm = vm.margins(plant_model.speed_open_loop(gains),
-                            LAGS[-1][2]).phase_margin_deg
+            pm = vm.margins(open_loop_of(plant_model, gains), LAGS[-1][2]).phase_margin_deg
             end = 'reached' if worst[3] > -0.02 else f'{-100 * worst[3]:.0f} % short'
             rows.append([name, plant, f'{100 * worst[0]:.0f} %', seconds(worst[1]),
                          seconds(worst[2]), end, f'{pm:.0f} deg'])
@@ -308,22 +347,23 @@ def seconds(t):
 
 
 def speed_loop_figure(model, out_dir):
-    """Draw today's loop and 'smooth' on each plant: 1 m/s with ego's ramp."""
+    """Draw today's loop, 'smooth' and 'lqi' on each plant: 1 m/s with ego's ramp."""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
     plt.rcParams.update({'font.size': 11, 'axes.grid': True, 'grid.alpha': 0.3,
                          'axes.spines.top': False, 'axes.spines.right': False})
-    blue, orange, grey = '#2a6fb0', '#d9822b', '#7a7a7a'
+    blue, orange, grey, green = '#2a6fb0', '#d9822b', '#7a7a7a', '#3a9a5b'
     loops = {name: make for name, make, _ in designs()}
-    today, smooth = list(loops)[0], list(loops)[-1]
+    today, smooth, lqi = list(loops)[0], list(loops)[-2], list(loops)[-1]
     fig, axes = plt.subplots(1, len(PLANTS), figsize=(15, 3.6), sharey=True)
     for ax, (plant, accel_x, drag_x) in zip(axes, PLANTS):
         cfg = replace_cfg(am.ActuatorConfig(), throttle_lag=model.throttle_lag,
                           **plant_numbers(model, accel_x, drag_x))
         t = np.arange(1, round(30.0 / DT) + 1) * DT
-        for name, colour, style in ((today, orange, '--'), (smooth, blue, '-')):
+        for name, colour, style in ((today, orange, '--'), (smooth, blue, '-'),
+                                    (lqi, green, ':')):
             ax.plot(t, ramp_response(loops[name], cfg, 1.0, LAGS[0][2], 30.0), color=colour,
                     ls=style, label=name.split(' (')[0])
         ax.axhline(1.0, color=grey, lw=0.8)
@@ -360,6 +400,9 @@ def main(argv=None):
     ap.add_argument('--speed-loop', action='store_true',
                     help="TODO 27: the speed loop's designs against the throttle's 5x "
                          'uncertainty, then its figure (about a minute)')
+    ap.add_argument('--lqi', action='store_true',
+                    help="TODO 3: print the speed LQI's gains for this model, as spine-core's "
+                         'LqiConfig::MODEL, and as LQI_MODEL for the Python port')
     ap.add_argument('--out', default=str(IMG), help='where the figures go')
     args = ap.parse_args(argv)
 
@@ -368,6 +411,9 @@ def main(argv=None):
         key, _, value = item.partition('=')
         measured[key.strip()] = float(value)
     model = vm.from_vehicle_yaml(args.vehicle).with_measured(measured)
+    if args.lqi:
+        print(lqi_constants(model))
+        return 0
     if args.speed_loop:
         print(table('The speed loop against the uncertainty (TODO 27): the worst of '
                     f'{len(LAGS) * len(TARGETS)} runs each ({", ".join(n for n, _, _ in LAGS)}; '

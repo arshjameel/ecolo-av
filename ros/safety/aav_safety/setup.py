@@ -18,12 +18,15 @@ setup(
     zip_safe=True,
     maintainer='AAV 2026-27 team',
     maintainer_email='aav-team@todo.invalid',
-    description='The sensor watchdog: stops the automatic drivers when a sensor fails.',
+    description='The sensor watchdog, the stop hold and the geofence: twist_mux locks '
+                'that stop the automatic drivers.',
     license='TODO',
     extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
             'sensor_watchdog = aav_safety.sensor_watchdog:main',
+            'stop_hold = aav_safety.stop_hold:main',
+            'geofence = aav_safety.geofence_node:main',
         ],
     },
 )

@@ -38,6 +38,7 @@ setup(
             'gazebo_gps = aav_gazebo.gazebo_gps:main',
             'gazebo_radar = aav_gazebo.gazebo_radar:main',
             'gazebo_camera = aav_gazebo.gazebo_camera:main',
+            'gazebo_esp32 = aav_gazebo.gazebo_esp32:main',
         ],
     },
 )

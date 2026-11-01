@@ -3,6 +3,7 @@ import math
 from pathlib import Path
 
 from aav_gazebo.actuator_model import (ActuatorConfig, Actuators, Demand, Ideal, IGNORED, lag,
+                                       LQI_MODEL,
                                        speed_loop_profile, SPEED_LOOP_PROFILES, SpeedLoop,
                                        SpeedLoopConfig)
 import pytest
@@ -242,6 +243,33 @@ def test_the_profiles_match_spine_core():
         windup = re.search(r'anti_windup: AntiWindup::(\w+)', body).group(1)
         assert windup.lower() == cfg.anti_windup
     assert set(re.findall(r'SpeedLoopProfile::\w+ => "(\w+)"', src)) == set(SPEED_LOOP_PROFILES)
+
+
+def test_the_lqi_gains_match_spine_core():
+    """LQI_MODEL is speed_loop.rs's LqiConfig::MODEL, number for number."""
+    import re
+    src = SPEED_LOOP_RS.read_text()
+    body = src[src.index('pub const MODEL: LqiConfig'):]
+    body = body[:body.index('};')]
+    for name, value in vars(LQI_MODEL).items():
+        found = re.search(rf'\b{name}: ([\d.]+)', body)
+        assert found and float(found.group(1)) == value, name
+
+
+def test_the_lqi_is_its_own_law_and_the_pi_the_default():
+    assert SPEED_LOOP_PROFILES['default'].lqi is None
+    assert SPEED_LOOP_PROFILES['lqi'].lqi == LQI_MODEL
+    for target in (0.5, 1.0, 2.0):
+        speeds = ramped(SPEED_LOOP_PROFILES['lqi'], target)
+        assert max(speeds) < 1.02 * target
+        assert speeds[-1] == pytest.approx(target, rel=0.01)
+
+
+def test_the_lqi_never_uses_both_pedals():
+    loop = SpeedLoop(SPEED_LOOP_PROFILES['lqi'])
+    for k in range(2000):
+        d = loop.update(1.0 + 0.5 * math.sin(k / 50), 1.0 + math.sin(k / 37), DT)
+        assert d.throttle == 0.0 or d.brake == 0.0
 
 
 def load_generator():

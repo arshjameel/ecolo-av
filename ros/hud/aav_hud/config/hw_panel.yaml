@@ -1,0 +1,34 @@
+# hw_panel: the hardware screen (aav_hud): every sensor's number, straight from its own
+# node, and very simple buttons for the actuators (docs/hud.md, "The hardware panel";
+# docs/designs/2026-10-29_two-screens.md). Every topic name it uses lives here, not in the
+# code: rename a topic here (or with `--ros-args -p gps_topic:=...`), never in Rust. Built
+# into the program as its defaults, so --demo shows the same names.
+hw_panel:
+  ros__parameters:
+    # --- what it sends ---
+    buttons_topic: /drivers/buttons/cmd_vel       # geometry_msgs/msg/TwistStamped: twist_mux's buttons slot (45), only while GO is held
+    estop_topic: /safety/estop                    # std_msgs/msg/Bool: the E-STOP button sends true 5 times, never false; also read: an e-stop zeroes the buttons
+    # --- the command path, read ---
+    control_topic: /control/cmd_vel               # geometry_msgs/msg/TwistStamped: twist_mux's output; someone else's command for 0.3 s = a takeover
+    geofence_lock_topic: /safety/geofence/lock    # std_msgs/msg/Bool: shown; true holds the buttons (51 > 45)
+    no_timeout_lock_topic: /safety/legacy_uart_bridge/lock  # std_msgs/msg/Bool, latched: the C++ ESP32 has no command timeout (the stands rule)
+    source_topic: /system/source                  # aav_interfaces/msg/DataSource, latched: SIM, BENCH or REAL decides the speed buttons
+    # --- the sensors and actuators, each from its own node ---
+    vehicle_status_topic: /vehicle/status         # aav_interfaces/msg/VehicleStatus: mode, armed, e-stop, speed
+    steering_topic: /vehicle/steering             # aav_interfaces/msg/ActuatorState: seen steering (rad)
+    throttle_topic: /vehicle/throttle             # aav_interfaces/msg/ActuatorState: seen throttle (0..1)
+    brake_topic: /vehicle/brake                   # aav_interfaces/msg/ActuatorState: seen brake (0..1)
+    wheels_topic: /vehicle/wheels                 # aav_interfaces/msg/WheelSpeeds: each wheel's speed
+    imu_topic: /sensors/imu/data                  # sensor_msgs/msg/Imu: acceleration and turn rates (shake the car)
+    gps_topic: /sensors/gps/fix                   # sensor_msgs/msg/NavSatFix, the receiver itself
+    lidar_topic: /sensors/lidar/points            # sensor_msgs/msg/PointCloud2: counted (Hz), best effort, keep last 1
+    radar_topic: /sensors/radar/points            # sensor_msgs/msg/PointCloud2: counted (Hz)
+    camera_topic: /sensors/camera/front_left/image_raw  # sensor_msgs/msg/Image: counted (Hz), best effort, keep last 1
+    battery_topic: /vehicle/battery               # sensor_msgs/msg/BatteryState: volts
+    # --- the buttons ---
+    stale_after: 1.0      # s: a topic this quiet shows STALE
+    speed_step: 0.1       # m/s a press of Speed + or Speed -
+    steer_step: 0.05      # rad a press of the left or right arrow
+    creep: 0.1            # m/s: CENTRE turns the wheels straight at this speed (they don't turn at a standstill)
+    sim_cap: 1.0          # m/s: the most the buttons ask for in Gazebo or on the bench
+    stands_cap: 0.3       # m/s: on stands (--stands), once the preflight's rules allow it (TODO 49b)

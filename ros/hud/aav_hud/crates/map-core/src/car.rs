@@ -7,7 +7,8 @@ use serde::Deserialize;
 use crate::geom::{Point, Pose};
 
 /// `vehicle.yaml`, built in.
-pub const BUILT_IN_YAML: &str = include_str!("../../../../../bringup/aav_description/config/vehicle.yaml");
+pub const BUILT_IN_YAML: &str =
+    include_str!("../../../../../bringup/aav_description/config/vehicle.yaml");
 
 /// The car's body, as seen from above. base_link is on the ground under the rear axle
 /// (REP-105), so the body starts `rear_overhang` behind it.

@@ -7,7 +7,7 @@
 <!-- Generated from docs/measure-the-car.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Measuring the car: the sheet for the team</h1>
-<div class="meta">9 min read · 8 sections</div></header>
+<div class="meta">15 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -37,15 +37,20 @@
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
 <a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
 <a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
 <a href="maps-and-position.html">Maps and position</a>
 <a href="learn-nav2.html">Learn: Nav2</a>
-<span class="sep">Reference:</span>
 <a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
 <a href="costmaps.html">Costmaps</a>
-<a href="controllers.html">Path followers</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
@@ -69,6 +74,7 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
@@ -88,7 +94,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#1-the-zero-point">1. The zero point</a><a href="#2-directions-and-signs">2. Directions and signs</a><a href="#3-the-car-itself">3. The car itself</a><a href="#4-steering">4. Steering</a><a href="#5-where-each-sensor-is">5. Where each sensor is</a><a href="#6-weight">6. Weight</a><a href="#7-tips">7. Tips</a><a href="#8-hand-back">8. Hand back</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-measuring-map">The measuring map</a><a href="#1-the-zero-point">1. The zero point</a><a href="#2-directions-and-signs">2. Directions and signs</a><a href="#3-the-car-itself">3. The car itself</a><a href="#4-steering">4. Steering</a><a href="#5-where-each-sensor-is">5. Where each sensor is</a><a href="#6-weight">6. Weight</a><a href="#7-tips">7. Tips</a><a href="#8-hand-back">8. Hand back</a></nav>
 <div class="lead"><p>Written 15 October 2026. <strong>Hand this to whoever measures the car.</strong> Fill in the
 "Measured" column, photograph the filled sheet, and send it back. The numbers go into
 <code>ros/bringup/aav_description/config/vehicle.yaml</code>, the one place the software reads them from.
@@ -98,8 +104,298 @@ Every number there today is a guess.</p>
 - <strong>Everything is measured from one spot: on the floor, under the middle of the rear axle.</strong> We call it the <strong>zero point</strong>.
 - <strong>Forward = +x. Left = +y. Up = +z.</strong> Right of the centre line is a <strong>minus</strong> number.
 - <strong>Write centimetres</strong> (to the nearest 1 cm), and <strong>degrees</strong> for angles. We convert them.
-- Two people, a tape measure, chalk or masking tape, a plumb line (a string with a weight), a phone with a level app.</p>
+- Two people, a tape measure, chalk or masking tape, a plumb line (a string with a weight), a phone with a level app.
+- <strong>Follow <a href="#the-measuring-map">the measuring map</a></strong>: 16 steps round the car, each from a mark you already have.</p>
 </blockquote></div>
+<section class="card"><h2 id="the-measuring-map">The measuring map</h2>
+<p>Ben's idea (29 Oct): start at the zero point, then measure <strong>each new spot from one you
+already have</strong>. Out to the left rear tyre, forward to the front tyre, up to the roof,
+then along the roof to each sensor. Nobody measures the roof from the floor.</p>
+<p>The pictures show <strong>today's guesses</strong> from <code>vehicle.yaml</code> (marked GUESS). The orange
+circles are the steps, in order. The blue dots are the sensors.</p>
+<p><img alt="From above" src="../img/measure-map-top.png" /></p>
+<p><img alt="From the left side" src="../img/measure-map-side.png" /></p>
+<p><img alt="From behind" src="../img/measure-map-rear.png" /></p>
+<h3 id="how-to-use-it">How to use it</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Mark the zero point first: <a href="#1-the-zero-point">section 1</a></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Walk the steps below <strong>in order</strong>. Each starts at its "From" mark</td>
+</tr>
+<tr>
+<td>3</td>
+<td>For a 3-number step, measure <strong>forward, left, up</strong> from the "From" mark. Back, right or down: write a minus</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Write each reading in the "Measured" box of its <strong>Sheet</strong> row (sections 3 and 5)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Feet and inches are fine (<code>5 ft 2 in</code>, <code>5' 2"</code>), and so are cm. Say which</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-route">The route</h3>
+<p>The steps, with today's guesses (the script writes this table: don't edit it by hand).</p>
+<!-- measure-map:start (pixi run measure-map writes this table) -->
+
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>From</th>
+<th>To</th>
+<th>Tape: direction and today's guess</th>
+<th>Hint</th>
+<th>Sheet</th>
+<th>Gives (vehicle.yaml)</th>
+<th>Today</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>X</td>
+<td>rear-left wheel</td>
+<td>left 0.39 m</td>
+<td>along the rear axle line; the yaml takes 2 x this</td>
+<td>M2</td>
+<td><code>vehicle.track</code></td>
+<td>0.77 GUESS</td>
+</tr>
+<tr>
+<td>2</td>
+<td>rear-left wheel</td>
+<td>rear-left tyre top</td>
+<td>up 0.30 m</td>
+<td>the car's weight on the tyre</td>
+<td>M3</td>
+<td><code>vehicle.wheel_diameter</code></td>
+<td>0.30 GUESS</td>
+</tr>
+<tr>
+<td>3</td>
+<td>rear-left wheel</td>
+<td>rear-left wheel (tread)</td>
+<td>across: 0.10 m</td>
+<td>across the tread: a size, not a move</td>
+<td>M3b</td>
+<td><code>vehicle.wheel_width</code></td>
+<td>0.10 GUESS</td>
+</tr>
+<tr>
+<td>4</td>
+<td>rear-left wheel</td>
+<td>left side</td>
+<td>left 0.11 m</td>
+<td>tyre centre out to the body; the yaml takes 2 x (track/2 + this)</td>
+<td>M4c</td>
+<td><code>vehicle.body.width</code></td>
+<td>1.00 GUESS</td>
+</tr>
+<tr>
+<td>5</td>
+<td>rear-left wheel</td>
+<td>front-left wheel</td>
+<td>forward 1.57 m</td>
+<td>hub to hub, same side</td>
+<td>M1</td>
+<td><code>vehicle.wheelbase</code></td>
+<td>1.57 GUESS</td>
+</tr>
+<tr>
+<td>6</td>
+<td>front-left wheel</td>
+<td>front-right wheel</td>
+<td>right 0.77 m</td>
+<td>the front track: a check on step 1, should be 2 x step 1</td>
+<td>M2b</td>
+<td><code>check: vehicle.track</code></td>
+<td>0.77 GUESS</td>
+</tr>
+<tr>
+<td>7</td>
+<td>X</td>
+<td>rear bumper</td>
+<td>back 0.20 m</td>
+<td>along the x line, backwards</td>
+<td>M4b</td>
+<td><code>vehicle.body.rear_overhang</code></td>
+<td>0.20 GUESS</td>
+</tr>
+<tr>
+<td>8</td>
+<td>rear bumper</td>
+<td>rear camera</td>
+<td>forward 0.00, left 0.00, up 0.90 m</td>
+<td>plumb line from the lens</td>
+<td>S6</td>
+<td><code>sensors.camera_rear_link.xyz</code></td>
+<td>[-0.20, 0.00, 0.90] GUESS</td>
+</tr>
+<tr>
+<td>9</td>
+<td>rear bumper</td>
+<td>front bumper</td>
+<td>forward 2.00 m</td>
+<td>bumper to bumper</td>
+<td>M4</td>
+<td><code>vehicle.body.length</code></td>
+<td>2.00 GUESS</td>
+</tr>
+<tr>
+<td>10</td>
+<td>front bumper</td>
+<td>radar</td>
+<td>forward 0.00, left 0.00, up 0.45 m</td>
+<td>plumb line from the radar face</td>
+<td>S3</td>
+<td><code>sensors.radar_link.xyz</code></td>
+<td>[1.80, 0.00, 0.45] GUESS</td>
+</tr>
+<tr>
+<td>11</td>
+<td>X</td>
+<td>IMU</td>
+<td>forward 0.50, left 0.00, up 0.40 m</td>
+<td>plumb line from the board</td>
+<td>S2</td>
+<td><code>sensors.imu_link.xyz</code></td>
+<td>[0.50, 0.00, 0.40] GUESS</td>
+</tr>
+<tr>
+<td>12</td>
+<td>X</td>
+<td>roof</td>
+<td>up 1.50 m</td>
+<td>the roof is flat? if not, also note its highest point</td>
+<td>M4d</td>
+<td><code>vehicle.body.height</code></td>
+<td>1.50 GUESS</td>
+</tr>
+<tr>
+<td>13</td>
+<td>roof</td>
+<td>GPS</td>
+<td>forward 0.00, left 0.00, up 0.00 m</td>
+<td>on the roof, from the roof mark</td>
+<td>S1</td>
+<td><code>sensors.gps_link.xyz</code></td>
+<td>[0.00, 0.00, 1.50] GUESS</td>
+</tr>
+<tr>
+<td>14</td>
+<td>roof</td>
+<td>lidar</td>
+<td>forward 0.90, left 0.00, up 0.30 m</td>
+<td>on the roof, from the roof mark</td>
+<td>S7</td>
+<td><code>sensors.lidar_link.xyz</code></td>
+<td>[0.90, 0.00, 1.80] GUESS</td>
+</tr>
+<tr>
+<td>15</td>
+<td>roof</td>
+<td>left camera</td>
+<td>forward 1.75, left 0.29, up 0.05 m</td>
+<td>on the roof, from the roof mark</td>
+<td>S4</td>
+<td><code>sensors.camera_left_link.xyz</code></td>
+<td>[1.75, 0.29, 1.55] GUESS</td>
+</tr>
+<tr>
+<td>16</td>
+<td>left camera</td>
+<td>right camera</td>
+<td>forward 0.00, right 0.58, up 0.00 m</td>
+<td>lens to lens (about the stereo baseline)</td>
+<td>S5</td>
+<td><code>sensors.camera_right_link.xyz</code></td>
+<td>[1.75, -0.29, 1.55] GUESS</td>
+</tr>
+</tbody>
+</table></div>
+<!-- measure-map:end -->
+
+<p>Not on the route (not a tape job):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>vehicle.yaml</th>
+<th>Where it's measured</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>max_steering_angle</code></td>
+<td><a href="#4-steering">M5</a>: the two wheel angles at full lock</td>
+</tr>
+<tr>
+<td><code>mass</code>, <code>centre_of_mass</code></td>
+<td><a href="#6-weight">M7, M7b</a>: the scales</td>
+</tr>
+<tr>
+<td><code>encoder_counts_per_rev</code></td>
+<td>count the spokes on the encoder wheel</td>
+</tr>
+<tr>
+<td><code>tyre_grip</code>, <code>actuators</code></td>
+<td>the driving tests (<a href="tests.html">tests</a> 3.10-3.12, 4.1-4.5)</td>
+</tr>
+<tr>
+<td>each sensor's <code>rpy</code></td>
+<td><a href="#5-where-each-sensor-is">section 5</a>: pointing, tilt, lean</td>
+</tr>
+<tr>
+<td><code>max_reverse_speed</code></td>
+<td>a choice, not a measurement</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="readings-into-vehicleyaml">Readings into vehicle.yaml</h3>
+<p>The yaml wants every spot <strong>from the zero point</strong>. The script adds the steps up for you.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>pixi run measure-map --blank &gt; readings.yaml</code>: a file with one line per step</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Type the readings in, in any unit (<code>units: ft</code> makes plain numbers feet)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>pixi run measure-map --readings readings.yaml</code>: it prints the yaml's numbers, in metres</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Copy them into <code>vehicle.yaml</code>, delete each <code>TODO</code>, then <code>pixi run measure-map</code> to redraw the map</td>
+</tr>
+</tbody>
+</table></div>
+<p>Example: step 1 reads <code>1 ft 3 in</code> left (0.381 m), so <code>track</code> = 2 × 0.381 = <strong>0.762 m</strong>.
+Step 14 reads forward <code>2 ft 11 in</code>, up <code>1 ft</code> from the roof mark at 1.50 m, so the lidar
+is at x = 0.889, z = 1.50 + 0.305 = <strong>1.805 m</strong>.</p>
+</section>
 <section class="card"><h2 id="1-the-zero-point">1. The zero point</h2>
 <p><strong>Not the differential itself:</strong> it may sit off-centre, and it's above the floor. The zero
 point is <strong>on the floor</strong>, exactly halfway between the two rear wheels, straight under the
@@ -209,6 +505,7 @@ rear axle's line.</p>
 </table></div>
 </section>
 <section class="card"><h2 id="3-the-car-itself">3. The car itself</h2>
+<p>The route steps for these rows: <a href="#the-measuring-map">the measuring map</a>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -345,6 +642,7 @@ Use the smaller of left and right. Gazebo's own number is worked out from it.</p
 </div>
 </section>
 <section class="card"><h2 id="5-where-each-sensor-is">5. Where each sensor is</h2>
+<p>The route steps for these rows (from the roof mark, the bumpers or the X): <a href="#the-measuring-map">the measuring map</a>.</p>
 <p>For each sensor, measure <strong>its centre</strong>: for a camera, the <strong>middle of the lens</strong>; for the
 GPS, the <strong>middle of the antenna puck</strong> (not the receiver box); for the lidar, the <strong>middle
 of its window</strong> (the band that spins or glows).</p>

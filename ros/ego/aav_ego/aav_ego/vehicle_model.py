@@ -85,6 +85,34 @@ class SpeedLoopGains:
     accel_slew: float = 1.5      # m/s^2: the spine ramps its set speed (spine.rs max_accel)
 
 
+@dataclass(frozen=True)
+class SpeedLqiWeights:
+    """The LQI's cost, J = sum(q_speed e^2 + q_integral z^2 + r_accel u^2) per tick (TODO 3)."""
+
+    q_speed: float = 2.0      # per (m/s)^2 of speed error
+    q_integral: float = 0.5   # per (m/s x s)^2 of its integral
+    r_accel: float = 1.0      # per (m/s^2)^2 of the signed acceleration asked
+    setpoint_weight: float = 0.5  # b: the share of the set speed the speed term sees
+
+
+@dataclass(frozen=True)
+class SpeedLqiGains:
+    """
+    The LQI's gains for spine-core (speed_loop.rs LqiConfig), from speed_lqi().
+
+    u = d r + k_speed (b r - v) - k_accel (p - d r) + k_integral z,   z = sum((r - v) dt)
+    u: the signed acceleration asked of the pedals (+ throttle, - brake), m/s^2;
+    p: the pedals' acceleration, after their lag (the spine models it from what it sent).
+    """
+
+    k_speed: float      # m/s^2 per m/s
+    k_accel: float      # per m/s^2
+    k_integral: float   # m/s^2 per (m/s x s)
+    setpoint_weight: float
+    design_lag: float   # s: the actuator lag the gains were worked out for
+    tick: float         # s
+
+
 # spine-core's 'smooth' profile (SpeedLoopConfig::smooth, TODO 27): proposed for the car
 # day, not the default. Real poles at -0.28 and -1.32 /s; b moves the zero to -0.33.
 SMOOTH = SpeedLoopGains(kp=1.0, ki=0.25, integral_limit=1.0, setpoint_weight=0.75)
@@ -165,8 +193,9 @@ YAML_KEYS = {
     'actuators.steer_lag': 'steer_lag',
     'actuators.steer_dead_time': 'steer_dead_time',
 }
+# open_loop_decel: how the legacy bridge's open speed loop stops, for the geofence only.
 NOT_LINEAR = {'actuators.throttle_deadband', 'actuators.steer_offset',
-              'actuators.steer_deadband'}
+              'actuators.steer_deadband', 'actuators.open_loop_decel'}
 
 
 @dataclass(frozen=True)
@@ -286,6 +315,63 @@ class VehicleModel:
         """
         a, d = self.max_accel, self.drag
         return replace(self.gains, kp=(2.0 * zeta * wn - d) / a, ki=wn * wn / a)
+
+    def speed_lqi(self, weights: SpeedLqiWeights = SpeedLqiWeights(),
+                  tick: Optional[float] = None) -> SpeedLqiGains:
+        """
+        Return the LQI's gains for the speed and brake: one signed acceleration (TODO 3).
+
+        The pedals are inverted through the model (u > 0: throttle u / a_max; u < 0: brake
+        -u / b_max), so the plant from u is the same both ways but for the lag. State, in
+        error coordinates about a set speed r (p~ = p - d r, the pedals beyond the drag):
+
+            e = r - v,  e' = -d e - p~;   p~' = (u~ - p~) / tau;   z' = e
+            A = [[-d, -1, 0], [0, -1/tau, 0], [1, 0, 0]],   B = [0, 1/tau, 0]^T
+
+        tau is the slower of the throttle's and the brake's lags (one set of gains for
+        both). Held for a tick (ZOH), then the discrete Riccati equation: u~ = -K x.
+        Worked out here, once: spine-core keeps the result as constants (no matrices on
+        the ESP32). `pixi run vehicle-model --lqi` prints them.
+        """
+        from scipy import linalg
+        dt = tick or self.gains.tick
+        tau = max(self.throttle_lag, self.brake_lag)
+        d = self.drag
+        a = np.array([[-d, -1.0, 0.0], [0.0, -1.0 / tau, 0.0], [1.0, 0.0, 0.0]])
+        b = np.array([[0.0], [1.0 / tau], [0.0]])
+        phi, gam, _, _, _ = signal.cont2discrete((a, b, np.eye(3), np.zeros((3, 1))), dt,
+                                                 method='zoh')
+        q = np.diag([weights.q_speed, 0.0, weights.q_integral])
+        r = np.array([[weights.r_accel]])
+        p = linalg.solve_discrete_are(phi, gam, q, r)
+        k = np.linalg.solve(r + gam.T @ p @ gam, gam.T @ p @ phi)[0]
+        # u~ = -(k0 e + k1 p~ + k2 z); k0 and k2 come out negative (more speed error, more push).
+        return SpeedLqiGains(k_speed=-float(k[0]), k_accel=float(k[1]),
+                             k_integral=-float(k[2]),
+                             setpoint_weight=weights.setpoint_weight,
+                             design_lag=tau, tick=dt)
+
+    def speed_lqi_open_loop(self, g: SpeedLqiGains, model_accel: Optional[float] = None,
+                            model_lag: Optional[float] = None) -> TF:
+        """
+        Return the LQI's loop broken at the speed measurement, on the throttle side.
+
+        The spine models the pedals from what it sent, p^ = u / (tau_m s + 1), so k_accel
+        feeds back the loop's own command (no plant in that path):
+
+            u = (k_speed + k_integral / s)(-v) - k_accel p^      (the reference left out)
+            L(s) = (k_speed + k_integral / s) P_v(s) (tau_m s + 1) / (tau_m s + 1 + k_accel)
+            P_v(s) = (a_max / a_model) / ((tau_t s + 1)(s + d))
+
+        model_accel and model_lag are the a_max and lag the spine assumes (the gains'
+        model: this model's own, unless the car differs from it).
+        """
+        gain = self.max_accel / (model_accel or self.max_accel)
+        tau_m = model_lag if model_lag is not None else self.throttle_lag
+        plant = (np.array([gain]), np.polymul([self.throttle_lag, 1.0], [1.0, self.drag]))
+        pi = (np.array([g.k_speed, g.k_integral]), np.array([1.0, 0.0]))
+        inner = (np.array([tau_m, 1.0]), np.array([tau_m, 1.0 + g.k_accel]))
+        return series(pi, plant, inner)
 
     def speed_state_space(self) -> Tuple[np.ndarray, ...]:
         """Return the plant: x' = A x + B u, y = C x; x = [v, u_a], u = throttle, y = v."""

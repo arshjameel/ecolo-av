@@ -9,9 +9,25 @@ The real car. One launch file for every machine; a machine file picks the parts.
                            most, where the machine runs something that sees behind: the
                            lidar, or camera_obstacles with a detector on the rear camera
                            that keeps people. Without, it stays forward only and says why)
+      [planner:=hybrid]   (Nav2's planner: hybrid (SmacPlannerHybrid) or lattice
+                           (SmacPlannerLattice, our primitives). Only these two on the car:
+                           smac2d, navfn and theta_star ignore the turning radius, and are
+                           refused here, with no way round it (vehicle.check_planner real)
       [lidar:=true]       (false: no lidar anywhere, whatever the machine file says)
       [ghost:=false]      (true: a pretend person in Nav2's view, where Nav2 runs, for
                            stopping tests with nothing real to hit: pixi run ghost ahead 10)
+      [geofence_radius:=30.0] [geofence_site:=] [stands:=false]
+                          (the geofence, beside the mux, always: every program (scripted,
+                           replay, point, Nav2, AI; never a person) stops before its
+                           stopping distance reaches a circle of geofence_radius m round
+                           the marked start spot (start_x, start_y), or while the global
+                           pose or the GPS is stale, unsure or jumped. geofence_site: a
+                           polygon in aav_safety's config/geofence.yaml instead (else the
+                           machine file's geofence: site:; the test lot's is a TODO for
+                           the team, once its datum is surveyed). With actuators:=uart in
+                           speed_loop open the car coasts: every program stays held.
+                           stands:=true: the wheels are off the ground, so NO fence, said
+                           loudly; gps:=false needs it. docs/geofence.md)
       [watch_hud:=true]   (the safety drivers rely on the HUD: the sensor watchdog stops
                            Nav2 and the AI slot while its /hud/heartbeat is missing. false:
                            a session with no HUD screen, said in the test card)
@@ -36,7 +52,9 @@ Parts and what they start:
   mux, ego        twist_mux -> /control/cmd_vel -> ego -> /ego/actuator_cmd; with the
                   mux, the sensor watchdog (aav_safety): it stops Nav2 and the AI slot when
                   a sensor they need fails, or the HUD's screen (watch_hud), and they stop
-                  too if it goes quiet. With ego, the sensor mux and the output mux
+                  too if it goes quiet; and the geofence (aav_safety): every program stops
+                  before the fence's edge, or with no trusted global pose. With ego,
+                  the sensor mux and the output mux
                   (aav_io_mux, target car): ego's commands reach /control/car/actuator_cmd,
                   and so the backends, only while every source is REAL
   teleop          joystick -> /drivers/joy/cmd_vel, e-stop button -> /safety/estop
@@ -115,7 +133,7 @@ PARTS = ('description', 'mux', 'ego', 'teleop', 'scripted', 'drive_to_point', 'i
          'camera_obstacles', 'lane', 'localization', 'navigation', 'spine', 'legacy_uart',
          'legacy_encoder', 'foxglove')
 # What a machine file holds: the parts, the detector's settings and the camera streams'.
-SECTIONS = ('parts', 'detector', 'camera_stream')
+SECTIONS = ('parts', 'detector', 'camera_stream', 'geofence')
 # Each model format: what runs it, besides PyTorch and Ultralytics, and how to make it.
 FORMATS = {
     '.pth': ([], 'pixi run get-models'),
@@ -413,7 +431,7 @@ def launch_setup(context):
     if on('description'):
         actions.append(include('aav_description', 'description.launch.py'))
     if on('mux'):
-        actions.append(include('aav_command_mux', 'mux.launch.py'))
+        actions.append(include('aav_command_mux', 'mux.launch.py', geofence_lock='true'))
         # The sensor watchdog, next to the mux: twist_mux's sensors lock stops Nav2 and the
         # AI slot when the wheels, the IMU, the GPS or an EKF fail (aav_safety), and when
         # the watchdog itself goes quiet (the lock's 1 s timeout). Nav2 and the sensors may
@@ -424,6 +442,18 @@ def launch_setup(context):
                                inputs='odom,imu,local,global' + (',gps' if flag('gps') else '')
                                + (',hud' if flag('watch_hud') else '')
                                + ''.join(f',{c}_stream' for c in streaming)))
+        # The geofence, next to the mux, always (F6, docs/geofence.md): twist_mux's geofence
+        # lock holds every program near the fence's edge, while the global pose can't be
+        # trusted, and when the geofence itself goes quiet (the lock's 1 s timeout).
+        # The fence is fixed (the start spot, or a site), so a restart finds the car
+        # where it is. A site: the argument, else the machine file's.
+        site = arg('geofence_site') or (config.get('geofence') or {}).get('site') or ''
+        actions.append(include('aav_safety', 'geofence.launch.py',
+                               backend='uart' if arg('actuators') == 'uart' else 'spine',
+                               radius=arg('geofence_radius'), centre_x=arg('start_x'),
+                               centre_y=arg('start_y'), site=site,
+                               max_speed=arg('max_speed'), gps=str(flag('gps')).lower(),
+                               stands=str(flag('stands')).lower()))
     if on('ego'):
         actions.append(include('aav_ego', 'ego.launch.py'))
         # Next to ego: the sensor mux and the output mux. The real backends (spine_bridge,
@@ -509,8 +539,10 @@ def launch_setup(context):
             reversing = False
         # The local costmap reads the sensors this machine runs. Each is passed, on or
         # off, so none can leak in from another file.
+        # Only planners whose paths keep to the turning radius, on real data.
+        planner = vehicle.check_planner(arg('planner'), real=True)
         actions.append(include('aav_navigation', 'navigation.launch.py',
-                               map=arg('map') or empty_map, radar=on('radar'),
+                               map=arg('map') or empty_map, radar=on('radar'), planner=planner,
                                lidar=on('lidar'), ghost=flag('ghost'),
                                collision_monitor=(on('radar') or on('lidar') or flag('ghost')
                                                   or rear_camera),
@@ -575,6 +607,19 @@ def generate_launch_description():
         DeclareLaunchArgument('ghost', default_value='false',
                               description="true: a pretend person in Nav2's view, placed "
                                           'with pixi run ghost ahead 10 (it only adds)'),
+        # The car's fence until the test lot's polygon is surveyed (a TODO for the team):
+        # 30 m round where it first stood still. Change it per test card, not in passing.
+        DeclareLaunchArgument('geofence_radius', default_value='30.0',
+                              description='m: the geofence, a circle round where the car '
+                                          'first stands still with a good global pose'),
+        DeclareLaunchArgument('geofence_site', default_value='',
+                              description="a polygon in aav_safety's config/geofence.yaml "
+                                          '(map frame) instead of the circle; empty: the '
+                                          "machine file's geofence: site:, else the circle"),
+        DeclareLaunchArgument('stands', default_value='false',
+                              description='true: the wheels are off the ground. The '
+                                          'geofence opens its lock (no fence), and says so '
+                                          'loudly. Needed with gps:=false'),
         # The safety drivers rely on the HUD (PLAN T9.8): no heartbeat, no Nav2.
         DeclareLaunchArgument('watch_hud', default_value='true',
                               description='true: the sensor watchdog stops Nav2 and the AI '
@@ -594,6 +639,10 @@ def generate_launch_description():
                                           'wheels tell direction, H5); true: Nav2 may back '
                                           'up, with the lidar watching behind '
                                           '(docs/learn-nav2.md)'),
+        DeclareLaunchArgument('planner', default_value=vehicle.DEFAULT_PLANNER,
+                              description=', '.join(vehicle.CAR_PLANNERS) + ": Nav2's "
+                                          'planner on the car; the grid planners (sim and '
+                                          'bench trials) are refused here'),
         DeclareLaunchArgument('bridge', default_value=bridges.DEFAULT,
                               description='spine_bridge in rust (aav_spine_bridge) or python '
                                           '(aav_spine), where the machine runs the spine'),

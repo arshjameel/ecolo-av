@@ -23,6 +23,16 @@ Spec (YAML):
   blocked:                  # rectangles [x_min, y_min, x_max, y_max] in map metres
     - [20, 15, 30, 25]
   free: []                  # rectangles carved back out after `blocked`
+  amcl:                     # optional: a second map, <name>_amcl, for AMCL only
+    resolution: 0.05        #   finer cells
+    outline: true           #   only each obstacle's edge is blocked, its inside unknown
+
+Why AMCL gets its own map (docs/trials.md, 29 Oct): its likelihood field scores each beam
+by the distance from its end to the nearest blocked cell's centre. On 0.25 m cells a beam
+that ends on a wall's face lands in the free cell before it, 0.25 m "off", and a pose that
+pushes the beams into a solid building scores better than the truth. Fine cells and
+outlines (what a lidar really sees, and what a SLAM map holds) put the best score at the
+truth. Nav2's planner and costmaps keep the solid map.
 
 usage: tools/make_map.py spec.yaml [output_dir]
 """
@@ -70,7 +80,35 @@ def make(spec):
         paint(rect, BLOCKED)
     for rect in spec.get('free', []):
         paint(rect, FREE)
+    if spec.get('outline'):
+        grid = outline(grid)
     return grid, width, height, res, origin
+
+
+def outline(grid):
+    """
+    Return the grid with each blocked cell whose four neighbours are all blocked unknown.
+
+    Beyond the map's edge counts as blocked, so a wall along the edge keeps only its
+    inner face.
+    """
+    height, width = len(grid), len(grid[0])
+
+    def blocked(r, c):
+        return not (0 <= r < height and 0 <= c < width) or grid[r][c] == BLOCKED
+
+    sides = ((1, 0), (-1, 0), (0, 1), (0, -1))
+    return [[UNKNOWN if grid[r][c] == BLOCKED and all(blocked(r + dr, c + dc)
+                                                      for dr, dc in sides)
+             else grid[r][c] for c in range(width)] for r in range(height)]
+
+
+def amcl_spec(spec):
+    """Return the spec of the AMCL map its `amcl:` section asks for, or None."""
+    extra = spec.get('amcl')
+    if not extra:
+        return None
+    return {**spec, 'amcl': None, **extra, 'name': f"{spec['name']}_amcl"}
 
 
 def write(spec, out_dir):
@@ -104,9 +142,11 @@ def main():
     spec_path = Path(sys.argv[1])
     spec = yaml.safe_load(spec_path.read_text())
     out_dir = sys.argv[2] if len(sys.argv) > 2 else spec_path.parent
-    width, height = write(spec, out_dir)
-    print(f'wrote {spec["name"]}.pgm/.yaml: {width} x {height} px, '
-          f'{width * spec["resolution"]:g} x {height * spec["resolution"]:g} m')
+    for one in (spec, amcl_spec(spec)):
+        if one is not None:
+            width, height = write(one, out_dir)
+            print(f'wrote {one["name"]}.pgm/.yaml: {width} x {height} px, '
+                  f'{width * one["resolution"]:g} x {height * one["resolution"]:g} m')
 
 
 if __name__ == '__main__':

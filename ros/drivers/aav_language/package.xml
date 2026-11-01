@@ -21,6 +21,7 @@
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>aav_interfaces</exec_depend>
   <exec_depend>aav_command_mux</exec_depend>
+  <exec_depend>aav_safety</exec_depend>
 
   <test_depend>ament_flake8</test_depend>
   <test_depend>python3-pytest</test_depend>

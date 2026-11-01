@@ -79,7 +79,7 @@ def test_the_speed_loop_study_follows_the_measured_numbers():
 # own list, as vehicle_model.NOT_LINEAR and actuator_model.IGNORED do.
 EGO_PARAMS_IGNORES = {'throttle_deadband', 'throttle_lag', 'throttle_dead_time', 'brake_lag',
                       'brake_dead_time', 'drag', 'steer_rate', 'steer_lag', 'steer_dead_time',
-                      'steer_offset', 'steer_deadband'}
+                      'steer_offset', 'steer_deadband', 'open_loop_decel'}
 
 
 def actuator_keys():
@@ -128,3 +128,19 @@ def test_every_actuator_key_is_used_or_ignored_by_each_reader():
 def test_the_dead_times_reach_the_model_tables(capsys):
     assert tool.main(['--no-figures', '--set', 'steer_dead_time=0.05']) == 0
     assert '(134 ms)' in capsys.readouterr().out      # typical lateral: 84 ms + 50 ms
+
+
+def test_the_lqi_constants_are_the_ones_in_spine_core(capsys):
+    assert tool.main(['--lqi']) == 0
+    out = capsys.readouterr().out
+    printed = out[out.index('pub const MODEL'):out.index('};') + 2]
+    src = (tool.ROOT / 'firmware/spine/crates/spine-core/src/speed_loop.rs').read_text()
+    assert printed in src, 'paste `pixi run vehicle-model --lqi` into speed_loop.rs'
+    assert 'LQI_MODEL = LqiConfig(' in out
+
+
+def test_the_speed_loop_study_has_the_lqi(capsys):
+    assert tool.main(['--speed-loop', '--no-figures']) == 0
+    out = capsys.readouterr().out
+    lqi = next(r for r in out.splitlines() if r.startswith("'lqi'"))
+    assert ' 0 % ' in lqi and 'reached' in lqi

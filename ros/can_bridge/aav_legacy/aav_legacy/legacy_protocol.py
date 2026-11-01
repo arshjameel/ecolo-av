@@ -65,6 +65,12 @@ FLAG_ESTOP = 0x02
 
 # Scale negative steering by this, so both sides get the firmware's 1550 counts per unit.
 NEGATIVE_STEERING_GAIN = 1550 / 1950
+# The brake Jrk's targets: released and full (the firmware's JRK_MIN, JRK_MAX). The firmware
+# sets clamp(|accel| x 3500, 400, 3500), so |accel| below 400/3500 still means released.
+BRAKE_RELEASED = 400
+BRAKE_FULL = 3500
+# The firmware ignores a speed number below this (it ramps the throttle to 0).
+THROTTLE_MIN = 0.03
 
 
 @dataclass
@@ -81,17 +87,38 @@ def clamp1(x: float) -> float:
     return max(-1.0, min(1.0, x))
 
 
+def steering_value(steering: float, m: LegacyMapping) -> float:
+    """Return the frame's steering number, -1..1, for an angle in rad (+ left)."""
+    s = clamp1(m.steering_sign * steering / m.max_steering_angle)
+    return s * NEGATIVE_STEERING_GAIN if s < 0 else s
+
+
 def to_legacy(speed: float, steering: float, m: LegacyMapping) -> Tuple[float, float, float]:
     """Return (steering, speed, accel), each -1..1, for an ego command in m/s and rad."""
-    s = clamp1(m.steering_sign * steering / m.max_steering_angle)
-    if s < 0:
-        s *= NEGATIVE_STEERING_GAIN
+    s = steering_value(steering, m)
     if abs(speed) < m.stop_speed:
         return s, 0.0, -abs(m.hold_brake)
     v = clamp1(speed / m.full_throttle_speed)
     if abs(v) < 0.031:            # the firmware ignores |v| < 0.03; creep instead
         v = math.copysign(0.031, v)
     return s, v, 0.0
+
+
+def from_pedals(steering: float, throttle: float, brake: float,
+                m: LegacyMapping) -> Tuple[float, float, float]:
+    """
+    Return (steering, speed, accel) for a speed loop's pedals (speed_control), forward only.
+
+    throttle (0..1) is the speed number itself: the firmware's DAC is that x its cap, open
+    loop, so the loop on the Orin sets the throttle directly. Below THROTTLE_MIN the
+    firmware would ignore it: 0. brake (0..1) spreads over the brake Jrk's travel, so any
+    brake at all lands past the firmware's -0.05 threshold and its 400 floor.
+    """
+    s = steering_value(steering, m)
+    if brake > 0.0:
+        travel = BRAKE_RELEASED + min(brake, 1.0) * (BRAKE_FULL - BRAKE_RELEASED)
+        return s, 0.0, -travel / BRAKE_FULL
+    return s, (throttle if throttle >= THROTTLE_MIN else 0.0), 0.0
 
 
 def stop_command(m: LegacyMapping, steering_hold: float = 0.0) -> Tuple[float, float, float]:

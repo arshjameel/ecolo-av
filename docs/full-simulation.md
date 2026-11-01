@@ -18,6 +18,7 @@ what's missing, and how the car's measurements feed in.
 | 2 | `/vehicle/steering`, `/throttle`, `/brake`, `/wheels` | ✅ built: Gazebo all four; the bench and the car (spine_bridge) steering, throttle, brake; turtlesim steering |
 | 3 | The actuator model (A), guessed numbers | ✅ built: `aav_gazebo/actuator_model.py`, numbers in `vehicle.yaml` `actuators:`, on by default (`actuator_model:=false` for the old car) |
 | 4 | The spine in the loop | ✅ 15 Oct: `pixi run sim spine:=true`. ego's commands go over the CAN frames to the spine's own firmware logic, then the actuator model. `pixi run sim-check --spine` passes: its timeout, both e-stops and arming stop the car ([below](#the-spine-in-the-loop-step-4)) |
+| 4b | Today's car in the loop | ✅ 29 Oct: `pixi run sim esp32:=true`. ego's commands go through the car's own UART bridge and the 2025-26 C++ ESP32 firmware's logic (its throttle ramp and brake), then the actuator model. `pixi run sim-check --drive-to-point-only --esp32 pi` passes ([below](#todays-car-in-the-loop-step-4b)) |
 | 5 | The lidar into Nav2 | ✅ 15 Oct: `lidar_scan` (`aav_lidar`) flattens the roof lidar into a 2D scan; the local costmap's `lidar_layer` and `collision_monitor` read it. `lidar:=true` in Gazebo, and on the car (the stock `velodyne` driver, since 20 Oct). With the radar off, the lidar alone stopped the car 0.16-0.55 m before a post |
 | 6 | Sensor failures on purpose | ✅ 15 Oct: `pixi run sim-fault <sensor> <fault>`, and the sensor watchdog (`aav_safety`): it stops Nav2 and the AI slot, and says why on the HUD and the map window. All 13 faults stopped the car on 15 Oct, the watchdog's own death and frozen wheels too; on 24 Oct, with the HUD's heartbeat added, all 25 checks passed three times ([the table](simulation.md#what-the-car-does-before-and-after)) |
 | 7 | The actuator test script (`tests.md` 1.10) | ✅ 15 Oct: `pixi run actuator-test <test> --sim`, all 9 tests in Gazebo; they give back the model's numbers ([docs/actuator-tests.md](actuator-tests.md)). It found Gazebo's IMU blind to the car's acceleration: fixed in `gazebo_adapter` |
@@ -190,6 +191,48 @@ Each while driving at 0.8 m/s, Gazebo's road world, Ben's Mac, 15 Oct: three run
   `spine_bridge`'s `cmd_timeout` doing its job, but it is tight for a Python ego on a
   loaded computer. `sim-check` arms it and drives again, as `bench-check` does. Worth
   watching on the car's computer.
+
+## Today's car in the loop (step 4b)
+
+Built 29 Oct. Today's car doesn't run the spine: the Motor Pi's `legacy_uart_bridge`
+sends 13-byte frames to the 2025-26 C++ ESP32 firmware. Gazebo can now run that path:
+
+```bash
+pixi run sim esp32:=true                                # the bridge's speed loop on (pi)
+pixi run sim esp32:=true esp32_loop:=open               # the 2025-26 mapping, to compare
+pixi run sim-check --drive-to-point-only --esp32 pi     # proves it
+```
+
+```text
+ ego ──► output_mux ──► legacy_uart_bridge ──13-byte frames, local TCP──► gazebo_esp32
+          (the car's own; speed_loop.mode pi or open)      (the C++ firmware's logic:
+                ▲                                           its throttle ramp, its brake)
+                │                                                   │
+          /vehicle/odom ◄── gazebo_adapter (the actuator model) ◄───┘
+```
+
+| Part | What stands in for the car | Faithful to |
+|---|---|---|
+| `legacy_uart_bridge` | nothing: the car's own node, its port a TCP socket | the car |
+| `gazebo_esp32` (`esp32_firmware.py`) | the ESP32 | `ros2_handler.cpp`, `dac.cpp`: throttle ramp 6 up, 12 down per frame; brake = \|accel\| x 3500 from 400; no command timeout |
+| `gazebo_adapter` | the motor, brake, steering and wheels | the actuator model (`vehicle.yaml`, guesses) |
+
+### Results, 29 Oct (drive to point, Gazebo's truth)
+
+| Mode | 1 m/s (5 drives) | 3 m/s (4 drives) |
+|---|---|---|
+| `pi`: feed-forward + PI on the wheel speed | all stopped 0.03-0.17 m from B; braking at most 1.43 m/s² | all 0.12-0.22 m from B; at most 1.62 m/s² (the check allows 1.875) |
+| `open`: the 2025-26 mapping | every drive failed: the car overshot its speed (1.51 m/s for 1) and drive-to-point stopped it, 4-55 m short | the same |
+
+- **Why `open` fails here:** the model's throttle means "push this hard"; the old mapping
+  treats it as "go this fast". Which one the real motor controller does is actuator test 4.1.
+  `pi` measures the speed, so it works either way.
+- **A reference model:** the first `pi` run braked at 2.02 m/s² once (over the band). The
+  brake takes 0.2 s to bite, so the car falls behind ego, and the PI braked harder to catch
+  up. Now the PI compares the car with ego's speed delayed by 0.3 s (`response_lag`), and
+  the stop meets its plan.
+- **Without Gazebo:** `aav_gazebo/test/test_legacy_chain.py` runs the same chain (loop,
+  frames, firmware, actuator model) in a unit test.
 
 ## Sensor failures: before and after
 

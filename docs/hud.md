@@ -1,11 +1,18 @@
 # The HUD (in-car screen)
 
-Two raylib programs in one package, `ros/hud/aav_hud`, each also its own ROS node:
+Four raylib programs in one package, `ros/hud/aav_hud`, each also its own ROS node:
 
 | Program | Node | Screen | Shows |
 |---|---|---|---|
 | [The HUD](#the-hud-in-rust-raylib) | `hud` | the small ~7" touchscreen | speed, GO / STOP, the e-stop button, the camera, the topics |
 | [The map window](#the-map-window-big-screen) | `map` | the big ~15" monitor | Nav2's map over Ottawa's streets, the plan, place search |
+| [The debug HUD](#the-debug-hud) (the seeing screen) | `debug_hud` | a laptop, or the Orin's screen | the lidar's cubes in 3D, NDT's map and match from above, where each localizer puts the car; key L: every sensor |
+| [The hardware panel](#the-hardware-panel) | `hw_panel` | the Orin's screen, or a wired laptop | every sensor's number, and simple buttons for the actuators (Gazebo and the bench for now) |
+
+**Two screens for testing (Ben, 29 Oct evening):** "one screen just to test all the
+sensors and operate all the actuators and another screen to show off the voxels". The
+seeing screen is `debug_hud`; the hardware screen is `hw_panel`. Design:
+[2026-10-29_two-screens.md](designs/2026-10-29_two-screens.md).
 
 **Decided 11 October (Ben):** the HUD is Rust, raylib and rclrs. Its first screen runs
 since 15 October. It replaced the 2025-26 team's Flutter app (Q29), which is now
@@ -257,7 +264,7 @@ pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor
 |---|---|
 | `crates/map-core` | the maths, no ROS, no raylib: map to screen and back, zoom, the grid's pixels, the nearest point and the distance left, the trip's status. `cargo test -p map-core` (in `tools/test.sh`) |
 | `crates/map-app` | the window and the node, built like the HUD's. `--demo`, `--screenshot FILE`, `--vehicle FILE` |
-| `config/map.yaml` | every topic name, the limits: `stale_after`, `plan_stale_after` (3 s), `arrive_within` (1 m), and `street_map`, the street map's file |
+| `config/map.yaml` | every topic name, the limits: `stale_after`, `plan_stale_after` (3 s; 25 s, `plan_kept_for`, within `final_approach` 8 m of the plan's end, where Nav2 keeps its path), `arrive_within` (1 m), and `street_map`, the street map's file |
 
 - The distance comes from `/plan` and the car, not from Nav2's action feedback: simpler,
   and it works for a goal sent from anywhere.
@@ -467,6 +474,223 @@ Try a search from a terminal: `cargo run --release -p map-core --example search 
 
 The sim's datum is the placeholder near Carleton, so in Gazebo "University Drive" lands
 inside the test lot. On the car, the datum is the real test site.
+
+## The debug HUD
+
+`ros/hud/aav_hud`, binary `debug_hud`: what the car **sees** and what it **thinks**, in
+one window. It only listens: it never touches an actuator. Ben, 29 Oct: "the low level
+hud ... should connect directly to the ros node at the sensor". Design:
+[2026-10-29_debug-hud.md](designs/2026-10-29_debug-hud.md).
+
+### What it shows
+
+It opens as the **seeing screen** (two screens, 29 Oct): the cubes big on the left, and
+on the right two views from above. Key **L** swaps the right side for the sensor panel.
+
+![The seeing screen, with pretend data (--demo)](img/debug-hud-seeing.png)
+
+| Right side, from above | Shows | From |
+|---|---|---|
+| Top: the lidar map | NDT's map's points (thinned to one per 15 cm), fitted to the box; every localizer's car in its colour | `ndt_map` (the PCD); each localizer, local EKF through map -> odom |
+| Bottom: NDT's match | 24 m round the car: NDT's 1 m cells as **ellipses** (each column's points, 2 sigma); the latest scan's cubes over them, **green** on a cell, **red** off the map; the cars | the map; the lidar's cubes, through map -> odom |
+| Under it: the score | TRACKING / WAITING / LOST, score per point, ms per match; how many scan cubes landed on the map; overlap | `/localization/ndt/status`; the scan |
+
+No map file: both boxes say where it looked and how to make one (`pixi run ndt-map
+drive`). No map -> odom yet: only the map-frame cars are drawn.
+
+The 3D view, in both layouts:
+
+| On screen | From | Frame |
+|---|---|---|
+| Cubes (20 cm), coloured by height: dark ground, then teal to pale. **Kept** for 2 s and fading darker (key K: this scan's only) | `/sensors/lidar/points` | lidar_link -> base_link -> odom |
+| The car: a blue box to scale (`vehicle.yaml`) | `/localization/odom/local` (EKF local) | odom |
+| EKF global (green), AMCL (orange), **NDT (purple)**, truth (white, sim): an outline, an arrow, a pole | their topics (NDT's: `/localization/ndt/pose`, good fits only) | map, through map -> odom |
+| AMCL's particles: small orange arrows (key A) | `/localization/amcl/particles` | map, through map -> odom |
+| NDT's map: faint purple 1 m wireframe cubes (key M) | `maps/ndt/test_lot.pcd` (`ndt_map`) | map, through map -> odom |
+| Nav2's plan (yellow), the car's trail (grey) | `/plan`; EKF local | map; odom |
+| Legend, top left | each localizer's distance from EKF local, in metres | - |
+| Panel (key L): IMU, GPS, lidar, wheels, wheel odom, vehicle, each estimate, map -> odom, tracker | each topic: OK, STALE or NEVER, and what it said | - |
+| Panel, NDT: TRACKING / WAITING / LOST, score per point, ms per match; or "no NDT map at ...: make it with pixi run ndt-map drive" | `/localization/ndt/status` | - |
+| Keys, bottom left: each key and its layer's state (key H hides them) | - | - |
+
+It publishes nothing. Its one call: keys 1-4 ask aav_track's parameter service for
+another tracker, in the simulator only (the design's D3: never an actuator).
+
+### How the cubes are placed
+
+```
+cloud (stamp t) --/tf_static--> base_link --EKF local's pose AT t--> odom --> 20 cm cubes
+```
+
+| Rule | Why |
+|---|---|
+| The pose at the cloud's **own stamp**, interpolated from the last second of poses | the cloud arrives late: at 3 m/s, 50 ms off moves walls 15 cm |
+| Clouds go through a newest-only slot to their own thread, never the shared queue | a slow window shows the newest scan, never a backlog |
+| Stamps are only compared with stamps | Gazebo stamps sim time; the window runs on wall time |
+| Over `max_cubes` (20,000), the nearest stay; the panel says how many were cut | a full VLP-16 at 100 m makes more |
+| Heights are above base_link; the VLP-16's 0.1 s sweep is ignored | the EKF is 2D; Gazebo's lidar has no sweep |
+
+### Keys
+
+| Key | Does |
+|---|---|
+| drag | turn the view round the car, tilt it |
+| right-drag (or shift-drag) | move (leaves the car: a FREE view) |
+| wheel | zoom |
+| L | the seeing screen (the default: the map and NDT's match from above) or the sensor panel |
+| K | cubes: kept and fading (the default), or this scan's only |
+| M | NDT's map as wireframes (on when the file is there) |
+| A | AMCL's particles |
+| H | hide or show the key legend |
+| C | CHASE (behind the car) / FOLLOW (fixed angle) / FREE |
+| R | back to CHASE |
+| 1 2 3 4 | swap the trial tracker: pure pursuit, Stanley, LQR, MPC. **Sim only**: refused unless `/system/source` says SIM, and the track node refuses unless `live_swap` is on (`sim.launch.py`). The answer shows under TRACKER |
+| F11 | full screen |
+
+### Run it
+
+```bash
+pixi run debugdemo               # Gazebo, RViz, the HUD, the map window and the debug HUD
+pixi run debug-hud-demo          # pretend data: no ROS (a walled lot, a ray-cast lidar)
+pixi run build && pixi run debug-hud    # the node alone, beside a running sim
+```
+
+`debugdemo` is `demo` with `amcl:=true tracker:=pure_pursuit reversing:=false`, so AMCL
+and the trial tracker have something to show; and `ndt:=true` too when
+`maps/ndt/test_lot.pcd` is there. No map yet: `pixi run ndt-map drive` once (about 6
+min, headless; the map stays out of git). Swap the tracker live with keys 1-4, or
+from a terminal: `ros2 param set /track tracker lqr` (sim only, both ways).
+
+### How it's built
+
+| Part | What it does |
+|---|---|
+| `crates/debug-core` | the maths, no ROS, no raylib: the pose buffer, the frames, the cubes, the camera; the map's footprint from above (`ndt::Footprint`: thinned points, one ellipse per column) and `topdown` (map metres to window points). `cargo test -p debug-core` |
+| `crates/debug-app` | the window and the node; the cubes drawn **instanced** (one mesh, one draw per height band) |
+| `config/debug_hud.yaml` | every topic name, the frames, `cube_size`, `max_cubes`, `pose_window`, `stale_after`, `keep_cubes_for`, `ndt_map`, `ndt_map_cell` |
+| PointCloud2 reader | `aav_radar_clusters`' own (`radar-clustering`), shared |
+
+On the car: not yet from a Mac over WiFi (about 9 MB/s of reliable lidar); on the Orin's
+own screen.
+
+### Tested (29 October, a Mac)
+
+| What | Result |
+|---|---|
+| `cargo test`: debug-core 38, debug-app 11 (with ROS: a cloud placed by the pose at its stamp, map -> odom, a swap's answer, through the real node) | all pass |
+| `live_sim` against headless Gazebo, test lot, `amcl:=true tracker:=pure_pursuit`, driving a Nav2 goal | 10 scans a second, ~6,000-7,000 cubes from ~16,000-19,000 points, none cut; every panel row OK; EKF global 0.02 m, truth 0.24 m, AMCL 0.70 m from EKF local; key 3's swap to lqr accepted mid-path, which then drove 9 mm off the path |
+| The window itself, `pixi run debugdemo`, the 20,000-cube drawing test | **untested** that night: the Mac's screen was locked |
+
+### Tested (29 October, later: step 5, Ben's Mac, screen unlocked)
+
+| What | Result |
+|---|---|
+| `cargo test`: debug-core 52, debug-app 14 (with ROS) | all pass |
+| `--demo` window, screenshot | kept cubes fading, NDT's purple car and section, particles, the lot as NDT's map, the key legend: all drawn |
+| `--demo --bench-cubes 20000`, release | **358 fps** (pass mark 30) |
+| The node's window against headless Gazebo, test lot, `amcl:=true tracker:=pure_pursuit ndt:=true` (`maps/ndt/test_lot.pcd`), a Nav2 goal at (40, -4) | 58 fps; NDT TRACKING, 3.1-3.2 per point, 1.7-1.8 ms per match, overlap 100%, 0.11-0.12 m from EKF local; AMCL 0.7-1.1 m off with its particles round it; the map's 2,502 cubes sit on the walls; every panel row OK while driving |
+| Kept cubes while driving | they hit `max_cubes` (20,000; 11,000 cut): mostly old ground rings |
+
+**Not yet seen:** NDT's LOST and WAITING on the live window (only in `--demo`); `pixi run
+debugdemo` itself (RViz, the HUD and the map window as well: run here piece by piece);
+the keys pressed by hand (K, M, A, H: their logic is tested, the window wasn't clicked).
+
+## The hardware panel
+
+`ros/hud/aav_hud`, binary `hw_panel`: one screen to **test every sensor** and **work
+every actuator** with very simple buttons (Ben, 29 Oct: "We need very simple buttons").
+The only screen that drives, and only through twist_mux, ego and the spine. Design:
+[2026-10-29_two-screens.md](designs/2026-10-29_two-screens.md).
+
+![The hardware panel, with a pretend car (--demo), driving at 0.3 m/s](img/hw-panel-demo.png)
+
+### The buttons
+
+| Button (key) | Does |
+|---|---|
+| SPEED + / SPEED - (Up or +, Down or -) | the asked speed, 0.1 m/s a press; never below 0 (no reverse), never above the cap |
+| HOLD SPACE (OR HERE) TO DRIVE (Space held) | the car moves **only while it is held**; let go: 0.5 s of zeros, then nothing |
+| < LEFT / RIGHT > (Left, Right) | the steering, 0.05 rad a press, sent as a turn rate (ω = v · tan δ / L): it moves only while creeping |
+| CENTRE (C) | the wheels straight at a creep (0.1 m/s), then speed 0; with GO let go, everything 0 at once |
+| STOP (S) | the asked speed 0 at once |
+| E-STOP (E) | `/safety/estop` true 5 times, 0.1 s apart. Never false |
+
+Brake: read-only for now ("brake seen"); a brake percentage needs the spine's test
+mode (option B in the design).
+
+### Where it may drive
+
+| `/system/source` | Speed buttons |
+|---|---|
+| SIM, BENCH | **on**, up to 1.0 m/s |
+| REAL, `stands:=true` | the preflight's refusal: **off** until a driven-wheel speed exists (TODO 49b), the Rust ESP32 and `speed_loop.mode open`; then 0.3 m/s, stopped after 4 s of unseen speed. Today: off, and the screen says why |
+| REAL on the ground, nothing announced, REPLAY | **off** |
+
+The rules are `aav_actuator_tests/safety.py`'s, ported to Rust (panel-core `rules`) with
+the same test vectors. One difference, towards safety: a source number it doesn't know
+counts as REAL. It doesn't read the legacy bridge's `speed_loop.mode` yet: on stands it
+relies on `speed_wheels` and the no-timeout lock (both refuse today's car anyway).
+
+### How a press reaches the car
+
+```text
+press --> panel-core (cap, hold-to-drive) --> /drivers/buttons/cmd_vel --> twist_mux (45)
+      --> /control/cmd_vel --> ego (2 m/s2, steering limits) --> backend / spine
+```
+
+| Rule | Why |
+|---|---|
+| twist_mux slot **45** | below people (90-100), the tests (60) and a script (50); the geofence (51) and no-timeout (60) locks hold it; the stop-sign and sensor locks (30) don't, so it works on stands |
+| Sent at 10 Hz, **only while the window draws** (hud-core's heartbeat) | a frozen window sends nothing: twist_mux (0.5 s) and ego (0.3 s) stop the car |
+| An e-stop, a takeover (twist_mux passing someone else's command for 0.3 s), a source change | everything to 0; GO must be let go and pressed again, and Speed + again: the joystick's release never hands back an old speed |
+| Every sensor from its own node | a fault shows where it starts, not after the muxes |
+| On stands, the wheel speed says "front, not driven" | the wheel sensors are on the front; the motor drives the rear (TODO 49b) |
+
+### Run it
+
+```bash
+pixi run hw-panel-demo                 # a pretend car: no ROS, any laptop
+pixi run sim world:=test_lot           # Gazebo (or: pixi run debugdemo) ...
+pixi run hw-panel                      # ... and the panel beside it, localhost-only
+pixi run hw-panel stands:=true         # on the car's stands (speed stays off until 49b)
+```
+
+Run it from the Orin's own screen or a wired laptop, not a Mac over WiFi. For checks,
+`hw_panel --self-test 0.3:8` presses Speed + to 0.3 m/s and holds GO for 8 s, through the
+same buttons and rules, and prints what was asked and seen.
+
+### How it's built
+
+| Part | What it does |
+|---|---|
+| `crates/panel-core` | the logic, no ROS, no raylib: `buttons`, `gate`, `rules` (safety.py's), `state` (every sensor's number), `config`, `vehicle`. `cargo test -p panel-core` |
+| `crates/panel-app` | the window (raylib) and the node (rclrs): the 10 ms timer sends the buttons' command (heartbeat-gated) and the e-stop burst |
+| `config/hw_panel.yaml` | every topic name, the steps (0.1 m/s, 0.05 rad), the creep, the caps (1.0, 0.3 m/s) |
+
+### Tested (29 October, Ben's Mac)
+
+| What | Result |
+|---|---|
+| `cargo test`: panel-core 30 (the buttons, the gate, safety.py's vectors, the readings), debug-core 58 (the footprint, the top-down, key L) | all pass |
+| `cargo test` with ROS: panel-app 7 (the real node: no command before the first frame, 15-21 in 2 s of drawing, none once drawing stops with GO still held; the E-STOP is five trues, no false), debug-app 14 | all pass |
+| `--demo` windows, screenshots (above) | the seeing screen: the lot's map from above, NDT's ellipses, the scan green on the map; the panel: SIM, buttons on, 0.3 m/s asked and seen, every sensor OK |
+| Gazebo, test lot, headless, the real node and the same buttons driven by `gazebo_self_test` (Speed + three times, GO held) | twist_mux passed 0.300; the car reached **0.31-0.35 m/s** in about 2 s; let go: 0 within 1 s |
+| Gazebo: the keyboard's zeros through twist_mux (a takeover) while GO is held | zeroed ("someone else drove"); the car stopped and **stayed at 0** after the keyboard let go, GO still held |
+| Gazebo: `/safety/estop` true, then cleared, GO held | zeroed ("the e-stop"); **stayed at 0** after the clear |
+| Gazebo: the geofence's lock true (its node stopped) | twist_mux passed nothing; the car **never moved** |
+| Gazebo: the panel frozen (SIGSTOP) while driving | `/drivers/buttons/cmd_vel` went silent; the car read **0.0 m/s** 2-6 s into the freeze (161 samples). Thawed with GO still held, it drove again |
+
+| Gazebo (`pixi run debugdemo`), **both windows on screen**, 29 Oct 22:50: `hw_panel --self-test 0.3:8` | asked 0.30, twist_mux 0.300, seen 0.30-0.35 m/s; GO let go: 0.00 about 0.5 s later. Pictures below |
+| The same run, the seeing screen | NDT TRACKING, 3.3 per point, 3.3 ms a match; the lot's map, every localizer's car and the scan on NDT's cells all drawn, 58 fps |
+
+![The seeing screen against Gazebo, NDT tracking](img/debug-hud-seeing-gazebo.png)
+
+![The hardware panel against Gazebo: every sensor OK (Gazebo has no battery)](img/hw-panel-gazebo.png)
+
+**Not yet seen:** the keys and the mouse pressed by hand (macOS blocks scripted keys); the bench
+check (a person's joystick beats the buttons); key L on the live window. Gazebo's output
+mux latched STOP once at start-up (an announcement race) and opened by itself the next
+runs; `pixi run gate-clear` reopens it.
 
 ## The Flutter app (2025-26): archived
 

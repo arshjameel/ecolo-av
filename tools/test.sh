@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run every test that doesn't need ROS: our packages' Python unit tests, the Rust spine
-# library, the HUD's and the map window's logic (hud-core, map-core), and the check that docs/interfaces.md matches
+# library, the HUD's, the map window's, the debug HUD's and the hardware panel's logic
+# (hud-core, map-core, debug-core, panel-core), NDT (ndt-core), and the check that docs/interfaces.md matches
 # docs/interfaces.yaml. Where the mcp environment is installed, also the MCP server over
 # stdio (on a private, local domain).
 # Needs Python 3 with pytest and PyYAML; Rust (cargo) for the spine. Works on any OS.
@@ -19,6 +20,7 @@ for pkg in ros/ego/aav_ego ros/io_mux/aav_io_mux ros/can_bridge/aav_spine ros/ca
            ros/sim/aav_gazebo ros/sim/aav_carla \
            ros/drivers/aav_scripted ros/drivers/aav_language ros/drivers/aav_navigation \
            ros/drivers/aav_actuator_tests ros/drivers/aav_drive_to_point ros/drivers/aav_routes ros/drivers/aav_rc \
+           ros/drivers/aav_track \
            ros/bringup/aav_description ros/localization/aav_gps_heading \
            ros/perception/aav_detector ros/sources/aav_camera_stream \
            ros/perception/aav_lane_finder ros/perception/aav_lane_geometry ros/perception/aav_lidar \
@@ -40,9 +42,11 @@ if command -v cargo >/dev/null; then
   (cd ros/perception/aav_radar_clusters && cargo test -q --locked -p radar-clustering)
   echo "== ros/can_bridge/aav_spine_bridge: the Rust CAN bridge's logic, the shared CAN vectors"
   (cd ros/can_bridge/aav_spine_bridge && cargo test -q --locked -p spine-bridge)
+  echo "== ros/localization/aav_ndt: NDT's maths, the filters, LOST; the design's checks"
+  (cd ros/localization/aav_ndt && cargo test -q --locked -p ndt-core)
   # Only the logic: the window (raylib) needs a screen's libraries, and colcon builds it.
-  echo "== ros/hud/aav_hud: the HUD's state, GPS, e-stop and formatting; the map's maths"
-  (cd ros/hud/aav_hud && cargo test -q --locked -p hud-core -p map-core)
+  echo "== ros/hud/aav_hud: the HUD's state, GPS, e-stop and formatting; the map's maths; the hardware panel's buttons"
+  (cd ros/hud/aav_hud && cargo test -q --locked -p hud-core -p map-core -p debug-core -p panel-core)
   # Every firmware crate must build without the standard library, for the Pico 2's chip.
   if [[ -d "$(rustc --print target-libdir --target thumbv8m.main-none-eabihf 2>/dev/null)" ]]; then
     echo "== firmware/spine, no_std, for the Pico 2 (thumbv8m.main-none-eabihf)"
@@ -80,7 +84,8 @@ import sys
 tasks = dict(re.findall(r'^([\w-]+) = \{ cmd = "([^"]*)"', open('pixi.toml').read(), re.M))
 bad = [t for t in ('turtle', 'sim', 'bench', 'bench-check', 'view', 'laptop-bench',
                        'sim-check', 'sim-fault', 'carla-car', 'controller-compare',
-                       'timing-test', 'stream-check')
+                       'timing-test', 'stream-check', 'debugdemo', 'hw-panel',
+                       'ndt-map')
        if not tasks.get(t, '').startswith('tools/ros.sh --local ')]
 sys.exit(f'these pixi tasks need "tools/ros.sh --local": {bad}' if bad else None)
 PY
@@ -106,6 +111,14 @@ for flag in --sim --local; do
         tools/keyboard.sh $flag)
   [[ "$got" == "LOCALHOST no-peers" ]] || { echo "tools/keyboard.sh $flag gave: $got"; exit 1; }
 done
+# The actuator tests and the preflight with --sim or --bench too; without them, the car's.
+for flag in --sim --bench; do
+  got=$(ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET ROS_STATIC_PEERS=192.0.2.1 PATH="$stub:$PATH" \
+        tools/actuator_test.sh preflight --stands $flag)
+  [[ "$got" == "LOCALHOST no-peers" ]] || { echo "tools/actuator_test.sh $flag gave: $got"; exit 1; }
+done
+got=$(ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET PATH="$stub:$PATH" tools/actuator_test.sh preflight --stands)
+[[ "$got" == SUBNET* ]] || { echo "tools/actuator_test.sh (the car) went local: $got"; exit 1; }
 echo "they do"
 
 echo "== the car kit's scripts (docs/car-install.md)"

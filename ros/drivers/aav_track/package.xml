@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_track</name>
+  <version>0.1.0</version>
+  <description>Trial path followers (pure pursuit, Stanley, LQR, MPC) that stand in for Nav2's controller_server: a FollowPath action server publishing cmd_vel_nav, with Nav2's own goal and progress checks and one speed policy for all (docs/trials.md).</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>nav2_msgs</exec_depend>
+  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>aav_description</exec_depend>
+  <exec_depend>aav_drive_to_point</exec_depend>
+  <exec_depend>aav_ego</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
+
+  <test_depend>aav_gazebo</test_depend>
+  <test_depend>aav_io_mux</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

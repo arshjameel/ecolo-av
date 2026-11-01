@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+# ndt-core: NDT's maths, the scan filters, the guess and the LOST logic. No ROS:
+#   cargo test -p ndt-core
+# ndt-node: the ROS node (rclrs). colcon builds it through CMakeLists.txt.
+members = ["crates/ndt-core", "crates/ndt-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
+
+# The matcher's loops are most of the time per match: tests and examples too run fast.
+[profile.test]
+opt-level = 2

@@ -377,3 +377,30 @@ def test_the_plants_with_their_dead_times_as_pade(car):
         vm.dc_gain(car.speed_plant_tf()))
     assert len(m.brake_plant_tf(pade_order=2)[1]) == len(car.brake_plant_tf()[1]) + 2
     assert m.speed_plant_tf()[1].tolist() == car.speed_plant_tf()[1].tolist()
+
+
+# --- the speed LQI (TODO 3) ---------------------------------------------------------------
+
+def test_the_speed_lqi_is_stable_and_pushes_the_right_way(car):
+    g = car.speed_lqi()
+    assert g.k_speed > 0 and g.k_integral > 0 and g.k_accel > 0
+    assert g.design_lag == max(car.throttle_lag, car.brake_lag)
+    pl = car.speed_lqi_open_loop(g)
+    assert all(p.real < 0 for p in vm.poles(vm.feedback(pl)))
+    assert vm.margins(pl, car.speed_delay('worst')).phase_margin_deg > 45
+
+
+def test_heavier_error_weights_give_stiffer_gains(car):
+    soft = car.speed_lqi(vm.SpeedLqiWeights(q_speed=1.0))
+    stiff = car.speed_lqi(vm.SpeedLqiWeights(q_speed=4.0))
+    assert stiff.k_speed > soft.k_speed
+
+
+def test_the_speed_lqi_gains_are_spine_core_s():
+    src = (ROOT / 'firmware/spine/crates/spine-core/src/speed_loop.rs').read_text()
+    block = src[src.index('pub const MODEL: LqiConfig'):]
+    block = block[:block.index('};')]
+    g = vm.VehicleModel().speed_lqi()
+    for name in ('k_speed', 'k_accel', 'k_integral', 'setpoint_weight'):
+        rust = float(re.search(rf'\b{name}: ([\d.]+)', block).group(1))
+        assert rust == pytest.approx(getattr(g, name), rel=1e-3), name

@@ -37,15 +37,20 @@
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
 <a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
 <a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
 <a href="maps-and-position.html">Maps and position</a>
 <a href="learn-nav2.html">Learn: Nav2</a>
-<span class="sep">Reference:</span>
 <a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
 <a href="costmaps.html">Costmaps</a>
-<a href="controllers.html">Path followers</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
@@ -69,6 +74,7 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
@@ -100,7 +106,7 @@ the end, mapped to these numbers.</p>
 - <strong>Software, built and tested in simulation: about 43%</strong> of the committed tasks. <strong>Proven on the car: about 5%</strong> (the audits).
 - <strong>Ahead:</strong> the drivers, ego, the muxes, Gazebo, Nav2, A to B, the HUD. <strong>Behind:</strong> everything that needs the car or new parts: power, calibration, the closed loop.
 - <strong>Next gate, 30 Oct (Know the car):</strong> the car isn't measured yet. That's the most urgent job.
-- <strong>MPPI:</strong> Nav2's default since 22 Oct, tuned for the car in Gazebo, and compared with Regulated Pure Pursuit by <code>pixi run controller-compare</code> (<code>controller:=rpp</code> for the old one; <a href="controllers.html">controllers</a>). It steers round an obstacle the sensors see.
+- <strong>MPPI:</strong> Nav2's default since 22 Oct, tuned for the car in Gazebo, and compared with Regulated Pure Pursuit by <code>pixi run controller-compare</code> (<code>controller:=rpp</code> for the old one; <a href="path-followers.html">controllers</a>). It steers round an obstacle the sensors see.
 - <strong>Status:</strong> ✅ done · 🧪 done in simulation only · 🔧 started · ⬜ not started · 🎯 stretch.</p>
 </blockquote></div>
 <section class="card"><h2 id="how-far-along-by-sub-project">How far along, by sub-project</h2>
@@ -1120,13 +1126,13 @@ too". It shares the car's model with ego, as the proposal says (section 8.3).</p
 <td>M3</td>
 <td>Tuned for a car, not a robot, in Gazebo</td>
 <td>✅ 22 Oct</td>
-<td>moving within 0.5 s at 0.95 m/s; turns to a goal's heading from 2.5 m out (<a href="controllers.html#making-mppi-drive">why</a>). Its U-turn in a 14 m lane: forward only it swings wide and fails; allowed to reverse it makes a three-point turn (22 Oct, <a href="controllers.html">controllers</a>)</td>
+<td>moving within 0.5 s at 0.95 m/s; turns to a goal's heading from 2.5 m out (<a href="path-followers.html#making-mppi-drive">why</a>). Its U-turn in a 14 m lane: forward only it swings wide and fails; allowed to reverse it makes a three-point turn (22 Oct, <a href="path-followers.html">controllers</a>)</td>
 </tr>
 <tr>
 <td>M4</td>
 <td>The comparison: <code>pixi run controller-compare</code></td>
 <td>✅ 22 Oct</td>
-<td>six runs overnight; MPPI did at least as well in each. <strong>MPPI is the default</strong> since 22 Oct (<a href="controllers.html">controllers</a>)</td>
+<td>six runs overnight; MPPI did at least as well in each. <strong>MPPI is the default</strong> since 22 Oct (<a href="path-followers.html">controllers</a>)</td>
 </tr>
 <tr>
 <td>M5</td>

@@ -52,7 +52,7 @@ ROS node `language_drive` (`ros_backend.py`):
 
 | Item | What |
 |---|---|
-| Subscribes | `/localization/odom/local` (`nav_msgs/Odometry`); `/sensors/gps/fix` (`sensor_msgs/NavSatFix`, best effort); `/safety/estop` (`std_msgs/Bool`); `/vehicle/status` (`aav_interfaces/VehicleStatus`); every twist_mux input and lock from `aav_command_mux`'s `twist_mux.yaml` (arrival times only, to tell who drives); `/diagnostics` (twist_mux's lock report); `/tf`, `/tf_static` |
+| Subscribes | `/localization/odom/local` (`nav_msgs/Odometry`); `/sensors/gps/fix` (`sensor_msgs/NavSatFix`, best effort); `/safety/estop` (`std_msgs/Bool`); `/vehicle/status` (`aav_interfaces/VehicleStatus`); every twist_mux input and lock from `aav_command_mux`'s `twist_mux.yaml` (arrival times only, to tell who drives); `/diagnostics` (twist_mux's lock report); `/tf`, `/tf_static`; `/safety/geofence/fence` (`geometry_msgs/PolygonStamped`, latched) |
 | Publishes | `/safety/estop` (`std_msgs/Bool`): only true, five times in 0.5 s |
 | Calls | actions `/scripted_drive` (`aav_interfaces/action/ScriptedDrive`), `/follow_gps_waypoints` (`nav2_msgs/action/FollowGPSWaypoints`); `/ego/get_parameters` |
 
@@ -70,7 +70,7 @@ Modules:
 
 | Module | ROS? | Holds |
 |---|---|---|
-| `safety.py` | no | `Caps`, `effective_caps`, `check_drive`, `check_turn`, `Where`, `allowed_here`, `car_unreachable`, `mux_config`, `mux_choice`, `holding_locks`, `mux_locks_from_diagnostics` |
+| `safety.py` | no | `Caps`, `effective_caps`, `check_drive`, `check_turn`, `Where`, `allowed_here`, `car_unreachable`, `mux_config`, `mux_choice`, `holding_locks`, `mux_locks_from_diagnostics`, `drive_end`, `gps_end`, `fence_refusal` (the geofence) |
 | `drive_maths.py` | no | `plan_distance` -> `DriveGoal`, `plan_arc`, `signed_angle`, `min_turn_radius`, `haversine` |
 | `drive_tools.py` | no | `DriveTools` (the tools, every rule checked here), `Backend` protocol, `CarState` |
 | `react.py` | no | the ReAct loop: `ReactAgent` (what `talk` runs), `parse_reply` (Qwen, Llama, Gemma, Mistral formats, JSON fallback), `system_prompt`, `Plan`, `Step` |
@@ -92,6 +92,8 @@ Modules:
   stop-sign and sensor locks (30) hold Nav2 (20), so `go_to_gps`, but not the scripted
   driver (50), so not `drive` or `turn`. It publishes only `true` on `/safety/estop`; a
   person clears it.
+- A drive, turn or GPS goal that would end outside `/safety/geofence/fence` is refused
+  before anything moves. It never calls `/safety/geofence/clear` (a test checks).
 - `--car` refuses to start while ROS discovery stays on this computer (`tools/ros.sh
   --local`, LOCALHOST, no static peers): it could reach no car. Start it with
   `AAV_DISCOVERY=SUBNET` (`car_unreachable`).

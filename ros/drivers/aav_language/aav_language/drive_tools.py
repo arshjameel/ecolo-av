@@ -51,6 +51,7 @@ class CarState:
     armed: Optional[bool] = None                             # /vehicle/status armed
     mux: Dict[str, Optional[str]] = field(default_factory=dict)  # driver, blocked_by
     mux_locks: Optional[Dict[str, bool]] = None   # twist_mux's own report (/diagnostics)
+    fence: Optional[List[Tuple[float, float]]] = None  # /safety/geofence/fence, map frame
 
 
 class Backend(Protocol):
@@ -229,6 +230,10 @@ class DriveTools:
                                  direction == 'reverse')
         if why is None and curvature and c.min_radius and abs(1.0 / curvature) < c.min_radius:
             why = f'the car cannot turn tighter than a {c.min_radius:.1f} m radius'
+        if why is None:
+            s = self.backend.state()
+            why = safety.fence_refusal(s.fence, safety.drive_end(
+                s.map_pose, float(distance_m), float(curvature), direction == 'reverse'))
         return why or self._may_move('scripted')
 
     def drive(self, distance_m: float, speed_mps: float = 0.5, direction: str = 'forward',
@@ -265,8 +270,13 @@ class DriveTools:
             angle = drive_maths.signed_angle(float(angle_deg), direction)
         except ValueError as e:
             return str(e)
-        return (safety.check_turn(self.caps(), angle, float(radius_m), float(speed_mps))
-                or self._may_move('scripted'))
+        why = safety.check_turn(self.caps(), angle, float(radius_m), float(speed_mps))
+        if why is None:
+            arc = drive_maths.plan_arc(angle, float(radius_m))
+            s = self.backend.state()
+            why = safety.fence_refusal(s.fence, safety.drive_end(s.map_pose, arc.length,
+                                                                 arc.curvature))
+        return why or self._may_move('scripted')
 
     def turn(self, angle_deg: float, radius_m: float, direction: Optional[str] = None,
              speed_mps: float = 0.5, wait: bool = True) -> dict:
@@ -308,6 +318,9 @@ class DriveTools:
         if d > self.caps().max_distance:
             return (f'that point is {d:.0f} m away; commands are limited to '
                     f'{self.caps().max_distance:g} m')
+        why = safety.fence_refusal(s.fence, safety.gps_end(s.map_pose, s.gps, lat, lon))
+        if why:
+            return why
         why = self._may_move('nav')
         if why:
             return why

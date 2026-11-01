@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trials: new path followers and localizers beside the main ones · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/trials.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Trials: new path followers and localizers beside the main ones</h1>
+<div class="meta">22 min read · 10 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-day.html">Car day</a>
+<a href="tests.html">Every test</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<span class="sep">Learn:</span>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a class="here" href="trials.html">Trials</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#what-is-on-trial">What is on trial</a><a href="#where-a-tracker-sits">Where a tracker sits</a><a href="#fair-rules">Fair rules</a><a href="#run-it">Run it</a><a href="#results">Results</a><a href="#scoring-a-localizer-fairly">Scoring a localizer fairly</a><a href="#before-a-winner-goes-on-the-car">Before a winner goes on the car</a><a href="#results-29-october">Results, 29 October</a><a href="#results-29-october-afternoon-lqr-rebuilt-and-mpc_full">Results, 29 October (afternoon): LQR rebuilt, and mpc_full</a><a href="#planners-29-oct-hybrid-lattice-and-smac2d">Planners, 29 Oct: hybrid, lattice and smac2d</a></nav>
+<div class="lead"><p>Ben, 29 Oct: "We want to make other nodes or plugins that we can test and then replace
+the main ones if they work." Each trial runs <strong>beside</strong> today's default, chosen at launch,
+and is <strong>scored on the same routes</strong>. It becomes the default only once it wins.</p>
+<blockquote>
+<p><strong>The short version</strong>
+- <strong>Trackers</strong> (<code>aav_track</code>): pure pursuit, Stanley, LQR, MPC, and <code>mpc_full</code> (speed and steering together), in Nav2's own chain, in controller_server's place. <code>tracker:=lqr</code>.
+- <strong>AMCL</strong> (stock <code>nav2_amcl</code>): a particle filter on the map and the lidar, scored against the EKF, never steering. <code>amcl:=true</code>.
+- <strong>NDT</strong> (<code>aav_ndt</code>, ours in Rust): the lidar matched to a saved lidar map, scored against the EKF, never steering. <code>ndt:=true</code>.
+- <strong>Score:</strong> <code>pixi run controller-compare --trackers pure_pursuit lqr --runs 3</code>.
+- <strong>Results (29 Oct, Gazebo, 3 runs):</strong> pure pursuit, Stanley and MPC finished every leg; MPPI, RPP and LQR lost legs on the U-turn. AMCL lost itself; the EKF wins. <a href="#results-29-october">Results</a>.
+- <strong>NDT</strong>, 29 Oct: about 1-3 cm off on the lot tour, 2 ms a match (below).
+- <strong>Afternoon:</strong> LQR rebuilt with a preview (U-turn 2 of 3 in a quiet run; it weaved on a busy Mac), <code>mpc_full</code> 10 of 12. <a href="#results-29-october-afternoon-lqr-rebuilt-and-mpc_full">Results</a>.
+- <strong>Planners</strong> (<code>planner:=</code>): Nav2's State Lattice (on our own primitives), Smac 2D, NavFn and Theta<em>, beside Hybrid-A</em>. 29 Oct, one run: <strong>Hybrid-A* 4 of 4 legs</strong>; lattice and Smac 2D 2 of 4, both lost on the U-turn. Hybrid stays. <a href="#planners-29-oct-hybrid-lattice-and-smac2d">Results</a>.
+- The design: <code>docs/designs/2026-10-29_trials.md</code>.</p>
+</blockquote></div>
+<section class="card"><h2 id="what-is-on-trial">What is on trial</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Trial</th>
+<th>Scored against</th>
+<th>Switch</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stanley steering</td>
+<td>our pure pursuit</td>
+<td><code>tracker:=stanley</code></td>
+</tr>
+<tr>
+<td>LQR steering, gains by speed and bend, with a preview</td>
+<td>our pure pursuit</td>
+<td><code>tracker:=lqr</code></td>
+</tr>
+<tr>
+<td>MPC steering, within the steering's limits</td>
+<td>our pure pursuit</td>
+<td><code>tracker:=mpc</code></td>
+</tr>
+<tr>
+<td>MPC speed and steering together (sets its own speed)</td>
+<td>MPC, MPPI</td>
+<td><code>tracker:=mpc_full</code></td>
+</tr>
+<tr>
+<td>our pure pursuit (the control)</td>
+<td>Nav2's RPP and MPPI</td>
+<td><code>tracker:=pure_pursuit</code></td>
+</tr>
+<tr>
+<td>AMCL</td>
+<td>the global EKF</td>
+<td><code>amcl:=true</code></td>
+</tr>
+<tr>
+<td>NDT on a saved lidar map</td>
+<td>the global EKF, and AMCL</td>
+<td><code>ndt:=true</code> (after <code>pixi run ndt-map drive</code>)</td>
+</tr>
+<tr>
+<td>State Lattice planner, our primitives</td>
+<td>Hybrid-A*</td>
+<td><code>planner:=lattice</code></td>
+</tr>
+<tr>
+<td>Smac 2D, NavFn, Theta* planners (ignore the turning circle: sim and bench only)</td>
+<td>Hybrid-A*</td>
+<td><code>planner:=smac2d</code>, <code>navfn</code>, <code>theta_star</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="where-a-tracker-sits">Where a tracker sits</h2>
+<pre class="highlight"><code>goal ─► bt_navigator ─► planner_server (Smac Hybrid-A*, replans every 1 s)
+              │ FollowPath ("follow_path")
+              ▼
+   tracker:=none (default)          tracker:=stanley | lqr | mpc | mpc_full | pure_pursuit
+   controller_server (MPPI, RPP)    aav_track's track node; controller_server's own
+                                    action is renamed follow_path_unused
+              └──────► cmd_vel_nav ◄──────┘
+                            │
+        velocity_smoother → collision_monitor → /drivers/nav/cmd_vel (twist_mux 20) → ego</code></pre>
+<p>Nothing after <code>cmd_vel_nav</code> changes: the same smoother, stop zone, mux slot, locks and
+e-stops.</p>
+</section>
+<section class="card"><h2 id="fair-rules">Fair rules</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>One speed policy for every tracker: RPP's cruise speed, slower in bends, stop by distance</td>
+<td>off-path error grows with speed</td>
+</tr>
+<tr>
+<td><code>mpc_full</code> plans its own speed, but within the same limits: cruise, bends, planned braking</td>
+<td>it is on trial for the speed too</td>
+</tr>
+<tr>
+<td>Nav2's own goal and progress checks (nav2.yaml: 1.0 m, 0.75 rad)</td>
+<td>the same "done" for all</td>
+</tr>
+<tr>
+<td>Track in <code>odom</code>; each path moved there once</td>
+<td>the map pose jumps with GPS</td>
+</tr>
+<tr>
+<td>Forward only (<code>reversing:=false</code>: a tracker is refused otherwise)</td>
+<td>the trackers drive forwards only</td>
+</tr>
+<tr>
+<td>3 runs each, mean and spread (<code>--runs 3</code>)</td>
+<td>MPPI is random; one run names no winner</td>
+</tr>
+<tr>
+<td>Loop time and missed ticks recorded</td>
+<td>a slow MPC mustn't look like bad maths</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="run-it">Run it</h2>
+<pre class="highlight"><code class="language-bash">pixi run sim world:=test_lot reversing:=false tracker:=mpc      # watch one
+pixi run sim world:=test_lot amcl:=true                         # AMCL beside the EKF
+pixi run controller-compare --trackers pure_pursuit stanley lqr mpc mpc_full --controllers mppi --runs 3
+pixi run controller-compare --amcl                              # score AMCL too
+pixi run ndt-map drive                                          # NDT's map, once (~6 min)
+pixi run controller-compare --amcl --ndt                        # score NDT beside AMCL</code></pre>
+</section>
+<section class="card"><h2 id="results">Results</h2>
+<p>Each run's results go here, with its date and its folder in <code>log/controller-compare/</code>.</p>
+<h3 id="29-oct-0400-ndt-and-amcl-beside-the-ekf-one-run-mppi-the-lot-tour">29 Oct, 04:00: NDT and AMCL beside the EKF (one run, MPPI, the lot tour)</h3>
+<p><code>controller-compare --tours lot --controllers mppi --amcl --ndt</code>, on the map
+<code>ndt-map drive</code> made at 03:55 (169,121 points, 2,450 clouds). Off = from Gazebo's truth.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Leg</th>
+<th>EKF off, mean (m)</th>
+<th>AMCL off, mean (m)</th>
+<th>NDT off, mean / worst (m)</th>
+<th>NDT: clouds with a pose</th>
+<th>NDT match, mean / worst (ms)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a left turn</td>
+<td>0.17</td>
+<td>0.66</td>
+<td>0.009 / 0.02</td>
+<td>100 %</td>
+<td>2.6 / 3.9</td>
+</tr>
+<tr>
+<td>round the building</td>
+<td>0.16</td>
+<td>7.1</td>
+<td>0.030 / 0.27</td>
+<td>98 %</td>
+<td>1.7 / 4.7</td>
+</tr>
+<tr>
+<td>turn back</td>
+<td>0.18</td>
+<td>17.7</td>
+<td>0.017 / 0.37</td>
+<td>98 %</td>
+<td>1.7 / 4.7</td>
+</tr>
+<tr>
+<td>home (Nav2 gave up)</td>
+<td>0.17</td>
+<td>35.7</td>
+<td>0.010 / 0.21</td>
+<td>100 %</td>
+<td>2.2 / 14.0</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>NDT was never over 1 m off; one LOST and restart from <code>ekf_global</code> (turn back).
+  Heading off at most 1.0°.</li>
+<li>AMCL lost the car round the building and never found it again: a look at its
+  settings is due before it is scored again.</li>
+<li>The last leg wasn't reached: MPPI and Nav2 gave up, with the EKF 0.17 m off, so that is
+  not the localizers.</li>
+<li>Match times are this Mac's (M4 Max), not the Orin's. Gazebo's lidar has no sweep; the
+  car's does. One run: no spread yet. <code>covariance_scale</code> (k) and the score floor are
+  not fitted yet.</li>
+</ul>
+<h3 id="29-oct-afternoon-amcl-tuned-and-why-it-was-lost">29 Oct, afternoon: AMCL tuned, and why it was lost</h3>
+<p>Each run: <code>controller-compare --tours lot --controllers mppi --amcl</code>, with a bag of the
+scan, the truth and AMCL beside it (<code>ros2 bag record</code>, not in git). Off = from Gazebo's truth.</p>
+<p><strong>What the bags showed:</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Suspect</th>
+<th>Finding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>things in the world not in the map</td>
+<td><strong>no</strong>: at the truth, 3 of 83,000 beam ends were over 0.75 m from a wall in <code>example_lot</code></td>
+</tr>
+<tr>
+<td>the scan's 0.3-2.0 m band vs the 1.5 m walls</td>
+<td><strong>no</strong>: the lidar's beams (15° down to 15° up) cross the band on every wall from ~2.4 to 30 m</td>
+</tr>
+<tr>
+<td>the odometry</td>
+<td><strong>no</strong>: <code>ekf_local</code> within 0.3 % of the distance and 0.5° per 4 m</td>
+</tr>
+<tr>
+<td>the scan's stamp</td>
+<td>small: it fits the truth ~0.07 s earlier (7 cm at 1 m/s)</td>
+</tr>
+<tr>
+<td>the scan's directions</td>
+<td><strong>a bug, fixed</strong>: each point went to the direction below it, 0.25° clockwise</td>
+</tr>
+<tr>
+<td>AMCL's motion noise (alpha 0.2)</td>
+<td><strong>the main cause</strong>: ~9° of heading noise per particle per 0.25 m driven</td>
+</tr>
+<tr>
+<td>AMCL's laser model (z_hit 0.5, 60 beams)</td>
+<td><strong>weak</strong>: a perfect fit scored only ~6x a hopeless one</td>
+</tr>
+<tr>
+<td>the 0.25 m solid map</td>
+<td><strong>a bias</strong>: a beam on a wall's face lands in the free cell before it; pushing beams into the building scored better than the truth</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>What changed</strong> (each with its reason in <code>config/amcl.yaml</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Change</th>
+<th>Leg 1 / leg 2 off, mean (m)</th>
+<th>Worst (m)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>before</td>
+<td>the defaults</td>
+<td>0.69 / 6.98 (lost, 95° off)</td>
+<td>21.1</td>
+</tr>
+<tr>
+<td>A</td>
+<td>alpha 0.2 → 0.01-0.05; z_hit 0.9, z_rand 0.1; 180 beams; resample every 2nd scan; the scan's directions</td>
+<td>0.54 / 0.86</td>
+<td>1.68</td>
+</tr>
+<tr>
+<td>B</td>
+<td>A + sigma_hit 0.4 (as wide as the map's cells)</td>
+<td>0.40 / 0.27</td>
+<td>0.79 (whole tour)</td>
+</tr>
+</tbody>
+</table></div>
+<p>B, the whole tour, one run (<code>log/controller-compare/20261029-110651/</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Leg</th>
+<th>AMCL off, mean (m)</th>
+<th>worst (m)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a left turn</td>
+<td>0.40</td>
+<td>0.63</td>
+</tr>
+<tr>
+<td>round the building</td>
+<td>0.27</td>
+<td>0.46</td>
+</tr>
+<tr>
+<td>turn back</td>
+<td>0.19</td>
+<td>0.33</td>
+</tr>
+<tr>
+<td>home</td>
+<td>0.47</td>
+<td>0.79</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>Never lost. The worst is in the open (leg 1, home): only one wall within 30 m, so
+  along the car's way nothing pins it, and the solid map's bias pulls it 0.2 m back.</li>
+<li><strong>AMCL's own map</strong> (step C): the lot at 0.05 m with each obstacle only its outline
+  (<code>maps/example_lot_amcl.yaml</code>, <a href="../../ros/drivers/aav_navigation/maps/README.md#why-amcl-has-a-map-of-its-own">why</a>).
+  Offline, on these bags, its best-scoring pose is 0.07 m from the truth (0.25 m map:
+  0.2-0.3 m). Its run: below.</li>
+</ul>
+<p><strong>Step C: AMCL's own map, sigma_hit 0.2</strong> (<code>log/controller-compare/20261029-213729/</code>,
+one run, <code>--tours lot --controllers mppi --amcl</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Leg</th>
+<th>AMCL off, mean (m)</th>
+<th>worst (m)</th>
+<th>B's mean / worst (m)</th>
+<th>Lost?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a left turn</td>
+<td>0.11</td>
+<td>0.15</td>
+<td>0.40 / 0.63</td>
+<td>no</td>
+</tr>
+<tr>
+<td>round the building</td>
+<td>0.06</td>
+<td>0.12</td>
+<td>0.27 / 0.46</td>
+<td>no</td>
+</tr>
+<tr>
+<td>turn back</td>
+<td>0.06</td>
+<td>0.12</td>
+<td>0.19 / 0.33</td>
+<td>no</td>
+</tr>
+<tr>
+<td>home</td>
+<td>-</td>
+<td>-</td>
+<td>0.47 / 0.79</td>
+<td>not scored: the car never moved</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>C wins: 3-6x closer than B, and it's the default</strong> for <code>amcl:=true</code> (sigma_hit 0.2
+  in <code>config/amcl.yaml</code>; <code>sim.launch.py</code> always gives AMCL its own map).</li>
+<li>Heading off: 1° at worst (B: 6°). The first 10 s of leg 1 have no pose yet (AMCL waits
+  for 0.25 m of driving), as in B.</li>
+<li>Nav2, not AMCL, failed the last two legs: it gave up on the turn back (status 6,
+  collision_monitor stopped it once) and never started home. The Mac was at load ~25 then
+  (another worktree's Gazebo). Run it again on a quiet computer for the home leg.</li>
+<li><strong>A bug found on the way:</strong> until this run AMCL never read its own map. Under
+  <code>sim.launch.py</code>'s global <code>use_sim_time</code>, <code>amcl.yaml</code>'s <code>map_topic: /map</code> beat the launch
+  file's, so the runs at 11:20 and 19:31 (<code>20261029-112022/</code>, <code>-193140/</code>) were Nav2's 0.25 m
+  map with sigma 0.2: 0.5-0.8 m mean, 1.8 m worst, worse than B. That shows 0.4 is right on
+  the coarse map, 0.2 only on the fine one. <code>map_topic</code> left <code>amcl.yaml</code>; the launch test
+  checks that nothing the launch file sets is in the file too.</li>
+<li>An earlier try at the same setup (<code>20261029-213056/</code>), beside another Gazebo: leg 1 0.08 m
+  mean, then AMCL dropped 68 scans (its transforms came late) and published nothing more.
+  With the computer this loaded, AMCL's numbers are only worth what its pose count says.</li>
+</ul>
+</section>
+<section class="card"><h2 id="scoring-a-localizer-fairly">Scoring a localizer fairly</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>off: mean, worst; heading worst</td>
+<td>each pose against the truth at its own stamp</td>
+</tr>
+<tr>
+<td>the same on one 10 Hz grid (each pose held until the next)</td>
+<td>one that publishes more often isn't scored on more samples</td>
+</tr>
+<tr>
+<td>time over 1 m off, or no pose yet; the longest stretch</td>
+<td>lost, and how long it took to recover</td>
+</tr>
+<tr>
+<td>NDT: share of clouds that gave a pose; each match's wall-clock time</td>
+<td>simulated time can hide a slow match</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="before-a-winner-goes-on-the-car">Before a winner goes on the car</h2>
+<ul>
+<li>Gazebo's map is perfect and its GPS noise simple: <strong>AMCL feeds the EKF only after it
+  also wins on a bag from the real lot.</strong> On the car, slam_toolbox's map needs aligning
+  to the GPS <code>map</code> frame first.</li>
+<li>AMCL publishes only after the car moves (<code>update_min_d</code>): parked, few samples.</li>
+<li>The trackers don't read the costmap: MPPI stays for the obstacle tours (design T3).</li>
+</ul>
+</section>
+<section class="card"><h2 id="results-29-october">Results, 29 October</h2>
+<p>Gazebo's test lot, 4 legs, 3 runs per follower, forward only, on branch <code>thursday-29oct</code>
+(6bfd0021), one after another on a Mac. Run <code>log/controller-compare/20261029-024252/</code> (not
+in git). <strong>Every car number is still a guess</strong> (<code>docs/measure-the-car.md</code>), so this ranks
+the followers in the sim, not on the car.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Follower</th>
+<th>Legs finished (of 12)</th>
+<th>Off the path, mean</th>
+<th>Tick, worst</th>
+<th>CPU</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>pure pursuit</strong> (ours, the control)</td>
+<td><strong>12</strong></td>
+<td>0.11-0.13 m</td>
+<td>0.8 ms</td>
+<td>21 %</td>
+</tr>
+<tr>
+<td><strong>Stanley</strong></td>
+<td><strong>12</strong></td>
+<td>0.10-0.13 m</td>
+<td>0.8 ms</td>
+<td>21 %</td>
+</tr>
+<tr>
+<td><strong>MPC</strong></td>
+<td><strong>12</strong></td>
+<td>0.11-0.12 m</td>
+<td>6.3 ms</td>
+<td>28 %</td>
+</tr>
+<tr>
+<td>RPP (Nav2)</td>
+<td>10</td>
+<td>0.11-0.14 m</td>
+<td>-</td>
+<td>7 %</td>
+</tr>
+<tr>
+<td>MPPI (Nav2, today's default)</td>
+<td>8</td>
+<td>0.11-0.14 m</td>
+<td>-</td>
+<td>22-30 %</td>
+</tr>
+<tr>
+<td>LQR</td>
+<td>8</td>
+<td>0.11-0.12 m</td>
+<td>0.6 ms</td>
+<td>21 %</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>What it shows:</strong></p>
+<ul>
+<li>On the straight and the easy bends, every follower stays about 0.12 m off the path: steering law isn't what matters there.</li>
+<li><strong>The U-turn</strong> ("turn back", a 14 m lane, forward only) decides it. MPPI, RPP and LQR got collision_monitor stops near the walls and Nav2 gave up (status 6); the failed U-turn then left the next leg ("home") unreachable, so each U-turn failure counts twice.</li>
+<li>LQR is linearised about driving straight: at full lock it swings wide. A curvature-scheduled LQR or a tighter feed-forward is the next try.</li>
+<li>MPC never missed a 20 Hz tick (2 ms mean, 6 ms worst) in Python.</li>
+<li><code>aav_track</code>'s 21 % CPU is mostly rclpy's executor and TF, not the trackers (0.2 ms a tick).</li>
+</ul>
+<p><strong>AMCL</strong> (<code>--amcl</code>, one MPPI run): 0.71 m mean off on the first leg (EKF: 0.16 m), then lost
+on the second: 6.9 m mean, 21 m worst. Gazebo's GPS is easy (white noise), so the EKF has the
+advantage here; AMCL's settings are untuned. Run <code>log/controller-compare/20261029-034402/</code>.</p>
+<p><strong>Next:</strong> tune LQR for the U-turn; AMCL's laser model and particle count; NDT beside both
+(<code>docs/designs/2026-10-29_ndt.md</code>); then the same table on the car once it's measured.</p>
+</section>
+<section class="card"><h2 id="results-29-october-afternoon-lqr-rebuilt-and-mpc_full">Results, 29 October (afternoon): LQR rebuilt, and <code>mpc_full</code></h2>
+<p>Branch <code>trackers-tuning</code>. Two changes, then the same lot, 3 runs each, forward only.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Change</th>
+<th>What</th>
+<th>Commit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>LQR</strong></td>
+<td>linearised about the path's bend (gains by speed <strong>and</strong> bend), the input is the command's change per tick (so the steering rate is in the design), and a 2 s <strong>preview</strong> of the bends ahead (LQR with preview, Tomizuka)</td>
+<td>8b4dcf23</td>
+</tr>
+<tr>
+<td><strong><code>mpc_full</code></strong></td>
+<td>plans speed <strong>and</strong> steering over the next 9 m, as one QP a tick, within full lock, the steering rate, the throttle, the brake and the policy's speed limits; it sets its own speed</td>
+<td>2bede5f6</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Why LQR swung wide.</strong> The steering needs 1.7 s to go from one lock to the other. The
+old LQR only had the bend's steering at the car as feed-forward, so it began each swing
+when the bend had already arrived. On the fake car's U-turn at full lock:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Fake car, U-turn at full lock, 1 m/s</th>
+<th>Worst off the path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LQR before</td>
+<td>0.80 m</td>
+</tr>
+<tr>
+<td>LQR with preview</td>
+<td><strong>0.29 m</strong></td>
+</tr>
+<tr>
+<td>MPC / pure pursuit</td>
+<td>0.31 / 0.24 m</td>
+</tr>
+<tr>
+<td><code>mpc_full</code></td>
+<td><strong>0.14 m</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="gazebo-all-six-run-logcontroller-compare20261029-152311-not-in-git">Gazebo, all six (run <code>log/controller-compare/20261029-152311/</code>, not in git)</h3>
+<p>15:23-16:28. <strong>The Mac was busy</strong> (load average 24-30; other helpers' and Ben's runs):
+Stanley's runs had sensor-watchdog stops, and LQR's run 1 had 125 planner-loop misses
+(the others 1-13).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Follower</th>
+<th>Legs (of 12)</th>
+<th>U-turns (of 3)</th>
+<th>U-turn time</th>
+<th>Tick mean / worst</th>
+<th>CPU</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pure pursuit</td>
+<td><strong>12</strong></td>
+<td>3</td>
+<td>42 s</td>
+<td>0.2 / 3 ms</td>
+<td>23 %</td>
+</tr>
+<tr>
+<td>Stanley</td>
+<td><strong>12</strong></td>
+<td>3</td>
+<td>41 s</td>
+<td>0.3 / 24 ms</td>
+<td>23 %</td>
+</tr>
+<tr>
+<td>MPC</td>
+<td><strong>12</strong></td>
+<td>3</td>
+<td>48 s</td>
+<td>3.5 / 16 ms</td>
+<td>32 %</td>
+</tr>
+<tr>
+<td><code>mpc_full</code></td>
+<td>10</td>
+<td>2</td>
+<td>49 s</td>
+<td>2.6 / 13 ms</td>
+<td>30 %</td>
+</tr>
+<tr>
+<td>MPPI (Nav2)</td>
+<td>10</td>
+<td>2</td>
+<td>80 s</td>
+<td>-</td>
+<td>18 %</td>
+</tr>
+<tr>
+<td>LQR</td>
+<td>6</td>
+<td>1</td>
+<td>45 s</td>
+<td>0.35 / 3 ms</td>
+<td>26 %</td>
+</tr>
+</tbody>
+</table></div>
+<p>Off the path, mean: 0.08-0.16 m for every follower.</p>
+<h3 id="lqr-and-pure-pursuit-alone-run-logcontroller-compare20261029-041845">LQR and pure pursuit alone (run <code>log/controller-compare/20261029-041845/</code>)</h3>
+<p>04:18, load average 17-21 at the start. <strong>LQR 10 of 12 legs, the U-turn 2 of 3</strong> (was 8
+and 1 of 3 at 02:42); pure pursuit 12 of 12 (its U-turn 3 of 3). LQR's failed
+U-turn was the planner's clockwise loop, to the south wall.</p>
+<h3 id="what-it-shows">What it shows</h3>
+<ul>
+<li><strong>The preview fixed what it was for</strong>: on the fake car, and in the quiet run. In the
+  busy run LQR lost legs it used to make: run 1 was starved, run 2 <strong>weaved</strong> (heading
+  swinging ±0.5 rad round the building). The fake car with the car seen 0.2 s late
+  doesn't weave (a new test), and the design keeps 15 ticks of delay margin at 1 m/s. So
+  the cause is still open: see the questions.</li>
+<li><strong><code>mpc_full</code> drives the whole A-to-B</strong>: the same times as MPC, with its own speed. At
+  1 m/s it hardly slows for the U-turn (0.92 m/s at least): over distance, at that speed,
+  the steering can swing in time, so its model sees no gain in going slower. At 2 m/s on
+  the fake car it slows to 1.4 m/s to swing the steering (the bend alone allows 1.7).</li>
+<li>Every U-turn, any follower, drives 2-5 m wider than the planner's first loop: the planner
+  replans every second from where the car is, and each new loop starts a little further
+  on. A planner setting, not a tracker one (open).</li>
+<li>MPC and <code>mpc_full</code> stay inside a 20 Hz tick in Python (worst 16 ms on a busy Mac).</li>
+</ul>
+<p><strong>Open questions</strong></p>
+<ol>
+<li>LQR's weave in Gazebo: rerun on a quiet Mac, then log <code>/drivers/nav/track/status</code>
+   (its preview and feed-forward) to see if the path's jagged curvature drives it.</li>
+<li><code>mpc_full</code> slows only when its model says the steering can't keep up. Should it also
+   value slowing for the U-turn at 1 m/s (a cost on the steering's rate per second)?</li>
+<li>The planner's growing loops: replan less often in a U-turn, or keep the old path?</li>
+</ol>
+</section>
+<section class="card"><h2 id="planners-29-oct-hybrid-lattice-and-smac2d">Planners, 29 Oct: hybrid, lattice and smac2d</h2>
+<p>What each planner is: <a href="controllers.html#planners">Controllers, Planners</a>.</p>
+<p>The run: Gazebo's test lot, the lot tour (4 legs), <strong>one run each</strong>, MPPI following,
+forward only, 1 m/s. Branch <code>planner-switch</code> (74544111), 23:13, a quiet Mac (load 4).
+Before each leg the planner alone was asked for the path, to time it and measure its
+turns. <code>pixi run controller-compare --planners hybrid lattice smac2d --tours lot</code>;
+results in <code>~/aav-runs/2026-10-29/planners-results/</code> on Ben's Mac (not in git).</p>
+<h3 id="the-whole-tour">The whole tour</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th style="text-align: right;">hybrid (default)</th>
+<th style="text-align: right;">lattice</th>
+<th style="text-align: right;">smac2d</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Legs finished</td>
+<td style="text-align: right;"><strong>4 of 4</strong></td>
+<td style="text-align: right;">2 of 4</td>
+<td style="text-align: right;">2 of 4</td>
+</tr>
+<tr>
+<td>Time, all legs</td>
+<td style="text-align: right;">230 s</td>
+<td style="text-align: right;">141 s</td>
+<td style="text-align: right;">348 s</td>
+</tr>
+<tr>
+<td>Planning time, mean / worst</td>
+<td style="text-align: right;">16 / 52 ms</td>
+<td style="text-align: right;">4 / 10 ms</td>
+<td style="text-align: right;">2 / 4 ms</td>
+</tr>
+<tr>
+<td>Tightest turn in a plan (radius)</td>
+<td style="text-align: right;">3.03 m</td>
+<td style="text-align: right;">3.58 m</td>
+<td style="text-align: right;"><strong>2.65 m</strong></td>
+</tr>
+<tr>
+<td>Plan tighter than full lock (2.87 m)</td>
+<td style="text-align: right;">0 m</td>
+<td style="text-align: right;">0 m</td>
+<td style="text-align: right;"><strong>0.75 m</strong></td>
+</tr>
+<tr>
+<td>Off the path, mean</td>
+<td style="text-align: right;">0.12 m</td>
+<td style="text-align: right;">0.15 m</td>
+<td style="text-align: right;">0.22 m</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="leg-by-leg">Leg by leg</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Leg</th>
+<th>hybrid</th>
+<th>lattice</th>
+<th>smac2d</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a left turn</td>
+<td>30 s</td>
+<td>26 s</td>
+<td>27 s</td>
+</tr>
+<tr>
+<td>round the building</td>
+<td>52 s</td>
+<td>46 s</td>
+<td>46 s</td>
+</tr>
+<tr>
+<td><strong>turn back</strong> (a U-turn in a 14 m lane)</td>
+<td>79 s, a 63 m loop</td>
+<td><strong>lost</strong>: its loop took the car into the north-east corner (45, 45), and from there it found no forward path</td>
+<td><strong>lost</strong>: planned 14 m straight back, as if the car could spin; MPPI looped, collision_monitor stopped it, cancelled at 116 s</td>
+</tr>
+<tr>
+<td>home</td>
+<td>69 s</td>
+<td>no path from the corner</td>
+<td>its plan had 0.75 m tighter than full lock; the car never moved</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="what-it-shows_1">What it shows</h3>
+<ul>
+<li><strong>Hybrid-A* stays the default.</strong> It was the only one to finish the U-turn.</li>
+<li><strong>The lattice is fast and drives well</strong> where there's room: 4 ms a plan, and the
+  smallest error on the first two legs. Every turn kept to 3.58 m, as made. But with
+  only 16 headings its U-turn loop needs more room than Hybrid's 72; it ran the car into
+  a corner it couldn't leave forwards. Next: primitives with 32 headings, and a run
+  with <code>--reversing</code> (the lattice may then back out).</li>
+<li><strong>Smac 2D is the fastest planner and the worst for a car</strong>: it ignores the goal's
+  heading and the turning circle, so a U-turn is a straight line back. This is why the
+  car refuses it.</li>
+<li>The leg after a lost U-turn starts from wherever the car stopped, so one failure costs
+  two legs (as with the trackers).</li>
+<li>Planning times are the planner's own <code>planning_time</code>, on Gazebo's clock; the wall-clock
+  call was within a few ms of it. One run each: <strong>not a ranking yet</strong>. <code>navfn</code> and
+  <code>theta_star</code> weren't run.</li>
+</ul></section>
+<nav class="prevnext"><a class="prev" href="switches.html"><small>Previous</small>← Switches</a>
+<a class="next" href="a-to-b.html"><small>Next</small>A to B →</a></nav>
+</main>
+<footer>Source: <code>docs/trials.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

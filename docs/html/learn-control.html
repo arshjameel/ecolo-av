@@ -7,7 +7,7 @@
 <!-- Generated from docs/learn-control.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Control from zero</h1>
-<div class="meta">11 min read · 9 sections</div></header>
+<div class="meta">12 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -37,15 +37,20 @@
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
 <a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
 <a class="here" href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
 <a href="maps-and-position.html">Maps and position</a>
 <a href="learn-nav2.html">Learn: Nav2</a>
-<span class="sep">Reference:</span>
 <a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
 <a href="costmaps.html">Costmaps</a>
-<a href="controllers.html">Path followers</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
@@ -69,6 +74,7 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
@@ -101,7 +107,9 @@ shows each loop on our car and the limits and timeouts around them.</p>
 <li>rate limits, timeouts and safe states.</li>
 </ul>
 <p>The maths under the loops (state space, transfer functions, poles, Bode) is in
-<a href="learn-state-space.html">Learn: state space</a>.</p></div>
+<a href="learn-state-space.html">Learn: state space</a>. Every controller we use or are looking at
+(PI, feed-forward, LQR, MPC, pure pursuit, Stanley, MPPI, the Jrk's PID), side by side:
+<a href="controllers.html">Controllers</a>.</p></div>
 <section class="card"><h2 id="1-open-loop-vs-closed-loop">1. Open loop vs closed loop</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -304,6 +312,7 @@ I term, so it can't grow huge while the car is stuck.</p>
 </table></div>
 <p><strong>The rule:</strong> the inner loops are fast and simple, and sit next to the motor. If the
 Orin hiccups for 50 ms, the board keeps the speed steady.</p>
+<p>Which controller could go in each loop, and which we chose: <a href="controllers.html">Controllers</a>.</p>
 </section>
 <section class="card"><h2 id="4-ackermann-and-the-bicycle-model">4. Ackermann and the bicycle model</h2>
 <h3 id="ackermann-steering">Ackermann steering</h3>
@@ -659,8 +668,8 @@ does. The spine only listens to it (<a href="firmware.html">Firmware</a>).</p>
 </tr>
 </tbody>
 </table></div></section>
-<nav class="prevnext"><a class="prev" href="learn-localization.html"><small>Previous</small>← Learn: localization</a>
-<a class="next" href="maps-and-position.html"><small>Next</small>Maps and position →</a></nav>
+<nav class="prevnext"><a class="prev" href="learn-lidar.html"><small>Previous</small>← Learn: lidar</a>
+<a class="next" href="controllers.html"><small>Next</small>Controllers →</a></nav>
 </main>
 <footer>Source: <code>docs/learn-control.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

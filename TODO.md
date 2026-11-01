@@ -3,6 +3,23 @@
 The current work list, newest first. Tick items off as they land; each tick = a commit.
 Ben's messages, word for word: `docs/history/messages-*.md`.
 
+## Thursday 29 October: control (Ben, 27 Oct)
+
+Ben: "investigate LQR and maybe collapse all these various controllers into a single
+controller ... closed loop". The plan: `docs/designs/2026-10-27_control-plan.md`; the ideas: "Ideas to keep" below.
+
+| # | Task | Needs |
+|---|---|---|
+| 0 | **The plan's step 1: the bridge uses ego's acceleration**, feed-forward + PI for throttle and brake (`docs/designs/2026-10-27_control-plan.md`); scored with `atob-score` | Gazebo, bench |
+| 0b | **The spine's state machine (Arsh's #15), follow-up:** the board for today's car (`esp32-umod`) has no wheel speed (`SpeedFeedback::None`), so the test mode's "leave above 0.5 m/s" can't fire there. Refusing throttle tests without a wheel speed: done (`spine.rs` turns them into Hold; found by the two-screens review, 29 Oct). (Test requests have no transport yet, so nothing can trigger it today.) Also: the self-test is one tick with no fault | Arsh |
+| 1 | **A page that explains it all:** PID, LQR, MPC and MPPI, with pictures; which loop runs where (ESP32, Jrk, Orin); what each knows. The next chapter of `docs/learn-control.md` ("Control from zero") | ✅ 29 Oct: [Controllers](docs/controllers.md), after Learn: control. The old RPP-vs-MPPI page is now `docs/path-followers.md` |
+| 2 | **LQR for steering:** from `vehicle_model.lateral()`, scheduled by speed; follows the planner's path (Smac), in place of pure pursuit; scored with `atob-score` and `controller-compare` | 🔧 29 Oct, branch `trackers-tuning`: rebuilt about the path's bend (gains by speed and bend), the command's rate in the design, a 2 s preview of the bends ahead. Fake car's full-lock U-turn: 0.80 → 0.29 m off. Gazebo: 10 of 12 legs, U-turn 2 of 3 (04:18, was 8 and 1 of 3); on a busy Mac (15:23) 6 of 12, one run starved, one **weaved**. Left: rerun on a quiet Mac with the status topic logged ([trials](docs/trials.md#results-29-october-afternoon-lqr-rebuilt-and-mpc_full)) |
+| 3 | **LQR for speed and brake (LQI):** one signed acceleration, in `spine-core`; scored against today's PI and P-only brake | ✅ 29 Oct: built (`speed_loop:=lqi`, gains from `pixi run vehicle-model --lqi`); the PI stays the default. No overshoot in Gazebo's steps (today's 10-16 %), settles in 4-5 s (11-13 s); at 3 m/s it stops 0.2-0.4 m past B (the PI 0-0.4): [Controllers, 2a](docs/controllers.md#2a-lqi-against-the-pi-results-29-oct). Also the bridge's smooth stop (Autoware's design): the jolt at standstill halves (2b). Left: a ramp feed-forward for the LQI's stop; nothing tried on the car |
+| 4 | **MPC for the whole A-to-B:** speed and steering together, with the brake's and steering's limits; scored against 2 and 3, and MPPI | 🔧 29 Oct, branch `trackers-tuning`: `tracker:=mpc_full`, one QP a tick over the next 9 m (aav_track `qp.py`, OSQP's method in numpy), within full lock, steering rate, throttle, brake, and the policy's limits. Gazebo (busy Mac): 10 of 12 legs (MPC 12, MPPI 10), the same times as MPC, 2.6 ms a tick. At 1 m/s it hardly slows for the U-turn (its model sees no need); at 2 m/s on the fake car it slows to swing the steering. Not scored against 3 (LQI) yet |
+| 5 | Unfinished from 26 Oct: the QEMU and NaN fixes (`small-fixes`), the bench fixes (`bench-fixes`). The F6 geofence: ✅ 29 Oct, [The geofence](docs/geofence.md) (branch `geofence`). Left for the team: the test lot's polygon once its datum is surveyed (W3); test 4.3's stop with the legacy speed loop `open` (`vehicle.yaml` `open_loop_decel`), until then programs stay held (COASTING); a `sim-check --geofence` in Gazebo | goal circling ✅ 29 Oct, branch `goal-circling-fix` (TODO 17); the rest open |
+
+Every gain still comes from guessed numbers until the car is measured (`docs/measure-the-car.md`).
+
 ## 24 October, night: the car as a linear model
 
 Ben, 24 Oct: "Do we have a mathematical model for the car now for the ego? ... a matrix
@@ -78,6 +95,7 @@ The reasons for each choice: [decisions](docs/decisions.md#decided-on-22-and-23-
 | 46 | The steering-angle and brake-position sensors are probably on the ESP32 (Ben) | ⬜ hardware lead, question H2 (`docs/audit-questions.md`): which pins, which sensors. **Hint from the old code (24 Oct):** steering and brake each run a Pololu Jrk G2 (I2C 0x05 and 0x04), which closes its own position loop from a feedback input; the 2025-26 ESP32 never reads it back, but the 2024-25 `FinalRev` firmware read the steering position from the Jrk over I2C. So the angle and brake position are likely one I2C read each from the Jrks; then the Rust firmware reads them and sends them up the serial link (Gate 3, closed loop) |
 | 47 | The watchdog checks the camera program's health, not raw pictures (Ben: "that seems like a good idea") | ✅ already done 24 Oct (TODO 37c): the watchdog watches each stream's detections (sent for every picture, ~15 Hz, even with no boxes): quiet 1 s → Nav2 stops. Detections, not `/diagnostics`: those come once a second, averaged over 5 s, so a lost camera would be caught seconds later |
 | 48 | **The RC remote and the joystick through ROS, with direct drive kept for testing** (Ben, 24 Oct: "allow for both ... eventually we will move that to ros network") | ✅ **built and merged 24 Oct, Proposed** (off until H9 and H10); at the car: car-day session 6e. Was: Proposed and built 24 Oct (branch `wt/esp32-uplink`; [the uplink](docs/rust-firmware.md#the-uplink-the-esp32s-status-back-to-the-pi-24-oct); a Proposed row in `docs/decisions.md`): with `--features uplink`, CH6 reads three positions: low computer, middle (1301-1700) **RC via ROS**, high **RC direct**. RC via ROS: the ESP32 sends the sticks up and drives only from the Pi's frames; `aav_rc`'s `rc_driver` turns `/vehicle/rc` into `/drivers/rc/cmd_vel` (twist_mux priority 95). Losing the RC in either RC position brakes (fault 256) and latches until a stop. QEMU (fake iBUS on UART2): all six RC steps pass; a ROS test: uplink sticks → `/drivers/rc/cmd_vel`. Left for the car: H10 (is CH6 a three-position switch? the receiver's failsafe), [bench steps U1-U6, R1-R8](docs/esp32-bench.md#the-uplink-and-the-rc-modes-on-the-bench). Earlier: design, then the hardware lead. Today: the RC transmitter → iBUS → the ESP32 drives directly (switch channel 5); the USB joystick → the CORTEX Pi → ROS already (`joy_node`; ours: `aav_teleop` → twist_mux). Plan: a transmitter switch with three positions: **computer** (ROS drives), **direct** (the ESP32 drives from the RC, no computer: for testing, and the fallback), **RC via ROS** (the ESP32 sends the sticks up the serial link; a ROS driver `/drivers/rc/cmd_vel` at people's priority in twist_mux, through ego's limits). Needs an uplink frame ESP32 → Pi (the status the Pi doesn't get today). Direct stays until RC-via-ROS has been proven on stands |
+| 49b | **On stands, nothing measures the driven wheels** (found 29 Oct, EGM review of the preflight): the wheel sensors are on the **front** wheels (the Arduino, CAN 0x200/0x201), the motor drives the **rear**. On stands `/vehicle/odom` reads ~0 while the rear wheels spin, so no speed cap or stop that reads the wheels can fire there, and the bridge's new speed loop (`speed_loop.mode pi`) would wind the throttle up. Today's stands tests cap the **command** and the car stays on `mode: open`, so they hold; nothing closed-loop may run on stands until this is answered | ⬜ hardware lead: is there a speed sensor on the rear wheels or the motor (the motor controller's tach output, a Hall sensor)? If not, add one before closed-loop stands tests |
 | 49 | **Is I2C good enough for the Jrks?** (Ben, 24 Oct) | ⬜ hardware lead: how long are the wires from the ESP32 to the two Jrks, and do they run beside the motor cables? The load is tiny (50 updates a second, a few bytes each), so speed is fine; the risk is noise on long wires (I2C has no checksum and can lock up). The Rust firmware already drives both Jrks over I2C, flags a Jrk that stops answering (fault bits 8, 16) and brakes. If the wires are long or noisy: the Jrk G2 also takes TTL serial with a CRC (Pololu's protocol), a small change in the firmware |
 | 50 | **The safety code lives on the ESP32; the serial link triggers it** (Ben, 24 Oct: "thats the place to put the safety code ... some kind of communication system that triggers it") | ✅ **built and merged 24 Oct**; at the car: car-day session 6 (branch `wt/orin-heartbeat`; [the heartbeat](docs/rust-firmware.md#the-heartbeat-version-2-of-the-serial-frame-24-oct)): the output mux's counter on `/control/<target>/heartbeat`, relayed by `legacy_uart_bridge` into a version 2 frame (17 bytes, CRC-8/SAE-J1850), and the Rust ESP32 ignores any frame whose counter didn't change. QEMU: brakes 111-120 ms after the counter freezes (the Pi still sending at 50 Hz) or the CRCs go bad, latched until a stop. The 13-byte frame stays (`link-v1`; the car's `legacy.yaml` says `frame_version: 1` until the Rust is flashed). **The uplink, built 24 Oct** (branch `wt/esp32-uplink`; [the uplink](docs/rust-firmware.md#the-uplink-the-esp32s-status-back-to-the-pi-24-oct)): a 35-byte frame ESP32 → Pi on TX1 (GPIO17), 50 Hz, the same CRC-8: mode, mode switch, fault bits, the echo of the last Orin counter, the Jrks' feedback positions (unknown when a Jrk has no feedback set), the outputs, and the RC sticks; shared Rust/Python vectors. `legacy_uart_bridge` (`uplink: true`) publishes `/vehicle/status`, `/vehicle/steering`, `/vehicle/brake` and `/vehicle/rc`; with `uplink: false` (the default) nothing changes. Behind the firmware feature `uplink` until the hardware lead confirms TX1's wire (H9). QEMU: 50-51 Hz, the echo right in all 6 cycles, 0 frames lost; the check now passes on a loaded computer too. Untested on a real ESP32 and Pi: [bench steps U1-U6, R1-R8](docs/esp32-bench.md#the-uplink-and-the-rc-modes-on-the-bench). Earlier: design agreed in principle (it's the spine design: `docs/rust-firmware.md`). **Ben, 24 Oct: the heartbeat must come from the Orin and travel to the ESP32; the Pi could be off the network and still be sending.** So: the Orin's output mux (the last Orin node, which is shut whenever the safety layer says so) puts a counter in every command; the Pi only relays it, never makes one; the ESP32 brakes if the counter hasn't changed for 100 ms, however many frames the Pi sends. Today's 13-byte frame can't carry it well: a sum checksum, no counter (a stuck Pi resending the same frame would look alive), no arm or e-stop bit, nothing back up. **A version 2 of the serial frame**, as the CAN plan's DRIVE_CMD already has: a counter that must change, armed and e-stop bits, a CRC-8; and an uplink frame ESP32 → Pi (mode, faults, brake and steering positions from the Jrks, RC sticks for TODO 48). The ESP32 enforces its own limits whatever the Pi sends (speed cap, steering rate, braked at boot). Keep the 13-byte frame as a fallback until v2 is proven on the bench |
 
@@ -100,21 +118,21 @@ proposal's full list: [docs/plan.md](docs/plan.md).
 
 | # | Task | Status | Progress |
 |---|---|---|---|
-| 1 | MPPI as a choice (`controller:=mppi`), and a script that compares it with Regulated Pure Pursuit | ✅ done | `f22dc4b8`; results in `docs/controllers.md` |
+| 1 | MPPI as a choice (`controller:=mppi`), and a script that compares it with Regulated Pure Pursuit | ✅ done | `f22dc4b8`; results in `docs/path-followers.md` |
 | 2 | ego knows the car's weight (181 kg) and its body | ✅ done | `7e76850f`; the centre of mass is a guess until the car is weighed (task 14) |
 | 3 | The proposal as a to-do list with % done | ✅ done | `docs/plan.md`, `b70300d7` |
 | 4 | The AAV colour: the email's blue | ✅ done | `da411333` |
 | 5 | Email Ben as work lands | 🔧 ongoing | part 1 ~01:30; part 2 ~02:50 (every goal reached; the DDS finding); part 3 ~03:20 (MPPI default; Cyclone); part 4 ~04:06 (round the box; the U-turn; the early push); part 5 04:38 (three-point turns); part 6 05:14 (jerk limit, steering check, nightly Gazebo; the part 4 time corrected); part 7 06:08 (the EKF heading; the antenna mount; part 6 corrected); part 8 06:41 (good morning: the forward U-turn still a coin toss) |
 | 6 | MPPI loops at goals | ✅ fixed (`7697778f`), confirming in 8 | it now turns to the goal's heading from 2.5 m out: left turn 28 s, 21.4 m (was 58 s, 47.5 m with a loop); round the building reached. Confirm in the full comparison (task 8) |
 | 7 | The corner problem (docs/plan.md M8): the car stops at the building's corner | ✅ fixed | the planner's path passed 0.86 m from the corner. Now the planner's costmap inflates 3.0 m, gently (1.0), so paths keep to the middle of a lane; and it plans turns 1.25 x wider than full lock (`vehicle.PLAN_TURN_MARGIN`), so the controller has steering to spare. Lot run, 02:00: both kept clear of the building, both reached the first goal in 29 s, each reached 3 of 4 goals (were 1 and 2) |
-| 17 | The car still sometimes circles a goal it just missed (a different goal each run) | 🔧 testing a fix | not the heading: the comparison now records where the global EKF put the car, and at walking pace its heading is good (worst 5°). Its **position** is up to 0.7 m off (Gazebo's GPS noise is 0.5 m), but the goal tolerance was 0.5 m: the car chased GPS noise with a loop. Tolerance now 1.0 m ("GPS without RTK is good to about a metre"); tighten with RTK. Run e, 02:20: **all 8 goals reached**, both controllers. Still extra driving on 2 legs (RPP's left turn 81 m for 21; MPPI's turn back 68 m) |
-| 8 | Run the full comparison again with 6 and 7; update `docs/controllers.md` | ✅ done | 6 runs overnight (b-f); the page has the fixes, a table of runs and a picture of the best. Pushed 03:18 (815 tests pass) |
+| 17 | The car still sometimes circles a goal it just missed (a different goal each run) | ✅ fixed 29 Oct, branch `goal-circling-fix` | **Why:** the behaviour tree planned a new path every second, also 1-4 m from the goal. There the car runs a little behind on the last bend, and Smac's only path to the goal's heading at its 3.6 m radius is a 21-25 m loop; and each new path resets controller_server's goal checker. Not the tolerances, nor the EKF. **Fix:** `navigate_to_pose_car*.xml` keep the path within 8 m of the goal (`vehicle.final_approach`: 2 planned radii), while it ends at this goal, `IsPathValid` and under 20 s old; 1 Hz elsewhere. Stock Nav2 nodes. The map window waits 25 s there before NO NEW PLAN. **Runs** (Gazebo lot, first leg, 3 each of RPP, MPPI, pure_pursuit, lqr, `--plans`): before, loop plans in 10 of 12 runs and 3 driven (RPP 59 s, 49.3 m; MPPI 64-65 s, 49.5-50.1 m, for 21); after, no loop plan, all 12 at 0.94-0.98 of the route, 23-30 s. Whole tours after: reversing 8 of 8 goals; forward only RPP 4 of 4, MPPI's U-turn failed as before; the box tour passes ([Path followers](docs/path-followers.md#circling-a-goal-found-and-fixed-29-october-todo-17)). Not done: the through-poses trees (Nav2's waypoints go through to-pose) |
+| 8 | Run the full comparison again with 6 and 7; update `docs/path-followers.md` | ✅ done | 6 runs overnight (b-f); the page has the fixes, a table of runs and a picture of the best. Pushed 03:18 (815 tests pass) |
 | 9 | Make MPPI the default, if it now does as well as Pure Pursuit (Ben: "I thought we decided to go mppi") | ✅ done | in every lot run MPPI did at least as well; it reached the first goal cleanly in all 4, Pure Pursuit looped there in 2 of 3 (it aims only at a point, so it arrives facing wrong). `vehicle.DEFAULT_CONTROLLER`; `controller:=rpp` for the old one. `sim-check --obstacle` passes with it. Untested on the Orin's CPU |
 | 10 | **Split `gazebo_adapter` into one node per sensor**, as on the car, so each runs on its own core (Ben, 22 Oct). Rust for any part still late | ✅ done | `gazebo_imu`, `gazebo_gps`, `gazebo_radar`, `gazebo_camera` (one process each); `gazebo_adapter` keeps the car (actuators, wheels, odometry). The IMU works out the car's acceleration from Gazebo's odometry. Each sensor node takes its own `fault.<sensor>`. `sim-check` passes; `sim-check --faults`: 14 of 16, every fault reaches its node; the 2 fails were a whole-Mac stall (task 11). Not on the car: there each sensor already has its own driver |
 | 11 | A long timing test (10 min, parked and driving) to catch the rare late data, before and after 10 | ✅ run 23 Oct (task 32) | a 1 min test was clean: real time 0.99, every topic under 80 ms late. Seen since: the IMU, wheels and GPS silent 0.7-2.1 s together in MPPI's lot run (one adapter, before 10); and after 10, in `--faults`, a stall of everything at once (the global EKF missed its rate, the controller ran at 8 Hz, `map → odom` 1.4 s old). So not only the adapter: find what the whole Mac waits on. 02:13 run: IMU, wheels, both EKFs silent 0.5-0.7 s together, with the Mac 77% idle and nothing else busy: so not a CPU shortage. **Found: it's the messaging (Fast DDS), not macOS.** A bare 50 Hz publisher and subscriber beside a sim run, 25 min: the publisher's timer never slipped more than 0.03 s, a no-ROS loop 0.06 s, but the subscriber waited up to 0.48 s (9 times over 0.1 s). **Cyclone DDS: worst 0.05 s, none over 0.1 s** (25 min beside a sim run), and `AAV_RMW=cyclone pixi run sim-check --obstacle` passes everything (the rear camera at 10 Hz, 7-8 on Fast DDS). Opt-in now: `AAV_RMW=cyclone` (tools/ros.sh). ✅ **Ben, 23 Oct: "yes lets do it"**: Cyclone is the default everywhere (`pixi.toml`); `AAV_RMW=fastdds` goes back | Also seen: Spotlight (`corespotlightd`) up to 75% of a core now and then |
 | 18 | Stuck facing a wall: after a loop or a wide turn the collision monitor stops the car facing a wall, and forward only it can't get out | ✅ way out on | not a false stop: at the building the car had turned toward it before passing it, and a box that bends with the steering (`VelocityPolygon`) would have bent further in. So not built. The way out is reversing (Nav2's back-up), off on the car until the team decides. With reversing, both controllers now get round every goal of the lot (run n, task 19). ⚠️ **Team: may the car reverse?** It needs something that sees behind it. **22 Oct, morning: Ben said yes, the car may reverse** (task 24) |
 | 20 | Goals: a miss of heading still cost a loop | ✅ done | heading tolerance 0.5 → 0.75 rad (the EKF's heading is up to 25° off; both controllers arrived 35° off by cutting the plan's last bend). Run j, 04:03: the first two goals clean for both (29-32 s, 21-22 m; 53 s, 42 m). The U-turn failed for both: its plan is a light-bulb turn using the whole 14 m lane |
-| 19 | MPPI's U-turn: forward in the 14 m lane it went wide or round the building (3 of 4 runs); with reversing, the planner drew a three-point turn but MPPI never reversed: it drove on to the far wall, stopped, and the back-up recovery failed | ✅ done with reversing | three causes, with reversing on: (1) `PreferForwardCritic` kept MPPI from backing up at all (runs h, k: 0 reversals), so it is dropped when reversing: the planner's `reverse_penalty` already decides when to reverse; (2) `PathAngleCritic` mode 2 and inversion tolerances 0.5 m / 0.6 rad, so it follows the path's own direction; (3) the progress checker cancelled the turn 10 times (rocking back and forth moves < 0.5 m): now `PoseProgressChecker`, turning 0.5 rad counts too. Run m, 04:25: turn back reached, 69 s, 2 reversals. **Run n, 04:35, whole tour: all 8 goals, both controllers.** MPPI's turn back: 71 s, 2 reversals, wide; Pure Pursuit's: 74 s, tighter, but 10 reversals and 4 stops. Forward only (run o, 04:46): the U-turn still fails for both, as before the changes: so they did no harm, and only reversing fixes it. Left: MPPI drives on a few metres before it backs up (its own choice: it asks 0.5 m/s forward, easing to 0 over 13 s). Forward only, after the EKF fix: run s (06:16) all 8 goals, the U-turn as a loop; but run t (06:26) MPPI's loop met the north wall (2 of 4), Pure Pursuit looped twice at the first goal. So forward only it's still a coin toss; reversing is the reliable way. Tried 06:35, not kept: MPPI's `az_max` 1.0 → 0.4 (to match ego's steering rate): runs u, v made the U-turn once in two, the same as before. `docs/controllers.md` |
+| 19 | MPPI's U-turn: forward in the 14 m lane it went wide or round the building (3 of 4 runs); with reversing, the planner drew a three-point turn but MPPI never reversed: it drove on to the far wall, stopped, and the back-up recovery failed | ✅ done with reversing | three causes, with reversing on: (1) `PreferForwardCritic` kept MPPI from backing up at all (runs h, k: 0 reversals), so it is dropped when reversing: the planner's `reverse_penalty` already decides when to reverse; (2) `PathAngleCritic` mode 2 and inversion tolerances 0.5 m / 0.6 rad, so it follows the path's own direction; (3) the progress checker cancelled the turn 10 times (rocking back and forth moves < 0.5 m): now `PoseProgressChecker`, turning 0.5 rad counts too. Run m, 04:25: turn back reached, 69 s, 2 reversals. **Run n, 04:35, whole tour: all 8 goals, both controllers.** MPPI's turn back: 71 s, 2 reversals, wide; Pure Pursuit's: 74 s, tighter, but 10 reversals and 4 stops. Forward only (run o, 04:46): the U-turn still fails for both, as before the changes: so they did no harm, and only reversing fixes it. Left: MPPI drives on a few metres before it backs up (its own choice: it asks 0.5 m/s forward, easing to 0 over 13 s). Forward only, after the EKF fix: run s (06:16) all 8 goals, the U-turn as a loop; but run t (06:26) MPPI's loop met the north wall (2 of 4), Pure Pursuit looped twice at the first goal. So forward only it's still a coin toss; reversing is the reliable way. Tried 06:35, not kept: MPPI's `az_max` 1.0 → 0.4 (to match ego's steering rate): runs u, v made the U-turn once in two, the same as before. `docs/path-followers.md` |
 | 16 | `sim-check`'s scripted drive came up short once (4.43 m, needs 4.5), then 5.99 m twice | 👀 watch | probably the same stalls as 11 |
 | 12 | Steer round the box in the lane: sensors in the planner's map (docs/plan.md M5) | ✅ done | the planner's costmap gets the radar and lidar layers (`plan_around:=true`, the default). Both controllers drove round the box 2.6-3.8 m clear. New `sim-check --plan-around` passes (3.9 m clear, no stop); the stop tests run with `plan_around:=false` and still pass (`sim-check --obstacle --lidar-obstacle`, `bench-check --obstacle`) |
 | 13 | The global EKF's heading jumps at walking pace (docs/plan.md M9, T6.3) | ✅ 25 Oct, `wt/ekf-heading`: **a heading source, from the GPS receiver's velocity.** `gps_heading` (`aav_gps_heading`, `course.py` with 20 tests): the velocity's direction (Doppler, 0.05 m/s), turned round when reversing, the antenna's swing taken out, only above 0.3 m/s with the GPS's and the wheels' speeds agreeing; into `ekf_global` as imu1, yaw only. Gazebo's `gazebo_gps` now sends `/sensors/gps/fix_velocity` too (the truth + 0.05 m/s). `pixi run heading-check` (3.5 min, 0.5-1 m/s, forward and reversing, empty world), off → on: **5 Hz GPS, 4 runs each**: forward median 2.2-2.8° → 1.6-1.8°, worst 12.7-27.1° → 10.4-13.6°; reversing median 2.3-2.7° → 1.7-2.1°, worst 11.4-18.0° → 8.5-13.1°. **1 Hz (the receiver's factory rate), 3 / 2 runs**: forward median 2.8-5.4° → 2.7-2.9°, reversing 3.1-3.5° → 2.2-3.1°; worst about the same (10-21°). **Gyro biased 0.6°/s, 2 runs each**: median 3.3-4.3° → 1.5-1.9°, worst 12.3-22.3° → 9.4-16.9°. **Started 30° wrong, 2 runs each**: under 5° after 7.8-10.0 s → 5.4-6.1 s (3 s of it parked). Not taken: the magnetometer (raw counts, the motors), lidar matching (not installed; no north), `use_odometry_yaw` / `yaw_offset` / `differential` (no effect with a datum). Left, the hardware lead decides: 5 fixes a second (a receiver setting), RTK (fixes 25× better), two antennas (~0.4°, standing still too). On the car: `gps_driver:=ublox` for the velocity; check with the first bag |  needs a heading source; lower noise helped a little. 22 Oct, 05:30: at 0.5 m/s its heading wanders up to ±25°, forward and back alike (probe: the wheel speed and turn rates are right in reverse, so no sign bug). Over the night's runs, reversing: median 11° off, worst 76°; forward at the same speed: median 4°. **Cause of the reversing part, 05:35:** the antenna is 0.8 m ahead of the rear axle, and `navsat_transform` removes that offset with the EKF's own heading, so a heading error feeds back. Antenna over the rear axle (Gazebo, two runs each): reversing median 4.6-6.6° (was 7.5-12.8°), worst 26-31° (was 39-54°). ✅ **it is over the rear axle already** (Ben, 23 Oct); `vehicle.yaml` now says x = 0. **And in software, 05:55:** the global EKF's yaw process noise 0.06 → 0.01 (`a588a993`): heading median 2.6° off, worst 14° (was 6.2-6.7°, 39-54°); still right within 10 s of a start 29° wrong; better with a biased gyro too. Check with the real IMU's bias. Lot tour, run r (06:04): all 8 goals, worst heading per leg 7-16° (runs n, q: 14-76°) |
@@ -268,8 +286,13 @@ work on." His order, with the work under way:
             `bench-check --obstacle`. *Passes on `main`, 11 Oct;*
       - [ ] N7, the weave: the bench's pretend GPS adds fresh noise to every fix, unlike a
             real receiver, whose error drifts slowly. Model it as a slow drift, then tune
-            `ekf_global` for the real receiver (Q18);
-      - [ ] collision_monitor flickers between stop and go at the zone's edge.
+            `ekf_global` for the real receiver (Q18). *29 Oct (branch `stop-hold`): the
+            drift is modelled (`aav_bench` `models.GpsError`); `bench-check --weave`
+            measures the weave. Tuning `ekf_global` is left;*
+      - [ ] collision_monitor flickers between stop and go at the zone's edge. *29 Oct
+            (branch `stop-hold`): `aav_safety`'s `stop_hold` holds each stop until the
+            zone stays clear 1 s (twist_mux `stop_zone`, priority 21); `bench-check
+            --zone-edge` tests it.*
 5. [x] **The board drivers in Rust, ready to try on a board:** the wheel encoder and display
       Picos (Embassy); the spine's Pico 2 program is written. *Done 15 Oct
       (`wt/rust-boards`): all three build; none flashed.*
@@ -290,6 +313,128 @@ work on." His order, with the work under way:
       - the car on Jazzy (Q24): a Jazzy Mac can't join the car's Humble;
       - the HUD on a Mac: raylib's runs there as it is; the Flutter app needs CocoaPods (archived 25 Oct);
       - the car's WiFi, measured: how late the pictures arrive, and how often it drops.
+- [ ] **A hardware workbench: every sensor and actuator, one at a time** (Ben, 28 Oct,
+      word for word in `docs/history/messages-2026-10-28.md`). Just for us. One screen on
+      the laptop (the HUD), with the RC or the joystick as well, to isolate the hardware:
+      - **each sensor, live:** is it there, how fast, its values (GPS, IMU, lidar,
+        cameras, wheel speed, steering pot, battery);
+      - **each actuator, by hand:** jog the steering, throttle and brake in small capped
+        steps, and see what came back;
+      - **on stands, find the limits:** steer slowly until the motor meets resistance:
+        the Jrk G2 reports its current and position, so a stall shows as current rising
+        while the position stops. Back off a margin: that's the steering limit;
+      - **work out the numbers:** acceleration, braking and steering rate, into
+        `vehicle.yaml`; then check them by driving in the lot.
+      Builds on what we have: `pixi run actuator-test` (its `--stands` tests already measure
+      the steering sweep and rate), the spine's hardware test mode (#15, capped at
+      `TEST_MAX_THROTTLE`), bench mode and the raylib HUD. New: the live sensor page, the
+      jog controls, and the stall search. Check the 2025-26 team's clamps first
+      (`JRK_STEER_MIN`/`MAX`, `DAC_MAX_CAP` in `hardware_configs.h`). Steering and braking
+      limits on the real car are the hardware lead's to sign off.
+- [ ] **Tesla-style cubes on our HUD, then on the camera picture** (Ben, 28 Oct: "I want
+      to see the occupancy network", "put it on a hud like we have", "merge the voxels with
+      the camera feed to figure out what is where"). No new install: not OctoMap, which
+      would bring PCL back (tried 28 Oct, undone). Gazebo first, where every pose is exact:
+      1. **cubes from the lidar:** a voxel grid in Rust in `hud-core` (no ROS, own tests):
+         each `/sensors/lidar/points` point into its 20 cm cube; cubes not seen for a while fade;
+      2. **draw them:** raylib draws 3D cubes; colour by height, like Tesla's view;
+      3. **onto the camera:** project each cube into the HUD's camera picture (`picture.rs`),
+         from where the camera sits relative to the lidar; colour by distance;
+      4. **what is where:** each RF-DETR box gets the distance of the cubes inside it
+         ("stop sign, 14 m").
+      On the car, 3 and 4 need camera-to-lidar calibration (research pick 4). Nav2's own
+      `VoxelLayer` is a separate choice (it changes driving): only if 2D misses something.
+- [ ] **The debug HUD** (Ben, 29 Oct, word for word in `docs/history/messages-2026-10-29.md`):
+      the hardware workbench above, as its own HUD screen. It reads each sensor's and
+      actuator's own node directly (`/sensors/...`, `/vehicle/...`, the spine's status),
+      not what comes out of the muxes, so a fault shows where it starts:
+      - **sensors:** shake the car and watch the IMU; turn a wheel and watch the encoder;
+        GPS, lidar, cameras, battery, the steering pot;
+      - **actuators:** watch the wheels turn, speed up and brake, in the spine's hardware
+        test mode (#15): its caps and the e-stop still apply. Never around the spine;
+      - **what the car thinks:** the lidar's cubes and the NDT match (where the scan sits
+        on the saved map), drawn on the same screen.
+- [ ] **controller-compare picks a random ROS domain without checking it's free** (found 29 Oct:
+      it picked 191, the same as a Gazebo already running, and the two runs mixed). Until
+      fixed, give it one: `AAV_SIM_DOMAIN=213 pixi run controller-compare ...`.
+- [ ] **Two screens, not one** (Ben, 29 Oct evening, word for word in `docs/history/messages-2026-10-29.md`):
+      1. **The hardware screen**: every sensor live, and **very simple buttons** for the
+         actuators: speed +/-, brake +/-, steering left/right, **centre**. Through the
+         spine's hardware test mode (#15) and its caps, never around them; the e-stop stays
+         the stop. TODO 49b limits the throttle on stands until a rear-wheel speed exists;
+      2. **The seeing screen** (today's debug HUD, split): left, big, the 3D cubes; right
+         top, a top-down of the lidar map (ICP/KISS-ICP, or the NDT map today) with the
+         car on it; right bottom, a top-down of NDT's match (the scan on the map's cells).
+      Design: `docs/designs/2026-10-29_two-screens.md` (EGM-reviewed): `hw_panel`, its own
+      program, twist_mux slot 45, hold-to-drive; `debug_hud` stays read-only.
+      **Steps 1-3 built 29 Oct** (branch `two-screens`): `debug_hud` opens as the seeing
+      screen (key L: the old panel); `hw_panel` (`pixi run hw-panel`, `hw-panel-demo`)
+      with every sensor and the buttons through `/drivers/buttons/cmd_vel` (slot 45),
+      speed on SIM and BENCH only (docs/hud.md, "The hardware panel"). Left: the window
+      itself against Gazebo and both screenshots from it (the Mac's screen was locked:
+      demo screenshots only); read the legacy bridge's `speed_loop.mode` before stands;
+      the bench check (a person's joystick beats the buttons); step 4, option B (brake and
+      steering through the spine's test mode, once it has a transport, TODO 0b)
+- [ ] **A preflight on stands, before the ground** (Ben, 29 Oct): one scripted run, wheels
+      off the ground: speed up, hold, slow down, brake; steer left, right, centre; and
+      every sensor checked live (rate, values in range) at the same time. PASS or FAIL per
+      line, as `car-day-check` does. Builds on `actuator-test --stands` and bench-check.
+      **Built 29 Oct** (branch `preflight`; [the design](docs/designs/2026-10-29_preflight.md),
+      revised after its EGM review): `pixi run preflight` (`actuator-test preflight
+      --stands`; `--sim`, `--bench`, `--no-drive`, `--skip`). On the car the drive is
+      refused until a rear-wheel speed exists (49b): `--no-drive` checks the sensors only.
+      Every actuator test now also stops on 4 s of driving with no measured speed, and on
+      a speed rising while the command falls. Left: the car itself (car-day session 9, 3.P)
+- [ ] **Cubes into objects, with names** (Ben, 29 Oct: "merge cubes that related like a
+      stop sign or a car"): join touching filled cubes into one object (as
+      `radar_clusters` does for the radar); then name it: the RF-DETR box it falls in
+      (needs the camera-to-lidar calibration, research pick 4), or later a small model
+      that reads the cubes' camera crop. Each object: a name, a size, a distance. Shown on
+      the debug HUD first.
+- [ ] **numpy in the `ml` environment** (Ben, 28 Oct: "do we need to upgrade?"): not now.
+      The pin (`<=2.3.5`) keeps `export-coreml` working; the everyday environment already
+      runs 2.5. Try again when coremltools passes 9.0: newer numpy, run `export-coreml`.
+- [ ] **Four research picks** (Ben, 28 Oct; details: `docs/designs/2026-10-28_research-picks.md`):
+      1. **Autoware**: borrow its designs (PID + feed-forward speed with a smooth stop,
+         MPC steering, NDT + EKF localization), not the whole stack. **Our own versions,
+         in Rust** (Ben, 28 Oct: "take ideas from that and rebuild them in rust", "lets
+         write our own version of it all"): the speed loop with a smooth stop
+         (`spine-core`), NDT matching, MPC steering, the occupancy cubes. Cite what we read
+         (Autoware is Apache-2.0; the NDT papers) in `PROVENANCE.md` and the report: the
+         feed-forward + PI was our plan (27 Oct) before we read Autoware; MPC, NDT and the
+         smooth stop came from reading it. Crates, checked 29 Oct: see the research picks;
+      2. **lidar localization**: map the lot with KISS-ICP from a VLP-16 bag, then locate
+         by NDT or ICP; no RTK on this car, so this is where centimetres come from;
+      3. **a safety argument**: Simplex (we have most parts) and RSS (stopping distance
+         from measured braking), for the final report;
+      4. **seeing from above**: inverse perspective mapping (an AprilTag or a mark at B
+         for the last metre) and camera-to-lidar calibration (distances for RF-DETR's boxes).
+- [ ] **AMCL: a particle filter against a lidar map** (Ben, 28 Oct; not sure yet if we
+      need it): Nav2's stock Adaptive Monte Carlo Localization. Thousands of guesses of
+      where the car is; each lidar scan is matched against a map, and unlikely guesses
+      die off as the car moves. ~5-10 cm where the lidar sees features (curbs, posts,
+      walls), against GPS's 1-3 m: it could matter most for the last metres to B. Needs
+      a map first (`slam_toolbox`), and a test site with things to see: a bare lot gives
+      it little. Would sit beside the GPS + EKF, not replace them.
+- [ ] **One model-based controller instead of many** (Ben, 27 Oct): investigate LQR, and
+      collapse today's controllers (pure pursuit, the stopping law in
+      `aav_drive_to_point`, the spine's PI and P-only brake) into one controller built
+      from `vehicle_model.py`, closed loop, maybe running on the ESP32. Questions:
+      - **speed:** throttle and brake as one signed acceleration, LQR with integral action
+        (LQI), on the ESP32 where wheel speed and the actuators are;
+      - **steering:** a lateral LQR on the path errors (sideways, heading, wheel angle),
+        scheduled by speed; it needs the car's pose and path, which live on the Orin;
+      - **stop on B:** distance-to-go as a state; the ESP32 could count the last metres on
+        wheel odometry, independent of GPS lag (a CAN contract change: D4);
+      - **MPC** if the limits matter (brake, steering rate): LQR doesn't know them;
+      - scored with `atob-score` against pure pursuit and MPPI; needs the measured car first.
+      *Saved, not started (`docs/vehicle-model.md`, "After state space").*
+- [ ] **Learned state-space models, Mamba-style** (Ben, 27 Oct): Mamba (and S4 before it)
+      runs the same `x' = Ax + Bu` as `vehicle_model.py`, but learns `A`, `B`, `C` and lets
+      them depend on the input. Its diagonal `A` is a bank of first-order lags (τ = -1/a),
+      like our steering lag. Worth a closer look once hours of car logs exist: a learned
+      model of what the linear one misses (drag, slope, the brake's play), checked against
+      the fits from the actuator tests. *Saved, not started; needs car data first.*
 - [ ] **micro-ROS, again** (Ben, 11 Oct): "lets rethink thinks later after we see the
       hardware". No micro-ROS for now (Tentative).
 
@@ -541,3 +686,15 @@ Ben's messages, word for word: `docs/history/messages-2026-10-09.md`.
 - Measure the car and replace every guessed number in `vehicle.yaml`.
 - Rotate the leaked secrets, and back up the Orin and Pis before any reflash.
 - Answer Q1–Q34 with the team.
+
+## For the 2027-28 team
+
+Learned models: worth knowing, but each needs training data and GPUs we don't have this
+year (Ben, 28 Oct):
+
+- [ ] **Learned BEV** (BEVFusion, BEVFormer): all cameras and the lidar into one top-down view.
+- [ ] **One network for perception, prediction and planning** (UniAD).
+- [ ] **World models** (Wayve's GAIA-1) and **vision-language driving** (Waymo's EMMA).
+- [ ] **Predicting others' paths** (MTR, Wayformer); at 1 m/s, constant velocity is enough today.
+- [ ] **Learned planners** (diffusion planners).
+- [ ] **State-space models** (Mamba): see "Ideas to keep".

@@ -122,7 +122,7 @@ What we changed, and why.
 | Decision | Why | By |
 |---|---|---|
 | **Cyclone DDS on every computer**, the Macs and the car's. Pixi sets it; `AAV_RMW=fastdds` goes back for one run | Fast DDS delivered messages up to **0.48 s late** beside Gazebo, while their sender was on time; Cyclone never over **0.05 s** (25 min each, 22 Oct). The late messages had made sensors look dead and Nav2 refuse goals. `sim-check` passes on Cyclone, the rear camera at its full 10 Hz. Both are free and open source, and fully supported in Jazzy. To check at the car: Cyclone uses one network card ([Your Mac](mac.md#why-we-use-cyclone-dds)) | Ben, 23 Oct: "yes lets do it" |
-| **MPPI is Nav2's default path follower**; Regulated Pure Pursuit stays as `controller:=rpp` | In every lot run in Gazebo it did at least as well. It reached the first goal cleanly in 4 of 4 runs; Pure Pursuit looped there in 2 of 3, as it aims at a point and arrives facing the wrong way ([Path followers](controllers.md)) | Ben, 22 Oct: "I thought we decided to go mppi" |
+| **MPPI is Nav2's default path follower**; Regulated Pure Pursuit stays as `controller:=rpp` | In every lot run in Gazebo it did at least as well. It reached the first goal cleanly in 4 of 4 runs; Pure Pursuit looped there in 2 of 3, as it aims at a point and arrives facing the wrong way ([Path followers](path-followers.md)) | Ben, 22 Oct: "I thought we decided to go mppi" |
 | **The car may back up** (0.5 m/s at most), where the lidar watches behind it (the rear camera later); collision_monitor then guards a box behind the rear bumper. **Off by default on the car since 26 Oct** (`reversing:=true` to turn it on): the wheel sensors can't tell direction yet (H5); on again once H5 is answered | Driving forward only, a U-turn in a narrow lane works about half the time and can leave the car facing a wall. Allowed to reverse, it makes a three-point turn and reaches every goal | Ben, 22 Oct: "Yes the car can reverse" |
 | **The GPS antenna is over the rear axle** (`vehicle.yaml`: x = 0) | It's already there on the car. That is the best spot: our position software corrects for the antenna's offset using the car's heading, so with no offset a heading error can't move the GPS position. In Gazebo, reversing's heading error halved ([Learn: GPS](learn-gps.md#mount-the-antenna-over-the-rear-axle)) | Ben, 23 Oct: "its already there" |
 | **The wheel sensors are read by an Arduino**, which sends CAN frames; the Orin reads the bus and publishes them in ROS | The hardware side's plan. The frames are in `aav.dbc` already (0x200, 0x201), and the Orin's side decodes them, so the Arduino only has to send them. An exception to "Rust for all firmware": it's the hardware lead's board | the hardware lead (passed on by Ben, 23 Oct) |
@@ -159,6 +159,12 @@ What we changed, and why.
 | **ROS packages live in `ros/<area>/`**: sources, localization, perception, drivers, command_mux, ego, io_mux, can_bridge, sim, safety, hud, bringup, ecolo_msgs (was `src/<layer>/`) | Each folder matches a box in the picture, so you find a package where its data flows | Arsh, 25 Oct |
 | **The Flutter HUD and its Flask back end are archived** (`archive/2026-27-flutter-hud/`); the raylib package takes the name `aav_hud`; the route maths moves to `aav_routes` | Q29: the raylib HUD replaced the app on 15 Oct. Nothing built, tested or started the old one any more | Ben, 25 Oct |
 | **[CONTRIBUTING.md](../CONTRIBUTING.md) is the git rule**: fork, branch, pull request, one approval and green CI, then the merge queue | One way into `main` for everyone, maintainers included | Arsh, 25 Oct |
+
+## Decided on 29 October
+
+| Decision | Why | By |
+|---|---|---|
+| **Nav2 keeps its path for the last 8 m to a goal** (`navigate_to_pose_car*.xml`): it replans every second elsewhere, but near the goal only if the path is blocked, for another goal, or 20 s old. 8 m = `vehicle.final_approach`, 2 of the planner's turning radii | Replanning there made the car circle goals: a new path from a little behind on the last bend is a 21-25 m loop for a car, and each new path resets Nav2's goal checker. Gazebo, first leg, 12 runs each way: loop plans in 10 before, none after; 3 loops driven before, none after ([Path followers](path-followers.md#circling-a-goal-found-and-fixed-29-october-todo-17)) | TODO 17, from the Gazebo runs |
 
 ## Open questions
 

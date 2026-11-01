@@ -106,7 +106,7 @@ The main ones. Every package: [Packages](packages.md).
 | Where | Plugin | Notes |
 |---|---|---|
 | Nav2 planner | `SmacPlannerHybrid` | plans paths a car can drive: no turning on the spot |
-| Nav2 controller | `MPPI` | follows the path, with the car's Ackermann model. `controller:=rpp` swaps in `RegulatedPurePursuit` ([path followers](controllers.md)) |
+| Nav2 controller | `MPPI` | follows the path, with the car's Ackermann model. `controller:=rpp` swaps in `RegulatedPurePursuit` ([path followers](path-followers.md)) |
 | Nav2 behaviours | `BackUp`, `DriveOnHeading`, `Wait` | no `Spin`: a car can't |
 | Nav2 navigator | `NavigateToPose`, `NavigateThroughPoses` | with our car behaviour trees, adapted from Nav2's |
 | Nav2 waypoints | `WaitAtWaypoint` | GPS waypoints come through the same server |

@@ -38,13 +38,16 @@ set(CARGO_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR}/target)
 add_custom_target(cargo_build ALL
   COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS --unset=MFLAGS --unset=CARGO_MAKEFLAGS
     CARGO_TARGET_DIR=${CARGO_TARGET_DIR}
-    ${CARGO} build --release --locked --quiet --bin hud --bin map
+    ${CARGO} build --release --locked --quiet --bin hud --bin map --bin debug_hud --bin hw_panel
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMENT "cargo build --release --bin hud --bin map (raylib from source the first time: a minute)"
+  COMMENT "cargo build --release --bin hud --bin map --bin debug_hud --bin hw_panel (raylib from source the first time: a minute)"
   VERBATIM)
 
-# hud: the in-car screen. map: the big screen's map window.
+# hud: the in-car screen. map: the big screen's map window. debug_hud: the debug screen
+# (the lidar's cubes, the localizers, every sensor). hw_panel: the hardware screen (every
+# sensor's number, simple buttons for the actuators).
 install(PROGRAMS ${CARGO_TARGET_DIR}/release/hud ${CARGO_TARGET_DIR}/release/map
+  ${CARGO_TARGET_DIR}/release/debug_hud ${CARGO_TARGET_DIR}/release/hw_panel
   DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

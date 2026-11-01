@@ -4,6 +4,7 @@ Gazebo Harmonic as the car: world, the car from the URDF, the bridge and the ada
   ros2 launch aav_gazebo gazebo.launch.py [world:=empty|test_lot|road] [gui:=true]
       [follow:=true] [obstacle:=false] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true]
       [radar:=true] [actuator_model:=true] [faults:=false] [spine:=false] [arm:=true]
+      [esp32:=false] [esp32_loop:=pi]
       [bridge:=rust|python]
 
   /control/gazebo/actuator_cmd ──> gazebo_adapter ──> /gazebo/cmd_vel ──bridge──> Ackermann system
@@ -22,6 +23,19 @@ runs the spine's firmware logic (spine-core) on its CAN frames, on Gazebo's cloc
   spine_sim ──> /vehicle/gazebo/spine_outputs ──> gazebo_adapter (the actuator model) ──> Gazebo
   gazebo_adapter ──> /vehicle/gazebo/wheels, /vehicle/gazebo/steering ──> spine_sim
   spine_sim ──> /can/rx ──> spine_bridge ──> /vehicle/odom, status, steering, wheels...
+
+esp32:=true puts today's car in the loop instead: the car's own legacy_uart_bridge takes
+ego's commands, and gazebo_esp32 stands in for the 2025-26 C++ ESP32 firmware (its
+throttle ramp, its brake, no command timeout), over a local TCP socket in place of the
+serial wire. esp32_loop:= is the bridge's speed_loop.mode: pi (feed-forward plus PI on
+the wheel speed, the default here) or open (the 2025-26 mapping):
+
+  /control/gazebo/actuator_cmd ──> legacy_uart_bridge ──TCP──> gazebo_esp32 (the firmware)
+  gazebo_esp32 ──> /vehicle/gazebo/esp32_outputs ──> gazebo_adapter (the actuator model)
+  gazebo_adapter ──> /vehicle/odom (the wheel speed, as the car's wheel sensors) ──> the bridge
+
+In the sim the bridge's no-timeout lock is lifted (allow_programs_without_timeout), so
+programs drive as on a supervised stand: there is no car to run away.
 
 Still one backend: spine_bridge alone reads ego's commands (/control/gazebo/actuator_cmd,
 from the output mux); bridge:= picks its language, rust (aav_spine_bridge, the default)
@@ -125,6 +139,35 @@ def spine_in_the_loop(context, v, sim_time):
     return actions
 
 
+def esp32_in_the_loop(context, car, sim_time):
+    """legacy_uart_bridge and gazebo_esp32: today's UART path, and the C++ firmware's logic."""
+    legacy_share = FindPackageShare('aav_legacy').perform(context)
+    config = os.path.join(legacy_share, 'config', 'legacy.yaml')
+    with open(config) as f:
+        legacy = yaml.safe_load(f)['legacy_uart_bridge']['ros__parameters']
+    v = car['vehicle']
+    # One port per ROS domain, so two runs on one machine don't meet.
+    port = 47000 + int(os.environ.get('ROS_DOMAIN_ID', '0'))
+    steering = {'max_steering_angle': float(v['max_steering_angle']),
+                'steering_sign': float(legacy['steering_sign'])}
+    model = {f'speed_loop.{k}': float(car['actuators'][k])
+             for k in ('max_accel', 'max_brake', 'drag')}
+    return [
+        Node(package='aav_gazebo', executable='gazebo_esp32', name='gazebo_esp32',
+             parameters=[{'port': port}, steering, sim_time]),
+        # One dict, legacy.yaml's values first: a parameter file's node-specific values
+        # would beat any dict given beside it (launch_ros sends dicts as /**).
+        Node(package='aav_legacy', executable='legacy_uart_bridge', name='legacy_uart_bridge',
+             parameters=[{**legacy, **steering, **model,
+                          'port': f'socket://127.0.0.1:{port}', 'source': 'sim',
+                          'frame_version': 1, 'allow_programs_without_timeout': True,
+                          'speed_loop.mode': LaunchConfiguration('esp32_loop').perform(context),
+                          **sim_time}],
+             remappings=[('control/car/actuator_cmd', 'control/gazebo/actuator_cmd'),
+                         ('control/car/heartbeat', 'control/gazebo/heartbeat')]),
+    ]
+
+
 def launch_setup(context):
     share = FindPackageShare('aav_gazebo').perform(context)
     world = worlds.world_file(share, LaunchConfiguration('world').perform(context))
@@ -134,8 +177,14 @@ def launch_setup(context):
     radar = sensors and flag(context, 'radar')
     relay = sensors and flag(context, 'faults')
     spine = flag(context, 'spine')
-    if spine and not flag(context, 'actuator_model'):
-        raise ValueError('spine:=true drives the actuator model: leave actuator_model:=true')
+    esp32 = flag(context, 'esp32')
+    if spine and esp32:
+        raise ValueError('spine:=true and esp32:=true are two backends: pick one')
+    if (spine or esp32) and not flag(context, 'actuator_model'):
+        raise ValueError('spine:=true and esp32:=true drive the actuator model: '
+                         'leave actuator_model:=true')
+    if LaunchConfiguration('esp32_loop').perform(context) not in ('pi', 'open'):
+        raise ValueError('esp32_loop: pi or open')
     gui = flag(context, 'gui')
     # -r: start running; -s: server only (no window). On a Mac the window is always its
     # own program (below). On Linux with no window, the sensors render through EGL.
@@ -170,7 +219,7 @@ def launch_setup(context):
                           'wheel_radius': float(v['wheel_diameter']) / 2.0,
                           'actuator_model': flag(context, 'actuator_model'),
                           'speed_loop': LaunchConfiguration('speed_loop').perform(context),
-                          'spine': spine}, sim_time]),
+                          'spine': spine, 'esp32': esp32}, sim_time]),
         # Each sensor in a process of its own, as on the car: none waits behind another.
         Node(package='aav_gazebo', executable='gazebo_imu', name='gazebo_imu',
              parameters=[{'imu_x': float(car['sensors']['imu_link']['xyz'][0])}, sim_time]),
@@ -187,6 +236,8 @@ def launch_setup(context):
                             name='gazebo_camera', parameters=[sim_time]))
     if spine:
         actions += spine_in_the_loop(context, v, sim_time)
+    if esp32:
+        actions += esp32_in_the_loop(context, car, sim_time)
     if gui and MAC:
         actions.append(ExecuteProcess(cmd=['gz', 'sim', '-g'], name='gz_window',
                                       output='screen'))
@@ -245,8 +296,8 @@ def generate_launch_description():
                               description="the actuators as vehicle.yaml's actuators: say "
                                           "(gazebo_adapter); false: Gazebo's old instant car"),
         DeclareLaunchArgument('speed_loop', default_value='default',
-                              description="the speed loop's profile: default (today's gains) "
-                                          'or smooth (TODO 27, docs/vehicle-model.md); in '
+                              description="the speed loop's profile: default (today's gains)"
+                                          ', smooth (TODO 27) or lqi (TODO 3); in '
                                           'the actuator model, or spine_sim with spine:=true'),
         DeclareLaunchArgument('faults', default_value='false',
                               description='true: the front left picture goes through '
@@ -255,6 +306,12 @@ def generate_launch_description():
                               description='the spine in the loop: spine_bridge, CAN frames '
                                           "and spine_sim, the spine's own logic, in front "
                                           'of the actuator model'),
+        DeclareLaunchArgument('esp32', default_value='false',
+                              description="today's car in the loop: legacy_uart_bridge and "
+                                          'gazebo_esp32, the C++ firmware standing in'),
+        DeclareLaunchArgument('esp32_loop', default_value='pi',
+                              description="with esp32:=true: the bridge's speed_loop.mode, "
+                                          'pi or open'),
         DeclareLaunchArgument('arm', default_value='true',
                               description='with spine:=true: arm the spine after 12 s'),
         DeclareLaunchArgument('bridge', default_value=bridges.DEFAULT,

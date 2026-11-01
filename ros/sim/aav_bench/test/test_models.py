@@ -183,3 +183,52 @@ def test_a_lidar_bearing_is_clockwise_from_the_cars_heading():
     # -15 deg meets it 0.73 m up, before the ground (6.72 m); -5 deg clears its top.
     assert right[0] == pytest.approx(4.0 / math.cos(math.radians(15)))
     assert left[0] == pytest.approx(1.8 / math.sin(math.radians(15)))   # the ground
+
+
+def gps_run(error, seconds, rate=5.0):
+    return [error.step(1.0 / rate) for _ in range(int(seconds * rate))]
+
+
+def autocorrelation(values, lag):
+    mean = sum(values) / len(values)
+    var = sum((v - mean) ** 2 for v in values) / len(values)
+    pairs = zip(values, values[lag:])
+    return sum((a - mean) * (b - mean) for a, b in pairs) / ((len(values) - lag) * var)
+
+
+def test_the_gps_error_wanders_slowly_with_its_steady_spread():
+    # 6 hours at 1 Hz: 360 drift times of 60 s, enough for the spread to settle.
+    error = models.GpsError(0.5, 60.0, 0.05, random.Random(7))
+    fixes = gps_run(error, 6 * 3600.0, rate=1.0)
+    for axis in (0, 1):
+        values = [f[axis] for f in fixes]
+        mean = sum(values) / len(values)
+        spread = math.sqrt(sum((v - mean) ** 2 for v in values) / len(values))
+        assert abs(mean) < 0.1
+        assert spread == pytest.approx(error.stddev, rel=0.1)
+        # One drift time (60 fixes) later it remembers about exp(-1) of itself.
+        assert autocorrelation(values, 60) == pytest.approx(math.exp(-1.0), abs=0.1)
+
+
+def test_the_gps_error_moves_centimetres_from_fix_to_fix():
+    # At 5 Hz, not the 0.9 m of white noise's 0.5 m on each axis.
+    fixes = gps_run(models.GpsError(0.5, 60.0, 0.05, random.Random(7)), 600.0)
+    steps = [math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(fixes, fixes[1:])]
+    assert sum(steps) / len(steps) < 0.15
+
+
+def test_white_noise_when_the_drift_forgets_at_once():
+    error = models.GpsError(0.5, 0.0, 0.0, random.Random(3))
+    values = [f[0] for f in gps_run(error, 2000.0)]
+    assert autocorrelation(values, 1) == pytest.approx(0.0, abs=0.05)
+    spread = math.sqrt(sum(v * v for v in values) / len(values))
+    assert spread == pytest.approx(0.5, rel=0.05)
+
+
+def test_the_gps_error_repeats_with_its_seed_and_refuses_negatives():
+    a = gps_run(models.GpsError(0.5, 30.0, 0.05, random.Random(2)), 10.0)
+    b = gps_run(models.GpsError(0.5, 30.0, 0.05, random.Random(2)), 10.0)
+    assert a == b
+    assert models.GpsError(0.3, 30.0, 0.4, random.Random(1)).stddev == pytest.approx(0.5)
+    with pytest.raises(ValueError):
+        models.GpsError(-0.5, 30.0, 0.05, random.Random(1))

@@ -49,6 +49,8 @@ our car uses it.
 | Sensors: every one on the car, and what it's good for | [Learn: sensors](learn-sensors.md) |
 | GPS: where the car is on the earth, and RTK | [Learn: GPS](learn-gps.md) |
 | Localization: odometry, Kalman filters, frames and TF | [Learn: localization](learn-localization.md) |
+| Speed: how fast the car is going, from wheels, IMU, GPS and lidar | [Learn: speed](learn-speed.md) |
+| Lidar: points, cubes, the costmap, named objects, NDT | [Learn: lidar](learn-lidar.md) |
 | Control: feedback loops, PID, steering geometry, safe stops | [Learn: control](learn-control.md) |
 | State space: from a drawing to a car simulator; poles, Bode, roll | [Learn: state space](learn-state-space.md) |
 | Nav2: planning a path and steering along it | [Learn: Nav2](learn-nav2.md) |

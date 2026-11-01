@@ -326,6 +326,8 @@ impl Params {
         for (name, slot) in [
             ("stale_after", &mut config.stale_after),
             ("plan_stale_after", &mut config.plan_stale_after),
+            ("final_approach", &mut config.final_approach),
+            ("plan_kept_for", &mut config.plan_kept_for),
             ("arrive_within", &mut config.arrive_within),
         ] {
             let p = node.declare_parameter(name).default(*slot).read_only()?;

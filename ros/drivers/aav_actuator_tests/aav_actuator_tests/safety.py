@@ -69,15 +69,22 @@ class Decision:
 
 
 def decide(kind: Kind, sim: bool, stands: bool, stage: int,
-           requested_cap: Optional[float] = None) -> Decision:
+           requested_cap: Optional[float] = None, bench: Optional[bool] = None) -> Decision:
     """
     Decide whether this test (stage 3 or 4 of docs/tests.md) may run, and its speed cap.
 
     sim: the user said --sim (Gazebo, simulated time). stands: --stands (wheels off the
-    ground). requested_cap: --max-speed, or None for the default.
+    ground). requested_cap: --max-speed, or None for the default. bench: --bench (bench
+    mode, this computer only); None leaves BENCH alone, as before --bench existed.
     """
     if requested_cap is not None and not (math.isfinite(requested_cap) and requested_cap > 0):
         return Decision(False, f'--max-speed must be above 0 m/s (got {requested_cap})')
+    if bench and kind is not Kind.BENCH:
+        return Decision(False, f'--bench, but /system/source says {kind.value}. Start bench '
+                               'mode first (pixi run bench), on this ROS domain')
+    if bench is False and kind is Kind.BENCH:
+        return Decision(False, 'bench mode announces BENCH on /system/source: add --bench '
+                               '(this computer only)')
     if kind is Kind.REPLAY:
         return Decision(False, '/system/source says REPLAY: a recording plays; there is '
                                'nothing to drive')
@@ -180,6 +187,139 @@ LOT_CHECKLIST = (
 )
 
 
+# aav_safety's geofence states (geofence.py) that stop a test on the ground. The tests'
+# slot (60) is above the geofence's lock (51), so the test stops itself.
+GEOFENCE_STOPS = ('NEAR', 'OUTSIDE', 'LOST', 'JUMP')
+GEOFENCE_QUIET = 1.0    # s without /safety/geofence/state: it went quiet
+
+
+def geofence_stop(state: Optional[str], age: Optional[float], stands: bool, real: bool,
+                  starting: bool = False) -> Optional[str]:
+    """
+    Why the geofence stops this test (or keeps it from starting), or None.
+
+    state: the last /safety/geofence/state ("NEAR: why..."), None if never heard; age: s
+    since it arrived. On stands nothing is fenced. On the real car the geofence must be
+    heard, and not be in stands mode. starting: also refuse STARTING (the pose not settled).
+    """
+    if stands:
+        return None
+    if state is None or age is None or age > GEOFENCE_QUIET:
+        return ('no /safety/geofence/state: the geofence must run for a test on the ground'
+                if real else None)
+    name = state.split(':', 1)[0].strip()
+    if name in GEOFENCE_STOPS or (starting and name == 'STARTING'):
+        return f'the geofence says {state}'
+    if name == 'STANDS' and real:
+        return ('the geofence is in stands mode (no fence) but this test is on the ground: '
+                'start the car without stands:=true')
+    return None
+
+
 def checklist(stands: bool) -> Tuple[str, ...]:
     """Return what to check before a test on the real car (docs/tests.md, Before)."""
     return STANDS_CHECKLIST if stands else LOT_CHECKLIST
+
+
+# --- live checks while driving (every test) ----------------------------------------
+
+# UNSEEN_TIME: s of a command above 0 with the measured speed under UNSEEN_SPEED. Not
+# less: 8 Hall clicks a turn say nothing until 2 clicks (0.24 m), 2-3 s of a slow start
+# (the bench, 29 Oct).
+UNSEEN_TIME = 4.0
+UNSEEN_SPEED = 0.05    # m/s: the spine's own standstill threshold
+RUNAWAY_WINDOW = 1.0   # s: the speed rose this long while the command didn't
+RUNAWAY_RISE = 0.1     # m/s
+
+
+def unseen(history: Sequence[Tuple[float, float, float]]) -> Optional[str]:
+    """
+    Why to stop when the wheels are told to turn but the speed sensor sees nothing.
+
+    history: (t s, commanded m/s, measured m/s), oldest first. On a rear-wheel-drive car
+    whose wheel sensors are on the front, on stands, this is what happens: the motor turns
+    the rear wheels at a speed nobody measures, and the speed cap can't fire.
+    """
+    if not history:
+        return None
+    now = history[-1][0]
+    if now - history[0][0] < UNSEEN_TIME:
+        return None
+    window = [h for h in history if now - h[0] <= UNSEEN_TIME]
+    if all(abs(c) > UNSEEN_SPEED and abs(m) < UNSEEN_SPEED for _, c, m in window):
+        return (f'told to drive for {UNSEEN_TIME:g} s, but the measured speed stays under '
+                f"{UNSEEN_SPEED} m/s: the speed can't be seen (front wheel sensors on "
+                "stands? a dead sensor?) or the car isn't moving (the spine not armed?), so "
+                "the speed cap can't work")
+    return None
+
+
+def runaway(history: Sequence[Tuple[float, float, float]]) -> Optional[str]:
+    """
+    Why to stop when the speed rises while the command falls, or stays at a stop.
+
+    A stuck throttle. A held command above 0 is left alone (a speed loop's overshoot rises
+    above a steady command); the envelope's speed limit covers that.
+    """
+    if not history:
+        return None
+    now, cmd, speed = history[-1]
+    old = [h for h in history if now - h[0] >= RUNAWAY_WINDOW]
+    if not old:
+        return None
+    _, cmd0, speed0 = old[-1]
+    falling = abs(cmd) < abs(cmd0) - 0.01 or (abs(cmd) < UNSEEN_SPEED and abs(cmd0) < UNSEEN_SPEED)
+    if (falling and abs(speed) > abs(speed0) + RUNAWAY_RISE
+            and abs(speed) > abs(cmd) + RUNAWAY_RISE):
+        return (f'the speed rose {abs(speed0):.2f} -> {abs(speed):.2f} m/s while the command '
+                f'fell ({abs(cmd0):.2f} -> {abs(cmd):.2f}): a stuck throttle?')
+    return None
+
+
+# --- the preflight (procedures.preflight; preflight.py judges it) -------------------
+
+PREFLIGHT_CHECKLIST = (
+    'All four wheels are OFF the ground, on stands; the car chocked',
+    'The e-stop person holds the Kar-Tech e-stop: THEY are the stop (Ctrl-C and the '
+    'joystick only stop the software)',
+    'Someone watches the REAR (driven) wheels with a tachometer app, and calls out a '
+    'spin faster than a walk',
+    'The Rust ESP32 firmware, with session 6c and test 3.9 passed (it brakes 0.2 s '
+    'after the link goes)',
+    'This runs on the Orin (ssh + tmux) or a wired laptop, not over WiFi',
+    "The 2025-26 team's drive software is stopped (only our stack drives)",
+    'Nobody near the wheels or the steering linkage',
+    f'The speed is capped at {STANDS_CAP} m/s; the run takes about 40 s',
+)
+
+DRIVEN_WHEELS = 'rear'   # the car is rear-wheel drive (docs/learn-car.md, "The moving parts")
+
+
+def preflight_refusal(kind: Kind, drive: bool, speed_wheels: Optional[str],
+                      no_timeout_lock: Optional[bool], speed_loop_mode: Optional[str]
+                      ) -> Optional[str]:
+    """
+    Why the preflight may not drive the real car, or None.
+
+    drive: False for --no-drive (the sensors only: nothing moves, so nothing refused).
+    speed_wheels: vehicle.yaml's vehicle.speed_wheels, which wheels /vehicle/odom
+    measures. no_timeout_lock: the legacy bridge's /safety/legacy_uart_bridge/lock (None:
+    not heard). speed_loop_mode: the legacy bridge's speed_loop.mode (None: not heard).
+    """
+    if not drive or kind not in (Kind.REAL, Kind.UNKNOWN):
+        return None
+    if speed_wheels != DRIVEN_WHEELS:
+        return (f'/vehicle/odom measures the {speed_wheels or "unknown"} wheels '
+                '(vehicle.yaml vehicle.speed_wheels), but the car drives the '
+                f'{DRIVEN_WHEELS} ones: on stands the speed reads 0 while the motor spins, '
+                'so no speed cap can work. Run --no-drive (the sensors only) until a '
+                'driven-wheel speed exists (TODO 49b, the hardware lead)')
+    if no_timeout_lock:
+        return ("the legacy bridge's no-timeout lock is ON: the C++ ESP32 has no command "
+                'timeout, so a lost link leaves the throttle on. Flash the Rust firmware '
+                '(car-day session 6) and pass test 3.9 first')
+    if speed_loop_mode == 'pi':
+        return ('the legacy bridge runs speed_loop.mode pi: on stands its loop chases a '
+                "speed it can't reach and raises the throttle. Restart it with "
+                'speed_loop.mode open')
+    return None

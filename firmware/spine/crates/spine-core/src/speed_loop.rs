@@ -11,6 +11,9 @@
 //! the PI's zero away from the slow pole, which is what made the loop overshoot about 15%
 //! (TODO 27, `docs/vehicle-model.md`, "Tuning the speed loop"). [`SpeedLoopProfile`] names
 //! the parameter sets the simulators and the car-day tests can switch between.
+//!
+//! [`SpeedLaw::Lqi`] is the other law (TODO 3): one signed acceleration for throttle and
+//! brake, with gains worked out offline from the model ([`LqiConfig`]).
 
 use core::fmt;
 use core::str::FromStr;
@@ -28,8 +31,108 @@ pub enum AntiWindup {
     Clamp,
 }
 
+/// How the loop turns the speed error into throttle and brake.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum SpeedLaw {
+    /// The PI on the throttle, and a P-only brake past the coast band: today's loop.
+    #[default]
+    Pi,
+    /// The LQI: one signed acceleration (throttle +, brake −), never both, with a small
+    /// dead band between them.
+    Lqi(LqiConfig),
+}
+
+/// The LQI's gains, and the car model it inverts (TODO 3, `docs/controllers.md`).
+///
+/// Each tick, along the direction of travel, with `r` the set speed and `v` the measured:
+///
+/// ```text
+/// u = drag·r + k_speed·(b·r − v) − k_accel·(p − drag·r) + k_integral·z,   z += (r − v)·dt
+/// u > dead_band: throttle = u / max_accel;   u < −dead_band: brake = −u / max_brake
+/// ```
+///
+/// `p` is the pedals' acceleration after their lag. The loop models it from what it sent
+/// (`throttle_lag`, `brake_lag`), so the chip needs no matrix: only these numbers.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LqiConfig {
+    /// m/s² per m/s of speed error.
+    pub k_speed: f32,
+    /// Per m/s² of the pedals' lagged acceleration beyond what the drag needs.
+    pub k_accel: f32,
+    /// m/s² per (m/s × s) of the error's integral.
+    pub k_integral: f32,
+    /// The share of the set speed the speed term sees, `b` (0..1). Below 1, the integral
+    /// brings the rest, so a new set speed doesn't overshoot.
+    pub setpoint_weight: f32,
+    /// m/s²: the most the integral may add or take, beyond the target's share
+    /// `(1 − b)·k_speed·r`.
+    pub integral_limit: f32,
+    /// m/s² either side of zero where neither pedal is used: the car coasts.
+    pub dead_band: f32,
+    /// m/s² at full throttle (`vehicle.yaml`: `actuators.max_accel`).
+    pub max_accel: f32,
+    /// m/s² at full brake (`actuators.max_brake`).
+    pub max_brake: f32,
+    /// 1/s: m/s lost per second per m/s, coasting (`actuators.drag`).
+    pub drag: f32,
+    /// s: the throttle's lag (`actuators.throttle_lag`).
+    pub throttle_lag: f32,
+    /// s: the brake's lag (`actuators.brake_lag`).
+    pub brake_lag: f32,
+}
+
+impl LqiConfig {
+    /// The gains for `vehicle.yaml`'s guesses (every actuator number there is a GUESS).
+    ///
+    /// Made by `pixi run vehicle-model --lqi` (`VehicleModel.speed_lqi` in
+    /// `ros/ego/aav_ego/aav_ego/vehicle_model.py`): states [speed error, the pedals' lag,
+    /// the error's integral], the slower lag (the brake's 0.2 s), held for the 10 ms tick;
+    /// weights Q = diag(2, 0, 0.5), R = 1; then the discrete Riccati equation, solved by
+    /// scipy. When the car is measured, run it again and paste its printout here.
+    pub const MODEL: LqiConfig = LqiConfig {
+        k_speed: 1.832,
+        k_accel: 0.3169,
+        k_integral: 0.7015,
+        setpoint_weight: 0.5,
+        integral_limit: 1.5,
+        dead_band: 0.05,
+        max_accel: 1.5,
+        max_brake: 3.0,
+        drag: 0.1,
+        throttle_lag: 0.1,
+        brake_lag: 0.2,
+    };
+
+    /// The pedals for a signed acceleration (m/s²): throttle or brake (0..1), never both.
+    pub fn pedals(&self, accel: f32) -> (f32, f32) {
+        if accel > self.dead_band {
+            (clamp01(accel / self.max_accel), 0.0)
+        } else if accel < -self.dead_band {
+            (0.0, clamp01(-accel / self.max_brake))
+        } else {
+            (0.0, 0.0)
+        }
+    }
+
+    /// The pedals' acceleration one tick later: `dt / (lag + dt)` of the way to what was
+    /// sent (no `exp` on a `no_std` chip).
+    fn lagged(&self, pedals: f32, throttle: f32, brake: f32, dt: f32) -> f32 {
+        let sent = throttle * self.max_accel - brake * self.max_brake;
+        let lag = if sent > 0.0 {
+            self.throttle_lag
+        } else {
+            self.brake_lag
+        };
+        pedals + (sent - pedals) * dt / (lag + dt)
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct SpeedLoopConfig {
+    /// How the error becomes throttle and brake. The fields below are the PI's; the LQI
+    /// uses only the stop's (`stopped_speed`, `hold_brake`, and `brake_gain` while a gear
+    /// change waits for the car to stop).
+    pub law: SpeedLaw,
     /// Throttle (0..1) per m/s of speed error.
     pub kp: f32,
     /// Throttle per (m/s x s) of accumulated error.
@@ -54,6 +157,7 @@ pub struct SpeedLoopConfig {
 impl Default for SpeedLoopConfig {
     fn default() -> Self {
         SpeedLoopConfig {
+            law: SpeedLaw::Pi,
             kp: 0.3,
             ki: 0.1,
             integral_limit: 0.3,
@@ -87,6 +191,17 @@ impl SpeedLoopConfig {
     }
 }
 
+impl SpeedLoopConfig {
+    /// The `lqi` profile (TODO 3: a comparison, not the default): [`LqiConfig::MODEL`],
+    /// with today's stop (brake at least `hold_brake` until stopped, then hold it).
+    pub fn lqi() -> Self {
+        SpeedLoopConfig {
+            law: SpeedLaw::Lqi(LqiConfig::MODEL),
+            ..SpeedLoopConfig::default()
+        }
+    }
+}
+
 /// The named parameter sets: the simulators' `speed_loop` parameter, the car-day tests.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SpeedLoopProfile {
@@ -95,17 +210,24 @@ pub enum SpeedLoopProfile {
     Default,
     /// [`SpeedLoopConfig::smooth`]: TODO 27's design, to try on stands.
     Smooth,
+    /// [`SpeedLoopConfig::lqi`]: TODO 3's LQI, to compare against the PI.
+    Lqi,
 }
 
 impl SpeedLoopProfile {
     /// Every profile, in the order the docs list them.
-    pub const ALL: [SpeedLoopProfile; 2] = [SpeedLoopProfile::Default, SpeedLoopProfile::Smooth];
+    pub const ALL: [SpeedLoopProfile; 3] = [
+        SpeedLoopProfile::Default,
+        SpeedLoopProfile::Smooth,
+        SpeedLoopProfile::Lqi,
+    ];
 
     /// The profile's name, as the parameter and the docs spell it.
     pub fn name(self) -> &'static str {
         match self {
             SpeedLoopProfile::Default => "default",
             SpeedLoopProfile::Smooth => "smooth",
+            SpeedLoopProfile::Lqi => "lqi",
         }
     }
 
@@ -114,6 +236,7 @@ impl SpeedLoopProfile {
         match self {
             SpeedLoopProfile::Default => SpeedLoopConfig::default(),
             SpeedLoopProfile::Smooth => SpeedLoopConfig::smooth(),
+            SpeedLoopProfile::Lqi => SpeedLoopConfig::lqi(),
         }
     }
 }
@@ -124,7 +247,7 @@ pub struct UnknownProfile;
 
 impl fmt::Display for UnknownProfile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("no such speed loop profile: pick default or smooth")
+        f.write_str("no such speed loop profile: pick default, smooth or lqi")
     }
 }
 
@@ -151,6 +274,10 @@ pub struct SpeedLoop {
     cfg: SpeedLoopConfig,
     integral: f32,
     reverse: bool,
+    /// The LQI's integral of the speed error (m/s × s).
+    lqi_integral: f32,
+    /// The LQI's model of the pedals' acceleration after their lag (m/s², + throttle).
+    pedals: f32,
 }
 
 fn clamp01(x: f32) -> f32 {
@@ -163,11 +290,15 @@ impl SpeedLoop {
             cfg,
             integral: 0.0,
             reverse: false,
+            lqi_integral: 0.0,
+            pedals: 0.0,
         }
     }
 
     pub fn reset(&mut self) {
         self.integral = 0.0;
+        self.lqi_integral = 0.0;
+        self.pedals = 0.0;
     }
 
     pub fn update(&mut self, target: f32, measured: f32, dt: f32) -> Drive {
@@ -179,9 +310,9 @@ impl SpeedLoop {
         if target != 0.0 && want_reverse != self.reverse {
             if stopped {
                 self.reverse = want_reverse;
-                self.integral = 0.0;
+                self.reset();
             } else {
-                self.integral = 0.0;
+                self.reset();
                 let brake = clamp01(c.hold_brake.max(c.brake_gain * abs(measured)));
                 return Drive {
                     throttle: 0.0,
@@ -195,6 +326,15 @@ impl SpeedLoop {
         let sign = if self.reverse { -1.0 } else { 1.0 };
         let t = target * sign;
         let m = measured * sign;
+
+        if let SpeedLaw::Lqi(q) = c.law {
+            let (throttle, brake) = self.lqi(&q, t, m, stopped, dt);
+            return Drive {
+                throttle,
+                brake,
+                reverse: self.reverse,
+            };
+        }
 
         // A stop: brake until stopped, then hold. Never coast here: below the coast band
         // the car would only slow by rolling resistance, and on a slope it might never
@@ -247,6 +387,51 @@ impl SpeedLoop {
 }
 
 impl SpeedLoop {
+    /// The LQI's tick, along the direction of travel: (throttle, brake), never both.
+    ///
+    /// A stop (`t` ≤ 0) is today's: brake at least `hold_brake` until stopped, then hold
+    /// it. The integral starts again from zero after it.
+    fn lqi(&mut self, q: &LqiConfig, t: f32, m: f32, stopped: bool, dt: f32) -> (f32, f32) {
+        let c = self.cfg;
+        let stopping = t <= 0.0;
+        let (throttle, brake) = if stopping && stopped {
+            (0.0, c.hold_brake)
+        } else {
+            let r = t.max(0.0);
+            let error = r - m;
+            let b = q.setpoint_weight;
+            // The integral's share of the acceleration, inside its bounds: it holds the
+            // part of the target the speed term leaves out, (1 − b)·k_speed·r, and more.
+            let ceiling = q.integral_limit + (1.0 - b) * q.k_speed * r;
+            let integral = if stopping {
+                0.0
+            } else {
+                self.lqi_integral + error * dt
+            };
+            let share = (q.k_integral * integral).clamp(-q.integral_limit, ceiling);
+            let accel = q.drag * r + q.k_speed * (b * r - m)
+                - q.k_accel * (self.pedals - q.drag * r)
+                + share;
+            let accel = if stopping {
+                accel.min(-c.hold_brake * q.max_brake)
+            } else {
+                accel
+            };
+            let (throttle, brake) = q.pedals(accel);
+            // Anti-windup: no integrating while a pedal is pinned the error's way.
+            let pinned = (throttle >= 1.0 && error > 0.0) || (brake >= 1.0 && error < 0.0);
+            if !pinned && q.k_integral > 0.0 {
+                self.lqi_integral = share / q.k_integral;
+            }
+            (throttle, brake)
+        };
+        if stopping {
+            self.lqi_integral = 0.0;
+        }
+        self.pedals = q.lagged(self.pedals, throttle, brake, dt);
+        (throttle, brake)
+    }
+
     /// Open loop, for a board with no wheel speed: throttle in proportion to the target,
     /// `full_throttle_speed` (m/s) being full throttle, as the 2025-26 firmware drove.
     ///
@@ -254,7 +439,7 @@ impl SpeedLoop {
     /// - The gear changes only on a tick with no throttle: the first tick past zero.
     pub fn open_loop(&mut self, target: f32, full_throttle_speed: f32) -> Drive {
         let c = self.cfg;
-        self.integral = 0.0;
+        self.reset();
         if abs(target) < c.stopped_speed || target.is_nan() {
             return Drive {
                 throttle: 0.0,
@@ -498,6 +683,103 @@ mod tests {
         // integral of 1.4, past today's 0.3; clamping stops it at full.
         let t = l.update(2.0, 1.9, 0.01).throttle;
         assert!(t > 0.999 && t <= 1.0, "{t}");
+    }
+
+    fn lqi() -> SpeedLoop {
+        SpeedLoop::new(SpeedLoopConfig::lqi())
+    }
+
+    #[test]
+    fn the_lqi_goes_by_name_and_the_pi_stays_the_default() {
+        assert_eq!("lqi".parse::<SpeedLoopProfile>(), Ok(SpeedLoopProfile::Lqi));
+        assert_eq!(
+            SpeedLoopProfile::Lqi.config().law,
+            SpeedLaw::Lqi(LqiConfig::MODEL)
+        );
+        assert_eq!(SpeedLoopConfig::default().law, SpeedLaw::Pi);
+        assert_eq!(SpeedLoopConfig::smooth().law, SpeedLaw::Pi);
+    }
+
+    #[test]
+    fn the_lqi_never_uses_both_pedals_and_coasts_in_its_dead_band() {
+        let q = LqiConfig::MODEL;
+        for k in -400..=400 {
+            let (throttle, brake) = q.pedals(k as f32 * 0.01);
+            assert!(throttle == 0.0 || brake == 0.0);
+            assert!((0.0..=1.0).contains(&throttle) && (0.0..=1.0).contains(&brake));
+        }
+        assert_eq!(q.pedals(0.04), (0.0, 0.0));
+        assert_eq!(q.pedals(-0.04), (0.0, 0.0));
+        assert_eq!(q.pedals(0.75), (0.5, 0.0));
+        assert_eq!(q.pedals(-1.5), (0.0, 0.5));
+        let mut l = lqi();
+        for k in 0..3000 {
+            let t = 1.0 + 0.5 * libm_free_wave(k);
+            let m = t + 0.8 * libm_free_wave(k + 90);
+            let d = l.update(t, m, 0.01);
+            assert!(d.throttle == 0.0 || d.brake == 0.0, "tick {k}");
+        }
+    }
+
+    #[test]
+    fn the_lqi_brakes_when_too_fast_with_no_coast_band() {
+        // The PI coasts up to 0.2 m/s over; the LQI brakes in proportion at once.
+        let d = lqi().update(1.0, 1.3, 0.01);
+        assert_eq!(d.throttle, 0.0);
+        assert!(d.brake > 0.0);
+        assert_eq!(lp().update(1.0, 1.1, 0.01).brake, 0.0);
+    }
+
+    #[test]
+    fn the_lqi_stops_like_the_pi_brake_until_stopped_then_hold() {
+        let hold = SpeedLoopConfig::default().hold_brake;
+        for speed in [0.06, 0.19, 0.5, 2.0] {
+            let d = lqi().update(0.0, speed, 0.01);
+            assert_eq!(d.throttle, 0.0);
+            assert!(d.brake >= hold, "at {speed} m/s: {}", d.brake);
+        }
+        assert_eq!(lqi().update(0.0, 0.0, 0.01).brake, hold);
+        // A faster car brakes harder than the PI's P-only brake would at the same speed.
+        assert!(lqi().update(0.0, 2.0, 0.01).brake > lp().update(0.0, 2.0, 0.01).brake);
+    }
+
+    #[test]
+    fn the_lqi_tracks_ramps_without_overshoot_on_the_model() {
+        for target in [0.5, 1.0, 2.0] {
+            let (peak, end) = drive(SpeedLoopConfig::lqi(), 1.5, target);
+            assert!(peak < 1.02 * target, "lqi at {target}: peak {peak}");
+            assert!(
+                (end - target).abs() < 0.01 * target,
+                "lqi at {target}: {end}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_lqi_reaches_the_target_on_a_throttle_5_times_weaker() {
+        let (peak, end) = drive(SpeedLoopConfig::lqi(), 0.3, 2.0);
+        assert!((end - 2.0).abs() < 0.05, "lqi: {end}");
+        assert!(peak < 2.4, "lqi: peak {peak}");
+    }
+
+    #[test]
+    fn the_lqi_integral_stays_put_while_the_throttle_is_full() {
+        let mut l = lqi();
+        for _ in 0..2000 {
+            assert_eq!(l.update(3.0, 0.0, 0.01).throttle, 1.0);
+        }
+        // Held back for 20 s, then let go almost at the target: no windup to unwind.
+        let d = l.update(3.0, 2.95, 0.01);
+        assert!(d.throttle < 0.6, "{}", d.throttle);
+    }
+
+    #[test]
+    fn the_lqi_changes_gear_only_when_stopped() {
+        let mut l = lqi();
+        let d = l.update(-0.5, 1.0, 0.01);
+        assert!(!d.reverse && d.brake > 0.0 && d.throttle == 0.0);
+        let d = l.update(-0.5, 0.0, 0.01);
+        assert!(d.reverse && d.throttle > 0.0);
     }
 
     #[test]

@@ -1,0 +1,7 @@
+# stop_hold (aav_safety): holds collision_monitor's stops. navigation.launch.py starts it
+# wherever it starts collision_monitor. Its lock is twist_mux's stop_zone (priority 21).
+stop_hold:
+  ros__parameters:
+    clear_time: 1.0     # s the monitor must say "go" without a break before Nav2 may go:
+                        # 10 radar frames in a row with the zone clear
+    rate_hz: 10.0       # Hz of /safety/stop_hold/lock

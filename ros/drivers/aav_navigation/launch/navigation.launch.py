@@ -4,17 +4,22 @@ Nav2 as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out to tw
   ros2 launch aav_navigation navigation.launch.py [map:=<path to map yaml>]
       [radar:=false] [lidar:=false] [collision_monitor:=<radar or lidar>]
       [camera_obstacles:=false] [ghost:=false]
-      [reversing:=false] [max_speed:=] [controller:=mppi] [plan_around:=true]
+      [reversing:=false] [max_speed:=] [controller:=mppi] [planner:=hybrid]
+      [plan_around:=true]
+      [tracker:=none] [live_swap:=false] [amcl:=false] [amcl_x:=0.0] [amcl_y:=0.0]
+      [amcl_yaw:=0.0] [amcl_map:=]
       [use_sim_time:=false]
       [autostart:=true]
 
-Starts only the Nav2 servers a car needs (not nav2_bringup's full list: no AMCL, since
-robot_localization does localization, no docking or route server):
+Starts only the Nav2 servers a car needs (not nav2_bringup's full list: no docking or
+route server, and AMCL only as a trial, amcl:=true, since robot_localization does
+localization):
 
   map_server        the map (default: maps/empty.yaml, everything free)
-  planner_server    SmacPlannerHybrid: drivable paths for a car
+  planner_server    SmacPlannerHybrid: drivable paths for a car; planner:= for another
+                    (below)
   controller_server MPPI, with its Ackermann model -> cmd_vel_nav; controller:=rpp for
-                    Regulated Pure Pursuit instead (docs/controllers.md)
+                    Regulated Pure Pursuit instead (docs/path-followers.md)
   behavior_server   wait, backup, drive_on_heading (no spin)
   bt_navigator      navigate_to_pose, navigate_through_poses (behavior_trees/*_car*.xml)
   waypoint_follower follow_waypoints, follow_gps_waypoints (lat/lon via /fromLL)
@@ -23,10 +28,39 @@ robot_localization does localization, no docking or route server):
   collision_monitor /control/cmd_vel_smoothed -> /drivers/nav/cmd_vel, stopping for radar
                     or lidar points ahead; its state and stop zone under
                     /safety/collision_monitor/
+  stop_hold         with collision_monitor (aav_safety): holds its stops until the zone
+                    stays clear for 1 s, through twist_mux's stop_zone lock
+                    (/safety/stop_hold/lock), so the zone's edge can't flicker it
   lidar_scan        with lidar:=true (aav_lidar): the roof lidar's
                     cloud -> /sensors/lidar/scan (what stands between the road and just
                     over the roof, all the way round), for the costmap and collision_monitor
   lifecycle_manager brings them all up
+
+Trials (docs/trials.md), each beside the default and scored by pixi run controller-compare:
+  planner:=hybrid|lattice|smac2d|navfn|theta_star  the planner behind the plugin name
+                          GridBased (the behaviour trees never change; docs/controllers.md,
+                          Planners). hybrid, the default: SmacPlannerHybrid, Dubins or
+                          Reeds-Shepp. lattice: SmacPlannerLattice on our own primitives
+                          (config/lattice_ackermann.json, pixi run lattice-primitives), for
+                          the car's turning radius and the map's cells (refused if either
+                          differs), backwards too with reversing:=true. smac2d, navfn,
+                          theta_star: grid paths that ignore the turning radius, so the
+                          follower must round their corners; car.launch.py refuses them
+  tracker:=pure_pursuit|stanley|lqr|mpc|mpc_full  aav_track's track node follows the path instead
+                          of controller_server: it serves follow_path (bt_navigator's
+                          FollowPath) and publishes cmd_vel_nav; controller_server keeps
+                          running (its costmaps, the trees' clear calls) with its own action
+                          renamed follow_path_unused. The same planner, smoother,
+                          collision_monitor and twist_mux slot. Forward only: refused with
+                          reversing:=true. tracker:=none (the default): controller_server
+  live_swap:=true         the tracker can change while it runs (`ros2 param set /track
+                          tracker lqr`); sim.launch.py sets it, the car never does
+  amcl:=true              stock nav2_amcl on the map and /sensors/lidar/scan (so only with
+                          lidar:=true), from amcl_x, amcl_y, amcl_yaw (map frame), with its
+                          own lifecycle manager. tf_broadcast false: ekf_global keeps
+                          map -> odom; AMCL's pose, /localization/amcl/pose, is only scored
+  amcl_map:=<yaml>        AMCL's own map (finer, obstacles as outlines: maps/README.md),
+                          from amcl_map_server on /localization/amcl/map; empty: Nav2's /map
 
 Obstacles, from where the sensors are:
   radar:=true             where a radar publishes /sensors/radar/points (the bench; the car
@@ -66,12 +100,14 @@ Send a goal: RViz "2D Goal Pose" (publishes /goal_pose), or
 """
 
 import atexit
+import json
 import os
 import tempfile
 
 from aav_description import vehicle
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.descriptions import ParameterFile
@@ -90,17 +126,39 @@ def flag(context, name):
 
 
 def tuned_copy(source, v, reversing, max_speed, radar, lidar, ghost=False,
-               controller=vehicle.DEFAULT_CONTROLLER, plan_around=True, camera=False):
+               controller=vehicle.DEFAULT_CONTROLLER, plan_around=True, camera=False,
+               planner=vehicle.DEFAULT_PLANNER, lattice_file=None):
     """Return a temporary copy of nav2.yaml, tuned by vehicle.nav2_tuned (no ROS there)."""
     with open(source) as f:
         cfg = vehicle.nav2_tuned(yaml.safe_load(f), v, reversing, max_speed, radar, lidar,
-                                 ghost, controller, plan_around, camera)
+                                 ghost, controller, plan_around, camera, planner,
+                                 lattice_file)
     out = tempfile.NamedTemporaryFile('w', prefix='nav2_', suffix='.yaml', delete=False)
     with out:
         yaml.safe_dump(cfg, out)
     # The nodes read it as they start; gone when the launch ends (1000 were left, 22 Oct).
     atexit.register(os.remove, out.name)
     return out.name
+
+
+def lattice_for(share, v, map_yaml):
+    """
+    Return the lattice primitives' path, checked against the car and the map.
+
+    SmacPlannerLattice measures its moves in the file's cells: on a map with other cells,
+    or for a car that now turns wider, it would plan moves the car can't make. Refuse
+    rather than start it so (pixi run lattice-primitives makes a new file).
+    """
+    path = f'{share}/config/lattice_ackermann.json'
+    with open(path) as f:
+        meta = json.load(f)['lattice_metadata']
+    with open(map_yaml) as f:
+        resolution = yaml.safe_load(f)['resolution']
+    wrong = vehicle.lattice_problems(meta, v, resolution)
+    if wrong:
+        raise ValueError(f'planner:=lattice: {path}: ' + '; '.join(wrong) +
+                         '. Run pixi run lattice-primitives, or pick another planner')
+    return path
 
 
 def nodes(context):
@@ -117,12 +175,21 @@ def nodes(context):
     collision_monitor = ((radar or lidar or ghost or guard) if monitor == ''
                          else monitor == 'true')
     reversing = flag(context, 'reversing')
+    tracker = vehicle.check_tracker(LaunchConfiguration('tracker').perform(context), reversing)
+    amcl = flag(context, 'amcl')
+    if amcl and not lidar:
+        raise ValueError('amcl:=true needs lidar:=true: AMCL reads /sensors/lidar/scan')
 
-    v = vehicle.load()['vehicle']
+    planner = vehicle.check_planner(LaunchConfiguration('planner').perform(context))
+
+    cfg = vehicle.load()
+    v = cfg['vehicle']
+    map_yaml = LaunchConfiguration('map').perform(context)
+    lattice_file = lattice_for(share, v, map_yaml) if planner == 'lattice' else None
     trees = '_car_reversing.xml' if reversing else '_car.xml'
-    rewrites = vehicle.nav2_rewrites(v, reversing)
+    rewrites = vehicle.nav2_rewrites(v, reversing, planner)
     rewrites.update({
-        'yaml_filename': LaunchConfiguration('map').perform(context),
+        'yaml_filename': map_yaml,
         'default_nav_to_pose_bt_xml': f'{share}/behavior_trees/navigate_to_pose{trees}',
         'default_nav_through_poses_bt_xml':
             f'{share}/behavior_trees/navigate_through_poses{trees}',
@@ -138,7 +205,7 @@ def nodes(context):
     controller = LaunchConfiguration('controller').perform(context).strip().lower()
     source = tuned_copy(f'{share}/config/nav2.yaml', v, reversing,
                         float(speed) if speed else None, radar, lidar, ghost, controller,
-                        flag(context, 'plan_around'), guard)
+                        flag(context, 'plan_around'), guard, planner, lattice_file)
     params = ParameterFile(
         RewrittenYaml(source_file=source, param_rewrites=rewrites, convert_types=True),
         allow_substs=True)
@@ -147,7 +214,10 @@ def nodes(context):
     servers = [
         ('nav2_map_server', 'map_server', []),
         ('nav2_planner', 'planner_server', []),
-        ('nav2_controller', 'controller_server', [('cmd_vel', 'cmd_vel_nav')]),
+        # With a trial tracker, it keeps running but its FollowPath goes unused: rcl_action
+        # resolves action names with the node's remappings, as topics are.
+        ('nav2_controller', 'controller_server', [('cmd_vel', 'cmd_vel_nav')] + (
+            [('follow_path', 'follow_path_unused')] if tracker != 'none' else [])),
         ('nav2_behaviors', 'behavior_server', [('cmd_vel', 'cmd_vel_nav')]),
         ('nav2_bt_navigator', 'bt_navigator', []),
         ('nav2_waypoint_follower', 'waypoint_follower', []),
@@ -169,6 +239,14 @@ def nodes(context):
              remappings=remaps)
         for pkg, exe, remaps in servers
     ]
+    if collision_monitor:
+        # Holds collision_monitor's stops (aav_safety stop_hold, twist_mux's stop_zone
+        # lock): Jazzy's monitor flickers between stop and go at its zone's edge. Not a
+        # lifecycle node: it locks nothing until the monitor first says STOP.
+        config = FindPackageShare('aav_safety').perform(context) + '/config/stop_hold.yaml'
+        actions.append(Node(package='aav_safety', executable='stop_hold', name='stop_hold',
+                            output='screen',
+                            parameters=[config, {'use_sim_time': use_sim_time}]))
     if lidar:
         # Not a lifecycle node: it runs from the start, Nav2's servers or not.
         actions.append(Node(package='aav_lidar', executable='lidar_scan', name='lidar_scan',
@@ -181,6 +259,54 @@ def nodes(context):
         actions.append(Node(package='aav_ghost', executable='ghost_obstacle',
                             name='ghost_obstacle', output='screen',
                             parameters=[config, {'use_sim_time': use_sim_time}]))
+    if tracker != 'none':
+        # Not a lifecycle node: it serves follow_path from the start. Nav2's own numbers
+        # (the speed, the checks), so every follower is held to the same.
+        with open(f'{share}/config/nav2.yaml') as f:
+            nav2 = yaml.safe_load(f)
+        ego_file = FindPackageShare('aav_ego').perform(context) + '/config/ego.yaml'
+        with open(ego_file) as f:
+            ego = yaml.safe_load(f)['ego']['ros__parameters']
+        own = FindPackageShare('aav_track').perform(context) + '/config/track.yaml'
+        actions.append(Node(
+            package='aav_track', executable='track', name='track', output='screen',
+            parameters=[own, vehicle.track_params(nav2, cfg, ego,
+                                                  float(speed) if speed else None),
+                        {'tracker': tracker, 'use_sim_time': use_sim_time,
+                         'live_swap': IfCondition(
+                             LaunchConfiguration('live_swap')).evaluate(context)}]))
+    if amcl:
+        config = f'{share}/config/amcl.yaml'
+        start = {'set_initial_pose': True, 'use_sim_time': use_sim_time}
+        for axis in ('x', 'y', 'yaw'):
+            start[f'initial_pose.{axis}'] = float(
+                LaunchConfiguration(f'amcl_{axis}').perform(context))
+        amcl_map = LaunchConfiguration('amcl_map').perform(context)
+        managed = ['amcl']
+        if amcl_map:
+            # AMCL's own map (maps/README.md: finer cells, obstacles as outlines), from a
+            # map_server of its own; Nav2's planner and costmaps keep /map.
+            start['map_topic'] = '/localization/amcl/map'
+            managed.insert(0, 'amcl_map_server')
+            actions.append(Node(
+                package='nav2_map_server', executable='map_server', name='amcl_map_server',
+                output='screen',
+                parameters=[{'yaml_filename': amcl_map, 'topic_name': '/localization/amcl/map',
+                             'frame_id': 'map', 'use_sim_time': use_sim_time}]))
+        actions += [
+            Node(package='nav2_amcl', executable='amcl', name='amcl', output='screen',
+                 parameters=[config, start],
+                 remappings=[('amcl_pose', '/localization/amcl/pose'),
+                             ('particle_cloud', '/localization/amcl/particles'),
+                             ('initialpose', '/localization/amcl/initial_pose')]),
+            # Its own: Nav2's manager lists only its servers, and a trial that fails to
+            # come up mustn't hold Nav2 down.
+            Node(package='nav2_lifecycle_manager', executable='lifecycle_manager',
+                 name='lifecycle_manager_localization', output='screen',
+                 parameters=[{'use_sim_time': use_sim_time,
+                              'autostart': flag(context, 'autostart'),
+                              'node_names': managed}]),
+        ]
     actions.append(Node(
         package='nav2_lifecycle_manager',
         executable='lifecycle_manager',
@@ -231,11 +357,37 @@ def generate_launch_description():
                                           'senses behind the car). docs/learn-nav2.md'),
         DeclareLaunchArgument('controller', default_value=vehicle.DEFAULT_CONTROLLER,
                               description='mppi or rpp (Regulated Pure Pursuit): what '
-                                          'follows the path. docs/controllers.md'),
+                                          'follows the path. docs/path-followers.md'),
+        DeclareLaunchArgument('planner', default_value=vehicle.DEFAULT_PLANNER,
+                              description=', '.join(vehicle.PLANNERS) + ': the planner '
+                                          'behind GridBased. hybrid and lattice keep to the '
+                                          "car's turning radius; the others don't (sim and "
+                                          'bench only). docs/controllers.md, Planners'),
         DeclareLaunchArgument('plan_around', default_value='true',
                               description='true: the planner sees the radar and lidar too, '
                                           'and plans round what they see; false: the map '
                                           'only, so the car stops for it (the stop tests)'),
+        DeclareLaunchArgument('tracker', default_value=vehicle.DEFAULT_TRACKER,
+                              description="a trial path follower in controller_server's "
+                                          'place (aav_track): ' + ', '.join(vehicle.TRACKERS) +
+                                          '. docs/trials.md'),
+        DeclareLaunchArgument('live_swap', default_value='false',
+                              description='true (sim.launch.py sets it): the tracker can be '
+                                          'changed while it runs, `ros2 param set /track '
+                                          'tracker lqr`. Never on the car'),
+        DeclareLaunchArgument('amcl', default_value='false',
+                              description='true (with lidar:=true): stock AMCL as a trial, '
+                                          'scored only: /localization/amcl/pose'),
+        DeclareLaunchArgument('amcl_x', default_value='0.0',
+                              description="m, map frame: AMCL's start"),
+        DeclareLaunchArgument('amcl_y', default_value='0.0',
+                              description="m, map frame: AMCL's start"),
+        DeclareLaunchArgument('amcl_yaw', default_value='0.0',
+                              description="rad from east: AMCL's start heading"),
+        DeclareLaunchArgument('amcl_map', default_value='',
+                              description="empty: AMCL reads Nav2's /map; else a map YAML "
+                                          'of its own, on /localization/amcl/map (the '
+                                          "test lot's: maps/example_lot_amcl.yaml)"),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('autostart', default_value='true'),
         OpaqueFunction(function=nodes),

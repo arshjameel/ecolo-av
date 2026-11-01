@@ -12,7 +12,7 @@ keeps. `map-core` shares its health, origin, watchdog and formatting code.
 |---|---|
 | `config` | `HudConfig` from `config/hud.yaml` (`BUILT_IN_YAML`, built in); `Topic`, `NODE_NAME` = `hud` |
 | `units` | speed in m/s and km/h, angles |
-| `vehicle` | `/vehicle/status`: mode, gear letter, fault names |
+| `vehicle` | `/vehicle/status`: mode (`Mode`: MANUAL 0, RC 1, COMPUTER 2, TEST 3; any other number shows as `MODE n?`), gear letter, fault names |
 | `gps` | a fix: what kind, how accurate (`Fix`, `RawFix`) |
 | `health` | `LastSeen`, `Health`: OK / STALE / NEVER per topic |
 | `origin` | `/system/source`: `Origin` (real, sim, bench, replay), `Origins`, the banner |

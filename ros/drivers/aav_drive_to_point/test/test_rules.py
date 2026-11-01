@@ -86,3 +86,9 @@ def test_standing_still_though_asked_to_move():
     assert rules.not_moving(commanded=0.5, measured=0.0)
     assert not rules.not_moving(commanded=0.5, measured=0.3)
     assert not rules.not_moving(commanded=0.1, measured=0.0)    # slowing to B: fine
+
+
+def test_a_b_outside_the_geofence_is_refused():
+    assert rules.refuse_outside(None) is None          # no fence heard: the lock holds it
+    assert rules.refuse_outside(3.0) is None
+    assert 'outside the geofence' in rules.refuse_outside(-0.5)

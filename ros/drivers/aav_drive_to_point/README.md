@@ -31,7 +31,7 @@ pixi run drive-to-point --lat 45.38630 --lon -75.69580  # the real car: asks you
 | Item | What |
 |---|---|
 | Action server | `/drive_to_point` (`aav_interfaces/action/DriveToPoint`): lat/lon or x/y, `cruise_speed`, `acceleration`, `deceleration` (0 = default), `confirmed` |
-| Subscribes | `/localization/odom/global` (`nav_msgs/Odometry`), `/sensors/gps/fix` (`sensor_msgs/NavSatFix`, best effort), `/safety/estop` (`std_msgs/Bool`), `/safety/sensor_watchdog/lock` (`std_msgs/Bool`), `/system/source` (`aav_interfaces/DataSource`, latched), `/control/cmd_vel` (`geometry_msgs/TwistStamped`) |
+| Subscribes | `/localization/odom/global` (`nav_msgs/Odometry`), `/sensors/gps/fix` (`sensor_msgs/NavSatFix`, best effort), `/safety/estop` (`std_msgs/Bool`), `/safety/sensor_watchdog/lock` (`std_msgs/Bool`), `/safety/geofence/fence` (`geometry_msgs/PolygonStamped`, latched: refuse a B outside it), `/system/source` (`aav_interfaces/DataSource`, latched), `/control/cmd_vel` (`geometry_msgs/TwistStamped`) |
 | Publishes | `/drivers/point/cmd_vel` (`geometry_msgs/TwistStamped`) at `rate_hz` while a goal runs |
 | Calls | `/fromLL` (`robot_localization/srv/FromLL`), for a lat/lon goal; `/ego/get_parameters`, for ego's caps |
 
@@ -69,7 +69,7 @@ Modules (all but the two nodes have no ROS):
 | `approach.py` | `Approach.step`: the speed, `v = sqrt(2 a (d - lead v))`; `planned_deceleration`, `stopping_distance` |
 | `line.py` | `Pose`, `Line`, `pursuit_curvature`, `reachable`, `min_radius`, `turn_speed_limit` |
 | `drive.py` | `Drive`, `Steering`, `Command`: speed and steering together, one tick |
-| `rules.py` | `check_numbers`, `refuse_start`, `refuse_target`, `stop_reason`, `not_moving`, `tolerance`, `confirmed` |
+| `rules.py` | `check_numbers`, `refuse_start`, `refuse_target`, `refuse_outside` (the geofence), `stop_reason`, `not_moving`, `tolerance`, `confirmed` |
 | `point_driver.py`, `point_cli.py` | the action server and its client |
 
 ## Invariants
@@ -77,7 +77,7 @@ Modules (all but the two nodes have no ROS):
 - `approach.py`, `line.py`, `drive.py`, `rules.py` have no ROS imports.
 - One goal at a time.
 - Refuses B over `max_distance` away, under 0.5 m away (it is there already), or inside
-  the car's tightest turn (it would circle B for ever). Refuses REPLAY. On REAL (or nobody announcing) it needs `confirmed`; the client asks the
+  the car's tightest turn (it would circle B for ever), or outside the geofence's fence. Refuses REPLAY. On REAL (or nobody announcing) it needs `confirmed`; the client asks the
   person to type "drive". `/system/source` kinds come from `aav_actuator_tests` `safety.py`,
   so both agree on what REAL means.
 - Stops at once (5 zero commands; ego's own deceleration) on: cancel, e-stop, the

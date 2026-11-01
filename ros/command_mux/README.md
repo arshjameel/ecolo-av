@@ -12,7 +12,7 @@ Picks **one** command for ego from all the drivers: the stock twist_mux, set up 
 
 | Package | What it is |
 |---|---|
-| [aav_command_mux](./aav_command_mux/README.md) | twist_mux config: nine inputs (joy 100 … ai 10), locks `estop` (255), `no_timeout` (60), `stop_sign` and `sensors` (30) |
+| [aav_command_mux](./aav_command_mux/README.md) | twist_mux config: nine inputs (joy 100 … ai 10), locks `estop` (255), `no_timeout` (60), `geofence` (51), `stop_sign` and `sensors` (30), `stop_zone` (21) |
 
 ## Invariants
 
@@ -20,7 +20,8 @@ Picks **one** command for ego from all the drivers: the stock twist_mux, set up 
 - Locks never hold a person; only the e-stop holds everyone.
 - The no-timeout lock (60) holds every program while the car's firmware has no command
   timeout (`frame_version: 1`); people and the actuator tests still drive.
-- The sensors lock locks after 1 s of silence (fail-safe).
+- The sensors and geofence locks lock after 1 s of silence (fail-safe).
+- The geofence lock (51) holds every program; people and the actuator tests still drive.
 
 ## Side Effects
 

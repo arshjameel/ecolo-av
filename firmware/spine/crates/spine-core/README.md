@@ -46,8 +46,9 @@ The test mode (proposal 6.5): `Inputs::test_cmd` carries a `TestRequest`:
 
 | Rule | |
 |---|---|
-| Enter | `Exit`, then `Enter`; only while running, with no e-stop, no fault, no RC direct, the computer not driving, and the car still |
+| Enter | `Exit`, then `Enter`; only while running, with no e-stop, no fault, no RC direct, the computer neither driving nor arming that tick, and the car still. An e-stop, a fault or a lost RC forgets the `Exit`: send it again |
 | In it | one actuator per request, inside the limits; the throttle forward only, at most `TEST_MAX_THROTTLE` (0.15), with the brake off; otherwise throttle 0 and the stop brake |
+| No wheel speed | `Confidence::Degraded` (`SpeedFeedback::None`, today's `esp32-umod`): `Throttle` is refused and the car holds still, since the speed exit can never fire. `Brake` and `Steering` still work (`TestRequest::allowed`) |
 | Leave | on an `Exit`, an e-stop, a fault, a lost RC, RC direct, faster than `TEST_MAX_SPEED` (0.5 m/s), or no request for 100 ms (`CMD_TIMEOUT`). Leaving always latches |
 | Not yet | how a request reaches the spine: a new CAN frame, or a bit in DRIVE_CMD, is the team's choice. Until then only tests send them |
 
@@ -71,14 +72,16 @@ A driver fault (steering, brake, throttle or encoder) stops the car in any mode.
 | | `decode_incoming`, `decode_report`, `counter_step`, `frame_crc`, `crc8_sae_j1850` | frames by ID; the 4-bit counter; the CRC |
 | | `Mode`, `Wheel` | `Manual`, `Rc`, `Computer`, `Test`; `Left`, `Right` |
 | `fsm` | `Lifecycle`, `Safety`, `Authority`, `TestStage`, `Motion`, `Confidence`, `State` | the five regions above |
-| | `Latch`, `TestRequest`, `TEST_MAX_THROTTLE`, `TEST_MAX_SPEED`, `STANDSTILL_SPEED` | what Safety remembers; a test mode request; its limits |
+| | `Latch`, `TestRequest` (`allowed(confidence)`), `TEST_MAX_THROTTLE`, `TEST_MAX_SPEED`, `STANDSTILL_SPEED` | what Safety remembers; a test mode request, and whether this confidence lets it run; its limits |
+| | `Confidence::measures_speed()` | a wheel speed: the overspeed check and the test mode's speed exit work |
 | | `Incoming`, `Report` | what `decode_incoming` gives (`Estop`, `Drive`); what `decode_report` gives (`Feedback`, `Status`, `WheelSpeed`) |
 | | `FrameError` | `WrongLength`, `BadChecksum`, `UnknownId` |
 | | `ESTOP_CMD_ID` … `WHEEL_SPEED_R_ID` | the six IDs in the table below |
-| `speed_loop` | `SpeedLoop::update(target, measured, dt)` | a PI with a setpoint weight: a `Drive` (throttle, brake, `reverse`) |
+| `speed_loop` | `SpeedLoop::update(target, measured, dt)` | a PI with a setpoint weight, or the LQI: a `Drive` (throttle, brake, `reverse`) |
 | | `SpeedLoop::open_loop(target, full_throttle_speed)`, `reset()` | throttle in proportion to the target, with no wheel speed; clear the integral |
-| | `SpeedLoopConfig` (and `smooth()`), `AntiWindup` | the gains; how the integral is bounded: `Bounds` (today) or `Clamp` |
-| | `SpeedLoopProfile`, `UnknownProfile` | named sets (`Default`, `Smooth`) for the sims and car days; parsing a name it doesn't know gives `UnknownProfile` |
+| | `SpeedLoopConfig` (and `smooth()`, `lqi()`), `AntiWindup` | the gains; how the integral is bounded: `Bounds` (today) or `Clamp` |
+| | `SpeedLaw`, `LqiConfig` (`MODEL`, `pedals()`) | `Pi` (the default) or `Lqi`: one signed acceleration, throttle + or brake −, never both; its gains are constants made by `pixi run vehicle-model --lqi` (TODO 3) |
+| | `SpeedLoopProfile`, `UnknownProfile` | named sets (`Default`, `Smooth`, `Lqi`) for the sims and car days; parsing a name it doesn't know gives `UnknownProfile` |
 | `encoder` | `Quadrature`, `SpeedEstimator` | quadrature decoding; speed from the time between counts |
 | `watchdog` | `Watchdog` | trips when no valid command came for its timeout |
 | `limits` | `slew`, `abs` | rate limiting |
@@ -113,8 +116,13 @@ Change one only with the team.
 - The computer can't drive until it sends `armed = 0`, then `armed = 1`: at power-up,
   after an e-stop, after a driver fault, after a command timeout. A glitch or a
   reboot never restarts the car by itself.
+- Nothing can arm until the boot self-test passes (`Lifecycle::Running`): every
+  device that stops the car answered without a fault.
+- The test mode moves one actuator at a time; its throttle is forward only, at most
+  `TEST_MAX_THROTTLE`, with the brake off. Leaving it always latches.
 - No valid command for 100 ms while driving: stop, full brake, latched
-  (`CMD_TIMEOUT`).
+  (`CMD_TIMEOUT`). Also while armed but overridden (RC direct): the RC keeps driving,
+  but the computer must re-arm before it drives again.
 - A repeated counter is a stuck sender: not a fresh command.
 - A lost RC signal in either RC position brakes (`RC_SIGNAL_LOST`).
 - Throttle and brake are never both above zero.

@@ -3,14 +3,23 @@
 <package format="3">
   <name>aav_safety</name>
   <version>0.1.0</version>
-  <description>The sensor watchdog: a twist_mux lock that stops Nav2 and the AI slot when a sensor they need goes stale, NaN, frozen or jumps; loudly, in the log, /diagnostics and the HUD.</description>
+  <description>The sensor watchdog: a twist_mux lock that stops Nav2 and the AI slot when a sensor they need goes stale, NaN, frozen or jumps; loudly, in the log, /diagnostics and the HUD. And the stop hold: a twist_mux lock that keeps collision_monitor's stops from flickering. And the geofence: a twist_mux lock that stops every program before the car's stopping distance reaches the fence, or while the global pose can't be trusted.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 
   <exec_depend>rclpy</exec_depend>
+  <exec_depend>aav_description</exec_depend>
+  <!-- the geofence's launch reads their configs: ego's limits, the backends' timeouts, the datum -->
+  <exec_depend>aav_ego</exec_depend>
+  <exec_depend>aav_spine</exec_depend>
+  <exec_depend>aav_legacy</exec_depend>
+  <exec_depend>aav_localization</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>nav2_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>diagnostic_msgs</exec_depend>
   <exec_depend>vision_msgs</exec_depend>

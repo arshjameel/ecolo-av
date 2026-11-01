@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Switches: what you can swap in the simulated car · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/switches.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Switches: what you can swap in the simulated car</h1>
+<div class="meta">4 min read · 5 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-day.html">Car day</a>
+<a href="tests.html">Every test</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<span class="sep">Learn:</span>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a class="here" href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#who-draws-the-route">Who draws the route</a><a href="#who-steers-along-the-path">Who steers along the path</a><a href="#where-am-i">Where am I</a><a href="#speed">Speed</a><a href="#the-world-and-the-rest">The world and the rest</a></nav>
+<div class="lead"><p>Every part we're trying out is a <strong>switch</strong> you give when you start. You don't need to
+remember them: <strong><code>pixi run pick</code></strong> asks, in plain words, and runs it.</p>
+<pre class="highlight"><code>pixi run pick          # a menu: what to start, the route, who steers, where-am-I, speed loop
+pixi run pick last     # the same again tomorrow
+pixi run pick list     # every switch, then stop</code></pre>
+<p>It prints the whole command too, for example:</p>
+<pre class="highlight"><code>pixi run debugdemo tracker:=mpc reversing:=false ndt:=true ndt_map:=maps/ndt/test_lot.pcd amcl:=false speed_loop:=lqi</code></pre>
+<p><code>sim</code>, <code>demo</code> and <code>debugdemo</code> all take switches as <code>name:=value</code>. If a switch is given
+twice, the last one wins.</p></div>
+<section class="card"><h2 id="who-draws-the-route">Who draws the route</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Switch</th>
+<th>In plain words</th>
+<th>Gazebo, 29 Oct</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>planner:=hybrid</code> (default)</td>
+<td>Hybrid-A*: only routes a car can drive</td>
+<td><strong>4 of 4 legs</strong></td>
+</tr>
+<tr>
+<td><code>planner:=lattice</code></td>
+<td>State Lattice: strings our car's own moves together; fast</td>
+<td>2 of 4 (lost the U-turn)</td>
+</tr>
+<tr>
+<td><code>planner:=smac2d</code></td>
+<td>A<em> on the grid: </em><em>ignores the turning circle</em>*</td>
+<td>2 of 4</td>
+</tr>
+<tr>
+<td><code>planner:=navfn</code></td>
+<td>NavFn, the classic: ignores the turning circle</td>
+<td>not tried</td>
+</tr>
+<tr>
+<td><code>planner:=theta_star</code></td>
+<td>Theta*: straight lines: ignores the turning circle</td>
+<td>not tried</td>
+</tr>
+</tbody>
+</table></div>
+<p>The real car takes only <code>hybrid</code> or <code>lattice</code>. More: <a href="controllers.html">Controllers, Planners</a>.</p>
+</section>
+<section class="card"><h2 id="who-steers-along-the-path">Who steers along the path</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Switch</th>
+<th>In plain words</th>
+<th>Gazebo, 29 Oct</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>controller:=mppi</code> (default)</td>
+<td>Nav2's: try 1,000 wiggles, keep the good ones</td>
+<td>8-10 of 12 legs</td>
+</tr>
+<tr>
+<td><code>controller:=rpp</code></td>
+<td>Nav2's: steer at a point ahead, slow in bends</td>
+<td>10 of 12</td>
+</tr>
+<tr>
+<td><code>tracker:=pure_pursuit</code></td>
+<td>ours: steer at a point ahead</td>
+<td><strong>12 of 12</strong></td>
+</tr>
+<tr>
+<td><code>tracker:=stanley</code></td>
+<td>ours: fix the distance off the path and the heading</td>
+<td><strong>12 of 12</strong></td>
+</tr>
+<tr>
+<td><code>tracker:=lqr</code></td>
+<td>ours: a formula for the best steering each moment</td>
+<td>10 of 12</td>
+</tr>
+<tr>
+<td><code>tracker:=mpc</code></td>
+<td>ours: try the next 1.5 s of steering, keep the best</td>
+<td><strong>12 of 12</strong></td>
+</tr>
+<tr>
+<td><code>tracker:=mpc_full</code></td>
+<td>ours: MPC that plans the speed too</td>
+<td>10 of 12</td>
+</tr>
+</tbody>
+</table></div>
+<p>Our trackers drive forward only: give them <code>reversing:=false</code> (the menu does).
+In <code>debugdemo</code>, keys 1-4 swap the tracker live. More: <a href="controllers.html">Controllers</a>,
+<a href="trials.html">Trials</a>.</p>
+</section>
+<section class="card"><h2 id="where-am-i">Where am I</h2>
+<p>These run <strong>beside</strong> the EKFs and are only scored for now. They never steer.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Switch</th>
+<th>In plain words</th>
+<th>Off from the truth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(nothing)</td>
+<td>the EKFs: wheels, IMU and GPS</td>
+<td>~17 cm</td>
+</tr>
+<tr>
+<td><code>ndt:=true ndt_map:=maps/ndt/test_lot.pcd</code></td>
+<td>the lidar slid onto a saved map</td>
+<td><strong>1-3 cm</strong></td>
+</tr>
+<tr>
+<td><code>amcl:=true</code></td>
+<td>many guesses; keep the ones that match the walls</td>
+<td>6-11 cm</td>
+</tr>
+</tbody>
+</table></div>
+<p>NDT's map isn't in git: make it once with <code>pixi run ndt-map drive</code> (about 6 min).</p>
+</section>
+<section class="card"><h2 id="speed">Speed</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Switch</th>
+<th>In plain words</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>speed_loop:=default</code></td>
+<td>today's PI loop</td>
+</tr>
+<tr>
+<td><code>speed_loop:=lqi</code></td>
+<td>no overshoot, settles in 4-5 s</td>
+</tr>
+<tr>
+<td><code>speed_loop:=smooth</code></td>
+<td>the PI with a smooth stop</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-world-and-the-rest">The world and the rest</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Switch</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>world:=test_lot</code> / <code>road</code> / <code>empty</code></td>
+<td>where the car is (<code>sim</code> only; the demos use the test lot)</td>
+</tr>
+<tr>
+<td><code>reversing:=false</code></td>
+<td>Nav2 drives forward only</td>
+</tr>
+<tr>
+<td><code>sim_speed:=3</code></td>
+<td>a top speed above the car's 1 m/s, in Gazebo only</td>
+</tr>
+<tr>
+<td><code>geofence:=false</code></td>
+<td>no geofence (it's on by default)</td>
+</tr>
+<tr>
+<td><code>lidar:=false</code>, <code>radar:=false</code></td>
+<td>sensors off</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Tried, 29 Oct 23:05:</strong> the menu's pick (debugdemo, <code>mpc</code>, NDT, LQI) in Gazebo on Ben's
+Mac: the track node ran MPC, NDT tracked (2 ms a match), AMCL stayed off, the speed loop
+said LQI, and a Nav2 goal 15 m ahead ended SUCCEEDED.</p>
+<p>Every switch with its own words: <code>ros2 launch aav_bringup sim.launch.py --show-args</code>.</p></section>
+<nav class="prevnext"><a class="prev" href="path-followers.html"><small>Previous</small>← Path followers</a>
+<a class="next" href="trials.html"><small>Next</small>Trials →</a></nav>
+</main>
+<footer>Source: <code>docs/switches.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

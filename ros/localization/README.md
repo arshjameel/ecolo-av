@@ -14,6 +14,7 @@ map ──ekf_global (GPS, GPS heading)──▶ odom ──ekf_local (wheels, I
 |---|---|---|
 | [aav_localization](./aav_localization/README.md) | config and launch for `ekf_local`, `ekf_global` and `navsat_transform` | TF `map→odom→base_link`, `/localization/odom/*` |
 | [aav_gps_heading](./aav_gps_heading/README.md) | a heading from the GPS's Doppler velocity, while the car moves | `/localization/gps/heading` |
+| [aav_ndt](./aav_ndt/README.md) | a trial: NDT on a saved lidar map, in Rust; never TF | `/localization/ndt/pose` |
 
 ## Invariants
 

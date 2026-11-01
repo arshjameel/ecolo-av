@@ -28,7 +28,7 @@
 //!                                           and steering target, every tick (100 Hz)
 //! Parameters  car (model), wheelbase, track, wheel_radius (m), max_steering (rad), start_x,
 //!             start_y (m), start_yaw (rad), speed_loop (default: the spine's speed loop
-//!             profile, default or smooth: spine-core SpeedLoopProfile, TODO 27)
+//!             profile, default, smooth or lqi: spine-core SpeedLoopProfile, TODO 27, TODO 3)
 //!
 //! A thread runs the spine at 100 Hz, like the board's main loop; the main thread spins.
 

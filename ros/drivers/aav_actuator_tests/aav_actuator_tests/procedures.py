@@ -14,6 +14,8 @@ TwistStamped on /drivers/tests/cmd_vel and logs what the car did.
   throttle-map  4.4   speed-up to several speeds: throttle level vs acceleration
   circles       4.5   a full circle per steering angle, both ways: the real wheel angle
   straight      4.7   10 m with the steering straight: the sideways drift
+  preflight     3.P   on stands: speed up, hold, slow, brake, steer; every sensor checked
+                      at once (preflight.py judges it)
 
 Steering can only change while the car moves (ego holds it below 0.05 m/s), so the
 stage-3 tests creep along: on stands the wheels spin slowly, in Gazebo the car crawls.
@@ -53,6 +55,7 @@ class Step:
     hold: float = 0.0                # s the condition must hold
     timeout: float = 30.0            # s: give up on the condition and go on
     measure: bool = False            # a point to read the wheel angle (by hand on stands)
+    must: bool = False               # timing out stops the test, rather than going on
 
 
 @dataclass(frozen=True)
@@ -270,6 +273,39 @@ def straight(s: Settings) -> List[Step]:
             stop()]
 
 
+# The preflight's phases (preflight.py reads them back from the log).
+PF_STILL, PF_SETTLE = 'wait until still', 'settle'
+PF_SPEED_UP, PF_HOLD, PF_SLOW, PF_BRAKE = 'speed up', 'hold', 'slow down', 'brake'
+PF_LEFT, PF_RIGHT, PF_CENTRE = 'steer left', 'steer right', 'centre'
+PF_SETTLE_TIME = 3.0  # s still before the drive: the IMU's bias, the GPS's start
+PF_HOLD_TIME = 5.0    # s at the cap
+PF_SLOW_TIME = 3.0    # s at half the cap
+PF_STEER_TIME = 3.0   # s at each steering angle
+
+
+def preflight(s: Settings) -> List[Step]:
+    """
+    Return the preflight's steps: speed up, hold, slow, brake; steer left, right, centre.
+
+    About 40 s at the stands' 0.3 m/s. Speeding up and braking must finish: a time-out
+    stops the test (the wheels may be spinning at a speed nobody measures).
+    """
+    v, creep, lock = s.cap, min(s.creep, s.cap), s.max_steering
+    return [
+        still(),
+        Step(PF_SETTLE, 0.0, until=Until.TIME, value=PF_SETTLE_TIME),
+        Step(PF_SPEED_UP, v, until=Until.REACHED, value=0.95 * v, hold=1.0, timeout=10.0,
+             must=True),
+        Step(PF_HOLD, v, until=Until.TIME, value=PF_HOLD_TIME),
+        Step(PF_SLOW, 0.5 * v, until=Until.TIME, value=PF_SLOW_TIME),
+        Step(PF_BRAKE, 0.0, until=Until.STOPPED, hold=1.0, timeout=10.0, must=True),
+        Step(PF_LEFT, creep, lock, until=Until.TIME, value=PF_STEER_TIME),
+        Step(PF_RIGHT, creep, -lock, until=Until.TIME, value=PF_STEER_TIME),
+        Step(PF_CENTRE, creep, 0.0, until=Until.TIME, value=PF_STEER_TIME),
+        Step('stop', 0.0, until=Until.STOPPED, hold=1.0, timeout=10.0, must=True),
+    ]
+
+
 def circle_length(angle: float, wheelbase: float) -> float:
     """Return the length of one circle of base_link at this wheel angle (m)."""
     return 2.0 * math.pi * wheelbase / math.tan(max(abs(angle), 0.02))
@@ -298,6 +334,8 @@ TESTS: Dict[str, Test] = {t.name: t for t in (
          throttle_map),
     Test('circles', '4.5', 4, 'circles: the real wheel angle per command', circles),
     Test('straight', '4.7', 4, 'straight line: the sideways drift over 10 m', straight),
+    Test('preflight', '3.P', 3, 'preflight: speed, brake, steering and every sensor at '
+         'once, PASS / FAIL', preflight),
 )}
 
 
@@ -346,12 +384,15 @@ class Plan:
     time: float = 0.0       # s: the envelope's limit
 
 
-def plan(name: str, s: Settings, max_distance: Optional[float] = None,
+def plan(name, s: Settings, max_distance: Optional[float] = None,
          max_time: Optional[float] = None) -> Plan:
-    """Return the steps and the envelope for one test."""
-    if name not in TESTS:
+    """Return the steps and the envelope for one test: a name in TESTS, or a Test."""
+    if isinstance(name, Test):
+        test = name
+    elif name in TESTS:
+        test = TESTS[name]
+    else:
         raise ValueError(f'no test {name!r}: pick one of {", ".join(TESTS)}')
-    test = TESTS[name]
     steps = test.build(s)
     distance, time = estimate(steps, s)
     return Plan(test, steps, max_distance or distance, max_time or time)

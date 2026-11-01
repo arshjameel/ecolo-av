@@ -12,6 +12,9 @@ Subscribes  /localization/odom/local  nav_msgs/Odometry (speed, odom pose)
                                       only place a late starter can learn it: /safety/estop
                                       is sent a few times and its senders go away
             /tf, /tf_static           the map pose (map -> base_link), when there is one
+            /safety/geofence/fence    geometry_msgs/PolygonStamped, transient local: a move
+                                      that would end outside it is refused. Only people
+                                      clear it: this never calls /safety/geofence/clear
 Publishes   /safety/estop             std_msgs/Bool: ONLY true, five times in 0.5 s (estop()).
                                       Never false: a person clears the e-stop
 Calls       /scripted_drive           aav_interfaces/action/ScriptedDrive (drive, turn, stop)
@@ -37,13 +40,13 @@ from aav_language.drive_maths import DriveGoal
 from aav_language.drive_tools import BackendError, CarState
 from action_msgs.msg import GoalStatus
 from diagnostic_msgs.msg import DiagnosticArray
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import PolygonStamped, TwistStamped
 from nav_msgs.msg import Odometry
 from rcl_interfaces.srv import GetParameters
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.executors import SingleThreadedExecutor
-from rclpy.qos import qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
+from rclpy.qos import DurabilityPolicy, qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
 from sensor_msgs.msg import NavSatFix
 from std_msgs.msg import Bool
@@ -103,6 +106,10 @@ class RosBackend:
         n.create_subscription(Bool, '/safety/estop', self._on_estop, reliable)
         n.create_subscription(VehicleStatus, '/vehicle/status', self._on_status, 10)
         n.create_subscription(DiagnosticArray, '/diagnostics', self._on_diagnostics, 10)
+        self.fence = None
+        n.create_subscription(PolygonStamped, '/safety/geofence/fence', self._on_fence,
+                              QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                                         durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.diag_locks: Optional[Dict[str, bool]] = None
         self.diag_at = -1e9
         self.mux_inputs, self.mux_locks = load_mux_config()
@@ -138,6 +145,9 @@ class RosBackend:
             time.sleep(0.05)
 
     # --- incoming ---
+
+    def _on_fence(self, msg):
+        self.fence = [(p.x, p.y) for p in msg.polygon.points] or None
 
     def _on_odom(self, msg):
         with self.lock:
@@ -182,7 +192,7 @@ class RosBackend:
             locks = {k: (v, now - t) for k, (v, t) in self.lock_values.items()}
             diag = dict(self.diag_locks) if (
                 self.diag_locks is not None and now - self.diag_at < DIAG_FRESH) else None
-        s = CarState(estop=estop, mux_locks=diag)
+        s = CarState(estop=estop, mux_locks=diag, fence=self.fence)
         for name, value in (diag or {}).items():
             locks[name] = (value, 0.0)          # twist_mux's own word beats ours
         if odom is not None:

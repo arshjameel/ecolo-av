@@ -31,6 +31,13 @@ parts:
   legacy_encoder: false # the 2025-26 Pico sent only to the Motor Pi: see motor_pi.yaml
   foxglove: true
 
+# The geofence, next to the mux (aav_safety, docs/geofence.md). site: a polygon in
+# aav_safety's config/geofence.yaml, drawn for navsat.yaml's datum; empty: a circle of
+# car.launch.py's geofence_radius (30 m) round the start spot. car.launch.py
+# geofence_site:= wins. TODO (the team): the test lot's site, once its datum is surveyed.
+geofence:
+  site: ''
+
 # The camera streams' settings: aav_camera_stream camera_stream.launch.py's arguments
 # (the car sets source, time_code and use_sim_time itself). Untested on the Orin.
 camera_stream:

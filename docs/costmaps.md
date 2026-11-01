@@ -31,7 +31,7 @@ car is meant to do this year. Make it larger only if the car gets faster.
 - **Inflation:** at least the car's circumscribed radius, 1.93 m. This keeps paths away
   from walls rather than scraping them. The planner's is wider (22 Oct): with 2.0 m its
   path passed a building's corner 0.86 m away, and the collision monitor stopped the car
-  there ([Path followers](controllers.md)).
+  there ([Path followers](path-followers.md)).
 
 ## Obstacles from the sensors
 
@@ -243,7 +243,7 @@ passed at y = 4.4 m, beside a box that ends at y = 3 m.
 ### N7: why Nav2's turn command flips (11 October)
 
 In Gazebo, on the empty map, each run on a fresh simulator. This was Regulated Pure
-Pursuit, before MPPI became the default (22 Oct; [Path followers](controllers.md)):
+Pursuit, before MPPI became the default (22 Oct; [Path followers](path-followers.md)):
 
 | Turn-sign flips a second | Straight goals (8 m, 25 m) | The curve to (15, 8) |
 |---|---|---|

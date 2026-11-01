@@ -38,6 +38,7 @@ slot: below every person (joystick, RC, keyboard), above Nav2 and every other pr
 | `throttle-map` | 4.4 | lot | speed-ups to ¼, ½, ¾ and all of the cap | throttle % → acceleration; `throttle_deadband` |
 | `circles` | 4.5, 4.6 | lot | one full circle per angle, both ways, at 1 m/s | real wheel angle per command; tightest circle |
 | `straight` | 4.7 | lot | 10 m at 0.5 m/s, steering straight | sideways drift; `steer_offset` |
+| `preflight` | 3.P | stands | speed up, hold, slow, brake; steer left, right, centre; every sensor counted | PASS / FAIL per line, no `vehicle.yaml` lines ([below](#the-preflight-on-stands)) |
 
 The steering tests creep at 0.2 m/s: ego only turns the wheels while the car moves. On
 stands the wheels spin slowly; in Gazebo the car crawls in arcs.
@@ -100,6 +101,8 @@ then run the rest. Start at walking pace: `--max-speed 0.5`.
 | **Someone takes over** | the joystick or keyboard outranks the test in twist_mux; the script sees it and stops |
 | **Stale speed** | no `/vehicle/odom` for 0.5 s: stop |
 | **Nothing through twist_mux** | 2 s with no `/control/cmd_vel`: stop (a lock, or a mux without the `tests` slot) |
+| **A speed nobody sees** | told to drive, but under 0.05 m/s measured for 4 s: stop (4, not 2: a Hall sensor with 8 clicks a turn says nothing until 2 clicks, about 0.24 m, which a slow start takes 2-3 s to roll; seen on the bench, 29 Oct). On stands the front wheel sensors read 0 while the rear (driven) wheels spin ([TODO 49b](../TODO.md)), so the speed cap can't work |
+| **A runaway** | the speed rises 0.1 m/s in 1 s while the command falls or sits at 0 (a stuck throttle): stop |
 | **A cut-short run** | still saves its log and table, but prints no `vehicle.yaml` lines |
 
 !!! warning "ego's steering rate"
@@ -129,6 +132,58 @@ What each fit can still give, with what is missing:
 | Brake level | brake demand → IMU deceleration | `max_brake`, `brake_lag`, `brake_dead_time` |
 | Brake level **and** demand | "stop asked for" → IMU deceleration | the whole stop's dead time and lag; no `vehicle.yaml` line |
 | Fine wheel speed (Hall pulses) | each speed compared with the model's mean since the last pulse | the gain; a delay under 2 pulse intervals is refused |
+
+## The preflight on stands
+
+One run before the car goes on the ground (Ben, 29 Oct; the design:
+`docs/designs/2026-10-29_preflight.md`). It drives and checks every sensor at once.
+
+```bash
+pixi run preflight --sim                          # Gazebo (pixi run sim first)
+pixi run preflight --bench                        # bench mode (pixi run bench first)
+pixi run preflight --no-drive --skip steering     # the car today: the sensors only
+pixi run preflight --skip steering gps lidar      # the car, once it has a rear-wheel speed
+```
+
+| Step | Command |
+|---|---|
+| still, settle 3 s | 0 (the IMU's bias, the GPS's start) |
+| speed up, hold 5 s | 0.3 m/s |
+| slow down 3 s | 0.15 m/s |
+| brake | 0, until still |
+| steer left, right, centre | 3 s each, creeping at 0.2 m/s |
+
+Then one line per check: `PASS`, `FAIL`, `WARN` or `SKIP`.
+
+| Lines | PASS when |
+|---|---|
+| one per sensor | at least 0.8 x its documented rate (IMU 200 Hz, wheels 100, GPS 1, lidar and radar 10, camera 15), no gap over 5 messages, values in range (gravity 9.81 ± 0.5 at rest) |
+| speeds up, holds, slows, brakes | 80% of the cap; within 25% in the hold (the open-loop ESP32: a WARN with its throttle gain); still within 5 s |
+| steers | left and right measured, centre within `steer_offset` ± (2 x `steer_deadband` + 0.02 rad); no sensor: it asks you |
+| stands: IMU still | its speed change while speeding up under 0.4 x the wheels' |
+| stands: GPS still | Doppler under 0.1 m/s; with no Doppler only a WARN |
+
+!!! warning "On the car, the drive is refused today"
+    The car is rear-wheel drive; its wheel sensors are on the **front**. On stands
+    `/vehicle/odom` reads 0 while the motor spins, so no speed cap can work
+    ([TODO 49b](../TODO.md)). Until `vehicle.yaml`'s `speed_wheels` says `rear`, run
+    `--no-drive`: the sensors only, nothing moves. Also refused: the C++ ESP32 (its
+    no-timeout lock), and the bridge on `speed_loop.mode pi`.
+
+In Gazebo and on the bench the car is **on the ground**, so the stands lines check the
+opposite (the IMU and GPS agree with the wheels) and say so. Who must be there on the car:
+the **e-stop person** (they are the stop), someone watching the **rear wheels** with a
+tachometer app, the laptop person; run it on the Orin (ssh + tmux) or a wired laptop.
+The word to type: `preflight`. If the car is still moving 5 s after the stop, it prints
+**NOT STOPPED: E-STOP NOW** and sets `/safety/estop`.
+
+### Tested, 29 Oct
+
+| Where | Result |
+|---|---|
+| Gazebo, empty world (`--sim --skip camera radar battery`) | every drive and sensor line PASS: 0.34 m/s held for 0.30, still 0.5 s after the brake, steering +0.50 / -0.50 / 0.000 rad, IMU 0.25 vs wheels 0.25 m/s, Doppler 0.36 vs 0.34. Lidar FAIL: the empty world has none (name it with `--skip lidar`) |
+| Bench (`--bench`), spine armed | every sensor line PASS (IMU 50 Hz, \|a\| 9.78; GPS 5 Hz; camera 640x360 10 Hz; battery 50.9 V). The drive stopped itself: the front wheels read 0 for over 2 s of a slow start (8 Hall clicks a turn), so the "speed nobody sees" stop, then at 2 s, fired; now 4 s. The run again at 4 s: not yet done |
+| `--no-drive`, the real car | untested: no car |
 
 ## Trusting the fits
 

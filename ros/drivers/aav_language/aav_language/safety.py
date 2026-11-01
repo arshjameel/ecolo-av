@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 import math
-from typing import Dict, Iterable, Mapping, Optional, Tuple
+from typing import Dict, Iterable, Mapping, Optional, Sequence, Tuple
+
+from aav_safety.geofence import along_arc, Polygon
 
 
 @dataclass(frozen=True)
@@ -247,3 +249,46 @@ def mux_choice(inputs: Iterable[MuxInput], ages: Mapping[str, Optional[float]],
             return {'driver': None, 'blocked_by': top_lock.name}
         return {'driver': i.name, 'blocked_by': None}
     return {'driver': None, 'blocked_by': top_lock.name if top_lock else None}
+
+
+def drive_end(map_pose: Optional[Tuple[float, float, float]], distance: float,
+              curvature: float = 0.0, reverse: bool = False) -> Optional[Tuple[float, float]]:
+    """Return where a drive() or turn() ends in the map frame, or None with no map pose."""
+    if map_pose is None:
+        return None
+    x, y, _ = along_arc(*map_pose, -distance if reverse else distance, curvature)
+    return x, y
+
+
+def gps_end(map_pose: Optional[Tuple[float, float, float]], here: Optional[Tuple[float, float]],
+            lat: float, lon: float) -> Optional[Tuple[float, float]]:
+    """
+    Return roughly where a lat/lon is in the map frame (x east, y north), or None.
+
+    From the car's map pose and its last fix: the offset between the two fixes on a flat
+    Earth, good to well under a metre over the few hundred metres a command may go.
+    """
+    if map_pose is None or here is None:
+        return None
+    r = 6371008.8
+    east = math.radians(lon - here[1]) * r * math.cos(math.radians(here[0]))
+    north = math.radians(lat - here[0]) * r
+    return map_pose[0] + east, map_pose[1] + north
+
+
+def fence_refusal(fence: Optional[Sequence[Tuple[float, float]]],
+                  end: Optional[Tuple[float, float]]) -> Optional[str]:
+    """
+    Why a move that ends at `end` (map frame) is refused for the geofence, or None.
+
+    fence: /safety/geofence/fence's corners, None if never heard. With no fence or no map
+    pose this can't tell, and doesn't refuse: twist_mux's geofence lock still holds the
+    drive near the edge. Only refuses; this server never clears the geofence.
+    """
+    if not fence or end is None:
+        return None
+    depth = Polygon(fence).depth(*end)
+    if depth < 0.0:
+        return (f'it would end {-depth:.1f} m outside the geofence (/safety/geofence/fence): '
+                'the geofence would stop the car on the way')
+    return None

@@ -21,6 +21,7 @@
   <!-- spine:=true: the car's spine_bridge, and spine_sim (the spine's own logic). -->
   <exec_depend>aav_spine</exec_depend>
   <exec_depend>aav_spine_sim</exec_depend>
+  <exec_depend>aav_legacy</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 

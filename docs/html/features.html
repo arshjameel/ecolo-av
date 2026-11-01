@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">21 min read · 14 sections</div></header>
+<div class="meta">29 min read · 14 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -37,15 +37,20 @@
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
 <a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
 <a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
 <a href="maps-and-position.html">Maps and position</a>
 <a href="learn-nav2.html">Learn: Nav2</a>
-<span class="sep">Reference:</span>
 <a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
 <a href="costmaps.html">Costmaps</a>
-<a href="controllers.html">Path followers</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
@@ -69,6 +74,7 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
@@ -231,6 +237,20 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>2026-10-25</td>
 <td>sim</td>
 </tr>
+<tr>
+<td><a href="trials.html">AMCL as a trial</a> (stock <code>nav2_amcl</code>, <code>amcl:=true</code>)</td>
+<td>To score a particle filter on the lidar and the map against the global EKF, without letting it steer the car (<code>tf_broadcast: false</code>)</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>built</td>
+</tr>
+<tr>
+<td>NDT on a saved lidar map, our own in Rust (<code>aav_ndt</code>)</td>
+<td>To find the car to centimetres on a map of the lot without RTK, as Autoware does, in code we understand and test on a laptop; scored as a trial before it feeds the EKF</td>
+<td>Ben's idea; built by Ben</td>
+<td>2026-10-29</td>
+<td>sim</td>
+</tr>
 </tbody>
 </table></div>
 </section>
@@ -352,6 +372,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>2026-10-24</td>
 <td>built</td>
 </tr>
+<tr>
+<td><a href="actuator-tests.html#the-preflight-on-stands">Preflight on stands</a> (<code>pixi run preflight</code>, <code>actuator-test preflight</code>)</td>
+<td>One run before the car goes on the ground: it speeds up, holds, slows, brakes and steers while every sensor is checked, and says PASS or FAIL per line. Refused on the real car until a rear-wheel speed exists (TODO 49b); <code>--no-drive</code> checks the sensors alone</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>sim</td>
+</tr>
 </tbody>
 </table></div>
 </section>
@@ -375,7 +402,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="controllers.html">MPPI path follower</a>, Pure Pursuit as an option</td>
+<td><a href="path-followers.html">MPPI path follower</a>, Pure Pursuit as an option</td>
 <td>MPPI reached the first goal cleanly in 4 of 4 Gazebo runs; Pure Pursuit looped in 2 of 3</td>
 <td>Ben</td>
 <td>2026-10-22</td>
@@ -401,6 +428,20 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben</td>
 <td>2026-10-22</td>
 <td>sim</td>
+</tr>
+<tr>
+<td><a href="trials.html">Trial path followers</a> (<code>aav_track</code>, <code>tracker:=</code>; in sim, swapped live: <code>ros2 param set /track tracker lqr</code>)</td>
+<td>To see what Stanley, LQR and MPC gain over pure pursuit on the same routes, beside MPPI and in Nav2's own chain, before any of them replaces the default; the live swap compares them on the same drive, watched in the debug HUD. LQR now linearised about the bend with a preview of the bends ahead (it lost the forward U-turn); <code>mpc_full</code> plans speed and steering together within the throttle, brake and steering limits, to drive the whole A-to-B itself</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>built</td>
+</tr>
+<tr>
+<td><a href="controllers.html#planners">Trial planners</a> (<code>planner:=</code> hybrid, lattice, smac2d, navfn or theta_star; the lattice on our own primitives, <code>pixi run lattice-primitives</code>)</td>
+<td>To see whether another of Nav2's planners plans better or faster than Hybrid-A* on the same routes, scored by <code>controller-compare --planners</code>, before any replaces the default. Only hybrid and lattice keep to the turning radius, so the car refuses the other three</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>built</td>
 </tr>
 <tr>
 <td><a href="routes.html">Street routes</a> (<code>aav_routes</code>, Valhalla)</td>
@@ -444,6 +485,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben</td>
 <td>2026-10-09</td>
 <td>sim</td>
+</tr>
+<tr>
+<td><a href="measure-the-car.html#the-measuring-map">Measuring map</a> (<code>measure_map.py</code>)</td>
+<td>A tape route from base_link, each step from the last mark, so the team at the car measures every <code>vehicle.yaml</code> number in order, in feet or metres (Ben's idea, 29 Oct)</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>built</td>
 </tr>
 <tr>
 <td>Body model: mass and curve speed</td>
@@ -545,6 +593,27 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
+<td>Actuator tests stop on an unseen speed or a runaway (<code>aav_actuator_tests</code> <code>safety.unseen</code>, <code>runaway</code>)</td>
+<td>On stands the front wheel sensors read 0 while the rear wheels spin, so the speed cap could never fire; now 4 s of driving with no measured speed, or a speed rising while the command falls, stops the test</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>built</td>
+</tr>
+<tr>
+<td>Stop hold (<code>aav_safety</code> <code>stop_hold</code>, twist_mux <code>stop_zone</code>, priority 21)</td>
+<td>collision_monitor flickered between stop and go with an obstacle at its zone's edge, and the car crept on; now a stop holds until the zone stays clear for 1 s</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>built</td>
+</tr>
+<tr>
+<td><a href="geofence.html">Geofence</a> (<code>aav_safety</code> <code>geofence</code>, twist_mux <code>geofence</code>, priority 51)</td>
+<td>Only the point driver's distance and time limits stopped a runaway route, and nothing at all without Nav2 (F6); now every program stops before its stopping distance reaches the fence, or when the position can't be trusted, and people still drive</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>sim</td>
+</tr>
+<tr>
 <td>Stand-ins stay local (<code>tools/ros.sh --local</code>)</td>
 <td>A pretend car in the turtle, Gazebo or bench mode can never reach the real one</td>
 <td>Ben</td>
@@ -592,6 +661,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Brings the car's mode, faults, steering and brake positions and RC sticks back into ROS</td>
 <td>Ben</td>
 <td>2026-10-24</td>
+<td>built</td>
+</tr>
+<tr>
+<td>Speed loop in the UART bridge (<code>speed_loop.mode: pi</code>, <code>speed_control.py</code>)</td>
+<td>Today's ESP32 drives open loop and brakes only standing still, so the car coasts past B; feed-forward plus PI on the wheel speed, out as throttle or brake, stops it where ego planned; a smooth stop (Autoware's design) eases the last of the braking so the car stops without a jolt, then holds it firmly</td>
+<td>Ben</td>
+<td>2026-10-29</td>
 <td>built</td>
 </tr>
 <tr>
@@ -660,8 +736,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>Hardware test mode (<code>spine-core</code>, VEHICLE_STATUS mode 3)</td>
-<td>Bring-up moves one actuator at a time from a laptop (proposal 6.5), and the mode can't be left on: a stale request or anything unsafe leaves it, latched</td>
-<td>Arsh</td>
+<td>Bring-up moves one actuator at a time from a laptop (proposal 6.5), and the mode can't be left on: a stale request or anything unsafe leaves it, latched; no throttle test without a wheel speed, where its speed exit can't fire</td>
+<td>Arsh; Ben (throttle rule)</td>
 <td>2026-10-27</td>
 <td>built</td>
 </tr>
@@ -707,6 +783,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>2026-10-25</td>
 <td>sim</td>
 </tr>
+<tr>
+<td>Speed LQI in <code>spine-core</code> (<code>speed_loop:=lqi</code>, TODO 3)</td>
+<td>One signed acceleration for throttle and brake (never both), its gains worked out from the model on a laptop, so it can be scored against today's PI and P-only brake; the PI stays the default</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>built</td>
+</tr>
 </tbody>
 </table></div>
 </section>
@@ -744,10 +827,24 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
+<td>Bench GPS that drifts (<code>aav_bench</code> <code>models.GpsError</code>)</td>
+<td>A real receiver's error wanders slowly; fresh noise on every fix made Nav2 weave in a way the car never would (N7)</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>built</td>
+</tr>
+<tr>
 <td>The spine in the loop (<code>sim spine:=true</code>)</td>
 <td>Gazebo drives through the spine's real logic, so its stops and e-stops get tested</td>
 <td>Ben</td>
 <td>2026-10-15</td>
+<td>sim</td>
+</tr>
+<tr>
+<td>Today's car in the loop (<code>sim esp32:=true</code>, <code>gazebo_esp32</code>)</td>
+<td>Today's car runs the 2025-26 C++ ESP32, not the spine: Gazebo drives through the real UART bridge and that firmware's throttle ramp and brake, so its speed loop is tested before car day</td>
+<td>Ben</td>
+<td>2026-10-29</td>
 <td>sim</td>
 </tr>
 <tr>
@@ -756,6 +853,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben</td>
 <td>2026-10-10</td>
 <td>sim</td>
+</tr>
+<tr>
+<td><code>bench-check --weave</code> and <code>--zone-edge</code></td>
+<td>Measure the weave on a straight Nav2 drive (N7), and prove a box at the stop zone's edge can't let the car creep on</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>built</td>
 </tr>
 <tr>
 <td>Sensor failures on purpose (<code>pixi run sim-fault</code>)</td>
@@ -835,6 +939,20 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>2026-10-15</td>
 <td>built</td>
 </tr>
+<tr>
+<td><a href="hud.html#the-debug-hud">Debug HUD</a> (<code>debug_hud</code>, <code>pixi run debugdemo</code>): the lidar's cubes in 3D, kept and fading (the occupancy-network look), every localizer's car (NDT purple, with its score and LOST in the panel), AMCL's particles, NDT's map as wireframes, every sensor from its own topic; keys 1-4 swap the sim's trial tracker; a key legend on screen. Since 29 Oct it opens as the <strong>seeing screen</strong>: the cubes big on the left, NDT's map from above with every localizer's car, and NDT's match (its cells as ellipses, the scan over them, the score); key L brings the sensor panel back</td>
+<td>See what the car sees and what it thinks, side by side, to debug localization (NDT, AMCL) and the trackers without RViz; the seeing screen shows off what the lidar sees (Ben, 29 Oct: "another screen to show off the voxels")</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>built</td>
+</tr>
+<tr>
+<td><a href="hud.html#the-hardware-panel">Hardware panel</a> (<code>hw_panel</code>, <code>pixi run hw-panel</code>): every sensor's number from its own node with OK / STALE / NEVER, and very simple buttons (Speed +/-, steering, CENTRE, STOP, hold Space to drive, E-STOP) through twist_mux's buttons slot (45), ego and the spine; speed only on SIM and BENCH (1.0 m/s), off on the real car until TODO 49b, with the reason on screen; an e-stop, a takeover or a source change zeroes it</td>
+<td>Test every sensor and work every actuator from one screen with simple buttons (Ben, 29 Oct: "one screen just to test all the sensors and operate all the actuators", "We need very simple buttons"), without going around the car's caps and e-stop</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>sim</td>
+</tr>
 </tbody>
 </table></div>
 </section>
@@ -850,6 +968,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><a href="switches.html">Switch picker</a> (<code>pixi run pick</code>)</td>
+<td>Every swappable part (who steers, where-am-I, speed loop) as a plain-words menu that prints, saves and runs the command, so nobody has to remember the switches; <code>demo</code> and <code>debugdemo</code> take them too</td>
+<td>Ben</td>
+<td>2026-10-29</td>
+<td>sim</td>
+</tr>
 <tr>
 <td>Live graph check (<code>pixi run check</code>)</td>
 <td>Compares the running graph with <code>docs/interfaces.yaml</code>, so a wrong topic shows at once</td>

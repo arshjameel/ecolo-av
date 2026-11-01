@@ -75,7 +75,7 @@ can tell the difference.
 |---|---|---|---|
 | `spine_sim` | `aav_spine_sim` (Rust) | `/can/rx`, `/vehicle/bench/truth` | runs spine-core's `Spine::step` 100 times a second, as the board will, and drives a model car with the outputs |
 | `mock_imu` | `aav_bench` | `/sensors/imu/data_raw`, `/sensors/imu/mag` | the model's turn rate and acceleration, plus noise and a small gyro drift |
-| `mock_gps` | `aav_bench` | `/sensors/gps/fix` | where the antenna is, as latitude and longitude, with 0.5 m of noise, 5 times a second |
+| `mock_gps` | `aav_bench` | `/sensors/gps/fix` | where the antenna is, as latitude and longitude, 5 times a second, with a receiver's error: 0.5 m that drifts slowly (over about 60 s) and 0.05 m of fresh jitter on each fix |
 | `mock_camera` | `aav_bench` | `/sensors/camera/front_left/image_raw` | draws a road, and each stop sign at its real size when it's in view |
 | `mock_battery` | `aav_bench` | `/vehicle/battery` | a 48 V pack draining over two hours (a guess until Q8) |
 | `mock_radar` | `aav_bench` | `/sensors/radar/points` | sees the bench world's boxes as the TI radar would: a few noisy points, out to 8.4 m and 120 degrees wide; an empty cloud when nothing's there |
@@ -136,6 +136,8 @@ nothing on the network sees it. Then it runs these checks. Results on Ben's Mac,
 | Hardware e-stop | the same, from `/vehicle/bench/hw_estop` | [[works]] |
 | Stop sign (`pixi run -e ml bench-check --perception`) | Nav2 drives 40 m east: the car stops before the sign, waits, and reaches the goal | [[works]] locked 4.7 m before the sign, stopped, reached the goal |
 | Obstacle (`pixi run bench-check --obstacle`) | a box as wide as the lane, 15 m ahead, Nav2 driving 30 m: `collision_monitor`'s stop zone stops the car before it; with the box gone, the car reaches the goal. If a busy computer latches the spine, the check arms it again | [[works]] on `main`, 11 Oct: stood still 0.44 m before the box, from 0.95 m/s; reached the goal once the box was gone |
+| Weave (`pixi run bench-check --weave`) | Nav2 drives 40 m straight, nothing in the way: the car's side-to-side swing round its own 4 s average is under 0.1 m RMS. Also says how far it strays from its best straight line, and how often a second Nav2's turn command changes sign (N7) | untested |
+| Stop zone's edge (`pixi run bench-check --zone-edge`) | the car stands still, a box as wide as the lane right at the far edge of the stop zone, Nav2 asked to drive on, for 20 s: after the first stop no forward command reaches ego, and the car creeps under 0.1 m. Says how often collision_monitor itself flickered (`stop_hold` keeps it from reaching the car) | untested |
 
 Run it after changing anything between the drivers and the spine.
 

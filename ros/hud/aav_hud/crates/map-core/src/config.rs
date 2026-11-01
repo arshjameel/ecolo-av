@@ -74,6 +74,10 @@ pub struct MapConfig {
     pub stale_after: f64,
     /// Seconds without a new plan before the trip shows NO NEW PLAN.
     pub plan_stale_after: f64,
+    /// Metres from the plan's end in which Nav2 keeps its path instead of replanning.
+    pub final_approach: f64,
+    /// Seconds without a new plan, within `final_approach`, before NO NEW PLAN.
+    pub plan_kept_for: f64,
     /// Metres from the goal that count as arrived.
     pub arrive_within: f64,
     /// The street map's file (PMTiles), relative to the folder the window starts in.
@@ -116,6 +120,8 @@ impl MapConfig {
         let numbers = [
             ("stale_after", self.stale_after),
             ("plan_stale_after", self.plan_stale_after),
+            ("final_approach", self.final_approach),
+            ("plan_kept_for", self.plan_kept_for),
             ("arrive_within", self.arrive_within),
         ];
         match numbers
@@ -163,6 +169,11 @@ impl MapConfig {
     pub fn plan_stale_after(&self) -> Duration {
         Duration::from_secs_f64(self.plan_stale_after)
     }
+
+    /// [`MapConfig::plan_kept_for`] as a Duration.
+    pub fn plan_kept_for(&self) -> Duration {
+        Duration::from_secs_f64(self.plan_kept_for)
+    }
 }
 
 impl Default for MapConfig {
@@ -181,6 +192,8 @@ mod tests {
         let c = MapConfig::from_yaml(BUILT_IN_YAML).expect("config/map.yaml must parse");
         assert!(c.stale_after() > Duration::ZERO);
         assert!(c.plan_stale_after() > c.stale_after());
+        assert!(c.plan_kept_for() > c.plan_stale_after());
+        assert!(c.final_approach > c.arrive_within);
         // Every name is absolute (docs/conventions.md), and none is empty.
         for t in Topic::ALL {
             assert!(c.topic(t).starts_with('/'), "{t:?}: {}", c.topic(t));

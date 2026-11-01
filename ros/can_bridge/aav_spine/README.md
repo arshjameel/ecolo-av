@@ -64,7 +64,7 @@ only), and `spine_bridge`.
 |---|---|---|
 | `spine_bridge.py` | yes | the node `SpineBridge` |
 | `arm_when_open.py` | yes | the arming helper |
-| `can_codec.py` | no | `pack`, `unpack`, `FRAMES`, the CAN ids, `crc8_sae_j1850`, `counter_step` |
+| `can_codec.py` | no | `pack`, `unpack`, `FRAMES`, the CAN ids, `crc8_sae_j1850`, `counter_step`; VEHICLE_STATUS's modes `MODE_MANUAL` 0, `MODE_RC` 1, `MODE_COMPUTER` 2, `MODE_TEST` 3 |
 | `wheel_speed.py` | no | `FrontWheels`, `Reading`, `drive_sign`, `rear_axle_speed` |
 | `output_gate.py` | no | `OutputGate`, `try_again`, `GATE_SHUT` |
 | `bridges.py` | no | `package()`, `role_for()`, `check_role()`: which bridge, which role |

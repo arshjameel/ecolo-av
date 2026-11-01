@@ -1,0 +1,9 @@
+# twist_mux without the geofence's heartbeat: for profiles that run no geofence (the
+# turtle, CARLA, Gazebo with geofence:=false). mux.launch.py geofence_lock:=false loads it
+# after twist_mux.yaml. Timeout 0: the geofence lock never expires on silence, so with
+# nobody publishing it, it stays open. A file, not a dict: see no_sensor_lock.yaml.
+twist_mux:
+  ros__parameters:
+    locks:
+      geofence:
+        timeout: 0.0

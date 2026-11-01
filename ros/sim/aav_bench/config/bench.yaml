@@ -48,7 +48,14 @@ mock_lidar:
 
 mock_gps:
   ros__parameters:
-    stddev: 0.5               # m: plain GPS is 2-3 m, RTK 0.02 m (Q18 decides)
+    # A receiver's error drifts slowly; only a little of it is fresh on each fix (TODO N7,
+    # models.GpsError). 0.5 m on each axis, as Gazebo's GPS: the checks' limits assume it.
+    # A plain receiver without RTK is nearer 1-1.5 m (1-3 m all told); RTK 0.02 m (Q18).
+    drift_stddev: 0.5         # m on each axis: how far the drift wanders from the truth
+    drift_time: 60.0          # s it takes to forget where it was. A faster or bigger
+                              # drift trips the sensor watchdog's GPS cross check now and
+                              # then (0.15 m/s over 10 s): 1 m at 60 s in 6 % of windows
+    jitter_stddev: 0.05       # m of fresh noise on each fix
     rate_hz: 5.0
 
 mock_imu:

@@ -1,0 +1,66 @@
+# AMCL as a trial (docs/trials.md): stock nav2_amcl's particle filter on Nav2's 2D map and
+# the flattened roof lidar. navigation.launch.py amcl:=true starts it (with its own
+# lifecycle manager), only beside the lidar (lidar:=true); sim.launch.py only in the test
+# lot (world:=test_lot nav:=true lidar:=true), the one world with a real map.
+#
+# It never drives the car: tf_broadcast is false, so ekf_global keeps map -> odom, and its
+# pose (amcl_pose, renamed /localization/amcl/pose) is only scored, by
+# controller-compare --amcl, against Gazebo's truth. The start pose (set_initial_pose,
+# initial_pose.*) comes from the launch file: the sim's start.
+#
+# Names checked against nav2_amcl's amcl_node.cpp (Jazzy 1.3.13); the rest are its defaults.
+amcl:
+  ros__parameters:
+    tf_broadcast: false               # NOT true: it would fight ekf_global over map -> odom
+    global_frame_id: map
+    odom_frame_id: odom
+    base_frame_id: base_link          # not Nav2's base_footprint
+    scan_topic: /sensors/lidar/scan   # lidar_scan (aav_lidar), 720 ranges in base_link
+    # map_topic: NOT here. The launch file sets it (amcl_map:= gives AMCL its own map), and
+    # under sim.launch.py's global use_sim_time a value here beat the launch file's: the
+    # 29 Oct own-map runs read Nav2's 0.25 m /map. Its default, map, is /map.
+    robot_model_type: "nav2_amcl::DifferentialMotionModel"   # no omni: a car can't slide
+    laser_model_type: likelihood_field   # not beam: it needs no ray casting, and copes with
+                                         # the scan's gaps (inf = nothing within range)
+    laser_min_range: 0.2              # m: lidar_scan's range_min (nav2.yaml)
+    laser_max_range: 30.0             # m: its range_max; further is "nothing there"
+    # Tuned 29 Oct (docs/trials.md "AMCL tuned"): with the defaults below in brackets AMCL
+    # drifted 1-2 m on the first leg and locked onto a turned copy of the lot (90 deg off)
+    # round the building. A bag of that run showed the scan fits the map within a cell at
+    # Gazebo's truth (3 of 83,000 beam ends further than 0.75 m from a wall): the map was
+    # right; the filter trusted the scan too little and the odometry far too little.
+    #
+    # The laser model: how much a scan counts.
+    max_beams: 180                    # [60] every 4th of the 720 directions (2 deg). A third
+                                      # are inf in the open lot, so 60 left about 40 beams
+    z_hit: 0.9                        # [0.5] Gazebo's map is exact: a beam on a wall is
+    z_rand: 0.1                       # [0.5] nearly always right. With 0.5/0.5 a perfect fit
+                                      # scored only ~6x a hopeless one (nav2's p += pz^3)
+    # sigma_hit: 0.4 on Nav2's 0.25 m map, where a beam on a wall's face lands in the free
+    # cell before it (0.25 m "off"): at 0.2 every pose that pushed beams into the walls
+    # scored better than the truth. On AMCL's own map (amcl_map:=, 0.05 m outlines:
+    # maps/README.md) that's gone, and 0.2 put the best score nearest the truth. In Gazebo
+    # (29 Oct, docs/trials.md): own map + 0.2, 0.06-0.11 m mean off; Nav2's map + 0.4,
+    # 0.19-0.47; Nav2's map + 0.2, 0.5-0.8. sim.launch.py's amcl:=true always gives it its
+    # own map; with Nav2's map alone (no amcl_map:=), set 0.4 here.
+    sigma_hit: 0.2                    # m [0.2]
+    laser_likelihood_max_dist: 2.0    # m [2.0]: kept
+    # The motion model: how far odometry may be wrong, per update. Its noise's standard
+    # deviation is sqrt(alpha) times the move: the default 0.2 gave each particle ~9 deg of
+    # heading noise per 0.25 m driven, while ekf_local (wheels + IMU) was within 0.3 % in
+    # distance and 0.5 deg per 4 m against the truth. These still leave ~10x that error,
+    # for the real car's wheels.
+    alpha1: 0.05                      # [0.2] heading from turning: sd 22 % of the turn
+    alpha2: 0.01                      # [0.2] heading from driving: sd 0.1 rad per m
+    alpha3: 0.02                      # [0.2] distance from driving: sd 14 % of the move
+    alpha4: 0.01                      # [0.2] distance from turning
+    alpha5: 0.2                       # [0.2] unused by the differential model
+    min_particles: 500
+    max_particles: 2000
+    update_min_d: 0.25                # m driven before it updates: parked, it publishes little
+    update_min_a: 0.2                 # rad turned
+    resample_interval: 2              # [1] resample every 2nd scan: with the tighter noise,
+                                      # every scan wore the particles down to a few copies
+    transform_tolerance: 1.0
+    save_pose_rate: 0.5
+    first_map_only: true              # the map never changes during a run

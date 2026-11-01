@@ -142,7 +142,7 @@ def test_the_table_has_a_column_each_and_leaves_out_numbers_nobody_has():
     assert lines[:4] == ['|  | rpp | mppi |', '|---|---:|---:|',
                          '| Reached the goal | **no** | yes |', '| Time (s) | 10 | 10 |']
     assert 'Closest to the box' not in text and 'Off the path' not in text
-    assert '| controller CPU (%) | - | 12 |' in lines
+    assert '| follower CPU (%): controller_server, or aav_track | - | 12 |' in lines
 
 
 def test_the_picture_puts_north_up():
@@ -299,3 +299,197 @@ def test_the_table_takes_other_columns():
     cols = [('a', 'A (m)', '{:.1f}'), ('b', 'B', '{:d}')]
     text = m.table([('run', {'a': 1.25})], columns=cols)
     assert text.splitlines() == ['|  | run |', '|---|---:|', '| A (m) | 1.2 |']
+
+
+def test_lateral_is_left_of_the_line():
+    track = [(0.0, 1.0, 2.0), (1.0, 5.0, -1.0)]
+    assert m.lateral(track, (0.0, 0.0), (10.0, 0.0)) == pytest.approx([(0.0, 2.0), (1.0, -1.0)])
+    # A line going north: east of it is right.
+    assert m.lateral([(0.0, 3.0, 4.0)], (0.0, 0.0), (0.0, 1.0)) == pytest.approx([(0.0, -3.0)])
+    with pytest.raises(ValueError):
+        m.lateral(track, (1.0, 1.0), (1.0, 1.0))
+
+
+def test_weave_counts_fast_swings_not_slow_drift():
+    rate, seconds = 20.0, 60.0
+    times = [i / rate for i in range(int(seconds * rate) + 1)]
+    drift = [(t, 0.02 * t) for t in times]                         # 1.2 m off, slowly
+    assert m.weave(drift) == pytest.approx(0.0, abs=1e-9)
+    swing = [(t, 0.3 * math.sin(2.0 * math.pi * t)) for t in times]  # 1 s weave, 0.3 m
+    assert m.weave(swing) == pytest.approx(0.3 / math.sqrt(2.0), rel=0.02)
+    both = [(t, a + b) for (t, a), (_, b) in zip(drift, swing)]
+    assert m.weave(both) == pytest.approx(m.weave(swing), rel=0.01)
+    assert math.isnan(m.weave(swing[:10]))
+
+
+def test_turn_sign_flips_skip_the_deadband():
+    turns = [(0, 0.1), (1, 0.01), (2, -0.1), (3, -0.005), (4, -0.2), (5, 0.3)]
+    assert m.sign_flips(turns) == 2
+    assert m.sign_flips([]) == 0
+
+
+def test_stop_go_counts_each_stop_that_let_go():
+    STOP, GO = 0, 1
+    assert m.stop_go([STOP, GO], STOP) == 1
+    assert m.stop_go([GO, STOP, GO, STOP, GO, STOP], STOP) == 2
+    assert m.stop_go([STOP], STOP) == 0
+
+
+def test_off_line_fits_a_crooked_straight_line():
+    # A straight drive 10 degrees off east, with a 0.2 m bump in the middle.
+    a = math.radians(10.0)
+    points = [(i * math.cos(a), i * math.sin(a)) for i in range(21)]
+    assert max(abs(d) for d in m.off_line(points)) == pytest.approx(0.0, abs=1e-9)
+    bumped = [(x - 0.2 * math.sin(a), y + 0.2 * math.cos(a)) if i == 10 else (x, y)
+              for i, (x, y) in enumerate(points)]
+    offsets = m.off_line(bumped)
+    assert offsets[10] - offsets[0] == pytest.approx(0.2, abs=0.01)
+    assert m.off_line([(0.0, 0.0)]) == []
+
+
+def test_rms_and_forward_starts():
+    assert m.rms([3.0, -4.0]) == pytest.approx(math.sqrt(12.5))
+    assert math.isnan(m.rms([]))
+    commands = [(0, 0.0), (1, 0.5), (2, 0.0), (3, -0.3), (4, 0.0), (5, 0.2), (6, 0.4)]
+    assert m.starts(commands) == 2       # reversing isn't a forward start
+
+
+def test_amcl_and_the_trackers_tick_are_scored_when_recorded():
+    truth = [(float(t), float(t), 0.0, 0.0) for t in range(11)]
+    leg = {'truth': truth, 'plans': [(0.0, [(0.0, 0.0), (10.0, 0.0)])], 'steering': [],
+           'asked': [], 'start': 0.0, 'end': 10.0, 'goal': (10.0, 0.0, 0.0),
+           'reached': True, 'body': (2.0, 1.0, 0.2),
+           'belief': [(float(t), t + 0.2, 0.0, 0.0) for t in range(11)],
+           'amcl': [(2.0, 2.0, 0.5, 0.0), (6.0, 6.0, 0.1, math.radians(10))],
+           'loops': [(1.0, 0.5, 0.5, 0), (2.0, 1.5, 2.0, 1), (3.0, 1.0, 2.0, 3)]}
+    row = m.summary(leg)
+    assert row['amcl_samples'] == 2
+    assert row['amcl_mean_m'] == pytest.approx(0.3)
+    assert row['amcl_max_m'] == pytest.approx(0.5)
+    assert row['amcl_heading_max_deg'] == pytest.approx(10.0)
+    assert row['belief_mean_m'] == pytest.approx(0.2)
+    assert row['loop_ms_mean'] == pytest.approx(1.0)
+    assert row['loop_ms_max'] == pytest.approx(2.0)
+    assert row['missed_ticks'] == 3
+    # Without them, no such numbers: today's table is unchanged.
+    plain = m.summary({k: v for k, v in leg.items() if k not in ('amcl', 'loops')})
+    assert 'amcl_mean_m' not in plain and 'loop_ms_mean' not in plain
+
+
+def test_the_grid_holds_each_pose_until_the_next_and_counts_time_lost():
+    truth = [(t / 10.0, t / 10.0, 0.0, 0.0) for t in range(101)]      # 1 m/s east, 10 s
+    # A pose at 1 s, then nothing until 5 s: held, it falls behind; then right again.
+    poses = [(1.0, 1.0, 0.0, 0.0), (5.0, 5.0, 0.0, 0.0), (9.0, 9.0, 0.0, 0.0)]
+    grid = m.grid_errors(truth, poses, 0.0, 10.0)
+    assert len(grid) == 101 and grid[0][1] is None
+    assert grid[30][1] == pytest.approx(2.0)          # at 3 s, the 1 s pose: 2 m behind
+    lost, recover = m.lost_time(grid)
+    # None for 0-0.9 s (10 samples), over 1 m for 2.1-4.9 s and 6.1-8.9 s (29 each).
+    assert lost == pytest.approx(1.0 + 2.9 + 2.9)
+    assert recover == pytest.approx(2.9)
+
+
+def test_ndt_is_scored_with_its_availability_match_time_and_the_ekf_on_the_same_grid():
+    truth = [(float(t), float(t), 0.0, 0.0) for t in range(11)]
+    leg = {'truth': truth, 'plans': [(0.0, [(0.0, 0.0), (10.0, 0.0)])], 'steering': [],
+           'asked': [], 'start': 0.0, 'end': 10.0, 'goal': (10.0, 0.0, 0.0),
+           'reached': True, 'body': (2.0, 1.0, 0.2),
+           'belief': [(float(t), t + 0.2, 0.0, 0.0) for t in range(11)],
+           'ndt': [(float(t), t + 0.01, 0.0, 0.0) for t in range(11)],
+           'ndt_status': [(float(t), t != 3, 4.0 + t, 0 if t < 5 else 1) for t in range(10)]}
+    row = m.summary(leg)
+    assert row['ndt_samples'] == 11
+    assert row['ndt_mean_m'] == pytest.approx(0.01)
+    assert row['ndt_available'] == pytest.approx(0.9)
+    assert row['ndt_match_ms_mean'] == pytest.approx(8.5)
+    assert row['ndt_match_ms_max'] == pytest.approx(13.0)
+    assert row['ndt_restarts'] == 1
+    assert row['ndt_lost_s'] == pytest.approx(0.0)
+    assert row['belief_grid_mean_m'] > row['ndt_grid_mean_m']
+    assert 'amcl_mean_m' not in row
+    assert '90%' in m.table([('pure_pursuit', row)])
+
+
+def test_runs_combine_into_a_mean_and_a_spread():
+    rows = [{'reached': True, 'time_s': 30.0, 'stops': 1, 'off_path_mean_m': 0.1,
+             'end_error_m': 0.5, 'clearance_m': math.nan, 'cpu_percent': None},
+            {'reached': False, 'time_s': 40.0, 'stops': 2, 'off_path_mean_m': 0.3,
+             'end_error_m': 0.7, 'clearance_m': math.nan, 'cpu_percent': None}]
+    out = m.combine(rows + [None])
+    assert out['reached'] is False and out['runs_reached'] == '1/2'
+    assert out['time_s'] == pytest.approx(35.0)
+    assert out['time_s_sd'] == pytest.approx(math.sqrt(50.0))
+    assert out['off_path_mean_m_sd'] == pytest.approx(math.sqrt(0.02))
+    assert isinstance(out['stops'], int)
+    assert math.isnan(out['clearance_m']) and out['cpu_percent'] is None
+    one = m.combine(rows[:1])
+    assert one['runs_reached'] == '1/1' and 'time_s_sd' not in one
+    assert m.combine([]) == {}
+    assert 'Runs that reached the goal' in m.table([('rpp', out)])
+
+
+def arc(radius, degrees, points=200):
+    """Return a path along a circle of `radius` round (0, radius), from (0, 0), turning left."""
+    return [(radius * math.sin(a), radius * (1.0 - math.cos(a)))
+            for a in (math.radians(degrees) * i / points for i in range(points + 1))]
+
+
+def test_resampling_keeps_the_ends_and_the_spacing():
+    points = m.resample([(0.0, 0.0), (1.0, 0.0), (1.0, 0.6)], step=0.25)
+    assert points[0] == (0.0, 0.0) and points[-1] == (1.0, 0.6)
+    gaps = [math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(points, points[1:-1])]
+    # Along the path, not across the corner: the corner's gap is a chord, shorter.
+    assert all(g == pytest.approx(0.25) or g < 0.25 for g in gaps)
+    assert len(points) == 8      # 1.6 m in 0.25 m steps, the end kept
+
+
+def test_a_circle_through_three_points():
+    assert m.circle_radius((0, 0), (1, 1), (2, 0)) == pytest.approx(1.0)
+    assert math.isinf(m.circle_radius((0, 0), (1, 0), (2, 0)))
+
+
+def test_an_arc_reads_its_own_radius_and_a_grid_corner_reads_tight():
+    radii = [r for _, r in m.turn_radii(arc(3.6, 90.0))]
+    assert radii and min(radii) == pytest.approx(3.6, rel=0.01)
+    corner = [(0.0, 0.0), (5.0, 0.0), (5.0, 5.0)]
+    assert min(r for _, r in m.turn_radii(corner)) < 1.0
+    assert all(math.isinf(r) for _, r in m.turn_radii([(0.0, 0.0), (5.0, 0.0)]))
+
+
+def test_the_planners_numbers_count_what_the_car_cant_drive():
+    lock = 2.87
+    smooth = m.plan_row({'path': arc(3.6, 90.0), 'ms': 40.0, 'wall_ms': 55.0,
+                         'lock_radius': lock})
+    assert smooth['plan_found'] is True and smooth['plan_ms'] == 40.0
+    assert smooth['plan_m'] == pytest.approx(3.6 * math.pi / 2, rel=0.01)
+    assert smooth['plan_too_tight_m'] == 0.0
+    sharp = m.plan_row({'path': [(0.0, 0.0), (5.0, 0.0), (5.0, 5.0)], 'ms': 3.0,
+                        'wall_ms': 9.0, 'lock_radius': lock})
+    assert sharp['plan_too_tight_m'] > 0.0 and sharp['plan_tightest_m'] < lock
+    none = m.plan_row({'path': [], 'ms': 5000.0, 'wall_ms': 5100.0, 'lock_radius': lock})
+    assert none['plan_found'] is False and 'plan_m' not in none
+    # In a leg's summary, only when the leg asked the planner alone.
+    leg = {'truth': straight(), 'plans': [], 'steering': [], 'start': 0.0, 'end': 10.0,
+           'goal': (10.0, 0.0, 0.0), 'reached': True, 'obstacle': None, 'body': BODY}
+    assert 'plan_m' not in m.summary(leg)
+    assert m.summary(dict(leg, planned={'path': arc(3.6, 90.0), 'ms': 1.0, 'wall_ms': 2.0,
+                                        'lock_radius': lock}))['plan_found'] is True
+
+
+def test_a_whole_tour_in_one_row():
+    rows = [{'reached': True, 'time_s': 30.0, 'driven_m': 20.0, 'plan_m': 19.0,
+             'plan_ms': 40.0, 'plan_tightest_m': 3.6, 'plan_too_tight_m': 0.0,
+             'off_path_mean_m': 0.2},
+            {'reached': False, 'time_s': 60.0, 'driven_m': 5.0, 'plan_m': 30.0,
+             'plan_ms': 80.0, 'plan_tightest_m': 0.7, 'plan_too_tight_m': 1.5,
+             'off_path_mean_m': 0.4},
+            None]                                       # a leg never driven
+    out = m.overall(rows)
+    assert out['legs'] == '1/3'
+    assert (out['time_s'], out['driven_m'], out['plan_m']) == (90.0, 25.0, 49.0)
+    assert (out['plan_ms'], out['plan_ms_max']) == (60.0, 80.0)
+    assert out['plan_tightest_m'] == 0.7 and out['turns_ok'] is False
+    assert out['off_path_mean_m'] == pytest.approx(0.3)
+    text = m.table([('hybrid', out)], columns=m.OVERALL)
+    assert 'Legs finished' in text and '**no**' in text
+    assert m.overall([None]) == {'legs': '0/1'}

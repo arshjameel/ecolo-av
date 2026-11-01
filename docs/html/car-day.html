@@ -37,15 +37,20 @@
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
 <a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
 <a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
 <a href="maps-and-position.html">Maps and position</a>
 <a href="learn-nav2.html">Learn: Nav2</a>
-<span class="sep">Reference:</span>
 <a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
 <a href="costmaps.html">Costmaps</a>
-<a href="controllers.html">Path followers</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
@@ -69,6 +74,7 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
@@ -1509,8 +1515,19 @@ Their <code>foxglove-bridge</code> already holds port 8765 on the Orin, so ours 
 <td>within 10%</td>
 <td></td>
 </tr>
+<tr>
+<td>3.P</td>
+<td><code>pixi run preflight --no-drive --skip steering gps lidar</code> (the Orin, ssh + tmux)</td>
+<td>every sensor line PASS; nothing moves</td>
+<td>a FAIL names the sensor: its driver, its cable, its rate</td>
+</tr>
 </tbody>
 </table></div>
+<p><strong>The preflight's drive</strong> (speed up, hold, brake, steer, every sensor at once) is refused
+on the car today: the wheel sensors are on the front, the motor drives the rear, so on
+stands nothing measures the spinning wheels (TODO 49b). Once a rear-wheel speed exists
+(<code>vehicle.yaml</code> <code>speed_wheels: rear</code>): <code>pixi run preflight --skip steering gps lidar</code>,
+with the e-stop person and someone on the rear wheels' tachometer (<a href="actuator-tests.html#the-preflight-on-stands">the preflight</a>).</p>
 <p><strong>Not today: the car on the ground.</strong> That waits for tests 4.2 (<code>coast</code>) and 4.4 (<code>throttle-map</code>): they measure the drag and the throttle, and settle the 5 times disagreement (TODO 52b).</p>
 <p>Then put it back: Ctrl-C everything; theirs again (<code>sudo systemctl start aav_serial_bridge</code>)
 only with the C++ on the ESP32 (6d), as the team decides.</p>

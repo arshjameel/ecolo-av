@@ -12,7 +12,7 @@ the end, mapped to these numbers.
 > - **Software, built and tested in simulation: about 43%** of the committed tasks. **Proven on the car: about 5%** (the audits).
 > - **Ahead:** the drivers, ego, the muxes, Gazebo, Nav2, A to B, the HUD. **Behind:** everything that needs the car or new parts: power, calibration, the closed loop.
 > - **Next gate, 30 Oct (Know the car):** the car isn't measured yet. That's the most urgent job.
-> - **MPPI:** Nav2's default since 22 Oct, tuned for the car in Gazebo, and compared with Regulated Pure Pursuit by `pixi run controller-compare` (`controller:=rpp` for the old one; [controllers](controllers.md)). It steers round an obstacle the sensors see.
+> - **MPPI:** Nav2's default since 22 Oct, tuned for the car in Gazebo, and compared with Regulated Pure Pursuit by `pixi run controller-compare` (`controller:=rpp` for the old one; [controllers](path-followers.md)). It steers round an obstacle the sensors see.
 > - **Status:** ✅ done · 🧪 done in simulation only · 🔧 started · ⬜ not started · 🎯 stretch.
 
 ## How far along, by sub-project
@@ -205,8 +205,8 @@ too". It shares the car's model with ego, as the proposal says (section 8.3).
 |---|---|---|---|
 | M1 | `controller:=mppi`: one argument switches Nav2's path follower | ✅ 22 Oct | |
 | M2 | Its limits from `vehicle.yaml`: turning radius, outline, top and reverse speed | ✅ | its braking limit from ego (done by hand: `ax_min` = ego's -2.0) |
-| M3 | Tuned for a car, not a robot, in Gazebo | ✅ 22 Oct | moving within 0.5 s at 0.95 m/s; turns to a goal's heading from 2.5 m out ([why](controllers.md#making-mppi-drive)). Its U-turn in a 14 m lane: forward only it swings wide and fails; allowed to reverse it makes a three-point turn (22 Oct, [controllers](controllers.md)) |
-| M4 | The comparison: `pixi run controller-compare` | ✅ 22 Oct | six runs overnight; MPPI did at least as well in each. **MPPI is the default** since 22 Oct ([controllers](controllers.md)) |
+| M3 | Tuned for a car, not a robot, in Gazebo | ✅ 22 Oct | moving within 0.5 s at 0.95 m/s; turns to a goal's heading from 2.5 m out ([why](path-followers.md#making-mppi-drive)). Its U-turn in a 14 m lane: forward only it swings wide and fails; allowed to reverse it makes a three-point turn (22 Oct, [controllers](path-followers.md)) |
+| M4 | The comparison: `pixi run controller-compare` | ✅ 22 Oct | six runs overnight; MPPI did at least as well in each. **MPPI is the default** since 22 Oct ([controllers](path-followers.md)) |
 | M5 | Steering round an obstacle | ✅ 22 Oct, Gazebo | the planner's costmap has the radar and lidar (`plan_around:=true`); both controllers drove round the box 2.6-3.8 m clear. `sim-check --plan-around` |
 | M6 | Its CPU on the Orin | ⬜ | with the load report (T1.7) |
 | M7 | MPPI on the car | ⬜ | after Nav2 passes on the car (T7.8); MPPI is the default now |

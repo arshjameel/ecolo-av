@@ -11,7 +11,8 @@ AREAS = ('sensors', 'vehicle', 'can', 'localization', 'perception', 'drivers', '
          'ego', 'safety', 'hud', 'system')
 # ROS's own global names, which every tool expects, and Nav2's, which stay for now.
 GLOBALS = {'/tf', '/tf_static', '/clock', '/robot_description', '/joint_states',
-           '/diagnostics', '/rosout', '/parameter_events', '/map', '/goal_pose', '/plan'}
+           '/diagnostics', '/rosout', '/parameter_events', '/map', '/goal_pose', '/plan',
+           '/cmd_vel_nav'}
 
 
 def topics():

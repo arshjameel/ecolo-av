@@ -29,6 +29,7 @@ class FakeBackend:
         self.pose = [0.0, 0.0, 0.0]
         self.gps = (45.3855, -75.6965)   # about 80 m from the model test's GPS goal
         self.estop_on = False
+        self.fence = None            # /safety/geofence/fence's corners, map frame
         self.mux_silent = False      # True: as if twist_mux's /diagnostics never arrived
         self.sent: List[dict] = []
         self.results: Dict[str, dict] = {}
@@ -42,7 +43,8 @@ class FakeBackend:
                         estop=self.estop_on, vehicle_estop=self.estop_on, armed=True,
                         mux_locks=None if self.mux_silent else {'estop': self.estop_on,
                                                                 'stop_sign': False},
-                        mux={'driver': None, 'blocked_by': 'estop' if self.estop_on else None})
+                        mux={'driver': None, 'blocked_by': 'estop' if self.estop_on else None},
+                        fence=self.fence)
 
     def where(self) -> safety.Where:
         return self.place

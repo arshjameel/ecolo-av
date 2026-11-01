@@ -45,7 +45,7 @@ spine_bridge ─/can/tx─> spine_sim (spine-core, 100 Hz) ─/can/rx─> spine_
 | Publishes | `/vehicle/gazebo/spine_outputs` | `aav_interfaces/SpineOutputs` (100 Hz) | `car:=gazebo` |
 
 Parameters: `car` (model), `wheelbase`, `track`, `wheel_radius` (m), `max_steering`
-(rad), `start_x`, `start_y` (m), `start_yaw` (rad), `speed_loop` (default or smooth).
+(rad), `start_x`, `start_y` (m), `start_yaw` (rad), `speed_loop` (default, smooth or lqi).
 
 ### `bench-car` (library)
 

@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>From lidar points to cubes, maps and where we are · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/learn-lidar.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>From lidar points to cubes, maps and where we are</h1>
+<div class="meta">13 min read · 12 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-day.html">Car day</a>
+<a href="tests.html">Every test</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<span class="sep">Learn:</span>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a class="here" href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#1-what-a-lidar-does">1. What a lidar does</a><a href="#2-our-lidar-the-vlp-16">2. Our lidar: the VLP-16</a><a href="#3-cubes-voxels">3. Cubes (voxels)</a><a href="#4-not-teslas-occupancy-network">4. Not Tesla&#x27;s &quot;occupancy network&quot;</a><a href="#5-from-cubes-to-nav2s-flat-map">5. From cubes to Nav2&#x27;s flat map</a><a href="#6-cubes-into-objects-with-names">6. Cubes into objects, with names</a><a href="#7-where-are-we-ndt-on-a-saved-map">7. Where are we? NDT on a saved map</a><a href="#8-making-the-map-kiss-icp">8. Making the map: KISS-ICP</a><a href="#9-a-trial-alternative-amcl-on-a-2d-map">9. A trial alternative: AMCL on a 2D map</a><a href="#10-seeing-it-all-the-debug-hud">10. Seeing it all: the debug HUD</a><a href="#11-today-planned-idea">11. Today, planned, idea</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
+<div class="lead"><p>Ben's guess (29 Oct): "the lidar returns some kind of point map and we have an NDT and
+occupation network that reads that data and produces something cube related."</p>
+<p><strong>Close.</strong> The lidar gives a cloud of dots. From those dots we can make <strong>cubes</strong> (what is
+around us), a <strong>flat map for Nav2</strong> (where we may drive), <strong>objects</strong> (what each thing is),
+and with a saved map, <strong>where we are</strong> (NDT). This page takes them one at a time.</p>
+<p><strong>You'll learn:</strong></p>
+<ul>
+<li>what one lidar point is, and what our VLP-16 sends;</li>
+<li>cubes (voxels): filled, free, unknown;</li>
+<li>why ours aren't Tesla's "occupancy network";</li>
+<li>how cubes flatten into Nav2's costmap, and what runs today;</li>
+<li>joining cubes into named objects;</li>
+<li>NDT, KISS-ICP and AMCL: finding the car on a map;</li>
+<li>what's built, what's planned, what's only an idea.</li>
+</ul>
+<p>The maths of NDT and ICP, with pictures, is in
+<a href="learn-localization.html#8-next-matching-the-lidar-to-a-map-ndt-and-icp">Learn: localization §8</a>.
+Costmaps in more depth: <a href="costmaps.html">Costmaps</a>.</p></div>
+<section class="card"><h2 id="1-what-a-lidar-does">1. What a lidar does</h2>
+<p>A <strong>lidar</strong> fires a laser pulse and times the echo. Light is fast, but the clock is faster.</p>
+<pre class="highlight"><code class="language-text">  lidar ──── pulse ────►  wall
+        ◄─── echo ─────
+  echo after 66.7 ns  ──►  distance = speed of light × time ÷ 2 = 10 m</code></pre>
+<p>It knows the beam's direction too, so each echo becomes <strong>one point</strong> in 3D.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>A point has</th>
+<th>Means</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x</code>, <code>y</code>, <code>z</code></td>
+<td>where it is, in metres (x forward, y left, z up)</td>
+<td>5.13, −1.07, 0.62</td>
+</tr>
+<tr>
+<td><code>intensity</code></td>
+<td>how bright the echo was: paint and signs are bright</td>
+<td>0-255</td>
+</tr>
+<tr>
+<td><code>ring</code></td>
+<td>which of the 16 lasers saw it</td>
+<td>0-15</td>
+</tr>
+<tr>
+<td><code>time</code></td>
+<td>when, within the turn</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="2-our-lidar-the-vlp-16">2. Our lidar: the VLP-16</h2>
+<p>A Velodyne VLP-16 on a printed tripod on the roof (<a href="learn-sensors.html#9-lidar-velodyne-vlp-16-on-the-roof">Learn: sensors §9</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lasers</td>
+<td><strong>16</strong>, stacked from 15° down to 15° up, every 2°</td>
+</tr>
+<tr>
+<td>Spin</td>
+<td>10 turns a second (10 Hz)</td>
+</tr>
+<tr>
+<td>Points</td>
+<td>1800 per laser per turn: <strong>28,800 a turn</strong></td>
+</tr>
+<tr>
+<td>Range</td>
+<td>up to 100 m; a few cm accurate</td>
+</tr>
+<tr>
+<td>Topic</td>
+<td><code>/sensors/lidar/points</code> (<code>sensor_msgs/PointCloud2</code>, about 0.9 MB a cloud)</td>
+</tr>
+<tr>
+<td>Driver</td>
+<td>the stock <code>velodyne</code> package, in <code>lidar_link</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Seen from the side, the 16 lasers fan out like this:</p>
+<pre class="highlight"><code class="language-text">                     ╱  +15°
+  lidar (1.8 m up) ●──────  0°
+                     ╲  −15°   the lowest ring hits the road 6.7 m away
+  ═══════════════════════════════════════  road</code></pre>
+<p><strong>Two things that follow, in numbers:</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Fact</th>
+<th>Sum</th>
+<th>So</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The lowest ring meets the road at</td>
+<td>1.8 m ÷ tan 15° = <strong>6.7 m</strong></td>
+<td>it can't see the road closer than that</td>
+</tr>
+<tr>
+<td>It meets a 1 m tall box at</td>
+<td>(1.8 − 1.0) ÷ tan 15° = <strong>3.0 m</strong></td>
+<td>closer, low things are the radar's job</td>
+</tr>
+<tr>
+<td>Rings are 2° apart; at 20 m that's</td>
+<td>20 × tan 2° = <strong>0.7 m</strong> apart</td>
+<td>a small thing far away can slip between rings</td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition warning">
+<p class="admonition-title">Never seen on our car</p>
+<p>The driver has run against <code>tools/fake_vlp16.py</code> and in Gazebo, never with the real
+VLP-16. Where it sits (<code>lidar_link</code>, 0.9 m forward, 1.8 m up) is a guess to measure.</p>
+</div>
+</section>
+<section class="card"><h2 id="3-cubes-voxels">3. Cubes (voxels)</h2>
+<p>A cloud is 28,800 loose dots. Hard to ask "is there something here?" So cut the space
+round the car into <strong>cubes</strong>, 20 cm on a side. A 3D pixel is called a <strong>voxel</strong>.</p>
+<p>Each cube is one of three:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Cube</th>
+<th>Means</th>
+<th>How we know</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Filled</strong></td>
+<td>something is there</td>
+<td>a point landed in it</td>
+</tr>
+<tr>
+<td><strong>Free</strong></td>
+<td>nothing is there</td>
+<td>a laser passed <strong>through</strong> it to a point further on</td>
+</tr>
+<tr>
+<td><strong>Unknown</strong></td>
+<td>we can't tell</td>
+<td>no laser went through it (behind a car, under the lowest ring)</td>
+</tr>
+</tbody>
+</table></div>
+<pre class="highlight"><code class="language-text">  side view, one laser:
+
+  lidar ●  .  .  .  .  .  ■  ?  ?  ?
+           free cubes     filled   unknown (hidden behind it)</code></pre>
+<p><strong>Worked example:</strong> a point at x = 5.13, y = −1.07, z = 0.62 m.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Axis</th>
+<th>Point ÷ 0.2 m</th>
+<th>Round down</th>
+<th>The cube spans</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>x</td>
+<td>25.65</td>
+<td>25</td>
+<td>5.0 to 5.2 m</td>
+</tr>
+<tr>
+<td>y</td>
+<td>−5.35</td>
+<td>−6</td>
+<td>−1.2 to −1.0 m</td>
+</tr>
+<tr>
+<td>z</td>
+<td>3.1</td>
+<td>3</td>
+<td>0.6 to 0.8 m</td>
+</tr>
+</tbody>
+</table></div>
+<p>So cube (25, −6, 3) is <strong>filled</strong>.</p>
+<p><strong>How many cubes?</strong> 20 m × 20 m round the car, 2 m high: 100 × 100 × 10 = <strong>100,000
+cubes</strong>, against 28,800 points a turn. Most cubes are free or unknown. Cubes not seen for
+a while <strong>fade</strong> back to unknown, so a person who walked away doesn't stay.</p>
+<div class="admonition note">
+<p class="admonition-title">Planned, not built</p>
+<p>No code makes cubes yet. The plan (TODO, "Tesla-style cubes on our HUD"): a voxel grid
+in Rust in <code>hud-core</code>, no ROS, its own tests; Gazebo first.</p>
+</div>
+</section>
+<section class="card"><h2 id="4-not-teslas-occupancy-network">4. Not Tesla's "occupancy network"</h2>
+<p>Tesla's car has no lidar. Its <strong>occupancy network</strong> is a learned neural network: it looks
+at eight cameras and <strong>guesses</strong> which cubes are filled.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Tesla</th>
+<th>Ours (planned)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Input</td>
+<td>camera pictures</td>
+<td>lidar points</td>
+</tr>
+<tr>
+<td>How</td>
+<td>a trained neural network</td>
+<td>plain geometry: a point in a cube = filled</td>
+</tr>
+<tr>
+<td>Needs</td>
+<td>millions of training clips</td>
+<td>nothing to train</td>
+</tr>
+<tr>
+<td>Distance</td>
+<td>estimated</td>
+<td>measured, to a few cm</td>
+</tr>
+<tr>
+<td>Sees colour, signs</td>
+<td>yes</td>
+<td>no: that's the cameras' job (section 6)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The picture looks the same: cubes round the car, coloured by height. The way it's made
+is not. So we call ours "cubes" or a "voxel grid", not an occupancy network.</p>
+</section>
+<section class="card"><h2 id="5-from-cubes-to-nav2s-flat-map">5. From cubes to Nav2's flat map</h2>
+<p>Nav2 plans on a <strong>2D costmap</strong>: a grid seen from above, 10 cm cells, each free or
+blocked (<a href="learn-nav2.html">Learn: Nav2</a>). To get there, look <strong>down each column</strong> of cubes.</p>
+<pre class="highlight"><code class="language-text">  roof + margin  2.0 m ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄  above: a branch, a bridge. Ignore
+                       │ ■ │   │   │
+                       │ ■ │   │   │      a filled cube in the band
+                       │ ■ │   │   │      ──► this cell is BLOCKED
+  clearance      0.3 m ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+                       │   │ ■ │   │      below: the road, a kerb. Ignore
+  road           0.0 m ═══════════════════</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>A column's filled cube is</th>
+<th>The cell is</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>between 0.3 m and 2.0 m</td>
+<td><strong>blocked</strong></td>
+<td>a person, a car, a post</td>
+</tr>
+<tr>
+<td>below 0.3 m</td>
+<td>free</td>
+<td>the road, a 15 cm kerb</td>
+</tr>
+<tr>
+<td>above 2.0 m</td>
+<td>free</td>
+<td>a tree branch the car fits under</td>
+</tr>
+</tbody>
+</table></div>
+<p>The band comes from <code>vehicle.yaml</code>: the body is 1.5 m tall, plus a 0.5 m margin
+(<code>aav_description</code> <code>obstacle_heights</code>). Both are guesses until measured.</p>
+<h3 id="what-runs-today-lidar_scan-no-cubes">What runs today: <code>lidar_scan</code>, no cubes</h3>
+<p>Today there are no cubes. <code>lidar_scan</code> (<code>ros/perception/aav_lidar</code>) does the same job a
+simpler way: in each of <strong>720 directions</strong> (every 0.5°), it keeps the <strong>nearest point
+inside the band</strong>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>In</td>
+<td><code>/sensors/lidar/points</code>: 28,800 points, 0.9 MB</td>
+</tr>
+<tr>
+<td>Out</td>
+<td><code>/sensors/lidar/scan</code>: 720 distances, about 3 kB</td>
+</tr>
+<tr>
+<td>Read by</td>
+<td>the local costmap's <code>lidar_layer</code>, and <code>collision_monitor</code>'s stop zone</td>
+</tr>
+</tbody>
+</table></div>
+<p>The local costmap (<code>nav2.yaml</code>) stacks its layers:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>From</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>static_layer</code></td>
+<td>the saved map, if there is one</td>
+</tr>
+<tr>
+<td><code>obstacle_layer</code></td>
+<td>the radar</td>
+</tr>
+<tr>
+<td><code>camera_layer</code></td>
+<td>the cameras (off until they're calibrated)</td>
+</tr>
+<tr>
+<td><code>lidar_layer</code></td>
+<td><strong>the lidar's scan</strong>: out to 12 m, the newest scan only</td>
+</tr>
+<tr>
+<td><code>ghost_layer</code></td>
+<td>the pretend person, for tests (<a href="ghost-obstacles.html">Ghost obstacles</a>)</td>
+</tr>
+<tr>
+<td><code>inflation_layer</code></td>
+<td>grows each blocked cell by 2.0 m, so the car keeps clear</td>
+</tr>
+</tbody>
+</table></div>
+<p>A flat scan loses one thing: a table with an empty space under it looks like a wall.
+That's fine for a car. Nav2's own 3D <code>VoxelLayer</code> is there if 2D ever misses something.</p>
+</section>
+<section class="card"><h2 id="6-cubes-into-objects-with-names">6. Cubes into objects, with names</h2>
+<p>Cubes say <strong>something</strong> is there. Not <strong>what</strong>. Two steps (TODO, 29 Oct; <strong>planned</strong>):</p>
+<p><strong>Step 1: join touching filled cubes into one object.</strong> The radar already does this with
+its points (<code>aav_radar_clusters</code>, DBSCAN).</p>
+<pre class="highlight"><code class="language-text">   ■■         ■            two objects:
+   ■■■        ■            one 0.6 m wide, one 0.2 m wide and 2 m tall
+   ■■         ■</code></pre>
+<p><strong>Step 2: give it a name.</strong> The camera's detector (RF-DETR) draws boxes round things it
+knows: "stop sign", "person", "car" (<code>/perception/detections</code>). If an object's cubes fall
+inside a box, it gets the box's name, and the cubes give its distance.</p>
+<pre class="highlight"><code class="language-text">   camera picture             lidar cubes, drawn on the picture
+   ┌───────────────┐          ┌───────────────┐
+   │   ┌─────┐     │          │   ┌─────┐     │
+   │   │STOP │     │   ──►    │   │ ■■  │     │   "stop sign, 14 m"
+   │   └─────┘     │          │   └─────┘     │
+   └───────────────┘          └───────────────┘</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Needs</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Camera-to-lidar calibration</strong></td>
+<td>to know where each cube lands on the picture. Research pick 4: <code>direct_visual_lidar_calibration</code></td>
+</tr>
+<tr>
+<td>Matching times</td>
+<td>the camera and the lidar must see the same moment</td>
+</tr>
+<tr>
+<td>Gazebo first</td>
+<td>there every pose is exact, so a mistake is in the code, not the calibration</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="7-where-are-we-ndt-on-a-saved-map">7. Where are we? NDT on a saved map</h2>
+<p>GPS is good to 1-3 m. A lidar matched to a <strong>saved map</strong> of the lot is good to centimetres
+(<a href="../designs/2026-10-28_research-picks.md">research picks</a>, pick 2; <strong>planned</strong>).</p>
+<p><strong>NDT</strong> (Normal Distributions Transform) keeps the map as cubes too, but each cube holds a
+<strong>bell curve</strong>: the centre of its points, and how spread out they are.</p>
+<pre class="highlight"><code class="language-text">  a lamp post's cube:  points ∙∙∙∙  ──►  centre (12.0, 3.0), spread 0.1 m
+                                         a scan point near the centre scores high,
+                                         one far off scores nothing</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Scan point's distance from the centre</th>
+<th>Score, e^(−d² ÷ 2σ²), σ = 0.1 m</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.05 m</td>
+<td>0.88</td>
+</tr>
+<tr>
+<td>0.30 m</td>
+<td>0.01</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Slide and turn the scan</strong> until its points score highest. That slide is how far the car
+really is from where it thought.</p>
+<pre class="highlight"><code class="language-text">  /sensors/lidar/points ──► NDT, against the saved map ──► a pose (x, y, yaw)
+                                                          └──► ekf_global, beside GPS</code></pre>
+<p><code>pixi run ndt-demo</code> shows it on a made-up lot: a scan off by 1.4 m and 9° ends within about
+2 cm. Step by step, with pictures: <a href="learn-localization.html#8-next-matching-the-lidar-to-a-map-ndt-and-icp">Learn: localization §8</a>.</p>
+</section>
+<section class="card"><h2 id="8-making-the-map-kiss-icp">8. Making the map: KISS-ICP</h2>
+<p>NDT needs a map first. <strong>KISS-ICP</strong> makes one (planned):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Record</td>
+<td>drive the lot slowly; record the lidar and the IMU (<code>tools/record.sh</code>)</td>
+</tr>
+<tr>
+<td>2. Map</td>
+<td>run KISS-ICP on the recording: it chains scan to scan by ICP, and keeps the points</td>
+</tr>
+<tr>
+<td>3. Save</td>
+<td>the point map of the lot</td>
+</tr>
+<tr>
+<td>4. Use</td>
+<td>NDT matches each new scan against it (section 7)</td>
+</tr>
+</tbody>
+</table></div>
+<p>KISS-ICP's own scan-to-scan motion could also help <code>ekf_local</code> at low speed, where the
+wheels' clicks come slowly (<a href="learn-speed.html">Learn: speed</a>).</p>
+<p><strong>The catch:</strong> a bare lot gives the lidar little to match. Kerbs, posts and walls help.</p>
+</section>
+<section class="card"><h2 id="9-a-trial-alternative-amcl-on-a-2d-map">9. A trial alternative: AMCL on a 2D map</h2>
+<p><strong>AMCL</strong> (Adaptive Monte Carlo Localization) is Nav2's stock way to find a robot on a 2D
+map. It scatters hundreds of guesses ("particles") and keeps the ones whose view matches
+the lidar's 2D scan.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>NDT (planned)</th>
+<th>AMCL (a trial design)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Map</td>
+<td>3D points</td>
+<td>2D grid, seen from above</td>
+</tr>
+<tr>
+<td>Reads</td>
+<td>the full cloud</td>
+<td><code>/sensors/lidar/scan</code></td>
+</tr>
+<tr>
+<td>Software</td>
+<td>not chosen: look at stock NDT localizers first</td>
+<td>stock <code>nav2_amcl</code></td>
+</tr>
+<tr>
+<td>First test</td>
+<td>a recording of the real lot</td>
+<td>Gazebo's <code>test_lot</code> world</td>
+</tr>
+</tbody>
+</table></div>
+<p>The trials design (<code>docs/designs/2026-10-29_trials.md</code>, on branch <code>trials</code>, Tentative) runs
+AMCL <strong>beside</strong> <code>ekf_global</code>: its pose goes out on <code>/localization/amcl/pose</code>, it never
+takes over <code>map → odom</code>, and it's scored against the EKF on the same drives. Not built yet.</p>
+</section>
+<section class="card"><h2 id="10-seeing-it-all-the-debug-hud">10. Seeing it all: the debug HUD</h2>
+<p>The debug HUD (TODO, 29 Oct; <strong>planned</strong>) puts what the car thinks on one screen:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>It draws</th>
+<th>From</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the cubes, coloured by height</td>
+<td>the voxel grid (section 3)</td>
+</tr>
+<tr>
+<td>the cubes on the camera picture</td>
+<td>the calibration (section 6)</td>
+</tr>
+<tr>
+<td>"stop sign, 14 m"</td>
+<td>RF-DETR boxes + cubes</td>
+</tr>
+<tr>
+<td>where the scan sits on the saved map</td>
+<td>NDT (section 7)</td>
+</tr>
+</tbody>
+</table></div>
+<p>It reads each sensor's own topic, not what comes out of the muxes, so a fault shows where
+it starts. Built on the raylib HUD (<code>ros/hud/aav_hud</code>).</p>
+</section>
+<section class="card"><h2 id="11-today-planned-idea">11. Today, planned, idea</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>State</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VLP-16 → <code>/sensors/lidar/points</code></td>
+<td>✅ built; Gazebo and a fake lidar; never the real one</td>
+<td><code>aav_sensors</code> <code>sensors.launch.py</code></td>
+</tr>
+<tr>
+<td>Points → 2D scan → costmap and <code>collision_monitor</code></td>
+<td>✅ built; Gazebo</td>
+<td><code>aav_lidar</code> <code>lidar_scan</code>, <code>nav2.yaml</code></td>
+</tr>
+<tr>
+<td>Cubes from the lidar</td>
+<td>planned (TODO: cubes on the HUD)</td>
+<td><code>hud-core</code>, Rust</td>
+</tr>
+<tr>
+<td>Cubes drawn on the camera picture</td>
+<td>planned; on the car, needs calibration</td>
+<td><code>picture.rs</code>, research pick 4</td>
+</tr>
+<tr>
+<td>Cubes into named objects</td>
+<td>planned (TODO 29 Oct)</td>
+<td></td>
+</tr>
+<tr>
+<td>A map of the lot with KISS-ICP</td>
+<td>planned (research pick 2)</td>
+<td>needs a recording of the lot</td>
+</tr>
+<tr>
+<td>NDT pose into <code>ekf_global</code></td>
+<td>planned (research pick 2)</td>
+<td></td>
+</tr>
+<tr>
+<td>AMCL beside the EKF</td>
+<td>a trial design, Tentative</td>
+<td>branch <code>trials</code></td>
+</tr>
+<tr>
+<td>The debug HUD</td>
+<td>planned (TODO 29 Oct)</td>
+<td></td>
+</tr>
+<tr>
+<td>Nav2's 3D <code>VoxelLayer</code></td>
+<td>an idea: only if 2D misses something</td>
+<td></td>
+</tr>
+<tr>
+<td>A small model that names cubes from the camera crop</td>
+<td>an idea</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="where-this-lives-in-the-code">Where this lives in the code</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The lidar's topics</td>
+<td><code>docs/interfaces.yaml</code>: <code>/sensors/lidar/points</code>, <code>/sensors/lidar/scan</code></td>
+</tr>
+<tr>
+<td>The driver</td>
+<td><code>ros/sources/aav_sensors/launch/sensors.launch.py</code> (<code>lidar:=true</code>)</td>
+</tr>
+<tr>
+<td>Points into a scan</td>
+<td><code>ros/perception/aav_lidar</code> (<code>scan.py</code>: the sums, no ROS)</td>
+</tr>
+<tr>
+<td>The lowest rings and body roll</td>
+<td><code>aav_lidar</code> <code>ground.py</code></td>
+</tr>
+<tr>
+<td>The costmap's layers</td>
+<td><code>ros/drivers/aav_navigation/config/nav2.yaml</code></td>
+</tr>
+<tr>
+<td>Where the lidar sits; the height band</td>
+<td><code>vehicle.yaml</code> <code>lidar_link</code>; <code>aav_description</code> <code>vehicle.py</code></td>
+</tr>
+<tr>
+<td>Joining radar points</td>
+<td><code>ros/perception/aav_radar_clusters</code></td>
+</tr>
+<tr>
+<td>NDT and ICP, drawn</td>
+<td><code>tools/ndt_demo.py</code> (<code>pixi run ndt-demo</code>)</td>
+</tr>
+<tr>
+<td>The roof lidar end to end</td>
+<td><a href="perception.html#the-roof-lidar">Perception</a></td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="learn-speed.html"><small>Previous</small>← Learn: speed</a>
+<a class="next" href="learn-control.html"><small>Next</small>Learn: control →</a></nav>
+</main>
+<footer>Source: <code>docs/learn-lidar.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

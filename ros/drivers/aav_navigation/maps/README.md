@@ -8,7 +8,21 @@ costmap's static layer reads `/map`.
 |---|---|
 | `empty.yaml` + `empty.pgm` | Phase 2: 200 m x 200 m, all free, 0.25 m cells, centred on the datum. Nav2 plans straight to a goal within the car's turning limits. |
 | `example_lot.yaml` + `.pgm` | Phase 3 example, made up: an 80 m x 60 m lot with a wall, a building, a row of parked cars and an entrance gap. Shows how a pre-rendered costmap is drawn. |
+| `example_lot_amcl.yaml` + `.pgm` | The same lot for AMCL only (`amcl:=true`): 0.05 m cells, each obstacle only its outline. Made from the spec's `amcl:` section. |
 | `*.spec.yaml` | The short specs `tools/make_map.py` builds the maps from. Edit these, not the PGMs. |
+
+### Why AMCL has a map of its own
+
+AMCL scores each lidar beam by how far its end is from the nearest blocked cell's centre.
+
+| On Nav2's map (0.25 m, solid) | On AMCL's map (0.05 m, outlines) |
+|---|---|
+| a beam on a wall's face lands in the free cell before it: "0.25 m off" | lands within 0.05 m |
+| pushing beams into the solid building scores *better* than the truth | the inside is unknown: no reward for going in |
+| best score 0.3 m from the truth (mean), 0.7 m worst | ~0.07 m mean |
+
+Nav2's planner and costmaps keep the solid map: the inside of a building is not a road.
+A SLAM map of the real lot is already outlines.
 
 Rebuild after editing a spec:
 

@@ -37,8 +37,9 @@ def context_for(launch_file, **args):
     """Return a launch context with the file's defaults, and these arguments on top."""
     context = LaunchContext()
     for declared in launch_file.generate_launch_description().get_launch_arguments():
-        context.launch_configurations[declared.name] = perform_substitutions(
-            context, declared.default_value)
+        if declared.default_value is not None:     # a required argument has none
+            context.launch_configurations[declared.name] = perform_substitutions(
+                context, declared.default_value)
     context.launch_configurations.update(args)
     return context
 
@@ -96,7 +97,7 @@ def test_the_defaults_start_what_pixi_run_sim_always_has():
     assert set(sent) == {'gazebo.launch.py', 'mux.launch.py', 'ego.launch.py',
                          'io_mux.launch.py', 'scripted.launch.py', 'drive_to_point.launch.py',
                          'localization.launch.py', 'navigation.launch.py',
-                         'watchdog.launch.py'}
+                         'watchdog.launch.py', 'geofence.launch.py'}
     assert sent['gazebo.launch.py']['world'] == 'empty'
     # ego's commands reach Gazebo through the output mux, only while everything is SIM.
     assert sent['io_mux.launch.py'] == {'target': 'gazebo', 'source': 'sim'}
@@ -171,11 +172,40 @@ MUX = load('aav_command_mux', 'mux.launch.py')
 
 def mux_files(**args):
     """Return the parameter files mux.launch.py gives twist_mux, in order."""
-    context = context_for(MUX, **args)
+    context = context_for(MUX, **{'geofence_lock': 'true', **args})
     node = MUX.mux(context)[0]
     return [os.path.basename(str(p))
             for p in evaluate_parameters(context, node._Node__parameters)
             if not isinstance(p, dict)]
+
+
+def test_the_geofence_runs_with_its_lock_and_a_sim_sized_circle():
+    sent = included(started(SIM))
+    assert sent['geofence.launch.py'] == {'backend': 'gazebo', 'radius': '200.0',
+                                          'centre_x': '0.0', 'centre_y': '0.0',
+                                          'max_speed': '', 'use_sim_time': 'true'}
+    assert included(started(SIM, spine='true'))['geofence.launch.py']['backend'] == 'spine'
+    assert included(started(SIM, esp32='true'))['geofence.launch.py']['backend'] == \
+        'gazebo_esp32'
+    # Its circle round where the car starts, and ego's own cap.
+    sent = included(started(SIM, start_y='0.3', sim_speed='3'))
+    assert (sent['geofence.launch.py']['centre_y'], sent['geofence.launch.py']['max_speed']) \
+        == ('0.3', '3')
+    assert sent['mux.launch.py']['geofence_lock'] == 'true'
+    sent = included(started(SIM, geofence_radius='12'))
+    assert sent['geofence.launch.py']['radius'] == '12'
+    # Without the geofence, nothing would ever open its fail-safe lock: no program could drive.
+    sent = included(started(SIM, geofence='false'))
+    assert 'geofence.launch.py' not in sent
+    assert sent['mux.launch.py']['geofence_lock'] == 'false'
+
+
+def test_the_mux_geofence_lock_file():
+    assert mux_files(geofence_lock='false') == ['twist_mux.yaml', 'no_geofence_lock.yaml']
+    assert mux_files(sensor_lock='false', geofence_lock='false') == [
+        'twist_mux.yaml', 'no_sensor_lock.yaml', 'no_geofence_lock.yaml']
+    with pytest.raises(ValueError, match='geofence_lock'):
+        MUX.mux(context_for(MUX, geofence_lock='maybe'))
 
 
 def test_the_mux_lock_is_fail_safe_unless_told_no_watchdog_runs():
@@ -184,7 +214,7 @@ def test_the_mux_lock_is_fail_safe_unless_told_no_watchdog_runs():
     # After it, under the same node name, so it wins: a dict (/**) would lose to it.
     assert mux_files(sensor_lock='false') == ['twist_mux.yaml', 'no_sensor_lock.yaml']
     with pytest.raises(ValueError, match='sensor_lock'):
-        MUX.mux(context_for(MUX, sensor_lock='maybe'))
+        MUX.mux(context_for(MUX, sensor_lock='maybe', geofence_lock='true'))
 
 
 def test_the_road_worlds_full_graph():
@@ -298,3 +328,21 @@ def test_the_spine_in_the_loop_runs_the_rust_bridge_unless_asked():
     assert sent['bridge'] == 'python'
     with pytest.raises(ValueError, match='bridge:=cpp'):
         bridge(bridge='cpp')
+
+
+def test_ndt_needs_the_test_lot_the_lidar_and_its_map(tmp_path):
+    # A trial, scored only (docs/designs/2026-10-29_ndt.md): off by default.
+    assert 'ndt.launch.py' not in included(started(SIM, world='test_lot'))
+    map_file = tmp_path / 'test_lot.pcd'
+    with pytest.raises(ValueError, match='world:=test_lot'):
+        started(SIM, ndt='true', ndt_map=str(map_file))         # the empty world
+    with pytest.raises(ValueError, match='lidar:=true'):
+        started(SIM, world='test_lot', lidar='false', ndt='true', ndt_map=str(map_file))
+    with pytest.raises(ValueError, match='pixi run ndt-map drive'):
+        started(SIM, world='test_lot', ndt='true', ndt_map=str(map_file))
+    map_file.write_bytes(b'')
+    sent = included(started(SIM, world='test_lot', ndt='true', ndt_map=str(map_file),
+                            start_y='4.0', start_yaw='1.0'))['ndt.launch.py']
+    # The start pose is the car's, as AMCL's; on simulated time.
+    assert sent == {'use_sim_time': 'true', 'ndt_map': str(map_file), 'ndt_x': '0.0',
+                    'ndt_y': '4.0', 'ndt_yaw': '1.0'}

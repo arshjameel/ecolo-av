@@ -9,6 +9,9 @@ Subscribes  control/gazebo/actuator_cmd  ackermann_msgs/AckermannDriveStamped: e
                                   command, from the output mux (aav_io_mux; not with spine)
             vehicle/gazebo/spine_outputs  aav_interfaces/SpineOutputs, only with spine:
                                   spine_sim's throttle, brake, gear and steering target
+            vehicle/gazebo/esp32_outputs  aav_interfaces/SpineOutputs, only with esp32: the
+                                  same from gazebo_esp32, today's C++ ESP32 standing in
+                                  behind the real legacy_uart_bridge
             gazebo/odom           nav_msgs/Odometry   (bridged from the Ackermann system)
             joint_states          sensor_msgs/JointState (bridged: the wheels' spin)
 Publishes   gazebo/cmd_vel        geometry_msgs/Twist (bridged to /model/aav/cmd_vel), at
@@ -49,7 +52,7 @@ car's /vehicle/* from the spine's CAN frames. Exactly one backend still takes eg
 commands: spine_bridge. If spine_sim goes quiet for cmd_timeout s, the car brakes fully.
 
 Parameters  actuator_model (true), speed_loop (default: the actuator model's speed loop
-            profile, 'default' or 'smooth', TODO 27), spine (false), rate_hz (50),
+            profile, 'default', 'smooth' or 'lqi': TODO 27, 3), spine (false), rate_hz (50),
             cmd_timeout (0.2 s), wheelbase,
             wheel_radius, rendered (the world renders cameras), radar, lidar (what
             /system/source announces), fault.odom (ok), speed_variance
@@ -115,9 +118,15 @@ class GazeboAdapter(Node):
         car = vehicle.load()
         config = ActuatorConfig.from_vehicle(car)
         self.spine = self.declare_parameter('spine', False).value
+        self.esp32 = self.declare_parameter('esp32', False).value
+        if self.spine and self.esp32:
+            raise ValueError('spine and esp32 are two backends: pick one')
+        # Driven by a firmware's outputs (spine_sim's or gazebo_esp32's), not ego's speed.
+        self.outputs = self.spine or self.esp32
         modelled = self.declare_parameter('actuator_model', True).value
-        if self.spine and not modelled:
-            raise ValueError('spine:=true drives the actuator model: actuator_model must be true')
+        if self.outputs and not modelled:
+            raise ValueError('spine:=true and esp32:=true drive the actuator model: '
+                             'actuator_model must be true')
         profile = self.declare_parameter('speed_loop', 'default').value
         if modelled:
             self.model = Actuators(config, speed_loop_profile(profile))
@@ -147,8 +156,16 @@ class GazeboAdapter(Node):
             self.throttle_pub = self.create_publisher(ActuatorState, 'vehicle/throttle', 10)
             self.brake_pub = self.create_publisher(ActuatorState, 'vehicle/brake', 10)
             self.wheels_pub = self.create_publisher(WheelSpeeds, 'vehicle/wheels', 10)
-            self.create_subscription(AckermannDriveStamped, 'control/gazebo/actuator_cmd',
-                                     self.on_cmd, 10)
+            if self.esp32:
+                # The car's own /vehicle/* stay here: on today's car they come from the
+                # wheel sensors, not the ESP32.
+                self.create_subscription(SpineOutputs, 'vehicle/gazebo/esp32_outputs',
+                                         self.on_cmd, 10)
+                self.get_logger().info("today's ESP32 in the loop: gazebo_esp32 drives the "
+                                       'actuator model')
+            else:
+                self.create_subscription(AckermannDriveStamped, 'control/gazebo/actuator_cmd',
+                                         self.on_cmd, 10)
         self.create_subscription(Odometry, 'gazebo/odom', self.on_odom, 10)
         self.create_subscription(JointState, 'joint_states', self.on_joints, 10)
         self.create_timer(1.0 / rate, self.tick)
@@ -203,8 +220,8 @@ class GazeboAdapter(Node):
         self.source_pub.publish(msg)
 
     def on_cmd(self, msg):
-        """Ego's AckermannDriveStamped, or (spine) spine_sim's SpineOutputs."""
-        self.cmd = msg if self.spine else msg.drive
+        """Ego's AckermannDriveStamped, or a firmware's SpineOutputs (spine, esp32)."""
+        self.cmd = msg if self.outputs else msg.drive
         self.cmd_time = self.get_clock().now()
 
     def tick(self):
@@ -219,8 +236,8 @@ class GazeboAdapter(Node):
         dt = min(dt, 0.1)                # a stall: don't jump
         fresh = (self.cmd is not None
                  and (now - self.cmd_time).nanoseconds * 1e-9 <= self.cmd_timeout)
-        if self.spine:
-            # The spine's own speed loop decided these: straight to the actuators.
+        if self.outputs:
+            # The firmware decided these: straight to the actuators.
             demand = (Demand(throttle=self.cmd.throttle, brake=self.cmd.brake,
                              reverse=self.cmd.reverse) if fresh else SILENT_SPINE)
             steer = self.cmd.steering if self.cmd is not None else 0.0

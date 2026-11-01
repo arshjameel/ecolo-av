@@ -7,6 +7,7 @@ and frame, so nothing downstream changes.
   mock_imu      /vehicle/bench/truth -> /sensors/imu/data_raw (Imu),
                 /sensors/imu/mag (MagneticField)                                imu_link
   mock_gps      /vehicle/bench/truth -> /sensors/gps/fix (NavSatFix), 5 Hz       gps_link
+                with a receiver's error: a slow drift and a little jitter (GpsError)
   mock_battery  /vehicle/battery (BatteryState), 1 Hz
   mock_camera   /vehicle/bench/truth -> /sensors/camera/front_left/image_raw (Image),
                 /sensors/camera/front_left/camera_info,
@@ -111,14 +112,19 @@ class MockGps(Node):
         super().__init__('mock_gps')
         self.frame = self.declare_parameter('frame_id', 'gps_link').value
         self.datum = self.declare_parameter('datum', [45.3860, -75.6960, 0.0]).value
-        self.sd = self.declare_parameter('stddev', 0.5).value
+        drift = self.declare_parameter('drift_stddev', 0.5).value
+        drift_time = self.declare_parameter('drift_time', 60.0).value
+        jitter = self.declare_parameter('jitter_stddev', 0.05).value
         rate = self.declare_parameter('rate_hz', 5.0).value
-        self.rng = random.Random(self.declare_parameter('seed', 2).value)
+        self.dt = 1.0 / rate
+        rng = random.Random(self.declare_parameter('seed', 2).value)
+        self.error = models.GpsError(drift, drift_time, jitter, rng)
+        self.sd = self.error.stddev
         self.antenna = vehicle.load()['sensors']['gps_link']['xyz']
         self.pub = self.create_publisher(NavSatFix, '/sensors/gps/fix', 10)
         self.truth = None
         self.create_subscription(Odometry, TRUTH, self.on_truth, 10)
-        self.create_timer(1.0 / rate, self.tick)
+        self.create_timer(self.dt, self.tick)
 
     def on_truth(self, msg: Odometry):
         self.truth = (truth_from(msg), msg.header.stamp)
@@ -128,7 +134,8 @@ class MockGps(Node):
             return
         truth, stamp = self.truth
         x, y = models.offset(truth, self.antenna)
-        x, y = x + self.rng.gauss(0.0, self.sd), y + self.rng.gauss(0.0, self.sd)
+        east, north = self.error.step(self.dt)
+        x, y = x + east, y + north
         fix = NavSatFix()
         fix.header.stamp = stamp
         fix.header.frame_id = self.frame

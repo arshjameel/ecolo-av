@@ -207,6 +207,16 @@ impl TestRequest {
             TestRequest::Exit | TestRequest::Enter | TestRequest::Hold => TestStage::Armed,
         }
     }
+
+    /// Whether the spine carries this request out at this [`Confidence`]. A throttle test
+    /// needs a wheel speed: without one, the "faster than [`TEST_MAX_SPEED`]" exit can't
+    /// fire. A refused request holds still, like [`TestRequest::Hold`].
+    pub fn allowed(self, confidence: Confidence) -> bool {
+        match self {
+            TestRequest::Throttle(_) => confidence.measures_speed(),
+            _ => true,
+        }
+    }
 }
 
 /// The most throttle a test command may ask for (0..1): the wheels are off the ground.
@@ -251,6 +261,14 @@ pub enum Confidence {
     /// No wheel speed: open loop, throttle from the speed asked for, no overspeed check.
     /// Set by the configuration today (`SpeedFeedback::None`), not yet by a lost sensor.
     Degraded,
+}
+
+impl Confidence {
+    /// The spine sees the car's speed: the overspeed check and the test mode's speed
+    /// exit work.
+    pub fn measures_speed(self) -> bool {
+        matches!(self, Confidence::Full)
+    }
 }
 
 /// All five regions, as the spine left them after the latest tick.
@@ -337,6 +355,19 @@ mod tests {
         assert_eq!(TestRequest::Throttle(0.1).stage(), TestStage::Active);
         assert_eq!(TestRequest::Hold.stage(), TestStage::Armed);
         assert_eq!(TestRequest::Enter.stage(), TestStage::Armed);
+    }
+
+    #[test]
+    fn a_throttle_test_needs_a_wheel_speed() {
+        assert!(TestRequest::Throttle(0.1).allowed(Confidence::Full));
+        assert!(!TestRequest::Throttle(0.1).allowed(Confidence::Degraded));
+        for req in [
+            TestRequest::Steering(0.1),
+            TestRequest::Brake(0.5),
+            TestRequest::Hold,
+        ] {
+            assert!(req.allowed(Confidence::Degraded), "{req:?}");
+        }
     }
 
     #[test]

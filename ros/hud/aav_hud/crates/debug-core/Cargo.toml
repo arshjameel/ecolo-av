@@ -1,0 +1,20 @@
+[package]
+name = "debug-core"
+description = "The debug HUD's logic, with no ROS and no raylib: the lidar's cubes, frames, poses at a stamp, the camera"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# Shared with the HUD: OK / STALE / NEVER, /system/source's banner, VehicleStatus.
+hud-core = { path = "../hud-core" }
+# Shared with the map window: Pose, Point, Quaternion, the car's outline.
+map-core = { path = "../map-core" }
+# The PointCloud2 reader (x, y, z by name, endianness, steps): aav_radar_clusters' own,
+# with its tests. No ROS, no dependencies of its own.
+radar-clustering = { path = "../../../../perception/aav_radar_clusters/crates/radar-clustering" }
+# NDT's map file (key M): aav_ndt's own PCD reader, with its tests. Brings nalgebra.
+ndt-core = { path = "../../../../localization/aav_ndt/crates/ndt-core" }
+serde = { version = "1", features = ["derive"] }
+serde_yaml_ng = "0.10"
+thiserror = "2"

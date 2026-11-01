@@ -34,7 +34,7 @@ OUT = DOCS / 'html'
 STYLE = DOCS / 'style.css'
 WPM = 150          # an unhurried reading speed, so the times are a promise
 READ_FIRST = 20    # PAGES[:20] are the reading list
-LEARN_END = 31     # PAGES[20:31] are the learn pages; the rest are reference
+LEARN_END = 35     # PAGES[20:35] are the learn pages; the rest are reference
 
 # (file in docs/, menu title, what it's for). A name in ROOT_PAGES is a page kept at the
 # repository's root instead, built the same way (none since 25 Oct: every page is in docs/).
@@ -66,8 +66,13 @@ PAGES = [
     ('glossary.md', 'Glossary', 'Every acronym and term, in plain words'),
     ('learn-sensors.md', 'Learn: sensors', 'Every sensor: what, how often, topic, driver'),
     ('learn-gps.md', 'Learn: GPS', 'GNSS, RTK, NavSatFix, the datum, navsat_transform'),
-    ('learn-localization.md', 'Learn: localization', 'Odometry, Kalman, frames, TF, our two EKFs'),
+    ('learn-localization.md', 'Learn: localization',
+     'Odometry, Kalman, frames, TF, our two EKFs, NDT and ICP'),
+    ('learn-speed.md', 'Learn: speed', 'How fast are we going? Wheels, IMU, GPS, lidar, the EKF'),
+    ('learn-lidar.md', 'Learn: lidar', 'Points, cubes, the costmap, named objects, NDT, AMCL'),
     ('learn-control.md', 'Learn: control', 'Feedback loops, PID, Ackermann, limits, timeouts'),
+    ('controllers.md', 'Controllers',
+     'Every controller, side by side: which one, where it runs, and why'),
     ('maps-and-position.md', 'Maps and position',
      'From the wheels to OpenStreetMap: frames, the datum, costmaps'),
     ('learn-nav2.md', 'Learn: Nav2', 'Planner, controller, behaviour tree, collision_monitor'),
@@ -75,7 +80,9 @@ PAGES = [
     ('status.md', 'Status', "What works, what's untested, what's missing"),
     ('howto-driver.md', 'Build a driver', 'A new driver, from an empty folder to the turtle'),
     ('costmaps.md', 'Costmaps', 'How Nav2 sees obstacles; draw your first map'),
-    ('controllers.md', 'Path followers', 'Regulated Pure Pursuit and MPPI, side by side'),
+    ('path-followers.md', 'Path followers', 'Regulated Pure Pursuit and MPPI, side by side'),
+    ('switches.md', 'Switches', 'Every part you can swap, and pixi run pick'),
+    ('trials.md', 'Trials', 'New path followers and AMCL, beside the main ones'),
     ('a-to-b.md', 'A to B', 'Drive from A to B and stop: three ways, and the point driver'),
     ('routes.md', 'Street routes', 'A destination to GPS waypoints along real streets (Valhalla)'),
     ('perception.md', 'Perception', 'Cameras, YOLO, stop signs, lanes and radar'),
@@ -106,6 +113,7 @@ PAGES = [
     ('vehicle-model.md', 'The car as a linear model',
      'Transfer functions, state space, poles and margins (SYSC 3600)'),
     ('ghost-obstacles.md', 'Ghost obstacles', 'A pretend person only Nav2 sees: test stopping'),
+    ('geofence.md', 'The geofence', "An area the computer's drivers may not leave, without Nav2"),
     ('sources-and-targets.md', 'Sources and targets',
      'The sensor mux and the output mux: simulated data never drives the car'),
     ('mcp.md', 'AI apps (MCP)', 'Claude and other AI apps: read the project and the graph'),

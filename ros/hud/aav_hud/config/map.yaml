@@ -12,6 +12,8 @@ map:
     street_route_topic: /drivers/nav/route/path   # nav_msgs/msg/Path, map frame, latched: street_router's street route (aav_routes), violet under the plan
     stale_after: 1.0                          # s: the car's position this old shows STALE
     plan_stale_after: 3.0                     # s: Nav2 replans every 1 s while it drives; older = it stopped
+    final_approach: 8.0                       # m from the plan's end: Nav2 keeps its path here, not replanning (TODO 17; its trees' ArePosesNear)
+    plan_kept_for: 25.0                       # s: so there a plan this old is still fine (the trees plan again after 20 s)
     arrive_within: 1.0                        # m: the car this close to the goal = ARRIVED (Nav2's own is 0.5)
     # The street map under Nav2's map (pixi run get-street-map). A path relative to the
     # folder the window starts in (pixi starts it in the repo); missing = no streets.

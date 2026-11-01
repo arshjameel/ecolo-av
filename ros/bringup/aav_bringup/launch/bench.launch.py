@@ -5,7 +5,7 @@ Bench mode: the real car's software on one computer, with stand-ins for the hard
       [perception:=false] [lane:=false|true|fake] [hud:=false] [arm:=true] [foxglove:=false]
       [start_y:=0.0] [start_yaw:=0.0] [bend_radius:=] [obstacle:=false]
       [camera_obstacles:=false] [reversing:=true] [lidar:=false] [plan_around:=true]
-      [bridge:=rust|python] [speed_loop:=default|smooth]
+      [bridge:=rust|python] [speed_loop:=default|smooth|lqi] [geofence_radius:=100.0]
   pixi run bench                            (the same)
   pixi run bench bridge:=python             (aav_spine's Python spine_bridge, not the Rust one)
   pixi run -e ml bench perception:=true     (adds YOLO and the stop-sign watcher)
@@ -45,6 +45,11 @@ arm:=true arms the spine after 12 s, once Nav2 is up, the way `ros2 service call
 each second until the output mux says OPEN, since spine_bridge refuses to arm while the
 safety gate is shut (Ben, 24 Oct). Arming earlier, while everything starts, risks a gap
 in commands that latches the spine again: its 200 ms watchdog doing its job.
+
+The geofence (aav_safety) runs as on the car, always: a circle of geofence_radius m round
+the start spot (0, start_y) (100 m here, past every bench drive; the car's is 30 m), with
+the spine's stopping numbers. twist_mux's geofence lock needs its heartbeat.
+bench-check --geofence uses 12 m.
 """
 
 import os
@@ -88,7 +93,7 @@ def launch_setup(context):
     actions = [
         # The car's own software, as car.launch.py starts it.
         include('aav_description', 'description.launch.py'),
-        include('aav_command_mux', 'mux.launch.py'),
+        include('aav_command_mux', 'mux.launch.py', geofence_lock='true'),
         include('aav_ego', 'ego.launch.py'),
         # ego's commands go to spine_bridge (source bench) only while everything is BENCH.
         include('aav_io_mux', 'io_mux.launch.py', target='bench', source='bench'),
@@ -147,6 +152,11 @@ def launch_setup(context):
     # the mux's sensors lock needs its heartbeat (aav_command_mux mux.launch.py sensor_lock).
     actions.append(include('aav_safety', 'watchdog.launch.py',
                            inputs='odom,imu,gps,local,global,radar'))
+    # The geofence holds every program near its edge, as on the car, always: the mux's
+    # geofence lock needs its heartbeat (mux.launch.py geofence_lock).
+    actions.append(include('aav_safety', 'geofence.launch.py', backend='spine',
+                           radius=LaunchConfiguration('geofence_radius').perform(context),
+                           centre_x=0.0, centre_y=start['start_y'], max_speed=''))
     if flag['teleop']:
         actions.append(include('aav_teleop', 'teleop.launch.py'))
     if flag['perception']:
@@ -234,6 +244,9 @@ def generate_launch_description():
                                           '(aav_spine)'),
         DeclareLaunchArgument('speed_loop', default_value='default',
                               description="spine_sim's speed loop profile: default (today's "
-                                          'gains) or smooth (TODO 27, docs/vehicle-model.md)'),
+                                          'gains), smooth (TODO 27) or lqi (TODO 3)'),
+        DeclareLaunchArgument('geofence_radius', default_value='100.0',
+                              description='m: the geofence, a circle round where the car '
+                                          'first stands still (the car: 30)'),
         OpaqueFunction(function=launch_setup),
     ])

@@ -10,6 +10,85 @@ Every number there today is a guess.
 > - **Forward = +x. Left = +y. Up = +z.** Right of the centre line is a **minus** number.
 > - **Write centimetres** (to the nearest 1 cm), and **degrees** for angles. We convert them.
 > - Two people, a tape measure, chalk or masking tape, a plumb line (a string with a weight), a phone with a level app.
+> - **Follow [the measuring map](#the-measuring-map)**: 16 steps round the car, each from a mark you already have.
+
+## The measuring map
+
+Ben's idea (29 Oct): start at the zero point, then measure **each new spot from one you
+already have**. Out to the left rear tyre, forward to the front tyre, up to the roof,
+then along the roof to each sensor. Nobody measures the roof from the floor.
+
+The pictures show **today's guesses** from `vehicle.yaml` (marked GUESS). The orange
+circles are the steps, in order. The blue dots are the sensors.
+
+![From above](img/measure-map-top.png)
+
+![From the left side](img/measure-map-side.png)
+
+![From behind](img/measure-map-rear.png)
+
+### How to use it
+
+| # | Do |
+|---|---|
+| 1 | Mark the zero point first: [section 1](#1-the-zero-point) |
+| 2 | Walk the steps below **in order**. Each starts at its "From" mark |
+| 3 | For a 3-number step, measure **forward, left, up** from the "From" mark. Back, right or down: write a minus |
+| 4 | Write each reading in the "Measured" box of its **Sheet** row (sections 3 and 5) |
+| 5 | Feet and inches are fine (`5 ft 2 in`, `5' 2"`), and so are cm. Say which |
+
+### The route
+
+The steps, with today's guesses (the script writes this table: don't edit it by hand).
+
+<!-- measure-map:start (pixi run measure-map writes this table) -->
+
+| Step | From | To | Tape: direction and today's guess | Hint | Sheet | Gives (vehicle.yaml) | Today |
+|---|---|---|---|---|---|---|---|
+| 1 | X | rear-left wheel | left 0.39 m | along the rear axle line; the yaml takes 2 x this | M2 | `vehicle.track` | 0.77 GUESS |
+| 2 | rear-left wheel | rear-left tyre top | up 0.30 m | the car's weight on the tyre | M3 | `vehicle.wheel_diameter` | 0.30 GUESS |
+| 3 | rear-left wheel | rear-left wheel (tread) | across: 0.10 m | across the tread: a size, not a move | M3b | `vehicle.wheel_width` | 0.10 GUESS |
+| 4 | rear-left wheel | left side | left 0.11 m | tyre centre out to the body; the yaml takes 2 x (track/2 + this) | M4c | `vehicle.body.width` | 1.00 GUESS |
+| 5 | rear-left wheel | front-left wheel | forward 1.57 m | hub to hub, same side | M1 | `vehicle.wheelbase` | 1.57 GUESS |
+| 6 | front-left wheel | front-right wheel | right 0.77 m | the front track: a check on step 1, should be 2 x step 1 | M2b | `check: vehicle.track` | 0.77 GUESS |
+| 7 | X | rear bumper | back 0.20 m | along the x line, backwards | M4b | `vehicle.body.rear_overhang` | 0.20 GUESS |
+| 8 | rear bumper | rear camera | forward 0.00, left 0.00, up 0.90 m | plumb line from the lens | S6 | `sensors.camera_rear_link.xyz` | [-0.20, 0.00, 0.90] GUESS |
+| 9 | rear bumper | front bumper | forward 2.00 m | bumper to bumper | M4 | `vehicle.body.length` | 2.00 GUESS |
+| 10 | front bumper | radar | forward 0.00, left 0.00, up 0.45 m | plumb line from the radar face | S3 | `sensors.radar_link.xyz` | [1.80, 0.00, 0.45] GUESS |
+| 11 | X | IMU | forward 0.50, left 0.00, up 0.40 m | plumb line from the board | S2 | `sensors.imu_link.xyz` | [0.50, 0.00, 0.40] GUESS |
+| 12 | X | roof | up 1.50 m | the roof is flat? if not, also note its highest point | M4d | `vehicle.body.height` | 1.50 GUESS |
+| 13 | roof | GPS | forward 0.00, left 0.00, up 0.00 m | on the roof, from the roof mark | S1 | `sensors.gps_link.xyz` | [0.00, 0.00, 1.50] GUESS |
+| 14 | roof | lidar | forward 0.90, left 0.00, up 0.30 m | on the roof, from the roof mark | S7 | `sensors.lidar_link.xyz` | [0.90, 0.00, 1.80] GUESS |
+| 15 | roof | left camera | forward 1.75, left 0.29, up 0.05 m | on the roof, from the roof mark | S4 | `sensors.camera_left_link.xyz` | [1.75, 0.29, 1.55] GUESS |
+| 16 | left camera | right camera | forward 0.00, right 0.58, up 0.00 m | lens to lens (about the stereo baseline) | S5 | `sensors.camera_right_link.xyz` | [1.75, -0.29, 1.55] GUESS |
+
+<!-- measure-map:end -->
+
+Not on the route (not a tape job):
+
+| vehicle.yaml | Where it's measured |
+|---|---|
+| `max_steering_angle` | [M5](#4-steering): the two wheel angles at full lock |
+| `mass`, `centre_of_mass` | [M7, M7b](#6-weight): the scales |
+| `encoder_counts_per_rev` | count the spokes on the encoder wheel |
+| `tyre_grip`, `actuators` | the driving tests ([tests](tests.md) 3.10-3.12, 4.1-4.5) |
+| each sensor's `rpy` | [section 5](#5-where-each-sensor-is): pointing, tilt, lean |
+| `max_reverse_speed` | a choice, not a measurement |
+
+### Readings into vehicle.yaml
+
+The yaml wants every spot **from the zero point**. The script adds the steps up for you.
+
+| # | Do |
+|---|---|
+| 1 | `pixi run measure-map --blank > readings.yaml`: a file with one line per step |
+| 2 | Type the readings in, in any unit (`units: ft` makes plain numbers feet) |
+| 3 | `pixi run measure-map --readings readings.yaml`: it prints the yaml's numbers, in metres |
+| 4 | Copy them into `vehicle.yaml`, delete each `TODO`, then `pixi run measure-map` to redraw the map |
+
+Example: step 1 reads `1 ft 3 in` left (0.381 m), so `track` = 2 × 0.381 = **0.762 m**.
+Step 14 reads forward `2 ft 11 in`, up `1 ft` from the roof mark at 1.50 m, so the lidar
+is at x = 0.889, z = 1.50 + 0.305 = **1.805 m**.
 
 ## 1. The zero point
 
@@ -62,6 +141,8 @@ Measure every x along the x line, every y square to it, and every z straight up 
 
 ## 3. The car itself
 
+The route steps for these rows: [the measuring map](#the-measuring-map).
+
 | # | What | From → to | Guess today | **Measured** (cm) |
 |---|---|---|---|---|
 | M1 | **Wheelbase** | rear hub centre → front hub centre, same side. Do both sides | 157 | L: ____ R: ____ |
@@ -92,6 +173,8 @@ Measure every x along the x line, every y square to it, and every z straight up 
     Use the smaller of left and right. Gazebo's own number is worked out from it.
 
 ## 5. Where each sensor is
+
+The route steps for these rows (from the roof mark, the bumpers or the X): [the measuring map](#the-measuring-map).
 
 For each sensor, measure **its centre**: for a camera, the **middle of the lens**; for the
 GPS, the **middle of the antenna puck** (not the receiver box); for the lidar, the **middle
