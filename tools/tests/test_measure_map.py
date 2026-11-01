@@ -123,7 +123,9 @@ def test_relative_to_earlier_marks():
 
 def test_guesses_come_from_the_comments(tmp_path):
     flagged = mm.guesses()
-    assert mm.is_guess('vehicle.track', flagged)
+    # The track was measured on 31 Oct (Betsi): no longer a guess; the body still is.
+    assert not mm.is_guess('vehicle.wheelbase', flagged)
+    assert mm.is_guess('vehicle.body.width', flagged)
     assert mm.is_guess('sensors.camera_right_link.xyz', flagged)
     assert not mm.is_guess('vehicle.max_reverse_speed', flagged)
     yaml_file = tmp_path / 'v.yaml'

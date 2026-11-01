@@ -51,7 +51,7 @@ encoder_udp:
   ros__parameters:
     port: 10111
     bind_address: 0.0.0.0
-    wheel_diameter: 0.30        # TODO measure (keep equal to vehicle.yaml)
+    wheel_diameter: 0.36        # PROVISIONAL (keep equal to vehicle.yaml)
     counts_per_rev: 8
     window_s: 0.5
     timeout_s: 0.3              # no packet for this long: stop publishing (they come every 0.1 s)

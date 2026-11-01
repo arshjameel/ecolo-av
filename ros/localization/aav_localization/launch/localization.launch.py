@@ -5,7 +5,7 @@ Neither EKF reads the other's topic. They meet only in TF: ekf_global publishes
 map -> odom, worked out on top of ekf_local's odom -> base_link.
 
   ros2 launch aav_localization localization.launch.py [gps:=true] [gps_heading:=true]
-      [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [use_sim_time:=false]
+      [health:=true] [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [use_sim_time:=false]
 
   /vehicle/odom, /sensors/imu/data ──> ekf_local ──> /localization/odom/local, TF odom -> base_link
   /vehicle/odom, /sensors/imu/data, /localization/gps/odom, /localization/gps/heading
@@ -22,6 +22,11 @@ Park on the marked start spot and these are its numbers.
 
 Without GPS (gps:=false: the bench, indoors, phase 0-1) only ekf_local runs and a
 static map -> odom identity stands in, so map-frame tools still work.
+
+  everything above, TF ──> localization_health (aav_localization_health)
+      ──> /localization/health, /diagnostics: warn-only checks (gyro bias, IMU mounting,
+      GPS quality, stamps, frames, TF, front wheels, runaway EKFs). Drives nothing and
+      changes nothing above. health:=false leaves it out
 """
 
 from launch import LaunchDescription
@@ -62,6 +67,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('gps', default_value='true'),
         DeclareLaunchArgument('gps_heading', default_value='true'),
+        DeclareLaunchArgument('health', default_value='true'),
         DeclareLaunchArgument('start_x', default_value='0.0'),
         DeclareLaunchArgument('start_y', default_value='0.0'),
         DeclareLaunchArgument('start_yaw', default_value='0.0'),
@@ -96,6 +102,15 @@ def generate_launch_description():
             condition=IfCondition(PythonExpression([
                 "'", LaunchConfiguration('gps'), "' == 'true' and '",
                 LaunchConfiguration('gps_heading'), "' == 'true'"])),
+        ),
+        Node(
+            package='aav_localization_health',
+            executable='localization_health',
+            name='localization_health',
+            parameters=[PathJoinSubstitution([FindPackageShare('aav_localization_health'),
+                                              'config', 'localization_health.yaml']),
+                        use_sim_time],
+            condition=IfCondition(LaunchConfiguration('health')),
         ),
         Node(
             package='tf2_ros',

@@ -169,21 +169,21 @@ circles are the steps, in order. The blue dots are the sensors.</p>
 <td>1</td>
 <td>X</td>
 <td>rear-left wheel</td>
-<td>left 0.39 m</td>
+<td>left 0.38 m</td>
 <td>along the rear axle line; the yaml takes 2 x this</td>
 <td>M2</td>
 <td><code>vehicle.track</code></td>
-<td>0.77 GUESS</td>
+<td>0.75</td>
 </tr>
 <tr>
 <td>2</td>
 <td>rear-left wheel</td>
 <td>rear-left tyre top</td>
-<td>up 0.30 m</td>
+<td>up 0.36 m</td>
 <td>the car's weight on the tyre</td>
 <td>M3</td>
 <td><code>vehicle.wheel_diameter</code></td>
-<td>0.30 GUESS</td>
+<td>0.36</td>
 </tr>
 <tr>
 <td>3</td>
@@ -199,7 +199,7 @@ circles are the steps, in order. The blue dots are the sensors.</p>
 <td>4</td>
 <td>rear-left wheel</td>
 <td>left side</td>
-<td>left 0.11 m</td>
+<td>left 0.12 m</td>
 <td>tyre centre out to the body; the yaml takes 2 x (track/2 + this)</td>
 <td>M4c</td>
 <td><code>vehicle.body.width</code></td>
@@ -209,21 +209,21 @@ circles are the steps, in order. The blue dots are the sensors.</p>
 <td>5</td>
 <td>rear-left wheel</td>
 <td>front-left wheel</td>
-<td>forward 1.57 m</td>
+<td>forward 1.56 m</td>
 <td>hub to hub, same side</td>
 <td>M1</td>
 <td><code>vehicle.wheelbase</code></td>
-<td>1.57 GUESS</td>
+<td>1.56</td>
 </tr>
 <tr>
 <td>6</td>
 <td>front-left wheel</td>
 <td>front-right wheel</td>
-<td>right 0.77 m</td>
+<td>right 0.75 m</td>
 <td>the front track: a check on step 1, should be 2 x step 1</td>
 <td>M2b</td>
 <td><code>check: vehicle.track</code></td>
-<td>0.77 GUESS</td>
+<td>0.75</td>
 </tr>
 <tr>
 <td>7</td>
@@ -269,11 +269,11 @@ circles are the steps, in order. The blue dots are the sensors.</p>
 <td>11</td>
 <td>X</td>
 <td>IMU</td>
-<td>forward 0.50, left 0.00, up 0.40 m</td>
+<td>forward 0.49, left 0.00, up 1.44 m</td>
 <td>plumb line from the board</td>
 <td>S2</td>
 <td><code>sensors.imu_link.xyz</code></td>
-<td>[0.50, 0.00, 0.40] GUESS</td>
+<td>[0.49, 0.00, 1.44]</td>
 </tr>
 <tr>
 <td>12</td>
@@ -289,21 +289,21 @@ circles are the steps, in order. The blue dots are the sensors.</p>
 <td>13</td>
 <td>roof</td>
 <td>GPS</td>
-<td>forward 0.00, left 0.00, up 0.00 m</td>
+<td>forward 0.00, left 0.00, down 0.10 m</td>
 <td>on the roof, from the roof mark</td>
 <td>S1</td>
 <td><code>sensors.gps_link.xyz</code></td>
-<td>[0.00, 0.00, 1.50] GUESS</td>
+<td>[0.00, 0.00, 1.40]</td>
 </tr>
 <tr>
 <td>14</td>
 <td>roof</td>
 <td>lidar</td>
-<td>forward 0.90, left 0.00, up 0.30 m</td>
+<td>forward 0.49, left 0.00, up 0.02 m</td>
 <td>on the roof, from the roof mark</td>
 <td>S7</td>
 <td><code>sensors.lidar_link.xyz</code></td>
-<td>[0.90, 0.00, 1.80] GUESS</td>
+<td>[0.49, 0.00, 1.52]</td>
 </tr>
 <tr>
 <td>15</td>

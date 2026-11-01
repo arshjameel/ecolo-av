@@ -105,7 +105,7 @@ def test_load_transfer_and_rollover_by_hand():
 def test_the_car_s_corners_from_vehicle_yaml():
     s = ss.car_corners(ss.load_car())
     assert s['m_s'] == pytest.approx(181.0 - 4 * ss.SUSPENSION['unsprung'])
-    assert s['k_roll'] == pytest.approx(ss.SUSPENSION['spring'] * 0.77 ** 2)
+    assert s['k_roll'] == pytest.approx(ss.SUSPENSION['spring'] * 0.75 ** 2)
 
 
 def test_the_tyres_are_far_faster_than_the_steering_at_our_speeds():

@@ -45,20 +45,20 @@ The steps, with today's guesses (the script writes this table: don't edit it by 
 
 | Step | From | To | Tape: direction and today's guess | Hint | Sheet | Gives (vehicle.yaml) | Today |
 |---|---|---|---|---|---|---|---|
-| 1 | X | rear-left wheel | left 0.39 m | along the rear axle line; the yaml takes 2 x this | M2 | `vehicle.track` | 0.77 GUESS |
-| 2 | rear-left wheel | rear-left tyre top | up 0.30 m | the car's weight on the tyre | M3 | `vehicle.wheel_diameter` | 0.30 GUESS |
+| 1 | X | rear-left wheel | left 0.38 m | along the rear axle line; the yaml takes 2 x this | M2 | `vehicle.track` | 0.75 |
+| 2 | rear-left wheel | rear-left tyre top | up 0.36 m | the car's weight on the tyre | M3 | `vehicle.wheel_diameter` | 0.36 |
 | 3 | rear-left wheel | rear-left wheel (tread) | across: 0.10 m | across the tread: a size, not a move | M3b | `vehicle.wheel_width` | 0.10 GUESS |
-| 4 | rear-left wheel | left side | left 0.11 m | tyre centre out to the body; the yaml takes 2 x (track/2 + this) | M4c | `vehicle.body.width` | 1.00 GUESS |
-| 5 | rear-left wheel | front-left wheel | forward 1.57 m | hub to hub, same side | M1 | `vehicle.wheelbase` | 1.57 GUESS |
-| 6 | front-left wheel | front-right wheel | right 0.77 m | the front track: a check on step 1, should be 2 x step 1 | M2b | `check: vehicle.track` | 0.77 GUESS |
+| 4 | rear-left wheel | left side | left 0.12 m | tyre centre out to the body; the yaml takes 2 x (track/2 + this) | M4c | `vehicle.body.width` | 1.00 GUESS |
+| 5 | rear-left wheel | front-left wheel | forward 1.56 m | hub to hub, same side | M1 | `vehicle.wheelbase` | 1.56 |
+| 6 | front-left wheel | front-right wheel | right 0.75 m | the front track: a check on step 1, should be 2 x step 1 | M2b | `check: vehicle.track` | 0.75 |
 | 7 | X | rear bumper | back 0.20 m | along the x line, backwards | M4b | `vehicle.body.rear_overhang` | 0.20 GUESS |
 | 8 | rear bumper | rear camera | forward 0.00, left 0.00, up 0.90 m | plumb line from the lens | S6 | `sensors.camera_rear_link.xyz` | [-0.20, 0.00, 0.90] GUESS |
 | 9 | rear bumper | front bumper | forward 2.00 m | bumper to bumper | M4 | `vehicle.body.length` | 2.00 GUESS |
 | 10 | front bumper | radar | forward 0.00, left 0.00, up 0.45 m | plumb line from the radar face | S3 | `sensors.radar_link.xyz` | [1.80, 0.00, 0.45] GUESS |
-| 11 | X | IMU | forward 0.50, left 0.00, up 0.40 m | plumb line from the board | S2 | `sensors.imu_link.xyz` | [0.50, 0.00, 0.40] GUESS |
+| 11 | X | IMU | forward 0.49, left 0.00, up 1.44 m | plumb line from the board | S2 | `sensors.imu_link.xyz` | [0.49, 0.00, 1.44] |
 | 12 | X | roof | up 1.50 m | the roof is flat? if not, also note its highest point | M4d | `vehicle.body.height` | 1.50 GUESS |
-| 13 | roof | GPS | forward 0.00, left 0.00, up 0.00 m | on the roof, from the roof mark | S1 | `sensors.gps_link.xyz` | [0.00, 0.00, 1.50] GUESS |
-| 14 | roof | lidar | forward 0.90, left 0.00, up 0.30 m | on the roof, from the roof mark | S7 | `sensors.lidar_link.xyz` | [0.90, 0.00, 1.80] GUESS |
+| 13 | roof | GPS | forward 0.00, left 0.00, down 0.10 m | on the roof, from the roof mark | S1 | `sensors.gps_link.xyz` | [0.00, 0.00, 1.40] |
+| 14 | roof | lidar | forward 0.49, left 0.00, up 0.02 m | on the roof, from the roof mark | S7 | `sensors.lidar_link.xyz` | [0.49, 0.00, 1.52] |
 | 15 | roof | left camera | forward 1.75, left 0.29, up 0.05 m | on the roof, from the roof mark | S4 | `sensors.camera_left_link.xyz` | [1.75, 0.29, 1.55] GUESS |
 | 16 | left camera | right camera | forward 0.00, right 0.58, up 0.00 m | lens to lens (about the stereo baseline) | S5 | `sensors.camera_right_link.xyz` | [1.75, -0.29, 1.55] GUESS |
 

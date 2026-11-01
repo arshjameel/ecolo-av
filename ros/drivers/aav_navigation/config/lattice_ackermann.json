@@ -1,9 +1,9 @@
 {
 	"version": 1.0,
-	"date_generated": "2026-10-29",
+	"date_generated": "2026-11-01",
 	"lattice_metadata": {
 		"motion_model": "ackermann",
-		"turning_radius": 3.592,
+		"turning_radius": 3.572,
 		"grid_resolution": 0.25,
 		"stopping_threshold": 5,
 		"num_of_headings": 16,

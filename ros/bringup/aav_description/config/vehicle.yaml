@@ -13,25 +13,47 @@
 # axle; x forward, y left, z up (REP-103, REP-105). Measure everything from there.
 # View the result: ros2 launch aav_description view.launch.py (see docs/car_measurements.md)
 #
-# TODO values came from the previous teams' code (file:line in each comment) or are
-# guesses. Replace them with real measurements and delete the TODO.
+# Physical audit measurements were taken in centimetres and converted to metres here.
+# Sensor mount measurements remain provisional until the mounts are frozen and
+# verified against the physical car and in RViz.
+#
+# TODO values came from the previous teams' code or are guesses.
+# Replace them with verified measurements when available.
 
 vehicle:
-  wheelbase: 1.57           # rear axle to front axle. TODO confirm (Motor_Steering Ackermann.m:5)
-  track: 0.77               # left to right wheel centres. TODO confirm (Ackermann.m:20)
-  wheel_diameter: 0.30      # TODO measure (aav_speed_control marks 0.30 as a placeholder)
+  wheelbase: 1.561          # MEASURED: 156.1 cm, rear wheel centre -> front wheel centre
+
+  track: 0.75               # PROVISIONAL: average of measured front=0.650 m, rear=0.850 m
+
+  wheel_diameter: 0.36      # PROVISIONAL: tape-measured; verify with the rollout test
+                            # (docs/measure-the-car.md M3). Loaded radius 0.210 m
+                            # would give 0.420 m
+
   wheel_width: 0.10         # TODO measure
+
   max_steering_angle: 0.50  # rad, virtual wheel at the middle of the front axle. TODO measure;
-                            # old code says 0.45 (bridge_params.yaml:10) to 0.55 (temp_steer_2_P_only.py:29)
-  max_reverse_speed: 0.50   # m/s backwards, for every driver: ego, Nav2 and the spine. Slow on
-                            # purpose: the radar faces forward, so reversing is blind
+                            # old code says 0.45 (bridge_params.yaml:10) to 0.55
+                            # (temp_steer_2_P_only.py:29)
+
+  max_reverse_speed: 0.50   # m/s backwards, for every driver: ego, Nav2 and the spine.
+                            # Slow on purpose: the radar faces forward, so reversing is blind
                             # (docs/learn-nav2.md)
-  body:                     # outline used for Nav2's footprint
-    length: 2.00            # bumper to bumper. TODO measure (obstacle_avoidance.cpp:44 guessed 2.0)
-    width: 1.00             # TODO measure (obstacle_avoidance.cpp:43 guessed 1.4, too wide for a 0.77 m track)
+
+  body:
+    length: 2.00            # bumper to bumper. TODO measure
+                            # obstacle_avoidance.cpp:44 guessed 2.0
+
+    width: 1.00             # TODO measure
+                            # obstacle_avoidance.cpp:43 guessed 1.4
+
     height: 1.50            # TODO measure
+
     rear_overhang: 0.20     # rear bumper behind the rear axle. TODO measure
-  mass: 181.0               # kg: Ben's estimate, about 400 lb (15 Oct). TODO weigh (audit M7).
+
+  # Ground clearance measured during audit: 0.220 m.
+  # No ground_clearance field is currently consumed by this schema.
+
+  mass: 181.0               # kg: Ben's estimate, about 400 lb (15 Oct). TODO weigh.
                             # Was 272, a CARLA stand-in; the 2025-26 braking model used 60
   centre_of_mass:           # empty car (docs/car_measurements.md, "Weight and balance")
     x: 0.70                 # m ahead of the rear axle. GUESS: TODO M7, wheelbase x front / total
@@ -44,16 +66,22 @@ vehicle:
                             # drive, so on stands only "rear" sees the motor: the preflight
                             # drives the real car only then. TODO 49b, the hardware lead
 
-# How the car answers its commands: the actuator model in Gazebo (aav_gazebo
-# actuator_model.py; docs/full-simulation.md, step 3). Units: m/s^2, s, rad, 1/s;
-# throttle and brake 0..1. Three readers: actuator_model.py, ego (vehicle.ego_params) and
-# the linear model (aav_ego vehicle_model.py). Each uses a key or lists it as ignored:
-# tools/tests/test_vehicle_model_tool.py checks, so a new key can't reach only one.
+  centre_of_mass:
+    x: 0.70                 # m ahead of rear axle. GUESS: TODO measure
+    height: 0.55            # m above ground. GUESS: TODO measure
+
+  tyre_grip: 0.7            # g. GUESS: TODO test on real car
+
+  encoder_counts_per_rev: 8 # spokes on encoder wheel
+                            # (Wheel_Encoders wiznet.ino:29)
+
+
+# How the car answers its commands: the actuator model in Gazebo.
+# Units: m/s^2, s, rad, 1/s; throttle and brake 0..1.
 #
-# !! EVERY NUMBER HERE IS A GUESS (15 Oct), chosen to match Gazebo's old limits
-# (+1.5 / -3.0 m/s^2) and the bench's spine_sim. TODO measure them on the car:
-# docs/tests.md tests 4.1-4.5 (throttle, coasting, brake, circles) and 3.10-3.12
-# (steering sweep, speed, centre). Then delete the GUESS.
+# These values are still guesses and must be measured on the real car.
+# See docs/tests.md and docs/actuator-tests.md.
+
 actuators:
   max_accel: 1.5          # m/s^2 at full throttle, on the flat. GUESS: TODO tests 4.1, 4.4
   throttle_deadband: 0.0  # throttle below which the car doesn't move. GUESS: TODO test 4.4
@@ -76,30 +104,43 @@ actuators:
   # until it is (aav_safety geofence.py coasts). Example of the form, NOT a value:
   # open_loop_decel: 0.0      # m/s^2, the average from 1 m/s to a stop. TODO test 4.3
 
-# Sensor mounts, relative to base_link. xyz in metres, rpy in radians.
+
+# Sensor mounts, relative to base_link.
+# xyz in metres, rpy in radians.
+#
+# xyz values marked MEASURED came from the physical vehicle audit.
+# They remain PROVISIONAL until mount positions are frozen and verified
+# against the physical vehicle and in TF/RViz.
+
 sensors:
   imu_link:
-    xyz: [0.50, 0.00, 0.40]   # TODO measure
-    rpy: [0.0, 0.0, 0.0]      # TODO: how the IMU is turned relative to the car
+    xyz: [0.49, 0.00, 1.44]   # MEASURED / PROVISIONAL: [49, 0, 144] cm
+    rpy: [0.0, 0.0, 0.0]      # TODO verify IMU orientation
+
   gps_link:
-    xyz: [0.00, 0.00, 1.50]   # over the rear axle (Ben, 23 Oct: "its already there"). TODO measure
-                              # its height, and that it's really at x = 0: the antenna, not the box
-    rpy: [0.0, 0.0, 0.0]
-  # Where Ben placed them (15 Oct), until Friday's tape measure (audit M6): the radar on the
-  # grill, two cameras up top looking forward, one at the back looking back, the lidar on
-  # its roof tripod (docs/img/car/roof-lidar-antennas.jpg, rear-camera.jpg).
-  radar_link:                 # the TI mmWave radar, on the grill: the front bumper is at
-    xyz: [1.80, 0.00, 0.45]   # length - rear_overhang = 1.80. TODO measure
-    rpy: [0.0, 0.0, 0.0]
-  camera_left_link:           # front left, on top at the roof's front edge, looking forward
-    xyz: [1.75, 0.29, 1.55]   # TODO measure (stereo baseline about 0.58 m, cameras/right.ini:25)
-    rpy: [0.0, 0.0, 0.0]
-  camera_right_link:          # front right, the same. Not lower or further back: Gazebo's
-    xyz: [1.75, -0.29, 1.55]  # car is a solid box, and a camera inside it sees its walls. TODO measure
-    rpy: [0.0, 0.0, 0.0]
-  camera_rear_link:           # the orange housing on the tailgate's DIN rail, looking back
-    xyz: [-0.20, 0.00, 0.90]  # TODO measure
+    xyz: [0.00, 0.00, 1.40]   # over the rear axle (Ben, 23 Oct; confirmed 31 Oct);
+                               # z MEASURED / PROVISIONAL: 140 cm. Antenna, not
+                               # receiver box. The 31 Oct audit's x = 25 cm was wrong
+    rpy: [0.0, 0.0, 0.0]      # TODO verify if orientation/heading is relevant
+
+  radar_link:
+    xyz: [1.80, 0.00, 0.45]   # TODO physically measure relative to base_link
+    rpy: [0.0, 0.0, 0.0]      # TODO verify orientation
+
+  camera_left_link:
+    xyz: [1.75, 0.29, 1.55]   # TODO complete measurement
+                               # measured x candidate = 0.810 m
+    rpy: [0.0, 0.0, 0.0]      # TODO calibrate / verify orientation
+
+  camera_right_link:
+    xyz: [1.75, -0.29, 1.55]  # TODO physically measure
+    rpy: [0.0, 0.0, 0.0]      # TODO calibrate / verify orientation
+
+  camera_rear_link:
+    xyz: [-0.20, 0.00, 0.90]  # TODO physically measure
     rpy: [0.0, 0.0, 3.14159265]
-  lidar_link:                 # on the roof's printed tripod: probably a Velodyne (the 2025-26
-    xyz: [0.90, 0.00, 1.80]   # code read /velodyne_points). TODO measure; model: audit N6
-    rpy: [0.0, 0.0, 0.0]
+
+  lidar_link:
+    xyz: [0.49, 0.00, 1.52]   # MEASURED / PROVISIONAL:
+                               # x=49 cm, y=0 cm, z=133+19=152 cm
+    rpy: [0.0, 0.0, 0.0]      # TODO verify orientation in RViz / calibration

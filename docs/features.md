@@ -31,6 +31,7 @@ Add a row in the same commit as the feature (`CLAUDE.md`).
 | Feature | Why | Who | Date | Status |
 |---|---|---|---|---|
 | Two EKFs and GPS to map (robot_localization) | Stock filters replace the 2025-26 odometry: a smooth position for steering, a GPS-anchored one for planning | Ben | 2026-10-09 | sim |
+| Localization health checks (`aav_localization_health`) | Warns, without stopping anything, when localization's inputs or outputs stop being believable: gyro bias, IMU mounting, GPS quality, clock skew, frames, TF, front wheels, runaway EKFs | Betsi | 2026-11-01 | sim |
 | GPS outlier gate in `ekf_global` | A fix 10 sigma off is refused, so one bad GPS jump can't throw the car's position | Ben | 2026-10-15 | sim |
 | Heading from the gyro and wheels | At walking pace GPS made the heading jump up to 76°; the gyro and wheels hold it steady | Ben | 2026-10-22 | sim |
 | Heading from the GPS velocity (`aav_gps_heading`) | The receiver's Doppler velocity gives a good heading while moving, with no magnetometer | Ben | 2026-10-25 | sim |

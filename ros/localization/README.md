@@ -15,6 +15,7 @@ map ──ekf_global (GPS, GPS heading)──▶ odom ──ekf_local (wheels, I
 | [aav_localization](./aav_localization/README.md) | config and launch for `ekf_local`, `ekf_global` and `navsat_transform` | TF `map→odom→base_link`, `/localization/odom/*` |
 | [aav_gps_heading](./aav_gps_heading/README.md) | a heading from the GPS's Doppler velocity, while the car moves | `/localization/gps/heading` |
 | [aav_ndt](./aav_ndt/README.md) | a trial: NDT on a saved lidar map, in Rust; never TF | `/localization/ndt/pose` |
+| [aav_localization_health](./aav_localization_health/README.md) | warn-only checks: gyro bias, IMU mounting, GPS quality, stamps, frames, TF, front wheels, runaway EKFs | `/localization/health`, `/diagnostics` |
 
 ## Invariants
 
@@ -28,4 +29,5 @@ map ──ekf_global (GPS, GPS heading)──▶ odom ──ekf_local (wheels, I
 
 ## Verification
 
-- Run: `pixi run test`; `aav_localization` has no tests of its own (see its README).
+- Run: `pixi run test`; `aav_localization` has no tests of its own (see its README);
+  `aav_localization_health`'s checks are tested without ROS.

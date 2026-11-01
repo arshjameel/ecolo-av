@@ -1,0 +1,28 @@
+# localization_health (aav_localization_health): warn-only checks, health.py says what each
+# means. Nothing here stops the car; the sensor watchdog (aav_safety) does that.
+# Tuned in Gazebo only: on the car, read /diagnostics after a parked spell and a normal
+# drive, and keep each threshold well above what a healthy car shows.
+localization_health:
+  ros__parameters:
+    rate_hz: 1.0
+    stale_after: 2.0          # s: a needed input this quiet is STALE (the GPS's own age)
+    still_speed: 0.02         # m/s: the wheels slower than this is parked
+    still_min: 5.0            # s parked before the gyro and gravity are judged
+    still_window: 10.0        # s: the newest parked samples
+    gyro_bias_warn: 0.0035    # rad/s (0.2 deg/s: 12 deg a minute of heading without GPS)
+    tilt_warn: 0.17           # rad (10 deg): the IMU's z from gravity
+    gravity_tolerance: 1.0    # m/s^2
+    gps_sigma_max: 5.0        # m: a fix this unsure
+    gps_sigma_min: 0.005      # m: a fix this sure is lying (RTK fixed is about 0.01)
+    skew_behind: 0.5          # s: a stamp this old on arrival (ekf sensor_timeout is 0.1)
+    skew_ahead: 0.1           # s: a stamp from the future
+    wheel_min_speed: 0.3      # m/s: front wheels compared above this
+    wheel_tolerance: 0.15     # m/s, plus wheel_share x the speed
+    wheel_share: 0.1
+    persist: 1.0              # s a wheel gap must last
+    max_speed: 5.0            # m/s: the car does 1 today (Nav2's cap 2.4)
+    max_yaw_rate: 2.0         # rad/s
+    max_accel: 6.0            # m/s^2: more than the tyres can give
+    step_margin: 2.0          # m beyond max_speed between two ekf_local messages (only
+                              # ekf_local: ekf_global's GPS corrections may jump metres)
+    hold: 5.0                 # s a motion warning stays up

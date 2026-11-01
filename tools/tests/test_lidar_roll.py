@@ -93,7 +93,9 @@ def peak_roll(speed):
 def test_the_settings_are_the_ones_these_sums_assume():
     assert MIN_HEIGHT == pytest.approx(0.3)
     assert RANGE == pytest.approx(12.0)
-    assert LIDAR[2] == pytest.approx(1.8)
+    # Measured 31 Oct (was a 1.8 m guess). Lower is safer: the road shows from 1.73 deg
+    # of roll, not 1.53; ego's worst stays 1.26 deg.
+    assert LIDAR[2] == pytest.approx(1.52)
 
 
 def test_at_today_s_1_m_s_the_road_stays_well_below_the_obstacle_height():

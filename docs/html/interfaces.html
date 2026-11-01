@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">67 min read · 4 sections</div></header>
+<div class="meta">68 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -443,7 +443,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/vehicle/odom</code></td>
 <td><code>nav_msgs/msg/Odometry</code></td>
 <td><code>spine_bridge</code>, <code>encoder_udp</code>, <code>turtlesim_adapter</code>, <code>gazebo_adapter</code>, <code>carla_adapter</code></td>
-<td><code>ekf_local</code>, <code>ekf_global</code>, <code>actuator_test</code>, <code>sensor_watchdog</code>, <code>gps_heading</code>, <code>legacy_uart_bridge</code>, <code>debug_hud</code></td>
+<td><code>ekf_local</code>, <code>ekf_global</code>, <code>actuator_test</code>, <code>sensor_watchdog</code>, <code>gps_heading</code>, <code>legacy_uart_bridge</code>, <code>debug_hud</code>, <code>localization_health</code></td>
 <td>turtle, sim, car, replay, bench</td>
 <td>Twist only (vx, vy = 0, vyaw) in base_link, with covariances; pose covariance 1e3 (not measured). On the car, vx comes from the front wheel nodes when fresh, else from the spine's VEHICLE_FEEDBACK. With today's wiring (car.launch.py actuators:=uart, spine_bridge role:=sensors on the Orin) only from the two wheels while both are fresh, with no yaw rate (covariance 1e3 - the steering angle isn't on the bus). In Gazebo's spine profile spine_bridge publishes it from spine_sim's frames, as on the car; /vehicle/status, steering, throttle, brake and wheels likewise. legacy_uart_bridge reads it only with speed_loop.mode pi, to close its speed loop on vx.</td>
 </tr>
@@ -491,7 +491,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/vehicle/wheels</code></td>
 <td><code>aav_interfaces/msg/WheelSpeeds</code></td>
 <td><code>gazebo_adapter</code>, <code>spine_bridge</code>, <code>carla_adapter</code></td>
-<td><code>actuator_test</code>, <code>debug_hud</code>, <code>hw_panel</code></td>
+<td><code>actuator_test</code>, <code>debug_hud</code>, <code>hw_panel</code>, <code>localization_health</code></td>
 <td>sim, bench</td>
 <td>Each wheel's ground speed (m/s, signed), NaN where not measured or stale. Gazebo gives all four (its wheel joints). spine_bridge gives the front two, from the CAN wheel nodes (0x200, 0x201) at about 100 Hz; their mean, when fresh, is the speed in /vehicle/odom. With today's wiring the front two come from the wheel sensors' Arduino on the Orin's CAN bus (spine_bridge role:=sensors). The 2025-26 car's UDP encoder (aav_legacy encoder_udp, off since 23 Oct) is read only as /vehicle/odom.</td>
 </tr>
@@ -547,7 +547,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/sensors/imu/data</code></td>
 <td><code>sensor_msgs/msg/Imu</code></td>
 <td><code>imu_filter_madgwick</code></td>
-<td><code>ekf_local</code>, <code>ekf_global</code>, <code>sensor_watchdog</code>, <code>navsat_transform</code>, <code>debug_hud</code>, <code>actuator_test</code>, <code>hw_panel</code></td>
+<td><code>ekf_local</code>, <code>ekf_global</code>, <code>sensor_watchdog</code>, <code>navsat_transform</code>, <code>debug_hud</code>, <code>actuator_test</code>, <code>hw_panel</code>, <code>localization_health</code></td>
 <td>sim, car, replay, bench</td>
 <td>Adds a relative orientation (no magnetometer). The EKFs fuse the yaw rate only.</td>
 </tr>
@@ -555,7 +555,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/sensors/gps/fix</code></td>
 <td><code>sensor_msgs/msg/NavSatFix</code></td>
 <td><code>ublox_gps</code>, <code>gps_nmea</code>, <code>ublox_nav_sat_fix_hp</code>, <code>gazebo_gps</code>, <code>mock_gps</code>, <code>carla_adapter</code></td>
-<td><code>navsat_transform</code>, <code>hud</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>sensor_watchdog</code>, <code>point_driver</code>, <code>debug_hud</code>, <code>hw_panel</code></td>
+<td><code>navsat_transform</code>, <code>hud</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>sensor_watchdog</code>, <code>point_driver</code>, <code>debug_hud</code>, <code>hw_panel</code>, <code>localization_health</code></td>
 <td>sim, car, replay, bench</td>
 <td>Lat/lon of the antenna (gps_link). On the car, from the driver gps_driver:= picks - ublox_gps (ublox, the default; Tentative, Q18), gps_nmea (nmea) or ublox_nav_sat_fix_hp (ublox_dgnss). ublox_gps publishes it reliable (depth 1), ublox_dgnss best-effort (SensorDataQoS), so subscribe best effort.</td>
 </tr>
@@ -875,7 +875,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/localization/odom/local</code></td>
 <td><code>nav_msgs/msg/Odometry</code></td>
 <td><code>ekf_local</code></td>
-<td><code>controller_server</code>, <code>bt_navigator</code>, <code>scripted_driver</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>sensor_watchdog</code>, <code>debug_hud</code>, <code>ndt</code></td>
+<td><code>controller_server</code>, <code>bt_navigator</code>, <code>scripted_driver</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>sensor_watchdog</code>, <code>debug_hud</code>, <code>ndt</code>, <code>localization_health</code></td>
 <td>turtle, sim, car, replay, bench</td>
 <td>odom frame. Smooth; drifts.</td>
 </tr>
@@ -883,7 +883,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/localization/odom/global</code></td>
 <td><code>nav_msgs/msg/Odometry</code></td>
 <td><code>ekf_global</code></td>
-<td><code>navsat_transform</code>, <code>map</code>, <code>sensor_watchdog</code>, <code>point_driver</code>, <code>point_cli</code>, <code>debug_hud</code>, <code>ndt</code>, <code>geofence</code></td>
+<td><code>navsat_transform</code>, <code>map</code>, <code>sensor_watchdog</code>, <code>point_driver</code>, <code>point_cli</code>, <code>debug_hud</code>, <code>ndt</code>, <code>geofence</code>, <code>localization_health</code></td>
 <td>sim, car, replay, bench</td>
 <td>map frame. Includes GPS; can jump. The map window (map, aav_hud) draws the car from it.</td>
 </tr>
@@ -966,6 +966,14 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>hud</code>, <code>street_router</code></td>
 <td>sim, car, replay, bench</td>
 <td>The global EKF's position as lat/lon, for maps in the HUD or Foxglove, and the start of street_router's routes.</td>
+</tr>
+<tr>
+<td><code>/localization/health</code></td>
+<td><code>std_msgs/msg/String</code></td>
+<td><code>localization_health</code></td>
+<td>-</td>
+<td>turtle, sim, car, replay, bench</td>
+<td>localization_health (aav_localization_health) once a second - OK, or WARN and each check that isn't OK (gyro_bias parked, imu_mounting, gps_quality, timestamps, frames, tf, wheels, motion; STALE where an input it needs went quiet). Warn only - nothing drives from it, and it changes nothing in the EKFs. The same checks, with their numbers, on /diagnostics.</td>
 </tr>
 <tr>
 <td><code>/map</code></td>
@@ -1082,10 +1090,10 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <tr>
 <td><code>/diagnostics</code></td>
 <td><code>diagnostic_msgs/msg/DiagnosticArray</code></td>
-<td><code>twist_mux</code>, <code>ekf_local</code>, <code>ekf_global</code>, <code>sensor_watchdog</code>, <code>camera_stream_front_left</code>, <code>camera_stream_front_right</code></td>
+<td><code>twist_mux</code>, <code>ekf_local</code>, <code>ekf_global</code>, <code>sensor_watchdog</code>, <code>camera_stream_front_left</code>, <code>camera_stream_front_right</code>, <code>localization_health</code></td>
 <td><code>language_drive</code></td>
 <td>-</td>
-<td>ROS's diagnostics. sensor_watchdog reports each input it watches once a second (OK, WARN, ERROR when it stops the car); for the wheels, also the gaps to the IMU (speed_gap, turn_gap, worst_speed_gap, worst_turn_gap), to tune the cross check on the car. twist_mux reports each lock once a second ("lock locks.estop" locked or free) - the only place a node started after an e-stop can learn it, since /safety/estop is sent a few times and its senders go away. language_drive refuses to move while it says locked, or while it is silent. camera_stream_<camera> reports its stream once a second (status name camera_stream - front_left; ERROR with no pictures, WARN under half the frame rate) - decoder (the one auto picked - gst-mac on a Mac), fps_in, fps_out, dropped, decoder_starts, work_ms, detect_ms, delay_s, and with time_code the measured delays (arrival_<em> and detection_</em>_ms - median, p95, max). pixi run check ignores the topic.</td>
+<td>ROS's diagnostics. sensor_watchdog reports each input it watches once a second (OK, WARN, ERROR when it stops the car); for the wheels, also the gaps to the IMU (speed_gap, turn_gap, worst_speed_gap, worst_turn_gap), to tune the cross check on the car. twist_mux reports each lock once a second ("lock locks.estop" locked or free) - the only place a node started after an e-stop can learn it, since /safety/estop is sent a few times and its senders go away. language_drive refuses to move while it says locked, or while it is silent. camera_stream_<camera> reports its stream once a second (status name camera_stream - front_left; ERROR with no pictures, WARN under half the frame rate) - decoder (the one auto picked - gst-mac on a Mac), fps_in, fps_out, dropped, decoder_starts, work_ms, detect_ms, delay_s, and with time_code the measured delays (arrival_<em> and detection_</em>_ms - median, p95, max). localization_health reports each of its checks once a second (status name localization_health - gyro_bias, ...; OK, WARN or STALE, never stopping anything), with their numbers (bias_dps, sigma_m, tilt_deg...). pixi run check ignores the topic.</td>
 </tr>
 </tbody>
 </table></div>

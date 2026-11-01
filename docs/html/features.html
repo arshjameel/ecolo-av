@@ -217,6 +217,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
+<td>Localization health checks (<code>aav_localization_health</code>)</td>
+<td>Warns, without stopping anything, when localization's inputs or outputs stop being believable: gyro bias, IMU mounting, GPS quality, clock skew, frames, TF, front wheels, runaway EKFs</td>
+<td>Betsi</td>
+<td>2026-11-01</td>
+<td>sim</td>
+</tr>
+<tr>
 <td>GPS outlier gate in <code>ekf_global</code></td>
 <td>A fix 10 sigma off is refused, so one bad GPS jump can't throw the car's position</td>
 <td>Ben</td>
