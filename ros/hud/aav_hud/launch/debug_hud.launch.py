@@ -10,11 +10,13 @@ orange), Nav2's plan (yellow), and a panel of every sensor straight from its own
 It only listens: it never touches an actuator.
 
 Topic names, frames and limits: config/debug_hud.yaml. The car's size: aav_description's
-vehicle.yaml. monitor: as in hud.launch.py, by name or number. It needs a screen.
+vehicle.yaml, and from it the box round the car whose lidar points are left out
+(vehicle.self_box). monitor: as in hud.launch.py, by name or number. It needs a screen.
 The whole simulated car with it: pixi run debugdemo (tools/demo_all.sh debug).
 Keys: drag turn, right-drag move, wheel zoom, C chase / follow / free, R reset, F11.
 """
 
+from aav_description import vehicle as car
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.conditions import IfCondition
@@ -27,7 +29,11 @@ def debug_node(context):
     """Make the node; the file, --fullscreen and --monitor are arguments, not parameters."""
     vehicle = PathJoinSubstitution(
         [FindPackageShare('aav_description'), 'config', 'vehicle.yaml'])
-    arguments = ['--vehicle', vehicle]
+    # The car and its sensors from above: the lidar's points inside are the car itself and
+    # make no cube (vehicle.self_box; the trail of 30 Oct).
+    box = car.self_box(car.load())
+    arguments = ['--vehicle', vehicle,
+                 '--own-box', ','.join(f'{v:.3f}' for v in box['min'] + box['max'])]
     if IfCondition(LaunchConfiguration('fullscreen')).evaluate(context):
         arguments.append('--fullscreen')
     monitor = LaunchConfiguration('monitor').perform(context).strip()

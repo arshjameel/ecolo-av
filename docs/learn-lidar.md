@@ -177,6 +177,34 @@ The local costmap (`nav2.yaml`) stacks its layers:
 A flat scan loses one thing: a table with an empty space under it looks like a wall.
 That's fine for a car. Nav2's own 3D `VoxelLayer` is there if 2D ever misses something.
 
+### The trial: cubes for Nav2 (`voxels:=true`)
+
+Ben, 30 Oct: "this is a car not a needle. We need to quickly know something is in our way."
+`voxels` (`ros/perception/aav_voxels`) reads the cloud once and keeps **0.25 m cubes**.
+
+```
+   flat scan (today)                     cubes (the trial)
+   one dot a direction:                  every cube in the band:
+   the nearest thing only                behind and under it too
+
+        ·  ·  ·                               ■ ■ ■
+     ·    car    ·                         ■ ■ car ■ ■
+        ·  ·  ·                               ■ ■ ■
+```
+
+| | Flat scan | Cubes |
+|---|---|---|
+| What it keeps | the nearest point, 720 directions | one point per 0.25 m cube (its nearest) |
+| The road's height | the car taken as level | **fitted to each cloud**: a plane through the lowest points |
+| A car leaning 2° in a turn | the road far out rises into the band: a wall that isn't there | still flat road |
+| Clears old marks with | rays to "nothing there" | rays to the road it saw (`/perception/voxels/ground`) |
+| Size | 3 kB | about 10 kB, and 20 kB of road |
+
+The costmap's `lidar_layer` and the stop zone read the cubes instead of the scan. It's
+off unless asked for: `pixi run sim world:=test_lot voxels:=true`. The numbers:
+[Trials](trials.md#voxels-30-oct-the-lidar-as-cubes). The design:
+`docs/designs/2026-10-30_voxels.md`.
+
 ## 6. Cubes into objects, with names
 
 Cubes say **something** is there. Not **what**. Two steps (TODO, 29 Oct; **planned**):

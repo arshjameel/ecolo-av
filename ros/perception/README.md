@@ -14,6 +14,7 @@ commands the car itself, except through the stop-sign lock and the lane follower
 | [aav_lane_finder](./aav_lane_finder/README.md) | classic OpenCV lane finder on the front left camera | `/perception/lane/geometry` |
 | [aav_lane_geometry](./aav_lane_geometry/README.md) | the 2025-26 team's lane keeping: the message, a PID follower, a fake lane | `/drivers/ai/cmd_vel` |
 | [aav_lidar](./aav_lidar/README.md) | flattens the lidar's cloud into a 720-ray scan for Nav2 | `/sensors/lidar/scan` |
+| [aav_voxels](./aav_voxels/README.md) | a trial (`voxels:=true`): the lidar's cloud as 0.25 m cubes over the fitted road, for Nav2 instead of the scan | `/perception/voxels/cubes`, `/perception/voxels/ground` |
 | [aav_radar_clusters](./aav_radar_clusters/README.md) | Rust DBSCAN on the radar points | `/perception/radar/clusters` |
 
 ## Invariants

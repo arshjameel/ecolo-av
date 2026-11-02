@@ -16,8 +16,11 @@ docs/designs/2026-10-29_ndt.md ("The map").
 For each cloud: Gazebo's truth is interpolated at the cloud's stamp (position on a
 straight line, rotation by slerp; skipped unless there is truth within 20 ms on both
 sides), the points go lidar_link -> base_link (vehicle.yaml's lidar_link) -> map; points
-that hit nothing, past 45 m, on the car's own body, or below 0.3 m in base_link (the
-ground) are dropped; all of it is thinned to one point per 10 cm cube.
+that hit nothing, past 45 m, on the car itself (vehicle.self_box: the body and every
+sensor mounted on it, 15 cm wider all round), or below 0.3 m in base_link (the ground) are
+dropped; all of it is thinned to one point per 10 cm cube. A box flush with the body let
+the lidar's noise through: the roof's corners and the front cameras drew a ghost double
+line 1.5 m up along the whole route (found 30 Oct).
 
 The truth is used only here, offline: aav_ndt's node never reads it (aav_gazebo's rule).
 The mapping route is not one of controller-compare's tours, and has no obstacle.
@@ -42,6 +45,9 @@ import numpy as np
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'ros' / 'bringup' / 'aav_description'))
+# No ROS: vehicle.load() is given the file's path.
+from aav_description import vehicle  # noqa: E402, I100
 OUT = ROOT / 'maps' / 'ndt' / 'test_lot'
 CLOUD_TOPIC = '/sensors/lidar/points'
 TRUTH_TOPIC = '/vehicle/gazebo/truth'
@@ -121,11 +127,10 @@ class Truth:
         return position, slerp(self.rotations[i - 1], self.rotations[i], f)
 
 
-def body_box(body):
-    """Return the car's outline in base_link, ((x min, x max), (y min, y max)), m."""
-    rear = -body['rear_overhang']
-    half = body['width'] / 2.0
-    return (rear, rear + body['length']), (-half, half)
+def body_box(cfg, margin=vehicle.SELF_MARGIN):
+    """Return the car and its sensors from above in base_link, ((x0, x1), (y0, y1)), m."""
+    box = vehicle.self_box(cfg, margin)
+    return (box['min'][0], box['max'][0]), (box['min'][1], box['max'][1])
 
 
 def to_map(points, mount, pose, body=None, min_height=MIN_HEIGHT, max_range=MAX_RANGE):
@@ -134,8 +139,8 @@ def to_map(points, mount, pose, body=None, min_height=MIN_HEIGHT, max_range=MAX_
 
     points: N x 3 in lidar_link. mount: (xyz, rpy) of lidar_link on base_link. pose:
     (position, quaternion) of base_link in the map. Non-finite points, points past
-    max_range (flat, from base_link), on the car's body or not above min_height in
-    base_link (the ground) are dropped.
+    max_range (flat, from base_link), inside body (body_box: the car and its sensors) or
+    not above min_height in base_link (the ground) are dropped.
     """
     points = np.asarray(points, float).reshape(-1, 3)
     points = points[np.isfinite(points).all(axis=1)]
@@ -242,13 +247,14 @@ def git_commit():
     return out.stdout.strip() or 'unknown'
 
 
-def describe(points, bag, notes, voxel=VOXEL):
+def describe(points, bag, notes, voxel=VOXEL, self_box_m=None):
     """Return the YAML beside the PCD, as a dict."""
     lo, hi = (points.min(axis=0), points.max(axis=0)) if len(points) else ([0] * 3, [0] * 3)
     return {
         'frame': 'map', 'datum': DATUM, 'source_bag': str(bag), 'git_commit': git_commit(),
         'voxel_m': voxel, 'points': int(len(points)),
         'ground_removed_below_m': MIN_HEIGHT, 'max_range_m': MAX_RANGE,
+        'self_box_m': self_box_m,
         'bounds_m': {'min': [round(float(v), 2) for v in lo],
                      'max': [round(float(v), 2) for v in hi]},
         'world': 'test_lot', 'route': [list(leg) for leg in ROUTE],
@@ -350,11 +356,10 @@ def main():
     parser.add_argument('--voxel', type=float, default=VOXEL, help='m (default 0.1)')
     args = parser.parse_args()
 
-    from aav_description import vehicle
-    v = vehicle.load()
+    v = vehicle.load(ROOT / 'ros' / 'bringup' / 'aav_description' / 'config' / 'vehicle.yaml')
     sensor = v['sensors']['lidar_link']
     mount = (sensor['xyz'], sensor['rpy'])
-    body = body_box(v['vehicle']['body'])
+    body = body_box(v)
 
     if args.command == 'drive':
         (ROOT / 'bags').mkdir(exist_ok=True)
@@ -370,7 +375,8 @@ def main():
     args.out.parent.mkdir(parents=True, exist_ok=True)
     write_pcd(args.out.with_suffix('.pcd'), points)
     with open(args.out.with_suffix('.yaml'), 'w') as f:
-        yaml.safe_dump(describe(points, bag, notes, args.voxel), f, sort_keys=False)
+        yaml.safe_dump(describe(points, bag, notes, args.voxel,
+                                [[round(a, 3), round(b, 3)] for a, b in body]), f, sort_keys=False)
     print(f'{len(points)} points from {notes["clouds_used"]} clouds '
           f'({notes["clouds_skipped_no_truth"]} without truth) in '
           f'{time.monotonic() - started:.0f} s: {args.out.with_suffix(".pcd")}')

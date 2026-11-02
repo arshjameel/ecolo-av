@@ -7,7 +7,7 @@
 <!-- Generated from docs/switches.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Switches: what you can swap in the simulated car</h1>
-<div class="meta">4 min read · 5 sections</div></header>
+<div class="meta">5 min read · 5 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -97,7 +97,7 @@
 <nav class="toc"><span>On this page:</span><a href="#who-draws-the-route">Who draws the route</a><a href="#who-steers-along-the-path">Who steers along the path</a><a href="#where-am-i">Where am I</a><a href="#speed">Speed</a><a href="#the-world-and-the-rest">The world and the rest</a></nav>
 <div class="lead"><p>Every part we're trying out is a <strong>switch</strong> you give when you start. You don't need to
 remember them: <strong><code>pixi run pick</code></strong> asks, in plain words, and runs it.</p>
-<pre class="highlight"><code>pixi run pick          # a menu: what to start, the route, who steers, where-am-I, speed loop
+<pre class="highlight"><code>pixi run pick          # a menu: what to start, the route, who steers, obstacles, where-am-I, speed loop
 pixi run pick last     # the same again tomorrow
 pixi run pick list     # every switch, then stop</code></pre>
 <p>It prints the whole command too, for example:</p>
@@ -110,24 +110,29 @@ twice, the last one wins.</p></div>
 <tr>
 <th>Switch</th>
 <th>In plain words</th>
-<th>Gazebo, 29 Oct</th>
+<th>Gazebo, the lot tour</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>planner:=hybrid</code> (default)</td>
-<td>Hybrid-A*: only routes a car can drive</td>
-<td><strong>4 of 4 legs</strong></td>
+<td><code>planner:=lattice</code> (default)</td>
+<td>State Lattice: strings our car's own moves together; fast</td>
+<td>30 Oct, reversing: every leg, <strong>184 s</strong> a tour. Forward only (29 Oct): 2 of 4, lost the U-turn</td>
 </tr>
 <tr>
-<td><code>planner:=lattice</code></td>
-<td>State Lattice: strings our car's own moves together; fast</td>
-<td>2 of 4 (lost the U-turn)</td>
+<td><code>planner:=hybrid</code> (the car's default)</td>
+<td>Hybrid-A*: only routes a car can drive</td>
+<td>30 Oct, reversing: every leg, 213 s a tour</td>
+</tr>
+<tr>
+<td><code>planner:=lattice lattice_headings:=32</code></td>
+<td>the lattice with 32 headings, not 16</td>
+<td>30 Oct, reversing: every leg, 197 s; slower plans. No better</td>
 </tr>
 <tr>
 <td><code>planner:=smac2d</code></td>
 <td>A<em> on the grid: </em><em>ignores the turning circle</em>*</td>
-<td>2 of 4</td>
+<td>29 Oct, forward only: 2 of 4</td>
 </tr>
 <tr>
 <td><code>planner:=navfn</code></td>
@@ -141,7 +146,8 @@ twice, the last one wins.</p></div>
 </tr>
 </tbody>
 </table></div>
-<p>The real car takes only <code>hybrid</code> or <code>lattice</code>. More: <a href="controllers.html">Controllers, Planners</a>.</p>
+<p>The lattice is the default since 1 Nov (Ben). The real car takes only <code>hybrid</code> or
+<code>lattice</code>, and keeps <code>hybrid</code>: forward only (until H5), the lattice lost the U-turn. More: <a href="controllers.html">Controllers, Planners</a>, <a href="trials.html#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">the runs</a>.</p>
 </section>
 <section class="card"><h2 id="who-steers-along-the-path">Who steers along the path</h2>
 <div class="table-wrap"><table>
@@ -195,7 +201,11 @@ In <code>debugdemo</code>, keys 1-4 swap the tracker live. More: <a href="contro
 <a href="trials.html">Trials</a>.</p>
 </section>
 <section class="card"><h2 id="where-am-i">Where am I</h2>
-<p>These run <strong>beside</strong> the EKFs and are only scored for now. They never steer.</p>
+<p>These run <strong>beside</strong> the EKFs and are only scored for now. They never steer, except
+<code>ndt_ekf:=true</code>: then the global EKF, which Nav2 plans by, takes NDT's pose too; and
+<code>kiss_ekf:=true</code>: then the local EKF, which Nav2 steers by, takes KISS-ICP's speed too.
+In <code>pixi run pick</code>, <code>debugdemo</code> offers NDT + AMCL first (to see every finder); the
+others offer the EKFs only first.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -220,9 +230,25 @@ In <code>debugdemo</code>, keys 1-4 swap the tracker live. More: <a href="contro
 <td>many guesses; keep the ones that match the walls</td>
 <td>6-11 cm</td>
 </tr>
+<tr>
+<td><code>ndt_ekf:=true ndt_map:=maps/ndt/test_lot.pcd</code></td>
+<td>NDT, and the global EKF <strong>uses</strong> it beside the GPS (a trial)</td>
+<td>the EKF <strong>1.6 cm</strong> (<a href="trials.html#ndt-into-the-global-ekf-30-oct">trials</a>)</td>
+</tr>
+<tr>
+<td><code>kiss_icp:=true</code></td>
+<td>how far the car moved, from the lidar alone (no map)</td>
+<td>0.02-0.04 m per 100 m driven</td>
+</tr>
+<tr>
+<td><code>kiss_ekf:=true</code></td>
+<td>KISS-ICP, and the local EKF <strong>uses</strong> its speed beside the wheels (a trial)</td>
+<td>no clear win yet (<a href="trials.html#kiss-icp-into-the-local-ekf-1-nov">trials</a>)</td>
+</tr>
 </tbody>
 </table></div>
-<p>NDT's map isn't in git: make it once with <code>pixi run ndt-map drive</code> (about 6 min).</p>
+<p>NDT's map isn't in git: make it once with <code>pixi run ndt-map drive</code> (about 6 min).
+KISS-ICP needs its own environment once: <code>pixi install --locked -e kiss</code>.</p>
 </section>
 <section class="card"><h2 id="speed">Speed</h2>
 <div class="table-wrap"><table>
@@ -276,6 +302,10 @@ In <code>debugdemo</code>, keys 1-4 swap the tracker live. More: <a href="contro
 <tr>
 <td><code>lidar:=false</code>, <code>radar:=false</code></td>
 <td>sensors off</td>
+</tr>
+<tr>
+<td><code>voxels:=true</code></td>
+<td>Nav2 sees the lidar as 0.25 m cubes, not a flat scan (a trial: <a href="trials.html#voxels-30-oct-the-lidar-as-cubes">Trials</a>)</td>
 </tr>
 </tbody>
 </table></div>

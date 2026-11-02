@@ -11,8 +11,14 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 > - **Score:** `pixi run controller-compare --trackers pure_pursuit lqr --runs 3`.
 > - **Results (29 Oct, Gazebo, 3 runs):** pure pursuit, Stanley and MPC finished every leg; MPPI, RPP and LQR lost legs on the U-turn. AMCL lost itself; the EKF wins. [Results](#results-29-october).
 > - **NDT**, 29 Oct: about 1-3 cm off on the lot tour, 2 ms a match (below).
+> - **NDT into the global EKF** (`ndt_ekf:=true`), 30 Oct: the EKF **17 cm → 1.6 cm** off; with the GPS off, 1.2 m → 1.6 cm. [Results](#ndt-into-the-global-ekf-30-oct).
+> - **Betsi's measurements** (1 Nov: wheelbase 1.561 m, track 0.75 m, lidar and GPS heights): the runs above used the old guesses. Rerun with hers: `sim-check` 9 of 9, `bench-check` 6 of 6, NDT's lot tour 4 of 4 legs, the EKF 1 cm off; the lattice's moves rebuilt (radius 3.572 m).
+> - **1 Nov: the lattice is the default planner** (Ben); the car keeps Hybrid-A* until H5. [Planners](#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32).
 > - **Afternoon:** LQR rebuilt with a preview (U-turn 2 of 3 in a quiet run; it weaved on a busy Mac), `mpc_full` 10 of 12. [Results](#results-29-october-afternoon-lqr-rebuilt-and-mpc_full).
-> - **Planners** (`planner:=`): Nav2's State Lattice (on our own primitives), Smac 2D, NavFn and Theta*, beside Hybrid-A*. 29 Oct, one run: **Hybrid-A* 4 of 4 legs**; lattice and Smac 2D 2 of 4, both lost on the U-turn. Hybrid stays. [Results](#planners-29-oct-hybrid-lattice-and-smac2d).
+> - **Planners** (`planner:=`): Nav2's State Lattice (on our own primitives), Smac 2D, NavFn and Theta*, beside Hybrid-A*. 29 Oct, forward only: Hybrid-A* 4 of 4, the lattice 2 of 4. **30 Oct, reversing on, 3-4 runs: every leg for hybrid, lattice and lattice32; the lattice the fastest** (184 s a tour against 213 s). Hybrid stays the default until Ben decides. [Results](#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32).
+> - **Voxels** (`voxels:=true`, 30 Oct): Nav2 reads the lidar as 0.25 m cubes. It stopped 0.44 m before the post (the scan 0.36 m), drove the lot tour 4 of 4, 6 ms a cloud. [Results](#voxels-30-oct-the-lidar-as-cubes).
+> - **KISS-ICP** (`aav_kiss_icp`, stock, MIT): lidar odometry, scored against `ekf_local`, never in an EKF yet. `kiss_icp:=true`. 30 Oct, one run: **0.04 m per 100 m** over the lot tour, against ekf_local's 0.33; about 1 ms a scan; once the ground was cut out. [Results](#30-oct-kiss-icp-beside-ekf_local-one-run-mppi-the-lot-tour). Design: `docs/designs/2026-10-30_kiss-icp.md`.
+> - **KISS-ICP into the local EKF** (`kiss_ekf:=true`), 1 Nov: its twist beside the wheels and IMU. Gazebo, 5 runs: **no clear win yet** (ekf_local 0.30-1.27 m per 100 m with it, 0.44-1.91 without; the spread is the Mac's load). Its covariance is now measured. [Results](#kiss-icp-into-the-local-ekf-1-nov).
 > - The design: `docs/designs/2026-10-29_trials.md`.
 
 ## What is on trial
@@ -26,8 +32,12 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 | our pure pursuit (the control) | Nav2's RPP and MPPI | `tracker:=pure_pursuit` |
 | AMCL | the global EKF | `amcl:=true` |
 | NDT on a saved lidar map | the global EKF, and AMCL | `ndt:=true` (after `pixi run ndt-map drive`) |
-| State Lattice planner, our primitives | Hybrid-A* | `planner:=lattice` |
+| NDT's pose into the global EKF | the global EKF on GPS alone | `ndt_ekf:=true` |
+| KISS-ICP lidar odometry (how far the car moved, no map) | `ekf_local` (wheels and IMU) | `kiss_icp:=true` (after `pixi install --locked -e kiss`) |
+| KISS-ICP's twist into the local EKF | `ekf_local` on the wheels and IMU alone | `kiss_ekf:=true` |
+| State Lattice planner, our primitives | Hybrid-A* | `planner:=lattice` (`lattice_headings:=32`: the 32-heading file) |
 | Smac 2D, NavFn, Theta* planners (ignore the turning circle: sim and bench only) | Hybrid-A* | `planner:=smac2d`, `navfn`, `theta_star` |
+| The lidar as 0.25 m cubes over the fitted road (`aav_voxels`) | the flat scan (`lidar_scan`) | `voxels:=true` |
 
 ## Where a tracker sits
 
@@ -67,6 +77,13 @@ pixi run controller-compare --trackers pure_pursuit stanley lqr mpc mpc_full --c
 pixi run controller-compare --amcl                              # score AMCL too
 pixi run ndt-map drive                                          # NDT's map, once (~6 min)
 pixi run controller-compare --amcl --ndt                        # score NDT beside AMCL
+pixi run controller-compare --ndt-ekf --runs 3 --tours lot      # NDT into the global EKF
+pixi run sim-check --lidar-obstacle --voxels                     # the cubes stop for a post?
+pixi run controller-compare --voxels --tours lot                 # the lot tour on cubes
+pixi install --locked -e kiss                                   # KISS-ICP, once
+pixi run controller-compare --kiss-icp --tours lot --controllers mppi   # its drift vs ekf_local
+pixi run controller-compare --kiss-ekf --tours lot --controllers mppi   # ekf_local with its twist
+pixi run sim-check --kiss-ekf                                   # the road world, kiss_ekf:=true
 ```
 
 ## Results
@@ -164,6 +181,214 @@ one run, `--tours lot --controllers mppi --amcl`):
   mean, then AMCL dropped 68 scans (its transforms came late) and published nothing more.
   With the computer this loaded, AMCL's numbers are only worth what its pose count says.
 
+## NDT into the global EKF (30 Oct)
+
+`ndt_ekf:=true`: `ekf_global` takes NDT's x, y and yaw beside the GPS. Off by default.
+
+```
+lidar ─► NDT + map ─► /localization/ndt/pose (good fits only) ─┐
+GPS ─► navsat_transform ─► /localization/gps/odom ─────────────┼─► ekf_global ─► map → odom
+wheels, IMU, GPS heading ──────────────────────────────────────┘    (refuses a pose 5 sigma off)
+```
+
+> **The short version**
+> - The global EKF's error: **17 cm → 1.6 cm** on average (3 runs each).
+> - GPS off: without NDT the EKF drifted to **1.2 m** off; with NDT it stayed at **1.6 cm**.
+> - The worst moments stay: NDT slips **up to 0.4 m** along the lane north of the
+>   building (only walls parallel to the drive), and the EKF follows it.
+
+### The numbers (Gazebo, the lot tour, MPPI)
+
+Off = the global EKF (`/localization/odom/global`) against Gazebo's truth. Runs:
+`log/ndt-ekf/` (not in git): `base` and `ekf2` 3 runs each, `gpsoff-*2` one each.
+
+| Leg | GPS, no NDT: mean / worst (m) | GPS + NDT: mean / worst (m) |
+|---|---|---|
+| a left turn | 0.17 / 0.50 | **0.008** / 0.02 |
+| round the building | 0.18 / 0.58 | **0.031** / 0.25 |
+| turn back | 0.17 / 0.45 | **0.013** / 0.38 |
+| home | 0.17 / 0.52 | **0.011** / 0.25 |
+| **all 12 legs** | **0.17 / 0.58** | **0.016 / 0.38** |
+
+| | GPS, no NDT | GPS + NDT |
+|---|---|---|
+| Heading, worst (deg) | 13.5 | 2.4 |
+| Off Nav2's path, mean (m, by the truth) | 0.11-0.14 | 0.03 (0.10 on one U-turn) |
+
+**GPS off** (stopped after the first fix; `--gps-off`, one run each):
+
+| Leg | No NDT: mean / worst (m) | NDT: mean / worst (m) |
+|---|---|---|
+| a left turn | 0.25 / 0.35 | **0.007** / 0.02 |
+| round the building | 0.47 / 0.70 | **0.030** / 0.24 |
+| turn back | 0.67 / 0.74 | **0.017** / 0.39 |
+| home | 0.95 / **1.21** | **0.009** / 0.06 |
+
+Without GPS the EKF has only the wheels and the gyro: it drifts, 1.2 m by the end.
+With NDT it doesn't drift at all.
+
+- Nav2 gave up on the U-turn ("turn back") in 1 of 3 runs without NDT and 2 of 3 with:
+  MPPI's known U-turn trouble ([results](#results-29-october)), not the localizer (the
+  EKF was 1-2 cm off then).
+- NDT: 97-100 % of clouds gave a pose; no LOST, no restart; 2.0 ms a match (worst 6.3)
+  on Ben's Mac (M4 Max), not the Orin.
+
+### NDT's covariance: fitted (NEES)
+
+NDT's spread is k·(−H⁻¹), with a floor. Fitted on the 3 `base` runs (5,852 good fits),
+checked on the 3 `ekf2` runs (6,442):
+
+| | Before | Now (`config/ndt.yaml`) | Why |
+|---|---|---|---|
+| k (`covariance_scale`) | 1 | **7.5** | the good fits' mean NEES is 3 (the honest value for 3 numbers); median 2.4 |
+| floor, x and y | (2 cm)² | **(5 mm)²** | 2 cm hid k: a typical fit is 1 cm off |
+| floor, yaw | (0.5°)² | **(0.1°)²** | the same |
+| NEES on the check runs | - | **2.9** | k fitted again there: 7.2 |
+
+NEES = e′P⁻¹e, e the error from the truth, P the covariance published. Around 3: the
+spread matches the errors. `controller-compare --ndt` prints it, and the k that would
+make it 3, after every run.
+
+### Keeping bad matches out of the EKF
+
+| Guard | Where | What it caught in Gazebo |
+|---|---|---|
+| Score per point under **2.3**: not published | `min_score_per_point` (was 2.0) | 4 fits 0.27-0.55 m off (scores 2.06-2.24). Every good fit scored 2.6 or more |
+| Out of iterations, or a jump while tracking (over 0.5 m or 5° from the guess): not published | ndt-core; `max_correction_m`, `_deg` (new) | 43 more fits, the two not told apart (the status's message says which) |
+| A pose more than 5 sigma from the EKF: refused | `pose0_rejection_threshold: 5` | not counted (robot_localization doesn't say) |
+| The late pose put in at its own stamp | `smooth_lagged_data`, 1 s | each pose is 2-6 ms late, plus the lidar's own delay |
+
+**When NDT is LOST** (5 poor fits in a row): it publishes nothing; `ekf_global` goes on
+with the GPS (or the wheels and gyro alone, if the GPS is out too) and its doubt grows;
+NDT starts again from `ekf_global`'s pose. The first fit after a restart may move far
+(no jump check), so the EKF's 5-sigma gate is the guard then. Not seen in these runs:
+**untested in Gazebo** (only `ndt-core`'s test).
+
+### What it doesn't show yet
+
+- **The lane north of the building** fools NDT along the lane (0.25-0.4 m, about 2 % of
+  fits): only walls parallel to the car. Its spread there grows 4-10 times, not enough
+  to cover it. Next: inflate the covariance along a weak direction (the Hessian's
+  smallest eigenvalue), or refuse those fits.
+- Gazebo's map is perfect, its lidar has no sweep and nothing moves: the score floor and
+  k must be fitted again on the car (a bag of the real lot, KISS-ICP's map).
+- The geofence holds the car when the GPS stops, even with NDT: GPS-off runs need
+  `geofence:=false watchdog:=false`. If NDT wins, the geofence could take it as a
+  position source.
+- Before it goes on the car: the trials' rule ([below](#before-a-winner-goes-on-the-car)).
+
+```bash
+pixi run ndt-map drive                                     # the map, once
+pixi run controller-compare --ndt --runs 3 --tours lot      # NDT beside: the EKF on GPS alone
+pixi run controller-compare --ndt-ekf --runs 3 --tours lot  # NDT into the EKF
+pixi run controller-compare --ndt-ekf --gps-off --tours lot # the GPS stops after its first fix
+```
+
+### 30 Oct: KISS-ICP beside ekf_local (one run, MPPI, the lot tour)
+
+`pixi run controller-compare --kiss-icp --tours lot --controllers mppi`, headless, on Ben's
+Mac (Apple silicon), another Gazebo run just finished. Folders `log/kiss-run1/` and
+`log/kiss-run2/` (not in git).
+
+**First try: the ground left in.** KISS-ICP read **12 m for 21 m** driven and 65° for an 85°
+turn. Gazebo's ground is perfectly flat, so the lidar's 8 downward beams draw the same
+circles round the car every scan: half the points, all saying "you didn't move".
+**Fix:** points below 0.3 m above `base_link` left out (`min_height`), as NDT does.
+
+**With the ground out**, the whole tour (178 m, 4 legs, all reached):
+
+| | KISS-ICP | ekf_local (wheels + IMU) |
+|---|---:|---:|
+| Drift (m per 100 m driven) | **0.04** | 0.33 |
+| Worst off (m, lined up at the start) | **0.11** | 0.59 |
+| Heading off at the end (deg) | **0.63** | 1.38 |
+| Match time (ms, wall clock, mean / worst) | 1.0-1.4 / 2.8 | - |
+| Clouds dropped | 0 | - |
+
+Leg by leg, drift per 100 m (KISS-ICP / ekf_local): a left turn 0.23 / 0.13; round the
+building 0.21 / 0.18; turn back 0.08 / 0.21; home 0.23 / 1.65.
+
+**What it shows**
+
+- In Gazebo, KISS-ICP drifts **less than the wheels and IMU** over the tour, and its heading
+  holds better. On a short leg the two are about level.
+- It is cheap: about 1 ms a scan on the Mac, at 4 threads. The Orin is untested.
+- **Gazebo flatters it**: no sweep to deskew, no people or cars moving, walls everywhere.
+  The car's VLP-16 smears each scan by the car's motion (deskew on, from its `time`
+  field); an open lot has fewer walls.
+- One run only. Next: 3 runs, then a bag from the real lot, before its twist goes into
+  `ekf_local`.
+
+## KISS-ICP into the local EKF (1 Nov)
+
+`kiss_ekf:=true`: `ekf_local` takes KISS-ICP's **twist** (vx, vyaw) beside the wheels
+and the IMU. Off by default. Never its pose: it drifts, in its own frame.
+
+```
+lidar ─► KISS-ICP ─► /localization/kiss_icp/odom (twist) ─┐
+wheels ─► /vehicle/odom ──────────────────────────────────┼─► ekf_local ─► odom → base_link
+IMU ─► /sensors/imu/data ─────────────────────────────────┘   (refuses a twist 5 sigma off)
+```
+
+> **The short version**
+> - **No clear win in Gazebo yet.** With it, ekf_local drifted 0.30-1.27 m per 100 m;
+>   without, 0.44-1.91. The Mac's load moves the numbers more than the switch does.
+> - **Its covariance was wrong, now measured**: the speed 3x too sure, the turn rate 3x too
+>   doubtful. Too sure, it made ekf_local's speed 10x noisier.
+> - **KISS-ICP stopping is safe**: killed mid-drive, ekf_local kept 30 Hz and the right speed.
+
+### The covariance, against Gazebo's truth
+
+Each KISS-ICP step against the truth over the same two stamps (5 runs, ~9,000 steps).
+
+| | Its noise (1 sigma) | It said (30 Oct) | It says now |
+|---|---:|---:|---:|
+| Speed | **0.14-0.16 m/s** | 0.05 | 0.15 (`twist_linear_sd`) |
+| Turn rate | **0.005-0.007 rad/s** | 0.02 | 0.01 (`twist_angular_sd`) |
+| (the wheels, Gazebo) | 0.002 m/s, 0.003 rad/s | | |
+| (the IMU) | 0.02 rad/s | | |
+
+Why the speed is noisy while the pose holds: each scan's position wobbles about 1.5 cm,
+and the next scan takes it back. Over 0.1 s, 1.5 cm is 0.15 m/s.
+
+| ekf_local's speed vs the truth | sd (m/s) |
+|---|---:|
+| without KISS-ICP | 0.003 |
+| with it, said 0.05 (too sure) | **0.035** |
+| with it, says 0.15 | 0.008-0.009 |
+
+### The drift (the lot tour, MPPI, one run each)
+
+`controller-compare --kiss-icp` (off) and `--kiss-ekf` (on), headless on Ben's Mac, other
+Gazebo and test runs beside it. Folders `log/kiss-ekf/` (not in git). MPPI lost the turn
+back in every run, so "driven" differs.
+
+| Run | ekf_local: drift (m per 100 m) | worst off (m) | heading at the end | driven | KISS-ICP alone |
+|---|---:|---:|---:|---:|---:|
+| off | 1.91 | 1.88 | 0.29° | ~90 m | 0.02 |
+| off2 | 0.44 | 1.77 | 1.66° | 222 m | 0.04 |
+| on (covariance 0.05, too sure) | 0.93 | 1.22 | 2.69° | 91 m | 0.02 |
+| on2 (0.15) | 1.27 | 1.28 | 2.92° | 83 m | 0.03 |
+| on3 (0.15, and lagged twists put back in time) | **0.30** | **0.46** | 0.80° | 109 m | 0.03 |
+
+The first two legs, run by run (m per 100 m): off 1.19, 1.15; off2 1.76, 0.61; on2 0.48,
+1.14; on3 0.51, 0.65. Mean: **1.18 off, 0.70 on**, but the spread overlaps.
+
+### What it shows
+
+- KISS-ICP **alone** holds 0.02-0.04 m per 100 m; `ekf_local` with it doesn't come
+  close. Its turn rate (10 Hz) is outvoted by the IMU (50 Hz): ekf_local's turn-rate
+  noise stayed 0.013 rad/s in every run. Next: tune its process noise.
+- In Gazebo the wheels are nearly perfect, so there is little for the lidar to fix. The
+  point is the real car, where wheels slip: score it on a bag from the lot.
+- Lag: the twist arrives 17 ms after its cloud's stamp (median, Gazebo). `ekf_local`
+  puts each in at its own time (`smooth_lagged_data`, 1 s of history), as `ekf_global`
+  does with NDT; the car's VLP-16 may be later.
+- Dropout (KISS-ICP killed mid-drive, test lot, 1 m/s): ekf_local stayed at 30 Hz,
+  1.000 m/s against the truth's 1.000, for the next 10 s.
+- `pixi run sim-check --kiss-ekf` (road world): all PASS; KISS-ICP 10 Hz, ekf_local 30 Hz,
+  its speed 0.005 m/s from the truth (median).
+
 ## Scoring a localizer fairly
 
 | Number | Why |
@@ -172,6 +397,21 @@ one run, `--tours lot --controllers mppi --amcl`):
 | the same on one 10 Hz grid (each pose held until the next) | one that publishes more often isn't scored on more samples |
 | time over 1 m off, or no pose yet; the longest stretch | lost, and how long it took to recover |
 | NDT: share of clouds that gave a pose; each match's wall-clock time | simulated time can hide a slow match |
+
+## Scoring an odometry fairly (KISS-ICP, ekf_local)
+
+An odometry says only **how far the car moved**, in its own frame. So:
+
+| Number | Why |
+|---|---|
+| lined up with the truth at its first pose (position and heading) | its frame starts anywhere |
+| drift per 100 m driven: the last pose's gap, over the distance | the usual odometry number (KITTI's is a % of distance) |
+| worst gap; heading off at the end | a drift that comes back still steered the car wrong |
+| per leg, and over the whole tour | short legs flatter it |
+| KISS-ICP's match time (wall clock) | simulated time hides a slow match |
+
+Gazebo's lidar has **no sweep** (one instant per turn), so KISS-ICP's deskew does nothing
+there; the car's VLP-16 has a `time` field, and its scans are smeared by the car's motion.
 
 ## Before a winner goes on the car
 
@@ -315,8 +555,8 @@ results in `~/aav-runs/2026-10-29/planners-results/` on Ben's Mac (not in git).
 - **The lattice is fast and drives well** where there's room: 4 ms a plan, and the
   smallest error on the first two legs. Every turn kept to 3.58 m, as made. But with
   only 16 headings its U-turn loop needs more room than Hybrid's 72; it ran the car into
-  a corner it couldn't leave forwards. Next: primitives with 32 headings, and a run
-  with `--reversing` (the lattice may then back out).
+  a corner it couldn't leave forwards. Done 30 Oct (below): with `--reversing` it backs
+  out and finishes; 32 headings didn't help.
 - **Smac 2D is the fastest planner and the worst for a car**: it ignores the goal's
   heading and the turning circle, so a U-turn is a straight line back. This is why the
   car refuses it.
@@ -325,3 +565,125 @@ results in `~/aav-runs/2026-10-29/planners-results/` on Ben's Mac (not in git).
 - Planning times are the planner's own `planning_time`, on Gazebo's clock; the wall-clock
   call was within a few ms of it. One run each: **not a ranking yet**. `navfn` and
   `theta_star` weren't run.
+- **Unfair to the lattice:** the run was forward only, and the sim's default (and Ben's,
+  30 Oct: "Reversing is always true i think") is `reversing:=true`. Rerun below.
+
+## Planners, 30 Oct: reversing on, hybrid, lattice and lattice32
+
+The 29 Oct run again, fairly: **reversing on**, MPPI following (it follows backwards
+too; our trackers can't), 1 m/s, the lot tour. `lattice32` is the lattice on its new
+32-heading file (`lattice_headings:=32`). Branch `lattice-rerun`.
+
+```bash
+AAV_SIM_DOMAIN=224 pixi run controller-compare --planners lattice32 lattice hybrid \
+    --reversing --tours lot --runs 3
+```
+
+Then one more run of each with every point of the plan kept (the cusp scoring, below).
+Results in `~/aav-runs/2026-10-30/lattice-rerun*/` on Ben's Mac (not in git).
+
+### The whole tour
+
+Each planner's runs: hybrid 4, lattice 4, lattice32 3 (one more was spoiled, below).
+
+| | hybrid (default) | lattice (16) | lattice32 |
+|---|---:|---:|---:|
+| Legs finished | 16 of 16 | 16 of 16 | 12 of 12 |
+| Time, all legs: mean (each run) | 213 s (211-215) | **184 s** (182-185) | 197 s (187-216) |
+| Driven in reverse, a tour | 9.1 m | 9.3 m | 9.0 m (16.8 once) |
+| Planning time, mean / worst | 15 / 55 ms | **10 / 33 ms** | 18 / 68 ms |
+| Tightest turn in a plan (radius) | 3.28 m | 3.59 m | 3.47 m |
+| Plan tighter than full lock (2.87 m) | 0 m | 0 m | 0 m |
+| Changes between forward and reverse (plans, a tour) | 2 | 4 | 4 |
+| Off the path, mean | 0.11-0.13 m | 0.13-0.14 m | 0.13-0.24 m |
+
+### Leg by leg (the range over the runs)
+
+| Leg | hybrid | lattice | lattice32 |
+|---|---|---|---|
+| a left turn | 28-29 s | 26-27 s | 26-27 s |
+| round the building | 53 s | 44-46 s | 45 s |
+| **turn back** (the U-turn) | 64-67 s, backs up about 9 m | 56-60 s, backs up about 9 m | 56-59 s, backs up about 9 m |
+| home | 65-66 s | 55-56 s | 57-63 s; **86 s** once (collision_monitor stopped it, it backed up 8 m more) |
+
+### What it shows
+
+- **With reversing on, the lattice finishes every leg**, and it is the fastest: about
+  **29 s quicker** a tour than Hybrid-A* (14 %), with plans a third quicker. On 29 Oct
+  (forward only) it lost the U-turn; backing up 9 m is what it needed.
+- **32 headings don't help.** Same legs, slower plans, more spread. The 16-heading file
+  stays the lattice's default.
+- **1 Nov: the lattice is the default** (Ben). Sim, bench and CARLA reverse, so they take
+  it; the car keeps Hybrid-A* (`CAR_DEFAULT_PLANNER`) until H5.
+- Before, on 30 Oct: Hybrid-A* stayed the default, as the trials rule is that Ben decides a swap.
+  The lattice has won this one test, in Gazebo. Before a swap: the bench, and a look at
+  forward only on the car (its `reversing:=false` until H5), where the lattice still loses
+  the U-turn.
+- Every planner turned the U-turn the same way: forward, about 9 m back, forward.
+
+### Notes
+
+- **One lattice32 run was spoiled**: its car never moved. Another helper's ROS nodes on
+  the same domain (226) told output_mux the actuators were REAL, so it stopped the car.
+  Rerun on domain 221: 4 of 4, 187 s. It is left out of the table.
+- **Cusps:** a reversing plan doubles back where the car changes gear. The first scoring
+  read that corner as a 0.3-0.5 m "turn", so every planner looked as if it broke full
+  lock. The scoring now cuts the plan at each cusp (a turn of more than 120°) and
+  measures the turns between them. The tightest-turn row comes from the runs that kept
+  every point of the plan (one each); the other runs kept one point in four.
+
+## Voxels, 30 Oct: the lidar as cubes
+
+`voxels:=true` (`aav_voxels`, [design](designs/2026-10-30_voxels.md)): Nav2's costmap
+and stop zone read **0.25 m cubes** over the fitted road instead of the flat scan.
+Gazebo on Ben's Mac, one run each, MPPI.
+
+### Does it stop for the post? (`sim-check --lidar-obstacle`, radar off)
+
+A person-sized post (0.5 × 0.5 × 1.8 m) 15 m ahead; the planner blind to it.
+
+| | Flat scan (today) | Cubes |
+|---|---|---|
+| Stopped | ✅ | ✅ |
+| Front bumper to the post | **0.36 m** | **0.44 m** |
+| Top speed | 0.96 m/s | 0.97 m/s |
+| Local costmap there | 100 of 100 | 100 of 100 |
+| Post taken away: goal reached | ✅ | ✅ |
+
+### What it costs (the node's own status, every cloud)
+
+| | Flat scan | Cubes |
+|---|---|---|
+| One Gazebo cloud cut (the same cloud, both ways, in the check) | **0.18 ms** | **5.3 ms** |
+| The node, read to publish (mean / 95th / worst) | not measured | **6.1 / 6.3 / 6.6 ms** (road world), **6.2 / 6.7 / 12.7 ms** (lot tour) |
+| Clouds dropped | - | 0 |
+| Road fitted | - | every cloud (Gazebo has no suspension: flat) |
+
+Cubes per cloud: **4** in the road world (the stop sign), **15** with the post (45 at
+most), **1,067-1,378** on the lot tour (walls, the building, parked cars).
+
+### The lot tour (`controller-compare --tours lot --controllers mppi`, with and without `--voxels`)
+
+| Leg | Flat scan | Cubes |
+|---|---|---|
+| a left turn | ✅ 29 s, 21.4 m | ✅ 29 s, 21.3 m |
+| round the building | ✅ 52 s, 40.0 m | ✅ 53 s, 41.0 m |
+| turn back (the U-turn) | ✅ 70 s, 55.5 m | ✅ 76 s, 60.9 m |
+| home | ✅ 67 s, 52.6 m | ✅ 68 s, 53.1 m |
+| Off the path, mean | 0.08-0.12 m | 0.10-0.11 m |
+| Stops by collision_monitor | 0 | 0 |
+
+Runs: `/tmp/voxbench/runs/` on Ben's Mac (not in git).
+
+### What it shows
+
+- **Cubes stop the car as well as the scan**: 0.44 m from the post against 0.36 m.
+- **They cost more**, 6 ms a cloud against well under 1 ms, but that is 6 % of the
+  100 ms between clouds: Python is enough. Rust only if the Orin is over 20 ms.
+- **The lot tour drives the same**: all four legs; the U-turn took 6 s longer (one run:
+  not a ranking).
+- **Not shown yet**: the leaning car (Gazebo can't lean; the made-up lot in
+  `test_cubes.py` does, 2-3°), a thin pole in the stop zone, backing up
+  (`--rear-obstacle`), `--plan-around`, and the car itself.
+- **Next**: Nav2's 3D `VoxelLayer` on the same cubes, which would keep a low box near
+  the car marked (the 2D layer clears it, as the scan does).

@@ -16,13 +16,17 @@
 //!                                             cloud's stamp; good fits only
 //!             localization/ndt/status          diagnostic_msgs/DiagnosticStatus, after
 //!                                             every cloud: TRACKING, WAITING or LOST,
-//!                                             score_per_point, overlap, iterations,
-//!                                             match_ms (wall clock), points, poor_in_row,
-//!                                             restarts, clouds_dropped, x, y, yaw
+//!                                             stamp (the cloud's, s), score_per_point,
+//!                                             overlap, iterations, match_ms (wall clock),
+//!                                             points, poor_in_row, restarts,
+//!                                             clouds_dropped, x, y, yaw, and cov_xx,
+//!                                             cov_xy, cov_xyaw, cov_yy, cov_yyaw,
+//!                                             cov_yawyaw (-H⁻¹, before k and the floors)
 //! Parameters  map (a PCD file), cubes (m, biggest first), lidar_xyz, lidar_rpy (vehicle.
-//!             yaml's lidar_link), body_min, body_max (the car's outline in base_link),
+//!             yaml's lidar_link), body_min, body_max (the car and its sensors in base_link,
+//!             vehicle.self_box: 15 cm wider than them),
 //!             ground (above or lowest), min_height, ground_cell, max_range, thin (m),
-//!             min_score_per_point, lost_after, max_iterations, step_m, step_deg,
+//!             min_score_per_point, max_correction_m, max_correction_deg, lost_after, max_iterations, step_m, step_deg,
 //!             outlier_ratio, covariance_scale, variance_floor_xy (m²),
 //!             variance_floor_yaw (rad²), start_x, start_y, start_yaw, start_from_global,
 //!             cloud_period (s); config/ndt.yaml and launch/ndt.launch.py
@@ -39,7 +43,7 @@ use std::{
 use anyhow::{bail, Context as _, Result};
 use ndt_core::{
     cloud::{read_xyz, BodyBox, CloudView, Field},
-    localizer::{Outcome, Poor, Skip},
+    localizer::{raw_covariance, Outcome, Poor, Skip},
     pcd, Ground, Localizer, LocalizerSettings, MapSettings, MatchSettings, Matcher, Mount, Pose2,
     Report, ScanFilter, Tracking,
 };
@@ -202,7 +206,10 @@ impl State {
                 );
             }
         }
-        if let Err(e) = self.status.publish(status(&report, match_ms, self.dropped)) {
+        if let Err(e) = self
+            .status
+            .publish(status(&report, stamp, match_ms, self.dropped))
+        {
             log_warn!(
                 self.logger.throttle(WARN_EVERY),
                 "/localization/ndt/status: {e}"
@@ -212,7 +219,7 @@ impl State {
 }
 
 /// The status after one cloud.
-fn status(report: &Report, match_ms: f64, dropped: u64) -> DiagnosticStatus {
+fn status(report: &Report, stamp: Duration, match_ms: f64, dropped: u64) -> DiagnosticStatus {
     let (level, why, fit) = match &report.outcome {
         Outcome::Pose(fit) => (DiagnosticStatus::OK, String::new(), Some(fit)),
         Outcome::Poor { fit, why } => (
@@ -220,6 +227,7 @@ fn status(report: &Report, match_ms: f64, dropped: u64) -> DiagnosticStatus {
             match why {
                 Poor::LowScore => ": a poor fit (score per point too low)".into(),
                 Poor::NoConvergence => ": a poor fit (out of iterations)".into(),
+                Poor::Jumped => ": a poor fit (it jumped from the guess)".into(),
             },
             Some(fit),
         ),
@@ -234,6 +242,7 @@ fn status(report: &Report, match_ms: f64, dropped: u64) -> DiagnosticStatus {
         level
     };
     let mut values = vec![
+        ("stamp", format!("{:.3}", stamp.as_secs_f64())),
         ("points", report.points.to_string()),
         ("poor_in_row", report.poor_in_row.to_string()),
         ("restarts", report.restarts.to_string()),
@@ -249,6 +258,18 @@ fn status(report: &Report, match_ms: f64, dropped: u64) -> DiagnosticStatus {
             ("y", format!("{:.3}", fit.pose.y)),
             ("yaw", format!("{:.4}", fit.pose.yaw)),
         ]);
+        // -H⁻¹ before k and the floors: x, y, yaw's (co)variances, to fit k (NEES).
+        if let Some(c) = raw_covariance(&fit.hessian) {
+            let at = |r: usize, k: usize| format!("{:.3e}", c[(r, k)]);
+            values.extend([
+                ("cov_xx", at(0, 0)),
+                ("cov_xy", at(0, 1)),
+                ("cov_xyaw", at(0, 2)),
+                ("cov_yy", at(1, 1)),
+                ("cov_yyaw", at(1, 2)),
+                ("cov_yawyaw", at(2, 2)),
+            ]);
+        }
     }
     DiagnosticStatus {
         level,
@@ -321,6 +342,8 @@ struct Params {
     step_m: ReadOnlyParameter<f64>,
     step_deg: ReadOnlyParameter<f64>,
     outlier_ratio: ReadOnlyParameter<f64>,
+    max_correction_m: ReadOnlyParameter<f64>,
+    max_correction_deg: ReadOnlyParameter<f64>,
     covariance_scale: ReadOnlyParameter<f64>,
     variance_floor_xy: ReadOnlyParameter<f64>,
     variance_floor_yaw: ReadOnlyParameter<f64>,
@@ -356,8 +379,8 @@ impl Params {
             cubes: list("cubes", &[4.0, 2.0, 1.0])?,
             lidar_xyz: list("lidar_xyz", &[0.9, 0.0, 1.8])?,
             lidar_rpy: list("lidar_rpy", &[0.0, 0.0, 0.0])?,
-            body_min: list("body_min", &[-0.2, -0.5])?,
-            body_max: list("body_max", &[1.8, 0.5])?,
+            body_min: list("body_min", &[-0.39, -0.65])?,
+            body_max: list("body_max", &[1.99, 0.65])?,
             ground: node
                 .declare_parameter("ground")
                 .default("above".into())
@@ -372,6 +395,8 @@ impl Params {
             step_m: number("step_m", search.step_m)?,
             step_deg: number("step_deg", search.step_rad.to_degrees())?,
             outlier_ratio: number("outlier_ratio", search.outlier_ratio)?,
+            max_correction_m: number("max_correction_m", local.max_correction.0)?,
+            max_correction_deg: number("max_correction_deg", local.max_correction.1.to_degrees())?,
             covariance_scale: number("covariance_scale", local.covariance_scale)?,
             variance_floor_xy: number("variance_floor_xy", local.variance_floor[0])?,
             variance_floor_yaw: number("variance_floor_yaw", local.variance_floor[1])?,
@@ -434,6 +459,10 @@ impl Params {
             min_score_per_point: self.min_score_per_point.get(),
             lost_after,
             start_from_global: self.start_from_global.get(),
+            max_correction: (
+                self.max_correction_m.get(),
+                self.max_correction_deg.get().to_radians(),
+            ),
             covariance_scale: self.covariance_scale.get(),
             variance_floor: [self.variance_floor_xy.get(), self.variance_floor_yaw.get()],
             ..LocalizerSettings::default()

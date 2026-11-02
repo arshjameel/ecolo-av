@@ -11,13 +11,18 @@
 //!                                       the stamp, cubes)
 //! ```
 //!
-//! The local EKF's callback fills the pose buffer the cubes thread reads; `/tf_static`
+//! Nav2's cubes (`voxels_cubes_topic`, the voxels trial's, already in base_link) go the
+//! same way through a pair of slots of their own and a thread called "nav2_cubes", and
+//! are placed the same way: with the local EKF's pose at their stamp.
+//!
+//! The local EKF's callback fills the pose buffer the cubes threads read; `/tf_static`
 //! fills the static frames. Both are small and cloned under their lock, so the cubes
 //! thread never holds a lock while it parses a cloud.
 //!
 //! QoS:
 //! - the lidar: reliable, keep last 1 (as Gazebo's bridge and velodyne send it; a slow
-//!   window gets the newest cloud, not a backlog);
+//!   window gets the newest cloud, not a backlog); Nav2's cubes the same, as aav_voxels
+//!   publishes them;
 //! - `/tf`: reliable, depth 100; `/tf_static`: reliable, transient local, depth 100, so
 //!   a late window still gets robot_state_publisher's frames;
 //! - `/system/source`: reliable, transient local, depth 1 (latched), as the HUD;
@@ -47,12 +52,14 @@ use debug_core::{
     config::{DebugConfig, Frame, Number, Topic, NODE_NAME},
     cubes::{CubeScan, CubeSettings},
     frames::{frame_name, Stamp, StaticFrames, Transform3},
+    localization_health::Verdict,
     ndt::NdtStatus,
     poses::PoseBuffer,
     scan::{self, ScanError},
     state::{Localizer, Source, Update},
     swap::{Reply, Tracker},
     track::TrackStatus,
+    voxels::{self, VoxelSettings, VoxelStatus},
 };
 use hud_core::{
     origin::{Announcement, Entry, Origin},
@@ -72,6 +79,7 @@ use ros_env::nav_msgs::msg::{Odometry, Path};
 use ros_env::rcl_interfaces::msg::{Parameter, ParameterType, ParameterValue};
 use ros_env::rcl_interfaces::srv::{SetParameters, SetParameters_Request, SetParameters_Response};
 use ros_env::sensor_msgs::msg::{Imu, NavSatFix, PointCloud2};
+use ros_env::std_msgs::msg::String as StringMsg;
 use ros_env::tf2_msgs::msg::TFMessage;
 
 /// How many updates may wait for the screen. More are dropped: the screen is stuck.
@@ -124,10 +132,27 @@ impl<T> Slot<T> {
     }
 }
 
-/// What the cubes thread shares with the node.
-struct Shared {
+/// One cloud's way to the screen: the newest cloud in, the newest placed scan out.
+struct Pipe {
     clouds: Slot<PointCloud2>,
     scans: Slot<CubeScan>,
+}
+
+impl Pipe {
+    fn new() -> Self {
+        Self {
+            clouds: Slot::new(),
+            scans: Slot::new(),
+        }
+    }
+}
+
+/// What the cubes threads share with the node.
+struct Shared {
+    /// The lidar's clouds, into the screen's own cubes.
+    lidar: Pipe,
+    /// Nav2's cubes (the voxels trial's).
+    nav2: Pipe,
     poses: Mutex<PoseBuffer>,
     statics: Mutex<StaticFrames>,
     stopped: AtomicBool,
@@ -154,8 +179,8 @@ impl RosSource {
         let (ready_tx, ready_rx) = mpsc::channel::<Ready>();
         let (update_tx, updates) = mpsc::sync_channel(QUEUE);
         let shared = Arc::new(Shared {
-            clouds: Slot::new(),
-            scans: Slot::new(),
+            lidar: Pipe::new(),
+            nav2: Pipe::new(),
             poses: Mutex::new(PoseBuffer::new(config.pose_window())),
             statics: Mutex::new(StaticFrames::default()),
             stopped: AtomicBool::new(false),
@@ -173,8 +198,7 @@ impl RosSource {
                         None => eprintln!("debug_hud: the ROS node stopped: {e:#}"),
                     }
                 }
-                shared.stopped.store(true, Ordering::SeqCst);
-                shared.clouds.ready.notify_all();
+                shared.stop();
             })?
         };
         let (config, executor, track_parameters) = ready_rx
@@ -186,9 +210,32 @@ impl RosSource {
             let base = config.frame(Frame::Base).to_owned();
             let settings = config.cube_settings();
             let tx = update_tx.clone();
+            thread::Builder::new().name("cubes".into()).spawn(move || {
+                place_clouds(
+                    &shared,
+                    &shared.lidar,
+                    &tx,
+                    Update::ScanProblem,
+                    |m, s, p| place(m, &base, s, p, &settings),
+                )
+            })?
+        };
+        let nav2_cubes = {
+            let shared = Arc::clone(&shared);
+            let base = config.frame(Frame::Base).to_owned();
+            let settings = config.voxel_settings();
+            let tx = update_tx.clone();
             thread::Builder::new()
-                .name("cubes".into())
-                .spawn(move || make_cubes(&shared, &base, &settings, &tx))?
+                .name("nav2_cubes".into())
+                .spawn(move || {
+                    place_clouds(
+                        &shared,
+                        &shared.nav2,
+                        &tx,
+                        Update::Nav2CubesProblem,
+                        |m, s, p| place_nav2(m, &base, s, p, settings),
+                    )
+                })?
         };
 
         // Ctrl-C, or launch stopping us: stop spinning; the window sees it and closes.
@@ -206,7 +253,7 @@ impl RosSource {
             track_parameters,
             shared,
             executor,
-            threads: vec![ros, cubes],
+            threads: vec![ros, cubes, nav2_cubes],
         };
         Ok((source, config))
     }
@@ -222,7 +269,11 @@ impl crate::source::DataSource for RosSource {
     }
 
     fn take_scan(&mut self) -> Option<CubeScan> {
-        self.shared.scans.take()
+        self.shared.lidar.scans.take()
+    }
+
+    fn take_nav2_cubes(&mut self) -> Option<CubeScan> {
+        self.shared.nav2.scans.take()
     }
 
     fn swap_tracker(&mut self, tracker: Tracker) -> Result<()> {
@@ -247,8 +298,7 @@ impl crate::source::DataSource for RosSource {
 
 impl Drop for RosSource {
     fn drop(&mut self) {
-        self.shared.stopped.store(true, Ordering::SeqCst);
-        self.shared.clouds.ready.notify_all();
+        self.shared.stop();
         self.executor.halt_spinning();
         for t in self.threads.drain(..) {
             let _ = t.join();
@@ -256,10 +306,26 @@ impl Drop for RosSource {
     }
 }
 
-/// The cubes thread: the newest cloud, placed with the pose at its stamp, into cubes.
-fn make_cubes(shared: &Shared, base: &str, settings: &CubeSettings, tx: &SyncSender<Update>) {
+impl Shared {
+    /// Stops the cubes threads (and tells the window).
+    fn stop(&self) {
+        self.stopped.store(true, Ordering::SeqCst);
+        self.lidar.clouds.ready.notify_all();
+        self.nav2.clouds.ready.notify_all();
+    }
+}
+
+/// A cubes thread: the newest cloud in `pipe`, placed with the pose at its stamp, into
+/// its scans; `problem` says why one couldn't be.
+fn place_clouds(
+    shared: &Shared,
+    pipe: &Pipe,
+    tx: &SyncSender<Update>,
+    problem: fn(String) -> Update,
+    place: impl Fn(&PointCloud2, &StaticFrames, &PoseBuffer) -> Result<CubeScan, ScanError>,
+) {
     while !shared.stopped.load(Ordering::SeqCst) {
-        let Some(cloud) = shared.clouds.wait(Duration::from_millis(100)) else {
+        let Some(cloud) = pipe.clouds.wait(Duration::from_millis(100)) else {
             continue;
         };
         let waited = Instant::now();
@@ -275,22 +341,22 @@ fn make_cubes(shared: &Shared, base: &str, settings: &CubeSettings, tx: &SyncSen
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner)
                 .clone();
-            match place(&cloud, base, &statics, &poses, settings) {
+            match place(&cloud, &statics, &poses) {
                 Ok(scan) => {
-                    shared.scans.put(scan);
+                    pipe.scans.put(scan);
                     break;
                 }
                 // The pose at its stamp may still be on its way; a newer cloud wins.
                 Err(e)
                     if e.is_too_new()
                         && waited.elapsed() < POSE_WAIT
-                        && shared.clouds.is_empty()
+                        && pipe.clouds.is_empty()
                         && !shared.stopped.load(Ordering::SeqCst) =>
                 {
                     thread::sleep(POSE_RETRY);
                 }
                 Err(e) => {
-                    send(tx, Update::ScanProblem(e.to_string()));
+                    send(tx, problem(e.to_string()));
                     break;
                 }
             }
@@ -298,14 +364,9 @@ fn make_cubes(shared: &Shared, base: &str, settings: &CubeSettings, tx: &SyncSen
     }
 }
 
-fn place(
-    m: &PointCloud2,
-    base: &str,
-    statics: &StaticFrames,
-    poses: &PoseBuffer,
-    settings: &CubeSettings,
-) -> Result<CubeScan, ScanError> {
-    let view = CloudView {
+/// A PointCloud2's bytes, as debug-core reads them.
+fn view(m: &PointCloud2) -> CloudView<'_> {
+    CloudView {
         fields: m
             .fields
             .iter()
@@ -322,9 +383,37 @@ fn place(
         row_step: m.row_step,
         is_bigendian: m.is_bigendian,
         data: &m.data,
-    };
+    }
+}
+
+fn place(
+    m: &PointCloud2,
+    base: &str,
+    statics: &StaticFrames,
+    poses: &PoseBuffer,
+    settings: &CubeSettings,
+) -> Result<CubeScan, ScanError> {
     scan::place(
-        &view,
+        &view(m),
+        &m.header.frame_id,
+        stamp(&m.header.stamp),
+        base,
+        statics,
+        poses,
+        settings,
+    )
+}
+
+/// Nav2's cubes: centres in base_link, moved into odom with the pose at their stamp.
+fn place_nav2(
+    m: &PointCloud2,
+    base: &str,
+    statics: &StaticFrames,
+    poses: &PoseBuffer,
+    settings: VoxelSettings,
+) -> Result<CubeScan, ScanError> {
+    voxels::place(
+        &view(m),
         &m.header.frame_id,
         stamp(&m.header.stamp),
         base,
@@ -352,7 +441,23 @@ fn spin(
     let lidar_qos = QoSProfile::topics_default().reliable().keep_last(1);
     let _lidar = node.create_subscription(topic(Topic::Lidar).as_str().qos(lidar_qos), {
         let shared = Arc::clone(shared);
-        move |m: PointCloud2| shared.clouds.put(m)
+        move |m: PointCloud2| shared.lidar.clouds.put(m)
+    })?;
+    // Nav2's cubes: as aav_voxels publishes them (reliable, depth 1).
+    let nav2_qos = QoSProfile::topics_default().reliable().keep_last(1);
+    let _nav2_cubes =
+        node.create_subscription(topic(Topic::VoxelsCubes).as_str().qos(nav2_qos), {
+            let shared = Arc::clone(shared);
+            move |m: PointCloud2| shared.nav2.clouds.put(m)
+        })?;
+    let _voxels_status =
+        node.create_subscription(topic(Topic::VoxelsStatus).as_str().sensor_data_qos(), {
+            let tx = tx.clone();
+            move |m: DiagnosticStatus| send(&tx, Update::VoxelsStatus(voxel_status(&m)))
+        })?;
+    let _health = node.create_subscription(topic(Topic::Health).as_str().sensor_data_qos(), {
+        let tx = tx.clone();
+        move |m: StringMsg| send(&tx, Update::LocalizationHealth(Verdict::parse(&m.data)))
     })?;
 
     // The local EKF: the car, and the poses the cubes are placed with.
@@ -594,6 +699,15 @@ fn ndt_status(m: &DiagnosticStatus) -> NdtStatus {
         .iter()
         .map(|kv| (kv.key.as_str(), kv.value.as_str()));
     NdtStatus::from_message(m.level, &m.message, values)
+}
+
+/// `/perception/voxels/status` in plain words.
+fn voxel_status(m: &DiagnosticStatus) -> VoxelStatus {
+    let values = m
+        .values
+        .iter()
+        .map(|kv| (kv.key.as_str(), kv.value.as_str()));
+    VoxelStatus::from_message(m.level, &m.message, values)
 }
 
 fn heard(source: Source, detail: String) -> Update {
@@ -871,6 +985,9 @@ mod tests {
         let tf: Publisher<TFMessage> = helper.create_publisher(config.topic(Topic::Tf))?;
         let odom: Publisher<Odometry> = helper.create_publisher(config.topic(Topic::LocalOdom))?;
         let lidar: Publisher<PointCloud2> = helper.create_publisher(config.topic(Topic::Lidar))?;
+        let nav2: Publisher<PointCloud2> =
+            helper.create_publisher(config.topic(Topic::VoxelsCubes))?;
+        let health: Publisher<StringMsg> = helper.create_publisher(config.topic(Topic::Health))?;
         let _service = helper.create_service::<SetParameters, _>(
             config.track_parameters_service.as_str(),
             |request: SetParameters_Request| SetParameters_Response {
@@ -958,6 +1075,37 @@ mod tests {
                 .any(|u| matches!(u, Update::MapToOdom(p) if (p.position.x - 100.0).abs() < 1e-9)),
             "no map -> odom"
         );
+
+        // Nav2's cubes: one centre 2 m ahead in base_link, at the same stamp (x = 0.25):
+        // x = 2.25 in odom, not snapped again. And the health checks' word.
+        cloud.header.frame_id = "base_link".into();
+        cloud.data = [2.0_f32, 0.0, 0.875]
+            .iter()
+            .flat_map(|v| v.to_le_bytes())
+            .collect();
+        let (mut cubes, mut verdict) = (None, None);
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while (cubes.is_none() || verdict.is_none()) && Instant::now() < deadline {
+            nav2.publish(&cloud)?;
+            health.publish(StringMsg {
+                data: "WARN tf WARN: no base_link -> gps_link".into(),
+            })?;
+            spin(&mut executor, 200);
+            cubes = cubes.or_else(|| hud.take_nav2_cubes());
+            verdict = verdict.or_else(|| {
+                hud.drain(Instant::now()).into_iter().find_map(|u| match u {
+                    Update::LocalizationHealth(v) => Some(v),
+                    _ => None,
+                })
+            });
+        }
+        let cubes = cubes.context("no Nav2 cubes")?;
+        let [x, _, z] = cubes.cubes[0].centre;
+        assert!(
+            (x - 2.25).abs() < 1e-4 && (z - 0.875).abs() < 1e-6,
+            "{cubes:?}"
+        );
+        assert_eq!(verdict.context("no health")?.line(), "WARN: tf");
 
         // Keys 1-4: the service's own answer comes back.
         let mut reply = None;

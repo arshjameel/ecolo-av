@@ -1,0 +1,42 @@
+# ekf_local with KISS-ICP (kiss_ekf:=true, a trial): read on top of ekf_local.yaml.
+#
+# KISS-ICP (aav_kiss_icp) matches each lidar turn to the last few and publishes how the
+# car moved: /localization/kiss_icp/odom. Here ekf_local takes its TWIST, beside the
+# wheels and the IMU: vx (forward speed) and vyaw (turn rate), in base_link.
+#
+# Why the twist, not the pose:
+#   - its pose drifts and lives in its own frame (kiss_odom, where the first scan was);
+#     two drifting poses fighting in one filter pull it about;
+#   - its pose restarts from where the last worker left it if the worker dies;
+#   - a speed is what the wheels and the IMU give too: three opinions of the same thing.
+#   vy is left out: the wheels already say 0 (a car can't slide sideways at the rear axle).
+#
+# If KISS-ICP stops (no lidar, the worker dies, kiss_icp not running) the filter simply
+# gets no odom1: the wheels and the IMU carry on as without this file.
+#
+# Order of the 15 numbers, as in ekf_local.yaml:
+#   x, y, z,  roll, pitch, yaw,  vx, vy, vz,  vroll, vpitch, vyaw,  ax, ay, az
+# Results and the reasons for the numbers: docs/trials.md (KISS-ICP into the local EKF).
+ekf_local:
+  ros__parameters:
+    odom1: /localization/kiss_icp/odom
+    odom1_config: [false, false, false,
+                   false, false, false,
+                   true,  false, false,
+                   false, false, true,
+                   false, false, false]
+    odom1_differential: false
+    odom1_relative: false
+    odom1_queue_size: 5
+    # The covariance is KISS-ICP's node's (aav_kiss_icp config/kiss_icp.yaml: 0.15 m/s
+    # and 0.01 rad/s, 1 sigma, measured against Gazebo's truth: docs/trials.md). So the
+    # wheels still lead the speed, and KISS-ICP the turn rate (the IMU's is 0.02 rad/s).
+    # A twist more than 5 sigma from the filter's (2 numbers: 99.9 % of honest ones are
+    # within 3.7) is refused: a slip of the match, or the zero twist of a worker that has
+    # just restarted (at 1 m/s that zero is about 6 sigma off).
+    odom1_twist_rejection_threshold: 5.0
+    # The twist carries the cloud's stamp and arrives late (the match, and Gazebo's
+    # render). Keep 1 s of the filter's past and put each in at its own time, as
+    # ekf_global does with NDT, rather than correcting today's turn rate with an old one.
+    smooth_lagged_data: true
+    history_length: 1.0

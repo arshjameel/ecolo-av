@@ -106,3 +106,36 @@ fn five_poor_fits_make_it_lost_and_it_starts_again_from_the_global_ekf() {
     assert_eq!(report.tracking, Tracking::Tracking);
     assert_eq!(report.restarts, 1);
 }
+
+#[test]
+fn a_jump_while_tracking_is_poor_but_not_after_a_start() {
+    let mut rng = Rng::new(12);
+    let (world, mut ndt) = localizer(&mut rng);
+    let here = Pose2::new(20.0, 0.0, 0.0);
+    // From a start 0.8 m off, the first fit may move that far: a start isn't trusted.
+    ndt.set_start(Pose2::new(20.8, 0.0, 0.0), None);
+    ndt.odom(at(0.0), Pose2::new(0.0, 0.0, 0.0));
+    let report = ndt.cloud(at(0.0), world.scan(&here, 1800, 0.03, &mut rng));
+    assert!(
+        matches!(report.outcome, Outcome::Pose(_)),
+        "{:?}",
+        report.outcome
+    );
+    // Then odometry says the car stood still, but the scan is from 0.8 m further east:
+    // a fit there is a jump, not published.
+    ndt.odom(at(0.1), Pose2::new(0.0, 0.0, 0.0));
+    let moved = Pose2::new(20.8, 0.0, 0.0);
+    let report = ndt.cloud(at(0.1), world.scan(&moved, 1800, 0.03, &mut rng));
+    assert!(
+        matches!(
+            report.outcome,
+            Outcome::Poor {
+                why: ndt_core::localizer::Poor::Jumped,
+                ..
+            }
+        ),
+        "{:?}",
+        report.outcome
+    );
+    assert_eq!(report.poor_in_row, 1);
+}

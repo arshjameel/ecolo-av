@@ -241,8 +241,7 @@ gain should be at least as big. To check with the first drive's bag.
 
 ## 8. Next: matching the lidar to a map (NDT and ICP)
 
-Not built yet: a research pick ([research picks](designs/2026-10-28_research-picks.md),
-pick 2). GPS gets the car to within a metre or two. To get to centimetres without RTK,
+Built as a trial on 29 Oct (`aav_ndt`, research [pick 2](designs/2026-10-28_research-picks.md)). GPS gets the car to within a metre or two. To get to centimetres without RTK,
 match what the lidar sees now against a map of the lot.
 
 ### NDT: blobs
@@ -286,6 +285,26 @@ because most pairs are right; start it too far off and it locks onto the wrong p
 
 So: **make** the map with KISS-ICP, **find** the car in it with NDT, and give that
 pose to `ekf_global` beside GPS.
+
+### Two ways the lidar can feed the EKFs
+
+| | KISS-ICP into `ekf_local` (`kiss_ekf:=true`, a trial) | NDT into `ekf_global` (`ndt_ekf:=true`, a trial) |
+|---|---|---|
+| Needs a map? | **No**: each scan is matched to the last few | **Yes**: a saved map of the lot (`pixi run ndt-map drive` in Gazebo) |
+| What it says | how far the car moved since the last scan | where the car **is** on the map |
+| Drifts? | yes, slowly, like the wheels (but it doesn't slip) | no: the map holds it |
+| Fed as | a speed (`twist`), beside the wheels and the IMU | a position and heading (`pose`), beside the GPS |
+| Its EKF | `ekf_local`: smooth, `odom → base_link` | `ekf_global`: `map → odom`, may jump |
+| Good for | wheels that slip, or no wheel speed at all | holding the car where GPS can't (trees, buildings, no GPS) |
+
+```
+lidar ─► KISS-ICP ─► "moved 0.10 m, turned 1°" ─► ekf_local  (no map)
+lidar ─► NDT + map ─► "at x 12.31, y 4.02, 87°" ─► ekf_global (needs the map)
+```
+
+The rule for each: odometry (how far I moved) goes to `ekf_local`; anything that says
+where I am on the map goes to `ekf_global`. Results of NDT into `ekf_global`:
+[trials](trials.md#ndt-into-the-global-ekf-30-oct).
 
 Not Tesla's way: Tesla has no lidar. Its "occupancy network" turns camera images into
 3D cubes, each marked filled or empty. That looks like NDT's squares, but it doesn't

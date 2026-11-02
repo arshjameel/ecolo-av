@@ -1,10 +1,14 @@
 //! Pretend data for `--demo`: a walled lot with boxes, a car driving a loop, a 16-beam
 //! lidar ray-cast against it, and the localizers a little apart (NDT too, LOST for a
-//! moment every 30 s), AMCL's particles, and the lot itself as NDT's map. No ROS.
+//! moment every 30 s), AMCL's particles, and the lot itself as NDT's map; Nav2's cubes
+//! (the voxels trial's 0.25 m cubes from the same sweep, the road taken as flat for a
+//! moment every 20 s) and the localization health checks (WARN for 5 s every 25 s). No
+//! ROS.
 //!
 //! `--bench-cubes N` swaps the lidar for N cubes spread round the car: the drawing test.
 
 use std::{
+    collections::HashSet,
     f64::consts::{PI, TAU},
     time::{Duration, Instant},
 };
@@ -12,10 +16,12 @@ use std::{
 use debug_core::{
     cubes::{self, Cube, CubeScan, CubeSettings},
     frames::{Stamp, Transform3},
+    localization_health::Verdict,
     ndt::{MapCells, NdtStatus},
     state::{Localizer, Source, Update},
     swap::{Reply, Tracker},
     track::TrackStatus,
+    voxels::{self, VoxelSettings, VoxelStatus},
 };
 use hud_core::{
     units::{Fraction, MetresPerSecond, Radians},
@@ -206,6 +212,59 @@ fn ndt_status(t: f64) -> NdtStatus {
     )
 }
 
+/// Nav2's cubes as aav_voxels makes them, roughly: the sweep's points in base_link, from
+/// 0.3 m to 2.0 m up and within 30 m, one centre per `size` cube.
+fn nav2_centres(points: &[[f32; 3]], size: f64) -> Vec<[f32; 3]> {
+    let cells: HashSet<[i32; 3]> = points
+        .iter()
+        .filter(|p| p.iter().all(|v| v.is_finite()))
+        .map(|p| [0, 1, 2].map(|i| f64::from(p[i]) + LIDAR[i]))
+        .filter(|p| (0.3..=2.0).contains(&p[2]) && p[0].hypot(p[1]) <= 30.0)
+        .map(|p| p.map(|v| (v / size).floor() as i32))
+        .collect();
+    cells
+        .into_iter()
+        .map(|c| c.map(|i| ((f64::from(i) + 0.5) * size) as f32))
+        .collect()
+}
+
+/// The voxels trial's status: the road fitted, but taken as flat for 2 s every 20 s.
+fn voxel_status(t: f64, cubes: usize) -> VoxelStatus {
+    let flat = t % 20.0 > 18.0;
+    let (level, message) = if flat {
+        (1, "road taken as flat (no good fit)")
+    } else {
+        (0, "road fitted")
+    };
+    let ms = format!("{:.2}", 4.0 + (t * 1.1).sin());
+    let cubes = cubes.to_string();
+    VoxelStatus::from_message(
+        level,
+        message,
+        [
+            ("ms", ms.as_str()),
+            ("cubes", cubes.as_str()),
+            ("ground_cubes", "1180"),
+            ("points", "14400"),
+            ("roll_deg", if flat { "0.00" } else { "0.35" }),
+            ("pitch_deg", if flat { "0.00" } else { "-0.80" }),
+            ("clouds_dropped", "0"),
+        ],
+    )
+}
+
+/// `/localization/health`: OK, but WARN for 5 s every 25 s.
+fn localization_health(t: f64) -> Verdict {
+    if t % 25.0 > 20.0 {
+        Verdict::parse(
+            "WARN wheels WARN: the front wheels say 4.1 deg/s, the gyro 1.2 deg/s; \
+             gps_quality WARN: poor fix: sigma 6.2 m",
+        )
+    } else {
+        Verdict::Ok
+    }
+}
+
 /// The car on its loop at `t` seconds: base_link in odom.
 fn car_at(t: f64) -> Pose {
     let angle = SPEED * t / RADIUS;
@@ -252,20 +311,32 @@ pub struct Demo {
     start: Instant,
     last_scan: Option<Instant>,
     last_news: Option<Instant>,
+    last_nav2: Option<Instant>,
+    /// How many of Nav2's cubes the last cloud had, for the status.
+    nav2_count: usize,
     settings: CubeSettings,
+    voxels: VoxelSettings,
     bench: Option<CubeScan>,
     tracker: Tracker,
     replies: Vec<Update>,
 }
 
 impl Demo {
-    pub fn new(start: Instant, settings: CubeSettings, bench_cubes: Option<usize>) -> Self {
+    pub fn new(
+        start: Instant,
+        settings: CubeSettings,
+        voxels: VoxelSettings,
+        bench_cubes: Option<usize>,
+    ) -> Self {
         let size = settings.size.0 as f32;
         Self {
             start,
             last_scan: None,
             last_news: None,
+            last_nav2: None,
+            nav2_count: 0,
             settings,
+            voxels,
             bench: bench_cubes.map(|n| bench_scan(n, size)),
             tracker: Tracker::PurePursuit,
             replies: Vec::new(),
@@ -345,6 +416,8 @@ impl DataSource for Demo {
                 frame: "map".into(),
             },
             Update::Ndt(ndt_status(t)),
+            Update::VoxelsStatus(voxel_status(t, self.nav2_count)),
+            Update::LocalizationHealth(localization_health(t)),
             Update::Plan {
                 points: plan,
                 frame: "map".into(),
@@ -413,6 +486,20 @@ impl DataSource for Demo {
         let stamp = Stamp((t * 1e9) as i64);
         Some(cubes::build(sweep(car), &lidar, car, stamp, &self.settings))
     }
+
+    fn take_nav2_cubes(&mut self) -> Option<CubeScan> {
+        let now = Instant::now();
+        if self.bench.is_some() || !due(&mut self.last_nav2, now, Duration::from_millis(100)) {
+            return None;
+        }
+        let t = self.t(now);
+        let car = car_at(t);
+        let centres = nav2_centres(&sweep(car), self.voxels.size.0);
+        let stamp = Stamp((t * 1e9) as i64);
+        let scan = voxels::build(centres, &Transform3::IDENTITY, car, stamp, self.voxels);
+        self.nav2_count = scan.cubes.len();
+        Some(scan)
+    }
 }
 
 #[cfg(test)]
@@ -434,6 +521,7 @@ mod tests {
             size: Metres(0.2),
             max_cubes: 100_000,
             ground_height: Metres(0.25),
+            own: None,
         };
         let car = car_at(0.0);
         let lidar = Transform3 {
@@ -461,6 +549,16 @@ mod tests {
         assert!(particles(Pose::default(), 0.0)
             .iter()
             .all(|p| p.position.x.abs() <= 0.4));
+    }
+
+    #[test]
+    fn nav2_sees_the_walls_but_not_the_road() {
+        let centres = nav2_centres(&sweep(car_at(0.0)), 0.25);
+        assert!(centres.len() > 100, "{}", centres.len());
+        assert!(centres.iter().all(|c| c[2] > 0.25 && c[2] < 2.1));
+        assert_eq!(voxel_status(19.0, 5).road.word(), "WARN");
+        assert_eq!(localization_health(1.0), Verdict::Ok);
+        assert_eq!(localization_health(21.0).word(), "WARN");
     }
 
     #[test]

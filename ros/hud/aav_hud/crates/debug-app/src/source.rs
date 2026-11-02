@@ -16,6 +16,11 @@ pub trait DataSource {
     /// The newest scan's cubes, if a new one is ready (older ones were dropped).
     fn take_scan(&mut self) -> Option<CubeScan>;
 
+    /// Nav2's newest cubes (the voxels trial's), placed in odom, if new ones are ready.
+    fn take_nav2_cubes(&mut self) -> Option<CubeScan> {
+        None
+    }
+
     /// Asks the trial tracker to swap to `tracker` (keys 1-4; the caller has checked
     /// it's the simulator). The answer comes back later as an `Update::SwapReply`.
     fn swap_tracker(&mut self, tracker: Tracker) -> anyhow::Result<()>;

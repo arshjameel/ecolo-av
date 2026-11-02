@@ -3,8 +3,8 @@ Nav2 as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out to tw
 
   ros2 launch aav_navigation navigation.launch.py [map:=<path to map yaml>]
       [radar:=false] [lidar:=false] [collision_monitor:=<radar or lidar>]
-      [camera_obstacles:=false] [ghost:=false]
-      [reversing:=false] [max_speed:=] [controller:=mppi] [planner:=hybrid]
+      [camera_obstacles:=false] [ghost:=false] [voxels:=false]
+      [reversing:=false] [max_speed:=] [controller:=mppi] [planner:=lattice]
       [plan_around:=true]
       [tracker:=none] [live_swap:=false] [amcl:=false] [amcl_x:=0.0] [amcl_y:=0.0]
       [amcl_yaw:=0.0] [amcl_map:=]
@@ -16,7 +16,7 @@ route server, and AMCL only as a trial, amcl:=true, since robot_localization doe
 localization):
 
   map_server        the map (default: maps/empty.yaml, everything free)
-  planner_server    SmacPlannerHybrid: drivable paths for a car; planner:= for another
+  planner_server    SmacPlannerLattice: drivable paths for a car; planner:= for another
                     (below)
   controller_server MPPI, with its Ackermann model -> cmd_vel_nav; controller:=rpp for
                     Regulated Pure Pursuit instead (docs/path-followers.md)
@@ -43,7 +43,9 @@ Trials (docs/trials.md), each beside the default and scored by pixi run controll
                           Reeds-Shepp. lattice: SmacPlannerLattice on our own primitives
                           (config/lattice_ackermann.json, pixi run lattice-primitives), for
                           the car's turning radius and the map's cells (refused if either
-                          differs), backwards too with reversing:=true. smac2d, navfn,
+                          differs), backwards too with reversing:=true.
+                          lattice_headings:=32 takes the trial file with 32 headings
+                          (lattice_ackermann_32.json). smac2d, navfn,
                           theta_star: grid paths that ignore the turning radius, so the
                           follower must round their corners; car.launch.py refuses them
   tracker:=pure_pursuit|stanley|lqr|mpc|mpc_full  aav_track's track node follows the path instead
@@ -59,6 +61,12 @@ Trials (docs/trials.md), each beside the default and scored by pixi run controll
                           lidar:=true), from amcl_x, amcl_y, amcl_yaw (map frame), with its
                           own lifecycle manager. tf_broadcast false: ekf_global keeps
                           map -> odom; AMCL's pose, /localization/amcl/pose, is only scored
+  voxels:=true            (with lidar:=true) aav_voxels' voxels cuts the cloud into 0.25 m
+                          cubes between the fitted road and just over the roof
+                          (/perception/voxels/cubes, and the road it saw, .../ground): the
+                          local costmap's lidar_layer and collision_monitor read those
+                          instead of /sensors/lidar/scan. lidar_scan then runs only for
+                          amcl:=true (docs/designs/2026-10-30_voxels.md)
   amcl_map:=<yaml>        AMCL's own map (finer, obstacles as outlines: maps/README.md),
                           from amcl_map_server on /localization/amcl/map; empty: Nav2's /map
 
@@ -127,12 +135,12 @@ def flag(context, name):
 
 def tuned_copy(source, v, reversing, max_speed, radar, lidar, ghost=False,
                controller=vehicle.DEFAULT_CONTROLLER, plan_around=True, camera=False,
-               planner=vehicle.DEFAULT_PLANNER, lattice_file=None):
+               planner='hybrid', lattice_file=None, voxels=False):
     """Return a temporary copy of nav2.yaml, tuned by vehicle.nav2_tuned (no ROS there)."""
     with open(source) as f:
         cfg = vehicle.nav2_tuned(yaml.safe_load(f), v, reversing, max_speed, radar, lidar,
                                  ghost, controller, plan_around, camera, planner,
-                                 lattice_file)
+                                 lattice_file, voxels)
     out = tempfile.NamedTemporaryFile('w', prefix='nav2_', suffix='.yaml', delete=False)
     with out:
         yaml.safe_dump(cfg, out)
@@ -141,7 +149,7 @@ def tuned_copy(source, v, reversing, max_speed, radar, lidar, ghost=False,
     return out.name
 
 
-def lattice_for(share, v, map_yaml):
+def lattice_for(share, v, map_yaml, headings=vehicle.LATTICE_HEADINGS[0]):
     """
     Return the lattice primitives' path, checked against the car and the map.
 
@@ -149,12 +157,14 @@ def lattice_for(share, v, map_yaml):
     or for a car that now turns wider, it would plan moves the car can't make. Refuse
     rather than start it so (pixi run lattice-primitives makes a new file).
     """
-    path = f'{share}/config/lattice_ackermann.json'
+    path = f'{share}/config/{vehicle.lattice_file_name(headings)}'
     with open(path) as f:
         meta = json.load(f)['lattice_metadata']
     with open(map_yaml) as f:
         resolution = yaml.safe_load(f)['resolution']
     wrong = vehicle.lattice_problems(meta, v, resolution)
+    if meta.get('num_of_headings') != int(headings):
+        wrong.append(f"{meta.get('num_of_headings')} headings, not {headings}")
     if wrong:
         raise ValueError(f'planner:=lattice: {path}: ' + '; '.join(wrong) +
                          '. Run pixi run lattice-primitives, or pick another planner')
@@ -177,6 +187,9 @@ def nodes(context):
     reversing = flag(context, 'reversing')
     tracker = vehicle.check_tracker(LaunchConfiguration('tracker').perform(context), reversing)
     amcl = flag(context, 'amcl')
+    voxels = flag(context, 'voxels')
+    if voxels and not lidar:
+        raise ValueError('voxels:=true needs lidar:=true: the cubes come from the lidar')
     if amcl and not lidar:
         raise ValueError('amcl:=true needs lidar:=true: AMCL reads /sensors/lidar/scan')
 
@@ -185,7 +198,10 @@ def nodes(context):
     cfg = vehicle.load()
     v = cfg['vehicle']
     map_yaml = LaunchConfiguration('map').perform(context)
-    lattice_file = lattice_for(share, v, map_yaml) if planner == 'lattice' else None
+    headings = (LaunchConfiguration('lattice_headings').perform(context).strip() or
+                vehicle.LATTICE_HEADINGS[0])
+    lattice_file = (lattice_for(share, v, map_yaml, headings) if planner == 'lattice'
+                    else None)
     trees = '_car_reversing.xml' if reversing else '_car.xml'
     rewrites = vehicle.nav2_rewrites(v, reversing, planner)
     rewrites.update({
@@ -205,7 +221,7 @@ def nodes(context):
     controller = LaunchConfiguration('controller').perform(context).strip().lower()
     source = tuned_copy(f'{share}/config/nav2.yaml', v, reversing,
                         float(speed) if speed else None, radar, lidar, ghost, controller,
-                        flag(context, 'plan_around'), guard, planner, lattice_file)
+                        flag(context, 'plan_around'), guard, planner, lattice_file, voxels)
     params = ParameterFile(
         RewrittenYaml(source_file=source, param_rewrites=rewrites, convert_types=True),
         allow_substs=True)
@@ -247,9 +263,15 @@ def nodes(context):
         actions.append(Node(package='aav_safety', executable='stop_hold', name='stop_hold',
                             output='screen',
                             parameters=[config, {'use_sim_time': use_sim_time}]))
-    if lidar:
-        # Not a lifecycle node: it runs from the start, Nav2's servers or not.
+    if lidar and (amcl or not voxels):
+        # Not a lifecycle node: it runs from the start, Nav2's servers or not. With
+        # voxels:=true only AMCL still reads its scan.
         actions.append(Node(package='aav_lidar', executable='lidar_scan', name='lidar_scan',
+                            output='screen',
+                            parameters=[params, {'use_sim_time': use_sim_time}]))
+    if voxels:
+        # The trial: the cubes, for the costmap and collision_monitor. Not a lifecycle node.
+        actions.append(Node(package='aav_voxels', executable='voxels', name='voxels',
                             output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time}]))
     if ghost:
@@ -349,6 +371,10 @@ def generate_launch_description():
                               description='true: a pretend person (aav_ghost), its own '
                                           'costmap layer and collision_monitor source; '
                                           'placed with pixi run ghost'),
+        DeclareLaunchArgument('voxels', default_value='false',
+                              description='true (with lidar:=true): the trial, aav_voxels: '
+                                          "the costmap's lidar_layer and collision_monitor "
+                                          'read 0.25 m cubes instead of the flat scan'),
         DeclareLaunchArgument('max_speed', default_value='',
                               description="m/s: Nav2's top speed, if not nav2.yaml's 1.0 "
                                           '(sim.launch.py sim_speed:=)'),
@@ -363,6 +389,11 @@ def generate_launch_description():
                                           'behind GridBased. hybrid and lattice keep to the '
                                           "car's turning radius; the others don't (sim and "
                                           'bench only). docs/controllers.md, Planners'),
+        DeclareLaunchArgument('lattice_headings',
+                              default_value=str(vehicle.LATTICE_HEADINGS[0]),
+                              description='with planner:=lattice: 16 headings (the default '
+                                          'file) or 32 (a trial: '
+                                          'config/lattice_ackermann_32.json)'),
         DeclareLaunchArgument('plan_around', default_value='true',
                               description='true: the planner sees the radar and lidar too, '
                                           'and plans round what they see; false: the map '

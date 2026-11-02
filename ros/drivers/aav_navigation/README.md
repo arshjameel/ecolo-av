@@ -33,6 +33,7 @@ Launch: `ros2 launch aav_navigation navigation.launch.py [args]`
 | `map` | `maps/empty.yaml` | the map YAML (`maps/README.md`) |
 | `radar` | false | the local costmap's obstacle layer reads `/sensors/radar/points` |
 | `lidar` | false | `lidar_scan` (aav_lidar) flattens `/sensors/lidar/points` to `/sensors/lidar/scan`, for the costmap and collision_monitor |
+| `voxels` | false | with `lidar`: a trial, `aav_voxels`' `voxels` cuts the cloud into 0.25 m cubes; the costmap's lidar_layer and collision_monitor read those instead of the scan, and `lidar_scan` runs only for `amcl` ([design](../../../docs/designs/2026-10-30_voxels.md)) |
 | `collision_monitor` | empty | empty: on wherever radar, lidar, ghost or camera guard runs |
 | `camera_obstacles` | false | the costmap's camera layer reads `/perception/camera_obstacles` (off until Q22) |
 | `camera_guard` | false | with `camera_obstacles`: collision_monitor stops for them too |
@@ -40,7 +41,8 @@ Launch: `ros2 launch aav_navigation navigation.launch.py [args]`
 | `reversing` | false | true: Reeds-Shepp paths, reverse to `-max_reverse_speed`, trees back up 1 m |
 | `max_speed` | empty (1.0 m/s) | Nav2's top speed (`sim.launch.py sim_speed:=`) |
 | `controller` | `mppi` | or `rpp` (Regulated Pure Pursuit); `docs/path-followers.md` |
-| `planner` | `hybrid` | the planner behind `GridBased`: `hybrid` (SmacPlannerHybrid) or `lattice` (SmacPlannerLattice, `config/lattice_ackermann.json`; refused if it no longer fits `vehicle.yaml` or the map's cells) keep to the turning radius; `smac2d`, `navfn`, `theta_star` don't (trials; `car.launch.py` refuses them). `docs/controllers.md`, Planners |
+| `planner` | `lattice` (`car.launch.py`: `hybrid`) | the planner behind `GridBased`: `lattice` (SmacPlannerLattice, `config/lattice_ackermann.json`; refused if it no longer fits `vehicle.yaml` or the map's cells) or `hybrid` (SmacPlannerHybrid) keep to the turning radius; `smac2d`, `navfn`, `theta_star` don't (trials; `car.launch.py` refuses them). `docs/controllers.md`, Planners |
+| `lattice_headings` | 16 | with `planner:=lattice`: 16 headings (`config/lattice_ackermann.json`) or 32, a trial (`config/lattice_ackermann_32.json`) |
 | `plan_around` | true | false: the planner sees only the map, so the car stops (stop tests) |
 | `tracker` | `none` | a trial follower (`aav_track`): `pure_pursuit`, `stanley`, `lqr`, `mpc`. It serves `follow_path`; controller_server's becomes `follow_path_unused`. Refused with `reversing:=true` (`docs/trials.md`) |
 | `amcl` | false | true (needs `lidar:=true`): stock AMCL, scored only, on `/localization/amcl/pose` (`config/amcl.yaml`: `tf_broadcast: false`) |
@@ -53,7 +55,7 @@ Nodes started:
 | Node | Does |
 |---|---|
 | `map_server` | publishes `/map` |
-| `planner_server` | SmacPlannerHybrid: drivable paths for a car (`/plan`); or `planner:=`'s, always as `GridBased` |
+| `planner_server` | SmacPlannerLattice: drivable paths for a car (`/plan`); or `planner:=`'s (the car: SmacPlannerHybrid), always as `GridBased` |
 | `controller_server` | MPPI (Ackermann model) or RPP; `cmd_vel` -> `cmd_vel_nav` |
 | `behavior_server` | wait, backup, drive_on_heading (no spin) |
 | `bt_navigator` | actions `/navigate_to_pose`, `/navigate_through_poses`; trees in `behavior_trees/` |
@@ -61,6 +63,7 @@ Nodes started:
 | `velocity_smoother` | `cmd_vel_nav` -> `/drivers/nav/cmd_vel`, or -> `/control/cmd_vel_smoothed` |
 | `collision_monitor` | `/control/cmd_vel_smoothed` -> `/drivers/nav/cmd_vel`; publishes `/safety/collision_monitor/state`, `stop_zone`, `collision_points_marker` |
 | `lidar_scan`, `ghost_obstacle` | with `lidar:=true`, `ghost:=true` |
+| `voxels` (`aav_voxels`) | with `voxels:=true` |
 | `track` (`aav_track`) | with `tracker:=` on: `follow_path` -> `cmd_vel_nav`, in controller_server's place |
 | `amcl`, `lifecycle_manager_localization` | with `amcl:=true`: AMCL and its own lifecycle manager; with `amcl_map:=`, also `amcl_map_server` |
 | `lifecycle_manager_navigation` | brings the servers up |
@@ -73,7 +76,7 @@ Files:
 | Folder | Holds |
 |---|---|
 | `config/nav2.yaml` | every server's parameters |
-| `config/lattice_ackermann.json` | the State Lattice planner's moves for our car (`planner:=lattice`): made by Nav2's generator, `pixi run lattice-primitives` (`tools/lattice_primitives.py`); never edit by hand |
+| `config/lattice_ackermann.json` | the State Lattice planner's moves for our car (`planner:=lattice`): made by Nav2's generator, `pixi run lattice-primitives` (`tools/lattice_primitives.py`); never edit by hand. `lattice_ackermann_32.json`: the same with 32 headings, a trial (`--headings 32`, `lattice_headings:=32`) |
 | `config/amcl.yaml` | AMCL, the trial (`amcl:=true`): `tf_broadcast: false`, the lidar scan, base_link |
 | `behavior_trees/` | `navigate_to_pose_car.xml`, `navigate_through_poses_car.xml`, and `*_car_reversing.xml` twins with BackUp. The to-pose trees keep their path within 8 m of the goal (`vehicle.final_approach`, TODO 17) |
 | `maps/` | `empty` and `example_lot` maps and their specs ([maps/README.md](./maps/README.md)) |

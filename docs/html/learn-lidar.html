@@ -7,7 +7,7 @@
 <!-- Generated from docs/learn-lidar.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>From lidar points to cubes, maps and where we are</h1>
-<div class="meta">13 min read · 12 sections</div></header>
+<div class="meta">15 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -443,6 +443,56 @@ inside the band</strong>.</p>
 </table></div>
 <p>A flat scan loses one thing: a table with an empty space under it looks like a wall.
 That's fine for a car. Nav2's own 3D <code>VoxelLayer</code> is there if 2D ever misses something.</p>
+<h3 id="the-trial-cubes-for-nav2-voxelstrue">The trial: cubes for Nav2 (<code>voxels:=true</code>)</h3>
+<p>Ben, 30 Oct: "this is a car not a needle. We need to quickly know something is in our way."
+<code>voxels</code> (<code>ros/perception/aav_voxels</code>) reads the cloud once and keeps <strong>0.25 m cubes</strong>.</p>
+<pre class="highlight"><code>   flat scan (today)                     cubes (the trial)
+   one dot a direction:                  every cube in the band:
+   the nearest thing only                behind and under it too
+
+        ·  ·  ·                               ■ ■ ■
+     ·    car    ·                         ■ ■ car ■ ■
+        ·  ·  ·                               ■ ■ ■</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Flat scan</th>
+<th>Cubes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What it keeps</td>
+<td>the nearest point, 720 directions</td>
+<td>one point per 0.25 m cube (its nearest)</td>
+</tr>
+<tr>
+<td>The road's height</td>
+<td>the car taken as level</td>
+<td><strong>fitted to each cloud</strong>: a plane through the lowest points</td>
+</tr>
+<tr>
+<td>A car leaning 2° in a turn</td>
+<td>the road far out rises into the band: a wall that isn't there</td>
+<td>still flat road</td>
+</tr>
+<tr>
+<td>Clears old marks with</td>
+<td>rays to "nothing there"</td>
+<td>rays to the road it saw (<code>/perception/voxels/ground</code>)</td>
+</tr>
+<tr>
+<td>Size</td>
+<td>3 kB</td>
+<td>about 10 kB, and 20 kB of road</td>
+</tr>
+</tbody>
+</table></div>
+<p>The costmap's <code>lidar_layer</code> and the stop zone read the cubes instead of the scan. It's
+off unless asked for: <code>pixi run sim world:=test_lot voxels:=true</code>. The numbers:
+<a href="trials.html#voxels-30-oct-the-lidar-as-cubes">Trials</a>. The design:
+<code>docs/designs/2026-10-30_voxels.md</code>.</p>
 </section>
 <section class="card"><h2 id="6-cubes-into-objects-with-names">6. Cubes into objects, with names</h2>
 <p>Cubes say <strong>something</strong> is there. Not <strong>what</strong>. Two steps (TODO, 29 Oct; <strong>planned</strong>):</p>

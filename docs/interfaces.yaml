@@ -428,9 +428,9 @@ topics:
   /sensors/lidar/points:
     type: sensor_msgs/msg/PointCloud2
     pub: [lidar_cloud, gz_lidar_bridge, carla_adapter]
-    sub: [lidar_scan, debug_hud, ndt, actuator_test, hw_panel]
+    sub: [lidar_scan, voxels, debug_hud, ndt, kiss_icp, actuator_test, hw_panel]
     live: [road, car]
-    note: On the car, the roof Velodyne VLP-16 through the stock velodyne_pointcloud (lidar_cloud, its factory calibration VLP16db.yaml), in lidar_link, 10 Hz, 0.9-100 m, unorganised - rays that hit nothing are left out; fields x, y, z, intensity, ring, time. car.launch.py runs it where the machine file has the lidar part (orin, all); lidar:=false turns it off everywhere. In Gazebo, a generic 16-beam roof lidar (like a VLP-16) in lidar_link, 10 Hz, 1800 x 16 points, 0.5-100 m, inf where a ray hit nothing. Reliable (about 0.9 MB a cloud). On by default in the road and test_lot worlds (lidar:=false turns it off). Its one reader for Nav2 is lidar_scan (navigation.launch.py lidar:=true), which flattens it into /sensors/lidar/scan.
+    note: On the car, the roof Velodyne VLP-16 through the stock velodyne_pointcloud (lidar_cloud, its factory calibration VLP16db.yaml), in lidar_link, 10 Hz, 0.9-100 m, unorganised - rays that hit nothing are left out; fields x, y, z, intensity, ring, time. car.launch.py runs it where the machine file has the lidar part (orin, all); lidar:=false turns it off everywhere. In Gazebo, a generic 16-beam roof lidar (like a VLP-16) in lidar_link, 10 Hz, 1800 x 16 points, 0.5-100 m, inf where a ray hit nothing. Reliable (about 0.9 MB a cloud). On by default in the road and test_lot worlds (lidar:=false turns it off). Its one reader for Nav2 is lidar_scan (navigation.launch.py lidar:=true), which flattens it into /sensors/lidar/scan; or, in the voxels trial (voxels:=true), voxels, which cuts it into cubes (/perception/voxels/cubes).
   /sensors/lidar/scan:
     type: sensor_msgs/msg/LaserScan
     pub: [lidar_scan]
@@ -439,6 +439,21 @@ topics:
     note: The roof lidar flattened (aav_lidar lidar_scan - navigation.launch.py lidar:=true) - in base_link, 720 ranges all the way round, each the nearest point between 0.3 m and the roof plus 0.5 m (vehicle.obstacle_heights), inf where there is none. Best effort, 10 Hz. Read by the local costmap's lidar_layer and collision_monitor's stop zone. From the roof, the lowest beam (15 degrees down from 1.8 m) meets a 1 m box only 3 m away, so low things close in front are the radar's.
 
   # --- perception ---
+  /perception/voxels/cubes:
+    type: sensor_msgs/msg/PointCloud2
+    pub: [voxels]
+    sub: [local_costmap, collision_monitor, debug_hud]
+    note: A trial (docs/designs/2026-10-30_voxels.md), only with navigation.launch.py voxels:=true (sim.launch.py and car.launch.py pass it on; needs the lidar) - the roof lidar's cloud as 0.25 m cubes (aav_voxels voxels), in base_link, the cloud's stamp, 10 Hz. Fields x, y, z (float32) - the centre of every cube holding a point between 0.3 m and the roof plus 0.5 m (vehicle.obstacle_heights) above the road, the road's plane fitted to each cloud (so a leaning car doesn't see the road as an obstacle); the car's own body left out; out to 30 m. Reliable, depth 1. Then the local costmap's lidar_layer marks with it and collision_monitor's voxels source stops for it, instead of /sensors/lidar/scan. The debug HUD draws it as red wireframes over its own cubes (key V), placed with the local EKF's pose at the cloud's stamp.
+  /perception/voxels/ground:
+    type: sensor_msgs/msg/PointCloud2
+    pub: [voxels]
+    sub: [local_costmap]
+    note: The voxels trial's road - in base_link, the centre of every flat 0.25 m square where the lidar saw the fitted road (within 0.15 m of it), z on that plane. Free space - the local costmap's lidar_layer clears with it (marking false), as the scan's inf rays did. Reliable, depth 1, with each cube cloud.
+  /perception/voxels/status:
+    type: diagnostic_msgs/msg/DiagnosticStatus
+    pub: [voxels]
+    sub: [debug_hud]
+    note: The voxels trial after every cloud - name voxels, level OK (the road fitted) or WARN (no good fit - taken as flat, as lidar_scan does); values ms (wall clock, the cloud read to the cubes published), cubes, ground_cubes, points (finite, off the car, in range), fitted, roll_deg, pitch_deg (the body's lean on the fitted road, REP-103), clouds_dropped (from the stamps). sim-check --voxels and controller-compare --voxels read it; so does the debug HUD (its Nav2 cubes section and row).
   /perception/radar/clusters:
     type: sensor_msgs/msg/PointCloud2
     pub: [radar_clusters]
@@ -619,18 +634,28 @@ topics:
   /localization/ndt/pose:
     type: geometry_msgs/msg/PoseWithCovarianceStamped
     pub: [ndt]
-    sub: [debug_hud]
-    note: A trial (docs/designs/2026-10-29_ndt.md) - where NDT (aav_ndt, Rust) puts base_link on the saved lidar map, map frame, stamped with the cloud's own stamp. Only good fits (score per point above min_score_per_point, converged); x, y and yaw only, height, roll and pitch held at 0. Covariance - the x, y, yaw block k (-H^-1) with a floor, the rest 1e3. Only with ndt:=true (sim.launch.py world:=test_lot lidar:=true, the map file present). Nothing reads it to drive, and it never publishes TF, until it wins the trials. The debug HUD draws it (a purple car).
+    sub: [debug_hud, ekf_global]
+    note: A trial (docs/designs/2026-10-29_ndt.md) - where NDT (aav_ndt, Rust) puts base_link on the saved lidar map, map frame, stamped with the cloud's own stamp. Only good fits (score per point above min_score_per_point, converged, and while tracking no further than max_correction_m / max_correction_deg from the odometry's guess); x, y and yaw only, height, roll and pitch held at 0. Covariance - the x, y, yaw block k (-H^-1) with a floor, the rest 1e3; k fitted in Gazebo (NEES, docs/trials.md). Only with ndt:=true or ndt_ekf:=true (sim.launch.py world:=test_lot lidar:=true, the map file present). With ndt_ekf:=true (a trial, off by default) ekf_global fuses its x, y and yaw beside the GPS (pose0, refused past 5 sigma; aav_localization config/ekf_global_ndt.yaml); otherwise nothing reads it to drive. It never publishes TF. The debug HUD draws it (a purple car).
   /localization/ndt/status:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [ndt]
     sub: [debug_hud]
-    note: NDT's state after every cloud - name ndt, level OK (a good fit), WARN (a poor fit, or no start yet) or ERROR (LOST), message TRACKING, WAITING or LOST and why; values score_per_point, overlap, iterations, match_ms (wall clock, the match alone), points (after the filters), poor_in_row, restarts (from ekf_global after LOST), clouds_dropped (arrived while one was being matched), x, y, yaw. The debug HUD's panel shows it.
+    note: NDT's state after every cloud - name ndt, level OK (a good fit), WARN (a poor fit, or no start yet) or ERROR (LOST), message TRACKING, WAITING or LOST and why; values stamp (the cloud's, s), score_per_point, overlap, iterations, match_ms (wall clock, the match alone), points (after the filters), poor_in_row, restarts (from ekf_global after LOST), clouds_dropped (arrived while one was being matched), x, y, yaw, and for a fit cov_xx, cov_xy, cov_xyaw, cov_yy, cov_yyaw, cov_yawyaw (-H^-1 before the scale k and the floors, to fit k). WARN's why says which poor fit - score too low, out of iterations, or jumped from the guess. The debug HUD's panel shows it; controller-compare --ndt scores it.
   /localization/ndt/initial_pose:
     type: geometry_msgs/msg/PoseWithCovarianceStamped
     pub: []
     sub: [ndt]
     note: Starts NDT again from a pose in the map frame (RViz "2D Pose Estimate" set to this topic). ndt:=true in Gazebo starts it from the sim's start pose without it (its start_x, start_y, start_yaw); on the car it would take ekf_global's (start_from_global).
+  /localization/kiss_icp/odom:
+    type: nav_msgs/msg/Odometry
+    pub: [kiss_icp]
+    sub: [ekf_local]
+    note: A trial (docs/designs/2026-10-30_kiss-icp.md) - lidar odometry by KISS-ICP (MIT, PRBonn; aav_kiss_icp, its PyPI wheel in the kiss Pixi environment, run as a child program). How far base_link moved, from the lidar alone - frame kiss_odom (its own, where the car was at the first scan; drifts), child base_link, stamped with the cloud's stamp. Twist in base_link from the last step over the time between clouds. KISS-ICP gives no covariance - the pose's is a fixed 1, the twist's the node's twist_linear_sd and twist_angular_sd (0.15 m/s, 0.01 rad/s, measured against Gazebo's truth 1 Nov). Only with kiss_icp:=true or kiss_ekf:=true (sim.launch.py, a world with the lidar). Never TF. With kiss_ekf:=true (a trial, off by default) ekf_local fuses its twist - vx and vyaw only, never its pose (it drifts, in its own frame) - beside the wheels and the IMU (odom1, refused past 5 sigma; aav_localization config/ekf_local_kiss.yaml); otherwise nothing reads it to drive. controller-compare --kiss-icp scores it against Gazebo's truth and ekf_local; --kiss-ekf scores ekf_local with it.
+  /localization/kiss_icp/status:
+    type: diagnostic_msgs/msg/DiagnosticStatus
+    pub: [kiss_icp]
+    sub: []
+    note: KISS-ICP's state after every cloud - name kiss_icp, level OK (TRACKING) or ERROR (no kiss environment, a cloud without x, y, z, or the worker failed); values match_ms (wall clock, KISS-ICP alone), points (after the body, ground - below min_height, 0.3 m - and range cuts), deskew (true only where the cloud has a per-point time - the VLP-16, not Gazebo), clouds, clouds_dropped, restarts (of the worker).
   /localization/gps/fix:
     type: sensor_msgs/msg/NavSatFix
     pub: [navsat_transform]
@@ -640,9 +665,9 @@ topics:
   /localization/health:
     type: std_msgs/msg/String
     pub: [localization_health]
-    sub: []
+    sub: [debug_hud]
     live: [turtle, sim, car, replay, bench]
-    note: localization_health (aav_localization_health) once a second - OK, or WARN and each check that isn't OK (gyro_bias parked, imu_mounting, gps_quality, timestamps, frames, tf, wheels, motion; STALE where an input it needs went quiet). Warn only - nothing drives from it, and it changes nothing in the EKFs. The same checks, with their numbers, on /diagnostics.
+    note: localization_health (aav_localization_health) once a second - OK, or WARN and each check that isn't OK (gyro_bias parked, imu_mounting, gps_quality, timestamps, frames, tf, wheels, motion; STALE where an input it needs went quiet). Warn only - nothing drives from it, and it changes nothing in the EKFs. The same checks, with their numbers, on /diagnostics. The debug HUD shows it (green OK, amber WARN with each check).
 
   # --- navigation ---
   /map:

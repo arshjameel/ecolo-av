@@ -11,9 +11,10 @@ node (rclrs):
   the plan, the goal, the distance left, and a place search;
 - `debug_hud`, the debug screen, which opens as the **seeing screen**: the lidar's cubes
   in 3D (kept and fading), where each localizer puts the car (NDT too), AMCL's particles,
-  NDT's map, Nav2's plan; on the right, NDT's map from above with every car, and NDT's
-  match (its cells, the scan, the score). Key L swaps the right side for every sensor
-  from its own topic. It only listens;
+  NDT's map, Nav2's plan, Nav2's own cubes (the voxels trial's, red wireframes, key V);
+  on the right, NDT's map from above with every car, NDT's match (its cells, the scan,
+  the score), Nav2's cubes' status and the localization health checks. Key L swaps
+  the right side for every sensor from its own topic. It only listens;
 - `hw_panel`, the **hardware screen**: every sensor's number from its own node, and very
   simple buttons for the actuators (Speed +/-, steering, CENTRE, STOP, GO held, E-STOP),
   through twist_mux's `buttons` slot (45). Speed only on SIM and BENCH.
@@ -77,6 +78,9 @@ Other parameters: `stale_after` (1.0 s), `plan_stale_after` (3.0 s; `plan_kept_f
 | Direction | Parameter: default topic | Type |
 |---|---|---|
 | sub | `lidar_topic`: `/sensors/lidar/points` (reliable, keep last 1) | sensor_msgs/PointCloud2 |
+| sub | `voxels_cubes_topic`: `/perception/voxels/cubes` (reliable, keep last 1, base_link; red wireframes, key V) | sensor_msgs/PointCloud2 |
+| sub | `voxels_status_topic`: `/perception/voxels/status` (Nav2's cubes section: road fit, count, ms) | diagnostic_msgs/DiagnosticStatus |
+| sub | `health_topic`: `/localization/health` (OK, or WARN and each check) | std_msgs/String |
 | sub | `local_odom_topic`: `/localization/odom/local`; `global_odom_topic`: `/localization/odom/global`; `truth_topic`: `/vehicle/gazebo/truth`; `wheel_odom_topic`: `/vehicle/odom` | nav_msgs/Odometry |
 | sub | `amcl_topic`: `/localization/amcl/pose`; `ndt_pose_topic`: `/localization/ndt/pose` (purple) | geometry_msgs/PoseWithCovarianceStamped |
 | sub | `amcl_particles_topic`: `/localization/amcl/particles` (best effort; small orange arrows) | nav2_msgs/ParticleCloud |
@@ -92,7 +96,8 @@ Other parameters: `stale_after` (1.0 s), `plan_stale_after` (3.0 s; `plan_kept_f
 Other parameters: `odom_frame`, `base_frame`, `map_frame`; `stale_after` (1.0 s),
 `cube_size` (0.2 m), `max_cubes` (20,000), `pose_window` (1.0 s), `ground_height` (0.25 m),
 `keep_cubes_for` (2.0 s: key K's cubes fade over it), `ndt_map` (`maps/ndt/test_lot.pcd`,
-relative to where it starts; key M) and `ndt_map_cell` (1.0 m).
+relative to where it starts; key M), `ndt_map_cell` (1.0 m), `voxels_cube_size` (0.25 m)
+and `health_stale_after` (3.0 s: the health checks come once a second).
 
 ### Node `hw_panel` (topic names from `config/hw_panel.yaml`)
 
@@ -118,7 +123,7 @@ Other parameters: `stale_after` (1.0 s), `speed_step` (0.1 m/s), `steer_step` (0
 | `pixi run map [fullscreen:=true] [monitor:=HDMI-1] [streets:=] [places:=]` | `map.launch.py`, with `vehicle.yaml` and `navsat.yaml` |
 | `cargo run -p hud-app --no-default-features -- --demo` | the HUD with pretend data, no ROS |
 | `cargo run -p map-app --no-default-features -- --demo` | the map with pretend data |
-| `pixi run debug-hud`; `pixi run debugdemo` | `debug_hud.launch.py`; `demo` plus the debug HUD |
+| `pixi run debug-hud`; `pixi run debugdemo` | `debug_hud.launch.py` (passes `--vehicle` and `--own-box`, the car's own box from `vehicle.self_box`); `demo` plus the debug HUD |
 | `cargo run --release -p debug-app --no-default-features -- --demo [--bench-cubes 20000]` | the debug HUD with pretend data; the drawing test |
 | `pixi run hw-panel [stands:=true] [fullscreen:=true]`; `pixi run hw-panel-demo` | `hw_panel.launch.py` (localhost-only); the panel with a pretend car |
 | `hw_panel --self-test 0.3:8` | for checks: Speed + to 0.3 m/s, GO held 8 s, through the same buttons and rules; prints asked and seen |
@@ -150,7 +155,8 @@ Other parameters: `stale_after` (1.0 s), `speed_step` (0.1 m/s), `steer_step` (0
   on screen).
 - `debug_hud`'s clouds never go through the shared queue: a newest-only slot to the
   `cubes` thread, then a newest-only slot to the screen. Each is placed with the local
-  EKF's pose at its own stamp.
+  EKF's pose at its own stamp. Nav2's cubes go the same way, through their own slots
+  and their own thread (`nav2_cubes`).
 - Kept cubes age by the clouds' stamps, never the window's clock: when the lidar stops,
   they stop fading (and the lidar row says STALE).
 

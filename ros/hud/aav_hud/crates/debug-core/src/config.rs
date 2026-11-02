@@ -10,7 +10,10 @@ use std::time::Duration;
 use serde::Deserialize;
 use thiserror::Error;
 
-use crate::cubes::{CubeSettings, Metres};
+use crate::{
+    cubes::{CubeSettings, Metres, OwnBox},
+    voxels::VoxelSettings,
+};
 
 /// `config/debug_hud.yaml`, built in.
 pub const BUILT_IN_YAML: &str = include_str!("../../../config/debug_hud.yaml");
@@ -32,6 +35,9 @@ pub enum Topic {
     Plan,
     Tf,
     TfStatic,
+    VoxelsCubes,
+    VoxelsStatus,
+    Health,
     Imu,
     Gps,
     Wheels,
@@ -43,7 +49,7 @@ pub enum Topic {
 
 impl Topic {
     /// Every topic.
-    pub const ALL: [Topic; 18] = [
+    pub const ALL: [Topic; 21] = [
         Topic::Lidar,
         Topic::LocalOdom,
         Topic::GlobalOdom,
@@ -55,6 +61,9 @@ impl Topic {
         Topic::Plan,
         Topic::Tf,
         Topic::TfStatic,
+        Topic::VoxelsCubes,
+        Topic::VoxelsStatus,
+        Topic::Health,
         Topic::Imu,
         Topic::Gps,
         Topic::Wheels,
@@ -78,6 +87,9 @@ impl Topic {
             Self::Plan => "plan_topic",
             Self::Tf => "tf_topic",
             Self::TfStatic => "tf_static_topic",
+            Self::VoxelsCubes => "voxels_cubes_topic",
+            Self::VoxelsStatus => "voxels_status_topic",
+            Self::Health => "health_topic",
             Self::Imu => "imu_topic",
             Self::Gps => "gps_topic",
             Self::Wheels => "wheels_topic",
@@ -119,16 +131,20 @@ pub enum Number {
     GroundHeight,
     KeepCubesFor,
     NdtMapCell,
+    VoxelsCubeSize,
+    HealthStaleAfter,
 }
 
 impl Number {
-    pub const ALL: [Number; 6] = [
+    pub const ALL: [Number; 8] = [
         Number::StaleAfter,
         Number::CubeSize,
         Number::PoseWindow,
         Number::GroundHeight,
         Number::KeepCubesFor,
         Number::NdtMapCell,
+        Number::VoxelsCubeSize,
+        Number::HealthStaleAfter,
     ];
 
     pub fn parameter(self) -> &'static str {
@@ -139,6 +155,8 @@ impl Number {
             Self::GroundHeight => "ground_height",
             Self::KeepCubesFor => "keep_cubes_for",
             Self::NdtMapCell => "ndt_map_cell",
+            Self::VoxelsCubeSize => "voxels_cube_size",
+            Self::HealthStaleAfter => "health_stale_after",
         }
     }
 }
@@ -157,6 +175,9 @@ pub struct DebugConfig {
     pub plan_topic: String,
     pub tf_topic: String,
     pub tf_static_topic: String,
+    pub voxels_cubes_topic: String,
+    pub voxels_status_topic: String,
+    pub health_topic: String,
     pub imu_topic: String,
     pub gps_topic: String,
     pub wheels_topic: String,
@@ -185,6 +206,14 @@ pub struct DebugConfig {
     pub keep_cubes_for: f64,
     /// One NDT map cube's edge, metres.
     pub ndt_map_cell: f64,
+    /// One of Nav2's cubes (the voxels trial's), metres.
+    pub voxels_cube_size: f64,
+    /// Seconds without `/localization/health` before it shows STALE (it comes at 1 Hz).
+    pub health_stale_after: f64,
+    /// The car and its sensors from above, whose points make no cube: not a parameter,
+    /// the command line's `--own-box` (the launch file works it out from vehicle.yaml).
+    #[serde(skip)]
+    pub own_box: Option<OwnBox>,
 }
 
 /// Why a settings file can't be used.
@@ -264,6 +293,9 @@ impl DebugConfig {
             Topic::Plan => &self.plan_topic,
             Topic::Tf => &self.tf_topic,
             Topic::TfStatic => &self.tf_static_topic,
+            Topic::VoxelsCubes => &self.voxels_cubes_topic,
+            Topic::VoxelsStatus => &self.voxels_status_topic,
+            Topic::Health => &self.health_topic,
             Topic::Imu => &self.imu_topic,
             Topic::Gps => &self.gps_topic,
             Topic::Wheels => &self.wheels_topic,
@@ -288,6 +320,9 @@ impl DebugConfig {
             Topic::Plan => &mut self.plan_topic,
             Topic::Tf => &mut self.tf_topic,
             Topic::TfStatic => &mut self.tf_static_topic,
+            Topic::VoxelsCubes => &mut self.voxels_cubes_topic,
+            Topic::VoxelsStatus => &mut self.voxels_status_topic,
+            Topic::Health => &mut self.health_topic,
             Topic::Imu => &mut self.imu_topic,
             Topic::Gps => &mut self.gps_topic,
             Topic::Wheels => &mut self.wheels_topic,
@@ -327,6 +362,8 @@ impl DebugConfig {
             Number::GroundHeight => self.ground_height,
             Number::KeepCubesFor => self.keep_cubes_for,
             Number::NdtMapCell => self.ndt_map_cell,
+            Number::VoxelsCubeSize => self.voxels_cube_size,
+            Number::HealthStaleAfter => self.health_stale_after,
         }
     }
 
@@ -339,6 +376,8 @@ impl DebugConfig {
             Number::GroundHeight => &mut self.ground_height,
             Number::KeepCubesFor => &mut self.keep_cubes_for,
             Number::NdtMapCell => &mut self.ndt_map_cell,
+            Number::VoxelsCubeSize => &mut self.voxels_cube_size,
+            Number::HealthStaleAfter => &mut self.health_stale_after,
         };
         *slot = value;
     }
@@ -358,12 +397,26 @@ impl DebugConfig {
         Duration::from_secs_f64(self.keep_cubes_for)
     }
 
+    /// [`DebugConfig::health_stale_after`] as a Duration.
+    pub fn health_stale_after(&self) -> Duration {
+        Duration::from_secs_f64(self.health_stale_after)
+    }
+
+    /// What Nav2's cubes need.
+    pub fn voxel_settings(&self) -> VoxelSettings {
+        VoxelSettings {
+            size: Metres(self.voxels_cube_size),
+            max_cubes: usize::try_from(self.max_cubes).unwrap_or(usize::MAX),
+        }
+    }
+
     /// What the cube grid needs.
     pub fn cube_settings(&self) -> CubeSettings {
         CubeSettings {
             size: Metres(self.cube_size),
             max_cubes: usize::try_from(self.max_cubes).unwrap_or(usize::MAX),
             ground_height: Metres(self.ground_height),
+            own: self.own_box,
         }
     }
 }
@@ -391,6 +444,8 @@ mod tests {
         assert_eq!(c.cube_settings().max_cubes, 20_000);
         assert_eq!(c.keep_cubes_for(), Duration::from_secs(2));
         assert!(c.ndt_map.ends_with(".pcd"));
+        assert_eq!(c.voxel_settings().size, Metres(0.25));
+        assert!(c.health_stale_after() > c.stale_after());
     }
 
     #[test]

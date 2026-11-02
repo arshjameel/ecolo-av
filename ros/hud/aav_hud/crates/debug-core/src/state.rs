@@ -3,7 +3,9 @@
 //!
 //! News comes in as [`Update`]s (the ROS thread or the demo makes them); the cubes come
 //! separately, newest only ([`DebugState::set_scan`]), so a burst of clouds never queues.
-//! Each scan also goes into the kept cubes ([`crate::persist`]), which fade.
+//! Each scan also goes into the kept cubes ([`crate::persist`]), which fade. Nav2's cubes
+//! (the voxels trial's) come the same way ([`DebugState::set_nav2_cubes`]), and are
+//! never kept: the newest cloud only, as Nav2 has it.
 
 use std::{
     collections::{HashMap, VecDeque},
@@ -22,10 +24,12 @@ use crate::{
     cubes::{Band, CubeScan},
     frames::{frame_name, MapToOdom, Stamp},
     keys::{CubeView, Layers},
+    localization_health::Verdict,
     ndt::NdtStatus,
     persist::{FadedCube, KeptCubes},
     swap::Reply,
     track::TrackStatus,
+    voxels::VoxelStatus,
 };
 
 /// Where each localizer thinks the car is.
@@ -85,14 +89,21 @@ pub enum Source {
     NdtStatus,
     /// AMCL's particles (drawn, not a row).
     Particles,
+    /// Nav2's cubes from the voxels trial (`voxels:=true`).
+    Nav2Cubes,
+    /// The voxels trial's status (its own section, not a row).
+    VoxelsStatus,
+    /// Betsi's localization health checks (`health:=true`).
+    LocalizationHealth,
 }
 
 impl Source {
     /// The panel's rows, top to bottom.
-    pub const PANEL: [Source; 13] = [
+    pub const PANEL: [Source; 15] = [
         Source::Imu,
         Source::Gps,
         Source::Lidar,
+        Source::Nav2Cubes,
         Source::Wheels,
         Source::WheelOdom,
         Source::Vehicle,
@@ -102,6 +113,7 @@ impl Source {
         Source::Estimate(Localizer::Ndt),
         Source::Estimate(Localizer::Truth),
         Source::MapToOdom,
+        Source::LocalizationHealth,
         Source::Track,
     ];
 
@@ -118,6 +130,9 @@ impl Source {
             Self::MapToOdom => "map > odom",
             Self::NdtStatus => "NDT status",
             Self::Particles => "particles",
+            Self::Nav2Cubes => "Nav2 cubes",
+            Self::VoxelsStatus => "voxels status",
+            Self::LocalizationHealth => "loc. health",
         }
     }
 }
@@ -160,6 +175,12 @@ pub enum Update {
         poses: Vec<Pose>,
         frame: String,
     },
+    /// `/perception/voxels/status`.
+    VoxelsStatus(VoxelStatus),
+    /// Why the last of Nav2's cube clouds was not placed.
+    Nav2CubesProblem(String),
+    /// `/localization/health`.
+    LocalizationHealth(Verdict),
 }
 
 /// The window's state.
@@ -168,6 +189,8 @@ pub struct DebugState {
     odom_frame: String,
     map_frame: String,
     stale_after: Duration,
+    /// `/localization/health`'s own limit: it comes once a second.
+    health_stale_after: Duration,
     poses: HashMap<Localizer, Pose>,
     /// m/s, the local EKF's.
     pub speed: Option<f64>,
@@ -194,6 +217,14 @@ pub struct DebugState {
     particles: Vec<Pose>,
     /// Cubes seen lately, fading (key K).
     pub kept: KeptCubes,
+    /// Nav2's newest cubes, in odom (key V).
+    pub nav2: Option<CubeScan>,
+    /// The voxels trial's last status.
+    pub voxels: Option<VoxelStatus>,
+    /// Why the last of Nav2's cube clouds was not placed, until one is.
+    pub nav2_problem: Option<String>,
+    /// `/localization/health`'s last word.
+    pub localization_health: Option<Verdict>,
     /// What the 3D view draws (the keys).
     pub layers: Layers,
 }
@@ -212,6 +243,7 @@ impl DebugState {
             odom_frame: config.odom_frame.clone(),
             map_frame: config.map_frame.clone(),
             stale_after: config.stale_after(),
+            health_stale_after: config.health_stale_after(),
             poses: HashMap::new(),
             speed: None,
             map_to_odom: MapToOdom::default(),
@@ -230,6 +262,10 @@ impl DebugState {
             ndt: None,
             particles: Vec::new(),
             kept: KeptCubes::new(config.keep_cubes_for(), config.cube_settings().max_cubes),
+            nav2: None,
+            voxels: None,
+            nav2_problem: None,
+            localization_health: None,
             layers: Layers::default(),
         }
     }
@@ -317,6 +353,18 @@ impl DebugState {
                 self.particles = poses;
                 self.heard(Source::Particles, now);
             }
+            Update::VoxelsStatus(status) => {
+                self.voxels = Some(status);
+                self.nav2_detail();
+                self.heard(Source::VoxelsStatus, now);
+            }
+            Update::Nav2CubesProblem(why) => self.nav2_problem = Some(why),
+            Update::LocalizationHealth(verdict) => {
+                self.details
+                    .insert(Source::LocalizationHealth, verdict.line());
+                self.localization_health = Some(verdict);
+                self.heard(Source::LocalizationHealth, now);
+            }
         }
     }
 
@@ -362,6 +410,32 @@ impl DebugState {
             ),
         );
         self.scan = Some(scan);
+    }
+
+    /// Nav2's newest cubes (the newest only; never kept).
+    pub fn set_nav2_cubes(&mut self, scan: CubeScan, now: Instant) {
+        self.nav2_problem = None;
+        self.nav2 = Some(scan);
+        self.nav2_detail();
+        self.heard(Source::Nav2Cubes, now);
+    }
+
+    /// The Nav2 cubes row's words: the status's numbers, or the cloud's count.
+    fn nav2_detail(&mut self) {
+        let words = match (&self.voxels, &self.nav2) {
+            (Some(status), _) => format!("{}, road {}", status.numbers(), status.road.word()),
+            (None, Some(scan)) => format!("{} cubes", scan.cubes.len()),
+            (None, None) => return,
+        };
+        self.details.insert(Source::Nav2Cubes, words);
+    }
+
+    /// Nav2's cubes to draw: none with key V off.
+    pub fn nav2_cubes(&self) -> impl Iterator<Item = [f32; 3]> + '_ {
+        self.nav2
+            .iter()
+            .filter(|_| self.layers.nav2_cubes)
+            .flat_map(|s| s.cubes.iter().map(|c| c.centre))
     }
 
     /// Clouds a second, by their stamps.
@@ -468,13 +542,18 @@ impl DebugState {
         Some(a.position.distance(b.position).0)
     }
 
-    /// One row's health at `now`.
+    /// One row's health at `now`. `/localization/health` comes once a second, so it
+    /// has its own, longer limit.
     pub fn health(&self, source: Source, now: Instant) -> Health {
+        let limit = match source {
+            Source::LocalizationHealth => self.health_stale_after,
+            _ => self.stale_after,
+        };
         self.seen
             .get(&source)
             .copied()
             .unwrap_or_default()
-            .health(now, self.stale_after)
+            .health(now, limit)
     }
 
     /// One row's detail: what the topic said last.
@@ -663,6 +742,66 @@ mod tests {
         let scan = s.scan_in_map();
         assert_eq!(scan.len(), 1);
         assert!((scan[0].x - 10.0).abs() < 1e-6 && (scan[0].y - 2.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn nav2_cubes_and_their_status_fill_one_row() {
+        use crate::cubes::{Band, Cube};
+        use crate::keys::Action;
+        let now = Instant::now();
+        let mut s = state();
+        assert_eq!(s.health(Source::Nav2Cubes, now), Health::Never);
+        s.apply(Update::Nav2CubesProblem("no pose".into()), now);
+        let cube = Cube {
+            centre: [1.0, 2.0, 0.5],
+            band: Band::Knee,
+        };
+        s.set_nav2_cubes(
+            CubeScan {
+                cubes: vec![cube; 3],
+                size: 0.25,
+                ..CubeScan::default()
+            },
+            now,
+        );
+        assert_eq!(s.nav2_problem, None);
+        assert_eq!(s.detail(Source::Nav2Cubes), Some("3 cubes"));
+        assert_eq!(s.nav2_cubes().count(), 3);
+        s.apply(
+            Update::VoxelsStatus(VoxelStatus::from_message(
+                1,
+                "road taken as flat",
+                [("cubes", "3"), ("ms", "2.5")],
+            )),
+            now,
+        );
+        assert_eq!(
+            s.detail(Source::Nav2Cubes),
+            Some("3 cubes   2.5 ms, road WARN")
+        );
+        assert!(s.health(Source::Nav2Cubes, now).is_ok());
+        s.layers.apply(Action::Nav2Cubes);
+        assert_eq!(s.nav2_cubes().count(), 0);
+        // Never kept with the screen's own cubes.
+        assert_eq!(s.drawn_cubes().count(), 0);
+    }
+
+    #[test]
+    fn localization_health_has_its_own_stale_limit() {
+        let now = Instant::now();
+        let mut s = state();
+        assert_eq!(s.health(Source::LocalizationHealth, now), Health::Never);
+        s.apply(
+            Update::LocalizationHealth(Verdict::parse("WARN tf WARN: no base_link -> gps_link")),
+            now,
+        );
+        assert_eq!(s.detail(Source::LocalizationHealth), Some("WARN: tf"));
+        // 2 s later: the 1 s limit would say STALE; health's own (3 s) doesn't.
+        let later = now + Duration::from_secs(2);
+        assert!(s.health(Source::LocalizationHealth, later).is_ok());
+        assert!(!s.health(Source::Imu, later).is_ok());
+        let much_later = now + Duration::from_secs(4);
+        assert!(!s.health(Source::LocalizationHealth, much_later).is_ok());
     }
 
     #[test]

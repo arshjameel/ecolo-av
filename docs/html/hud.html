@@ -7,7 +7,7 @@
 <!-- Generated from docs/hud.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The HUD (in-car screen)</h1>
-<div class="meta">46 min read · 6 sections</div></header>
+<div class="meta">48 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -1279,6 +1279,16 @@ on the right two views from above. Key <strong>L</strong> swaps the right side f
 <td>TRACKING / WAITING / LOST, score per point, ms per match; how many scan cubes landed on the map; overlap</td>
 <td><code>/localization/ndt/status</code>; the scan</td>
 </tr>
+<tr>
+<td>Nav2's cubes</td>
+<td>the road's fit (<strong>OK</strong> green, <strong>WARN</strong> amber: taken as flat), how many cubes, ms per cloud; "off (voxels:=false)" when none came; STALE when quiet</td>
+<td><code>/perception/voxels/status</code>, <code>/perception/voxels/cubes</code></td>
+</tr>
+<tr>
+<td>Localization health</td>
+<td><strong>OK</strong> green, or <strong>WARN</strong> amber and each check that isn't OK, wrapped; "not running (health:=false)"; STALE after 3 s (it comes once a second)</td>
+<td><code>/localization/health</code> (Betsi's <code>aav_localization_health</code>)</td>
+</tr>
 </tbody>
 </table></div>
 <p>No map file: both boxes say where it looked and how to make one (<code>pixi run ndt-map
@@ -1297,6 +1307,11 @@ drive</code>). No map -&gt; odom yet: only the map-frame cars are drawn.</p>
 <td>Cubes (20 cm), coloured by height: dark ground, then teal to pale. <strong>Kept</strong> for 2 s and fading darker (key K: this scan's only)</td>
 <td><code>/sensors/lidar/points</code></td>
 <td>lidar_link -&gt; base_link -&gt; odom</td>
+</tr>
+<tr>
+<td><strong>Nav2's cubes</strong>: red 0.25 m wireframes over the screen's own (key V), the newest cloud only; dimmer when STALE. What Nav2 stops for (<code>voxels:=true</code>), beside what the lidar sees</td>
+<td><code>/perception/voxels/cubes</code></td>
+<td>base_link -&gt; odom, EKF local's pose at the cloud's stamp</td>
 </tr>
 <tr>
 <td>The car: a blue box to scale (<code>vehicle.yaml</code>)</td>
@@ -1329,7 +1344,7 @@ drive</code>). No map -&gt; odom yet: only the map-frame cars are drawn.</p>
 <td>-</td>
 </tr>
 <tr>
-<td>Panel (key L): IMU, GPS, lidar, wheels, wheel odom, vehicle, each estimate, map -&gt; odom, tracker</td>
+<td>Panel (key L): IMU, GPS, lidar, Nav2 cubes, wheels, wheel odom, vehicle, each estimate, map -&gt; odom, loc. health (amber when WARN), tracker</td>
 <td>each topic: OK, STALE or NEVER, and what it said</td>
 <td>-</td>
 </tr>
@@ -1409,6 +1424,10 @@ another tracker, in the simulator only (the design's D3: never an actuator).</p>
 <td>cubes: kept and fading (the default), or this scan's only</td>
 </tr>
 <tr>
+<td>V</td>
+<td>Nav2's cubes (red wireframes): on by default</td>
+</tr>
+<tr>
 <td>M</td>
 <td>NDT's map as wireframes (on when the file is there)</td>
 </tr>
@@ -1466,7 +1485,11 @@ from a terminal: <code>ros2 param set /track tracker lqr</code> (sim only, both 
 </tr>
 <tr>
 <td><code>config/debug_hud.yaml</code></td>
-<td>every topic name, the frames, <code>cube_size</code>, <code>max_cubes</code>, <code>pose_window</code>, <code>stale_after</code>, <code>keep_cubes_for</code>, <code>ndt_map</code>, <code>ndt_map_cell</code></td>
+<td>every topic name, the frames, <code>cube_size</code>, <code>max_cubes</code>, <code>pose_window</code>, <code>stale_after</code>, <code>keep_cubes_for</code>, <code>ndt_map</code>, <code>ndt_map_cell</code>, <code>voxels_cube_size</code> (0.25 m), <code>health_stale_after</code> (3 s)</td>
+</tr>
+<tr>
+<td>Nav2's cubes</td>
+<td>their own newest-only slots and thread (<code>nav2_cubes</code>), as the lidar's; <code>debug-core</code>'s <code>voxels</code> moves each centre into odom (no second snap)</td>
 </tr>
 <tr>
 <td>PointCloud2 reader</td>
@@ -1527,6 +1550,29 @@ own screen.</p>
 <tr>
 <td>Kept cubes while driving</td>
 <td>they hit <code>max_cubes</code> (20,000; 11,000 cut): mostly old ground rings</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="tested-1-november-bens-mac-nav2s-cubes-and-localization-health">Tested (1 November, Ben's Mac): Nav2's cubes and localization health</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cargo test</code>: debug-core (<code>voxels</code>, <code>localization_health</code>, state, keys), debug-app with ROS (a Nav2 cube cloud placed by the pose at its stamp; a WARN health string read)</td>
+<td>all pass</td>
+</tr>
+<tr>
+<td><code>--demo</code> window, screenshots, seeing screen and panel</td>
+<td>red wireframes on the walls and boxes over the teal cubes; both sections drawn, OK and WARN (two checks wrapped); the panel's two new rows fit at 1600 x 900</td>
+</tr>
+<tr>
+<td>Against Gazebo with <code>voxels:=true</code> and <code>health:=true</code></td>
+<td><strong>untested</strong></td>
 </tr>
 </tbody>
 </table></div>

@@ -97,6 +97,33 @@ def footprint_points(v):
     return [[front, half], [front, -half], [rear, -half], [rear, half]]
 
 
+# The car as its own lidar sees it: the body and every sensor mounted on it, widened by a
+# margin. Gazebo's lidar (3 cm of range noise) put about 3 % of its hits on the car's own
+# roof corners and front cameras just outside a box flush with the body; over a drive
+# they drew a ghost double line 1.5 m up in NDT's map (found 30 Oct). 0.15 m is 5 sigma of
+# that noise, and covers a sensor's own housing (the URDF draws each one 8 cm across).
+SELF_MARGIN = 0.15      # m, each side
+SENSOR_HALF_SIZE = 0.04  # m: half a sensor's box in the URDF (aav.urdf.xacro sensor_frame)
+
+
+def self_box(cfg, margin=SELF_MARGIN):
+    """
+    Return the box, in base_link from above, that holds the car and its sensors.
+
+    cfg is the whole vehicle.yaml (load()). Returns {'min': [x, y], 'max': [x, y]} (m):
+    the body outline and each sensor's mount (plus SENSOR_HALF_SIZE), widened by margin.
+    A lidar point inside is the car itself: NDT's scan filter and its map drop them.
+    """
+    (front, left), _, (rear, right), _ = footprint_points(cfg['vehicle'])
+    xs, ys = [rear, front], [right, left]
+    for sensor in cfg.get('sensors', {}).values():
+        x, y = float(sensor['xyz'][0]), float(sensor['xyz'][1])
+        xs += [x - SENSOR_HALF_SIZE, x + SENSOR_HALF_SIZE]
+        ys += [y - SENSOR_HALF_SIZE, y + SENSOR_HALF_SIZE]
+    return {'min': [min(xs) - margin, min(ys) - margin],
+            'max': [max(xs) + margin, max(ys) + margin]}
+
+
 def polygon(points):
     """Return [x, y] corners in the string form Nav2 takes for a polygon."""
     return '[' + ', '.join(f'[{x:.3f}, {y:.3f}]' for x, y in points) + ']'
@@ -289,12 +316,29 @@ def check_tracker(tracker, reversing=False):
 # on the real car (check_planner real=True).
 PLANNERS = ('hybrid', 'lattice', 'smac2d', 'navfn', 'theta_star')
 CAR_PLANNERS = ('hybrid', 'lattice')
-DEFAULT_PLANNER = 'hybrid'
+# The lattice is the default (Ben, 1 Nov): with reversing on, every leg of the lot tour,
+# 29 s quicker than Hybrid-A* (docs/trials.md, 30 Oct). Forward only it lost the U-turn
+# (29 Oct), so the real car, forward only until H5, keeps Hybrid-A* (CAR_DEFAULT_PLANNER).
+DEFAULT_PLANNER = 'lattice'
+CAR_DEFAULT_PLANNER = 'hybrid'
 # Each planner's block in nav2.yaml's planner_server (GridBased is hybrid's own).
 PLANNER_BLOCKS = {'hybrid': 'GridBased', 'lattice': 'Lattice', 'smac2d': 'Smac2D',
                   'navfn': 'NavFn', 'theta_star': 'ThetaStar'}
 # The lattice's turning radius against plan_turning_radius: the file keeps 3 decimals.
 LATTICE_TOLERANCE = 0.005
+# The lattice primitives files (lattice_headings:=): 16 headings, the default, and 32, a
+# trial (finer headings, more moves; tools/lattice_primitives.py --headings 32).
+LATTICE_HEADINGS = (16, 32)
+
+
+def lattice_file_name(headings=LATTICE_HEADINGS[0]):
+    """Return the primitives file's name in aav_navigation's config/ for this many headings."""
+    headings = int(headings)
+    if headings not in LATTICE_HEADINGS:
+        raise ValueError(f'lattice_headings:={headings}: pick one of '
+                         f'{", ".join(str(h) for h in LATTICE_HEADINGS)}')
+    tail = '' if headings == LATTICE_HEADINGS[0] else f'_{headings}'
+    return f'lattice_ackermann{tail}.json'
 
 
 def check_planner(planner, real=False):
@@ -376,7 +420,7 @@ def track_params(nav2, cfg, ego=None, max_speed=None):
     }
 
 
-def nav2_rewrites(v, reversing=False, planner=DEFAULT_PLANNER):
+def nav2_rewrites(v, reversing=False, planner='hybrid'):
     """
     Values to substitute into aav_navigation/config/nav2.yaml.
 
@@ -398,6 +442,8 @@ def nav2_rewrites(v, reversing=False, planner=DEFAULT_PLANNER):
         'footprint': footprint(v),
         'lidar_scan.ros__parameters.min_height': f'{low:.3f}',
         'lidar_scan.ros__parameters.max_height': f'{high:.3f}',
+        'voxels.ros__parameters.min_height': f'{low:.3f}',
+        'voxels.ros__parameters.max_height': f'{high:.3f}',
         'minimum_turning_radius': f'{plan_turning_radius(v):.3f}',  # SmacPlannerHybrid
         'min_turning_r': f'{r:.3f}',            # MPPI AckermannConstraints: the car's own
         'collision_monitor.ros__parameters.StopZone.forward.points':
@@ -411,7 +457,7 @@ def nav2_rewrites(v, reversing=False, planner=DEFAULT_PLANNER):
 
 def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False,
                ghost=False, controller=DEFAULT_CONTROLLER, plan_around=True, camera=False,
-               planner=DEFAULT_PLANNER, lattice_file=None):
+               planner='hybrid', lattice_file=None, voxels=False):
     """
     Return a copy of nav2.yaml's settings (`nav2`, loaded) with what RewrittenYaml can't write.
 
@@ -437,9 +483,14 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
       costmap too, so it plans round what they see (the ghost stays out: the car must stop
       for it). Without plan_around the planner sees only the map, and the car stops for
       what's in its way: the stop zone's tests;
-    - the planner (PLANNERS, DEFAULT_PLANNER): its block (PLANNER_BLOCKS) becomes GridBased,
-      the name the behaviour trees ask for, and the spare blocks go. lattice also takes
-      `lattice_file` (the primitives) and, with `reversing`, may expand backwards.
+    - the planner (PLANNERS; hybrid when none is named, as it needs no `lattice_file`;
+      the launch files always name one, DEFAULT_PLANNER or CAR_DEFAULT_PLANNER): its
+      block (PLANNER_BLOCKS) becomes GridBased, the name the behaviour trees ask for, and
+      the spare blocks go. lattice also takes
+      `lattice_file` (the primitives) and, with `reversing`, may expand backwards;
+    - with `voxels` and `lidar` (aav_voxels, a trial): the lidar_layer reads the cubes and
+      the road they saw (sources voxels, voxels_ground) instead of the scan, and
+      collision_monitor's voxels source takes the lidar's place.
     """
     if controller not in CONTROLLERS:
         raise ValueError(f'controller:={controller}: pick one of {", ".join(CONTROLLERS)}')
@@ -472,12 +523,22 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
             mppi['critics'] = [c for c in mppi['critics'] if c != 'PreferForwardCritic']
         servers['FollowPath'] = mppi
     monitor = out['collision_monitor']['ros__parameters']
-    monitor['observation_sources'] = [name for name, on in (('radar', radar), ('lidar', lidar),
+    cubes = voxels and lidar
+    lidar_source = 'voxels' if cubes else 'lidar'
+    monitor['observation_sources'] = [name for name, on in (('radar', radar),
+                                                            (lidar_source, lidar),
                                                             ('camera', camera), ('ghost', ghost))
                                       if on]
     local = out['local_costmap']['local_costmap']['ros__parameters']
     gone = {layer for layer, on in (('lidar_layer', lidar), ('ghost_layer', ghost)) if not on}
     local['plugins'] = [p for p in local['plugins'] if p not in gone]
+    if cubes:
+        # The cubes stand up to the roof plus its margin: the layer, which bounds every
+        # source's heights too, must let them through.
+        layer = local['lidar_layer']
+        layer['observation_sources'] = 'voxels voxels_ground'
+        for bound in ('min_obstacle_height', 'max_obstacle_height'):
+            layer[bound] = float(layer['voxels'][bound])
     # The planner sees what the sensors see too, so it plans round an obstacle that isn't on
     # the map (docs/plan.md M5): a copy of each running sensor's layer, before the inflation.
     # Not the ghost: it tests the stop, and the car must stop for it, not steer round it.

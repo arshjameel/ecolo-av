@@ -7,9 +7,10 @@ The whole stack in Gazebo: same nodes and configs as the car, simulated hardware
       [map:=false] [foxglove:=false]
       [obstacle:=false] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true] [radar:=true]
       [actuator_model:=true] [speed_loop:=default|smooth|lqi] [sim_speed:=]
-      [reversing:=true] [controller:=mppi] [planner:=hybrid] [tracker:=none]
-      [amcl:=false]
-      [ndt:=false] [ndt_map:=maps/ndt/test_lot.pcd]
+      [reversing:=true] [controller:=mppi] [planner:=lattice] [tracker:=none]
+      [amcl:=false] [voxels:=false]
+      [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
+      [kiss_ekf:=false]
       [plan_around:=true]
       [watchdog:=true] [geofence:=true] [geofence_radius:=200.0]
       [watch_hud:=false] [faults:=false] [spine:=false] [arm:=true]
@@ -56,19 +57,34 @@ bench's argument names:
                       ego refuses it outside a simulator
   controller:=rpp     Nav2 follows the path with Regulated Pure Pursuit, not MPPI (the
                       default): pixi run controller-compare drives both (docs/path-followers.md)
-  planner:=lattice    Nav2 plans with another planner (navigation.launch.py planner:=):
-                      hybrid (the default) or lattice keep to the car's turning radius;
+  planner:=hybrid     Nav2 plans with another planner (navigation.launch.py planner:=):
+                      lattice (the default) or hybrid keep to the car's turning radius;
                       smac2d, navfn and theta_star don't, trials only. pixi run
-                      controller-compare --planners scores them (docs/controllers.md)
+                      controller-compare --planners scores them (docs/controllers.md).
+                      lattice_headings:=32: the lattice's trial file, 32 headings
   tracker:=lqr        a trial path follower (aav_track: pure_pursuit, stanley, lqr or mpc)
                       in controller_server's place, on Nav2's same planner, smoother and
                       collision_monitor. Forward only: with reversing:=false (docs/trials.md)
   amcl:=true          stock AMCL beside the global EKF, scored only (docs/trials.md): only
                       in world:=test_lot with nav:=true and the lidar, from the start pose
+  voxels:=true        Nav2's local costmap and collision_monitor read the lidar as 0.25 m
+                      cubes (aav_voxels, a trial: docs/designs/2026-10-30_voxels.md)
+                      instead of the flat scan; only with the lidar
   ndt:=true           NDT on the saved lidar map (aav_ndt, Rust), scored only, never TF
                       (docs/designs/2026-10-29_ndt.md): only in world:=test_lot with the
                       lidar, from the start pose, and only once ndt_map (pixi run ndt-map
                       drive) is there
+  ndt_ekf:=true       a trial: NDT as above (ndt:=true is implied), and ekf_global takes
+                      its pose (x, y, yaw) beside the GPS (aav_localization
+                      config/ekf_global_ndt.yaml; docs/trials.md). Default false: the
+                      global EKF on GPS alone
+  kiss_icp:=true      KISS-ICP lidar odometry (aav_kiss_icp), scored only, never TF or an
+                      EKF (docs/designs/2026-10-30_kiss-icp.md): any world with the lidar;
+                      needs the kiss environment once (pixi install --locked -e kiss)
+  kiss_ekf:=true      a trial: KISS-ICP as above (kiss_icp:=true is implied), and ekf_local
+                      takes its twist (vx, vyaw) beside the wheels and the IMU
+                      (aav_localization config/ekf_local_kiss.yaml; docs/trials.md).
+                      Default false: the local EKF on the wheels and the IMU alone
   plan_around:=false  Nav2's planner sees only the map, not the radar and lidar: the car
                       stops for an obstacle instead of planning round it (the stop tests)
   watchdog:=true      the sensor watchdog (aav_safety): twist_mux's sensors lock stops Nav2
@@ -144,7 +160,7 @@ def launch_setup(context):
     flag = {n: arg(n).lower() == 'true'
             for n in ('nav', 'teleop', 'rviz', 'perception', 'camera_obstacles', 'hud',
                       'map', 'foxglove', 'reversing', 'watchdog', 'faults',
-                      'ghost', 'plan_around', 'watch_hud', 'geofence')}
+                      'ghost', 'plan_around', 'watch_hud', 'geofence', 'voxels')}
     lane = arg('lane').lower()
     if lane not in ('false', 'true', 'fake'):
         raise ValueError(f'lane:={lane}: use true (the lane finder), fake or false')
@@ -154,7 +170,12 @@ def launch_setup(context):
     tracker = vehicle.check_tracker(arg('tracker'), flag['reversing'])
     planner = vehicle.check_planner(arg('planner'))
     amcl = arg('amcl').lower() == 'true'
-    ndt = arg('ndt').lower() == 'true'
+    # ndt_ekf: ekf_global takes NDT's pose, so NDT runs too.
+    ndt_ekf = arg('ndt_ekf').lower() == 'true'
+    ndt = arg('ndt').lower() == 'true' or ndt_ekf
+    # kiss_ekf: ekf_local takes KISS-ICP's twist, so KISS-ICP runs too.
+    kiss_ekf = arg('kiss_ekf').lower() == 'true'
+    kiss_icp = arg('kiss_icp').lower() == 'true' or kiss_ekf
     gazebo_share = FindPackageShare('aav_gazebo').perform(context)
     sensors = worlds.has_sensors(worlds.world_file(gazebo_share, world))
     # Each only where the world renders it, as gazebo.launch.py decides.
@@ -164,12 +185,20 @@ def launch_setup(context):
     if amcl and not (world == 'test_lot' and flag['nav'] and lidar):
         raise ValueError('amcl:=true needs world:=test_lot nav:=true lidar:=true: the only '
                          'world with a real map, and AMCL reads the lidar')
+    if flag['voxels'] and not lidar:
+        raise ValueError('voxels:=true needs the lidar (lidar:=true, world:=road or test_lot): '
+                         'the cubes come from it')
     if ndt and not (world == 'test_lot' and lidar):
-        raise ValueError('ndt:=true needs world:=test_lot lidar:=true: the only world with '
+        raise ValueError('ndt:=true (and ndt_ekf:=true) needs world:=test_lot lidar:=true: '
+                         'the only world with '
                          'a lidar map (pixi run ndt-map drive), and NDT reads the lidar')
     if ndt and not os.path.isfile(arg('ndt_map')):
         raise ValueError(f'ndt:=true: no map at ndt_map:={arg("ndt_map")}. Make it with '
                          '`pixi run ndt-map drive`')
+    if kiss_icp and not lidar:
+        raise ValueError('kiss_icp:=true (and kiss_ekf:=true) needs the lidar: '
+                         f'world:={world} lidar:={arg("lidar")} has none '
+                         '(world:=test_lot or road, lidar:=true)')
     if wanted and not sensors:
         raise ValueError(f'{", ".join(wanted)}: world:={world} has no camera. Use world:=road')
     nav_share = FindPackageShare('aav_navigation').perform(context)
@@ -200,7 +229,8 @@ def launch_setup(context):
                                       'config', 'imu_filter.yaml'), {'use_sim_time': True}],
              remappings=[('imu/data_raw', '/sensors/imu/data_raw'),
                          ('imu/data', '/sensors/imu/data')]),
-        include(context, 'aav_localization', 'localization.launch.py', use_sim_time='true'),
+        include(context, 'aav_localization', 'localization.launch.py', use_sim_time='true',
+                ndt_ekf=str(ndt_ekf).lower(), kiss_ekf=str(kiss_ekf).lower()),
     ]
     if radar:
         # The radar stand-in, as the bench's: few points per object, so small clusters.
@@ -213,11 +243,13 @@ def launch_setup(context):
                                use_sim_time='true',
                                map=os.path.join(nav_share, 'maps', MAPS[world]),
                                radar=radar, lidar=lidar, ghost=flag['ghost'],
+                               voxels=flag['voxels'],
                                collision_monitor=radar or lidar or flag['ghost'],
                                camera_obstacles=flag['camera_obstacles'],
                                max_speed=arg('sim_speed'),
                                reversing=str(flag['reversing']).lower(),
                                controller=controller, tracker=tracker, planner=planner,
+                               lattice_headings=arg('lattice_headings'),
                                # A trial tracker may be swapped live here (the debug
                                # HUD's panel shows which): Gazebo only, never the car.
                                live_swap='true',
@@ -230,10 +262,16 @@ def launch_setup(context):
                                          if amcl else ''),
                                plan_around=str(flag['plan_around']).lower()))
     if ndt:
-        # Scored only (controller-compare --ndt): nothing reads its pose to drive.
+        # Scored only (controller-compare --ndt), unless ndt_ekf:=true: then ekf_global
+        # reads its pose (controller-compare --ndt-ekf scores the difference).
         actions.append(include(context, 'aav_ndt', 'ndt.launch.py', use_sim_time='true',
                                ndt_map=arg('ndt_map'), ndt_x=0.0, ndt_y=arg('start_y'),
                                ndt_yaw=arg('start_yaw')))
+    if kiss_icp:
+        # Scored only (controller-compare --kiss-icp), unless kiss_ekf:=true: then
+        # ekf_local reads its twist (controller-compare --kiss-ekf scores the difference).
+        actions.append(include(context, 'aav_kiss_icp', 'kiss_icp.launch.py',
+                               use_sim_time='true'))
     if flag['watchdog']:
         # What this world has, and the camera only where something reads it: watching it
         # costs one more stream of pictures.
@@ -369,6 +407,9 @@ def generate_launch_description():
         DeclareLaunchArgument('faults', default_value='false',
                               description='route the front left picture through '
                                           'gazebo_adapter, for fault.camera'),
+        DeclareLaunchArgument('voxels', default_value='false',
+                              description='true: Nav2 reads the lidar as 0.25 m cubes '
+                                          '(aav_voxels, a trial) instead of the flat scan'),
         DeclareLaunchArgument('ghost', default_value='false',
                               description="a pretend person in Nav2's view (aav_ghost); "
                                           'place it with pixi run ghost ahead 10'),
@@ -386,6 +427,10 @@ def generate_launch_description():
                               description=', '.join(vehicle.PLANNERS) + ": Nav2's planner. "
                                           "hybrid and lattice keep to the car's turning "
                                           'radius; the others are trials (docs/controllers.md)'),
+        DeclareLaunchArgument('lattice_headings',
+                              default_value=str(vehicle.LATTICE_HEADINGS[0]),
+                              description='with planner:=lattice: 16 headings (the default) '
+                                          'or 32 (a trial file)'),
         DeclareLaunchArgument('tracker', default_value=vehicle.DEFAULT_TRACKER,
                               description="a trial path follower in controller_server's "
                                           'place: ' + ', '.join(vehicle.TRACKERS) +
@@ -396,10 +441,19 @@ def generate_launch_description():
         DeclareLaunchArgument('ndt', default_value='false',
                               description='NDT on the saved lidar map, scored only '
                                           '(world:=test_lot lidar:=true, ndt_map present)'),
+        DeclareLaunchArgument('ndt_ekf', default_value='false',
+                              description='a trial: NDT (ndt:=true implied) and its pose '
+                                          'into ekf_global, beside the GPS'),
         DeclareLaunchArgument('ndt_map', default_value=os.path.join('maps', 'ndt',
                                                                     'test_lot.pcd'),
                               description="NDT's map (pixi run ndt-map drive); relative to "
                                           'where the launch starts'),
+        DeclareLaunchArgument('kiss_icp', default_value='false',
+                              description='KISS-ICP lidar odometry, scored only (a world '
+                                          'with the lidar; pixi install --locked -e kiss)'),
+        DeclareLaunchArgument('kiss_ekf', default_value='false',
+                              description='a trial: KISS-ICP (kiss_icp:=true implied) and its '
+                                          'twist into ekf_local, beside the wheels and IMU'),
         DeclareLaunchArgument('plan_around', default_value='true',
                               description="true: Nav2's planner plans round what the radar "
                                           'and lidar see; false: the map only, so the car '

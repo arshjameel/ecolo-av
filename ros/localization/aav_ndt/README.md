@@ -4,8 +4,9 @@
 
 NDT in Rust (rclrs), a **trial**: where the car is on a saved lidar map, in x, y and yaw.
 Ben's idea (28 Oct), after Autoware's `ndt_scan_matcher`; our own code. The design:
-`docs/designs/2026-10-29_ndt.md`. Never TF, and nothing drives by it until it wins the
-trials; `controller-compare --ndt` scores it against Gazebo's truth.
+`docs/designs/2026-10-29_ndt.md`. Never TF. Off by default, nothing reads its pose;
+with `ndt_ekf:=true` (a trial) `ekf_global` takes it beside the GPS.
+`controller-compare --ndt` and `--ndt-ekf` score it against Gazebo's truth.
 
 ```
 /sensors/lidar/points ─┐                       ┌─▶ /localization/ndt/pose
@@ -34,11 +35,18 @@ trials; `controller-compare --ndt` scores it against Gazebo's truth.
 | pub | `/localization/ndt/status` (every cloud) | diagnostic_msgs/DiagnosticStatus |
 
 Status: level OK (a good fit), WARN (poor, or no start), ERROR (LOST); message
-`TRACKING`, `WAITING` or `LOST`; values `score_per_point`, `overlap`, `iterations`,
-`match_ms`, `points`, `poor_in_row`, `restarts`, `clouds_dropped`, `x`, `y`, `yaw`.
+`TRACKING`, `WAITING` or `LOST`; values `stamp` (the cloud's), `score_per_point`,
+`overlap`, `iterations`, `match_ms`, `points`, `poor_in_row`, `restarts`,
+`clouds_dropped`, `x`, `y`, `yaw`, and `cov_xx` ... `cov_yawyaw` (-H⁻¹ before k and
+the floors: `controller-compare --ndt` fits k from them).
+
+A fit is poor (not published) when its score per point is under
+`min_score_per_point`, it ran out of iterations, or, while tracking, it moved more
+than `max_correction_m` / `max_correction_deg` from the guess (a jump).
 
 Parameters: `config/ndt.yaml` (cubes, filters, the fit's floor, the step cap, the
-covariance), plus from the launch file the lidar's mount and the body (vehicle.yaml),
+covariance), plus from the launch file the lidar's mount and the car's own box
+(`body_min`, `body_max`: `vehicle.self_box`, the body and its sensors, 15 cm wider),
 `map`, and the start (`start_x`, `start_y`, `start_yaw`, `start_from_global`).
 
 ### Launch
@@ -49,10 +57,11 @@ world:=test_lot ndt:=true`, after `pixi run ndt-map drive` made the map.
 
 ## Invariants
 
-- Never publishes TF; nothing reads its pose to drive (a trial, docs/trials.md's rule).
+- Never publishes TF. Only `ekf_global` may read its pose, and only with `ndt_ekf:=true`
+  (a trial, docs/trials.md).
 - Gazebo's truth is never read by the node: only `tools/ndt_map.py` uses it, offline.
-- A pose is published only for a good fit; LOST after 5 poor fits in a row, then it
-  starts again from `ekf_global`, counted in `restarts`.
+- A pose is published only for a good fit (score, converged, no jump); LOST after 5
+  poor fits in a row, then it starts again from `ekf_global`, counted in `restarts`.
 - Rust API Guidelines; `cargo fmt` and `cargo clippy` clean; no ROS in `ndt-core`.
 
 ## Side Effects

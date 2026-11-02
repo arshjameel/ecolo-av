@@ -494,6 +494,8 @@ on the right two views from above. Key **L** swaps the right side for the sensor
 | Top: the lidar map | NDT's map's points (thinned to one per 15 cm), fitted to the box; every localizer's car in its colour | `ndt_map` (the PCD); each localizer, local EKF through map -> odom |
 | Bottom: NDT's match | 24 m round the car: NDT's 1 m cells as **ellipses** (each column's points, 2 sigma); the latest scan's cubes over them, **green** on a cell, **red** off the map; the cars | the map; the lidar's cubes, through map -> odom |
 | Under it: the score | TRACKING / WAITING / LOST, score per point, ms per match; how many scan cubes landed on the map; overlap | `/localization/ndt/status`; the scan |
+| Nav2's cubes | the road's fit (**OK** green, **WARN** amber: taken as flat), how many cubes, ms per cloud; "off (voxels:=false)" when none came; STALE when quiet | `/perception/voxels/status`, `/perception/voxels/cubes` |
+| Localization health | **OK** green, or **WARN** amber and each check that isn't OK, wrapped; "not running (health:=false)"; STALE after 3 s (it comes once a second) | `/localization/health` (Betsi's `aav_localization_health`) |
 
 No map file: both boxes say where it looked and how to make one (`pixi run ndt-map
 drive`). No map -> odom yet: only the map-frame cars are drawn.
@@ -503,13 +505,14 @@ The 3D view, in both layouts:
 | On screen | From | Frame |
 |---|---|---|
 | Cubes (20 cm), coloured by height: dark ground, then teal to pale. **Kept** for 2 s and fading darker (key K: this scan's only) | `/sensors/lidar/points` | lidar_link -> base_link -> odom |
+| **Nav2's cubes**: red 0.25 m wireframes over the screen's own (key V), the newest cloud only; dimmer when STALE. What Nav2 stops for (`voxels:=true`), beside what the lidar sees | `/perception/voxels/cubes` | base_link -> odom, EKF local's pose at the cloud's stamp |
 | The car: a blue box to scale (`vehicle.yaml`) | `/localization/odom/local` (EKF local) | odom |
 | EKF global (green), AMCL (orange), **NDT (purple)**, truth (white, sim): an outline, an arrow, a pole | their topics (NDT's: `/localization/ndt/pose`, good fits only) | map, through map -> odom |
 | AMCL's particles: small orange arrows (key A) | `/localization/amcl/particles` | map, through map -> odom |
 | NDT's map: faint purple 1 m wireframe cubes (key M) | `maps/ndt/test_lot.pcd` (`ndt_map`) | map, through map -> odom |
 | Nav2's plan (yellow), the car's trail (grey) | `/plan`; EKF local | map; odom |
 | Legend, top left | each localizer's distance from EKF local, in metres | - |
-| Panel (key L): IMU, GPS, lidar, wheels, wheel odom, vehicle, each estimate, map -> odom, tracker | each topic: OK, STALE or NEVER, and what it said | - |
+| Panel (key L): IMU, GPS, lidar, Nav2 cubes, wheels, wheel odom, vehicle, each estimate, map -> odom, loc. health (amber when WARN), tracker | each topic: OK, STALE or NEVER, and what it said | - |
 | Panel, NDT: TRACKING / WAITING / LOST, score per point, ms per match; or "no NDT map at ...: make it with pixi run ndt-map drive" | `/localization/ndt/status` | - |
 | Keys, bottom left: each key and its layer's state (key H hides them) | - | - |
 
@@ -539,6 +542,7 @@ cloud (stamp t) --/tf_static--> base_link --EKF local's pose AT t--> odom --> 20
 | wheel | zoom |
 | L | the seeing screen (the default: the map and NDT's match from above) or the sensor panel |
 | K | cubes: kept and fading (the default), or this scan's only |
+| V | Nav2's cubes (red wireframes): on by default |
 | M | NDT's map as wireframes (on when the file is there) |
 | A | AMCL's particles |
 | H | hide or show the key legend |
@@ -567,7 +571,8 @@ from a terminal: `ros2 param set /track tracker lqr` (sim only, both ways).
 |---|---|
 | `crates/debug-core` | the maths, no ROS, no raylib: the pose buffer, the frames, the cubes, the camera; the map's footprint from above (`ndt::Footprint`: thinned points, one ellipse per column) and `topdown` (map metres to window points). `cargo test -p debug-core` |
 | `crates/debug-app` | the window and the node; the cubes drawn **instanced** (one mesh, one draw per height band) |
-| `config/debug_hud.yaml` | every topic name, the frames, `cube_size`, `max_cubes`, `pose_window`, `stale_after`, `keep_cubes_for`, `ndt_map`, `ndt_map_cell` |
+| `config/debug_hud.yaml` | every topic name, the frames, `cube_size`, `max_cubes`, `pose_window`, `stale_after`, `keep_cubes_for`, `ndt_map`, `ndt_map_cell`, `voxels_cube_size` (0.25 m), `health_stale_after` (3 s) |
+| Nav2's cubes | their own newest-only slots and thread (`nav2_cubes`), as the lidar's; `debug-core`'s `voxels` moves each centre into odom (no second snap) |
 | PointCloud2 reader | `aav_radar_clusters`' own (`radar-clustering`), shared |
 
 On the car: not yet from a Mac over WiFi (about 9 MB/s of reliable lidar); on the Orin's
@@ -590,6 +595,14 @@ own screen.
 | `--demo --bench-cubes 20000`, release | **358 fps** (pass mark 30) |
 | The node's window against headless Gazebo, test lot, `amcl:=true tracker:=pure_pursuit ndt:=true` (`maps/ndt/test_lot.pcd`), a Nav2 goal at (40, -4) | 58 fps; NDT TRACKING, 3.1-3.2 per point, 1.7-1.8 ms per match, overlap 100%, 0.11-0.12 m from EKF local; AMCL 0.7-1.1 m off with its particles round it; the map's 2,502 cubes sit on the walls; every panel row OK while driving |
 | Kept cubes while driving | they hit `max_cubes` (20,000; 11,000 cut): mostly old ground rings |
+
+### Tested (1 November, Ben's Mac): Nav2's cubes and localization health
+
+| What | Result |
+|---|---|
+| `cargo test`: debug-core (`voxels`, `localization_health`, state, keys), debug-app with ROS (a Nav2 cube cloud placed by the pose at its stamp; a WARN health string read) | all pass |
+| `--demo` window, screenshots, seeing screen and panel | red wireframes on the walls and boxes over the teal cubes; both sections drawn, OK and WARN (two checks wrapped); the panel's two new rows fit at 1600 x 900 |
+| Against Gazebo with `voxels:=true` and `health:=true` | **untested** |
 
 **Not yet seen:** NDT's LOST and WAITING on the live window (only in `--demo`); `pixi run
 debugdemo` itself (RViz, the HUD and the map window as well: run here piece by piece);

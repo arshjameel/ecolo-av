@@ -7,7 +7,7 @@
 <!-- Generated from docs/learn-localization.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Localization from zero</h1>
-<div class="meta">18 min read · 10 sections</div></header>
+<div class="meta">19 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -637,8 +637,7 @@ that hurts the heading from fixes more than the heading from velocity, so on the
 gain should be at least as big. To check with the first drive's bag.</p>
 </section>
 <section class="card"><h2 id="8-next-matching-the-lidar-to-a-map-ndt-and-icp">8. Next: matching the lidar to a map (NDT and ICP)</h2>
-<p>Not built yet: a research pick (<a href="../designs/2026-10-28_research-picks.md">research picks</a>,
-pick 2). GPS gets the car to within a metre or two. To get to centimetres without RTK,
+<p>Built as a trial on 29 Oct (<code>aav_ndt</code>, research <a href="../designs/2026-10-28_research-picks.md">pick 2</a>). GPS gets the car to within a metre or two. To get to centimetres without RTK,
 match what the lidar sees now against a map of the lot.</p>
 <h3 id="ndt-blobs">NDT: blobs</h3>
 <p><strong>NDT</strong> (Normal Distributions Transform) keeps a blob per square, not every point.</p>
@@ -731,6 +730,53 @@ because most pairs are right; start it too far off and it locks onto the wrong p
 </table></div>
 <p>So: <strong>make</strong> the map with KISS-ICP, <strong>find</strong> the car in it with NDT, and give that
 pose to <code>ekf_global</code> beside GPS.</p>
+<h3 id="two-ways-the-lidar-can-feed-the-ekfs">Two ways the lidar can feed the EKFs</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>KISS-ICP into <code>ekf_local</code> (<code>kiss_ekf:=true</code>, a trial)</th>
+<th>NDT into <code>ekf_global</code> (<code>ndt_ekf:=true</code>, a trial)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Needs a map?</td>
+<td><strong>No</strong>: each scan is matched to the last few</td>
+<td><strong>Yes</strong>: a saved map of the lot (<code>pixi run ndt-map drive</code> in Gazebo)</td>
+</tr>
+<tr>
+<td>What it says</td>
+<td>how far the car moved since the last scan</td>
+<td>where the car <strong>is</strong> on the map</td>
+</tr>
+<tr>
+<td>Drifts?</td>
+<td>yes, slowly, like the wheels (but it doesn't slip)</td>
+<td>no: the map holds it</td>
+</tr>
+<tr>
+<td>Fed as</td>
+<td>a speed (<code>twist</code>), beside the wheels and the IMU</td>
+<td>a position and heading (<code>pose</code>), beside the GPS</td>
+</tr>
+<tr>
+<td>Its EKF</td>
+<td><code>ekf_local</code>: smooth, <code>odom → base_link</code></td>
+<td><code>ekf_global</code>: <code>map → odom</code>, may jump</td>
+</tr>
+<tr>
+<td>Good for</td>
+<td>wheels that slip, or no wheel speed at all</td>
+<td>holding the car where GPS can't (trees, buildings, no GPS)</td>
+</tr>
+</tbody>
+</table></div>
+<pre class="highlight"><code>lidar ─► KISS-ICP ─► "moved 0.10 m, turned 1°" ─► ekf_local  (no map)
+lidar ─► NDT + map ─► "at x 12.31, y 4.02, 87°" ─► ekf_global (needs the map)</code></pre>
+<p>The rule for each: odometry (how far I moved) goes to <code>ekf_local</code>; anything that says
+where I am on the map goes to <code>ekf_global</code>. Results of NDT into <code>ekf_global</code>:
+<a href="trials.html#ndt-into-the-global-ekf-30-oct">trials</a>.</p>
 <p>Not Tesla's way: Tesla has no lidar. Its "occupancy network" turns camera images into
 3D cubes, each marked filled or empty. That looks like NDT's squares, but it doesn't
 match a scan to a map.</p>

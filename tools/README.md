@@ -35,9 +35,9 @@ The `Task` column is `pixi run <task>`; "-" means run the script itself.
 |---|---|---|
 | `test.sh` | every test that needs no ROS: Python units, Rust, interfaces.md, stand-ins stay local | inside `test` |
 | `lint.sh` | ament_flake8 and ament_pep257 on our Python | `lint` |
-| `check_graph.py` | the running graph against `docs/interfaces.yaml` | `check <profile>` |
+| `check_graph.py` | the running graph against `docs/interfaces.yaml`; then `/localization/health`'s line (warn only) | `check <profile>` |
 | `bench_check.py` | starts bench mode, tests the whole graph: contract, drive, e-stops | `bench-check` |
-| `sim_check.py` | Gazebo's road world headless, the whole graph, a drive | `sim-check` |
+| `sim_check.py` | Gazebo's road world headless, the whole graph, a drive (`--voxels`: Nav2 on the lidar's cubes) | `sim-check` |
 | `gz_crash.py` | did Gazebo itself crash at start-up? (sim-check retries once) | - |
 | `layout_check.py` | is every topic in `foxglove/` served by a bridge? | `layout-check` |
 | `ci_annotate.py` | a failed test log into GitHub annotations | (CI) |
@@ -84,7 +84,7 @@ The `Task` column is `pixi run <task>`; "-" means run the script itself.
 | `gz_window.sh` | Gazebo's window again, following the car | `gz-window` |
 | `software_gl.sh` | Mesa's software OpenGL, for Gazebo with no GPU | - (put in front) |
 | `fake_vlp16.py` | pretends to be the VLP-16 lidar: its UDP packets | - |
-| `controller_compare.py` | Regulated Pure Pursuit against MPPI, and the trial trackers, planners, AMCL and NDT (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt`), same routes | `controller-compare` |
+| `controller_compare.py` | Regulated Pure Pursuit against MPPI, and the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt`, `--ndt-ekf`, `--gps-off`, `--voxels`, `--kiss-icp`), same routes | `controller-compare` |
 | `lattice_primitives.py` | the State Lattice planner's primitives for our car, by Nav2's generator (`--check`: still right for `vehicle.yaml`?) | `lattice-primitives` |
 | `heading_check.py` | the global EKF's heading against Gazebo's truth | `heading-check` |
 | `ndt_map.py` | NDT's map of the test lot: drive the mapping route, or build from a bag (its maths without ROS) | `ndt-map` |

@@ -11,6 +11,10 @@ Reports, for every topic in the contract:
 and lists topics that are running but not in the contract (a typo, or the contract
 needs an entry). Exit status 1 if anything failed: usable in a test script.
 
+Then, where aav_localization_health runs, one line from /localization/health (Betsi's
+warn-only checks): OK, or WARN and the checks that aren't OK. A WARN never fails the
+check: those checks are warn-only, as on the car.
+
 road is the sim in its road world (sim.launch.py world:=road), so a topic live in sim must
 be live there too, and so must the road world's own: the camera and the radar. spine is
 the road world with the spine in the loop (spine:=true): road's topics, plus the CAN ones.
@@ -22,9 +26,11 @@ import sys
 import time
 
 import rclpy
+from std_msgs.msg import String
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+HEALTH = '/localization/health'
 # Every ROS system has these. /diagnostics and the */set_pose topics come with
 # robot_localization (the contract lists its set_pose services instead).
 IGNORE = {'/parameter_events', '/rosout', '/diagnostics',
@@ -73,10 +79,33 @@ def main():
         print('\nRunning but not in docs/interfaces.yaml:')
         for n in extra:
             print(f'  {n}  {running[n]}')
+    if node.get_publishers_info_by_topic(HEALTH):
+        print('\n' + health_line(read_once(node, HEALTH, String, args.wait)))
     node.destroy_node()
     rclpy.shutdown()
     print(f'\n{failed} failed')
     sys.exit(1 if failed else 0)
+
+
+def read_once(node, name, kind, timeout):
+    """Return the data of the first message on name, or None after timeout seconds."""
+    got = []
+    sub = node.create_subscription(kind, name, lambda m: got.append(m.data), 10)
+    end = time.monotonic() + timeout
+    while not got and time.monotonic() < end:
+        rclpy.spin_once(node, timeout_sec=0.1)
+    node.destroy_subscription(sub)
+    return got[0] if got else None
+
+
+def health_line(text):
+    """Return the report's line for one /localization/health message (None: none came)."""
+    if text is None:
+        return f'-     {HEALTH}: nothing heard yet (it reports once a second)'
+    if text == 'OK':
+        return 'ok    localization health: OK'
+    checks = text.removeprefix('WARN ').replace('; ', '\n      ')
+    return 'WARN  localization health (warn only, not a failure):\n      ' + checks
 
 
 if __name__ == '__main__':

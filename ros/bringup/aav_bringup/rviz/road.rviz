@@ -125,6 +125,16 @@ Visualization Manager:
       Topic:
         Value: /sensors/lidar/points
         Reliability Policy: Reliable
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Cubes (voxels:=true)
+      Enabled: true
+      Size (m): 0.25
+      Style: Boxes
+      Color Transformer: AxisColor
+      Axis: Z
+      Topic:
+        Value: /perception/voxels/cubes
+        Reliability Policy: Reliable
     - Class: rviz_default_plugins/Polygon
       Name: Stop zone
       Enabled: true

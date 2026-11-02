@@ -95,6 +95,7 @@ mod tests {
             size: Metres(0.2),
             max_cubes: 10,
             ground_height: Metres(0.25),
+            own: None,
         };
         let at = |stamp| {
             place(

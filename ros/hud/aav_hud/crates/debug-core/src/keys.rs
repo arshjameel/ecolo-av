@@ -1,5 +1,7 @@
 //! The keys, and the layers they turn on and off: one place, so the window, its key
 //! legend and `--help` all say the same.
+//!
+//! Taken: L, K, V, M, A, C, R, H, F11, 1-4.
 
 use crate::orbit::Mode;
 
@@ -68,6 +70,8 @@ pub struct Layers {
     pub ndt_map: bool,
     /// AMCL's particles (key A).
     pub particles: bool,
+    /// Nav2's cubes, the voxels trial's, as red wireframes (key V).
+    pub nav2_cubes: bool,
     /// The key legend itself (key H).
     pub keys: bool,
 }
@@ -79,6 +83,7 @@ impl Default for Layers {
             cubes: CubeView::Kept,
             ndt_map: false,
             particles: true,
+            nav2_cubes: true,
             keys: true,
         }
     }
@@ -97,6 +102,8 @@ pub enum Action {
     NdtMap,
     /// A: AMCL's particles.
     Particles,
+    /// V: Nav2's cubes (the voxels trial).
+    Nav2Cubes,
     /// H: the key legend.
     Keys,
     /// L: the seeing screen, or the sensor panel.
@@ -107,9 +114,10 @@ pub enum Action {
 
 impl Action {
     /// Every key, in the legend's order (keys 1-4 come after them).
-    pub const ALL: [Action; 8] = [
+    pub const ALL: [Action; 9] = [
         Action::Layout,
         Action::Cubes,
+        Action::Nav2Cubes,
         Action::NdtMap,
         Action::Particles,
         Action::Camera,
@@ -126,6 +134,7 @@ impl Action {
             Self::Cubes => "K",
             Self::NdtMap => "M",
             Self::Particles => "A",
+            Self::Nav2Cubes => "V",
             Self::Keys => "H",
             Self::Layout => "L",
             Self::FullScreen => "F11",
@@ -140,6 +149,7 @@ impl Action {
             Self::Cubes => "cubes",
             Self::NdtMap => "NDT's map",
             Self::Particles => "AMCL's particles",
+            Self::Nav2Cubes => "Nav2's cubes (red)",
             Self::Keys => "hide these keys",
             Self::Layout => "layout",
             Self::FullScreen => "full screen",
@@ -154,6 +164,7 @@ impl Layers {
             Action::Cubes => self.cubes = self.cubes.toggled(),
             Action::NdtMap => self.ndt_map = !self.ndt_map,
             Action::Particles => self.particles = !self.particles,
+            Action::Nav2Cubes => self.nav2_cubes = !self.nav2_cubes,
             Action::Keys => self.keys = !self.keys,
             Action::Layout => self.layout = self.layout.toggled(),
             Action::Camera | Action::ResetCamera | Action::FullScreen => {}
@@ -172,6 +183,7 @@ impl Layers {
                     Action::NdtMap if !has_map => "no map".to_owned(),
                     Action::NdtMap => on(self.ndt_map).to_owned(),
                     Action::Particles => on(self.particles).to_owned(),
+                    Action::Nav2Cubes => on(self.nav2_cubes).to_owned(),
                     Action::Camera => camera.label().to_owned(),
                     Action::Layout => self.layout.label().to_owned(),
                     _ => String::new(),
@@ -219,6 +231,9 @@ mod tests {
         l.apply(Action::NdtMap);
         l.apply(Action::Particles);
         assert!(l.ndt_map && !l.particles);
+        assert!(l.nav2_cubes);
+        l.apply(Action::Nav2Cubes);
+        assert!(!l.nav2_cubes);
         l.apply(Action::Camera);
         l.apply(Action::Cubes);
         assert_eq!(l.cubes, CubeView::Kept);

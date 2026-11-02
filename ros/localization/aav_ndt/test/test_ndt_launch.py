@@ -72,8 +72,13 @@ def test_the_mount_and_body_come_from_vehicle_yaml(tmp_path):
     lidar, body = v['sensors']['lidar_link'], v['vehicle']['body']
     assert list(p['lidar_xyz']) == pytest.approx(lidar['xyz'])
     assert list(p['lidar_rpy']) == pytest.approx(lidar['rpy'])
-    assert list(p['body_min']) == pytest.approx([-body['rear_overhang'], -body['width'] / 2])
-    assert p['body_max'][0] == pytest.approx(body['length'] - body['rear_overhang'])
+    box = vehicle.self_box(v)
+    assert list(p['body_min']) == pytest.approx(box['min'])
+    assert list(p['body_max']) == pytest.approx(box['max'])
+    # Wider than the body: the car's own roof and cameras stay out of the scan (30 Oct).
+    assert p['body_min'][0] < -body['rear_overhang'] - 0.1
+    assert p['body_max'][0] > body['length'] - body['rear_overhang'] + 0.1
+    assert p['body_max'][1] > body['width'] / 2 + 0.1
     assert p['map'] == str(map_file)
     assert (p['start_x'], p['start_y'], p['start_yaw']) == (0.0, 4.0, 1.5)
     assert p['start_from_global'] is False

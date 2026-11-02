@@ -13,6 +13,8 @@
 //! | [`cubes`] | one scan's cubes: snapped to a grid in odom, a height band each, a cap |
 //! | [`scan`] | a cloud start to finish: frames, pose, points, cubes |
 //! | [`persist`] | cubes kept in odom that fade when not seen again (key K) |
+//! | [`voxels`] | Nav2's cubes (the voxels trial) placed in odom; its status in plain words |
+//! | [`localization_health`] | `/localization/health` read: OK, or WARN and each check |
 //! | [`ndt`] | NDT's status in plain words; its map's occupied cells (key M) |
 //! | [`keys`] | the keys, the layers they toggle, the on-screen key legend |
 //! | [`orbit`] | the 3D camera: chase, follow, free; turn, tilt, zoom, pan |
@@ -26,6 +28,7 @@ pub mod config;
 pub mod cubes;
 pub mod frames;
 pub mod keys;
+pub mod localization_health;
 pub mod ndt;
 pub mod orbit;
 pub mod persist;
@@ -35,3 +38,4 @@ pub mod state;
 pub mod swap;
 pub mod topdown;
 pub mod track;
+pub mod voxels;

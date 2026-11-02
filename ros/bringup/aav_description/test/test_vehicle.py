@@ -49,6 +49,27 @@ def test_footprint_encloses_base_link_and_is_nav2_string():
         '[[1.800, 0.500], [1.800, -0.500], [-0.200, -0.500], [-0.200, 0.500]]'
 
 
+def test_self_box_holds_the_body_and_every_sensor_with_a_margin():
+    cfg = {'vehicle': {'body': {'length': 2.0, 'width': 1.0, 'rear_overhang': 0.2}},
+           'sensors': {'cam': {'xyz': [1.95, 0.3, 1.5]}, 'back': {'xyz': [-0.2, -0.6, 0.9]}}}
+    box = vehicle.self_box(cfg, margin=0.1)
+    # The camera sticks out 0.15 m ahead, the rear one 0.1 m to the right: both kept in.
+    assert box['min'] == pytest.approx([-0.2 - 0.04 - 0.1, -0.6 - 0.04 - 0.1])
+    assert box['max'] == pytest.approx([1.95 + 0.04 + 0.1, 0.5 + 0.1])
+    bare = vehicle.self_box({'vehicle': cfg['vehicle']}, margin=0.0)
+    assert bare == {'min': [-0.2, -0.5], 'max': [pytest.approx(1.8), 0.5]}
+
+
+def test_the_real_cars_self_box_holds_its_cameras_and_roof_with_room():
+    # The ghost of 30 Oct: Gazebo's lidar saw the roof's rear corners (x -0.21, |y| 0.51)
+    # and the front cameras (x 1.85) just outside a box flush with the body.
+    box = vehicle.self_box(vehicle.load(CONFIG))
+    assert box['min'][0] < -0.3 and box['max'][0] > 1.9
+    assert box['min'][1] < -0.6 and box['max'][1] > 0.6
+    # ... but not so big it hides a person beside the car.
+    assert box['max'][0] - box['min'][0] < 3.0 and box['max'][1] - box['min'][1] < 1.6
+
+
 def test_stop_zone_is_ahead_of_the_bumper_and_wider_than_the_body():
     v = {'body': {'length': 2.0, 'width': 1.0, 'rear_overhang': 0.2}}
     pts = vehicle.stop_zone_points(v, ahead=1.0, margin=0.2)
@@ -110,7 +131,9 @@ def test_nav2_rewrites_keys():
                       'controller_server.ros__parameters.FollowPath.allow_reversing',
                       'controller_server.ros__parameters.MPPI.vx_min',
                       'lidar_scan.ros__parameters.min_height',
-                      'lidar_scan.ros__parameters.max_height'}
+                      'lidar_scan.ros__parameters.max_height',
+                      'voxels.ros__parameters.min_height',
+                      'voxels.ros__parameters.max_height'}
     # The planner leaves the controller some steering; MPPI knows the car's real lock.
     assert float(r['minimum_turning_radius']) == pytest.approx(
         float(r['min_turning_r']) * vehicle.PLAN_TURN_MARGIN, abs=2e-3)
@@ -263,6 +286,21 @@ def test_the_planner_sees_the_sensors_but_not_the_ghost():
     # plan_around:=false: the planner sees only the map, for the stop zone's tests.
     assert layers(radar=True, lidar=True, plan_around=False)[0] == ['static_layer',
                                                                     'inflation_layer']
+
+
+def test_voxels_needs_the_lidar_and_reaches_the_planner_too():
+    v = {'max_reverse_speed': 0.4}
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+    # Without the lidar there are no cubes: nothing changes.
+    assert vehicle.nav2_tuned(nav2, v, lidar=False, voxels=True) == vehicle.nav2_tuned(
+        nav2, v, lidar=False)
+    cfg = vehicle.nav2_tuned(nav2, v, radar=False, lidar=True, voxels=True)
+    planner = cfg['global_costmap']['global_costmap']['ros__parameters']['lidar_layer']
+    assert planner['observation_sources'] == 'voxels voxels_ground'
+    assert cfg['collision_monitor']['ros__parameters']['observation_sources'] == ['voxels']
+    # The file itself is left as it was: the scan stays the default.
+    local = nav2['local_costmap']['local_costmap']['ros__parameters']['lidar_layer']
+    assert local['observation_sources'] == 'lidar'
 
 
 def test_every_rewrite_lands_on_a_key_nav2_yaml_has():
@@ -453,8 +491,10 @@ LATTICE_JSON = ROOT / 'ros/drivers/aav_navigation/config/lattice_ackermann.json'
 SEARCH_MODEL = 'planner_server.ros__parameters.GridBased.motion_model_for_search'
 
 
-def test_planners_hybrid_by_default_and_only_car_shaped_ones_on_the_car():
-    assert vehicle.DEFAULT_PLANNER == 'hybrid'
+def test_planners_lattice_by_default_hybrid_on_the_car_and_only_car_shaped_ones_there():
+    assert vehicle.DEFAULT_PLANNER == 'lattice'
+    assert vehicle.CAR_DEFAULT_PLANNER == 'hybrid'
+    assert {vehicle.DEFAULT_PLANNER, vehicle.CAR_DEFAULT_PLANNER} <= set(vehicle.CAR_PLANNERS)
     assert set(vehicle.CAR_PLANNERS) < set(vehicle.PLANNERS)
     assert set(vehicle.PLANNER_BLOCKS) == set(vehicle.PLANNERS)
     assert vehicle.check_planner(' Lattice ') == 'lattice'

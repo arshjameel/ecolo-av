@@ -21,7 +21,24 @@ The trials (docs/trials.md):
                     against the truth, as the EKF is)
     pixi run controller-compare --ndt              (NDT beside the EKF, ndt:=true, on the map
                     pixi run ndt-map drive made: its errors, the share of clouds that gave
-                    a pose, time over 1 m off, each match's wall-clock time)
+                    a pose, time over 1 m off, each match's wall-clock time; and its
+                    covariance against its errors: NEES, the k that would make it honest,
+                    and how far off each band of score per point was)
+    pixi run controller-compare --ndt-ekf          (the same, with NDT's pose into the global
+                    EKF, ndt_ekf:=true: compare its EKF numbers with --ndt's)
+    pixi run controller-compare --ndt --gps-off    (the GPS stops once the EKF has its first
+                    fix; with watchdog:=false geofence:=false, or they would hold Nav2)
+    pixi run controller-compare --voxels --tours lot
+                    the costmap and collision_monitor read the lidar as cubes (voxels:=true,
+                    aav_voxels) instead of the flat scan: the same legs, and each leg's
+                    note says the voxels node's ms a cloud and cubes a cloud
+    pixi run controller-compare --kiss-icp         (KISS-ICP lidar odometry, kiss_icp:=true,
+                    beside ekf_local: each lined up with the truth at the start, its drift
+                    per 100 m, its heading at the end, each match's wall-clock time; per
+                    leg and for the whole tour. Needs pixi install --locked -e kiss)
+    pixi run controller-compare --kiss-ekf         (the same, with KISS-ICP's twist into
+                    ekf_local, kiss_ekf:=true: compare its ekf_local numbers with
+                    --kiss-icp's)
     pixi run controller-compare --planners hybrid lattice smac2d --tours lot
                     Nav2's planners (planner:=), each with MPPI unless --controllers or
                     --trackers says otherwise. Before each leg it also asks the planner
@@ -29,6 +46,9 @@ The trials (docs/trials.md):
                     length and its tightest turn against the car's full lock. Then a
                     table of the whole tour: legs finished, time, path length, planning
                     time, kept to the turning radius (docs/controllers.md, Planners)
+    pixi run controller-compare --planners hybrid lattice lattice32 --reversing --runs 3
+                    the same with reversing on (MPPI follows backwards too; the trackers
+                    can't), and lattice32: the lattice on its 32-heading file
 
 For each tour and controller it:
 1. starts sim.launch.py world:=test_lot gui:=false rviz:=false controller:=<rpp|mppi>
@@ -39,7 +59,8 @@ For each tour and controller it:
    car really was (/vehicle/gazebo/truth), the planner's paths (/plan), the controller's
    speed (/cmd_vel_nav), ego's steering, the sensor watchdog and collision_monitor; with a
    tracker its tick (/drivers/nav/track/status); with --amcl, /localization/amcl/pose;
-   with --ndt, /localization/ndt/pose and /localization/ndt/status;
+   with --ndt, /localization/ndt/pose and /localization/ndt/status; with --kiss-icp,
+   /localization/kiss_icp/odom and status, and ekf_local's /localization/odom/local;
 4. stops the simulator by its process group, and clears Fast DDS's shared memory
    (docs/path-followers.md).
 
@@ -119,10 +140,11 @@ COLOURS = {'rpp': '#1f6fb4', 'mppi': '#e8590c', 'pure_pursuit': '#2b8a3e', 'stan
            'lqr': '#c92a2a', 'mpc': '#e67700', 'mpc_full': '#5f3dc4',
            # --planners: a column is a planner's name when one follower drives them all.
            'hybrid': '#e8590c', 'lattice': '#1f6fb4', 'smac2d': '#2b8a3e',
-           'navfn': '#862e9c', 'theta_star': '#c92a2a'}
+           'navfn': '#862e9c', 'theta_star': '#c92a2a', 'lattice32': '#5f3dc4'}
 PLAN_TIME = 15.0        # s (wall) for the planner alone to answer, before each leg
 # NDT's map of the test lot (tools/ndt_map.py; maps/ is not in git).
 NDT_MAP = os.path.join(ROOT, 'maps', 'ndt', 'test_lot.pcd')
+NDT_CONFIG = os.path.join(ROOT, 'ros', 'localization', 'aav_ndt', 'config', 'ndt.yaml')
 # The process to time for each kind of follower (its command line, in the run's group).
 PROCESS = {'controller': 'controller_server', 'tracker': 'lib/aav_track/track'}
 
@@ -169,9 +191,12 @@ class Recorder(Node):
         super().__init__('controller_compare', parameter_overrides=[
             Parameter('use_sim_time', value=True)])
         self.recording = False
+        self.watchdog = True            # False: watchdog:=false, nothing publishes its lock
         self.truth, self.plans, self.steering, self.asked = [], [], [], []
         self.belief, self.amcl, self.loops = [], [], []
-        self.ndt, self.ndt_status = [], []
+        self.ndt, self.ndt_status, self.ndt_fits = [], [], []
+        self.voxels = []     # (ms a cloud, cubes) from the voxels trial's status
+        self.kiss, self.kiss_status, self.local = [], [], []
         self.last_truth = self.glob = None
         self.lock, self.locked, self.states = None, False, set()
         self.monitor, self.monitor_stops = None, 0
@@ -184,6 +209,14 @@ class Recorder(Node):
                                  self.on_ndt, 10)
         self.create_subscription(DiagnosticStatus, '/localization/ndt/status',
                                  self.on_ndt_status, 10)
+        self.create_subscription(DiagnosticStatus, '/perception/voxels/status',
+                                 self.on_voxels, 10)
+        self.create_subscription(Odometry, '/localization/kiss_icp/odom',
+                                 lambda m: self.on_odometry(self.kiss, m), 10)
+        self.create_subscription(Odometry, '/localization/odom/local',
+                                 lambda m: self.on_odometry(self.local, m), 10)
+        self.create_subscription(DiagnosticStatus, '/localization/kiss_icp/status',
+                                 self.on_kiss_status, 10)
         self.create_subscription(DiagnosticStatus, '/drivers/nav/track/status',
                                  self.on_loop, 10)
         self.create_subscription(AckermannDriveStamped, '/ego/actuator_cmd', self.on_steering,
@@ -200,7 +233,9 @@ class Recorder(Node):
     def start(self):
         self.truth, self.plans, self.steering, self.asked = [], [], [], []
         self.belief, self.amcl, self.loops = [], [], []
-        self.ndt, self.ndt_status = [], []
+        self.ndt, self.ndt_status, self.ndt_fits = [], [], []
+        self.voxels = []
+        self.kiss, self.kiss_status, self.local = [], [], []
         self.locked, self.states, self.monitor_stops = False, set(), 0
         self.recording = True
 
@@ -236,6 +271,38 @@ class Recorder(Node):
             try:
                 self.ndt_status.append((self.now(), msg.level == DiagnosticStatus.OK,
                                         float(v['match_ms']), int(v['restarts'])))
+            except (KeyError, ValueError):
+                pass
+            # Every fit, good or poor, at its cloud's stamp: for NEES and the score floor.
+            try:
+                self.ndt_fits.append((
+                    float(v['stamp']), msg.level == DiagnosticStatus.OK,
+                    float(v['score_per_point']), float(v['x']), float(v['y']), float(v['yaw']),
+                    tuple(float(v[f'cov_{n}'])
+                          for n in ('xx', 'xy', 'xyaw', 'yy', 'yyaw', 'yawyaw'))))
+            except (KeyError, ValueError):
+                pass
+
+    def on_voxels(self, msg):
+        if self.recording:
+            v = {kv.key: kv.value for kv in msg.values}
+            try:
+                self.voxels.append((float(v['ms']), int(v['cubes'])))
+            except (KeyError, ValueError):
+                pass
+
+    def on_odometry(self, samples, msg):
+        if self.recording:
+            p = msg.pose.pose.position
+            samples.append((seconds(msg.header.stamp), p.x, p.y,
+                            yaw_of(msg.pose.pose.orientation)))
+
+    def on_kiss_status(self, msg):
+        if self.recording:
+            v = {kv.key: kv.value for kv in msg.values}
+            try:
+                self.kiss_status.append((self.now(), float(v['match_ms']),
+                                         int(v['clouds_dropped'])))
             except (KeyError, ValueError):
                 pass
 
@@ -341,6 +408,8 @@ def plan_alone(rec, goal, lock_radius):
 
 def ready(rec):
     """Wait until the sensor watchdog lets Nav2 drive; clear a latch once. Return notes."""
+    if not rec.watchdog:
+        return []                       # watchdog:=false (--gps-off): no lock to wait for
     if rec.spin_for(READY_TIME, lambda: rec.lock is False):
         return []
     # Still locked: a latch (a GPS jump, the wheels against the IMU) waits for a person.
@@ -351,7 +420,7 @@ def ready(rec):
 
 
 def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server',
-              amcl=False, ndt=False, lock_radius=None):
+              amcl=False, ndt=False, lock_radius=None, kiss=False):
     """
     Send one goal and record it; return (drive_metrics leg, notes).
 
@@ -398,6 +467,12 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server
                      (': ' + '; '.join(sorted(rec.states)) if rec.states else ''))
     if rec.monitor_stops:
         notes.append(f'collision_monitor stopped the car {rec.monitor_stops}x')
+    if rec.voxels:
+        ms = sorted(m for m, _ in rec.voxels)
+        cubes = [c for _, c in rec.voxels]
+        notes.append(f'voxels {sum(ms) / len(ms):.1f} ms a cloud mean, '
+                     f'{ms[int(0.95 * (len(ms) - 1))]:.1f} 95th, {ms[-1]:.1f} worst; '
+                     f'{sum(cubes) / len(cubes):.0f} cubes a cloud, {len(ms)} clouds')
     leg = {'truth': rec.truth, 'belief': rec.belief, 'plans': rec.plans,
            'steering': rec.steering,
            'asked': rec.asked, 'start': start, 'end': end, 'goal': goal, 'reached': reached,
@@ -408,6 +483,9 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server
         leg['amcl'] = rec.amcl
     if ndt:
         leg['ndt'], leg['ndt_status'] = rec.ndt, rec.ndt_status
+        leg['ndt_fits'], leg['ndt_cov'] = rec.ndt_fits, ndt_cov()
+    if kiss:
+        leg['kiss'], leg['kiss_status'], leg['local'] = rec.kiss, rec.kiss_status, rec.local
     if rec.loops:
         leg['loops'] = rec.loops
     if planned is not None:
@@ -415,16 +493,62 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server
     return leg, notes
 
 
+def ndt_cov():
+    """Return NDT's (k, floor_xy, floor_yaw) from aav_ndt's config/ndt.yaml."""
+    with open(NDT_CONFIG) as f:
+        p = yaml.safe_load(f)['ndt']['ros__parameters']
+    return (p['covariance_scale'], p['variance_floor_xy'], p['variance_floor_yaw'])
+
+
+def ndt_calibration(results):
+    """
+    Return results.md's NDT section: its spread against its errors over every leg.
+
+    The k that would make the good fits' mean NEES 3 (with the floors kept), the NEES
+    with the k in use, and how far off each band of score per point was (good and poor).
+    """
+    errors = [e for *_, drawn in results for e in drawn.get('ndt_errors', [])]
+    if not errors:
+        return []
+    k, floor_xy, floor_yaw = ndt_cov()
+    fitted = drive_metrics.fit_scale(errors, floor_xy, floor_yaw)
+    lines = ['## NDT: its spread against its errors', '',
+             f'{sum(1 for ok, *_ in errors if ok)} good fits, '
+             f'{sum(1 for ok, *_ in errors if not ok)} poor, over every leg and run. '
+             'NEES: about 3 when the covariance is honest.', '',
+             '| | |', '|---|---|',
+             f'| k in use (config/ndt.yaml) | {k:g} |',
+             f'| NEES, mean, with it | '
+             f'{drive_metrics.mean_nees(errors, k, floor_xy, floor_yaw):.1f} |',
+             f'| k for NEES 3 (floors kept) | {fitted:.3g} |', '',
+             '| Score per point | Fits | Off, mean (m) | Off, worst (m) | Heading, worst (deg) |',
+             '|---|---|---|---|---|']
+    lines += [f'| {lo:g} to {hi:g} | {n} | {mean:.3f} | {worst:.2f} | {deg:.1f} |'
+              for lo, hi, n, mean, worst, deg in drive_metrics.score_bands(errors)]
+    return lines + ['']
+
+
+def gps_off(rec):
+    """Stop the GPS (aav_gazebo faults: gazebo_gps fault.gps stop); return a note."""
+    out = subprocess.run(['ros2', 'param', 'set', '/gazebo_gps', 'fault.gps', 'stop'],
+                         capture_output=True, text=True, timeout=60)
+    rec.spin_for(2.0)
+    return ('the GPS stopped' if out.returncode == 0 and 'successful' in out.stdout.lower()
+            else f'could not stop the GPS: {(out.stdout + out.stderr).strip()[:120]}')
+
+
 def private(used):
     """
     Pick an unused ROS domain and Gazebo partition, and set them, before rclpy.init.
 
-    The domain: AAV_SIM_DOMAIN's for the first run, else one from 150-230. The partition:
-    AAV_SIM_PARTITION (default controller_compare), then the domain.
+    The domain: AAV_SIM_DOMAIN's for the first run, the next ones up from it for the
+    later runs (never above 232: Fast DDS breaks there), else one from 150-230. The
+    partition: AAV_SIM_PARTITION (default controller_compare), then the domain.
     """
     first = os.environ.get('AAV_SIM_DOMAIN')
-    if first and first not in used:
-        domain = first
+    above = [str(d) for d in range(int(first), 233) if str(d) not in used] if first else []
+    if above:
+        domain = above[0]
     else:
         domain = str(random.choice([d for d in range(150, 231) if str(d) not in used]))
     used.add(domain)
@@ -486,12 +610,25 @@ def followers(args):
             for kind, name in chosen for planner in args.planners]
 
 
+# --planners words beyond vehicle.PLANNERS: the same planner on another of its files.
+# lattice32: the State Lattice on its 32-heading trial file (lattice_headings:=32).
+PLANNER_VARIANTS = {f'lattice{h}': ('lattice', [f'lattice_headings:={h}'])
+                    for h in vehicle.LATTICE_HEADINGS[1:]}
+PLANNER_WORDS = vehicle.PLANNERS + tuple(PLANNER_VARIANTS)
+
+
+def planner_launch(word):
+    """Return sim.launch.py's arguments for a --planners word: planner:= and any others."""
+    planner, extra = PLANNER_VARIANTS.get(word, (word, []))
+    return [f'planner:={planner}'] + extra
+
+
 def planner_names(text):
     """Return the planners in a --planners word: comma-separated, or one."""
     names = [n.strip().lower() for n in text.split(',') if n.strip()]
     for name in names:
-        if name not in vehicle.PLANNERS:
-            raise argparse.ArgumentTypeError(f'{name}: pick from {", ".join(vehicle.PLANNERS)}')
+        if name not in PLANNER_WORDS:
+            raise argparse.ArgumentTypeError(f'{name}: pick from {", ".join(PLANNER_WORDS)}')
     return names
 
 
@@ -519,11 +656,23 @@ def session(tour, follower, args, out_dir, body, used, run=1):
                # --reversing: Nav2 may then back out of a dead end.
                f'reversing:={str(args.reversing).lower()}']
     if planner:
-        command.append(f'planner:={planner}')
+        command += planner_launch(planner)
     if args.amcl:
         command.append('amcl:=true')
-    if args.ndt:
+    if args.ndt_ekf:
+        command += ['ndt_ekf:=true', f'ndt_map:={NDT_MAP}']
+    elif args.ndt:
         command += ['ndt:=true', f'ndt_map:={NDT_MAP}']
+    if args.gps_off:
+        # The sensor watchdog and the geofence (LOST after 2 s without a GPS position)
+        # would hold Nav2 with the GPS quiet: the drive is the test.
+        command += ['watchdog:=false', 'geofence:=false']
+    if args.voxels:
+        command.append('voxels:=true')
+    if args.kiss_ekf:
+        command.append('kiss_ekf:=true')
+    elif args.kiss_icp:
+        command.append('kiss_icp:=true')
     if plan['obstacle']:
         command.append('obstacle:=true')
     if args.speed:
@@ -542,6 +691,7 @@ def session(tour, follower, args, out_dir, body, used, run=1):
                                   stderr=subprocess.STDOUT, start_new_session=True)
         rclpy.init()
         rec = Recorder()
+        rec.watchdog = not args.gps_off
         try:
             up = rec.spin_for(UP_TIME, lambda: rec.last_truth is not None and rec.glob)
             if not (up and rec.spin_for(UP_TIME, rec.nav.server_is_ready)):
@@ -549,11 +699,14 @@ def session(tour, follower, args, out_dir, body, used, run=1):
                 return [(tour, name, label, None, ['never came up'], {'run': run})
                         for name, *_ in tour_legs(tour, args)]
             rec.spin_for(SETTLE)
+            if args.gps_off:
+                # After the EKF's first fix (the wait above): it knows where it started.
+                print(f'   {gps_off(rec)}', flush=True)
             for name, x, y, heading in tour_legs(tour, args):
                 leg, notes = drive_leg(rec, launch.pid, (x, y, math.radians(heading)),
                                        args.speed or 1.0, body, obstacle,
                                        PROCESS[kind], args.amcl, args.ndt,
-                                       lock if planner else None)
+                                       lock if planner else None, args.kiss_icp)
                 row = drive_metrics.summary(leg)
                 # t, x, y, yaw: where the car was, and where the global EKF put it.
                 drawn = {'run': run,
@@ -566,6 +719,11 @@ def session(tour, follower, args, out_dir, body, used, run=1):
                                    for s in drive_metrics.thin(leg['asked'], TRACK_EVERY)],
                          'plan': [[round(x, 2), round(y, 2)]
                                   for x, y in (leg['plans'][0][1][::4] if leg['plans'] else [])]}
+                if args.kiss_icp:
+                    # The odometries, for the whole tour's drift (report()).
+                    for key in ('kiss', 'local'):
+                        drawn[key] = [[round(v, 3) for v in s]
+                                      for s in drive_metrics.thin(leg[key], TRACK_EVERY)]
                 if args.plans:
                     # Every plan of the leg, each with its time: where the planner sent the
                     # car as it went (TODO 17: a goal circled after a replan).
@@ -573,9 +731,14 @@ def session(tour, follower, args, out_dir, body, used, run=1):
                                                      for x, y in pts[::4] + pts[-1:]]]
                                       for t, pts in leg['plans']]
                 if leg.get('planned', {}).get('path'):
-                    # The planner's own path, from where the car stood (--planners).
-                    drawn['planned'] = [[round(x, 2), round(y, 2)]
-                                        for x, y in leg['planned']['path'][::4]]
+                    # The planner's own path, from where the car stood (--planners): every
+                    # point, so its turns and cusps can be scored again from the file.
+                    drawn['planned'] = [[round(x, 3), round(y, 3)]
+                                        for x, y in leg['planned']['path']]
+                if leg.get('ndt_fits'):
+                    # Each fit's error at its own stamp, for ndt_calibration().
+                    drawn['ndt_errors'] = drive_metrics.fit_errors(leg['truth'],
+                                                                   leg['ndt_fits'])
                 rows.append((tour, name, label, row, notes, drawn))
                 print(f'   {name}: ' + ('reached' if row['reached'] else 'NOT reached') +
                       f' in {row["time_s"]:.0f} s, {row["driven_m"]:.1f} m, off the path '
@@ -592,6 +755,12 @@ def session(tour, follower, args, out_dir, body, used, run=1):
                        f'worst, {row["ndt_available"]:.0%} of clouds, '
                        f'{row["ndt_match_ms_mean"]:.1f} ms a match'
                        if 'ndt_available' in row and row.get('ndt_samples') else '') +
+                      (f'; KISS-ICP {row["kiss_drift_per_100m"]:.2f} m per 100 m, '
+                       f'heading {row["kiss_heading_drift_deg"]:.2f} deg, '
+                       f'{row.get("kiss_match_ms_mean", math.nan):.1f} ms a match '
+                       f'(ekf_local {row["local_drift_per_100m"]:.2f} m per 100 m, '
+                       f'{row["local_heading_drift_deg"]:.2f} deg)'
+                       if row.get('kiss_odom_samples') else '') +
                       ''.join(f'; {n}' for n in notes), flush=True)
         finally:
             rec.destroy_node()
@@ -620,7 +789,16 @@ def report(results, args, started):
              ('reversing allowed' if args.reversing else 'forward only') +
              (', AMCL beside the EKF' if args.amcl else '') +
              (", NDT beside the EKF (its map: tools/ndt_map.py; Gazebo's lidar has no sweep, "
-              "the car's does)" if args.ndt else '') +
+              "the car's does)" if args.ndt and not args.ndt_ekf else '') +
+             (", NDT's pose into the global EKF (ndt_ekf:=true)" if args.ndt_ekf else '') +
+             (', the GPS stopped after the first fix (watchdog:=false geofence:=false)'
+              if args.gps_off else '') +
+             (', the lidar as cubes (voxels:=true, aav_voxels) instead of the flat scan'
+              if args.voxels else '') +
+             (', KISS-ICP lidar odometry beside ekf_local (each lined up with the truth at '
+              "the start; Gazebo's lidar has no sweep, so no deskew)" if args.kiss_icp
+              else '') +
+             (", KISS-ICP's twist into ekf_local (kiss_ekf:=true)" if args.kiss_ekf else '') +
              (f', planners: {", ".join(args.planners)} (planner:=; the planner alone '
               "asked once before each leg, its turns against the car's full lock of "
               f'{vehicle.min_turning_radius(vehicle.load()["vehicle"]):.2f} m)'
@@ -639,6 +817,10 @@ def report(results, args, started):
                 for c, r in columns]
         lines += [f'## {tour}: the whole tour', '',
                   drive_metrics.table(rows, columns=drive_metrics.OVERALL), '']
+    for tour in args.tours if args.kiss_icp else []:
+        lines += [f'## {tour}: odometry over the whole tour', '',
+                  drive_metrics.table(tour_odometry(results, tour, args.runs),
+                                      columns=ODOMETRY), '']
     for tour in args.tours:
         for name, x, y, heading in tour_legs(tour, args):
             legs = [(c, row, notes, drawn.get('run', 1))
@@ -656,7 +838,30 @@ def report(results, args, started):
             lines += [f'- {c}' + (f' #{r}' if args.runs > 1 else '') + f': {"; ".join(notes)}'
                       for c, _, notes, r in legs if notes]
             lines.append('')
+    if args.ndt:
+        lines += ndt_calibration(results)
     return '\n'.join(lines)
+
+
+ODOMETRY = [c for c in drive_metrics.COLUMNS
+            if c[0].startswith(('kiss_', 'local_')) or c[0] == 'driven_m']
+
+
+def tour_odometry(results, tour, runs):
+    """Return [(column, row)]: KISS-ICP's and ekf_local's drift over each run's whole tour."""
+    out = []
+    keys = dict.fromkeys((c, d.get('run', 1)) for t, _, c, _, _, d in results
+                         if t == tour and d and 'kiss' in d)
+    for c, r in keys:
+        legs = [d for t, _, c2, _, _, d in results
+                if t == tour and c2 == c and d and d.get('run', 1) == r and 'kiss' in d]
+        truth = [tuple(s) for d in legs for s in d['track']]
+        row = {'driven_m': drive_metrics.travelled(truth)}
+        for key in ('kiss', 'local'):
+            row.update(drive_metrics.odometry_row(key, truth,
+                                                  [tuple(s) for d in legs for s in d[key]]))
+        out.append((c if runs == 1 else f'{c} #{r}', row))
+    return out
 
 
 def picture(results, tour, args):
@@ -698,8 +903,9 @@ def main():
                         help='the trial trackers (aav_track, docs/trials.md): pure_pursuit, '
                              'stanley, lqr, mpc, mpc_full; spaces or commas between. Forward only')
     parser.add_argument('--planners', nargs='+', type=planner_names, default=None,
-                        help="Nav2's planners (planner:=): " + ', '.join(vehicle.PLANNERS) +
-                             '; each behind MPPI unless --controllers or --trackers say')
+                        help="Nav2's planners (planner:=): " + ', '.join(PLANNER_WORDS) +
+                             ' (lattice32: the lattice on its 32-heading file); each '
+                             'behind MPPI unless --controllers or --trackers say')
     parser.add_argument('--runs', type=int, default=1,
                         help='drive each follower this many times (default 1; 3 for a real '
                              'comparison: the mean and spread)')
@@ -708,6 +914,20 @@ def main():
     parser.add_argument('--ndt', action='store_true',
                         help='run NDT beside the EKF (ndt:=true) and score it too; needs '
                              'the map: pixi run ndt-map drive')
+    parser.add_argument('--ndt-ekf', action='store_true',
+                        help="as --ndt, and the global EKF takes NDT's pose (ndt_ekf:=true)")
+    parser.add_argument('--gps-off', action='store_true',
+                        help='stop the GPS once the EKF has its first fix (watchdog:=false '
+                             'geofence:=false)')
+    parser.add_argument('--voxels', action='store_true',
+                        help='the costmap and collision_monitor read the lidar as cubes '
+                             '(voxels:=true, aav_voxels), not the flat scan')
+    parser.add_argument('--kiss-icp', action='store_true',
+                        help='run KISS-ICP lidar odometry (kiss_icp:=true) and score its '
+                             'drift beside ekf_local; needs pixi install --locked -e kiss')
+    parser.add_argument('--kiss-ekf', action='store_true',
+                        help="as --kiss-icp, and ekf_local takes KISS-ICP's twist "
+                             '(kiss_ekf:=true)')
     parser.add_argument('--tours', nargs='+', choices=list(TOURS), default=list(TOURS))
     parser.add_argument('--speed', type=float, default=None,
                         help="m/s, up to 5: sim_speed:= (the car's own top speed: 1.0)")
@@ -728,6 +948,8 @@ def main():
         parser.error('--trackers drive forwards only: leave out --reversing')
     if args.runs < 1:
         parser.error('--runs must be 1 or more')
+    args.ndt = args.ndt or args.ndt_ekf
+    args.kiss_icp = args.kiss_icp or args.kiss_ekf
     if args.ndt and not os.path.isfile(NDT_MAP):
         parser.error(f'--ndt: no map at {NDT_MAP}; make it with pixi run ndt-map drive')
     started = datetime.datetime.now()

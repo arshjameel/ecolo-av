@@ -7,7 +7,7 @@
 <!-- Generated from docs/controllers.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Controllers: which one, where, and why</h1>
-<div class="meta">37 min read · 12 sections</div></header>
+<div class="meta">38 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -1226,11 +1226,11 @@ on branch <code>trials</code> (Tentative; <code>git show trials:docs/designs/202
 </section>
 <section class="card"><h2 id="planners">Planners</h2>
 <p>The <strong>planner</strong> draws the path; the <strong>follower</strong> (MPPI, RPP, a tracker) drives it. Nav2
-can use several planners. We picked one with <code>planner:=</code>; Hybrid-A* stays the default
-until another wins (<code>docs/trials.md</code>, <a href="trials.html#planners-29-oct-hybrid-lattice-and-smac2d">Planners</a>).</p>
+can use several planners. We pick one with <code>planner:=</code>; the State Lattice is the default since 1 Nov
+(Hybrid-A* on the car, forward only until H5) (<code>docs/trials.md</code>, <a href="trials.html#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">Planners, 30 Oct</a>).</p>
 <pre class="highlight"><code class="language-text"> goal ─► bt_navigator ─► planner_server: "GridBased" ─► the path ─► follower
                                 │
-             planner:=hybrid (default) | lattice | smac2d | navfn | theta_star</code></pre>
+             planner:=lattice (default) | hybrid | smac2d | navfn | theta_star</code></pre>
 <p>The behaviour trees always ask for <code>GridBased</code>. The launch file puts the chosen planner
 behind that name, so nothing else changes.</p>
 <h3 id="each-planner-in-plain-words">Each planner, in plain words</h3>
@@ -1245,13 +1245,13 @@ behind that name, so nothing else changes.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>hybrid</code> (default)</td>
+<td><code>hybrid</code> (the car's default)</td>
 <td>SmacPlannerHybrid</td>
 <td>searches with real car moves: straight, full left, full right; Dubins curves (Reeds-Shepp with <code>reversing:=true</code>)</td>
 <td><strong>yes</strong></td>
 </tr>
 <tr>
-<td><code>lattice</code></td>
+<td><code>lattice</code> (default)</td>
 <td>SmacPlannerLattice</td>
 <td>joins short car moves from a ready-made list, our <strong>primitives</strong> (below)</td>
 <td><strong>yes</strong></td>
@@ -1300,8 +1300,8 @@ or <code>lattice</code>, with no way round it. They are for Gazebo and the bench
 </tr>
 <tr>
 <td>lattice</td>
-<td>paths the car can drive; moves made for our car</td>
-<td>only as good as its primitives; a coarse 16-heading list</td>
+<td>paths the car can drive; moves made for our car; fastest round the lot with reversing on (30 Oct)</td>
+<td>only as good as its primitives; forward only, it gets stuck after a U-turn</td>
 </tr>
 <tr>
 <td>smac2d</td>
@@ -1324,7 +1324,8 @@ or <code>lattice</code>, with no way round it. They are for Gazebo and the bench
 <p>The lattice needs a list of moves made for <strong>our</strong> car. Nav2 ships lists only for small
 robots (0.5 m and 1 m turning radius). So we make our own with Nav2's own generator:</p>
 <pre class="highlight"><code class="language-bash">pixi run lattice-primitives          # makes the list again (after pixi run vendor)
-pixi run lattice-primitives --check  # still right for vehicle.yaml?</code></pre>
+pixi run lattice-primitives --check  # still right for vehicle.yaml? (both files)
+pixi run lattice-primitives --headings 32   # the trial file, lattice_headings:=32</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1346,23 +1347,33 @@ pixi run lattice-primitives --check  # still right for vehicle.yaml?</code></pre
 </tr>
 <tr>
 <td>headings</td>
-<td>16</td>
-<td>the generator's advice</td>
+<td>16 (default); 32 (trial)</td>
+<td>the generator's advice; <code>lattice_headings:=32</code></td>
 </tr>
 <tr>
 <td>moves</td>
-<td>96</td>
+<td>96; 144</td>
 <td>forward only; Nav2 adds the same moves backwards with <code>reversing:=true</code></td>
+</tr>
+<tr>
+<td>size, time to make</td>
+<td>82 kB; 93 kB</td>
+<td>about 2 s each</td>
 </tr>
 </tbody>
 </table></div>
+<p>The 32-heading file needs the generator to search further (<code>stopping_threshold</code> 10, not
+5). At 5 it had <strong>no turn</strong> off east, north, west or south: the car could only go
+straight from there. <code>--check</code> now refuses a file like that.</p>
 <p><img alt="Every move in the list, from the middle: straight lines and arcs of 3.6 m or wider" src="../img/lattice-primitives.png" /></p>
 <p>The file is <code>ros/drivers/aav_navigation/config/lattice_ackermann.json</code>. If someone changes
 the wheelbase, the steering lock or a map's cells, the launch refuses <code>planner:=lattice</code>
 until the list is made again; a test fails too.</p>
 <h3 id="scoring-them">Scoring them</h3>
-<pre class="highlight"><code class="language-bash">pixi run controller-compare --planners hybrid lattice smac2d --tours lot</code></pre>
-<p>Each planner drives the lot tour behind MPPI. Before each leg, the planner alone is asked
+<pre class="highlight"><code class="language-bash">pixi run controller-compare --planners hybrid lattice smac2d --tours lot
+pixi run controller-compare --planners hybrid lattice lattice32 --reversing --runs 3 --tours lot</code></pre>
+<p>Each planner drives the lot tour behind MPPI. <code>--reversing</code> lets Nav2 back up, as the
+sim does by default; <code>lattice32</code> is the lattice on its 32-heading file. Before each leg, the planner alone is asked
 for the path too, so these are measured without the follower:</p>
 <div class="table-wrap"><table>
 <thead>
@@ -1387,6 +1398,14 @@ for the path too, so these are measured without the follower:</p>
 <tr>
 <td>path tighter than full lock</td>
 <td>metres of path the car can't drive as drawn</td>
+</tr>
+<tr>
+<td>changes between forward and reverse</td>
+<td>the path's cusps: the car stops and changes gear there. Turns are measured between cusps, not across one</td>
+</tr>
+<tr>
+<td>driven in reverse</td>
+<td>metres the car really backed up</td>
 </tr>
 <tr>
 <td>legs finished</td>

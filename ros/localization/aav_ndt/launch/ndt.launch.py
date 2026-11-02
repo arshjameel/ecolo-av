@@ -14,7 +14,7 @@ ndt_x, ndt_y, ndt_yaw  where it starts, map frame (m, rad); sim.launch.py ndt:=t
             passes the car's start, as AMCL's
 ndt_from_global  take ekf_global's pose instead (the car)
 
-The lidar's mount (lidar_link) and the car's outline come from aav_description's
+The lidar's mount (lidar_link) and the car's box (vehicle.self_box) come from aav_description's
 vehicle.yaml; the rest from config/ndt.yaml. Topics: docs/interfaces.yaml
 (/localization/ndt/*).
 """
@@ -32,15 +32,19 @@ MAP = os.path.join('maps', 'ndt', 'test_lot.pcd')
 
 
 def car_parameters(v):
-    """Return the node's parameters that come from vehicle.yaml: the mount and the body."""
+    """
+    Return the node's parameters that come from vehicle.yaml: the mount and the car's box.
+
+    The box is vehicle.self_box: the body and every sensor on it, 15 cm wider all round, so
+    the lidar's noise can't put the car's own roof or cameras into the scan (30 Oct).
+    """
     lidar = v['sensors']['lidar_link']
-    body = v['vehicle']['body']
-    rear, half = -float(body['rear_overhang']), float(body['width']) / 2.0
+    box = vehicle.self_box(v)
     return {
         'lidar_xyz': [float(x) for x in lidar['xyz']],
         'lidar_rpy': [float(x) for x in lidar['rpy']],
-        'body_min': [rear, -half],
-        'body_max': [rear + float(body['length']), half],
+        'body_min': [float(x) for x in box['min']],
+        'body_max': [float(x) for x in box['max']],
     }
 
 

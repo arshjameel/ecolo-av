@@ -17,6 +17,14 @@ import math
 
 import numpy
 
+# m behind and beside the body's outline that is still the car: the rear camera's housing,
+# the mirrors (the simulated lidar sees something of the car's 0.5 m from the rear axle).
+SELF_MARGIN = 0.3
+# m ahead of the front bumper, only: the front cameras' housings at the roof's edge (the
+# simulated lidar sees them 1.8 m from the rear axle). The stop zone starts at the bumper,
+# so keep it small.
+FRONT_MARGIN = 0.1
+
 
 @dataclass(frozen=True)
 class ScanShape:
@@ -37,6 +45,17 @@ class ScanShape:
     def count(self) -> int:
         """Return how many directions the scan has."""
         return int(round((self.angle_max - self.angle_min) / self.angle_increment))
+
+
+def body_box(corners) -> tuple:
+    """
+    Return the car itself as (x from, x to, half the width), m in base_link.
+
+    corners: the body's outline (vehicle.footprint_points), plus the margins above. Points
+    inside it are the car's own roof, frame and cameras, at any height.
+    """
+    xs, ys = [p[0] for p in corners], [abs(p[1]) for p in corners]
+    return (min(xs) - SELF_MARGIN, max(xs) + FRONT_MARGIN, max(ys) + SELF_MARGIN)
 
 
 def rotation(rpy) -> numpy.ndarray:

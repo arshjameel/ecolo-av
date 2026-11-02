@@ -11,6 +11,8 @@
 //! |   the localizers, the plan          +------------------------+
 //! |                                     | NDT's match: ellipses, |
 //! | KEYS                                | the scan, the score    |
+//! |                                     | NAV2'S CUBES (voxels)  |
+//! |                                     | LOCALIZATION HEALTH    |
 //! +-------------------------------------+------------------------+
 //! ```
 //!
@@ -33,17 +35,21 @@
 //! height band and fade step, a small shader that shades each face by its normal. A
 //! fading cube is drawn darker (towards the background), not see-through, so nothing
 //! needs sorting. NDT's map is drawn through map -> odom with rlgl's matrix stack.
+//! Nav2's cubes (the voxels trial's, key V) are red wireframes over the screen's own
+//! cubes: what Nav2 stops for, beside what the screen sees.
 
 use std::time::Instant;
 
 use debug_core::{
     cubes::Band,
     keys::{CubeView, Layout},
+    localization_health::Verdict,
     ndt::{Fit, MapCells, MapFile, NdtState},
     orbit::Orbit,
     persist::{Fade, FadedCube},
     state::{DebugState, Localizer, Source},
     topdown::{Rect as TopRect, View},
+    voxels,
 };
 use hud_core::{health::Health, vehicle::VehicleStatus};
 use map_core::{
@@ -80,6 +86,11 @@ const NDT_CELL: Color = Color::new(170, 120, 240, 150);
 /// The latest scan's cubes from above: on a map cell, or off the map.
 const SCAN_ON: Color = Color::new(80, 230, 120, 255);
 const SCAN_OFF: Color = Color::new(240, 80, 80, 255);
+/// Nav2's cubes (the voxels trial's): red wireframes, and dimmer once STALE.
+const NAV2_CUBE: Color = Color::new(255, 70, 70, 235);
+const NAV2_CUBE_STALE: Color = Color::new(150, 60, 60, 160);
+/// At most this many lines of the health checks on the seeing screen.
+const HEALTH_LINES: usize = 4;
 /// NDT's match is shown this many metres across, round the car.
 const MATCH_WIDTH: f32 = 24.0;
 /// The most NDT map cubes drawn, nearest the car (the test lot has about 2,500).
@@ -313,9 +324,12 @@ impl Ui {
             self.text(d, &banner, x + 4.0, y + 6.0, 19.0, Color::BLACK);
             y += 40.0;
         }
-        // Two boxes of about the same height; the score's lines under the second.
+        // Two boxes of about the same height; the score's lines under the second; then
+        // Nav2's cubes and the localization health checks.
         let score_h = 96.0;
-        let boxes = (h - y - score_h - 2.0 * 34.0 - 16.0).max(120.0);
+        let health = self.health_lines(state, f, w - x0 - 36.0);
+        let below = NAV2_H + health_height(health.len());
+        let boxes = (h - y - score_h - below - 2.0 * 34.0 - 16.0).max(120.0);
         let top_h = boxes / 2.0;
         y = self.section(d, "THE LIDAR MAP FROM ABOVE: EVERY LOCALIZER", x0, y, w) - 6.0;
         let top = TopRect::new(x0 + 10.0, y, w - x0 - 20.0, top_h);
@@ -326,6 +340,147 @@ impl Ui {
         let on_map = self.ndt_match(d, state, f, bottom);
         y += boxes - top_h + 8.0;
         self.match_score(d, state, f, on_map, x, right, y);
+        y += score_h;
+        y = self.nav2_section(d, state, f, x0, y, w);
+        self.health_section(d, state, f, &health, x0, y, w);
+    }
+
+    /// Nav2's cubes (the voxels trial's): the road's fit, how many cubes, how long; or
+    /// that it is off. Returns where the next section starts.
+    fn nav2_section(
+        &self,
+        d: &mut RaylibDrawHandle,
+        state: &DebugState,
+        f: &Frame<'_>,
+        x0: f32,
+        y: f32,
+        w: f32,
+    ) -> f32 {
+        let mut y = self.section(
+            d,
+            "NAV2'S CUBES (VOXELS TRIAL): WHAT NAV2 STOPS FOR",
+            x0,
+            y,
+            w,
+        );
+        let (x, right) = (x0 + 18.0, w - 18.0);
+        let status = state.health(Source::VoxelsStatus, f.now);
+        let cubes = state.health(Source::Nav2Cubes, f.now);
+        let heard = status.age().or(cubes.age());
+        let fresh = status.is_ok() || cubes.is_ok();
+        let (word, colour, line) = match (&state.voxels, heard) {
+            (_, None) => ("OFF", SECTION, "off (voxels:=false)".to_owned()),
+            (_, Some(age)) if !fresh => (
+                "STALE",
+                DIM,
+                format!("nothing for {:.1} s", age.as_secs_f32()),
+            ),
+            (Some(v), _) => {
+                let colour = match v.road {
+                    voxels::Road::Fitted => GOOD,
+                    voxels::Road::Flat => WARN,
+                };
+                (v.road.word(), colour, v.numbers())
+            }
+            (None, _) => (
+                "?",
+                WARN,
+                state.detail(Source::Nav2Cubes).unwrap_or("").to_owned(),
+            ),
+        };
+        let nx = self.pill(d, word, colour, x, y) + 14.0;
+        let line_colour = if fresh { TEXT } else { DIM };
+        let mut line = line;
+        if fresh && !state.layers.nav2_cubes {
+            line.push_str("   (V: hidden)");
+        }
+        let line = fit(&self.font, &line, right - nx, 19.0);
+        self.text(d, &line, nx, y + 2.0, 19.0, line_colour);
+        y += 32.0;
+        let small = match (&state.nav2_problem, &state.voxels) {
+            (Some(problem), _) if fresh => Some((problem.clone(), WARN)),
+            (_, Some(v)) if fresh => Some((v.details(), CAPTION)),
+            _ => None,
+        };
+        if let Some((s, colour)) = small {
+            let s = fit(&self.font, &s, right - x, 16.0);
+            self.text(d, &s, x, y, 16.0, colour);
+        }
+        y + 22.0
+    }
+
+    /// The localization health checks' lines, wrapped to `width`: what
+    /// [`Ui::health_section`] draws under its first line.
+    fn health_lines(&self, state: &DebugState, f: &Frame<'_>, width: f32) -> Vec<String> {
+        if !state.health(Source::LocalizationHealth, f.now).is_ok() {
+            return Vec::new();
+        }
+        let checks: Vec<String> = match &state.localization_health {
+            Some(Verdict::Warn(checks)) => checks.clone(),
+            Some(Verdict::Other(text)) => vec![text.clone()],
+            _ => Vec::new(),
+        };
+        let mut lines: Vec<String> = checks
+            .iter()
+            .flat_map(|c| wrap(&self.font, c, width, 16.0))
+            .collect();
+        if lines.len() > HEALTH_LINES {
+            lines.truncate(HEALTH_LINES);
+            if let Some(last) = lines.last_mut() {
+                *last = fit(&self.font, &format!("{last} ..."), width, 16.0);
+            }
+        }
+        lines
+    }
+
+    /// Betsi's localization health checks: OK green, WARN amber with each check; or
+    /// STALE, or that it isn't running. `lines`: from [`Ui::health_lines`].
+    #[allow(clippy::too_many_arguments)]
+    fn health_section(
+        &self,
+        d: &mut RaylibDrawHandle,
+        state: &DebugState,
+        f: &Frame<'_>,
+        lines: &[String],
+        x0: f32,
+        y: f32,
+        w: f32,
+    ) -> f32 {
+        let mut y = self.section(d, "LOCALIZATION HEALTH (WARNS ONLY)", x0, y, w);
+        let (x, right) = (x0 + 18.0, w - 18.0);
+        let health = state.health(Source::LocalizationHealth, f.now);
+        let (word, colour, line) = match (&state.localization_health, health.age()) {
+            (_, None) => ("OFF", SECTION, "not running (health:=false)".to_owned()),
+            (Some(v), Some(age)) if !health.is_ok() => (
+                "STALE",
+                DIM,
+                format!("{}, {:.1} s ago", v.line(), age.as_secs_f32()),
+            ),
+            (Some(Verdict::Ok), _) => ("OK", GOOD, "every check OK".to_owned()),
+            (Some(v @ Verdict::Warn(_)), _) => ("WARN", WARN, v.names()),
+            (Some(v), _) => ("?", WARN, v.line()),
+            (None, Some(_)) => ("?", DIM, String::new()),
+        };
+        let nx = self.pill(d, word, colour, x, y) + 14.0;
+        let line = fit(&self.font, &line, right - nx, 19.0);
+        let line_colour = if health.is_ok() { TEXT } else { DIM };
+        self.text(d, &line, nx, y + 2.0, 19.0, line_colour);
+        y += 30.0;
+        for l in lines {
+            self.text(d, l, x, y, 16.0, WARN);
+            y += 20.0;
+        }
+        y
+    }
+
+    /// A rounded word, black on `colour` (dim on the section colour); returns its right
+    /// edge.
+    fn pill(&self, d: &mut RaylibDrawHandle, word: &str, colour: Color, x: f32, y: f32) -> f32 {
+        let ww = self.font.measure(word, 17.0);
+        d.draw_rectangle_rounded(Rectangle::new(x, y, ww + 20.0, 26.0), 0.4, 6, colour);
+        let text_colour = if colour == SECTION { DIM } else { Color::BLACK };
+        self.text(d, word, x + 10.0, y + 4.0, 17.0, text_colour);
+        x + ww + 20.0
     }
 
     /// NDT's map's points from above, fitted to the box, and each localizer's car.
@@ -572,6 +727,7 @@ impl Ui {
                 d3.draw_mesh_instanced(&self.cube, b.material.clone(), &b.transforms);
             }
         }
+        nav2_cubes(&mut d3, state, f);
         // The trail, then the plan, on the ground.
         let trail: Vec<Point> = state.trail().collect();
         for pair in trail.windows(2) {
@@ -620,7 +776,7 @@ impl Ui {
     fn legend(&self, d: &mut RaylibDrawHandle, state: &DebugState, f: &Frame<'_>, view_w: f32) {
         let x = 16.0;
         let mut y = 16.0;
-        let box_h = 34.0 + 30.0 * Localizer::ALL.len() as f32 + 12.0 + 26.0 * 3.0;
+        let box_h = 34.0 + 30.0 * Localizer::ALL.len() as f32 + 12.0 + 26.0 * 4.0;
         d.draw_rectangle_rounded(
             Rectangle::new(x - 6.0, y - 6.0, 330.0, box_h),
             0.06,
@@ -666,6 +822,20 @@ impl Ui {
             );
             self.text(d, band.label(), bx + 22.0, by, 16.0, TEXT);
         }
+        // Nav2's cubes: a red outline, as they are drawn.
+        let by = y + 2.0 * 26.0;
+        d.draw_rectangle_lines_ex(
+            Rectangle::new(x + 6.0, by + 3.0, 16.0, 16.0),
+            2.0,
+            NAV2_CUBE,
+        );
+        let count = state
+            .nav2
+            .as_ref()
+            .filter(|_| state.health(Source::Nav2Cubes, f.now).is_ok())
+            .map_or_else(|| "-".to_owned(), |s| s.cubes.len().to_string());
+        let words = format!("Nav2's cubes (V)  {count}");
+        self.text(d, &words, x + 28.0, by, 16.0, TEXT);
 
         // Top right of the view: the frame rate, and the camera's mode.
         let fps = format!("{} fps   {}", f.fps, f.orbit.mode.label());
@@ -749,17 +919,18 @@ impl Ui {
             let detail = match (health.age(), state.detail(source)) {
                 (_, Some(text)) if health.is_ok() => text.to_owned(),
                 (Some(age), _) => format!("{:.1} s ago", age.as_secs_f32()),
-                (None, _) => String::new(),
+                (None, _) => off_hint(source).to_owned(),
             };
             let detail = fit(&self.font, &detail, right - (x + 240.0), 17.0);
-            self.text(
-                d,
-                &detail,
-                x + 240.0,
-                y + 2.0,
-                17.0,
-                if health.is_ok() { CAPTION } else { DIM },
-            );
+            // The health checks' own word: amber when one isn't OK.
+            let warns = source == Source::LocalizationHealth
+                && !matches!(state.localization_health, Some(Verdict::Ok) | None);
+            let colour = match (health.is_ok(), warns) {
+                (true, true) => WARN,
+                (true, false) => CAPTION,
+                (false, _) => DIM,
+            };
+            self.text(d, &detail, x + 240.0, y + 2.0, 17.0, colour);
             y += 26.0;
         }
 
@@ -998,6 +1169,14 @@ fn viewport(w: f32, h: f32, fovy_deg: f32) {
     }
 }
 
+/// The Nav2 cubes section's height on the seeing screen.
+const NAV2_H: f32 = 40.0 + 32.0 + 22.0;
+
+/// The health section's height with `lines` lines of checks under its first.
+fn health_height(lines: usize) -> f32 {
+    40.0 + 30.0 + 20.0 * lines as f32
+}
+
 /// How wide the 3D view is in a window `w` wide: beside the panel (key L), or beside
 /// the seeing screen's two top-downs (about a third of the window).
 pub fn view_width(w: f32, layout: Layout) -> f32 {
@@ -1154,6 +1333,21 @@ fn ndt_map(d: &mut impl RaylibDraw3D, state: &DebugState, cells: &MapCells) {
     unsafe { raylib::ffi::rlPopMatrix() };
 }
 
+/// Nav2's cubes as red wireframes over the screen's own (key V); dimmer once STALE.
+fn nav2_cubes(d: &mut impl RaylibDraw3D, state: &DebugState, f: &Frame<'_>) {
+    let Some(size) = state.nav2.as_ref().map(|s| s.size) else {
+        return;
+    };
+    let colour = if state.health(Source::Nav2Cubes, f.now).is_ok() {
+        NAV2_CUBE
+    } else {
+        NAV2_CUBE_STALE
+    };
+    for [x, y, z] in state.nav2_cubes() {
+        d.draw_cube_wires(Vector3::new(x, y, z), size, size, size, colour);
+    }
+}
+
 /// One of AMCL's particles: a short arrow on the ground, pointing its way.
 fn particle(d: &mut impl RaylibDraw3D, p: Pose) {
     let (s, c) = (p.yaw.sin() as f32, p.yaw.cos() as f32);
@@ -1178,6 +1372,15 @@ fn pole(d: &mut impl RaylibDraw3D, pose: Pose, colour: Color) {
     let p = pose.position;
     d.draw_cylinder_ex(v3(p, 0.0), v3(p, 2.4), 0.04, 0.04, 6, colour);
     d.draw_sphere(v3(p, 2.5), 0.18, colour);
+}
+
+/// What a panel row never heard says: how to start the trials that are off by default.
+fn off_hint(source: Source) -> &'static str {
+    match source {
+        Source::Nav2Cubes => "off (voxels:=false)",
+        Source::LocalizationHealth => "not running (health:=false)",
+        _ => "",
+    }
 }
 
 fn health_word(h: Health) -> (&'static str, Color) {

@@ -17,6 +17,16 @@ One leg is one Nav2 goal. It records, on Gazebo's clock:
   amcl      [(t, x, y, yaw)]        optional: AMCL's pose (/localization/amcl/pose), a trial
   ndt       [(t, x, y, yaw)]        optional: NDT's pose (/localization/ndt/pose), a trial
   ndt_status [(t, ok, match_ms, restarts)]  optional: NDT's status, one per cloud
+  ndt_fits  [(stamp, ok, score, x, y, yaw, (xx, xy, xyaw, yy, yyaw, yawyaw))]  optional:
+            every fit NDT made, good (ok) or poor, at its cloud's stamp, with its score
+            per point and its raw covariance -H^-1 (before k and the floors)
+  ndt_cov   (k, floor_xy m^2, floor_yaw rad^2)  optional: NDT's covariance settings
+            (aav_ndt config/ndt.yaml), for the NEES of what it published
+  kiss      [(t, x, y, yaw)]        optional: KISS-ICP's odometry (/localization/kiss_icp/odom),
+                                    a trial, in its own frame (kiss_odom)
+  kiss_status [(t, match_ms, dropped)]  optional: KISS-ICP's status, one per cloud
+  local     [(t, x, y, yaw)]        optional: ekf_local (/localization/odom/local), odom
+                                    frame: the odometry KISS-ICP is scored against
   loops     [(t, loop_ms, loop_ms_max, missed)]  optional: aav_track's status, each tick
   planned   optional: one plan asked of the planner alone before the leg, from where the
             car stood (controller_compare.py --planners, /compute_path_to_pose):
@@ -280,6 +290,151 @@ def localizer_row(name, truth, poses, start, end):
     }
 
 
+# NDT's covariance, checked against its errors (the NDT design: k fitted so Gazebo's
+# errors match the spread). NEES = e' P^-1 e for each pose, e its error (x, y, yaw) from
+# the truth, P the covariance it published: for 3 numbers, honest poses average 3.
+NEES_DOF = 3
+
+
+def truth_at(truth, t):
+    """Return (x, y, yaw) at t, between the two samples round it; None outside them."""
+    times = [s[0] for s in truth]
+    i = bisect.bisect_left(times, t)
+    if i < len(times) and times[i] == t:
+        return truth[i][1:]
+    if i == 0 or i == len(times):
+        return None
+    (t0, x0, y0, a0), (t1, x1, y1, a1) = truth[i - 1], truth[i]
+    f = (t - t0) / (t1 - t0)
+    return (x0 + f * (x1 - x0), y0 + f * (y1 - y0), a0 + f * angle_diff(a1, a0))
+
+
+def fit_errors(truth, fits):
+    """
+    Return [(ok, score, (ex, ey, eyaw), cov6)]: each NDT fit's error from the truth.
+
+    fits as the leg's ndt_fits. Fits outside the truth, or with no covariance, are left out.
+    """
+    out = []
+    for stamp, ok, score, x, y, yaw, cov in fits:
+        at = truth_at(truth, stamp)
+        if at is None or cov is None:
+            continue
+        tx, ty, tyaw = at
+        out.append((ok, score, (x - tx, y - ty, angle_diff(yaw, tyaw)), tuple(cov)))
+    return out
+
+
+def published(cov, k, floor_xy, floor_yaw):
+    """Return the 3x3 covariance NDT publishes from raw -H^-1 (as ndt-core covariance())."""
+    xx, xy, xa, yy, ya, aa = (k * v for v in cov)
+    return [[max(xx, floor_xy), xy, xa], [xy, max(yy, floor_xy), ya],
+            [xa, ya, max(aa, floor_yaw)]]
+
+
+def nees(e, p):
+    """Return e' P^-1 e for a 3-vector and a 3x3 covariance; nan if P can't be inverted."""
+    (a, b, c), (d, f, g), (h, i, j) = p
+    det = a * (f * j - g * i) - b * (d * j - g * h) + c * (d * i - f * h)
+    if not det > 0.0:
+        return math.nan
+    inv = [[(f * j - g * i) / det, (c * i - b * j) / det, (b * g - c * f) / det],
+           [(g * h - d * j) / det, (a * j - c * h) / det, (c * d - a * g) / det],
+           [(d * i - f * h) / det, (b * h - a * i) / det, (a * f - b * d) / det]]
+    return sum(e[r] * inv[r][k] * e[k] for r in range(3) for k in range(3))
+
+
+def mean_nees(errors, k, floor_xy, floor_yaw):
+    """Return the mean NEES of the good fits, with NDT's covariance at scale k."""
+    values = [nees(e, published(cov, k, floor_xy, floor_yaw))
+              for ok, _, e, cov in errors if ok]
+    values = [v for v in values if not math.isnan(v)]
+    return sum(values) / len(values) if values else math.nan
+
+
+def fit_scale(errors, floor_xy, floor_yaw, lo=1e-3, hi=1e6):
+    """
+    Return k so that the good fits' mean NEES is 3 (their errors match their spread).
+
+    The mean NEES falls as k grows (the floors only slow it), so halve the range in log.
+    nan with no good fit.
+    """
+    if math.isnan(mean_nees(errors, 1.0, floor_xy, floor_yaw)):
+        return math.nan
+    for _ in range(80):
+        mid = math.sqrt(lo * hi)
+        if mean_nees(errors, mid, floor_xy, floor_yaw) > NEES_DOF:
+            lo = mid
+        else:
+            hi = mid
+    return math.sqrt(lo * hi)
+
+
+def score_bands(errors, edges=(0.0, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, math.inf)):
+    """
+    Return how far off the fits of each band of score per point were.
+
+    [(low, high, fits, mean error m, worst error m, worst heading deg)], good and poor
+    fits together.
+    """
+    out = []
+    for low, high in zip(edges, edges[1:]):
+        band = [e for _, score, e, _ in errors if low <= score < high]
+        if not band:
+            continue
+        gaps = [math.hypot(e[0], e[1]) for e in band]
+        out.append((low, high, len(band), sum(gaps) / len(gaps), max(gaps),
+                    math.degrees(max(abs(e[2]) for e in band))))
+    return out
+
+
+# An odometry's drift per 100 m means little over less than this (m driven).
+DRIFT_MIN_M = 5.0
+
+
+def odometry_row(name, truth, poses, min_distance=DRIFT_MIN_M):
+    """
+    Return an odometry's drift, its keys starting with `name` (KISS-ICP, ekf_local).
+
+    An odometry lives in its own frame (kiss_odom, odom) and only says how far the car
+    moved, so its first pose is lined up with the truth then (position and heading), and
+    each later pose is scored against the truth nearest in time:
+    drift per 100 m (the last pose's gap over the distance driven, x 100; NaN under
+    min_distance m), the worst gap (m), the heading's gap at the end (deg), samples.
+    """
+    nan = {f'{name}_drift_per_100m': math.nan, f'{name}_drift_max_m': math.nan,
+           f'{name}_heading_drift_deg': math.nan, f'{name}_odom_samples': len(poses)}
+    if not truth or not poses:
+        return nan
+    poses = sorted(poses)
+    times = [t for t, *_ in truth]
+
+    def nearest(t):
+        i = bisect.bisect_left(times, t)
+        return truth[min((j for j in (i - 1, i) if 0 <= j < len(truth)),
+                         key=lambda j: abs(times[j] - t))]
+
+    t0, x0, y0, yaw0 = poses[0]
+    _, tx, ty, tyaw = nearest(t0)
+    turn = angle_diff(tyaw, yaw0)
+    c, s = math.cos(turn), math.sin(turn)
+    gaps, heading = [], 0.0
+    for t, x, y, yaw in poses:
+        ax = tx + c * (x - x0) - s * (y - y0)
+        ay = ty + s * (x - x0) + c * (y - y0)
+        _, rx, ry, ryaw = nearest(t)
+        gaps.append(math.hypot(ax - rx, ay - ry))
+        heading = abs(angle_diff(yaw + turn, ryaw))
+    driven = travelled([p for p in truth if t0 <= p[0] <= poses[-1][0]])
+    return {
+        f'{name}_drift_per_100m': (100.0 * gaps[-1] / driven if driven >= min_distance
+                                   else math.nan),
+        f'{name}_drift_max_m': max(gaps),
+        f'{name}_heading_drift_deg': math.degrees(heading),
+        f'{name}_odom_samples': len(poses),
+    }
+
+
 # How tight a path turns: the circle through three points this far apart along it (m).
 # Over 1 m, a Hybrid or Lattice arc reads its own radius; a grid planner's corner reads
 # well under a metre.
@@ -323,23 +478,53 @@ def turn_radii(path, span=TURN_SPAN, step=TURN_STEP):
             for i in range(k, len(points) - k)]
 
 
+# A cusp: the path doubles back on itself (forward to reverse, or back), a turn of more
+# than this between one step and the next. A grid planner's sharpest corner is 90 deg.
+CUSP_ANGLE = math.radians(120.0)
+
+
+def cusp_pieces(path, angle=CUSP_ANGLE):
+    """
+    Return the path [(x, y)] cut where it doubles back: one piece per direction of travel.
+
+    With reversing on, Hybrid and the lattice plan forward, stop, and back up. The point
+    where they swap is a corner in x, y but not a turn: the car stops there and changes
+    gear, so it is scored apart, and each piece's turns on their own.
+    """
+    points = [p for i, p in enumerate(path) if i == 0 or tuple(p) != tuple(path[i - 1])]
+    pieces, start = [], 0
+    for i in range(1, len(points) - 1):
+        (ax, ay), (bx, by), (cx, cy) = points[i - 1], points[i], points[i + 1]
+        u, v = (bx - ax, by - ay), (cx - bx, cy - by)
+        turn = abs(math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1]))
+        if turn > angle:
+            pieces.append(points[start:i + 1])
+            start = i
+    pieces.append(points[start:])
+    return pieces
+
+
 def plan_row(planned):
     """
     Return the planner's numbers for one plan (controller_compare.py --planners).
 
     plan_too_tight_m: metres of the path that turn tighter than the car's full lock: a car
-    can't drive them as drawn, and the follower has to cut or round them.
+    can't drive them as drawn, and the follower has to cut or round them. plan_cusps:
+    where the path changes between forward and reverse (cusp_pieces); the turns are
+    measured within each piece, not across a cusp.
     """
     if not planned or not planned.get('path'):
         return {'plan_found': False, 'plan_ms': (planned or {}).get('ms'),
                 'plan_wall_ms': (planned or {}).get('wall_ms')}
     path, lock = planned['path'], planned['lock_radius']
-    radii = [r for _, r in turn_radii(path)]
+    pieces = cusp_pieces(path)
+    radii = [r for piece in pieces for _, r in turn_radii(piece)]
     return {
         'plan_found': True,
         'plan_ms': planned.get('ms'),
         'plan_wall_ms': planned.get('wall_ms'),
         'plan_m': path_length(path),
+        'plan_cusps': len(pieces) - 1,
         'plan_tightest_m': min(radii, default=math.inf),
         'plan_too_tight_m': sum(1 for r in radii if r < lock) * TURN_STEP,
     }
@@ -369,6 +554,17 @@ def reversals(truth, moving=STILL):
     """Count the changes between driving forward and in reverse."""
     signs = [v > 0 for _, v in speeds(truth) if abs(v) >= moving]
     return sum(a != b for a, b in zip(signs, signs[1:]))
+
+
+def reversed_distance(truth, moving=STILL):
+    """Return the distance (m) the car covered backwards (faster than `moving` in reverse)."""
+    out = 0.0
+    for a, b in zip(truth, truth[1:]):
+        dt = b[0] - a[0]
+        step = (b[1] - a[1]) * math.cos(b[3]) + (b[2] - a[2]) * math.sin(b[3])
+        if dt > 0.0 and step / dt <= -moving:
+            out += math.hypot(b[1] - a[1], b[2] - a[2])
+    return out
 
 
 def clearance(truth, obstacle, body):
@@ -406,6 +602,7 @@ def summary(leg):
         'steering_rms': rms_rate(leg['steering']),
         'stops': stops(truth),
         'reversals': reversals(truth),
+        'reversed_m': reversed_distance(truth),
         'clearance_m': clearance(truth, leg.get('obstacle'), leg['body']),
         'cpu_percent': leg.get('cpu'),
         'route_switches': switched,
@@ -432,6 +629,24 @@ def summary(leg):
             'ndt_match_ms_mean': sum(times) / len(times),
             'ndt_match_ms_max': max(times),
             'ndt_restarts': max(r for *_, r in status) - min(r for *_, r in status),
+        })
+    fits = fit_errors(truth, leg.get('ndt_fits') or [])
+    if fits and leg.get('ndt_cov'):
+        # NDT's published spread against its errors: about 3 if honest (fit_scale).
+        row['ndt_nees_mean'] = mean_nees(fits, *leg['ndt_cov'])
+        good = [e for ok, _, e, _ in fits if ok]
+        if good:
+            row['ndt_fit_mean_m'] = sum(math.hypot(e[0], e[1]) for e in good) / len(good)
+    for name in ('kiss', 'local'):
+        if leg.get(name) is not None:
+            row.update(odometry_row(name, truth, leg[name]))
+    kiss = leg.get('kiss_status')
+    if kiss:
+        times = [ms for _, ms, _ in kiss]
+        row.update({
+            'kiss_match_ms_mean': sum(times) / len(times),
+            'kiss_match_ms_max': max(times),
+            'kiss_dropped': max(d for *_, d in kiss) - min(d for *_, d in kiss),
         })
     loops = leg.get('loops')
     if loops:
@@ -475,6 +690,7 @@ COLUMNS = [
     ('steering_rms', 'Steering work (rad/s RMS)', '{:.3f}'),
     ('stops', 'Stops', '{:d}'),
     ('reversals', 'Reversals', '{:d}'),
+    ('reversed_m', 'Driven in reverse (m)', '{:.1f}'),
     ('clearance_m', 'Closest to the box (m)', '{:.2f}'),
     ('cpu_percent', 'follower CPU (%): controller_server, or aav_track', '{:.0f}'),
     ('route_switches', 'The planner changed its route (times)', '{:d}'),
@@ -482,6 +698,7 @@ COLUMNS = [
     ('plan_ms', "The planner alone: planning time (ms, its own clock: Gazebo's)", '{:.0f}'),
     ('plan_wall_ms', 'The planner alone: the whole call (ms, wall clock)', '{:.0f}'),
     ('plan_m', 'The planner alone: path length (m)', '{:.1f}'),
+    ('plan_cusps', 'The planner alone: changes between forward and reverse', '{:d}'),
     ('plan_tightest_m', 'The planner alone: tightest turn (radius, m)', radius_cell),
     ('plan_too_tight_m', "The planner alone: path tighter than the car's full lock (m)",
      '{:.2f}'),
@@ -500,6 +717,20 @@ COLUMNS = [
     ('ndt_match_ms_mean', "NDT's match: mean (ms, wall clock)", '{:.1f}'),
     ('ndt_match_ms_max', "NDT's match: worst (ms, wall clock)", '{:.1f}'),
     ('ndt_restarts', 'NDT restarts after LOST', '{:d}'),
+    ('ndt_fit_mean_m', 'NDT at its own stamps: off, mean (m)', '{:.3f}'),
+    ('ndt_nees_mean', "NDT's spread against its errors: NEES, mean (3 is honest)", '{:.1f}'),
+
+
+    ('kiss_drift_per_100m', 'KISS-ICP: drift (m per 100 m driven)', '{:.2f}'),
+    ('local_drift_per_100m', 'ekf_local: drift (m per 100 m driven)', '{:.2f}'),
+    ('kiss_drift_max_m', 'KISS-ICP: off, worst (m, lined up at the start)', '{:.2f}'),
+    ('local_drift_max_m', 'ekf_local: off, worst (m, lined up at the start)', '{:.2f}'),
+    ('kiss_heading_drift_deg', "KISS-ICP's heading: off at the end (deg)", '{:.2f}'),
+    ('local_heading_drift_deg', "ekf_local's heading: off at the end (deg)", '{:.2f}'),
+    ('kiss_odom_samples', 'KISS-ICP poses', '{:d}'),
+    ('kiss_match_ms_mean', "KISS-ICP's match: mean (ms, wall clock)", '{:.1f}'),
+    ('kiss_match_ms_max', "KISS-ICP's match: worst (ms, wall clock)", '{:.1f}'),
+    ('kiss_dropped', 'KISS-ICP: clouds dropped', '{:d}'),
     ('belief_grid_mean_m', 'The EKF on the 10 Hz grid: off, mean (m)', '{:.2f}'),
     ('amcl_grid_mean_m', 'AMCL on the 10 Hz grid: off, mean (m)', '{:.2f}'),
     ('ndt_grid_mean_m', 'NDT on the 10 Hz grid: off, mean (m)', '{:.3f}'),
@@ -558,9 +789,12 @@ OVERALL = [
     ('legs', 'Legs finished', '{}'),
     ('time_s', 'Time, all legs (s)', '{:.0f}'),
     ('driven_m', 'Driven, all legs (m)', '{:.1f}'),
+    ('reversed_m', 'Driven in reverse, all legs (m)', '{:.1f}'),
     ('plan_m', 'The planner alone: path length, all legs (m)', '{:.1f}'),
     ('plan_ms', 'The planner alone: planning time, mean (ms)', '{:.0f}'),
     ('plan_ms_max', 'The planner alone: planning time, worst (ms)', '{:.0f}'),
+    ('plan_cusps', 'The planner alone: changes between forward and reverse, all legs',
+     '{:d}'),
     ('plan_tightest_m', 'The planner alone: tightest turn (radius, m)', radius_cell),
     ('plan_too_tight_m', "Path tighter than the car's full lock, all legs (m)", '{:.2f}'),
     ('turns_ok', "Kept to the car's turning radius", lambda v: 'yes' if v else '**no**'),
@@ -577,7 +811,8 @@ def overall(rows):
         return [r[key] for r in done if isinstance(r.get(key), (int, float))
                 and not isinstance(r.get(key), bool) and not math.isnan(r[key])]
 
-    for key in ('time_s', 'driven_m', 'plan_m', 'plan_too_tight_m'):
+    for key in ('time_s', 'driven_m', 'reversed_m', 'plan_m', 'plan_cusps',
+                'plan_too_tight_m'):
         if numbers(key):
             out[key] = sum(numbers(key))
     if numbers('plan_ms'):

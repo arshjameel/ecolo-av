@@ -25,16 +25,18 @@ map-frame layers (EKF global, AMCL, NDT, truth, plan, particles, NDT's map)
 | `frames` | `Stamp` (ns), `Transform3`, `StaticFrames::lookup` (follows a chain up to base_link), `MapToOdom` |
 | `poses` | `PoseBuffer`: 1 s of local EKF poses; `at(stamp)` interpolates, or says `TooOld` / `TooNew` |
 | `cloud` | `positions(&CloudView)`: x, y, z from a PointCloud2's bytes |
-| `cubes` | `build(points, cloud_to_base, car, stamp, settings)` -> `CubeScan`; `Band` (ground ... higher) |
+| `cubes` | `build(points, cloud_to_base, car, stamp, settings)` -> `CubeScan`; `Band` (ground ... higher); `OwnBox`: the car and its sensors, whose points make no cube (`--own-box`, from `vehicle.self_box`) |
 | `scan` | `place(...)`: a cloud start to finish, or a `ScanError` |
 | `persist` | `KeptCubes`: each scan's cubes kept by cell; `Fade` (four steps over `keep_cubes_for`); `FadedCube` |
+| `voxels` | Nav2's cubes (the voxels trial's): `place(...)` / `build(...)` move each cube centre from base_link into odom with the pose at the stamp (no second snap), `VoxelSettings`; `VoxelStatus::from_message` (road `Fitted` / `Flat`, cubes, ms) |
+| `localization_health` | `Verdict::parse`: `/localization/health`'s `OK`, or `WARN` and each check |
 | `ndt` | `NdtStatus::from_message` (TRACKING / WAITING / LOST, score per point, ms per match); `MapFile::read` (a PCD, with ndt-core's reader) into `MapCells` (1 m, 3 points or more) and its `Footprint` from above (the points thinned to 15 cm, one `Ellipse` per column at 2 sigma, `covers`) |
-| `keys` | `Layers` (L the layout: the seeing screen or the panel, K cubes kept or this scan's, M NDT's map, A particles, H the legend), `Layout`, `Action`, `KeyLine` for the on-screen legend |
+| `keys` | `Layers` (L the layout: the seeing screen or the panel, K cubes kept or this scan's, V Nav2's cubes, M NDT's map, A particles, H the legend), `Layout`, `Action`, `KeyLine` for the on-screen legend |
 | `topdown` | the seeing screen's top-downs: `View::fit` (the whole map) and `View::around` (round the car), map metres to window points, `ellipse` |
 | `orbit` | `Orbit`: the 3D camera; `Mode` chase / follow / free |
 | `track` | `TrackStatus::from_values`: aav_track's `/drivers/nav/track/status` |
 | `swap` | keys 1-4: `Tracker::on_key`, `allowed(&Origins)` (SIM only), `Reply` |
-| `state` | `DebugState`, `Update`, `Localizer` (EKF local, global, truth, AMCL, NDT), `Source` (the panel's rows); `drawn_cubes()`, `particles_in_odom()`; for the seeing screen `pose_in_map()`, `scan_in_map()` |
+| `state` | `DebugState`, `Update`, `Localizer` (EKF local, global, truth, AMCL, NDT), `Source` (the panel's rows); `drawn_cubes()`, `nav2_cubes()`, `particles_in_odom()`; for the seeing screen `pose_in_map()`, `scan_in_map()` |
 
 It builds on (path dependencies): [`hud-core`](../hud-core/README.md) (`health`,
 `origin`, `vehicle`), [`map-core`](../map-core/README.md) (`geom`, `car`),

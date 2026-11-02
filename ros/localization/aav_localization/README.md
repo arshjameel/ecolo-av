@@ -3,7 +3,7 @@
 ## Overview
 
 Where the car is. Stock `robot_localization` (3.8.3, Jazzy), configured here. No code of
-our own: a launch file and three config files.
+our own: a launch file and its config files.
 
 | Node | Gives | Used by |
 |---|---|---|
@@ -28,6 +28,8 @@ The two EKFs never read each other's topic. They meet only in TF.
 |---|---|---|
 | `gps` | true | false (bench, indoors): only `ekf_local`, and a static identity `map → odom` |
 | `gps_heading` | true | false leaves out `gps_heading` |
+| `kiss_ekf` | false | a trial: `ekf_local` also takes KISS-ICP's twist (`/localization/kiss_icp/odom`: vx, vyaw; never its pose), with `config/ekf_local_kiss.yaml` on top. `sim.launch.py kiss_ekf:=true` starts KISS-ICP too |
+| `ndt_ekf` | false | a trial: `ekf_global` also takes NDT's pose (`/localization/ndt/pose`: x, y, yaw), with `config/ekf_global_ndt.yaml` on top. `sim.launch.py ndt_ekf:=true` starts NDT too |
 | `start_x`, `start_y`, `start_yaw` | 0, 0, 0 | where the car starts: m east and north of the datum, rad counter-clockwise from east |
 | `use_sim_time` | false | |
 
@@ -35,8 +37,8 @@ The two EKFs never read each other's topic. They meet only in TF.
 
 | Node | In | Out |
 |---|---|---|
-| ekf_local | `/vehicle/odom` (vx, vy, vyaw), `/sensors/imu/data` (yaw rate) | `/localization/odom/local`, TF |
-| ekf_global | the same, plus `/localization/gps/odom` (x, y), `/localization/gps/heading` (yaw) | `/localization/odom/global`, TF |
+| ekf_local | `/vehicle/odom` (vx, vy, vyaw), `/sensors/imu/data` (yaw rate); with `kiss_ekf:=true`, `/localization/kiss_icp/odom` (vx, vyaw) | `/localization/odom/local`, TF |
+| ekf_global | the same, plus `/localization/gps/odom` (x, y), `/localization/gps/heading` (yaw); with `ndt_ekf:=true`, `/localization/ndt/pose` (x, y, yaw) | `/localization/odom/global`, TF |
 | navsat_transform | `/sensors/gps/fix`, `/sensors/imu/data`, `/localization/odom/global`, TF `base_link → gps_link` | `/localization/gps/odom`, `/localization/gps/fix` |
 
 ### Services
@@ -52,6 +54,8 @@ The two EKFs never read each other's topic. They meet only in TF.
 |---|---|
 | `config/ekf_local.yaml` | 30 Hz, `two_d_mode`, `world_frame: odom` |
 | `config/ekf_global.yaml` | 30 Hz, `world_frame: map`; GPS fixes refused past 10 sigma (`odom1_pose_rejection_threshold`); yaw process noise 0.01; x, y start 100 m unsure, so the first fix decides them |
+| `config/ekf_local_kiss.yaml` | only with `kiss_ekf:=true`: `odom1` = KISS-ICP's twist, vx and vyaw; refused past 5 sigma; `smooth_lagged_data` with 1 s of history (its twists carry the cloud's stamp) |
+| `config/ekf_global_ndt.yaml` | only with `ndt_ekf:=true`: `pose0` = NDT's pose, x, y, yaw; refused past 5 sigma; `smooth_lagged_data` with 1 s of history (NDT's poses carry the cloud's stamp, so they come late) |
 | `config/navsat.yaml` | `wait_for_datum: true`; `datum` [45.3860, -75.6960, 0] is a placeholder near Carleton (TODO: the test site) |
 
 ## Invariants
@@ -73,7 +77,9 @@ The two EKFs never read each other's topic. They meet only in TF.
 
 ## Verification
 
-This package has no tests of its own (config only).
+This package has no tests of its own (config only); `aav_bringup`'s
+`test_sim_launch.py` checks `ndt_ekf` and `ekf_global_ndt.yaml`, `kiss_ekf` and
+`ekf_local_kiss.yaml`.
 
 ```sh
 pixi run build && colcon test --packages-select aav_localization && colcon test-result --verbose

@@ -26,6 +26,44 @@ pub struct CubeSettings {
     pub max_cubes: usize,
     /// Cubes lower than this above base_link are ground.
     pub ground_height: Metres,
+    /// The car itself and its sensors, from above in base_link: points inside are the
+    /// lidar seeing its own car, and make no cube. `None` keeps them.
+    pub own: Option<OwnBox>,
+}
+
+/// A box from above in base_link (m): the car and the sensors on it, with room for the
+/// lidar's noise. aav_description's `vehicle.self_box` works it out; the launch file
+/// passes it (`--own-box`), so the rule lives in one place. Without it, Gazebo's lidar
+/// put the roof's corners and the front cameras in every scan, and the kept cubes left a
+/// trail behind the car (30 Oct).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct OwnBox {
+    pub min: [f64; 2],
+    pub max: [f64; 2],
+}
+
+impl OwnBox {
+    /// Is this base_link point inside, seen from above?
+    pub fn contains(&self, p: Vec3) -> bool {
+        (self.min[0]..=self.max[0]).contains(&p[0]) && (self.min[1]..=self.max[1]).contains(&p[1])
+    }
+
+    /// Reads `x_min,y_min,x_max,y_max` (m), as `--own-box` takes it.
+    pub fn parse(text: &str) -> Option<Self> {
+        let v: Vec<f64> = text
+            .split(',')
+            .map(|t| t.trim().parse().ok())
+            .collect::<Option<_>>()?;
+        match v[..] {
+            [x0, y0, x1, y1] if v.iter().all(|n| n.is_finite()) && x0 < x1 && y0 < y1 => {
+                Some(Self {
+                    min: [x0, y0],
+                    max: [x1, y1],
+                })
+            }
+            _ => None,
+        }
+    }
 }
 
 /// How high a cube is above base_link: its colour on the screen.
@@ -133,7 +171,14 @@ pub fn build(
             continue;
         }
         used += 1;
-        let q = to_odom.apply(p.map(f64::from));
+        let p = p.map(f64::from);
+        if settings
+            .own
+            .is_some_and(|own| own.contains(cloud_to_base.apply(p)))
+        {
+            continue;
+        }
+        let q = to_odom.apply(p);
         cells.insert(cell_of(q, size));
     }
     let mut cubes: Vec<Cube> = cells
@@ -215,7 +260,43 @@ mod tests {
             size: Metres(0.2),
             max_cubes: max,
             ground_height: Metres(0.25),
+            own: None,
         }
+    }
+
+    #[test]
+    fn the_cars_own_roof_and_cameras_make_no_cube() {
+        // From the roof lidar (0.5 m ahead of base_link, 1.8 up): a roof corner and a
+        // camera (the 30 Oct ghost), and a wall 3 m ahead.
+        let own = OwnBox::parse("-0.39, -0.65, 1.99, 0.65").expect("four numbers");
+        let points = [[-0.71, 0.49, -0.33], [1.35, -0.27, -0.26], [2.5, 0.0, -1.0]];
+        let mut with = settings(100);
+        with.own = Some(own);
+        let kept = build(points, &lidar_on_roof(), Pose::default(), Stamp(0), &with);
+        assert_eq!(kept.cubes.len(), 1);
+        assert!((kept.cubes[0].centre[0] - 3.1).abs() < 1e-5);
+        let all = build(
+            points,
+            &lidar_on_roof(),
+            Pose::default(),
+            Stamp(0),
+            &settings(100),
+        );
+        assert_eq!(all.cubes.len(), 3);
+    }
+
+    #[test]
+    fn an_own_box_needs_four_numbers_low_then_high() {
+        assert!(OwnBox::parse("1,2,3").is_none());
+        assert!(OwnBox::parse("1,2,0,3").is_none());
+        assert!(OwnBox::parse("a,b,c,d").is_none());
+        assert_eq!(
+            OwnBox::parse("-1,-2,3,4"),
+            Some(OwnBox {
+                min: [-1.0, -2.0],
+                max: [3.0, 4.0]
+            })
+        );
     }
 
     fn lidar_on_roof() -> Transform3 {

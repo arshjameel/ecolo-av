@@ -31,6 +31,8 @@ def load(package, name):
 
 
 NAV = load('aav_navigation', 'navigation.launch.py')
+# The installed empty map: the lattice (the default planner) reads its cells.
+EMPTY_MAP = os.path.join(get_package_share_directory('aav_navigation'), 'maps', 'empty.yaml')
 SIM = load('aav_bringup', 'sim.launch.py')
 CAR = load('aav_bringup', 'car.launch.py')
 BENCH = load('aav_bringup', 'bench.launch.py')
@@ -49,7 +51,7 @@ def context_for(launch_file, **args):
 
 def settings(**args):
     """Return {server: its ros__parameters}, from the file each Nav2 server would load."""
-    context = context_for(NAV, **{'map': '/maps/empty.yaml', **args})
+    context = context_for(NAV, **{'map': EMPTY_MAP, **args})
     found = {}
     for a in NAV.nodes(context):
         if not isinstance(a, Node):
@@ -74,7 +76,7 @@ def sent_to_navigation(launch_file, **args):
 
 
 def test_forward_only_by_default():
-    s = settings()
+    s = settings(planner='hybrid')                  # Hybrid's own search model
     assert s['planner_server']['GridBased']['motion_model_for_search'] == 'DUBIN'
     assert s['controller_server']['FollowPath']['allow_reversing'] is False
     assert s['controller_server']['MPPI']['vx_min'] == 0.0
@@ -85,7 +87,7 @@ def test_forward_only_by_default():
 
 
 def test_reversing_plans_follows_and_backs_up_at_the_cars_reverse_speed():
-    s = settings(reversing='true')
+    s = settings(reversing='true', planner='hybrid')
     assert s['planner_server']['GridBased']['motion_model_for_search'] == 'REEDS_SHEPP'
     assert s['controller_server']['FollowPath']['allow_reversing'] is True
     assert s['controller_server']['MPPI']['vx_min'] == pytest.approx(-REVERSE)
@@ -138,7 +140,7 @@ def test_who_may_reverse():
 
 def whole_file(**args):
     """Return the whole rewritten nav2.yaml the servers load: the costmaps' keys too."""
-    context = context_for(NAV, map='/maps/empty.yaml', **args)
+    context = context_for(NAV, map=EMPTY_MAP, **args)
     for a in NAV.nodes(context):
         if isinstance(a, Node) and a._Node__node_name == 'controller_server':
             for p in a._Node__parameters:
@@ -154,7 +156,7 @@ def local_costmap(**args):
 
 def ghost_nodes(**args):
     """Return the ghost_obstacle nodes navigation.launch.py starts with these arguments."""
-    context = context_for(NAV, map='/maps/empty.yaml', **args)
+    context = context_for(NAV, map=EMPTY_MAP, **args)
     return [a for a in NAV.nodes(context)
             if isinstance(a, Node) and a._Node__node_name == 'ghost_obstacle']
 
@@ -182,7 +184,7 @@ def test_the_ghost_adds_its_own_layer_and_source_beside_the_real_sensors():
 
 
 def test_the_ghost_alone_brings_collision_monitor():
-    context = context_for(NAV, map='/maps/empty.yaml', ghost='true')
+    context = context_for(NAV, map=EMPTY_MAP, ghost='true')
     names = [a._Node__node_name for a in NAV.nodes(context) if isinstance(a, Node)]
     assert 'collision_monitor' in names
 
@@ -238,7 +240,7 @@ def test_the_camera_guards_the_stop_zone_only_where_asked():
 
 def nav_nodes(**args):
     """Return each node navigation.launch.py starts with these arguments, by name."""
-    context = context_for(NAV, map='/maps/empty.yaml', **args)
+    context = context_for(NAV, map=EMPTY_MAP, **args)
     return {a._Node__node_name: a for a in NAV.nodes(context) if isinstance(a, Node)}
 
 
@@ -345,7 +347,6 @@ def test_the_sim_passes_the_trials_on_and_checks_them():
 
 # planner:= (docs/controllers.md, Planners): each planner behind the one plugin name the
 # behaviour trees ask for. Lattice reads the map's file, so these tests give a real one.
-EMPTY_MAP = os.path.join(get_package_share_directory('aav_navigation'), 'maps', 'empty.yaml')
 PLUGINS = {'hybrid': 'nav2_smac_planner::SmacPlannerHybrid',
            'lattice': 'nav2_smac_planner::SmacPlannerLattice',
            'smac2d': 'nav2_smac_planner::SmacPlanner2D',
@@ -368,14 +369,15 @@ def test_each_planner_runs_as_gridbased_alone(planner):
     assert ('motion_model_for_search' in s['GridBased']) == (planner == 'hybrid')
 
 
-def test_hybrid_is_the_default_with_the_cars_planning_radius():
-    s = planner_settings()
+def test_lattice_is_the_default_and_hybrid_keeps_the_cars_planning_radius():
+    assert planner_settings()['GridBased']['plugin'] == PLUGINS['lattice']
+    s = planner_settings(planner='hybrid')
     v = vehicle.load()['vehicle']
     assert s['GridBased']['plugin'] == PLUGINS['hybrid']
     assert s['GridBased']['minimum_turning_radius'] == pytest.approx(
         vehicle.plan_turning_radius(v), abs=1e-3)
-    assert planner_settings(reversing='true')['GridBased']['motion_model_for_search'] == (
-        'REEDS_SHEPP')
+    assert planner_settings(planner='hybrid', reversing='true')['GridBased'][
+        'motion_model_for_search'] == 'REEDS_SHEPP'
 
 
 def test_lattice_uses_our_primitives_forward_only_unless_reversing():
@@ -401,11 +403,64 @@ def test_bad_planners_are_refused():
 
 
 def test_the_sim_passes_any_planner_and_the_car_only_car_shaped_ones():
-    assert sent_to_navigation(SIM)['planner'] == 'hybrid'
+    assert sent_to_navigation(SIM)['planner'] == 'lattice'
     for planner in vehicle.PLANNERS:
         assert sent_to_navigation(SIM, planner=planner)['planner'] == planner
-    assert sent_to_navigation(CAR, machine='all')['planner'] == 'hybrid'
+    assert sent_to_navigation(CAR, machine='all')['planner'] == 'hybrid'    # forward only
     assert sent_to_navigation(CAR, machine='all', planner='lattice')['planner'] == 'lattice'
     for planner in set(vehicle.PLANNERS) - set(vehicle.CAR_PLANNERS):
         with pytest.raises(ValueError, match='turning radius'):
             sent_to_navigation(CAR, machine='all', planner=planner)
+
+
+def test_the_scan_unless_voxels_is_asked_for():
+    nodes = nav_nodes(lidar='true')
+    assert 'lidar_scan' in nodes and 'voxels' not in nodes
+    assert local_costmap(lidar='true')['lidar_layer']['observation_sources'] == 'lidar'
+    with pytest.raises(ValueError, match='lidar:=true'):
+        nav_nodes(voxels='true')                        # no lidar: no cubes
+
+
+def test_voxels_swaps_the_scan_for_cubes_in_the_costmap_and_the_stop_zone():
+    nodes = nav_nodes(lidar='true', voxels='true')
+    assert 'voxels' in nodes and 'lidar_scan' not in nodes
+    s = settings(radar='true', lidar='true', voxels='true')
+    assert s['collision_monitor']['observation_sources'] == ['radar', 'voxels']
+    source = s['collision_monitor']['voxels']
+    assert (source['type'], source['topic']) == ('pointcloud', '/perception/voxels/cubes')
+    low, high = vehicle.obstacle_heights(vehicle.load()['vehicle'])
+    # Its stock defaults (0.05 to 0.5 m) would drop every cube over half a metre.
+    assert source['min_height'] < 0.0 and source['max_height'] > high + 1.0
+    assert (s['voxels']['min_height'], s['voxels']['max_height']) == (
+        pytest.approx(low), pytest.approx(high))
+    layer = local_costmap(lidar='true', voxels='true')['lidar_layer']
+    assert layer['observation_sources'] == 'voxels voxels_ground'
+    assert layer['voxels']['topic'] == '/perception/voxels/cubes'
+    assert (layer['voxels']['marking'], layer['voxels']['clearing']) == (True, True)
+    ground = layer['voxels_ground']
+    assert ground['topic'] == '/perception/voxels/ground'
+    assert (ground['marking'], ground['clearing']) == (False, True)
+    # Every bound lets the cubes through: the layer's own, and each source's (Nav2's
+    # per-source defaults, 0 to 0 m and 3 m of raytrace, would drop or cut them).
+    for bounds in (layer, layer['voxels'], ground):
+        assert bounds['min_obstacle_height'] <= -1.0 and bounds['max_obstacle_height'] >= 3.5
+    assert ground['raytrace_max_range'] >= layer['voxels']['obstacle_max_range']
+
+
+def test_amcl_keeps_its_scan_beside_the_cubes():
+    nodes = nav_nodes(lidar='true', voxels='true', amcl='true')
+    assert {'voxels', 'lidar_scan', 'amcl'} <= set(nodes)
+
+
+def test_the_sim_and_the_car_pass_voxels_on():
+    assert sent_to_navigation(SIM)['voxels'] == 'false'
+    assert sent_to_navigation(SIM, world='road', voxels='true')['voxels'] == 'true'
+    with pytest.raises(ValueError, match='needs the lidar'):
+        sent_to_navigation(SIM, voxels='true')          # the empty world: no lidar
+    with pytest.raises(ValueError, match='needs the lidar'):
+        sent_to_navigation(SIM, world='road', voxels='true', lidar='false')
+    assert sent_to_navigation(CAR, machine='all')['voxels'] == 'false'
+    assert sent_to_navigation(CAR, machine='all', voxels='true')['voxels'] == 'true'
+    # No lidar on the car: no cubes either, rather than a launch that refuses.
+    car = sent_to_navigation(CAR, machine='all', voxels='true', lidar='false')
+    assert car['voxels'] == 'false'

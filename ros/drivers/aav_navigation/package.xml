@@ -28,6 +28,7 @@
   <exec_depend>nav2_lifecycle_manager</exec_depend>
   <exec_depend>nav2_costmap_2d</exec_depend>
   <exec_depend>aav_lidar</exec_depend>
+  <exec_depend>aav_voxels</exec_depend>
   <exec_depend>aav_ghost</exec_depend>
   <exec_depend>aav_safety</exec_depend>
   <exec_depend>aav_track</exec_depend>

@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">29 min read · 14 sections</div></header>
+<div class="meta">31 min read · 14 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -258,6 +258,20 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>2026-10-29</td>
 <td>sim</td>
 </tr>
+<tr>
+<td><a href="trials.html#ndt-into-the-global-ekf-30-oct">NDT into the global EKF</a> (<code>ndt_ekf:=true</code>, a trial)</td>
+<td>So the map position Nav2 plans by holds to centimetres, and holds when the GPS drops out; NDT's covariance fitted to its Gazebo errors, poor or jumping fits never published, and the EKF refuses any pose 5 sigma off</td>
+<td>Ben</td>
+<td>2026-10-30</td>
+<td>sim</td>
+</tr>
+<tr>
+<td>KISS-ICP lidar odometry as a trial (<code>aav_kiss_icp</code>, <code>kiss_icp:=true</code>; stock KISS-ICP, MIT, from its PyPI wheel); <a href="trials.html#kiss-icp-into-the-local-ekf-1-nov">its twist into the local EKF</a> (<code>kiss_ekf:=true</code>, a trial)</td>
+<td>A third "how far did I move" beside the wheels and the IMU, from the lidar alone and with no map; with <code>kiss_ekf:=true</code> its twist (never its pose) feeds <code>ekf_local</code>, so wheels that slip are caught. Its covariance measured against Gazebo's truth, twists 5 sigma off refused, and ekf_local carries on when it stops. Later it builds the real lot's map for NDT</td>
+<td>Ben's idea; built by Ben</td>
+<td>2026-10-30</td>
+<td>sim</td>
+</tr>
 </tbody>
 </table></div>
 </section>
@@ -320,6 +334,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Nav2's costmap and stop zone need a flat scan, without the car's own body in it</td>
 <td>Ben</td>
 <td>2026-10-15</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="../designs/2026-10-30_voxels.md">Lidar as cubes, a trial</a> (<code>aav_voxels</code> <code>voxels</code>, <code>voxels:=true</code>)</td>
+<td>"This is a car not a needle": read the lidar once as coarse 0.25 m cubes, measured from the road fitted to each cloud, so a leaning car doesn't see the road as an obstacle and everything behind the nearest thing still counts; the costmap and stop zone share them</td>
+<td>Ben's idea; built by Ben</td>
+<td>2026-10-30</td>
 <td>sim</td>
 </tr>
 </tbody>
@@ -444,11 +465,11 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="controllers.html#planners">Trial planners</a> (<code>planner:=</code> hybrid, lattice, smac2d, navfn or theta_star; the lattice on our own primitives, <code>pixi run lattice-primitives</code>)</td>
-<td>To see whether another of Nav2's planners plans better or faster than Hybrid-A* on the same routes, scored by <code>controller-compare --planners</code>, before any replaces the default. Only hybrid and lattice keep to the turning radius, so the car refuses the other three</td>
+<td><a href="controllers.html#planners">Trial planners</a> (<code>planner:=</code> hybrid, lattice, smac2d, navfn or theta_star; the lattice on our own primitives, <code>pixi run lattice-primitives</code>, 16 headings or 32 with <code>lattice_headings:=32</code>)</td>
+<td>To see whether another of Nav2's planners plans better or faster than Hybrid-A<em> on the same routes, scored by <code>controller-compare --planners</code> (<code>--reversing</code> for the car's own setting, <code>lattice32</code> for the 32-heading file), before any replaces the default. The lattice won (30 Oct, reversing: every leg, 29 s quicker a tour) and is the default since 1 Nov; the car, forward only until H5, keeps Hybrid-A</em>. Only hybrid and lattice keep to the turning radius, so the car refuses the other three</td>
 <td>Ben</td>
 <td>2026-10-29</td>
-<td>built</td>
+<td>sim</td>
 </tr>
 <tr>
 <td><a href="routes.html">Street routes</a> (<code>aav_routes</code>, Valhalla)</td>
@@ -947,8 +968,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="hud.html#the-debug-hud">Debug HUD</a> (<code>debug_hud</code>, <code>pixi run debugdemo</code>): the lidar's cubes in 3D, kept and fading (the occupancy-network look), every localizer's car (NDT purple, with its score and LOST in the panel), AMCL's particles, NDT's map as wireframes, every sensor from its own topic; keys 1-4 swap the sim's trial tracker; a key legend on screen. Since 29 Oct it opens as the <strong>seeing screen</strong>: the cubes big on the left, NDT's map from above with every localizer's car, and NDT's match (its cells as ellipses, the scan over them, the score); key L brings the sensor panel back</td>
-<td>See what the car sees and what it thinks, side by side, to debug localization (NDT, AMCL) and the trackers without RViz; the seeing screen shows off what the lidar sees (Ben, 29 Oct: "another screen to show off the voxels")</td>
+<td><a href="hud.html#the-debug-hud">Debug HUD</a> (<code>debug_hud</code>, <code>pixi run debugdemo</code>): the lidar's cubes in 3D, kept and fading (the occupancy-network look), every localizer's car (NDT purple, with its score and LOST in the panel), AMCL's particles, NDT's map as wireframes, every sensor from its own topic; keys 1-4 swap the sim's trial tracker; a key legend on screen. Since 29 Oct it opens as the <strong>seeing screen</strong>: the cubes big on the left, NDT's map from above with every localizer's car, and NDT's match (its cells as ellipses, the scan over them, the score); key L brings the sensor panel back. Since 1 Nov it also draws <strong>Nav2's cubes</strong> (the voxels trial's 0.25 m cubes, red wireframes, key V) over its own, with their road fit, count and ms, and shows the <strong>localization health</strong> checks (OK green, WARN amber with each check)</td>
+<td>See what the car sees and what it thinks, side by side, to debug localization (NDT, AMCL) and the trackers without RViz; the seeing screen shows off what the lidar sees (Ben, 29 Oct: "another screen to show off the voxels"); Nav2's cubes show what Nav2 actually stops for beside what the lidar sees, and the health checks say when localization's inputs stop being believable</td>
 <td>Ben</td>
 <td>2026-10-29</td>
 <td>built</td>

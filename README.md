@@ -72,6 +72,7 @@ After [Your first day](#your-first-day), add only the parts you need:
 | The object detector (RF-DETR, YOLO) | `pixi run get-models` | [Perception](docs/perception.md) |
 | The map window's street map and place search | `pixi run get-street-map`, `pixi run get-places` | [HUD](docs/hud.md) |
 | Street routes (Valhalla) | `pixi run -e routes get-routes` | [Street routes](docs/routes.md) |
+| KISS-ICP lidar odometry (a trial, `kiss_icp:=true`) | `pixi install --locked -e kiss` (Linux, Apple-silicon Macs) | [Trials](docs/trials.md) |
 | The camera stream check | `pixi run get-mediamtx` | [Camera pipeline](docs/camera-pipeline.md) |
 | CARLA on Carleton's streets | `pixi run get-carla-osm` | [CARLA](docs/carla.md) |
 | Flashing a Pico 2 with a debug probe | `pixi run spine-tools` | [Rust firmware](docs/rust-firmware.md) |
@@ -124,9 +125,9 @@ reaches a real car on the same network. The full list, with every option: `pixi 
 | `check` | the running graph against the contract: `check turtle` (or `sim`, `road`, `spine`, `car`, `replay`, `bench`) |
 | `bench-check` | starts bench mode and tests the whole graph: contract, drive, e-stops (2 min) |
 | `sim-check` | starts Gazebo's road world headless and tests the whole graph in it (2 min) |
-| `controller-compare` | Regulated Pure Pursuit against MPPI on the same routes, headless; the trials too (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt`: docs/trials.md) |
+| `controller-compare` | Regulated Pure Pursuit against MPPI on the same routes, headless; the trials too (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt`, `--ndt-ekf`, `--gps-off`, `--voxels`, `--kiss-icp`: docs/trials.md) |
 | `ndt-map` | NDT's map of Gazebo's test lot: `drive` the mapping route headless, or `build` from a bag; into `maps/ndt/` |
-| `lattice-primitives` | the State Lattice planner's moves for our car (`planner:=lattice`), from Nav2's own generator; `--check` says if `vehicle.yaml` has changed since |
+| `lattice-primitives` | the State Lattice planner's moves for our car (`planner:=lattice`), from Nav2's own generator (`--headings 32`: the trial file); `--check` says if `vehicle.yaml` has changed since |
 | `heading-check` | the global EKF's heading against Gazebo's truth, at walking pace |
 | `atob-score` | scores an A-to-B run from a bag or CSV: speeding up, holding, the stop on B (`atob-score bags/<run> --taped -0.1 0.05`) |
 | `timing-test` | are messages on time? 5 min parked, then 5 min driving |

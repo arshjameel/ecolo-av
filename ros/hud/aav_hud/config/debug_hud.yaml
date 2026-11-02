@@ -16,6 +16,7 @@ debug_hud:
     plan_topic: /plan                             # nav_msgs/msg/Path: Nav2's plan (yellow)
     tf_topic: /tf                                 # tf2_msgs/msg/TFMessage: map -> odom
     tf_static_topic: /tf_static                   # tf2_msgs/msg/TFMessage, latched: base_link -> lidar_link
+    voxels_cubes_topic: /perception/voxels/cubes  # sensor_msgs/msg/PointCloud2, base_link, reliable depth 1: Nav2's cubes (red wireframes, key V), voxels:=true
     # --- the panel: each sensor and actuator from its own node ---
     imu_topic: /sensors/imu/data                  # sensor_msgs/msg/Imu
     gps_topic: /sensors/gps/fix                   # sensor_msgs/msg/NavSatFix, the receiver itself
@@ -24,6 +25,8 @@ debug_hud:
     vehicle_status_topic: /vehicle/status         # aav_interfaces/msg/VehicleStatus: mode, armed, steering
     track_status_topic: /drivers/nav/track/status # diagnostic_msgs/msg/DiagnosticStatus: the trial tracker, tracker:= on
     ndt_status_topic: /localization/ndt/status    # diagnostic_msgs/msg/DiagnosticStatus: NDT's score per point, ms per match, LOST
+    voxels_status_topic: /perception/voxels/status  # diagnostic_msgs/msg/DiagnosticStatus: the voxels trial's ms, cube count, road fit OK/WARN
+    health_topic: /localization/health            # std_msgs/msg/String, 1 Hz: OK, or WARN and each check (aav_localization_health, health:=true)
     source_topic: /system/source                  # aav_interfaces/msg/DataSource, latched: the SIMULATED banner
     # --- keys 1-4 (sim only): the trial tracker's parameter service (aav_track, live_swap) ---
     track_parameters_service: /track/set_parameters   # rcl_interfaces/srv/SetParameters
@@ -41,3 +44,5 @@ debug_hud:
     ground_height: 0.25   # m above base_link: lower cubes are ground (darker)
     keep_cubes_for: 2.0   # s, by the clouds' stamps: key K's kept cubes fade over this, then go (the "occupancy network" look)
     ndt_map_cell: 1.0     # m: one NDT map cube's edge (key M)
+    voxels_cube_size: 0.25  # m: one of Nav2's cubes (aav_voxels' size in aav_navigation's nav2.yaml)
+    health_stale_after: 3.0 # s: /localization/health comes once a second, so it gets longer than stale_after

@@ -286,6 +286,35 @@ local_costmap:
           raytrace_min_range: 0.0
           raytrace_max_range: 15.0
           observation_persistence: 0.0  # s: the newest scan only
+        # voxels:=true (aav_voxels, a trial, docs/designs/2026-10-30_voxels.md): the launch
+        # file lists these two instead of lidar, and widens the layer's heights to theirs.
+        # The node already kept only what stands 0.3 m over the fitted road up to the roof
+        # plus 0.5 m, so the heights here (in odom) only pass everything on: -1.5 to 4.0 m
+        # leaves room for a road fitted 4 degrees off at 20 m.
+        voxels:                       # the cubes: they mark, and clear the way to them
+          topic: /perception/voxels/cubes
+          data_type: "PointCloud2"
+          marking: true
+          clearing: true
+          min_obstacle_height: -1.5
+          max_obstacle_height: 4.0
+          obstacle_min_range: 0.0
+          obstacle_max_range: 12.0    # m: as the scan's
+          raytrace_min_range: 0.0
+          raytrace_max_range: 15.0
+          observation_persistence: 0.0  # s: the newest cloud only
+        voxels_ground:                # the road it saw: clears only, as the scan's inf did
+          topic: /perception/voxels/ground
+          data_type: "PointCloud2"
+          marking: false
+          clearing: true
+          min_obstacle_height: -1.5
+          max_obstacle_height: 4.0
+          obstacle_min_range: 0.0
+          obstacle_max_range: 12.0
+          raytrace_min_range: 0.0
+          raytrace_max_range: 15.0
+          observation_persistence: 0.0
       # The ghost (aav_ghost ghost_obstacle): a pretend person, as the scan a perfect lidar
       # at base_link would see of it, inf everywhere else. Its own layer, so it only ever
       # adds: its clearing wipes only old ghosts, never a real sensor's marks.
@@ -327,6 +356,16 @@ lidar_scan:
     range_min: 0.2              # m from base_link
     range_max: 30.0
     scan_time: 0.1              # s: the lidar's 10 Hz
+
+# The trial beside it (navigation.launch.py voxels:=true; aav_voxels voxels,
+# docs/designs/2026-10-30_voxels.md): the same cloud as 0.25 m cubes between the fitted
+# road and just over the roof, for the local costmap's lidar_layer and collision_monitor.
+voxels:
+  ros__parameters:
+    size: 0.25                  # m: one cube's edge (the design: measured against 0.2, 0.5)
+    min_height: 0.3             # m above the fitted road: set by the launch file
+    max_height: 2.0             # m: the same (vehicle.obstacle_heights)
+    range_max: 30.0             # m flat from base_link
 
 global_costmap:
   global_costmap:
@@ -579,6 +618,14 @@ collision_monitor:
     lidar:
       type: "scan"
       topic: /sensors/lidar/scan
+      enabled: true
+    # voxels:=true: the cubes instead of the scan (aav_voxels; the launch file swaps lidar
+    # for this). Heights in base_link: the node already kept only what stands in the way.
+    voxels:
+      type: "pointcloud"
+      topic: /perception/voxels/cubes
+      min_height: -1.5          # m: everything the node sends (its defaults, 0.05 to 0.5,
+      max_height: 4.0           # would drop every cube over half a metre)
       enabled: true
     # The detectors' boxes on the road (aav_detector camera_obstacles), every camera's newest:
     # people and cars ahead, and behind with the rear camera. Only with camera_guard: where a

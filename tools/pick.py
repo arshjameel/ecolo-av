@@ -21,6 +21,7 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 LAST = Path.home() / '.config' / 'aav' / 'last-pick'
 NDT_MAP = 'maps/ndt/test_lot.pcd'
+KISS_PYTHON = '.pixi/envs/kiss/bin/python'
 
 # What to start: the pixi task, and what it is.
 PROGRAMS = [
@@ -48,11 +49,13 @@ FOLLOWERS = [
      ['tracker:=mpc_full', 'reversing:=false']),
 ]
 
-# Who draws the route: Nav2's planner (planner:=). Gazebo, 29 Oct, the lot tour, MPPI.
+# Who draws the route: Nav2's planner (planner:=). Gazebo, the lot tour, MPPI: hybrid
+# and lattice 30 Oct, reversing on, 4 runs each; the grid planners 29 Oct, forward only.
 PLANNERS = [
-    ('hybrid', 'Hybrid-A*: routes a car can drive (default; 4 of 4 legs)', ['planner:=hybrid']),
-    ('lattice', "State Lattice: our car's own moves, fast (2 of 4: lost the U-turn)",
+    ('lattice', "State Lattice: our car's own moves (default; every leg, 184 s a tour)",
      ['planner:=lattice']),
+    ('hybrid', "Hybrid-A*: routes a car can drive (the car's default; 213 s a tour)",
+     ['planner:=hybrid']),
     ('smac2d', 'grid A*: ignores the turning circle (2 of 4)', ['planner:=smac2d']),
     ('navfn', 'NavFn, the classic: ignores the turning circle (not tried in Gazebo)',
      ['planner:=navfn']),
@@ -60,14 +63,31 @@ PLANNERS = [
      ['planner:=theta_star']),
 ]
 
-# Where-am-I finders that run beside the EKF and are scored (they never steer yet).
+# Where-am-I finders that run beside the EKF and are scored (they never steer yet); with
+# ndt_ekf, the global EKF takes NDT's pose; with kiss_ekf, the local EKF takes KISS-ICP's
+# twist (trials: docs/trials.md).
 # Every row sets each switch, on or off: debugdemo turns some on, and the last value wins.
+NO_KISS = ['kiss_icp:=false', 'kiss_ekf:=false']
 LOCALIZERS = [
-    ('ekf', 'the EKFs only: wheels, IMU and GPS (default)', ['ndt:=false', 'amcl:=false']),
+    ('ekf', 'the EKFs only: wheels, IMU and GPS (default)',
+     ['ndt:=false', 'ndt_ekf:=false', 'amcl:=false'] + NO_KISS),
     ('ndt', 'add NDT: the lidar matched to a saved map (1-3 cm)',
-     ['ndt:=true', f'ndt_map:={NDT_MAP}', 'amcl:=false']),
-    ('amcl', 'add AMCL: guesses that match the walls (6-11 cm)', ['ndt:=false', 'amcl:=true']),
-    ('both', 'add NDT and AMCL', ['ndt:=true', f'ndt_map:={NDT_MAP}', 'amcl:=true']),
+     ['ndt:=true', 'ndt_ekf:=false', f'ndt_map:={NDT_MAP}', 'amcl:=false'] + NO_KISS),
+    ('amcl', 'add AMCL: guesses that match the walls (6-11 cm)',
+     ['ndt:=false', 'ndt_ekf:=false', 'amcl:=true'] + NO_KISS),
+    ('both', 'add NDT and AMCL',
+     ['ndt:=true', 'ndt_ekf:=false', f'ndt_map:={NDT_MAP}', 'amcl:=true'] + NO_KISS),
+    ('ndt_ekf', 'NDT, and its pose into the global EKF beside the GPS (a trial)',
+     ['ndt:=true', 'ndt_ekf:=true', f'ndt_map:={NDT_MAP}', 'amcl:=false'] + NO_KISS),
+    ('kiss_ekf', 'KISS-ICP lidar odometry, and its speed into the local EKF (a trial)',
+     ['ndt:=false', 'ndt_ekf:=false', 'amcl:=false', 'kiss_icp:=true', 'kiss_ekf:=true']),
+]
+
+# How Nav2 sees obstacles: the flat lidar scan, or the lidar as cubes (aav_voxels).
+OBSTACLES = [
+    ('scan', 'the flat lidar scan (default)', ['voxels:=false']),
+    ('cubes', 'the lidar as 0.25 m cubes (trial: stopped 0.44 m before a post, 4 of 4 legs)',
+     ['voxels:=true']),
 ]
 
 SPEED_LOOPS = [
@@ -116,13 +136,23 @@ def questions(read=input, say=print):
         rows.append(ask('Which world?', WORLDS, read, say))
     rows.append(ask('Who draws the route?', PLANNERS, read, say))
     rows.append(ask('Who steers along the path?', FOLLOWERS, read, say))
-    where = ask('Where-am-I finders beside the EKF?', LOCALIZERS, read, say)
+    # debugdemo is for seeing them all: there, NDT and AMCL come first (Ben, 30 Oct).
+    finders = LOCALIZERS
+    if program == 'debugdemo':
+        finders = sorted(LOCALIZERS, key=lambda row: row[0] != 'both')
+    where = ask('Where-am-I finders beside the EKF?', finders, read, say)
     if 'ndt:=true' in where[2] and not (ROOT / NDT_MAP).is_file():
         say(f'  note: no {NDT_MAP} yet: make it once with pixi run ndt-map drive')
-    if program == 'sim' and where[0] != 'ekf' and rows[0][0] != 'test_lot':
+    if 'kiss_icp:=true' in where[2] and not (ROOT / KISS_PYTHON).is_file():
+        say('  note: no kiss environment yet: install it once with pixi install --locked -e kiss')
+    if program == 'sim' and where[0] == 'kiss_ekf' and rows[0][0] == 'empty':
+        say('  note: KISS-ICP needs the lidar; switching the world to the test lot')
+        rows[0] = WORLDS[0]
+    elif program == 'sim' and where[0] not in ('ekf', 'kiss_ekf') and rows[0][0] != 'test_lot':
         say('  note: NDT and AMCL need the test lot; switching the world to it')
         rows[0] = WORLDS[0]
     rows.append(where)
+    rows.append(ask('How does Nav2 see obstacles?', OBSTACLES, read, say))
     rows.append(ask('Which speed loop?', SPEED_LOOPS, read, say))
     return command(program, rows)
 
@@ -132,7 +162,8 @@ def listing():
     lines = []
     for title, choices in [('What to start', PROGRAMS), ('World (sim only)', WORLDS),
                            ('Who draws the route', PLANNERS),
-                           ('Who steers', FOLLOWERS), ('Where am I', LOCALIZERS),
+                           ('Who steers', FOLLOWERS),
+                           ('Obstacles', OBSTACLES), ('Where am I', LOCALIZERS),
                            ('Speed loop', SPEED_LOOPS)]:
         lines.append(title)
         for row in choices:

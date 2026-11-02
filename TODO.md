@@ -3,6 +3,30 @@
 The current work list, newest first. Tick items off as they land; each tick = a commit.
 Ben's messages, word for word: `docs/history/messages-*.md`.
 
+## Sunday 1 November: the ideas before the second PR
+
+Ben, 1 Nov: "do all the ideas. I like them all but car day. Keep that in a list fo things todo".
+
+| # | Task | Status |
+|---|---|---|
+| 55 | **The cubes in RViz** (`voxels:=true`) | ✅ 1 Nov, `ideas-1nov`: a "Cubes" display (0.25 m boxes) in `road.rviz` and `drive.rviz` |
+| 56 | **The cubes and Betsi's health checks on the debug screen** | ✅ 1 Nov, `hud-cubes-health`: Nav2's cubes as red wireframes (key V), a "Nav2's cubes" section (road fit, count, ms) and "Localization health" (OK, or WARN and each check) on the seeing screen; rows in the sensor panel. Seen in `--demo`; untested live |
+| 57 | **Health in `pixi run check`** | ✅ 1 Nov: one line from `/localization/health` at the end; a WARN never fails the check |
+| 58 | **KISS-ICP into `ekf_local`** (`kiss_ekf:=true`, a trial) | ✅ 1 Nov, `kiss-ekf`: speed and turn rate only, covariance measured against Gazebo's truth. Not a clear win yet: ekf_local 0.30-1.27 m per 100 m on, 0.44-1.91 off, one run each on a busy Mac. Stays off. Next: 3 runs each on a quiet machine, then ekf_local's process noise; refit on a car bag |
+| 59 | **The lattice as the default planner** (54b) | ✅ 1 Nov (Ben): sim, bench and CARLA; the car keeps Hybrid-A* until H5 (forward only, the lattice lost the U-turn) |
+| 60 | **Car day: measure the wheel diameter by rolling** (Betsi's 0.36 m is PROVISIONAL; loaded it read 0.42 m, a 17 % speed error) | ⬜ car day: roll the car 10 m by tape, count the encoder ticks, `vehicle.yaml` `wheel_diameter` |
+| 61 | **Car day: the track, front and rear** (0.65 m and 0.85 m, today one average, 0.75 m) | ⬜ car day: check both; decide whether `vehicle.yaml` needs a front and a rear track |
+| 62 | **Car day: the lattice forward only on the car** | ⬜ car day, after H5: then the car can take the lattice too |
+
+## Friday 30 October: the lattice, fairly
+
+Ben, 30 Oct: "Reversing is always true i think".
+
+| # | Task | Status |
+|---|---|---|
+| 54 | **Rerun the planners with reversing on** (hybrid, lattice, lattice32), 3 runs each | ✅ 30 Oct, branch `lattice-rerun`: every leg for all three; the lattice fastest, 184 s a tour against Hybrid's 213 s; 32 headings no better ([trials](docs/trials.md#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32)) |
+| 54b | **Ben: make the lattice the default planner?** | ✅ 1 Nov, Ben: yes (TODO 59). Was: Ben decides. Before: the bench, and forward only (the car's `reversing:=false` until H5), where the lattice still loses the U-turn |
+
 ## Thursday 29 October: control (Ben, 27 Oct)
 
 Ben: "investigate LQR and maybe collapse all these various controllers into a single
@@ -344,6 +368,13 @@ work on." His order, with the work under way:
          ("stop sign, 14 m").
       On the car, 3 and 4 need camera-to-lidar calibration (research pick 4). Nav2's own
       `VoxelLayer` is a separate choice (it changes driving): only if 2D misses something.
+- [ ] **Cubes for Nav2** (Ben, 30 Oct: "this is a car not a needle"): built as a trial,
+      `voxels:=true` (`aav_voxels`, `docs/designs/2026-10-30_voxels.md`); in Gazebo it stops
+      for the post and drives the lot tour like the scan (`docs/trials.md`). Left:
+      `--rear-obstacle` and `--plan-around` with `--voxels`; a thin pole in the stop zone
+      (`min_points: 3` on cubes); 3 runs of the lot tour; the Orin's ms a cloud; the car,
+      leaning in a turn; then Nav2's 3D `VoxelLayer` on the same cubes; then make it the
+      default if it wins.
 - [ ] **The debug HUD** (Ben, 29 Oct, word for word in `docs/history/messages-2026-10-29.md`):
       the hardware workbench above, as its own HUD screen. It reads each sensor's and
       actuator's own node directly (`/sensors/...`, `/vehicle/...`, the spine's status),

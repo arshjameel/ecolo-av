@@ -1371,8 +1371,27 @@ Ben: "All the perception stack maybe, what part does what. When sitting at the c
   through `arm_when_open`, which waits for `OPEN`. `legacy_uart_bridge` has no arm step
   ([Arming waits for OPEN](../sources-and-targets.md#arming-waits-for-open)).
 
+## 1 November: Betsi's measurements, and the lattice as the default
+
+### "Can we fix her pull request?" Yes.
+
+- **Fixed for Betsi** (PR #18): tests for her health checks, `tools/test.sh`'s two
+  missing tasks, `interfaces.md`, then main merged in. CI green; Arsh approved and merged.
+- **Her numbers are PROVISIONAL** in `vehicle.yaml`: the track (one average of front
+  0.65 m and rear 0.85 m) and the wheel diameter (0.36 m; it read 0.42 m loaded). Both
+  are car-day items (TODO 60, 61).
+
+### "do all the ideas ... but car day." The lattice becomes the default.
+
+- **Decided (Ben):** the State Lattice is the default planner where the car reverses
+  (sim, bench, CARLA). The car keeps Hybrid-A* until H5: forward only, the lattice lost
+  the U-turn (29 Oct).
+- **Also built:** the cubes in RViz; health in `pixi run check`; on branches, the cubes
+  and health on the debug screen, and KISS-ICP into `ekf_local` (`kiss_ekf:=true`).
+
 ## Open threads
 
+- **Car day (1 Nov):** roll the car to measure the wheel diameter; check the front and rear track; then the lattice forward only (TODO 60-62).
 - **D3, the muxes (23 Oct):** built and tested in every profile; for the team: agree
   "check, not copy", and whether a bench with a real spine board and pretend sensors needs
   a deliberate exception (today the output mux refuses it). On the car next.

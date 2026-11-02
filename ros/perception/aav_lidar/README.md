@@ -40,7 +40,7 @@ car's own outline, plus 0.3 m behind and beside it and 0.1 m ahead of the bumper
 
 | Module | No ROS? | Holds |
 |---|---|---|
-| `scan.py` | yes | `ScanShape`, `rotation`, `to_base`, `flatten` |
+| `scan.py` | yes | `ScanShape`, `rotation`, `to_base`, `flatten`; `body_box` (the car's own outline plus its margins, `SELF_MARGIN`, `FRONT_MARGIN`: `aav_voxels` uses it too) |
 | `ground.py` | yes | body roll against the lowest beams: `ground_hit`, `worst_ground_height`, `max_safe_roll`, `VLP16_ELEVATIONS`. Sums only; the node doesn't use it (TODO 52e) |
 | `lidar_scan.py` | no | the node |
 

@@ -15,8 +15,10 @@ from launch import LaunchContext
 from launch.actions import ExecuteProcess, IncludeLaunchDescription
 from launch.utilities import perform_substitutions
 from launch_ros.actions import Node, SetParameter
+from launch_ros.descriptions import ParameterFile
 from launch_ros.utilities import evaluate_parameters
 import pytest
+import yaml
 
 
 def load(package, name):
@@ -346,3 +348,93 @@ def test_ndt_needs_the_test_lot_the_lidar_and_its_map(tmp_path):
     # The start pose is the car's, as AMCL's; on simulated time.
     assert sent == {'use_sim_time': 'true', 'ndt_map': str(map_file), 'ndt_x': '0.0',
                     'ndt_y': '4.0', 'ndt_yaw': '1.0'}
+
+
+def test_ndt_ekf_starts_ndt_and_feeds_its_pose_to_the_global_ekf(tmp_path):
+    # Off by default: the global EKF on GPS alone.
+    assert included(started(SIM, world='test_lot'))['localization.launch.py'][
+        'ndt_ekf'] == 'false'
+    map_file = tmp_path / 'test_lot.pcd'
+    map_file.write_bytes(b'')
+    sent = included(started(SIM, world='test_lot', ndt_ekf='true', ndt_map=str(map_file)))
+    assert sent['localization.launch.py']['ndt_ekf'] == 'true'
+    assert 'ndt.launch.py' in sent                      # ndt:=true is implied
+    with pytest.raises(ValueError, match='lidar:=true'):
+        started(SIM, world='test_lot', lidar='false', ndt_ekf='true', ndt_map=str(map_file))
+
+
+LOCALIZATION = load('aav_localization', 'localization.launch.py')
+
+
+def global_ekf_files(**args):
+    """Return the parameter files ekf_global is given, by name."""
+    (ekf,) = LOCALIZATION.global_ekf(context_for(LOCALIZATION, **args))
+    return [os.path.basename(str(p.evaluate(LaunchContext())))
+            for p in ekf._Node__parameters if isinstance(p, ParameterFile)]
+
+
+def test_the_global_ekf_reads_ndt_only_with_ndt_ekf():
+    assert global_ekf_files() == ['ekf_global.yaml']
+    assert global_ekf_files(ndt_ekf='true') == ['ekf_global.yaml', 'ekf_global_ndt.yaml']
+    path = os.path.join(get_package_share_directory('aav_localization'), 'config',
+                        'ekf_global_ndt.yaml')
+    with open(path) as f:
+        p = yaml.safe_load(f)['ekf_global']['ros__parameters']
+    assert p['pose0'] == '/localization/ndt/pose'
+    # x, y and yaw only: a flat lot (design N1); never height, roll or pitch.
+    assert [i for i, on in enumerate(p['pose0_config']) if on] == [0, 1, 5]
+    assert p['pose0_differential'] is False
+    assert 0 < p['pose0_rejection_threshold'] < 10
+    # NDT's poses come late (the cloud's stamp): put each in at its own time.
+    assert p['smooth_lagged_data'] is True and p['history_length'] >= 0.5
+
+
+def test_kiss_icp_needs_the_lidar_and_is_off_by_default():
+    # A trial, scored only (docs/designs/2026-10-30_kiss-icp.md).
+    assert 'kiss_icp.launch.py' not in included(started(SIM, world='test_lot'))
+    with pytest.raises(ValueError, match=r'kiss_icp:=true .*needs the lidar'):
+        started(SIM, kiss_icp='true')                           # the empty world
+    with pytest.raises(ValueError, match=r'kiss_icp:=true .*needs the lidar'):
+        started(SIM, world='test_lot', lidar='false', kiss_icp='true')
+    sent = included(started(SIM, world='test_lot', kiss_icp='true'))['kiss_icp.launch.py']
+    assert sent == {'use_sim_time': 'true'}
+    assert 'kiss_icp.launch.py' in included(started(SIM, world='road', kiss_icp='true'))
+
+
+def test_kiss_ekf_starts_kiss_icp_and_feeds_its_twist_to_the_local_ekf():
+    # Off by default: the local EKF on the wheels and the IMU alone.
+    assert included(started(SIM, world='test_lot'))['localization.launch.py'][
+        'kiss_ekf'] == 'false'
+    sent = included(started(SIM, world='test_lot', kiss_ekf='true'))
+    assert sent['localization.launch.py']['kiss_ekf'] == 'true'
+    assert 'kiss_icp.launch.py' in sent                 # kiss_icp:=true is implied
+    with pytest.raises(ValueError, match='kiss_ekf:=true'):
+        started(SIM, world='test_lot', lidar='false', kiss_ekf='true')
+
+
+def local_ekf_files(**args):
+    """Return the parameter files ekf_local is given, by name."""
+    (ekf,) = LOCALIZATION.local_ekf(context_for(LOCALIZATION, **args))
+    return [os.path.basename(str(p.evaluate(LaunchContext())))
+            for p in ekf._Node__parameters if isinstance(p, ParameterFile)]
+
+
+def test_the_local_ekf_reads_kiss_icp_only_with_kiss_ekf():
+    assert local_ekf_files() == ['ekf_local.yaml']
+    assert local_ekf_files(kiss_ekf='true') == ['ekf_local.yaml', 'ekf_local_kiss.yaml']
+    path = os.path.join(get_package_share_directory('aav_localization'), 'config',
+                        'ekf_local_kiss.yaml')
+    with open(path) as f:
+        p = yaml.safe_load(f)['ekf_local']['ros__parameters']
+    assert p['odom1'] == '/localization/kiss_icp/odom'
+    # Its twist only, vx and vyaw: never its pose (it drifts, in its own frame).
+    assert [i for i, on in enumerate(p['odom1_config']) if on] == [6, 11]
+    assert p['odom1_differential'] is False
+    assert 0 < p['odom1_twist_rejection_threshold'] < 10
+    # Its twists carry the cloud's stamp: put each in at its own time.
+    assert p['smooth_lagged_data'] is True and p['history_length'] >= 0.5
+    # Doesn't clash with ekf_local.yaml's own inputs.
+    base = os.path.join(get_package_share_directory('aav_localization'), 'config',
+                        'ekf_local.yaml')
+    with open(base) as f:
+        assert 'odom1' not in yaml.safe_load(f)['ekf_local']['ros__parameters']

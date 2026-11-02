@@ -11,7 +11,10 @@ import numpy as np  # noqa: E402
 import pytest  # noqa: E402
 
 MOUNT = ([0.9, 0.0, 1.8], [0.0, 0.0, 0.0])      # vehicle.yaml's lidar_link
-BODY = m.body_box({'length': 2.0, 'width': 1.0, 'rear_overhang': 0.2})
+CAR = {'vehicle': {'body': {'length': 2.0, 'width': 1.0, 'rear_overhang': 0.2}},
+       'sensors': {'camera_left_link': {'xyz': [1.75, 0.29, 1.55]},
+                   'lidar_link': {'xyz': [0.9, 0.0, 1.8]}}}
+BODY = m.body_box(CAR)
 
 
 def yaw_quat(yaw):
@@ -48,6 +51,23 @@ def test_points_go_from_the_lidar_into_the_map_and_lose_ground_body_and_far():
     out = m.to_map(lidar, MOUNT, pose, BODY)
     assert out.shape == (1, 3)
     assert out[0] == pytest.approx([10.0, 25.0, 1.0])
+
+
+def test_the_cars_own_roof_and_cameras_are_dropped_even_with_the_lidars_noise():
+    # The hits that drew the ghost of 30 Oct, in base_link (Gazebo, parked): the roof's
+    # rear corners and the front cameras, a few cm outside a box flush with the body.
+    own = np.array([[-0.213, 0.491, 1.474], [-0.153, -0.514, 1.486], [1.847, -0.266, 1.536],
+                    [1.803, 0.254, 1.549]])
+    pose = (np.zeros(3), np.array(yaw_quat(0.0)))
+    lidar = own - np.array(MOUNT[0])
+    flush = ((-0.2, 1.8), (-0.5, 0.5))
+    assert len(m.to_map(lidar, MOUNT, pose, flush)) == 4      # the old box let them in
+    assert len(m.to_map(lidar, MOUNT, pose, BODY)) == 0
+    (x0, x1), (y0, y1) = BODY
+    assert x0 == pytest.approx(-0.35) and x1 == pytest.approx(1.95)
+    assert (y0, y1) == (pytest.approx(-0.65), pytest.approx(0.65))
+    # A wall 1 m beside the car stays.
+    assert len(m.to_map([[0.0, 1.0, -0.8]], MOUNT, pose, BODY)) == 1
 
 
 def test_the_mount_turns_as_urdf_does():

@@ -21,7 +21,9 @@ pub enum Ground {
     Keep,
 }
 
-/// A box round the car's own body, in `base_link` (m): points inside are the car.
+/// A box round the car's own body and the sensors on it, in `base_link` (m): points
+/// inside are the car. Leave room for the lidar's noise: a box flush with the body let
+/// Gazebo's lidar draw the roof's corners and the cameras into the map (30 Oct).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BodyBox {
     pub min: [f64; 2],

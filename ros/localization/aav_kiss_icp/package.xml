@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_kiss_icp</name>
+  <version>0.1.0</version>
+  <description>kiss_icp: lidar odometry by KISS-ICP (MIT, PRBonn; the kiss Pixi environment's PyPI wheel, run as a child program), a trial: how far the car moved, from the lidar alone, scored beside ekf_local. Never TF, never in an EKF by default.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>aav_description</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

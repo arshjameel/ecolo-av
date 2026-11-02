@@ -44,22 +44,24 @@ Many values are still `TODO measure` (docs/car_measurements.md).
 | `wheel_angles(v, centre)`, `centre_angle(v, inner, outer)` | Ackermann: each front wheel from the bicycle angle, and back |
 | `gazebo_steering_limit(v)` | the limit Gazebo's AckermannSteering needs to reach `max_steering_angle` |
 | `footprint(v)`, `stop_zone_points(v)`, `rear_stop_zone_points(v)` | Nav2's footprint and collision_monitor zones |
+| `self_box(cfg, margin=SELF_MARGIN)` | the car and every sensor on it from above, 15 cm wider: lidar points inside are the car itself (NDT's map and scan, the debug HUD's cubes) |
 | `footprint_points(v)`, `polygon(points)` | the body outline as corners; corners as Nav2's polygon string |
 | `blind_behind(reversing, **sensors)`, `reverse_limit(v, reversing)` | may Nav2 back up, and how fast |
 | `nav2_rewrites(v, reversing)`, `nav2_tuned(...)` | Nav2's settings from the car |
 | `plan_turning_radius(v)`, `s_bend_length(radius, offset)`, `final_approach(v)` | the planner's radius; the room ahead an S-bend needs; how near the goal Nav2 keeps its path (TODO 17) |
 | `ego_params(cfg)`, `spine_params(v)` | ego's and `spine_bridge`'s parameters |
 | `check_planner(name, real)`, `lattice_problems(meta, v, resolution)` | a planner's name, checked (only `CAR_PLANNERS` with `real`); what's wrong with a lattice primitives file for this car and map |
+| `lattice_file_name(headings)` | the primitives file for 16 headings (the default) or 32 (`LATTICE_HEADINGS`, `lattice_headings:=`) |
 | `check_tracker(name, reversing)`, `track_params(nav2, cfg, ego, max_speed)` | a trial tracker's name, checked; `aav_track`'s parameters from nav2.yaml, vehicle.yaml and ego.yaml |
 | `obstacle_heights(v)`, `centre_of_mass(...)` | the lidar's height band; centre of mass from the scales |
 
-Constants: `STOP_ZONE_AHEAD`, `STOP_ZONE_BEHIND`, `STOP_ZONE_MARGIN` (m),
+Constants: `SELF_MARGIN`, `SENSOR_HALF_SIZE` (m), `STOP_ZONE_AHEAD`, `STOP_ZONE_BEHIND`, `STOP_ZONE_MARGIN` (m),
 `SEES_BEHIND`, `PLAN_TURN_MARGIN`, `GROUND_CLEARANCE`, `OVERHEAD_MARGIN` (m), and
 `CONTROLLERS = ('rpp', 'mppi')` with `DEFAULT_CONTROLLER = 'mppi'` (the default of
 `sim.launch.py`'s `controller`); `TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr',
 'mpc', 'mpc_full')` with `DEFAULT_TRACKER = 'none'` (`tracker:=`, `docs/trials.md`), kept apart from
 `CONTROLLERS`; `PLANNERS = ('hybrid', 'lattice', 'smac2d', 'navfn', 'theta_star')` with
-`DEFAULT_PLANNER = 'hybrid'`, `CAR_PLANNERS = ('hybrid', 'lattice')` (the ones that keep to
+`DEFAULT_PLANNER = 'lattice'` (`CAR_DEFAULT_PLANNER = 'hybrid'`: the car, forward only until H5), `CAR_PLANNERS = ('hybrid', 'lattice')` (the ones that keep to
 the turning radius) and `PLANNER_BLOCKS` (each one's block in `nav2.yaml`).
 
 ### URDF (`urdf/`)

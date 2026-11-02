@@ -1,0 +1,31 @@
+# ekf_global with NDT (ndt_ekf:=true, a trial): read on top of ekf_global.yaml.
+#
+# NDT (aav_ndt) matches each lidar turn to a saved map and publishes base_link's pose in
+# the map: /localization/ndt/pose. Here ekf_global takes its x, y and yaw (a flat lot,
+# design N1), beside the GPS. Only good fits are published (score per point above the
+# floor, converged, no jump from the guess); this gate refuses any that is still far
+# from where the filter thinks the car is.
+#
+# Order of the 15 numbers, as in ekf_global.yaml:
+#   x, y, z,  roll, pitch, yaw,  vx, vy, vz,  vroll, vpitch, vyaw,  ax, ay, az
+# Results and the reasons for the numbers: docs/trials.md (NDT into the global EKF).
+ekf_global:
+  ros__parameters:
+    pose0: /localization/ndt/pose
+    pose0_config: [true,  true,  false,
+                   false, false, true,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false]
+    pose0_differential: false
+    pose0_relative: false
+    pose0_queue_size: 5
+    # Mahalanobis distance, with NDT's covariance and the filter's own: a pose more than
+    # 5 sigma away is refused (3 numbers: 99.9 % of honest ones are within 4.0). If NDT
+    # is refused for long, the filter's doubt grows on the wheels alone until it agrees.
+    pose0_rejection_threshold: 5.0
+    # NDT's pose carries the cloud's stamp: it arrives 20-60 ms late (the match). Keep
+    # 1 s of the filter's past and put each late pose in at its own time, rather than
+    # correcting today's state with where the car was then (about 5 cm at 1 m/s).
+    smooth_lagged_data: true
+    history_length: 1.0

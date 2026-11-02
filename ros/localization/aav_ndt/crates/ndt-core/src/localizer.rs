@@ -6,6 +6,7 @@
 //! | the guess: last NDT pose ∘ odom⁻¹ at the last cloud ∘ odom at this cloud | [`predict`] on the [`OdomBuffer`] |
 //! | the first pose: a parameter or `/localization/ndt/initial_pose`; on the car `ekf_global` | [`Localizer::set_start`]; `start_from_global` |
 //! | lost: 5 poor fits in a row (score per point below a floor, or out of iterations) | [`Tracking::Lost`]; start again from `ekf_global`, counted in `restarts` |
+//! | a jump while tracking (the fit moved further from the odometry's guess than `max_correction`) is poor too: it may be on the wrong wall, and `ekf_global` may read it (`ndt_ekf:=true`) | [`Poor::Jumped`] |
 //! | covariance: x, y, yaw block k·(−H⁻¹), with a floor; height, roll, pitch large | [`covariance`] |
 
 use std::time::Duration;
@@ -46,6 +47,10 @@ pub enum Poor {
     LowScore,
     /// The finest cubes' search ran out of iterations.
     NoConvergence,
+    /// While tracking, the fit moved further from the guess than `max_correction`: the
+    /// guess is the last good pose moved on by the local EKF, so a big correction means
+    /// the scan snapped to the wrong place.
+    Jumped,
 }
 
 /// Why a cloud gave no match at all.
@@ -92,6 +97,9 @@ pub struct LocalizerSettings {
     pub lost_after: usize,
     /// With no first pose, take `ekf_global`'s (the car); otherwise wait for one.
     pub start_from_global: bool,
+    /// While tracking, a fit further than this from the guess (m, rad) is poor. Not after a
+    /// start or a restart: the start may be off by more.
+    pub max_correction: (f64, f64),
     /// k in k·(−H⁻¹), fitted so Gazebo's errors match the spread.
     pub covariance_scale: f64,
     /// The least variance for x and y (m²) and yaw (rad²).
@@ -111,6 +119,7 @@ impl Default for LocalizerSettings {
             min_score_per_point: 2.0,
             lost_after: 5,
             start_from_global: false,
+            max_correction: (0.5, 5f64.to_radians()),
             covariance_scale: 1.0,
             variance_floor: [0.02 * 0.02, 0.5f64.to_radians().powi(2)],
             unknown_variance: 1e3,
@@ -126,6 +135,8 @@ impl Default for LocalizerSettings {
 struct Anchor {
     pose: Pose2,
     odom: Option<Pose2>,
+    /// A good fit (not a start or a restart): the next one may move only a little.
+    fitted: bool,
 }
 
 /// NDT on a map, cloud after cloud.
@@ -190,6 +201,7 @@ impl Localizer {
         self.anchor = Some(Anchor {
             pose,
             odom: stamp.and_then(|s| self.odom.at(s)),
+            fitted: false,
         });
         self.tracking = Tracking::Tracking;
         self.poor_in_row = 0;
@@ -233,10 +245,14 @@ impl Localizer {
                 return Outcome::Skipped(Skip::Failed(e));
             }
         };
+        let (moved, turned) = guess.distance(&fit.pose);
+        let (max_moved, max_turned) = self.settings.max_correction;
         let why = if !fit.converged {
             Some(Poor::NoConvergence)
         } else if fit.score_per_point < self.settings.min_score_per_point {
             Some(Poor::LowScore)
+        } else if anchor.fitted && (moved > max_moved || turned > max_turned) {
+            Some(Poor::Jumped)
         } else {
             None
         };
@@ -247,6 +263,7 @@ impl Localizer {
         self.anchor = Some(Anchor {
             pose: fit.pose,
             odom: odom_now,
+            fitted: true,
         });
         self.tracking = Tracking::Tracking;
         self.poor_in_row = 0;
@@ -266,10 +283,20 @@ impl Localizer {
             self.anchor = Some(Anchor {
                 pose,
                 odom: self.odom.at(at),
+                fitted: false,
             });
             self.restarts += 1;
         }
     }
+}
+
+/// −H⁻¹ for x, y and yaw: the fit's own spread, before the scale k and the floors (`None`
+/// if −H isn't positive-definite). The status reports it, so k can be fitted (NEES).
+pub fn raw_covariance(hessian: &Matrix3<f64>) -> Option<Matrix3<f64>> {
+    (-hessian)
+        .cholesky()
+        .map(|c| c.inverse())
+        .filter(|b| b.iter().all(|v| v.is_finite()))
 }
 
 /// The pose's covariance: x, y, yaw from k·(−H⁻¹) with the floors on the diagonal; height,
@@ -279,9 +306,8 @@ pub fn covariance(hessian: &Matrix3<f64>, settings: &LocalizerSettings) -> [f64;
     let mut out = [0.0; 36];
     // x, y, z, roll, pitch, yaw: where x, y and yaw sit in the 6×6.
     const AT: [usize; 3] = [0, 1, 5];
-    let block = (-hessian)
-        .cholesky()
-        .map(|c| c.inverse() * settings.covariance_scale)
+    let block = raw_covariance(hessian)
+        .map(|b| b * settings.covariance_scale)
         .filter(|b| b.iter().all(|v| v.is_finite()));
     for i in 0..6 {
         out[i * 7] = unknown;

@@ -20,7 +20,7 @@ The local costmap's lidar_layer and collision_monitor read the scan.
 import signal
 
 from aav_description import vehicle
-from aav_lidar.scan import flatten, ScanShape, to_base
+from aav_lidar.scan import body_box, flatten, ScanShape, to_base
 import numpy
 import rclpy
 from rclpy.executors import ExternalShutdownException
@@ -30,28 +30,17 @@ from sensor_msgs.msg import LaserScan, PointCloud2
 from sensor_msgs_py import point_cloud2
 
 
-# m behind and beside the body's outline that is still the car: the rear camera's housing,
-# the mirrors (the simulated lidar sees something of the car's 0.5 m from the rear axle).
-SELF_MARGIN = 0.3
-# m ahead of the front bumper, only: the front cameras' housings at the roof's edge (the
-# simulated lidar sees them 1.8 m from the rear axle). The stop zone starts at the bumper,
-# so keep it small.
-FRONT_MARGIN = 0.1
-
-
 class LidarScan(Node):
 
     def __init__(self):
         super().__init__('lidar_scan')
         default = ScanShape()
         car = vehicle.load()
-        corners = vehicle.footprint_points(car['vehicle'])
-        xs, ys = [p[0] for p in corners], [p[1] for p in corners]
         self.shape = ScanShape(**{
             name: float(self.declare_parameter(name, getattr(default, name)).value)
             for name in ('min_height', 'max_height', 'angle_min', 'angle_max',
                          'angle_increment', 'range_min', 'range_max')},
-            body=(min(xs) - SELF_MARGIN, max(xs) + FRONT_MARGIN, max(ys) + SELF_MARGIN))
+            body=body_box(vehicle.footprint_points(car['vehicle'])))
         self.scan_time = self.declare_parameter('scan_time', 0.1).value
         mount = car['sensors']['lidar_link']
         self.xyz, self.rpy = mount['xyz'], mount['rpy']

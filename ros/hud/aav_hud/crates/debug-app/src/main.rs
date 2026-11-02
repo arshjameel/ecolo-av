@@ -23,6 +23,10 @@
 //!             ndt_status_topic      diagnostic_msgs/DiagnosticStatus  the panel: NDT's score, ms, LOST
 //!             plan_topic            nav_msgs/Path               Nav2's plan
 //!             tf_topic, tf_static_topic  tf2_msgs/TFMessage     map -> odom; base_link -> lidar_link
+//!             voxels_cubes_topic    sensor_msgs/PointCloud2     reliable, keep last 1, base_link:
+//!                                   Nav2's cubes (the voxels trial), red wireframes, key V
+//!             voxels_status_topic   diagnostic_msgs/DiagnosticStatus  the voxels trial: ms, cubes, road fit
+//!             health_topic          std_msgs/String             /localization/health: OK or WARN ...
 //!             imu_topic             sensor_msgs/Imu             the panel
 //!             gps_topic             sensor_msgs/NavSatFix       the panel
 //!             wheels_topic          aav_interfaces/WheelSpeeds  the panel
@@ -35,7 +39,8 @@
 //!                                       tracker, only while /system/source says SIM
 //! Parameters  the topics above; odom_frame, base_frame, map_frame; stale_after (s),
 //!             cube_size (m), max_cubes, pose_window (s), ground_height (m),
-//!             keep_cubes_for (s), ndt_map (a PCD file, key M), ndt_map_cell (m)
+//!             keep_cubes_for (s), ndt_map (a PCD file, key M), ndt_map_cell (m),
+//!             voxels_cube_size (m), health_stale_after (s)
 //! Reads       ndt_map at start-up, if it is there (else the panel says how to make it)
 //!
 //! raylib owns the main thread (macOS needs that); rclrs spins on its own thread; clouds
@@ -43,8 +48,8 @@
 //! ROS node for pretend data. The maths is in debug-core.
 //!
 //! usage: debug_hud [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
-//!                  [--config FILE] [--vehicle FILE] [--screenshot FILE [--after S]]
-//!                  [--bench-cubes N] [--ros-args ...]
+//!                  [--config FILE] [--vehicle FILE] [--own-box X0,Y0,X1,Y1]
+//!                  [--screenshot FILE [--after S]] [--bench-cubes N] [--ros-args ...]
 
 mod demo;
 #[cfg(feature = "ros")]
@@ -60,6 +65,7 @@ use std::{
 use anyhow::{bail, Context as _, Result};
 use debug_core::{
     config::DebugConfig,
+    cubes::OwnBox,
     keys::Action,
     ndt::MapFile,
     orbit::Orbit,
@@ -79,8 +85,8 @@ use crate::{
 
 const USAGE: &str = "\
 usage: debug_hud [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
-                 [--config FILE] [--vehicle FILE] [--screenshot FILE [--after S]]
-                 [--bench-cubes N] [--ros-args ...]
+                 [--config FILE] [--vehicle FILE] [--own-box X0,Y0,X1,Y1]
+                 [--screenshot FILE [--after S]] [--bench-cubes N] [--ros-args ...]
 
   --demo             pretend data: no ROS, no car
   --fullscreen       fill the screen (F11 switches too)
@@ -88,6 +94,8 @@ usage: debug_hud [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
   --list-monitors    print the monitors' numbers, names and sizes, then quit
   --config FILE      topic names from FILE instead of the built-in config/debug_hud.yaml
   --vehicle FILE     the car's size from FILE instead of the built-in vehicle.yaml
+  --own-box X0,Y0,X1,Y1  the car and its sensors from above in base_link (m): the lidar's
+                     points inside make no cube (debug_hud.launch.py passes vehicle.yaml's)
   --screenshot FILE  save the window as a PNG after --after seconds (4), then quit
   --bench-cubes N    the drawing test (with --demo): N cubes; prints the frame rate over
                      10 s, then quits
@@ -95,7 +103,8 @@ usage: debug_hud [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
 
 keys: drag turn, right-drag (or shift-drag) move, wheel zoom, C chase / follow / free,
       R reset the camera, L the seeing screen (the map and NDT's match from above) or
-      the sensor panel, K kept (fading) cubes or this scan's, M NDT's map,
+      the sensor panel, K kept (fading) cubes or this scan's, V Nav2's cubes (the voxels
+      trial's, red wireframes), M NDT's map,
       A AMCL's particles, H hide the key legend, 1-4 swap the trial tracker (sim only:
       pure pursuit, Stanley, LQR, MPC), F11 full screen";
 
@@ -114,6 +123,7 @@ struct Options {
     list_monitors: bool,
     config: Option<PathBuf>,
     vehicle: Option<PathBuf>,
+    own_box: Option<OwnBox>,
     screenshot: Option<PathBuf>,
     after: Option<f64>,
     bench_cubes: Option<usize>,
@@ -139,6 +149,12 @@ impl Options {
                 "--monitor" => opts.monitor = Some(value("--monitor")?.parse()?),
                 "--config" => opts.config = Some(value("--config")?.into()),
                 "--vehicle" => opts.vehicle = Some(value("--vehicle")?.into()),
+                "--own-box" => {
+                    let text = value("--own-box")?;
+                    opts.own_box = Some(OwnBox::parse(&text).with_context(|| {
+                        format!("--own-box {text:?}: give x_min,y_min,x_max,y_max in metres")
+                    })?);
+                }
                 "--screenshot" => opts.screenshot = Some(value("--screenshot")?.into()),
                 "--after" => {
                     let s: f64 = value("--after")?
@@ -186,11 +202,12 @@ fn main() -> Result<()> {
         window::print_monitors();
         return Ok(());
     }
-    let config = match &opts.config {
+    let mut config = match &opts.config {
         Some(path) => DebugConfig::from_yaml(&read(path)?)
             .with_context(|| format!("in {}", path.display()))?,
         None => DebugConfig::default(),
     };
+    config.own_box = opts.own_box;
     let car = match &opts.vehicle {
         Some(path) => CarShape::from_vehicle_yaml(&read(path)?)
             .with_context(|| format!("in {}", path.display()))?,
@@ -207,7 +224,12 @@ fn open_source(
     config: DebugConfig,
 ) -> Result<(Box<dyn DataSource>, DebugConfig)> {
     if opts.demo {
-        let demo = Demo::new(Instant::now(), config.cube_settings(), opts.bench_cubes);
+        let demo = Demo::new(
+            Instant::now(),
+            config.cube_settings(),
+            config.voxel_settings(),
+            opts.bench_cubes,
+        );
         return Ok((Box::new(demo), config));
     }
     #[cfg(feature = "ros")]
@@ -268,6 +290,9 @@ fn run(
         }
         if let Some(scan) = source.take_scan() {
             state.set_scan(scan, now);
+        }
+        if let Some(cubes) = source.take_nav2_cubes() {
+            state.set_nav2_cubes(cubes, now);
         }
 
         // The mouse, over the 3D view only.
@@ -366,6 +391,7 @@ fn key_of(action: Action) -> KeyboardKey {
         Action::Cubes => KeyboardKey::KEY_K,
         Action::NdtMap => KeyboardKey::KEY_M,
         Action::Particles => KeyboardKey::KEY_A,
+        Action::Nav2Cubes => KeyboardKey::KEY_V,
         Action::Keys => KeyboardKey::KEY_H,
         Action::Layout => KeyboardKey::KEY_L,
         Action::FullScreen => KeyboardKey::KEY_F11,
@@ -449,6 +475,7 @@ mod tests {
             }
         }
         assert!(USAGE.contains("K kept") && USAGE.contains("L the seeing screen"));
+        assert!(USAGE.contains("V Nav2's cubes"));
     }
 
     #[test]

@@ -17,4 +17,7 @@ face neighbours, not a k-d tree radius search; no multithreading yet.
 
 ## Changes since
 
-None yet.
+| Date | Change |
+|---|---|
+| 2026-10-30 | The car's own box from `vehicle.self_box` (body and sensors, 15 cm wider): the ghost loop in the map |
+| 2026-10-30 | A jump from the guess while tracking is a poor fit (`max_correction_m`, `_deg`); the status carries the cloud's stamp and -H⁻¹, to fit k (`ndt_ekf:=true`) |

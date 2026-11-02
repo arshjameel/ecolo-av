@@ -25,7 +25,7 @@ lidar points ──Mount──▶ base_link ──ScanFilter──▶ ~500 point
 | `score` | `Gauss::new(side, outlier_ratio)`, `evaluate` | Magnusson's score, gradient and Hessian in (x, y, yaw) |
 | `matcher` | `Matcher::new(map, cubes, settings)`, `align(scan, guess) -> Result<Match, MatchError>` | Newton: damping, a 0.1 m / 2° step cap, Armijo backtracking, coarse to fine |
 | `guess` | `OdomBuffer`, `predict` | 1 s of the local EKF, interpolated at a cloud's stamp; the guess |
-| `localizer` | `Localizer`, `LocalizerSettings`, `Outcome`, `Report`, `Tracking` | per cloud: the guess, the match, good or poor, LOST after 5 poor, restart from `ekf_global`; `covariance` |
+| `localizer` | `Localizer`, `LocalizerSettings`, `Outcome`, `Poor`, `Report`, `Tracking` | per cloud: the guess, the match, good or poor (low score, no convergence, or a jump from the guess while tracking: `max_correction`), LOST after 5 poor, restart from `ekf_global`; `covariance`, `raw_covariance` (-H⁻¹) |
 | `pcd` | `read`, `write` | the map file (PCD v0.7, binary or ASCII) |
 
 ## Invariants
@@ -47,7 +47,7 @@ cargo test --release --locked -p ndt-core --test matching -- --nocapture   # tim
 | Test (`tests/`) | Checks |
 |---|---|
 | `matching.rs` | a known shift and turn within 1 cm and 0.1°; gradient and Hessian against finite differences (relative 1e-6); 1.5 m and 10° off on a lot like Gazebo's pulls in (needed the 4 m cubes) |
-| `localizer.rs` | a drive on odometry drifting 5 % and 2°/s; LOST after five poor fits, then a restart from `ekf_global` |
+| `localizer.rs` | a drive on odometry drifting 5 % and 2°/s; LOST after five poor fits, then a restart from `ekf_global`; a jump while tracking is poor, not after a start |
 
 The worlds are made up in `tests/common`: boxes on flat ground and a 16-beam lidar like
 Gazebo's, ray-cast, 3 cm of noise.

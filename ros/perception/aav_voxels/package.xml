@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_voxels</name>
+  <version>0.1.0</version>
+  <description>A trial beside aav_lidar's flat scan: voxels turns /sensors/lidar/points into 0.25 m cubes between the fitted road and just over the roof (/perception/voxels/cubes), and the road it saw (/perception/voxels/ground), for Nav2's local costmap and collision_monitor.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>sensor_msgs_py</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>aav_description</exec_depend>
+  <exec_depend>aav_lidar</exec_depend>
+
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

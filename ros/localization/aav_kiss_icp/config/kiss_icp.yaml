@@ -1,0 +1,20 @@
+# kiss_icp (aav_kiss_icp): KISS-ICP's own defaults where it has them (K5,
+# docs/designs/2026-10-30_kiss-icp.md). The lidar's mount and the car's outline come from
+# vehicle.yaml through the launch file, never from here.
+kiss_icp:
+  ros__parameters:
+    min_height: 0.3            # m above base_link: lower is the ground, cut out (as NDT's).
+                               # A flat ground's rings look the same every scan: "no motion"
+    min_range: 0.5             # m from the lidar: Gazebo's lidar starts there; the VLP-16 at 0.9
+    max_range: 100.0           # m: KISS-ICP's default
+    voxel_size: 0.0            # m: 0 = max_range / 100 (KISS-ICP's rule: 1 m cubes)
+    max_points_per_voxel: 20   # KISS-ICP's default
+    threads: 4                 # KISS-ICP's 0 means every core; 4 leaves the Orin's others free
+    deskew: true               # only where the cloud has a per-point time (the VLP-16)
+    lidar_period: 0.1          # s: 10 Hz, for counting the clouds dropped
+    # The twist's covariance, 1 sigma (KISS-ICP gives none; ekf_local reads it with
+    # kiss_ekf:=true). Measured 1 Nov against Gazebo's truth over the lot tour (docs/trials.md):
+    # speed 0.14 m/s (each step's position wobbles ~1.5 cm, though the pose holds),
+    # turn rate 0.005-0.007 rad/s. Gazebo flatters KISS-ICP: refit on a bag from the car.
+    twist_linear_sd: 0.15      # m/s
+    twist_angular_sd: 0.01     # rad/s
