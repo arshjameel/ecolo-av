@@ -190,15 +190,14 @@ def test_the_lidar_runs_where_its_packets_go_and_nav2_reads_it():
 
 
 def test_nav2_reverses_only_when_asked_and_where_the_lidar_sees_behind():
-    # Off by default on the car (26 Oct, F2): the wheels can't tell direction yet (H5).
+    # On by default since 1 Nov (Ben: "reverse and uturn should be in"): the roof lidar
+    # watches behind.
     default = included(started(CAR, machine='orin'))['navigation.launch.py']
-    assert default['reversing'] == 'false'
-    # reversing:=true (Ben, 22 Oct: "Yes the car can reverse"): the roof lidar watches behind.
-    on = included(started(CAR, machine='orin', reversing='true'))['navigation.launch.py']
-    assert on['reversing'] == 'true'
-    # Without it nothing sees behind (the radar faces forward): forward only.
-    blind = included(started(CAR, machine='orin', reversing='true',
-                             lidar='false'))['navigation.launch.py']
+    assert default['reversing'] == 'true'
+    off = included(started(CAR, machine='orin', reversing='false'))['navigation.launch.py']
+    assert off['reversing'] == 'false'
+    # Without the lidar nothing sees behind (the radar faces forward): forward only.
+    blind = included(started(CAR, machine='orin', lidar='false'))['navigation.launch.py']
     assert blind['reversing'] == 'false'
 
 
@@ -568,3 +567,17 @@ def test_the_watchdog_has_a_rule_for_every_streamed_camera():
         assert (rule['topic'], rule['kind']) == ('/perception/detections', 'detections')
         assert rule['frame_id'] == settings['frame_id'], camera
         assert rule['stop'] is True, camera
+
+
+def test_the_car_day_stack_is_the_defaults():
+    # docs/tests.md, "The stack for every test on the ground": the best of the Gazebo
+    # trials. Change a default here and the plan changes with it.
+    nav = included(started(CAR, machine='orin'))['navigation.launch.py']
+    assert nav['planner'] == 'lattice'
+    assert nav['reversing'] == 'true'
+    assert nav['voxels'] == 'false'
+    assert nav.get('controller', 'mppi') == 'mppi'
+    assert nav.get('tracker', 'none') == 'none'
+    assert nav.get('amcl', 'false') == 'false'
+    loc = included(started(CAR, machine='orin'))['localization.launch.py']
+    assert loc.get('ndt_ekf', 'false') == 'false' and loc.get('kiss_ekf', 'false') == 'false'

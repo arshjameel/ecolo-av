@@ -18,7 +18,7 @@ costmaps, and twist_mux, ego, the sensor watchdog and the spine stay in charge.
 Nothing goes to Nav2 until a person calls the follow service (or `follow_at_once`).
 
 ```sh
-pixi run -e routes get-routes      # once: Ottawa's streets, Valhalla's graph
+pixi run get routes      # once: Ottawa's streets, Valhalla's graph
 pixi run -e routes router          # the router, in another terminal
 ros2 launch aav_routes street_router.launch.py
 ros2 topic pub --once /drivers/nav/route/destination geographic_msgs/msg/GeoPointStamped \
@@ -80,7 +80,7 @@ Modules:
 
 - HTTP requests to `router_url` (this computer).
 - Publishes the latched route topics; sends a Nav2 goal on follow.
-- No files written. The router's map data lives in `maps/routes/` (`pixi run -e routes get-routes`).
+- No files written. The router's map data lives in `maps/routes/` (`pixi run get routes`).
 
 ## Verification
 

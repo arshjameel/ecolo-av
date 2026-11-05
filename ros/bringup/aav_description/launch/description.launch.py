@@ -2,12 +2,13 @@
 Publish the car's frames: robot_state_publisher from the URDF.
 
   ros2 launch aav_description description.launch.py [sim:=true] [use_sim_time:=true]
-      [lidar:=false]
+      [lidar:=false] [chase_camera:=false]
 
 joint_state_publisher fills in the joints nobody measures (wheel spin) and merges
 the measured steering angles that aav_spine publishes on /vehicle/joint_states.
 In Gazebo, the simulator publishes /joint_states itself, so turn it off there.
 lidar:=true (with sim:=true) simulates the roof lidar on lidar_link, which is always there.
+chase_camera:=true (with sim:=true) adds Gazebo's chase camera, behind and above the car.
 With sim:=true, Gazebo's steering_limit comes from vehicle.yaml through
 vehicle.gazebo_steering_limit: given max_steering_angle itself, Gazebo steers short.
 """
@@ -31,6 +32,7 @@ def generate_launch_description():
     robot_description = ParameterValue(
         Command(['xacro ', xacro_file, ' sim:=', sim,
                  ' lidar:=', LaunchConfiguration('lidar'),
+                 ' chase_camera:=', LaunchConfiguration('chase_camera'),
                  f' gz_steering_limit:={steering_limit:.6f}']), value_type=str)
 
     return LaunchDescription([
@@ -39,6 +41,8 @@ def generate_launch_description():
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('lidar', default_value='false',
                               description='With sim: the simulated roof lidar'),
+        DeclareLaunchArgument('chase_camera', default_value='false',
+                              description="With sim: Gazebo's chase camera, behind the car"),
         DeclareLaunchArgument('joint_state_publisher', default_value='true',
                               description='Publish joints nobody else publishes'),
         Node(

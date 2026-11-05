@@ -68,5 +68,5 @@ cd ros/perception/aav_voxels && python3 -m pytest -q        # the logic, no ROS
 pixi run build && colcon test --packages-select aav_voxels && colcon test-result --verbose
 ```
 
-In Gazebo: `pixi run sim-check --lidar-obstacle --voxels`; `pixi run controller-compare
+In Gazebo: `pixi run sim-check --lidar-obstacle --voxels`; `pixi run measure controllers
 --voxels --tours lot`. Results: `docs/trials.md`.

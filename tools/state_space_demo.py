@@ -2,8 +2,9 @@
 """
 State space, from a drawing to a car simulator: the teaching example.
 
-    pixi run state-space-demo                 print the numbers, draw docs/img/learn-ss-*.png
-    pixi run state-space-demo --no-figures    the numbers only
+    pixi run python3 tools/state_space_demo.py               print the numbers, draw
+                                                             docs/img/learn-ss-*.png
+    pixi run python3 tools/state_space_demo.py --no-figures  the numbers only
 
 The page that walks through it: docs/learn-state-space.md. Each part is one step of the
 process: build A, B, C, D; simulate (Euler, RK4, exact); poles = eigenvalues = the

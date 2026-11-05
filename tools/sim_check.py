@@ -132,7 +132,7 @@ this tests it against Gazebo's camera and radar stand-in, which see the road wor
    At 1 m/s also: a lat/lon B (through /toLL and /fromLL), a 250 m B refused, and a drive
    stopped by a cancel (Ctrl-C), the e-stop and a GPS fault (the driver's own timeout and
    the sensor watchdog's lock). Each drive's truth goes to /tmp/aav-sim-points/ as an
-   atob-score CSV (`pixi run atob-score /tmp/aav-sim-points/1-*.csv --speed 1`).
+   measure atob CSV (`pixi run measure atob /tmp/aav-sim-points/1-*.csv --speed 1`).
 
 13. With --speed-steps: Gazebo's empty world, nothing else driving. A scripted drive
    (ramped at ego's 1 m/s^2) holds each of SPEED_STEPS for 20 s: reverse at 0.5, then 1.0
@@ -218,6 +218,9 @@ POST = os.path.join(MODELS, 'post', 'model.sdf')           # 0.5 x 0.5 x 1.8 m: 
 # What the radar adds to the road world's graph: absent with radar:=false.
 RADAR_TOPICS = ('/sensors/radar/points', '/perception/radar/clusters',
                 '/perception/radar/cluster_boxes')
+# What only runs with Nav2 (navigation.launch.py): the map, and stop_hold beside
+# collision_monitor. A nav:=false run checks the contract without them.
+NAV_TOPICS = ('/map', '/safety/stop_hold/lock')
 RADAR_FIELDS = ['x', 'y', 'z', 'intensity', 'velocity']   # the TI driver's
 LIDAR_RAYS = (1800, 16)     # the simulated roof lidar: steps around, beams (sensors xacro)
 
@@ -1586,7 +1589,7 @@ SPEED_BAND = 0.05               # the band a step must end, and settle, in (of i
 SPEED_TRIES = 3                 # drives of a step, while late commands spoil them
 # Each step's samples (profile, target, try, s, m/s), for a plot: AAV_SIM_SPEED_LOG moves it.
 SPEED_LOG = os.environ.get('AAV_SIM_SPEED_LOG', '/tmp/aav-sim-speed-steps.csv')
-# Each drive to point's truth, as an atob-score CSV: AAV_SIM_POINT_LOG moves the folder.
+# Each drive to point's truth, as a CSV for measure atob: AAV_SIM_POINT_LOG moves the folder.
 POINT_LOG = os.environ.get('AAV_SIM_POINT_LOG', '/tmp/aav-sim-points')
 POINT_TOLERANCE = 2.0           # m from B, by Gazebo's truth: docs/tests.md 5.2 without RTK
 POINT_PAST = 0.5                # m past B, along the car's heading, by its own EKF: GPS noise
@@ -1636,9 +1639,9 @@ def slowing(track, t0, window=0.5):
 
 def save_point_run(track, t0, speed, b):
     """
-    Write one drive's truth as an atob-score CSV: POINT_LOG/<speed>-<n>.csv.
+    Write one drive's truth as a CSV for measure atob: POINT_LOG/<speed>-<n>.csv.
 
-    `pixi run atob-score /tmp/aav-sim-points/*.csv --speed <speed>` scores them (stop error,
+    `pixi run measure atob /tmp/aav-sim-points/*.csv --speed <speed>` scores them (stop error,
     overshoot, hold, jerk). The folder is emptied at the start of each sim-check.
     """
     os.makedirs(POINT_LOG, exist_ok=True)
@@ -2117,7 +2120,7 @@ def main():
             logs.append(f'{stem}-drive-to-point-{speed:g}{ext}')
             session(['nav:=false', 'lidar:=false', 'radar:=false', f'sim_speed:={speed:g}'],
                     [lambda probe, v=speed: check_drive_to_point(probe, v)], logs[-1],
-                    f'drive to point {speed:g} m/s', ignore=('/map',), world='empty')
+                    f'drive to point {speed:g} m/s', ignore=NAV_TOPICS, world='empty')
     if '--spine-points' in args or '--spine-points-only' in args:
         # The same drives with the spine in the loop (spine:=true): spine-core's own speed
         # loop stops the car. Only the drives: an e-stop would latch the spine.
@@ -2127,7 +2130,7 @@ def main():
             session(['spine:=true', 'nav:=false', 'lidar:=false', 'radar:=false',
                      f'sim_speed:={speed:g}'],
                     [lambda probe, v=speed: check_drive_to_point(probe, v, stops=False)],
-                    logs[-1], f'drive to point, spine, {speed:g} m/s', ignore=('/map',),
+                    logs[-1], f'drive to point, spine, {speed:g} m/s', ignore=NAV_TOPICS,
                     spine=True, world='empty')
     if '--speed-steps' in args or '--speed-steps-only' in args:
         # Its own run: the empty world, nothing else driving (no Nav2), ego's cap at 2 m/s.
@@ -2135,7 +2138,7 @@ def main():
         logs.append(f'{stem}-speed{ext}')
         session(['nav:=false', 'lidar:=false', 'radar:=false', 'sim_speed:=2'],
                 [lambda probe: check_speed_steps(probe, profile)], logs[-1],
-                f'speed steps, {profile}', ignore=('/map',), world='empty')
+                f'speed steps, {profile}', ignore=NAV_TOPICS, world='empty')
     if '--spine-steps' in args:
         # The same steps with the spine in the loop (spine:=true): spine_sim runs
         # spine-core's own speed loop (Rust), not the actuator model's Python port.
@@ -2143,14 +2146,14 @@ def main():
         logs.append(f'{stem}-spine-speed{ext}')
         session(['spine:=true', 'nav:=false', 'lidar:=false', 'radar:=false', 'sim_speed:=2'],
                 [lambda probe: check_speed_steps(probe, profile)], logs[-1],
-                f'speed steps, spine, {profile}', ignore=('/map',), spine=True, world='empty')
+                f'speed steps, spine, {profile}', ignore=NAV_TOPICS, spine=True, world='empty')
     if '--lane' in args:
         # Its own run: control_interface drives whenever it sees the lane, so it would take
         # the wheel between the other checks. Nothing else drives here: no Nav2.
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-lane{ext}')
         session(['lane:=true', 'nav:=false', 'lidar:=false', f'start_y:={ROAD_Y + LANE_START}'],
-                [check_lane_keeping], logs[-1], 'lane', ignore=('/map',))
+                [check_lane_keeping], logs[-1], 'lane', ignore=NAV_TOPICS)
 
     if spine:
         # Its own run: the spine in the loop (spine:=true). No lidar: a lighter run.

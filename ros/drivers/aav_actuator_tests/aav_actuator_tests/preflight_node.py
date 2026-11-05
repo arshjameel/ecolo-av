@@ -1,13 +1,15 @@
 """
 The preflight's part of actuator_test: a counter on every sensor, its refusals, its report.
 
-    pixi run preflight --sim                 Gazebo (this computer only)
-    pixi run preflight --bench               bench mode (this computer only)
-    pixi run preflight --no-drive            the real car, the sensors only: nothing moves
-    pixi run preflight [--skip gps lidar]    the real car on stands (refused until it has a
-                                             driven-wheel speed: vehicle.yaml speed_wheels)
+    pixi run actuator-test preflight --stands --sim       Gazebo (this computer only)
+    pixi run actuator-test preflight --stands --bench     bench mode (this computer only)
+    pixi run actuator-test preflight --stands --no-drive  the real car, the sensors only:
+                                                          nothing moves
+    pixi run actuator-test preflight --stands [--skip gps lidar]
+        the real car on stands (refused until it has a driven-wheel speed:
+        vehicle.yaml speed_wheels)
 
-`pixi run preflight` is `actuator-test preflight --stands`: actuator_test's Run drives
+`pixi run actuator-test preflight --stands`: actuator_test's Run drives
 it (the same checks before, the same stops, the word "preflight" typed on the real car).
 This module adds what only the preflight needs:
 
@@ -125,7 +127,7 @@ class PreflightNode(ActuatorTest):
         self.lock = bool(msg.data)
 
     def estop(self):
-        """Set the e-stop (never clear it: only a person does, pixi run estop-clear)."""
+        """Set the e-stop (never clear it: only a person does, pixi run clear estop)."""
         self.estop_pub.publish(Bool(data=True))
 
 
@@ -213,7 +215,7 @@ class PreflightRun(Run):
                 node.send(0.0, 0.0, wheelbase)
                 rclpy.spin_once(node, timeout_sec=0.05)
             self.say('The e-stop stays set: clear it by hand once the car is safe '
-                     '(pixi run estop-clear)')
+                     '(pixi run clear estop)')
         for _ in range(5):
             node.send(0.0, 0.0, wheelbase)
             time.sleep(0.02)
@@ -262,7 +264,7 @@ class PreflightRun(Run):
                      'lines check the opposite (the IMU and the GPS agree with the wheels)')
         elif not self.args.no_drive:
             text += ('\nNOTE: if the wheel speed saw the spinning wheels, the sensor watchdog '
-                     'has latched DISAGREE against the still GPS: pixi run watchdog-clear')
+                     'has latched DISAGREE against the still GPS: pixi run clear watchdog')
         self.say()
         self.say(text)
         write_files(self, text, '')

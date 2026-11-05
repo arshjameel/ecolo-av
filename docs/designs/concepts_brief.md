@@ -105,7 +105,7 @@ instead:
 
 ### 5. The scoring tool scores the wrong task (all six)
 
-- `controller-compare` sends Nav2 goals on lot tours with turns, and knows only `mppi` and
+- `measure controllers` sends Nav2 goals on lot tours with turns, and knows only `mppi` and
   `rpp`. It can't run `aav_goto` or a driver of ours.
 - Gazebo's car runs `vehicle.yaml`'s guessed numbers. A model-based controller scored
   there is checked against its own assumptions.

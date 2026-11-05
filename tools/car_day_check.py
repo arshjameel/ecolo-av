@@ -184,7 +184,7 @@ def kit_line(kit_txt, head, lock_hash, kit_models):
     if not lock or lock.group(1) != lock_hash:
         problems.append('pixi.lock changed since: its environment is old too')
     if 'rf-detr-nano.pth' not in kit_models:
-        problems.append('no RF-DETR model in it (pixi run get-models first)')
+        problems.append('no RF-DETR model in it (pixi run get models first)')
     if problems:
         return Line('MISSING', 'car kit', f'made {when}; ' + '; '.join(problems),
                     'pixi run car-kit')
@@ -236,7 +236,7 @@ def check_models(root):
             lines.append(Line('OK', 'model', f'{name} ({mb:.0f} MB): {purpose}'))
         else:
             lines.append(Line('MISSING', 'model', f'no {name}: {purpose}',
-                              'pixi run get-models'))
+                              'pixi run get models'))
     onnx = root / 'models' / 'rf-detr-nano.onnx'
     if onnx.is_file():
         lines.append(Line('OK', 'model', f'models/rf-detr-nano.onnx '
@@ -253,7 +253,7 @@ def check_mediamtx(root):
     exe = root / 'vendor' / 'mediamtx' / 'mediamtx'
     if exe.is_file() and os.access(exe, os.X_OK):
         return Line('OK', 'MediaMTX', 'vendor/mediamtx (to test a stream on the laptop)')
-    return Line('MISSING', 'MediaMTX', 'no vendor/mediamtx', 'pixi run get-mediamtx')
+    return Line('MISSING', 'MediaMTX', 'no vendor/mediamtx', 'pixi run get mediamtx')
 
 
 # The car has no internet: the pixi environments the laptop uses there go on at home.
@@ -303,7 +303,7 @@ def firmware_lines(build, files, spine_tree, legacy_tree):
     fix = 'pixi run car-day-build'
     if not build:
         return [Line('MISSING', 'ESP32 Rust', 'nothing built for car day', fix),
-                Line('MISSING', 'ESP32 QEMU', 'esp-qemu-check not run for car day', fix),
+                Line('MISSING', 'ESP32 QEMU', 'esp qemu-check not run for car day', fix),
                 Line('MISSING', 'ESP32 C++', 'the way back not built', fix)]
     when = build.get('made', '?')
     lines = []
@@ -317,15 +317,15 @@ def firmware_lines(build, files, spine_tree, legacy_tree):
     else:
         lines.append(Line('OK', 'ESP32 Rust',
                           f'v2, v1 and v2-uplink built {when}, in {ESP32_DIR}/'))
-    qemu = build.get('esp-qemu-check', '')
+    qemu = build.get('esp qemu-check', '')
     if qemu.startswith('PASS') and spine_now:
-        lines.append(Line('OK', 'ESP32 QEMU', f'esp-qemu-check passed {when}: brakes '
+        lines.append(Line('OK', 'ESP32 QEMU', f'esp qemu-check passed {when}: brakes '
                           'when the heartbeat stops'))
     elif qemu.startswith('skipped'):
         lines.append(Line('MISSING', 'ESP32 QEMU', 'skipped: no QEMU here',
-                          'pixi run esp-qemu-tools, then ' + fix))
+                          'pixi run esp qemu-tools, then ' + fix))
     else:
-        lines.append(Line('MISSING', 'ESP32 QEMU', f'esp-qemu-check: {qemu or "not run"}'
+        lines.append(Line('MISSING', 'ESP32 QEMU', f'esp qemu-check: {qemu or "not run"}'
                           + ('' if spine_now else ' (or the firmware changed since)'), fix))
     legacy_now = (build.get(LEGACY) == legacy_tree and not legacy_tree.endswith('dirty'))
     if build.get('legacy-esp32', '').startswith('PASS') and legacy_now:
@@ -355,7 +355,7 @@ def check_esp_tools(root, toolchains):
         return Line('OK', 'ESP32 tools', 'Xtensa Rust, espflash (vendor/esp, '
                     'vendor/cargo-tools)')
     return Line('MISSING', 'ESP32 tools', 'no Xtensa Rust or espflash: needed to flash '
-                'and to read the backup', 'pixi run esp-tools (needs rustup; 1.5 GB)')
+                'and to read the backup', 'pixi run esp tools (needs rustup; 1.5 GB)')
 
 
 def secrets_line(secrets, example):
@@ -387,7 +387,7 @@ def check_layouts(root):
         for path in sorted((root / LAYOUT_DIR).glob('*.json')):
             topics = layout_check.shown_topics(json.loads(path.read_text()))
             counts.append(f'{path.stem} ({len(topics)} topics)')
-        if len(counts) < 3:
+        if len(counts) < 4:
             raise ValueError(f'{len(counts)} layouts')
         lines.append(Line('OK', 'layouts', ', '.join(counts) + '; checked live at the '
                           'car (session 8)'))

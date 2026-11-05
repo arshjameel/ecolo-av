@@ -36,7 +36,7 @@
 //! | the hardware watchdog | TIMG1's: fed after every tick; a hang or a panic resets the chip within 100 ms |
 //! | the log | UART0, the USB cable: a status line every 200 ms, as the C++ printed, an event line at each change, and (`legacy-uart`) a link line with the frame counts |
 //!
-//! With `--features qemu`, it runs in Espressif's QEMU instead (`tools/esp32.sh qemu`;
+//! With `--features qemu`, it runs in Espressif's QEMU instead (`tools/esp32.sh qemu-check`;
 //! `docs/esp32-bench.md`, "Before the board: the emulator"). Two things differ, both only
 //! in that build: stand-in devices on the I2C bus (`spine_board::StandInBus`: QEMU has
 //! none of ours), and a busy-wait for the 10 ms tick instead of Embassy's timer (QEMU's

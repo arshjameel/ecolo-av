@@ -1,0 +1,32 @@
+# Our ROS 2 stack for this computer's part of the car, from boot. A systemd *user* unit:
+# it runs as the car's normal user, with no sudo. docs/car-setup.md.
+#
+# Installed to ~/.config/systemd/user/ by tools/car_setup.sh <role> services.
+# From boot, with nobody logged in: sudo loginctl enable-linger <user> (car_setup.sh does it).
+# Which machine file, which arguments: ~/.config/aav/car.env
+# Its log:    journalctl --user -u aav-car -f
+# Stop it:    systemctl --user stop aav-car        (until the next boot)
+# Not at boot: systemctl --user disable aav-car
+
+[Unit]
+Description=AAV: our ROS 2 stack for this computer (car.launch.py, machine from car.env)
+Documentation=https://github.com/AAV-2025-2026/ecolo-av/blob/main/docs/car-setup.md
+# Keep trying: the network may come up after the user's manager does.
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+EnvironmentFile=%h/.config/aav/car.env
+# aav.sh: our Jazzy in ~/aav-jazzy, ROS domain 42, Cyclone on ~/.config/aav/cyclonedds.xml.
+# ${AAV_MACHINE} is one word; $AAV_CAR_ARGS splits into launch arguments (max_speed:=0.3 ...).
+ExecStart=%h/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=${AAV_MACHINE} $AAV_CAR_ARGS
+# Ctrl-C, as a person would: the legacy bridge sends its last stop frame (test 3.7).
+KillSignal=SIGINT
+TimeoutStopSec=15
+# A crash starts it again 5 s later; a clean stop (systemctl stop) doesn't.
+Restart=on-failure
+RestartSec=5
+SyslogIdentifier=aav-car
+
+[Install]
+WantedBy=default.target

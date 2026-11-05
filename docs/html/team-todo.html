@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -102,11 +106,13 @@
 what the audit found: tick the "Audit says" column, fix each task's size, and put a name
 in each "Who" (Q33). Each task is sized for one or two people.</p>
 <blockquote>
-<p><strong>The short version</strong>
-- <strong>Five tracks</strong> that people can work on side by side: A the car's computers, B the drive path, C the sensors, D our software on the car, E power and wiring.
-- <strong>Nothing is reflashed or replaced before its backup is checked.</strong> A1 comes first, and A2 (upgrading the Jetson) waits for it.
-- <strong>Safety first in track B:</strong> the ESP32's missing command timeout (B2) is fixed before the car drives on the ground.
-- Each task says what it <strong>needs</strong> first, and when it's <strong>done</strong>. Pick one with nothing left in "Needs".</p>
+<p><strong>The short version</strong></p>
+<ul>
+<li><strong>Five tracks</strong> that people can work on side by side: A the car's computers, B the drive path, C the sensors, D our software on the car, E power and wiring.</li>
+<li><strong>Nothing is reflashed or replaced before its backup is checked.</strong> A1 comes first, and A2 (upgrading the Jetson) waits for it.</li>
+<li><strong>Safety first in track B:</strong> the ESP32's missing command timeout (B2) is fixed before the car drives on the ground.</li>
+<li>Each task says what it <strong>needs</strong> first, and when it's <strong>done</strong>. Pick one with nothing left in "Needs".</li>
+</ul>
 </blockquote></div>
 <section class="card"><h2 id="the-order-in-one-picture">The order, in one picture</h2>
 <pre class="highlight"><code class="language-text"> Friday's audit
@@ -216,7 +222,7 @@ in each "Who" (Q33). Each task is sized for one or two people.</p>
 <td><strong>The network</strong>: fixed IPs for every machine; one ROS domain (42); multicast working (or static peers); a written network map</td>
 <td>S</td>
 <td>audit W1-W5</td>
-<td><code>pixi run doctor</code> OK on a laptop; <code>pixi run net-map</code> matches the network map, written in the audit page</td>
+<td><code>pixi run doctor</code> OK on a laptop; <code>pixi run bash tools/net_map.sh</code> matches the network map, written in the audit page</td>
 <td></td>
 <td></td>
 </tr>

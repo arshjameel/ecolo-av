@@ -7,7 +7,7 @@
 <!-- Generated from docs/switches.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Switches: what you can swap in the simulated car</h1>
-<div class="meta">5 min read · 5 sections</div></header>
+<div class="meta">8 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -94,15 +98,15 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#who-draws-the-route">Who draws the route</a><a href="#who-steers-along-the-path">Who steers along the path</a><a href="#where-am-i">Where am I</a><a href="#speed">Speed</a><a href="#the-world-and-the-rest">The world and the rest</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#who-draws-the-route">Who draws the route</a><a href="#who-steers-along-the-path">Who steers along the path</a><a href="#where-am-i">Where am I</a><a href="#speed">Speed</a><a href="#the-world-and-the-rest">The world and the rest</a><a href="#the-defaults-what-runs-if-you-say-nothing">The defaults: what runs if you say nothing</a></nav>
 <div class="lead"><p>Every part we're trying out is a <strong>switch</strong> you give when you start. You don't need to
 remember them: <strong><code>pixi run pick</code></strong> asks, in plain words, and runs it.</p>
 <pre class="highlight"><code>pixi run pick          # a menu: what to start, the route, who steers, obstacles, where-am-I, speed loop
 pixi run pick last     # the same again tomorrow
 pixi run pick list     # every switch, then stop</code></pre>
 <p>It prints the whole command too, for example:</p>
-<pre class="highlight"><code>pixi run debugdemo tracker:=mpc reversing:=false ndt:=true ndt_map:=maps/ndt/test_lot.pcd amcl:=false speed_loop:=lqi</code></pre>
-<p><code>sim</code>, <code>demo</code> and <code>debugdemo</code> all take switches as <code>name:=value</code>. If a switch is given
+<pre class="highlight"><code>pixi run demo --debug tracker:=mpc reversing:=false ndt:=true ndt_map:=maps/ndt/test_lot.pcd amcl:=false speed_loop:=lqi</code></pre>
+<p><code>sim</code>, <code>demo</code> and <code>demo --debug</code> all take switches as <code>name:=value</code>. If a switch is given
 twice, the last one wins.</p></div>
 <section class="card"><h2 id="who-draws-the-route">Who draws the route</h2>
 <div class="table-wrap"><table>
@@ -120,7 +124,7 @@ twice, the last one wins.</p></div>
 <td>30 Oct, reversing: every leg, <strong>184 s</strong> a tour. Forward only (29 Oct): 2 of 4, lost the U-turn</td>
 </tr>
 <tr>
-<td><code>planner:=hybrid</code> (the car's default)</td>
+<td><code>planner:=hybrid</code> (forward only)</td>
 <td>Hybrid-A*: only routes a car can drive</td>
 <td>30 Oct, reversing: every leg, 213 s a tour</td>
 </tr>
@@ -137,17 +141,23 @@ twice, the last one wins.</p></div>
 <tr>
 <td><code>planner:=navfn</code></td>
 <td>NavFn, the classic: ignores the turning circle</td>
-<td>not tried</td>
+<td>3 Nov, one leg: finished (its tightest turn 128 m)</td>
 </tr>
 <tr>
 <td><code>planner:=theta_star</code></td>
 <td>Theta*: straight lines: ignores the turning circle</td>
-<td>not tried</td>
+<td>3 Nov, one leg: finished</td>
+</tr>
+<tr>
+<td><code>planner:=diffusion</code> (a trial)</td>
+<td><strong>a model draws the route</strong>, a guard checks it, the lattice's route if it fails. Needs <code>pixi install --locked -e learn</code> and <code>pixi run diffusion train</code></td>
+<td>3 Nov, reversing, 3 runs: every leg, 177-270 s (the lattice 183-184); <strong>73 %</strong> of routes from the model (<a href="trials.html#3-nov-everything-for-02">trials</a>)</td>
 </tr>
 </tbody>
 </table></div>
-<p>The lattice is the default since 1 Nov (Ben). The real car takes only <code>hybrid</code> or
-<code>lattice</code>, and keeps <code>hybrid</code>: forward only (until H5), the lattice lost the U-turn. More: <a href="controllers.html">Controllers, Planners</a>, <a href="trials.html#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">the runs</a>.</p>
+<p>The lattice is the default since 1 Nov (Ben), on the car too, now that it may reverse.
+Forward only (<code>reversing:=false</code>, or no lidar), the car takes <code>hybrid</code>: the lattice lost
+the U-turn. The real car takes only <code>hybrid</code> or <code>lattice</code> (it refuses <code>diffusion</code> too). More: <a href="controllers.html">Controllers, Planners</a>, <a href="trials.html#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">the runs</a>.</p>
 </section>
 <section class="card"><h2 id="who-steers-along-the-path">Who steers along the path</h2>
 <div class="table-wrap"><table>
@@ -197,14 +207,14 @@ twice, the last one wins.</p></div>
 </tbody>
 </table></div>
 <p>Our trackers drive forward only: give them <code>reversing:=false</code> (the menu does).
-In <code>debugdemo</code>, keys 1-4 swap the tracker live. More: <a href="controllers.html">Controllers</a>,
+In <code>demo --debug</code>, keys 1-4 swap the tracker live. More: <a href="controllers.html">Controllers</a>,
 <a href="trials.html">Trials</a>.</p>
 </section>
 <section class="card"><h2 id="where-am-i">Where am I</h2>
 <p>These run <strong>beside</strong> the EKFs and are only scored for now. They never steer, except
 <code>ndt_ekf:=true</code>: then the global EKF, which Nav2 plans by, takes NDT's pose too; and
 <code>kiss_ekf:=true</code>: then the local EKF, which Nav2 steers by, takes KISS-ICP's speed too.
-In <code>pixi run pick</code>, <code>debugdemo</code> offers NDT + AMCL first (to see every finder); the
+In <code>pixi run pick</code>, <code>demo --debug</code> offers NDT + AMCL first (to see every finder); the
 others offer the EKFs only first.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -309,9 +319,101 @@ KISS-ICP needs its own environment once: <code>pixi install --locked -e kiss</co
 </tr>
 </tbody>
 </table></div>
-<p><strong>Tried, 29 Oct 23:05:</strong> the menu's pick (debugdemo, <code>mpc</code>, NDT, LQI) in Gazebo on Ben's
+<p><strong>Tried, 29 Oct 23:05:</strong> the menu's pick (demo --debug, <code>mpc</code>, NDT, LQI) in Gazebo on Ben's
 Mac: the track node ran MPC, NDT tracked (2 ms a match), AMCL stayed off, the speed loop
 said LQI, and a Nav2 goal 15 m ahead ended SUCCEEDED.</p>
+</section>
+<section class="card"><h2 id="the-defaults-what-runs-if-you-say-nothing">The defaults: what runs if you say nothing</h2>
+<p>Checked 3 Nov (<a href="trials.html#3-nov-everything-for-02">the runs</a>): every switch below starts
+and drives a leg in Gazebo. Nothing was switched on release day.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>System</th>
+<th>Sim (Gazebo)</th>
+<th>Bench</th>
+<th>Car</th>
+<th>Why this default</th>
+<th>On trial beside it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Who draws the route</td>
+<td><code>lattice</code></td>
+<td><code>lattice</code></td>
+<td><code>lattice</code> (<code>hybrid</code> if it can't reverse)</td>
+<td>every leg reversing, the fastest: 183 s a tour (3 Nov, 3 runs)</td>
+<td><code>hybrid</code>, <code>lattice32</code>, <code>smac2d</code>, <code>navfn</code>, <code>theta_star</code>, <code>diffusion</code> (73 % from the model, still a trial)</td>
+</tr>
+<tr>
+<td>Who steers</td>
+<td>MPPI</td>
+<td>MPPI</td>
+<td>MPPI</td>
+<td>it reads the costmap, so it steers round what the lidar sees; it reverses</td>
+<td>RPP; our pure pursuit, Stanley, LQR, MPC, <code>mpc_full</code> (forward only)</td>
+</tr>
+<tr>
+<td>May it reverse?</td>
+<td>yes</td>
+<td>yes</td>
+<td>yes, unless nothing watches behind</td>
+<td>the U-turn needs it</td>
+<td><code>reversing:=false</code></td>
+</tr>
+<tr>
+<td>What Nav2 sees</td>
+<td>the flat lidar scan</td>
+<td>the radar only (no lidar)</td>
+<td>the flat scan</td>
+<td>stops 0.16 m before the post, every time</td>
+<td><code>voxels:=true</code>: 16 s slower a tour, and 1 of 3 post runs drove through it</td>
+</tr>
+<tr>
+<td>Where am I (map)</td>
+<td>the global EKF: wheels, IMU, GPS</td>
+<td>the same</td>
+<td>the same</td>
+<td>needs nothing but the sensors</td>
+<td><code>ndt_ekf:=true</code>: <strong>17 → 1.8 cm</strong>, every leg, but needs a saved map; <code>amcl:=true</code>, <code>ndt:=true</code> (scored only)</td>
+</tr>
+<tr>
+<td>How far it moved</td>
+<td><code>ekf_local</code>: wheels, IMU</td>
+<td>the same</td>
+<td>the same</td>
+<td></td>
+<td><code>kiss_icp:=true</code> (scored), <code>kiss_ekf:=true</code> (no clear win)</td>
+</tr>
+<tr>
+<td>Speed loop</td>
+<td><code>default</code> (PI)</td>
+<td><code>default</code></td>
+<td><code>default</code> (no switch on the car)</td>
+<td>today's PI loop; <code>sim-check</code> 9 of 9 with each of the three</td>
+<td><code>lqi</code>, <code>smooth</code> (sim and bench)</td>
+</tr>
+<tr>
+<td>Geofence, sensor watchdog</td>
+<td>on</td>
+<td>on</td>
+<td>on</td>
+<td>they hold Nav2 when the pose or a sensor goes bad</td>
+<td><code>geofence:=false</code> (sim only)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Why the winners stay off:</strong></p>
+<ul>
+<li><strong>NDT into the EKF</strong> wins clearly in the lot, but needs <code>maps/ndt/test_lot.pcd</code>, which
+  isn't in git: a new laptop and the road world have none. A default that changes with the
+  files on each computer would surprise people. Pick it: <code>pixi run pick</code>, <code>ndt_ekf</code>.</li>
+<li><strong>On the car</strong>, NDT needs a recorded map of the real lot first; until then, today's
+  defaults.</li>
+<li><strong>Voxels</strong> isn't better on the tour, and the post run that drove through must be
+  understood first.</li>
+</ul>
 <p>Every switch with its own words: <code>ros2 launch aav_bringup sim.launch.py --show-args</code>.</p></section>
 <nav class="prevnext"><a class="prev" href="path-followers.html"><small>Previous</small>← Path followers</a>
 <a class="next" href="trials.html"><small>Next</small>Trials →</a></nav>

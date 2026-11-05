@@ -4,7 +4,7 @@ Gazebo Harmonic as the car: world, the car from the URDF, the bridge and the ada
   ros2 launch aav_gazebo gazebo.launch.py [world:=empty|test_lot|road] [gui:=true]
       [follow:=true] [obstacle:=false] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true]
       [radar:=true] [actuator_model:=true] [faults:=false] [spine:=false] [arm:=true]
-      [esp32:=false] [esp32_loop:=pi]
+      [esp32:=false] [esp32_loop:=pi] [chase_camera:=true]
       [bridge:=rust|python]
 
   /control/gazebo/actuator_cmd ──> gazebo_adapter ──> /gazebo/cmd_vel ──bridge──> Ackermann system
@@ -53,6 +53,13 @@ the TI radar (aav_gazebo worlds.has_sensors). A second bridge, gz_road_bridge, c
   lidar ──road bridge──> /gazebo/radar/points ──> gazebo_adapter ──> /sensors/radar/points
                                                   (radar_link, as the TI driver's)
   roof lidar ──lidar bridge──> /sensors/lidar/points (lidar_link), with lidar:=true
+
+chase_camera:=true, the default, adds a camera behind and above the car where the world
+renders sensors, for Lichtblick's cockpit layout (tools/foxglove/cockpit.json): Gazebo's
+picture without Gazebo's window. A third bridge and image_transport's republish:
+
+  chase camera ──chase bridge──> /vehicle/gazebo/chase_camera/image_raw (640 x 360, 10 Hz)
+               ──chase_jpeg────> /vehicle/gazebo/chase_camera/compressed (JPEG)
 
 lidar:=true, the default, adds a simulated 16-beam roof lidar in a world that renders
 sensors; elsewhere it is ignored. lidar:=false drops it, if a busy Mac struggles with its
@@ -168,12 +175,29 @@ def esp32_in_the_loop(context, car, sim_time):
     ]
 
 
+def chase_camera(share, sim_time):
+    """Return the chase camera's bridge, and its JPEG for Lichtblick (republish)."""
+    raw = '/vehicle/gazebo/chase_camera/image_raw'
+    jpeg = '/vehicle/gazebo/chase_camera'
+    return [
+        Node(package='ros_gz_bridge', executable='parameter_bridge', name='gz_chase_bridge',
+             parameters=[{'config_file': os.path.join(share, 'config', 'bridge_chase.yaml')},
+                         sim_time]),
+        Node(package='image_transport', executable='republish', name='chase_jpeg',
+             parameters=[sim_time, {'in_transport': 'raw', 'out_transport': 'compressed'}],
+             # Its compressed publisher's name isn't remapped with "out" (as
+             # foxglove.launch.py's preview): name both.
+             remappings=[('in', raw), ('out', jpeg), ('out/compressed', f'{jpeg}/compressed')]),
+    ]
+
+
 def launch_setup(context):
     share = FindPackageShare('aav_gazebo').perform(context)
     world = worlds.world_file(share, LaunchConfiguration('world').perform(context))
     sensors = worlds.has_sensors(world)
     # The lidar only where the world renders it: elsewhere it would publish nothing.
     lidar = sensors and flag(context, 'lidar')
+    chase = sensors and flag(context, 'chase_camera')
     radar = sensors and flag(context, 'radar')
     relay = sensors and flag(context, 'faults')
     spine = flag(context, 'spine')
@@ -207,7 +231,8 @@ def launch_setup(context):
                          'description.launch.py'),
             launch_arguments={'sim': 'true', 'use_sim_time': 'true',
                               'joint_state_publisher': 'false',
-                              'lidar': str(lidar).lower()}.items()),
+                              'lidar': str(lidar).lower(),
+                              'chase_camera': str(chase).lower()}.items()),
         Node(package='ros_gz_sim', executable='create', name='spawn_aav', output='screen',
              arguments=['-topic', 'robot_description', '-name', 'aav', '-z', '0.05', *start]),
         Node(package='ros_gz_bridge', executable='parameter_bridge', name='gz_bridge',
@@ -263,6 +288,8 @@ def launch_setup(context):
             package='ros_gz_bridge', executable='parameter_bridge', name='gz_lidar_bridge',
             parameters=[{'config_file': os.path.join(share, 'config', 'bridge_lidar.yaml')},
                         sim_time]))
+    if chase:
+        actions += chase_camera(share, sim_time)
     if flag(context, 'obstacle'):
         x, y = worlds.OBSTACLE
         actions.append(Node(
@@ -289,6 +316,11 @@ def generate_launch_description():
         DeclareLaunchArgument('lidar', default_value='true',
                               description='a simulated 16-beam roof lidar, on '
                                           '/sensors/lidar/points (world:=road)'),
+        DeclareLaunchArgument('chase_camera', default_value='true',
+                              description='a camera behind and above the car, for '
+                                          "Lichtblick's cockpit layout, as "
+                                          '/vehicle/gazebo/chase_camera/compressed '
+                                          '(worlds that render sensors)'),
         DeclareLaunchArgument('radar', default_value='true',
                               description='pass the radar stand-in on, as '
                                           '/sensors/radar/points (world:=road)'),

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Download one pinned MediaMTX into vendor/mediamtx/, for the camera stream's test on a
-# laptop (pixi run stream-check, docs/camera-pipeline.md). Like the rest of vendor/, it's
+# laptop (pixi run measure stream, docs/camera-pipeline.md). Like the rest of vendor/, it's
 # other people's code, and not in git.
 #
-# usage: tools/get_mediamtx.sh      (or: pixi run get-mediamtx)
+# usage: tools/get_mediamtx.sh      (or: pixi run get mediamtx)
 #
 # MediaMTX (github.com/bluenviron/mediamtx, MIT) is the RTSP server the camera Pi runs.
 # conda-forge has it only for Intel Macs and Linux x64, not Apple-silicon Macs or ARM

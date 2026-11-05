@@ -1,4 +1,4 @@
-"""stalls: late messages and topics quiet together, as `pixi run timing-test` counts them."""
+"""stalls: late messages and topics quiet together, as `pixi run measure timing` counts them."""
 
 import math
 from pathlib import Path

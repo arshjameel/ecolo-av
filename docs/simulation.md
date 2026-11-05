@@ -59,7 +59,7 @@ pixi run sim world:=road         # the bench's road, for the car's camera and ra
 | `faults` | `false` | `true`: the front left picture goes through `gazebo_camera` too, so it can freeze on purpose |
 | `actuator_model` | `true` | the car answers like `vehicle.yaml`'s `actuators:` say ([below](#the-actuator-model)); `false`: the old instant car, to compare |
 
-**Debugging Gazebo itself:** its source is in `vendor/gazebo/` (`pixi run vendor`), at the
+**Debugging Gazebo itself:** its source is in `vendor/gazebo/` (`pixi run get vendor`), at the
 releases we run. `vendor/README.md` says which library does each job: the steering, the
 sensors, the physics, the ROS bridge.
 
@@ -79,6 +79,7 @@ real-time factor at 0.98-0.99.
 | Rear camera, looking back | `/aav/camera_rear/image` | `/sensors/camera/rear/image_raw`, `.../camera_info` | 10 Hz | none | road |
 | Radar | `/aav/radar/points` (a lidar shaped like the radar) | `/sensors/radar/points` | 10 Hz | 5 cm | road |
 | Lidar (roof) | `/aav/lidar/points` | `/sensors/lidar/points` | 10 Hz | 3 cm | road and test_lot; on by default, `lidar:=false` drops it |
+| Chase camera (Gazebo's view, not a sensor) | `/aav/chase_camera/image` | `/vehicle/gazebo/chase_camera/image_raw`, and its JPEG `.../compressed`, for Lichtblick's [cockpit](foxglove.md#cockpit) | 10 Hz | none | road and test_lot; on by default, `chase_camera:=false` drops it |
 | Where the car really is | `/model/aav/truth` | `/vehicle/gazebo/truth`, for checks only | 50 Hz | none | road |
 | Steering, throttle, brake | (the actuator model) | `/vehicle/steering`, `/vehicle/throttle`, `/vehicle/brake`: command and measured | 50 Hz | none | all |
 | Each wheel's speed | `/world/aav/model/aav/joint_state` | `/vehicle/wheels` (m/s, all four) | 50 Hz | none | all |
@@ -260,7 +261,7 @@ Gazebo, RViz, Nav2 and the HUD window together. Give goals with RViz's 2D Goal P
 | `foxglove:=true` | the Foxglove bridge on 127.0.0.1:8765: open Lichtblick, then `ws://localhost:8765` and a layout from `tools/foxglove/` ([Watch from a laptop](foxglove.md)) |
 | Tried, 15 Oct | the parking lot, sim speed 3, the HUD on: a 36 m Nav2 goal reached |
 
-If you reopen Gazebo's window (`pixi run gz-window`), its camera follows the car again.
+If you reopen Gazebo's window (`pixi run tools/ros.sh tools/gz_window.sh`), its camera follows the car again.
 
 ## The road world: the car's whole graph
 

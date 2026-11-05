@@ -41,7 +41,7 @@ circles are the steps, in order. The blue dots are the sensors.
 
 The steps, with today's guesses (the script writes this table: don't edit it by hand).
 
-<!-- measure-map:start (pixi run measure-map writes this table) -->
+<!-- measure-map:start (pixi run python3 tools/measure_map.py writes this table) -->
 
 | Step | From | To | Tape: direction and today's guess | Hint | Sheet | Gives (vehicle.yaml) | Today |
 |---|---|---|---|---|---|---|---|
@@ -81,10 +81,10 @@ The yaml wants every spot **from the zero point**. The script adds the steps up 
 
 | # | Do |
 |---|---|
-| 1 | `pixi run measure-map --blank > readings.yaml`: a file with one line per step |
+| 1 | `pixi run python3 tools/measure_map.py --blank > readings.yaml`: a file with one line per step |
 | 2 | Type the readings in, in any unit (`units: ft` makes plain numbers feet) |
-| 3 | `pixi run measure-map --readings readings.yaml`: it prints the yaml's numbers, in metres |
-| 4 | Copy them into `vehicle.yaml`, delete each `TODO`, then `pixi run measure-map` to redraw the map |
+| 3 | `pixi run python3 tools/measure_map.py --readings readings.yaml`: it prints the yaml's numbers, in metres |
+| 4 | Copy them into `vehicle.yaml`, delete each `TODO`, then `pixi run python3 tools/measure_map.py` to redraw the map |
 
 Example: step 1 reads `1 ft 3 in` left (0.381 m), so `track` = 2 × 0.381 = **0.762 m**.
 Step 14 reads forward `2 ft 11 in`, up `1 ft` from the roof mark at 1.50 m, so the lidar

@@ -168,8 +168,8 @@ spine, in `firmware/spine/`. Both build and pass their tests; neither has been f
 
 | Board | Does | Logic (tested on a laptop) | Build |
 |---|---|---|---|
-| `boards/wheel-encoder-pico2` | counts wheel spokes; every 100 ms sends the count to the Motor Pi, UDP port 10111, through a W5500 | `wheel-encoder` (12 tests) | `pixi run wheel-uf2` |
-| `boards/sentinel-pico2` | a status display: an I2C device at 0x42, a 16x2 LCD, an 8x8 matrix, 10 LEDs, a knob, a buzzer | `sentinel` (40), `hd44780` (5) | `pixi run sentinel-uf2` |
+| `boards/wheel-encoder-pico2` | counts wheel spokes; every 100 ms sends the count to the Motor Pi, UDP port 10111, through a W5500 | `wheel-encoder` (12 tests) | `pixi run pico wheel build` |
+| `boards/sentinel-pico2` | a status display: an I2C device at 0x42, a 16x2 LCD, an 8x8 matrix, 10 LEDs, a knob, a buzzer | `sentinel` (40), `hd44780` (5) | `pixi run pico sentinel build` |
 
 The wheel encoder's packet is byte for byte the 2025-26 one: the Rust crate and
 `aav_legacy` check the same examples (`firmware/udp/wheel_encoder_vectors.txt`). Pins,

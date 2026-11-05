@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -324,13 +328,13 @@ machine file names the one to use.</p>
 <tr>
 <td><code>rf-detr-nano.pth</code></td>
 <td>anything, with PyTorch: CUDA, Metal or the CPU</td>
-<td><code>pixi run get-models</code></td>
+<td><code>pixi run get models</code></td>
 <td><code>laptop.yaml</code>, <code>all.yaml</code></td>
 </tr>
 <tr>
 <td><code>rf-detr-nano.mlpackage</code></td>
 <td>Macs, with Core ML</td>
-<td><code>pixi run -e ml export-coreml</code>, on a Mac</td>
+<td><code>pixi run -e ml python3 tools/export_model.py --format coreml</code>, on a Mac</td>
 <td><code>laptop.yaml</code> (one line to uncomment)</td>
 </tr>
 <tr>
@@ -342,11 +346,11 @@ machine file names the one to use.</p>
 </tbody>
 </table></div>
 <ul>
-<li>YOLO has the same three: <code>yolo11n.pt</code>, and <code>export-coreml models/yolo11n.pt</code> or
+<li>YOLO has the same three: <code>yolo11n.pt</code>, and <code>python3 tools/export_model.py --format coreml models/yolo11n.pt</code> or
   <code>build_engine.py models/yolo11n.pt</code> for the other two.</li>
 <li>An exported RF-DETR keeps <code>rf-detr</code> in its name. That's how the detector tells it from
   a YOLO export.</li>
-<li><code>pixi run get-models</code> downloads both <code>.pth</code> and <code>.pt</code> (RF-DETR's is 366 MB: a training
+<li><code>pixi run get models</code> downloads both <code>.pth</code> and <code>.pt</code> (RF-DETR's is 366 MB: a training
   checkpoint), each checked against its pinned checksum: a model file is a Python pickle,
   so a wrong one could run code.</li>
 </ul>
@@ -444,9 +448,9 @@ on the Orin, once it's on JetPack 7.2 (Q24):</p>
 </ul>
 <h3 id="core-ml-on-a-mac">Core ML, on a Mac</h3>
 <ul>
-<li><code>pixi run -e ml export-coreml</code> makes <code>models/rf-detr-nano.mlpackage</code> from the <code>.pth</code>
+<li><code>pixi run -e ml python3 tools/export_model.py --format coreml</code> makes <code>models/rf-detr-nano.mlpackage</code> from the <code>.pth</code>
   (8 s), and downloads the <code>.pth</code> first if it's missing.</li>
-<li>YOLO's: <code>pixi run -e ml export-coreml models/yolo11n.pt</code> (2 s).</li>
+<li>YOLO's: <code>pixi run -e ml python3 tools/export_model.py --format coreml models/yolo11n.pt</code> (2 s).</li>
 <li>Then <code>pixi run detect model:=models/rf-detr-nano.mlpackage</code>. <span class="badge b-works">works</span> stop sign, 0.96.</li>
 </ul>
 <h3 id="in-another-program">In another program</h3>

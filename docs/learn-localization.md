@@ -211,7 +211,7 @@ The global EKF had only the first. **Now it has the second too**: `gps_heading`
 robot_localization can't do this alone: it turns a world-frame velocity into the car's
 frame with its own heading, so a wrong heading never shows.
 
-What we looked at (`pixi run heading-check`: Gazebo, 3.5 min forward and back at
+What we looked at (`pixi run tools/ros.sh --local python3 tools/heading_check.py`: Gazebo, 3.5 min forward and back at
 0.5-1 m/s, against the truth):
 
 | Option | Verdict |
@@ -310,7 +310,7 @@ Not Tesla's way: Tesla has no lidar. Its "occupancy network" turns camera images
 3D cubes, each marked filled or empty. That looks like NDT's squares, but it doesn't
 match a scan to a map.
 
-`pixi run ndt-demo` draws both pictures with real NDT and ICP (`tools/ndt_demo.py`,
+`pixi run python3 tools/ndt_demo.py` draws both pictures with real NDT and ICP (`tools/ndt_demo.py`,
 numpy only). Each ends within about 2 cm.
 
 From the lidar's points to cubes, the costmap and NDT, step by step:
@@ -340,7 +340,7 @@ That's the GPS soaking up the drift.
 | How they start, and topic names | `ros/localization/aav_localization/launch/localization.launch.py` |
 | The IMU filter | `ros/sources/aav_sensors/config/imu_filter.yaml` |
 | The heading from the GPS velocity | `ros/localization/aav_gps_heading` (`course.py`: the sums, no ROS) |
-| Measure the heading in Gazebo | `pixi run heading-check` (`tools/heading_check.py`) |
+| Measure the heading in Gazebo | `pixi run tools/ros.sh --local python3 tools/heading_check.py` (`tools/heading_check.py`) |
 | Sensor positions on the car | `ros/bringup/aav_description/config/vehicle.yaml` |
 | Wheel speed into `/vehicle/odom` | `aav_spine/spine_bridge.py`, `aav_legacy` `encoder_udp.py`, `aav_gazebo/gazebo_adapter.py` |
 | Why the EKFs meet in TF, not on a topic | [Topic areas](naming.md) |

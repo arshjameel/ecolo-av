@@ -10,7 +10,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..', '..', '..'))   # the repository
 PTH = os.path.join(ROOT, 'models', 'rf-detr-nano.pth')
 needs_cv2 = pytest.mark.skipif(importlib.util.find_spec('cv2') is None, reason='no OpenCV')
-# The real model: only in the ml environment, after pixi run get-models.
+# The real model: only in the ml environment, after pixi run get models.
 needs_rfdetr = pytest.mark.skipif(
     not (importlib.util.find_spec('rfdetr') and importlib.util.find_spec('cv2')
          and os.path.exists(PTH)),
@@ -67,7 +67,7 @@ def test_load_detector_says_what_is_wrong_before_loading_anything(tmp_path):
         load_detector('detr')
     with pytest.raises(ValueError, match='use detector:=yolo'):
         load_detector('rfdetr', 'models/yolo11n.engine')
-    with pytest.raises(FileNotFoundError, match='pixi run get-models'):
+    with pytest.raises(FileNotFoundError, match='pixi run get models'):
         load_detector('rfdetr', 'models/rf-detr-none.pth', root=str(tmp_path))
     (tmp_path / 'rf-detr-nano.engine').write_text('')
     with pytest.raises(ValueError, match="isn't a device name"):

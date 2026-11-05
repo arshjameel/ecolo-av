@@ -34,7 +34,7 @@ changes their launch files and executables.
 | `lane_geometry`, `object_detection`, `yolo_ros2` | `aav_lane_geometry`, `aav_object_detection`, `aav_yolo` | done, 10 October, when perception came in. `aav_object_detection` became `aav_radar_clusters` (Rust), 15 October |
 | `aav_yolo`, its node `yolo_detector` | `aav_detector`, `object_detector` | done, 24 October: it runs RF-DETR Nano by default, YOLO only with `detector:=yolo` |
 | `yahboom_imu_cpp` | `aav_imu_yahboom` | done, 11 October: Ben's Rust rewrite replaced it |
-| `aav_goto`, its node `goto_driver`, action `/goto` (`GoTo`), slot `goto` | `aav_drive_to_point`, `point_driver`, `/drive_to_point` (`DriveToPoint`), slot `point` (`/drivers/point/cmd_vel`) | done, 26 October: "goto" named a keyword, not the job. `atob-score` still reads bags with the old names |
+| `aav_goto`, its node `goto_driver`, action `/goto` (`GoTo`), slot `goto` | `aav_drive_to_point`, `point_driver`, `/drive_to_point` (`DriveToPoint`), slot `point` (`/drivers/point/cmd_vel`) | done, 26 October: "goto" named a keyword, not the job. `measure atob` still reads bags with the old names |
 | `aav_mux` | `aav_command_mux` | done, 26 October: there are three muxes; this one is twist_mux's, in `ros/command_mux` |
 | `ti_ros2_driver` | `aav_radar_ti` | done, 26 October. The executables `pcl_pub` and `mock_radar_publisher` stay |
 | `battery_monitor` | `aav_battery_victron` | done, 26 October. The executable `battery_monitor` stays |

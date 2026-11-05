@@ -264,7 +264,7 @@ really is from where it thought.
                                                           └──► ekf_global, beside GPS
 ```
 
-`pixi run ndt-demo` shows it on a made-up lot: a scan off by 1.4 m and 9° ends within about
+`pixi run python3 tools/ndt_demo.py` shows it on a made-up lot: a scan off by 1.4 m and 9° ends within about
 2 cm. Step by step, with pictures: [Learn: localization §8](learn-localization.md#8-next-matching-the-lidar-to-a-map-ndt-and-icp).
 
 ## 8. Making the map: KISS-ICP
@@ -341,5 +341,5 @@ it starts. Built on the raylib HUD (`ros/hud/aav_hud`).
 | The costmap's layers | `ros/drivers/aav_navigation/config/nav2.yaml` |
 | Where the lidar sits; the height band | `vehicle.yaml` `lidar_link`; `aav_description` `vehicle.py` |
 | Joining radar points | `ros/perception/aav_radar_clusters` |
-| NDT and ICP, drawn | `tools/ndt_demo.py` (`pixi run ndt-demo`) |
+| NDT and ICP, drawn | `tools/ndt_demo.py` (`pixi run python3 tools/ndt_demo.py`) |
 | The roof lidar end to end | [Perception](perception.md#the-roof-lidar) |

@@ -2,9 +2,11 @@
 """
 Export a detector model for a faster runtime: Core ML on a Mac, ONNX for the Orin's TensorRT.
 
-usage:
-    pixi run -e ml export-coreml                     # models/rf-detr-nano.mlpackage (a Mac)
-    pixi run -e ml export-coreml models/yolo11n.pt   # models/yolo11n.mlpackage
+usage (Core ML in the ml environment, on a Mac; no pixi task):
+    pixi run -e ml python3 tools/export_model.py --format coreml
+        models/rf-detr-nano.pth by default: makes models/rf-detr-nano.mlpackage
+    pixi run -e ml python3 tools/export_model.py --format coreml models/yolo11n.pt
+        makes models/yolo11n.mlpackage
     python3 tools/export_model.py --format onnx [models/rf-detr-nano.pth]
 
   .pth  RF-DETR, through Roboflow's rfdetr (Apache-2.0): its own model.export()
@@ -70,14 +72,15 @@ def main(argv=None) -> int:
     model = Path(args.model)
     model = model if model.is_absolute() else ROOT / model
     if importlib.util.find_spec(NEEDS[args.format]) is None:
-        how = ('on a Mac, in the ml environment: pixi run -e ml export-coreml'
+        how = ('on a Mac, in the ml environment: '
+               'pixi run -e ml python3 tools/export_model.py --format coreml'
                if args.format == 'coreml' else
                'pip install onnx, in a Python with rfdetr or ultralytics (not the one of '
                "Pixi: it can't pip-install); or let tools/build_engine.py do it on the Orin")
         print(f'--format {args.format} needs {NEEDS[args.format]}: {how}', file=sys.stderr)
         return 2
     if not model.exists():
-        print(f'{model} is missing: pixi run get-models', file=sys.stderr)
+        print(f'{model} is missing: pixi run get models', file=sys.stderr)
         return 2
     out = model.with_suffix(FORMATS[args.format])
     start = time.monotonic()

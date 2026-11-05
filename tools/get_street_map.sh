@@ -2,7 +2,7 @@
 # Download the street map of Ottawa for the map window into maps/streets/. It stays out
 # of git: a download, made again by this script.
 #
-# usage: tools/get_street_map.sh      (or: pixi run get-street-map)
+# usage: tools/get_street_map.sh      (or: pixi run get street-map)
 #        STREET_MAP_BUILD=latest tools/get_street_map.sh   # the newest build instead
 #
 # ottawa.pmtiles: vector tiles (Mapbox Vector Tile format, in a PMTiles file) of the

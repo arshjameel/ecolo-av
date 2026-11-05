@@ -22,10 +22,14 @@
 <a class="here" href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -271,7 +275,7 @@ steps, what's done, and the work left in each area. Who owns each area is Q33: s
 <h3 id="the-spine-and-can">The spine and CAN</h3>
 <ul>
 <li>Choose the microcontroller, the board and the owner (Q10–Q13).</li>
-<li>Try the Pico 2 program (<code>boards/pico2</code>) on a spare Pico 2 with a 3.3 V MCP2515 module: <code>pixi run spine-uf2</code>. If the team picks an STM32, write its board program the same way: it implements <code>spine-board</code>'s <code>Board</code> trait.</li>
+<li>Try the Pico 2 program (<code>boards/pico2</code>) on a spare Pico 2 with a 3.3 V MCP2515 module: <code>pixi run pico spine build</code>. If the team picks an STM32, write its board program the same way: it implements <code>spine-board</code>'s <code>Board</code> trait.</li>
 <li>Decide: the steering on an e-stop (hold, or centre as the old firmware did); the brake after boot; the RC gear switch's brake. Each is one constant in <code>spine-core</code> now. <a href="firmware.html">Firmware</a> has the details.</li>
 <li>Tune the speed loop on the car: on the bench it lags a ramp by about a second.</li>
 <li>Wire CAN: a transceiver on the Orin (or a USB adapter), 120 Ω at each end (Q14, Q15).</li>
@@ -316,7 +320,7 @@ steps, what's done, and the work left in each area. Who owns each area is Q33: s
 <ul>
 <li>~~Keep the Flutter app or not (Q29)~~: answered. The raylib HUD replaced it (Ben, 15 Oct); the app, its back end and its boot scripts were archived on 25 Oct (<code>archive/2026-27-flutter-hud/</code>).</li>
 <li>Try the raylib HUD and the map window on the car's screens (<a href="car-screens.html">The two screens</a>).</li>
-<li>The map database downloads with <code>pixi run get-places</code>; street routes come from Valhalla (<a href="routes.html">Street routes</a>).</li>
+<li>The map database downloads with <code>pixi run get places</code>; street routes come from Valhalla (<a href="routes.html">Street routes</a>).</li>
 </ul>
 <h3 id="simulation">Simulation</h3>
 <ul>

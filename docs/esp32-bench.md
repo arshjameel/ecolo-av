@@ -30,8 +30,8 @@ Espressif's ESP32 emulator (QEMU).
 
 | Command | Does |
 |---|---|
-| `pixi run esp-qemu-tools` | downloads QEMU into `vendor/qemu` (once, 22 MB; macOS on Apple silicon) |
-| `pixi run esp-qemu-check` | builds with `--features qemu,uplink`, boots it, runs 6 cycles, then the RC's modes, prints three tables (`-- --no-rc` skips the RC) |
+| `pixi run esp qemu-tools` | downloads QEMU into `vendor/qemu` (once, 22 MB; macOS on Apple silicon) |
+| `pixi run esp qemu-check` | builds with `--features qemu,uplink`, boots it, runs 6 cycles, then the RC's modes, prints three tables (`-- --no-rc` skips the RC) |
 
 Each cycle: stand-still frames (the arming stop), drive frames (0.6 m/s), a **gap**, then
 drive frames again with no stop first. Since 24 Oct the frames are version 2, with the
@@ -140,7 +140,7 @@ over each run they agreed to 0.1 %.
 
 | Thing | Why |
 |---|---|
-| A laptop with this repo, `pixi run esp-tools` done | builds and flashes |
+| A laptop with this repo, `pixi run esp tools` done | builds and flashes |
 | A USB cable to the ESP32 MicroMod's USB port | flashing and the log |
 | The Motor-Pi running `aav_legacy` (`pixi run car` profile, or `legacy.launch.py`), with **`frame_version: 2`** in `legacy.yaml` | sends version 2 frames, with the Orin's counter. The car's file says 1 while the C++ is on |
 | The Orin running the output mux (the car profile), or a laptop as the Orin | makes the counter: no Orin, no heartbeat, the car stays braked |
@@ -154,14 +154,14 @@ over each run they agreed to 0.1 %.
 |---|---|---|
 | 1 | `pixi run -e firmware legacy-esp32` | the C++ still builds: it is the way back |
 | 2 | `vendor/cargo-tools/bin/espflash read-flash 0 0x400000 backup-esp32.bin` | a copy of what is on the board now (4 MB). Keep it off git |
-| 3 | `pixi run esp-build` (version 2 frames; `-- --features link-v1` for the 13-byte ones) | `Finished`; the program is `firmware/spine/boards/esp32-umod/target/xtensa-esp32-none-elf/release/spine-esp32-umod` |
+| 3 | `pixi run esp build` (version 2 frames; `-- --features link-v1` for the 13-byte ones) | `Finished`; the program is `firmware/spine/boards/esp32-umod/target/xtensa-esp32-none-elf/release/spine-esp32-umod` |
 
 ## 2. Flash
 
 | Step | Command | Check |
 |---|---|---|
 | 1 | `vendor/cargo-tools/bin/espflash list-ports` | the board's port (a Mac: `/dev/cu.usbserial-…`) |
-| 2 | `pixi run esp-flash` (add `--port <port>` if asked) | it flashes, resets, and shows the log |
+| 2 | `pixi run esp flash` (add `--port <port>` if asked) | it flashes, resets, and shows the log |
 | 3 | read the first lines | `spine-esp32-umod 0.1.0, link: Motor-Pi UART, version 2 frames (the Orin's heartbeat); the last reset: …` |
 
 If it won't connect: hold the board's BOOT button while it starts flashing.
@@ -200,7 +200,7 @@ the ground; checks 1 to 14 passed first.
 
 | Step | Do |
 |---|---|
-| 1 | `pixi run esp-flash -- --features uplink` (or `tools/esp32.sh build --features uplink`, then flash). The first log line ends `with the uplink on TX1 and the three-position mode switch` |
+| 1 | `pixi run esp flash -- --features uplink` (or `tools/esp32.sh build --features uplink`, then flash). The first log line ends `with the uplink on TX1 and the three-position mode switch` |
 | 2 | `legacy.yaml`: `frame_version: 2`, **`uplink: true`**; restart the bridge |
 
 | # | Do | Expect |

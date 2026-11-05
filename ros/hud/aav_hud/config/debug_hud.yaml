@@ -46,3 +46,7 @@ debug_hud:
     ndt_map_cell: 1.0     # m: one NDT map cube's edge (key M)
     voxels_cube_size: 0.25  # m: one of Nav2's cubes (aav_voxels' size in aav_navigation's nav2.yaml)
     health_stale_after: 3.0 # s: /localization/health comes once a second, so it gets longer than stale_after
+    # --- the look ---
+    theme: initial_d          # the colours: initial_d (black, white, Carleton red; every screen's default), mocha (dark, night), latte (light, day)
+    easter_egg: true      # the little robot's eyes peek over the 3D view's bottom after easter_egg_after of quiet. Never while the car moves or a warning shows
+    easter_egg_after: 60.0  # s without input, change or movement before the eyes peek

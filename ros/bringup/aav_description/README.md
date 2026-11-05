@@ -12,7 +12,7 @@ through the Python helper `aav_description.vehicle`.
 
 | File | Starts |
 |---|---|
-| `description.launch.py [sim:=] [use_sim_time:=] [lidar:=] [joint_state_publisher:=true]` | `robot_state_publisher` from the URDF; `joint_state_publisher`, which merges `/vehicle/joint_states` |
+| `description.launch.py [sim:=] [use_sim_time:=] [lidar:=] [chase_camera:=] [joint_state_publisher:=true]` | `robot_state_publisher` from the URDF; `joint_state_publisher`, which merges `/vehicle/joint_states` |
 | `view.launch.py` (`pixi run view`) | the model in RViz, with joint sliders |
 
 ### Topics
@@ -61,7 +61,7 @@ Constants: `SELF_MARGIN`, `SENSOR_HALF_SIZE` (m), `STOP_ZONE_AHEAD`, `STOP_ZONE_
 `sim.launch.py`'s `controller`); `TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr',
 'mpc', 'mpc_full')` with `DEFAULT_TRACKER = 'none'` (`tracker:=`, `docs/trials.md`), kept apart from
 `CONTROLLERS`; `PLANNERS = ('hybrid', 'lattice', 'smac2d', 'navfn', 'theta_star')` with
-`DEFAULT_PLANNER = 'lattice'` (`CAR_DEFAULT_PLANNER = 'hybrid'`: the car, forward only until H5), `CAR_PLANNERS = ('hybrid', 'lattice')` (the ones that keep to
+`DEFAULT_PLANNER = 'lattice'` and `FORWARD_ONLY_PLANNER = 'hybrid'` (`default_planner(reversing)` picks), `CAR_PLANNERS = ('hybrid', 'lattice')` (the ones that keep to
 the turning radius) and `PLANNER_BLOCKS` (each one's block in `nav2.yaml`).
 
 ### URDF (`urdf/`)

@@ -3,7 +3,7 @@
 # lined up with our datum (docs/carla.md, "A digital twin of Carleton"). It stays out of
 # git: a download, made again by this script.
 #
-# usage: tools/get_carla_osm.sh            (or: pixi run get-carla-osm)
+# usage: tools/get_carla_osm.sh            (or: pixi run get carla-osm)
 #        tools/get_carla_osm.sh --roads    the roads alone: all carla_adapter's osm:= reads
 #        CARLA_OSM_AROUND=1500,1500,1500,1500 tools/get_carla_osm.sh   a bigger box (m
 #                                          west,south,east,north of the datum)

@@ -4,7 +4,7 @@ Turn a program for the Pico 2 (an RP2350 ELF file) into a UF2 file, to drag onto
 
 Hold the Pico 2's BOOTSEL button while plugging it in: it shows up as a drive called
 RP2350. Copy the .uf2 file onto that drive, and the Pico 2 restarts into the new program.
-`pixi run spine-uf2` builds the spine's program and runs this on it.
+`pixi run pico spine build` builds the spine's program and runs this on it.
 
 usage: tools/elf2uf2.py <program.elf> [<program.uf2>]
 

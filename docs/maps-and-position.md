@@ -70,9 +70,9 @@ and for routes**, never inside Nav2. Everything works offline: the data are file
 
 | Feature | Uses | Where | In git? |
 |---|---|---|---|
-| Draw the street map | Ottawa's streets as vector tiles (Protomaps, 40 MB) | the HUD's map window, under Nav2's map ([HUD](hud.md#the-street-map-under-it)) | no: `pixi run get-street-map` |
-| Search "Tim Hortons" | `ottawa.db`: 606,628 named places from OSM (51 MB) | the HUD's map window ([search](hud.md#search-for-a-place-and-drive-there)) | no: `pixi run get-places` |
-| Plan a street route | Valhalla (a road router), Ottawa's OSM data | `street_router` (`aav_routes`), on this computer ([Street routes](routes.md)) | no: `pixi run -e routes get-routes` |
+| Draw the street map | Ottawa's streets as vector tiles (Protomaps, 40 MB) | the HUD's map window, under Nav2's map ([HUD](hud.md#the-street-map-under-it)) | no: `pixi run get street-map` |
+| Search "Tim Hortons" | `ottawa.db`: 606,628 named places from OSM (51 MB) | the HUD's map window ([search](hud.md#search-for-a-place-and-drive-there)) | no: `pixi run get places` |
+| Plan a street route | Valhalla (a road router), Ottawa's OSM data | `street_router` (`aav_routes`), on this computer ([Street routes](routes.md)) | no: `pixi run get routes` |
 
 A place reaches the car in one of two ways:
 

@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -98,13 +102,15 @@
 <div class="lead"><p>Nav2's planner draws a path; a <strong>controller</strong> turns it into a speed and a turn, 20 times a
 second. We have two, and a script that compares them on the same drives in Gazebo.</p>
 <blockquote>
-<p><strong>The short version</strong>
-- <strong>MPPI</strong> is the default (since 22 Oct): it tries 2000 possible futures every cycle through a model of the car, and picks the best blend. It turns to a goal's heading; it costs more computer.
-- <strong>Regulated Pure Pursuit (RPP)</strong> is the other choice: it chases a point 2-4 m ahead on the path. Simple and light, but it aims only at a point, so it often arrives at a goal facing the wrong way.
-- <strong>Switch:</strong> <code>controller:=rpp</code> on <code>sim.launch.py</code> or <code>navigation.launch.py</code>.
-- <strong>Compare:</strong> <code>pixi run controller-compare</code> (about 25 min, headless, on this computer only; <code>--legs 1</code> for a quick check).
-- <strong>Results, night of 22 Oct (Gazebo's lot, four runs):</strong> after five fixes (below), MPPI reached the first goal in 29-30 s in every run; Pure Pursuit looped there in two of three. In the best run both reached all 4 goals. MPPI uses twice the CPU (20% of a Mac core).
-- <strong>No more circling goals (29 Oct, TODO 17):</strong> Nav2 planned a new path every second, also in the last metres, where a new path is often a loop for a car. Now it keeps its path for the last 8 m (<a href="#circling-a-goal-found-and-fixed-29-october-todo-17">below</a>).</p>
+<p><strong>The short version</strong></p>
+<ul>
+<li><strong>MPPI</strong> is the default (since 22 Oct): it tries 2000 possible futures every cycle through a model of the car, and picks the best blend. It turns to a goal's heading; it costs more computer.</li>
+<li><strong>Regulated Pure Pursuit (RPP)</strong> is the other choice: it chases a point 2-4 m ahead on the path. Simple and light, but it aims only at a point, so it often arrives at a goal facing the wrong way.</li>
+<li><strong>Switch:</strong> <code>controller:=rpp</code> on <code>sim.launch.py</code> or <code>navigation.launch.py</code>.</li>
+<li><strong>Compare:</strong> <code>pixi run measure controllers</code> (about 25 min, headless, on this computer only; <code>--legs 1</code> for a quick check).</li>
+<li><strong>Results, night of 22 Oct (Gazebo's lot, four runs):</strong> after five fixes (below), MPPI reached the first goal in 29-30 s in every run; Pure Pursuit looped there in two of three. In the best run both reached all 4 goals. MPPI uses twice the CPU (20% of a Mac core).</li>
+<li><strong>No more circling goals (29 Oct, TODO 17):</strong> Nav2 planned a new path every second, also in the last metres, where a new path is often a loop for a car. Now it keeps its path for the last 8 m (<a href="#circling-a-goal-found-and-fixed-29-october-todo-17">below</a>).</li>
+</ul>
 </blockquote></div>
 <section class="card"><h2 id="what-each-one-does">What each one does</h2>
 <div class="table-wrap"><table>
@@ -160,10 +166,10 @@ turning radius, its reverse speed and its top speed from <code>vehicle.yaml</cod
 (<code>aav_description/vehicle.py</code>, <code>nav2_tuned</code>).</p>
 </section>
 <section class="card"><h2 id="compare-them">Compare them</h2>
-<pre class="highlight"><code class="language-bash">pixi run controller-compare                    # both controllers, both tours
-pixi run controller-compare --tours obstacle   # only the box in the lane
-pixi run controller-compare --controllers mppi --speed 2
-pixi run controller-compare --trackers lqr mpc --runs 3   # the trial trackers (docs/trials.md)</code></pre>
+<pre class="highlight"><code class="language-bash">pixi run measure controllers                    # both controllers, both tours
+pixi run measure controllers --tours obstacle   # only the box in the lane
+pixi run measure controllers --controllers mppi --speed 2
+pixi run measure controllers --trackers lqr mpc --runs 3   # the trial trackers (docs/trials.md)</code></pre>
 <p>For each tour and controller the script starts Gazebo's test lot with no windows, on a ROS
 domain of its own (this computer only), sends the same goals, and records where the car
 really was (Gazebo's ground truth). Forward only by default; <code>--reversing</code> lets Nav2 back
@@ -268,7 +274,7 @@ up, as it may on the car since 22 Oct. The results go to
 <section class="card"><h2 id="circling-a-goal-found-and-fixed-29-october-todo-17">Circling a goal: found and fixed, 29 October (TODO 17)</h2>
 <p>Now and then the car drove a full loop at a goal it had nearly reached: about 50 m
 for a 21 m leg. Always the first leg (the left turn to 15, 15, facing north), any follower.</p>
-<p><strong>How it was found:</strong> <code>pixi run controller-compare --tours lot --legs 1 --plans</code>, 3 runs
+<p><strong>How it was found:</strong> <code>pixi run measure controllers --tours lot --legs 1 --plans</code>, 3 runs
 each of RPP, MPPI and <code>aav_track</code>'s pure_pursuit and lqr. <code>--plans</code> keeps every plan, so
 each plan can be set against where the car really was when it came.</p>
 <div class="table-wrap"><table>

@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -112,7 +116,7 @@ step at a time, with our car in every step. Our own numbers live in
 <li><strong>Shocks and roll:</strong> at our 1 m/s they barely matter (0.2° of roll). At 3 m/s on
   full lock: 2° of roll and 46 % of the weight moves to the outside wheels. Not a
   control problem; worth knowing for the lidar.</li>
-<li><strong>Run it:</strong> <code>pixi run state-space-demo</code> prints every number here and draws every
+<li><strong>Run it:</strong> <code>pixi run python3 tools/state_space_demo.py</code> prints every number here and draws every
   figure.</li>
 </ul>
 </div></div>
@@ -1015,7 +1019,7 @@ ego use the kinematic one; that's right for us.</p>
 <tr>
 <td><strong>System identification</strong></td>
 <td>measure the input and output, fit A, B (or τ, K)</td>
-<td>the car day's <a href="actuator-tests.html">actuator tests</a> fit <code>drag</code>, <code>throttle_lag</code>, <code>steer_lag</code>; <code>pixi run vehicle-model --set ...</code></td>
+<td>the car day's <a href="actuator-tests.html">actuator tests</a> fit <code>drag</code>, <code>throttle_lag</code>, <code>steer_lag</code>; <code>pixi run python3 tools/vehicle_model.py --set ...</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1122,9 +1126,9 @@ ego use the kinematic one; that's right for us.</p>
 </table></div>
 </section>
 <section class="card"><h2 id="run-it">Run it</h2>
-<pre class="highlight"><code class="language-bash">pixi run state-space-demo                 # every number on this page, and the figures
-pixi run state-space-demo --no-figures    # the numbers only
-pixi run vehicle-model                    # our car's full model: margins, delays, Gazebo</code></pre>
+<pre class="highlight"><code class="language-bash">pixi run python3 tools/state_space_demo.py                 # every number on this page, and the figures
+pixi run python3 tools/state_space_demo.py --no-figures    # the numbers only
+pixi run python3 tools/vehicle_model.py                    # our car's full model: margins, delays, Gazebo</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>

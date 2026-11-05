@@ -45,7 +45,7 @@ What it holds (made on Ben's Mac, 15 Oct):
 | `aav.bundle` | the repo (git bundle) | 5 MB |
 | `aav-src.tar.gz` | the same code, for a computer with no git | 4 MB |
 | `rust-crates.tar.gz` | the 152 Rust crates our four Rust packages use, so `cargo` needs no internet | 43 MB |
-| `models/` | the YOLO model files from `models/`, if you have them (`pixi run get-models`) | 6 MB |
+| `models/` | the YOLO model files from `models/`, if you have them (`pixi run get models`) | 6 MB |
 | `car_install.sh`, `README.md`, `KIT.txt`, `SHA256SUMS` | the installer, a short how-to, the commit, the checksums | small |
 
 Any stick works, even FAT32: the biggest file is under 4 GB.

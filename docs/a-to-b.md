@@ -10,7 +10,7 @@ request's "accelerate / hold / stop" demo, and the first step to GPS point-to-po
 > - A straight drive in an empty lot needs **no costmap and no map**: only "where am I" and "where is B".
 > - The hard part isn't the driving. It's **knowing where the car is and which way it faces** at the start.
 > - Test it on the turtle, then the bench, then Gazebo, then the car on stands, then the car.
-> - **`pixi run atob-score`** scores a recorded run: speeding up, holding, the stop on B ([Scoring a run](#scoring-a-run)).
+> - **`pixi run measure atob`** scores a recorded run: speeding up, holding, the stop on B ([Scoring a run](#scoring-a-run)).
 
 ## 1. The three ways
 
@@ -164,15 +164,15 @@ Untested on the bench and on the car: the car needs the brake test (4.3) for `ma
 
 ### Scoring a run
 
-`pixi run atob-score` turns one recorded run into numbers: how well the car sped up, held
+`pixi run measure atob` turns one recorded run into numbers: how well the car sped up, held
 its speed, and stopped on B. The same numbers for Gazebo and for the car.
 
 ```bash
-pixi run atob-score bags/<run>                              # B from the point driver's feedback
-pixi run atob-score bags/<run> --b-latlon 45.38630 -75.69580  # or give B (or --b-xy X Y)
-pixi run atob-score bags/<run> --taped -0.12 0.05           # the car: the tape's stop error
-pixi run atob-score run1.csv run2.csv --json                # CSV runs; JSON out
-pixi run atob-score bags/<run> --save-csv run.csv           # the run as CSV, to share
+pixi run measure atob bags/<run>                              # B from the point driver's feedback
+pixi run measure atob bags/<run> --b-latlon 45.38630 -75.69580  # or give B (or --b-xy X Y)
+pixi run measure atob bags/<run> --taped -0.12 0.05           # the car: the tape's stop error
+pixi run measure atob run1.csv run2.csv --json                # CSV runs; JSON out
+pixi run measure atob bags/<run> --save-csv run.csv           # the run as CSV, to share
 ```
 
 The stop error is measured on the line from A to B:

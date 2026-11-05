@@ -7,7 +7,7 @@
 <!-- Generated from docs/actuator-tests.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Actuator tests: measure how the car moves</h1>
-<div class="meta">22 min read · 10 sections</div></header>
+<div class="meta">32 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -94,7 +98,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-tests">The tests</a><a href="#in-gazebo">In Gazebo</a><a href="#on-the-car">On the car</a><a href="#the-preflight-on-stands">The preflight on stands</a><a href="#trusting-the-fits">Trusting the fits</a><a href="#the-speed-loops-profile-todo-27">The speed loop&#x27;s profile (TODO 27)</a><a href="#what-it-saves">What it saves</a><a href="#proven-in-gazebo-15-oct">Proven in Gazebo (15 Oct)</a><a href="#the-code">The code</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-tests">The tests</a><a href="#in-gazebo">In Gazebo</a><a href="#on-the-car">On the car</a><a href="#find-the-steering-actuators-ends-and-centre">Find the steering actuator&#x27;s ends and centre</a><a href="#the-preflight-on-stands">The preflight on stands</a><a href="#trusting-the-fits">Trusting the fits</a><a href="#the-speed-loops-profile-todo-27">The speed loop&#x27;s profile (TODO 27)</a><a href="#what-it-saves">What it saves</a><a href="#proven-in-gazebo-15-oct">Proven in Gazebo (15 Oct)</a><a href="#the-code">The code</a></nav>
 <div class="lead"><p>One script runs the stage-3 and stage-4 tests of <code>tests.md</code>: it drives the car,
 logs what happened, and prints the numbers for <code>vehicle.yaml</code>. Built and proven in Gazebo
 (15 Oct); the same script runs on the car.</p>
@@ -194,7 +198,7 @@ slot: below every person (joystick, RC, keyboard), above Nav2 and every other pr
 <td>sideways drift; <code>steer_offset</code></td>
 </tr>
 <tr>
-<td><code>preflight</code></td>
+<td><code>actuator-test preflight --stands</code></td>
 <td>3.P</td>
 <td>stands</td>
 <td>speed up, hold, slow, brake; steer left, right, centre; every sensor counted</td>
@@ -387,13 +391,353 @@ limit only. If the script is killed (not Ctrl-C), restart ego to be sure.</p>
 </tbody>
 </table></div>
 </section>
+<section class="card"><h2 id="find-the-steering-actuators-ends-and-centre">Find the steering actuator's ends and centre</h2>
+<p><strong>Why:</strong> the car steers to the right. Its centre is a guess, and the 2025-26 C++ disagrees
+with itself: centre 1950 and range 400-3500 in <code>setSteer()</code>, but centre 500 and range
+0-1550 in <code>hardware_configs.h</code>; it also steers with two gains (1950 counts a unit one
+side, 1550 the other). Our Rust firmware copied 1950 / 400-3500 / 3100 counts a radian
+(<code>calibration.rs</code>, <code>TODO(Q1)</code>, <code>TODO(Q2)</code>). Nobody has measured the real ends.</p>
+<p><strong>Gives:</strong> the centre, equal limits each side of it, the counts a radian, and
+<code>max_steering_angle</code>. Test 3.0 in <a href="tests.html#3b-steering-on-stands">tests.md</a>: do it
+before 3.10. <strong>3.10 then runs only inside the measured ends:</strong> both ends outside today's
+software limits (400-3500), or the measured ends flashed in <code>calibration.rs</code> first
+(<a href="car-day.html#a6-the-steering-actuators-ends-way-a">car day, A6</a>).</p>
+<div class="admonition warning">
+<p class="admonition-title">Before any sweep</p>
+<ul>
+<li><strong>The car on stands</strong>, all four wheels off the ground, the e-stop in someone's hand.</li>
+<li><strong>The steering actuator's current limit set low first</strong> (its Jrk's settings, in
+  Pololu's utility), so a wrong target pushes gently against the stop. The value is
+  the hardware lead's: <strong>______</strong> (write it here and on the sheet).</li>
+<li><strong>The steering actuator's own (Jrk) limits are the last line of defence.</strong> They are
+  the hardware lead's to set. Our software limits come first; they don't replace them.</li>
+<li>Hands clear of the wheels and the linkage while the motor is on.</li>
+</ul>
+</div>
+<h3 id="counts-the-unit-here">Counts: the unit here</h3>
+<p>A position or a target is a number of <strong>counts</strong>, 0 to 4095: the steering actuator's
+feedback (its Jrk's "scaled feedback"), in the same units as its targets. Not radians:
+radians are worked out <em>from</em> this calibration.</p>
+<pre class="highlight"><code class="language-text">   full left            centre                full right
+   (left end)        (wheels straight)        (right end)
+      |---- travel left ----|---- travel right ----|
+            |-- half --|-- half --|        half = smaller travel - 5 %
+            lo       centre       hi       the limits: the same each side</code></pre>
+<h3 id="two-ways">Two ways</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Way A: car day, whatever firmware is on the ESP32</th>
+<th>Way B: later, the Rust firmware with the uplink and the hardware panel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Needs</td>
+<td>a laptop with Pololu's free <strong>Jrk G2 configuration utility</strong>, a USB cable to the steering actuator's Jrk</td>
+<td>the Rust ESP32 firmware with <code>uplink</code> (session 6), the uplink's wire (H9), the Jrk's feedback mode set to analog</td>
+</tr>
+<tr>
+<td>Reads</td>
+<td>the utility's Status tab: feedback, scaled feedback, target</td>
+<td><code>/vehicle/steering_actuator/raw</code> (counts), in the panel</td>
+</tr>
+<tr>
+<td>Moves the wheels</td>
+<td>by hand, the motor stopped</td>
+<td><strong>buttons:</strong> small jog steps; or <strong>by hand:</strong> limp (motor off)</td>
+</tr>
+<tr>
+<td>Who</td>
+<td>the hardware lead, or someone they show</td>
+<td>the laptop person, with the hardware lead there</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="way-a-pololus-utility-over-usb-car-day">Way A: Pololu's utility over USB (car day)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>Write down</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A1</td>
+<td>The car off. USB from the laptop to the steering actuator's Jrk. Open the utility; it finds the Jrk</td>
+<td>its serial number</td>
+</tr>
+<tr>
+<td>A2</td>
+<td><strong>Save its settings first, as a backup</strong>: File, then Save settings file. Name it <code>steering-jrk-&lt;date&gt;.txt</code>; keep it with the car's files (not in git if it holds anything private)</td>
+<td>the file's name</td>
+</tr>
+<tr>
+<td>A3</td>
+<td>Read its feedback mode (Feedback tab): it must be <strong>Analog</strong>. Not analog: there is no position to read; stop, tell the hardware lead</td>
+<td>the mode</td>
+</tr>
+<tr>
+<td>A4</td>
+<td>With the hardware lead: the current limit low (Motor tab), applied</td>
+<td>the old and new values</td>
+</tr>
+<tr>
+<td>A5</td>
+<td>The ESP32 sends a steering target all the time, so the motor won't stay off. <strong>Power everything off first.</strong> Then, with the hardware lead, stop it reaching the Jrk: the ESP32 left off, or its I2C unplugged <strong>with the power still off</strong> (never with it on). Power the Jrk back, then press <strong>Stop motor</strong> in the utility</td>
+<td>how</td>
+</tr>
+<tr>
+<td>A6</td>
+<td>Turn the wheels by hand, gently, to <strong>full left</strong> (the steering stops, not the tyre on the frame). Read <strong>Scaled feedback</strong></td>
+<td>left end</td>
+</tr>
+<tr>
+<td>A7</td>
+<td>Wheels <strong>straight</strong> (a straight edge on both front wheels, or a string line to the rear wheels). Read it</td>
+<td>centre</td>
+</tr>
+<tr>
+<td>A8</td>
+<td><strong>Full right</strong>. Read it</td>
+<td>right end</td>
+</tr>
+<tr>
+<td>A9</td>
+<td>At each end, the wheel angle with a protractor (both front wheels; write the mean)</td>
+<td>angles</td>
+</tr>
+<tr>
+<td>A10</td>
+<td>The Jrk's own limits: change them <strong>only with the hardware lead</strong>. Otherwise leave everything as it was: load the backup (File, Open settings file) if anything changed</td>
+<td>what changed</td>
+</tr>
+</tbody>
+</table></div>
+<p>Menu and tab names are from Pololu's user's guide; the version on the laptop may name
+them a little differently.</p>
+<h3 id="way-b-the-hardware-panel-rust-firmware">Way B: the hardware panel (Rust firmware)</h3>
+<p><strong>Not on car day.</strong> Car day runs link version 2 throughout
+(<a href="car-day.html#one-link-version-on-the-car">one link version on the car</a>). Way B comes later,
+once the Rust firmware with the uplink is flashed and H9 says the wire is there. Then the
+Motor Pi's <code>legacy.yaml</code>, for this session only, with the hardware lead's say-so:</p>
+<pre class="highlight"><code class="language-yaml">frame_version: 3
+uplink: true
+steering_calibration: stands     # back to none afterwards</code></pre>
+<p>Then, on the laptop (on the car's network, the car's <code>ROS_DOMAIN_ID</code>; <a href="mac.html">mac.md</a>),
+the hardware panel's <strong>STEERING CAL</strong> page (Tab):</p>
+<pre class="highlight"><code class="language-bash">pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py    # then Tab</code></pre>
+<p>Not <code>pixi run hw-panel</code>: it is localhost-only, so it never sees the car. The page:
+<a href="hud.html#the-steering-calibration-page">hud.md</a>.</p>
+<p><img alt="The steering calibration page (--demo)" src="../img/hw-panel-calibration.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do (button, key)</th>
+<th>Expect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B1</td>
+<td>Nothing driving; the brake on. Open the page</td>
+<td><strong>ALLOWED</strong>; the bridge's line says <code>OFF</code>; the position in counts</td>
+</tr>
+<tr>
+<td>B2</td>
+<td><strong>By hand:</strong> GO LIMP (L)</td>
+<td>firmware <code>LIMP</code>; the motor off; the counts follow the wheels</td>
+</tr>
+<tr>
+<td>B3</td>
+<td>Full left: MARK LEFT (1). Straight: MARK CENTRE (2). Full right: MARK RIGHT (3)</td>
+<td>the three marks; the limits and any warnings under them</td>
+</tr>
+<tr>
+<td>B4</td>
+<td><strong>Or with the motor:</strong> HOLD (H), then STEP LEFT / STEP RIGHT (Left, Right), 25 counts a press, a few seconds apart</td>
+<td>the wheels move slowly (300 counts a second at most)</td>
+</tr>
+<tr>
+<td>B5</td>
+<td>Stop a step before the steering binds or the motor strains; MARK that end</td>
+<td>the end</td>
+</tr>
+<tr>
+<td>B6</td>
+<td>The same toward the other end, and back to straight, MARK CENTRE</td>
+<td></td>
+</tr>
+<tr>
+<td>B7</td>
+<td>HOLD near the centre, then LOCK-TO-LOCK CHECK (K)</td>
+<td>centre to the left limit and back, to the right limit and back, at 100 counts a second; <strong>PASSED</strong>, or <strong>STOPPED</strong> and why, holding where the wheels are</td>
+</tr>
+<tr>
+<td>B8</td>
+<td>SAVE (W)</td>
+<td>the file's path on screen and in the log (below)</td>
+</tr>
+<tr>
+<td>B9</td>
+<td>END (O)</td>
+<td><code>RETURN</code>, then <code>OFF</code>: the wheels go back slowly to the steering asked for</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The check stops</strong> (and holds) when the position falls 150 counts behind the target, stops
+moving for 0.6 s while the target moves, misses a leg's end, is lost, or the firmware stops
+jogging. A stop near an end: mark that end again, a little inside; then check again.</p>
+<p><strong>Where the result goes.</strong> SAVE writes
+<code>~/.local/share/aav/steering-calibration/steering-&lt;UTC time&gt;.txt</code>: the marks, the check's
+result, and the lines for <code>calibration.rs</code> and <code>vehicle.yaml</code>. The panel never writes
+either file: copy them by hand, as below, with the sheet. For <code>max_steering_angle</code>, add
+the wheel angles with the <code>steering_limits</code> command (the file has it, filled in).</p>
+<p>Without the panel, from any laptop on the car's network:</p>
+<pre class="highlight"><code class="language-bash">ros2 topic echo /vehicle/steering_actuator/raw                 # position: counts
+ros2 topic echo /vehicle/steering_actuator/calibration          # what it does, and why not
+# limp (mode 1), sent at 10 Hz while it runs; Ctrl-C ends it within 0.5 s:
+ros2 topic pub -r 10 /drivers/buttons/steering_calibration aav_interfaces/msg/SteeringCalibration "{mode: 1}"
+# jog (mode 2) to a target, in counts:
+ros2 topic pub -r 10 /drivers/buttons/steering_calibration aav_interfaces/msg/SteeringCalibration "{mode: 2, target: 2000}"</code></pre>
+<p><strong>Refused?</strong> The line says why: not braked, a speed asked for, an e-stop, the RC or a
+test driving, no position (the Jrk's feedback isn't analog), or the bridge's own rules
+(<code>steering_calibration</code> is <code>none</code>, no uplink, ego driving, the car moving).</p>
+<p>A jog target never goes outside today's software limits (400-3500). If an end lies
+beyond them, use limp: the counts are read there all the same.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What keeps it safe</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>only standing still and braked; the throttle held at 0 throughout</td>
+<td>the firmware (<code>legacy-link</code> <code>SteerCal</code>) and the bridge</td>
+</tr>
+<tr>
+<td>jog clamped to the software limits, 300 counts a second</td>
+<td>the firmware</td>
+</tr>
+<tr>
+<td>leaving limp holds where the wheels are, then moves back slowly</td>
+<td>the firmware</td>
+</tr>
+<tr>
+<td>the Orin's heartbeat lost (100 ms): leave, and hold there</td>
+<td>the firmware</td>
+</tr>
+<tr>
+<td>the panel stops asking (0.5 s): leave</td>
+<td>the bridge</td>
+</tr>
+<tr>
+<td>the panel asks nothing with an e-stop, the car moving, or no position; its jog stays in 400-3500; its check stays inside the limits and stops on resistance</td>
+<td>the panel (panel-core <code>calibration</code>, <code>sweep</code>)</td>
+</tr>
+<tr>
+<td><code>steering_calibration: none</code> by default</td>
+<td>the bridge, <code>legacy.yaml</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-sheet">The sheet</h3>
+<p>Print it; fill it in at the car. One sheet a session.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Left end</th>
+<th>Centre</th>
+<th>Right end</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Counts</td>
+<td><strong><em>_</em></strong>_</td>
+<td><strong><em>_</em></strong>_</td>
+<td><strong><em>_</em></strong>_</td>
+</tr>
+<tr>
+<td>Wheel angle, left front (deg)</td>
+<td><strong><em>_</em></strong>_</td>
+<td>0</td>
+<td><strong><em>_</em></strong>_</td>
+</tr>
+<tr>
+<td>Wheel angle, right front (deg)</td>
+<td><strong><em>_</em></strong>_</td>
+<td>0</td>
+<td><strong><em>_</em></strong>_</td>
+</tr>
+<tr>
+<td>Wheel angle, the mean (deg)</td>
+<td><strong><em>_</em></strong>_</td>
+<td>0</td>
+<td><strong><em>_</em></strong>_</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Worked out (<code>steering_limits</code>)</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>travel left, travel right (counts)</td>
+<td><strong><em>_</em></strong>_ , <strong><em>_</em></strong>_</td>
+</tr>
+<tr>
+<td>half = smaller travel - 5 % (counts)</td>
+<td><strong><em>_</em></strong>_</td>
+</tr>
+<tr>
+<td>limits: lo, hi (counts)</td>
+<td><strong><em>_</em></strong>_ , <strong><em>_</em></strong>_</td>
+</tr>
+<tr>
+<td>counts a radian (sign: + if left raises the count)</td>
+<td><strong><em>_</em></strong>_</td>
+</tr>
+<tr>
+<td><code>max_steering_angle</code> (rad)</td>
+<td><strong><em>_</em></strong>_</td>
+</tr>
+<tr>
+<td>warnings</td>
+<td><strong><em>_</em></strong><strong><em>_</em></strong><strong><em>_</em></strong>___</td>
+</tr>
+<tr>
+<td>date, way (A or B), who, the hardware lead</td>
+<td><strong><em>_</em></strong><strong><em>_</em></strong><strong><em>_</em></strong>___</td>
+</tr>
+</tbody>
+</table></div>
+<pre class="highlight"><code class="language-bash">ros2 run aav_legacy steering_limits --left &lt;counts&gt; --centre &lt;counts&gt; --right &lt;counts&gt; \
+    --left-deg &lt;mean&gt; --right-deg &lt;mean&gt;</code></pre>
+<p>It prints the lines for <code>firmware/spine/crates/spine-board/src/calibration.rs</code> (<code>Steering</code>:
+centre, counts a radian, min, max) and for <code>vehicle.yaml</code> (<code>max_steering_angle</code>). It flags
+a centre far from the middle of the travel, a lopsided travel, feedback that doesn't change
+or is clipped at 0 or 4095, and two sides whose gains differ. A person puts them in, in a
+pull request, with the sheet's photo; the hardware lead reviews it.</p>
+</section>
 <section class="card"><h2 id="the-preflight-on-stands">The preflight on stands</h2>
 <p>One run before the car goes on the ground (Ben, 29 Oct; the design:
 <code>docs/designs/2026-10-29_preflight.md</code>). It drives and checks every sensor at once.</p>
-<pre class="highlight"><code class="language-bash">pixi run preflight --sim                          # Gazebo (pixi run sim first)
-pixi run preflight --bench                        # bench mode (pixi run bench first)
-pixi run preflight --no-drive --skip steering     # the car today: the sensors only
-pixi run preflight --skip steering gps lidar      # the car, once it has a rear-wheel speed</code></pre>
+<pre class="highlight"><code class="language-bash">pixi run actuator-test preflight --stands --sim                          # Gazebo (pixi run sim first)
+pixi run actuator-test preflight --stands --bench                        # bench mode (pixi run bench first)
+pixi run actuator-test preflight --stands --no-drive --skip steering     # the car today: the sensors only
+pixi run actuator-test preflight --stands --skip steering gps lidar      # the car, once it has a rear-wheel speed</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -613,7 +957,7 @@ firmware keeps <code>default</code>. Try <code>smooth</code> here, in this order
 </tr>
 <tr>
 <td>After 4.1, 4.2, 4.4 (<code>max_accel</code>, <code>drag</code>)</td>
-<td><code>pixi run vehicle-model --set max_accel=... --set drag=... --speed-loop</code></td>
+<td><code>pixi run python3 tools/vehicle_model.py --set max_accel=... --set drag=... --speed-loop</code></td>
 <td><code>smooth</code> still 0% at K with the measured numbers; if not, redo its gains (pole placement, then b)</td>
 </tr>
 <tr>

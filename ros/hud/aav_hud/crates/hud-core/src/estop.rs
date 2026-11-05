@@ -2,7 +2,7 @@
 //!
 //! The same as aav_hud's button (docs/hud.md): repeated, so one lost message can't keep
 //! the car going. It never sends false: clearing the e-stop stays a person's deliberate
-//! act, from a laptop (`pixi run estop-clear`). The type says so: the only message it
+//! act, from a laptop (`pixi run clear estop`). The type says so: the only message it
 //! asks for is [`StopMessage`].
 
 use std::time::{Duration, Instant};

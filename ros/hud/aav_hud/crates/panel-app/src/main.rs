@@ -21,21 +21,36 @@
 //!             control_topic         geometry_msgs/TwistStamped     twist_mux's output: a takeover
 //!             geofence_lock_topic   std_msgs/Bool                  shown: it holds the buttons
 //!             no_timeout_lock_topic std_msgs/Bool                  latched: the stands rule
+//!             steering_raw_topic    aav_interfaces/ActuatorRaw     the calibration page: counts, the
+//!                                                                  firmware's calibration state
+//!             calibration_line_topic std_msgs/String               the bridge's line: what, why not
 //! Publishes   buttons_topic         geometry_msgs/TwistStamped     only while GO is held (and 0.5 s
 //!                                                                  of zeros after), at 10 Hz, and only
 //!                                                                  while the window draws
 //!             estop_topic           std_msgs/Bool                  E-STOP: true 5 times, never false
+//!             steering_calibration_topic aav_interfaces/SteeringCalibration  the calibration page's
+//!                                                                  limp or jog, 10 Hz while it asks and
+//!                                                                  the window draws; then MODE_OFF 0.5 s
 //! Parameters  the topics above; stale_after (s), speed_step (m/s), steer_step (rad),
-//!             creep (m/s), sim_cap (m/s), stands_cap (m/s)
+//!             creep (m/s), sim_cap (m/s), stands_cap (m/s), theme (initial_d, mocha, latte, calm);
+//!             the calibration page's jog_step, jog_min, jog_max, sweep_max_error (counts),
+//!             sweep_rate (counts/s), sweep_stall (s); easter_egg (the little robot, true),
+//!             easter_egg_after (s)
+//! Writes      SAVE on the calibration page: the result, for a person to copy, in
+//!             $XDG_DATA_HOME/aav/steering-calibration/ (~/.local/share/...); never
+//!             vehicle.yaml or the firmware
 //!
 //! raylib owns the main thread (macOS needs that); rclrs spins on its own thread. `--demo`
 //! swaps the ROS node for a pretend car. The logic is in panel-core.
 //!
-//! usage: hw_panel [--demo] [--stands] [--fullscreen] [--monitor NAME|N] [--list-monitors]
-//!                 [--config FILE] [--vehicle FILE] [--screenshot FILE [--after S]]
-//!                 [--self-test SPEED:SECONDS] [--ros-args ...]
+//! usage: hw_panel [--demo [--demo-bind COUNTS]] [--stands] [--fullscreen] [--monitor NAME|N]
+//!                 [--list-monitors] [--config FILE] [--vehicle FILE] [--page calibration]
+//!                 [--screenshot FILE [--after S]] [--self-test SPEED:SECONDS]
+//!                 [--cal-self-test] [--robot-now] [--ros-args ...]
 
+mod cal_script;
 mod demo;
+mod robot;
 #[cfg(feature = "ros")]
 mod ros;
 mod source;
@@ -48,29 +63,39 @@ use std::{
 
 use anyhow::{bail, Context as _, Result};
 use hud_app::window;
-use hud_core::screen::Monitor;
+use hud_core::{
+    robot::{EasterEgg, Show},
+    screen::Monitor,
+};
 use panel_core::{
     buttons::{Buttons, Press, Steps, World, Zeroed},
+    calibration::{self, CalPage, CalPress, NotReady, Request},
     config::PanelConfig,
+    easter_egg::{self, PassWatch},
     gate::{self, Caps, Gate, Situation},
     rules::Kind,
     state::{self as panel_state, PanelState, Update},
+    steering_limits::Mark,
     vehicle::Vehicle,
 };
 use raylib::prelude::*;
 
 use crate::{
+    cal_script::CalScript,
     demo::Demo,
     source::DataSource,
-    ui::{Button, Frame, Ui},
+    ui::{Button, Frame, Page, Ui},
 };
 
 const USAGE: &str = "\
-usage: hw_panel [--demo] [--stands] [--fullscreen] [--monitor NAME|N] [--list-monitors]
-                [--config FILE] [--vehicle FILE] [--screenshot FILE [--after S]]
-                [--self-test SPEED:SECONDS] [--ros-args ...]
+usage: hw_panel [--demo [--demo-bind COUNTS]] [--stands] [--fullscreen] [--monitor NAME|N]
+                [--list-monitors] [--config FILE] [--vehicle FILE] [--page calibration]
+                [--screenshot FILE [--after S]] [--self-test SPEED:SECONDS]
+                [--cal-self-test] [--robot-now] [--ros-args ...]
 
   --demo             a pretend car: no ROS, no car
+  --demo-bind COUNTS the demo's steering has a stiff spot there (the check finds it)
+  --page calibration open on the steering calibration page
   --stands           the car's wheels are off the ground (the speed buttons stay off on
                      the real car until TODO 49b: a driven-wheel speed)
   --fullscreen       fill the screen (F11 switches too)
@@ -81,10 +106,18 @@ usage: hw_panel [--demo] [--stands] [--fullscreen] [--monitor NAME|N] [--list-mo
   --screenshot FILE  save the window as a PNG after --after seconds (4), then quit
   --self-test V:S    for checks: press Speed + up to V m/s, hold GO for S seconds, let go;
                      through the same buttons and rules; prints asked and seen each 0.5 s
+  --cal-self-test    with --demo only: the calibration page goes limp, marks each end and
+                     the centre, holds, runs the lock-to-lock check, prints the result
+                     (with --demo-bind it must stop on the stiff spot)
+  --robot-now        the little robot (the easter egg) at once: it drives across, then
+                     its eyes peek after 1 s of quiet (for screenshots)
   --ros-args ...     passed to ROS, e.g. --ros-args -p gps_topic:=/x
 
 keys: Space held = GO (the car moves only while it is held), Up or + / Down or -
-      speed, Left / Right steer, C centre, S stop, E e-stop, F11 full screen";
+      speed, Left / Right steer, C centre, S stop, E e-stop, F11 full screen,
+      Tab the other page.
+      Steering calibration page: L limp, H hold, Left / Right step, 1 2 3 mark left,
+      centre, right, K lock-to-lock check, W save, O end";
 
 /// The command line, before `--ros-args`.
 #[derive(Debug, Default)]
@@ -99,6 +132,10 @@ struct Options {
     screenshot: Option<PathBuf>,
     after: Option<f64>,
     self_test: Option<SelfTest>,
+    page: Option<Page>,
+    demo_bind: Option<u16>,
+    cal_self_test: bool,
+    robot_now: bool,
 }
 
 impl Options {
@@ -133,6 +170,21 @@ impl Options {
                     opts.after = Some(s);
                 }
                 "--self-test" => opts.self_test = Some(SelfTest::parse(&value("--self-test")?)?),
+                "--cal-self-test" => opts.cal_self_test = true,
+                "--robot-now" => opts.robot_now = true,
+                "--page" => {
+                    opts.page = Some(match value("--page")?.as_str() {
+                        "calibration" => Page::Calibration,
+                        "drive" => Page::Drive,
+                        other => bail!("--page: drive or calibration, not {other:?}"),
+                    })
+                }
+                "--demo-bind" => {
+                    let c: u16 = value("--demo-bind")?
+                        .parse()
+                        .context("--demo-bind: counts, such as 2800")?;
+                    opts.demo_bind = Some(c);
+                }
                 "-h" | "--help" => {
                     println!("{USAGE}");
                     std::process::exit(0);
@@ -142,6 +194,9 @@ impl Options {
         }
         if opts.after.is_some() && opts.screenshot.is_none() {
             bail!("--after needs --screenshot");
+        }
+        if (opts.cal_self_test || opts.demo_bind.is_some()) && !opts.demo {
+            bail!("--cal-self-test and --demo-bind need --demo: they are for the pretend car only");
         }
         Ok(opts)
     }
@@ -162,6 +217,8 @@ struct SelfTest {
 
 /// After the self-test lets go, the window stays this long (to see the car stop).
 const SELF_TEST_TAIL: Duration = Duration::from_secs(3);
+/// `--robot-now`: the quiet before the eyes peek.
+const ROBOT_NOW_AFTER: Duration = Duration::from_secs(1);
 
 impl SelfTest {
     fn parse(s: &str) -> Result<Self> {
@@ -270,7 +327,7 @@ fn open_source(
     config: PanelConfig,
 ) -> Result<(Box<dyn DataSource>, PanelConfig)> {
     if opts.demo {
-        return Ok((Box::new(Demo::new(Instant::now())), config));
+        return Ok((Box::new(Demo::new(Instant::now(), opts.demo_bind)), config));
     }
     #[cfg(feature = "ros")]
     {
@@ -298,6 +355,19 @@ const PRESS_KEYS: [(KeyboardKey, Press); 10] = [
     (KeyboardKey::KEY_S, Press::Stop),
 ];
 
+/// raylib's keys for the calibration page's presses.
+const CAL_KEYS: [(KeyboardKey, CalPress); 9] = [
+    (KeyboardKey::KEY_L, CalPress::Limp),
+    (KeyboardKey::KEY_H, CalPress::Hold),
+    (KeyboardKey::KEY_LEFT, CalPress::StepLeft),
+    (KeyboardKey::KEY_RIGHT, CalPress::StepRight),
+    (KeyboardKey::KEY_ONE, CalPress::Mark(Mark::Left)),
+    (KeyboardKey::KEY_TWO, CalPress::Mark(Mark::Centre)),
+    (KeyboardKey::KEY_THREE, CalPress::Mark(Mark::Right)),
+    (KeyboardKey::KEY_K, CalPress::Check),
+    (KeyboardKey::KEY_O, CalPress::End),
+];
+
 /// The panel between the source and the window: news in, where it may drive, the
 /// buttons, what to send. The window adds the keys, the mouse and the drawing; the
 /// Gazebo check drives it without a window.
@@ -308,6 +378,10 @@ struct Panel {
     caps: Caps,
     vehicle: Vehicle,
     stands: bool,
+    page: Page,
+    cal: CalPage,
+    /// The calibration result's file, once saved (or why it wasn't).
+    saved: Option<String>,
 }
 
 impl Panel {
@@ -328,7 +402,61 @@ impl Panel {
             },
             vehicle: vehicle.clone(),
             stands,
+            page: Page::Drive,
+            cal: CalPage::new(config.calibration()),
+            saved: None,
         }
+    }
+
+    /// Opens a page. Leaving the calibration page ends what it asks.
+    fn show(&mut self, page: Page, now: Instant) {
+        if self.page == Page::Calibration && page != Page::Calibration {
+            let position = self.position(now);
+            self.cal.press(CalPress::End, now, position, &[]);
+        }
+        self.page = page;
+    }
+
+    /// The steering actuator's position, while fresh.
+    fn position(&self, now: Instant) -> Option<u16> {
+        self.state.fresh_raw(now).and_then(|r| r.position)
+    }
+
+    /// Why the calibration page may not ask now.
+    fn cal_ready(&self, now: Instant) -> Vec<NotReady> {
+        calibration::readiness(&self.state.calibration_situation(now))
+    }
+
+    /// This frame's calibration presses; returns what to send to the bridge now.
+    fn calibrate(
+        &mut self,
+        now: Instant,
+        presses: impl IntoIterator<Item = CalPress>,
+    ) -> Option<Request> {
+        let ready = self.cal_ready(now);
+        let position = self.position(now);
+        for p in presses {
+            self.cal.press(p, now, position, &ready);
+        }
+        self.cal.tick(now, self.state.fresh_raw(now), &ready)
+    }
+
+    /// SAVE: the result for a person to copy, in a file of its own; never vehicle.yaml.
+    fn save(&mut self) {
+        let (Some(Ok(limits)), Some(marks)) = (self.cal.limits(), self.cal.marks()) else {
+            return;
+        };
+        let text = calibration::result_file(&limits, marks, self.cal.checked());
+        self.saved = Some(match write_result(&text) {
+            Ok(path) => {
+                println!("hw_panel: the steering calibration, saved to {path}:\n{text}");
+                path
+            }
+            Err(e) => {
+                eprintln!("hw_panel: couldn't save the steering calibration: {e:#}\n{text}");
+                format!("NOT saved ({e}); the lines are in the log")
+            }
+        });
     }
 
     /// Takes what arrived; a source change zeroes the buttons (not the first
@@ -370,10 +498,12 @@ impl Panel {
         presses: impl IntoIterator<Item = Press>,
         go: bool,
     ) -> Option<panel_core::buttons::Command> {
-        for p in presses {
+        // The calibration page has no drive buttons: GO is never held there.
+        let drive = self.page == Page::Drive;
+        for p in presses.into_iter().filter(|_| drive) {
             self.buttons.press(p, now, gate);
         }
-        self.buttons.set_go(go, now);
+        self.buttons.set_go(go && drive, now);
         self.buttons.command(
             now,
             &World {
@@ -414,33 +544,80 @@ fn run(
     rl.set_target_fps(60);
     rl.set_window_min_size(1100, 760);
     window::place(&mut rl, opts.monitor.as_ref(), opts.fullscreen)?;
-    let ui = Ui::new(&mut rl, &thread);
+    let ui = Ui::new(&mut rl, &thread, config.theme.theme());
     let mut panel = Panel::new(config, vehicle, opts.stands);
     let started = Instant::now();
+    if let Some(page) = opts
+        .page
+        .or(opts.cal_self_test.then_some(Page::Calibration))
+    {
+        panel.show(page, started);
+    }
+    let mut cal_script = opts
+        .cal_self_test
+        .then(|| CalScript::new(opts.demo_bind.is_some()));
     let screenshot_after = Duration::from_secs_f64(opts.after.unwrap_or(4.0));
+    // The little robot: it drives across once at start-up, then peeks when all is quiet.
+    let mut egg_settings = config.easter_egg_settings();
+    if opts.robot_now {
+        egg_settings.on = true;
+        egg_settings.idle_after = ROBOT_NOW_AFTER;
+    }
+    let mut egg = EasterEgg::new(egg_settings, started);
+    egg.drive_across(started);
+    let mut passes = PassWatch::default();
 
     while !rl.window_should_close() && !source.has_stopped() {
         let now = Instant::now();
         let gate = panel.news(source.as_mut(), now);
 
+        // Any touch at all hides the little robot.
+        let touched = rl.get_key_pressed().is_some()
+            || [
+                MouseButton::MOUSE_BUTTON_LEFT,
+                MouseButton::MOUSE_BUTTON_RIGHT,
+            ]
+            .into_iter()
+            .any(|b| rl.is_mouse_button_down(b))
+            || rl.get_mouse_delta().length() > 0.0
+            || rl.get_mouse_wheel_move() != 0.0;
+
         // The mouse and the keys. A window without focus never holds GO.
         let focused = rl.is_window_focused();
         let w = rl.get_screen_width() as f32;
         let mouse = rl.get_mouse_position();
-        let under = ui::layout(w)
+        let under = ui::layout(w, panel.page)
             .into_iter()
             .find(|(_, r)| r.check_collision_point_rec(mouse))
             .map(|(b, _)| b);
         let mouse_down = rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT);
         let held = under.filter(|_| mouse_down);
+        let on_cal = panel.page == Page::Calibration;
         let mut presses: Vec<Press> = PRESS_KEYS
             .iter()
-            .filter(|(k, _)| rl.is_key_pressed(*k))
+            .filter(|(k, _)| !on_cal && rl.is_key_pressed(*k))
+            .map(|&(_, p)| p)
+            .collect();
+        let mut cal_presses: Vec<CalPress> = CAL_KEYS
+            .iter()
+            .filter(|(k, _)| on_cal && rl.is_key_pressed(*k))
             .map(|&(_, p)| p)
             .collect();
         let clicked = under.filter(|_| rl.is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT));
-        if let Some(Button::Press(p)) = clicked {
-            presses.push(p);
+        match clicked {
+            Some(Button::Press(p)) => presses.push(p),
+            Some(Button::Cal(p)) => cal_presses.push(p),
+            Some(Button::Tab(page)) => panel.show(page, now),
+            _ => {}
+        }
+        if rl.is_key_pressed(KeyboardKey::KEY_TAB) {
+            panel.show(panel.page.other(), now);
+        }
+        let save =
+            on_cal && (clicked == Some(Button::Save) || rl.is_key_pressed(KeyboardKey::KEY_W));
+        if let Some(script) = &mut cal_script {
+            let position = panel.position(now);
+            cal_presses.extend(script.frame(now, &panel.cal, position));
         }
         if clicked == Some(Button::Estop) || rl.is_key_pressed(KeyboardKey::KEY_E) {
             source.press_estop();
@@ -456,6 +633,28 @@ fn run(
             go |= hold;
         }
         let command = panel.act(now, &gate, presses, go);
+        let cal_request = panel.calibrate(now, cal_presses);
+        if save {
+            panel.save();
+        }
+        let cal_ready = panel.cal_ready(now);
+        if passes.just_passed(&panel.cal) {
+            egg.drive_across(now);
+        }
+        let page = match panel.page {
+            Page::Drive => 0,
+            Page::Calibration => 1,
+        };
+        let watch = easter_egg::watch(
+            &panel.state,
+            &panel.buttons,
+            &gate,
+            &panel.cal,
+            page,
+            touched,
+            now,
+        );
+        let show = egg.update(now, watch);
 
         let note = panel.wheels_note();
         let frame = Frame {
@@ -466,11 +665,27 @@ fn run(
             held,
             wheels_note: note.as_deref(),
             stands: opts.stands,
+            page: panel.page,
+            cal: &panel.cal,
+            cal_ready: &cal_ready,
+            saved: panel.saved.as_deref(),
+            hide_keys: matches!(show, Show::Drive { .. }),
         };
         let mut d = rl.begin_drawing(&thread);
-        ui.draw(&mut d, &panel.state, &frame);
+        let room = ui.draw(&mut d, &panel.state, &frame);
+        robot::draw(&mut d, config.theme.theme(), show, &room);
         drop(d);
-        source.frame_drawn(command);
+        source.frame_drawn(command, cal_request);
+
+        if let Some(script) = &mut cal_script {
+            script.print(now, &panel.cal, panel.position(now));
+            if script.finished(now) && opts.screenshot.is_none() {
+                if !script.as_expected(&panel.cal) {
+                    bail!("the lock-to-lock check didn't end as it should");
+                }
+                break;
+            }
+        }
 
         if let Some(test) = &mut opts.self_test {
             test.print(now, &panel.state, &panel.buttons);
@@ -486,6 +701,30 @@ fn run(
         }
     }
     Ok(())
+}
+
+/// Where SAVE writes: `$XDG_DATA_HOME/aav/steering-calibration/`, or
+/// `~/.local/share/aav/steering-calibration/`.
+fn results_dir() -> Result<PathBuf> {
+    let base = match std::env::var_os("XDG_DATA_HOME").filter(|v| !v.is_empty()) {
+        Some(dir) => PathBuf::from(dir),
+        None => {
+            PathBuf::from(std::env::var_os("HOME").context("HOME isn't set")?).join(".local/share")
+        }
+    };
+    Ok(base.join("aav/steering-calibration"))
+}
+
+/// Writes the result to a new file of its own; returns its path.
+fn write_result(text: &str) -> Result<String> {
+    let dir = results_dir()?;
+    std::fs::create_dir_all(&dir).with_context(|| format!("making {}", dir.display()))?;
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    let path = dir.join(format!("steering-{}.txt", calibration::utc_stamp(secs)));
+    std::fs::write(&path, text).with_context(|| format!("writing {}", path.display()))?;
+    Ok(path.display().to_string())
 }
 
 /// Saves what the window shows as a PNG.
@@ -582,7 +821,7 @@ mod tests {
             let gate = panel.news(source.as_mut(), now);
             let (press, go) = test.frame(now, &panel.buttons, &gate);
             let command = panel.act(now, &gate, press, go);
-            source.frame_drawn(command);
+            source.frame_drawn(command, None);
             test.print(now, &panel.state, &panel.buttons);
             if test.finished(now) || now.duration_since(started) > Duration::from_secs(120) {
                 break;
@@ -607,7 +846,12 @@ mod tests {
             std::mem::take(&mut self.0)
         }
         fn press_estop(&mut self) {}
-        fn frame_drawn(&mut self, _command: Option<panel_core::buttons::Command>) {}
+        fn frame_drawn(
+            &mut self,
+            _command: Option<panel_core::buttons::Command>,
+            _calibration: Option<Request>,
+        ) {
+        }
     }
 
     fn announce(origin: hud_core::origin::Origin) -> Update {
@@ -651,7 +895,86 @@ mod tests {
     }
 
     #[test]
+    fn the_calibration_page_never_drives_and_leaving_it_ends_the_mode() {
+        use panel_core::calibration::{FirmwareState, Raw};
+        use panel_core::state::Update as U;
+        let t = Instant::now();
+        let mut panel = Panel::new(&PanelConfig::default(), &Vehicle::default(), false);
+        let mut news = Script(vec![
+            announce(hud_core::origin::Origin::Sim),
+            U::Vehicle(hud_core::vehicle::VehicleStatus {
+                mode: hud_core::vehicle::Mode::from(1),
+                armed: false,
+                estop_active: false,
+                speed: hud_core::units::MetresPerSecond(0.0),
+                steering_angle: hud_core::units::Radians(0.0),
+                throttle: hud_core::units::Fraction::new(0.0),
+                brake: hud_core::units::Fraction::new(1.0),
+                faults: hud_core::vehicle::Faults(0),
+            }),
+            U::SteeringRaw(Raw {
+                position: Some(2000),
+                state: FirmwareState::Off,
+            }),
+        ]);
+        let gate = panel.news(&mut news, t);
+        panel.show(Page::Calibration, t);
+        assert_eq!(panel.act(t, &gate, [Press::SpeedUp], true), None);
+        assert!(panel.cal_ready(t).is_empty());
+        assert_eq!(panel.calibrate(t, [CalPress::Limp]), Some(Request::Limp));
+        panel.show(Page::Drive, t);
+        assert_eq!(panel.calibrate(t, []), Some(Request::Off));
+        assert_eq!(panel.calibrate(t + Duration::from_secs(1), []), None);
+    }
+
+    /// The calibration self-test, without a window: the demo, the page and the script,
+    /// a frame every 20 ms of the demo's time.
+    fn run_cal_self_test(bind: Option<u16>) -> (bool, Option<panel_core::sweep::Outcome>) {
+        let t0 = Instant::now();
+        let mut demo = Demo::new(t0, bind);
+        let mut panel = Panel::new(&PanelConfig::default(), &Vehicle::default(), false);
+        panel.show(Page::Calibration, t0);
+        let mut script = CalScript::new(bind.is_some());
+        let mut now = t0;
+        for _ in 0..10_000 {
+            now += Duration::from_millis(20);
+            panel.news(&mut demo, now);
+            let press = script.frame(now, &panel.cal, panel.position(now));
+            let request = panel.calibrate(now, press);
+            demo.frame_drawn(None, request);
+            if script.finished(now) {
+                break;
+            }
+        }
+        (script.as_expected(&panel.cal), panel.cal.checked().cloned())
+    }
+
+    #[test]
+    fn the_cal_self_test_passes_on_the_demo_and_finds_a_stiff_spot() {
+        let (ok, outcome) = run_cal_self_test(None);
+        assert!(ok, "{outcome:?}");
+        let (ok, outcome) = run_cal_self_test(Some(2800));
+        assert!(ok, "{outcome:?}");
+        match outcome {
+            Some(panel_core::sweep::Outcome::Stopped { position, .. }) => {
+                assert!(position.abs_diff(2800) <= 2, "{position}")
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn the_cal_options_need_the_demo() {
+        assert!(Options::parse(&args(&["--cal-self-test"])).is_err());
+        assert!(Options::parse(&args(&["--demo", "--cal-self-test"])).is_ok());
+        let o = Options::parse(&args(&["--page", "calibration"])).expect("ok");
+        assert_eq!(o.page, Some(Page::Calibration));
+        assert!(Options::parse(&args(&["--page", "x"])).is_err());
+    }
+
+    #[test]
     fn the_keys_say_what_the_help_says() {
+        assert!(USAGE.contains("K lock-to-lock check") && USAGE.contains("W save"));
         assert!(USAGE.contains("Space held = GO") && USAGE.contains("C centre"));
         let centre = PRESS_KEYS.iter().find(|(_, p)| *p == Press::Centre);
         assert_eq!(centre.map(|(k, _)| *k), Some(KeyboardKey::KEY_C));

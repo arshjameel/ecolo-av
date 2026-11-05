@@ -32,6 +32,7 @@ Reading notes:
 - [10 October, evening: chips, Rust, Embassy and tools](#10-october-evening-chips-rust-embassy-and-tools)
 - [11 October: the night's results, and what we can try at home](#11-october-the-nights-results-and-what-we-can-try-at-home)
 - [15 October: topic names by area](#15-october-topic-names-by-area)
+- [1 November: fewer pixi commands](#1-november-fewer-pixi-commands)
 - [Open threads](#open-threads)
 
 ## The inherited repos and what we found
@@ -212,6 +213,21 @@ Yes. The Ubuntu-version rule only applies to the official binary packages.
 - **Timing:** do it early in term, and move the Pis to 24.04 + Jazzy at the same time (the QNX Pi has no ROS). Claude offered a backup checklist and script.
 
 > **Revised:** "one forum user had display problems" became several user reports once checked.
+
+### Can Ubuntu go from 22.04 to 24.04 with an upgrade, or do we flash? (1 Nov)
+
+Ben, 1 Nov: "ubuntu 24 whatever on all of them and updated ... we aren't flashing any of
+them. just upgrading ... some are running pi os or whatever we will have to switch them."
+
+| Computer | Upgrade in place? | How |
+|---|---|---|
+| The Ubuntu 22.04 Pis (Motor Pi, LOCALIZATION, the dash) | **Yes** | `apt full-upgrade`, reboot, then `sudo do-release-upgrade`. Over ssh it opens a spare ssh on port 1022 |
+| The camera Pis (Pi OS, Debian 13) | **No**: Pi OS can't become Ubuntu in place | a new SD card. They stay on Pi OS (no ROS there; the Pi camera works best on it): updates only |
+| The Orin (JetPack 6) | **No**: JetPack 7.2 is a reflash, never `do-release-upgrade` | SDK Manager on the lab's x86 desktop, after the full image and the hardware lead's OK; check NVIDIA's 7.2 notes list the AGX Orin first |
+
+- Back up first anyway: the upgrade ends Humble on that computer (it is built for 22.04).
+- One script does each computer, a dry run unless told: `tools/car_setup.sh <role>`;
+  the runbook is [Car setup](../car-setup.md).
 
 ### What is Pixi?
 
@@ -1389,8 +1405,76 @@ Ben: "All the perception stack maybe, what part does what. When sitting at the c
 - **Also built:** the cubes in RViz; health in `pixi run check`; on branches, the cubes
   and health on the debug screen, and KISS-ICP into `ekf_local` (`kiss_ekf:=true`).
 
+### "reverse and uturn should be in": the car reverses again
+
+- **Decided (Ben):** Nav2 may back up on the car again (off 26 Oct-1 Nov), at 0.5 m/s at
+  most, where the lidar watches behind. Its planner is then the lattice.
+- **The risk, written down:** until H5 the speed's sign is the last command's. Pushed or
+  rolling back, the EKF thinks forward: test 4.25 measures it.
+- **The ground plan** is `tests.md` stages 4 and 5 (it existed; Claude first said it
+  didn't), now with 4e (record the lot: maps and scores) and 4f (reversing, the U-turn).
+
+## 1 November: fewer pixi commands
+
+### "we have tons of pixi run options that are maybe not needed anymore... Less is more. Everything should be easy and obvious"
+
+- **Done:** 89 `pixi run` tasks became 45. A family is one task and a word after it, and
+  with no word it lists its choices. There are no old names kept as aliases.
+
+| Before | Now |
+|---|---|
+| `hud-demo`, `map-demo`, `debug-hud-demo`, `hw-panel-demo` | `hud --demo` (and the other three) |
+| `debugdemo` | `demo --debug` |
+| `estop-clear`, `gate-clear`, `geofence-clear`, `watchdog-clear` | `clear <estop, gate, geofence, watchdog>` |
+| `spine-uf2`, `wheel-flash`... (8 tasks) | `pico <spine, wheel, sentinel> <tools, build, flash>` |
+| `esp-tools`, `esp-qemu-check`... (5 tasks) | `esp <tools, build, flash, qemu-tools, qemu-check>` |
+| `vendor`, `get-models`, `get-routes`... (7 tasks) | `get <vendor, models, ..., routes, all>` |
+| `controller-compare`, `timing-test`, `stream-check`, `atob-score`, `bandwidth` | `measure <controllers, timing, stream, atob, bandwidth>` |
+| `preflight` | `actuator-test preflight --stands` |
+| teaching and rare tools (`vehicle-model`, `ndt-demo`, `can-load`, `gz-window`...) | no task: `pixi run python3 tools/<script>.py` (tools/README.md) |
+
+- **Kept as they were:** the everyday ones (`build`, `test`, `sim`, `car`, `pick`,
+  `check`, `doctor`, `car-day-check`...) and the stand-ins that must stay on this computer
+  (`carla-car`, `laptop-bench`).
+
+## 1 November: the diffusion planner
+
+### "Diffusion planners: This sounds interesting. Is this using a model to make this happen. Can we do it" (and: "I want that in")
+
+- **Yes, a model:** a small network turns random noise into a path in a few steps. It can
+  give several good paths at once (left or right of the building).
+- **Proposed** (design `docs/designs/2026-11-02_diffusion-planner.md`, 2 Nov): one more
+  planner, `planner:=diffusion`, beside the lattice. A Rust node answers Nav2's
+  `ComputePathToPose`; the model runs from one ONNX file on TensorRT (Orin) or Core ML
+  (Mac). It first learns by copying the lattice's and Hybrid-A*'s paths on random maps.
+- **The guard (simplex):** every sampled path is checked (collisions, the 3.59 m turns,
+  reverse rules, start and end). If none pass, or the model takes over 150 ms, the car
+  gets the lattice's path, asked for at the same time. The car refuses `diffusion` until
+  it wins in the trials and Ben swaps it.
+- **When:** a 0.3 trial (road to 0.2, review finding 7). Six open questions in the design.
+
+## 1 November, night: the road to 0.2, reviewed
+
+### "Are we doing too much, and in the right order?" Too much: a small 0.2, and car day in two.
+
+- **The review:** three reviewers (scope, design, "could a student run car day alone?")
+  read [the road to 0.2](../designs/2026-11-01_road-to-0.2.md) against the repo.
+- **Ben's answers:** split car day; a small 0.2; keep every idea for 0.3 and later.
+
+| What changed | Where |
+|---|---|
+| **Day A** destroys nothing (checked backups, Way A steering, the brake on stands, the Rust ESP32 and the joystick on stands, walking pace once signed); **Day B** upgrades, after a restore is proven | [Car day](../car-day.md#the-order) |
+| The people named, a shared password vault, a signature for each step you can't undo | [Car day](../car-day.md#the-people) |
+| One link version on the car: 2 all Day A; 3 for Way B later | [Car day](../car-day.md#one-link-version-on-the-car) |
+| `car_setup.sh`: a pending reboot, a wrong hostname, an upgrade too early are STOPs | [Car setup](../car-setup.md#when-it-stops) |
+| A "throttle cap", not a "speed cap": the ESP32 can't see speed; a joystick-alive check to build | TODO 74 |
+| The car-ready checklist: when 0.2 is done | [Car day](../car-day.md#ready-for-car-day-the-02-checklist) |
+
 ## Open threads
 
+- **The diffusion planner (2 Nov):** design written, for review; nothing built. Open: the crop, the teacher mix, the guard's limits (its six questions).
+- **Road to 0.2 (1 Nov, night):** five rows left (TODO, "Left for 0.2"): the car-ready checklist, TODO 74's gaps, the hardware lead's questions (H1, C1, `.211`, the router), the people named, the release notes.
+- **Car setup (1 Nov):** the runbook and `car_setup.sh` are written and tested in dry run; their first real run is on the car. Open: the joystick turned off with its receiver in, a firmware cap for the first moves (TODO 74); which computer is the Motor Pi (H1); a machine file for the localization Pi.
 - **Car day (1 Nov):** roll the car to measure the wheel diameter; check the front and rear track; then the lattice forward only (TODO 60-62).
 - **D3, the muxes (23 Oct):** built and tested in every profile; for the team: agree
   "check, not copy", and whether a bench with a real spine board and pretend sensors needs

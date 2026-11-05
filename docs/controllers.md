@@ -141,7 +141,7 @@ effort, and let the maths pick the gains (`u = −K x`).
 | ✅ Benefits | the best gains for the weights you chose, from the model; one signed command for throttle and brake; cheap to run (one multiply per state) |
 | ❌ Weaknesses | for one state and an integral it **is** a PI, with gains picked another way; blind to limits (throttle 0 to 1, never with the brake); only as good as the model |
 | Needs | the model (`vehicle_model.py`); wheel speed |
-| On our car | `spine-core`'s `SpeedLaw::Lqi` (`speed_loop.rs`), picked with `speed_loop:=lqi` (bench, Gazebo, spine_sim); the PI stays the default. Its gains are constants, `LqiConfig::MODEL`, made by `pixi run vehicle-model --lqi` |
+| On our car | `spine-core`'s `SpeedLaw::Lqi` (`speed_loop.rs`), picked with `speed_loop:=lqi` (bench, Gazebo, spine_sim); the PI stays the default. Its gains are constants, `LqiConfig::MODEL`, made by `pixi run python3 tools/vehicle_model.py --lqi` |
 | Status | **built, a comparison** (TODO 3, 29 Oct): on the model it matches `smooth` and beats today's PI. Results: [section 2a](#2a-lqi-against-the-pi-results-29-oct). "LQR picks the gains if it beats hand tuning" (the control plan, step 3) |
 
 What ours adds to the textbook (`u = −K x`):
@@ -172,7 +172,7 @@ limits written in, send the first step, and plan again.
 `speed_loop:=lqi` against today's PI (`default`) and TODO 27's `smooth`. Every number is
 on guessed car numbers (`vehicle.yaml`), so it ranks the designs; it doesn't tune the car.
 
-**On the model** (`pixi run vehicle-model --speed-loop`: the worst of 6 runs, 0.5 to
+**On the model** (`pixi run python3 tools/vehicle_model.py --speed-loop`: the worst of 6 runs, 0.5 to
 2 m/s, the lag doubled, up to 110 ms late):
 
 | Plant | Today's PI: overshoot / within 5 % | `smooth` | `lqi` |
@@ -199,7 +199,7 @@ through the encoder): 1 m/s peaks at 1.125 (today), 1.000 (`smooth`), 1.000 (`lq
 stop from 1 m/s rolls 0.65, 0.58 and 0.59 m.
 
 **Drive to point, the spine in the loop** (`sim-check --spine-points-only --speed-loop
-<profile>`: 4 drives at 1 m/s and 4 at 3 m/s each, scored by `atob-score` on Gazebo's
+<profile>`: 4 drives at 1 m/s and 4 at 3 m/s each, scored by `measure atob` on Gazebo's
 truth; load average 5-8):
 
 | | Today's PI, 1 m/s | `lqi`, 1 m/s | Today's PI, 3 m/s | `lqi`, 3 m/s |
@@ -220,7 +220,7 @@ thing to try.
 - The LQI is as calm as `smooth` and a little faster; both beat today's PI by far.
 - Its weak spot: a throttle 5x weaker than the model. Its gains assume `max_accel`, so a
   weaker car turns every gain down (15 % overshoot there, `smooth` 8 %). Measure the
-  throttle (test 4.1) and redo the gains: `pixi run vehicle-model --set max_accel=... --lqi`.
+  throttle (test 4.1) and redo the gains: `pixi run python3 tools/vehicle_model.py --set max_accel=... --lqi`.
 - It brakes with the same law as it speeds up (no 0.2 m/s coast band, no P-only brake).
 - The PI stays the default. Which one goes on the car is a car-day choice, after the
   actuator tests.
@@ -248,7 +248,7 @@ then dropped to `hold_brake`: a step in the slowing, a long crawl, then a jolt.
 | Off | `speed_loop.smooth_stop_speed: 0` |
 
 **In Gazebo** (`sim-check --drive-to-point-only --esp32 pi`: the bridge, the C++
-firmware's logic, the actuator model; Gazebo's truth, scored by `atob-score` and the
+firmware's logic, the actuator model; Gazebo's truth, scored by `measure atob` and the
 slowing in the last 0.2 s before standstill). 9 drives each; load average 7-13:
 
 | | Before (`smooth_stop_speed: 0`) | After |
@@ -506,7 +506,7 @@ the main ones if they work." A new follower doesn't replace the default. It runs
 | 3 runs per tour; loop time and missed 20 Hz ticks recorded | MPPI is random; a slow MPC mustn't look like bad maths |
 | MPC in Python (scipy) first | Rust only if it wins |
 
-Scored by `controller-compare` and `atob-score`. The design: `docs/designs/2026-10-29_trials.md`,
+Scored by `measure controllers` and `measure atob`. The design: `docs/designs/2026-10-29_trials.md`,
 on branch `trials` (Tentative; `git show trials:docs/designs/2026-10-29_trials.md`).
 **Nothing in it is built yet.**
 
@@ -514,7 +514,7 @@ on branch `trials` (Tentative; `git show trials:docs/designs/2026-10-29_trials.m
 
 The **planner** draws the path; the **follower** (MPPI, RPP, a tracker) drives it. Nav2
 can use several planners. We pick one with `planner:=`; the State Lattice is the default since 1 Nov
-(Hybrid-A* on the car, forward only until H5) (`docs/trials.md`, [Planners, 30 Oct](trials.md#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32)).
+(Hybrid-A* when the car may not reverse) (`docs/trials.md`, [Planners, 30 Oct](trials.md#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32)).
 
 ```text
  goal ─► bt_navigator ─► planner_server: "GridBased" ─► the path ─► follower
@@ -529,7 +529,7 @@ behind that name, so nothing else changes.
 
 | `planner:=` | Nav2's plugin | How it draws the path | Keeps to the car's turning circle? |
 |---|---|---|---|
-| `hybrid` (the car's default) | SmacPlannerHybrid | searches with real car moves: straight, full left, full right; Dubins curves (Reeds-Shepp with `reversing:=true`) | **yes** |
+| `hybrid` (forward only) | SmacPlannerHybrid | searches with real car moves: straight, full left, full right; Dubins curves (Reeds-Shepp with `reversing:=true`) | **yes** |
 | `lattice` (default) | SmacPlannerLattice | joins short car moves from a ready-made list, our **primitives** (below) | **yes** |
 | `smac2d` | SmacPlanner2D | A* on the grid, 8 directions, then smoothed | no |
 | `navfn` | NavfnPlanner | Dijkstra on the grid: Nav2's oldest planner | no |
@@ -557,9 +557,9 @@ The lattice needs a list of moves made for **our** car. Nav2 ships lists only fo
 robots (0.5 m and 1 m turning radius). So we make our own with Nav2's own generator:
 
 ```bash
-pixi run lattice-primitives          # makes the list again (after pixi run vendor)
-pixi run lattice-primitives --check  # still right for vehicle.yaml? (both files)
-pixi run lattice-primitives --headings 32   # the trial file, lattice_headings:=32
+pixi run python3 tools/lattice_primitives.py          # makes the list again (after pixi run get vendor)
+pixi run python3 tools/lattice_primitives.py --check  # still right for vehicle.yaml? (both files)
+pixi run python3 tools/lattice_primitives.py --headings 32   # the trial file, lattice_headings:=32
 ```
 
 | Setting | Value | From |
@@ -583,8 +583,8 @@ until the list is made again; a test fails too.
 ### Scoring them
 
 ```bash
-pixi run controller-compare --planners hybrid lattice smac2d --tours lot
-pixi run controller-compare --planners hybrid lattice lattice32 --reversing --runs 3 --tours lot
+pixi run measure controllers --planners hybrid lattice smac2d --tours lot
+pixi run measure controllers --planners hybrid lattice lattice32 --reversing --runs 3 --tours lot
 ```
 
 Each planner drives the lot tour behind MPPI. `--reversing` lets Nav2 back up, as the
@@ -620,7 +620,7 @@ Gazebo (its map is perfect).
 Every gain on this page comes from guessed numbers in `vehicle.yaml` (marked GUESS
 there). The real ones come from [Measure the car](measure-the-car.md) and the
 [actuator tests](actuator-tests.md), on stands and in a lot; then
-`pixi run vehicle-model --set ...` redoes the maths.
+`pixi run python3 tools/vehicle_model.py --set ...` redoes the maths.
 
 The spine's state machine (Arsh, PR #15, `spine-core/src/fsm.rs`) adds a **hardware test
 mode** for this:
@@ -653,7 +653,7 @@ today's ESP32 has no wheel speed, so the 0.5 m/s exit can't fire there (TODO 0b)
 |---|---|
 | The speed loop (PI, `smooth`) | `firmware/spine/crates/spine-core/src/speed_loop.rs` |
 | The spine's state machine | `firmware/spine/crates/spine-core/src/fsm.rs` (Arsh, PR #15) |
-| The speed LQI, its gains | `speed_loop.rs` (`SpeedLaw::Lqi`, `LqiConfig::MODEL`); `vehicle_model.py` (`speed_lqi`), `pixi run vehicle-model --lqi` |
+| The speed LQI, its gains | `speed_loop.rs` (`SpeedLaw::Lqi`, `LqiConfig::MODEL`); `vehicle_model.py` (`speed_lqi`), `pixi run python3 tools/vehicle_model.py --lqi` |
 | The bridge's feed-forward + PI, the smooth stop | `ros/can_bridge/aav_legacy/aav_legacy/speed_control.py` |
 | The trials' trackers (planned) | `ros/drivers/aav_track/` (not built yet) |
 | ego (bicycle model, limits) | `ros/ego/aav_ego/aav_ego/ackermann.py`, `config/ego.yaml` |

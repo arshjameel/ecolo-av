@@ -10,7 +10,8 @@
 //! | 4 | the wheel encoder's counter | `measured_speed` |
 //! | 5 | the steering and brake Jrks | `measured_steering`; `driver_faults`, with last tick's write errors |
 //!
-//! Then `Spine::step`, then `Actuators::apply`, then VEHICLE_FEEDBACK every 20 ms
+//! Then `Spine::step`, then the link's say on the steering (`CommandLink::steering`: the
+//! UART link's steering calibration), then `Actuators::apply_with`, then VEHICLE_FEEDBACK every 20 ms
 //! and VEHICLE_STATUS every 100 ms, through the link (the UART link drops them), then
 //! the tick's [`Report`] to the link (the UART link's uplink frame, every 20 ms).
 
@@ -129,7 +130,8 @@ impl<B: Board, I2C: I2c, U: Read + ReadReady, L: CommandLink> SpineBoard<B, I2C,
         inputs.driver_faults = readings.faults | self.write_faults | self.can_fault;
 
         let out = self.spine.step(&inputs);
-        self.write_faults = self.actuators.apply(&out, now);
+        let steering = self.link.steering(&inputs, &out, &readings.positions);
+        self.write_faults = self.actuators.apply_with(&out, now, steering);
         self.send_frames(now, &inputs, wheel.count, &out);
         let report = Report {
             now_ms: now,
@@ -871,7 +873,7 @@ mod uplink_loop_tests {
                 .0
                 .borrow()
                 .chunks(UPLINK_LEN)
-                .map(|c| Uplink::decode(c.try_into().unwrap()).unwrap())
+                .map(|c| Uplink::decode(c).unwrap())
                 .collect()
         }
 
@@ -957,5 +959,243 @@ mod uplink_loop_tests {
         assert_eq!(up.switch, ModeSwitch::NoSignal);
         assert_eq!(up.mode, DriveMode::Stopped);
         assert_ne!(up.faults & faults::RC_SIGNAL_LOST, 0);
+    }
+}
+
+/// Finding the steering actuator's ends and centre (version 3 frames, 1 Nov), through the
+/// whole loop: limp, jog, and the ways out.
+#[cfg(test)]
+mod steer_cal_loop_tests {
+    extern crate std;
+    use super::SpineBoard;
+    use crate::actuators::Devices;
+    use crate::calibration::Calibration;
+    use crate::link::{FrameVersion, LegacyLink};
+    use crate::rig::{BusState, FakeBoard, FakeBus, FakeTx, FakeUart, DAC, STEER};
+    use core::cell::RefCell;
+    use jrk_g2::command::{set_target, STOP_MOTOR};
+    use legacy_link::{CalRequest, CalState, Flags, Frame, FrameV3, Refusal, Uplink, UPLINK_LEN};
+    use spine_core::{Outputs, SpeedFeedback, SpineConfig};
+    use std::rc::Rc;
+    use std::vec::Vec;
+
+    struct Rig {
+        sb: SpineBoard<FakeBoard, FakeBus, FakeUart, LegacyLink<FakeUart, FakeTx>>,
+        bus: Rc<RefCell<BusState>>,
+        motor_pi: FakeUart,
+        uplink: FakeTx,
+        counter: u8,
+    }
+
+    impl Rig {
+        fn new() -> Self {
+            let bus = FakeBus::default();
+            let (motor_pi, uplink) = (FakeUart::default(), FakeTx::default());
+            let cal = Calibration::TODAY;
+            let devices = Devices::new(bus.clone(), bus.clone(), bus.clone(), bus.clone(), &cal);
+            let config = SpineConfig {
+                speed_feedback: SpeedFeedback::None {
+                    full_throttle_speed: 3.0,
+                },
+                ..SpineConfig::default()
+            };
+            let link =
+                LegacyLink::with_uplink(motor_pi.clone(), uplink.clone(), cal, FrameVersion::V2);
+            let mut sb = SpineBoard::with_link(
+                FakeBoard::new(),
+                devices,
+                FakeUart::default(),
+                link,
+                cal,
+                config,
+            );
+            sb.init();
+            bus.0.borrow_mut().steering_feedback = 1950;
+            Rig {
+                sb,
+                bus: bus.0,
+                motor_pi,
+                uplink,
+                counter: 0,
+            }
+        }
+
+        /// One version 3 frame with the next counter, then a 20 ms tick.
+        fn frame(&mut self, speed: f32, accel: f32, armed: bool, cal: CalRequest) -> Outputs {
+            self.counter = self.counter.wrapping_add(1);
+            let frame = FrameV3 {
+                values: Frame {
+                    steering: 0.0,
+                    speed,
+                    accel,
+                },
+                counter: self.counter,
+                flags: Flags {
+                    armed,
+                    estop: false,
+                },
+                calibration: cal,
+            };
+            self.motor_pi.0.borrow_mut().extend(frame.encode());
+            self.sb.board().now += 20;
+            self.sb.tick()
+        }
+
+        /// `n` calibration frames, as the bridge sends them: a stop, brake full.
+        fn calibrate(&mut self, n: usize, cal: CalRequest) {
+            for _ in 0..n {
+                self.frame(0.0, -1.0, false, cal);
+            }
+        }
+
+        /// The steering Jrk's writes since the last clear.
+        fn steering_writes(&self) -> Vec<Vec<u8>> {
+            let s = self.bus.borrow();
+            s.writes
+                .iter()
+                .filter(|w| w.0 == STEER)
+                .map(|w| w.1.clone())
+                .collect()
+        }
+
+        fn targets(&self) -> Vec<u16> {
+            self.steering_writes()
+                .iter()
+                .filter(|w| w.len() == 2)
+                .map(|w| u16::from(w[0] & 0x1F) | (u16::from(w[1]) << 5))
+                .collect()
+        }
+
+        fn clear(&mut self) {
+            self.bus.borrow_mut().writes.clear();
+        }
+
+        fn last_uplink(&self) -> Uplink {
+            let bytes = self.uplink.0.borrow();
+            let last = bytes.chunks(UPLINK_LEN).last().unwrap();
+            Uplink::decode(last).unwrap()
+        }
+
+        fn dac_codes(&self) -> Vec<u16> {
+            let s = self.bus.borrow();
+            s.writes
+                .iter()
+                .filter(|w| w.0 == DAC)
+                .map(|w| ad5311::decode([w.1[0], w.1[1]]).code)
+                .collect()
+        }
+    }
+
+    #[test]
+    fn the_target_encoding_matches_the_jrk_command() {
+        // The helper above reads set_target's two bytes back.
+        let mut rig = Rig::new();
+        rig.clear();
+        rig.frame(0.0, -1.0, false, CalRequest::Off);
+        assert_eq!(
+            rig.steering_writes().last(),
+            Some(&set_target(1950).to_vec())
+        );
+        assert_eq!(rig.targets().last(), Some(&1950));
+    }
+
+    #[test]
+    fn limp_stops_the_motor_and_the_uplink_reports_the_counts() {
+        let mut rig = Rig::new();
+        rig.calibrate(5, CalRequest::Off);
+        rig.clear();
+        rig.calibrate(10, CalRequest::Limp);
+        let writes = rig.steering_writes();
+        // The first frame's tick still steers (the spine's target); then every tick limp.
+        assert!(writes[1..].iter().all(|w| w == &[STOP_MOTOR]), "{writes:?}");
+        assert!(rig.dac_codes().iter().all(|&c| c == 0));
+        // A person turns the wheels; the uplink sees it, in counts.
+        rig.bus.borrow_mut().steering_feedback = 3010;
+        rig.calibrate(3, CalRequest::Limp);
+        let u = rig.last_uplink();
+        assert_eq!(u.calibration, CalState::Limp);
+        assert_eq!(u.counts.steering, Some(3010));
+    }
+
+    #[test]
+    fn leaving_limp_holds_the_wheels_then_brings_them_back_slowly() {
+        let mut rig = Rig::new();
+        rig.calibrate(5, CalRequest::Limp);
+        rig.bus.borrow_mut().steering_feedback = 3010;
+        rig.calibrate(2, CalRequest::Limp);
+        rig.clear();
+        rig.calibrate(1, CalRequest::Off);
+        // 20 ms at 300 counts a second: 6 counts from where the wheels are.
+        assert_eq!(rig.targets(), [3004]);
+        rig.calibrate(400, CalRequest::Off);
+        let t = rig.targets();
+        assert!(
+            t.windows(2).all(|w| w[0] >= w[1] && w[0] - w[1] <= 6),
+            "{t:?}"
+        );
+        assert_eq!(t.last(), Some(&1950));
+        assert_eq!(rig.last_uplink().calibration, CalState::Off);
+    }
+
+    #[test]
+    fn jog_moves_slowly_and_never_past_the_software_limits() {
+        let mut rig = Rig::new();
+        rig.calibrate(5, CalRequest::Off);
+        rig.clear();
+        rig.calibrate(700, CalRequest::Jog(4000));
+        let t = rig.targets();
+        assert!(
+            t.windows(2).all(|w| w[1] >= w[0] && w[1] - w[0] <= 6),
+            "{t:?}"
+        );
+        assert_eq!(t.last(), Some(&3500));
+        assert_eq!(rig.last_uplink().calibration, CalState::Jog);
+    }
+
+    #[test]
+    fn a_frame_asking_for_speed_is_refused_and_has_no_throttle() {
+        let mut rig = Rig::new();
+        rig.calibrate(5, CalRequest::Off);
+        for _ in 0..50 {
+            rig.frame(0.5, 0.0, true, CalRequest::Limp);
+        }
+        assert!(rig.dac_codes().iter().all(|&c| c == 0));
+        assert!(!rig.steering_writes().iter().any(|w| w == &[STOP_MOTOR]));
+        assert_eq!(
+            rig.last_uplink().calibration,
+            CalState::Refused(Refusal::Moving)
+        );
+    }
+
+    #[test]
+    fn without_analog_feedback_limp_is_refused() {
+        let mut rig = Rig::new();
+        rig.bus.borrow_mut().feedback_modes.push((STEER, 0)); // feedback: none
+        rig.calibrate(10, CalRequest::Limp);
+        assert!(!rig.steering_writes().iter().any(|w| w == &[STOP_MOTOR]));
+        let u = rig.last_uplink();
+        assert_eq!(u.calibration, CalState::Refused(Refusal::NoFeedback));
+        assert_eq!(u.counts.steering, None);
+    }
+
+    #[test]
+    fn losing_the_heartbeat_mid_limp_holds_where_the_wheels_are() {
+        let mut rig = Rig::new();
+        rig.calibrate(5, CalRequest::Limp);
+        rig.bus.borrow_mut().steering_feedback = 900;
+        rig.calibrate(2, CalRequest::Limp);
+        rig.clear();
+        // The Orin goes quiet: no frames at all for 300 ms.
+        for _ in 0..30 {
+            rig.sb.board().now += 10;
+            rig.sb.tick();
+        }
+        let writes = rig.steering_writes();
+        // Limp for 100 ms, then held at 900: the motor on again, not moving.
+        assert!(writes[..9].iter().all(|w| w == &[STOP_MOTOR]), "{writes:?}");
+        assert!(rig.targets().iter().all(|&t| t == 900));
+        assert!(!rig.targets().is_empty());
+        assert_eq!(rig.last_uplink().calibration, CalState::Hold);
+        assert!(rig.dac_codes().iter().all(|&c| c == 0));
     }
 }

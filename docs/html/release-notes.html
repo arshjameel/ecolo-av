@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Release 0.1: the first pass · AAV 2026–27</title>
+<title>Release 0.2: ready for the car · AAV 2026–27</title>
 <link rel="stylesheet" href="style.css">
 </head><body>
 <!-- Generated from docs/release-notes.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
-<h1>Release 0.1: the first pass</h1>
-<div class="meta">14 min read · 17 sections</div></header>
+<h1>Release 0.2: ready for the car</h1>
+<div class="meta">39 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a class="here" href="release-notes.html">Release notes</a>
@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -94,8 +98,1163 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#highlights">Highlights</a><a href="#everything-in-one-workspace">Everything in one workspace</a><a href="#driving-one-path-from-any-driver-to-the-wheels">Driving: one path from any driver to the wheels</a><a href="#knowing-where-the-car-is">Knowing where the car is</a><a href="#navigation-built-for-a-car">Navigation built for a car</a><a href="#perception-and-ai-on-every-gpu">Perception and AI on every GPU</a><a href="#firmware-a-can-spine-in-rust">Firmware: a CAN spine, in Rust</a><a href="#from-c-to-rust">From C++ to Rust</a><a href="#simulation-and-bench-mode">Simulation and bench mode</a><a href="#macs-are-first-class">Macs are first-class</a><a href="#the-hud">The HUD</a><a href="#ready-for-ai-tools-the-mcp-server">Ready for AI tools: the MCP server</a><a href="#safety-by-design">Safety by design</a><a href="#quality-tests-contracts-and-docs">Quality: tests, contracts and docs</a><a href="#by-the-numbers">By the numbers</a><a href="#coming-next">Coming next</a><a href="#credits">Credits</a></nav>
-<div class="lead"><blockquote>
+<nav class="toc"><span>On this page:</span><a href="#highlights">Highlights</a><a href="#the-screens">The screens</a><a href="#the-cockpit-step-by-step">The cockpit, step by step</a><a href="#how-to-use-it">How to use it</a><a href="#the-words-spelled-out">The words, spelled out</a><a href="#whats-left">What&#x27;s left</a><a href="#coming-in-03">Coming in 0.3</a><a href="#by-the-numbers">By the numbers</a><a href="#credits">Credits</a><a href="#release-01-the-first-pass-11-october">Release 0.1: the first pass (11 October)</a></nav>
+<div class="lead"><p class="release-line">The AAV 2026–27 autonomy stack · 3 November 2026</p>
+
+<div class="pitch"><p><b>Sim-complete, car-ready.</b> Four screens of our own, a cockpit
+in Lichtblick, a joystick that stops when the pad dies, a Rust ESP32 that brakes in
+0.1 s, new ways to know where the car is and to plan its path, and a car-day runbook
+that destroys nothing. Every part runs in Gazebo; every test passes. Next: the real
+car.</p></div>
+
+<div class="tiles">
+<div class="tile"><b>1575</b><span>tests, 0 failures (3 Nov)</span></div>
+<div class="tile"><b>23 / 23</b><span>launch switches each drove a leg in Gazebo</span></div>
+<div class="tile"><b>5</b><span>screens: HUD, map, debug, hardware panel, cockpit</span></div>
+<div class="tile"><b>112 ms</b><span>the Rust ESP32 brakes after the heartbeat stops (QEMU)</span></div>
+<div class="tile"><b>4</b><span>new localizer trials: AMCL, NDT, NDT-EKF, KISS-ICP</span></div>
+<div class="tile"><b>0</b><span>moves of the real car so far: that's 0.3</span></div>
+</div>
+
+<p><strong>The detail behind every line:</strong> <a href="release-0.2.html">the 0.2 guide</a> (its own PDF,
+<code>docs/html/aav-0.2.pdf</code>). The words in capitals are spelled out in
+<a href="#the-words-spelled-out">The words, spelled out</a>.</p></div>
+<section class="card"><h2 id="highlights">Highlights</h2>
+<ul>
+<li><strong>Five screens, one look:</strong> the HUD, the map, the debug screen, the hardware panel and
+  the cockpit, in Initial D red and black.</li>
+<li><strong>The hardware panel:</strong> every sensor's number and very simple buttons; the car moves
+  only while you hold Space.</li>
+<li><strong>Steering calibration:</strong> find the steering actuator's two ends and its centre, then a
+  lock-to-lock check that stops at the first stiff spot.</li>
+<li><strong>The cockpit:</strong> every driving detail on one Lichtblick screen, with a table of which
+  algorithms this run uses.</li>
+<li><strong>The joystick-alive check:</strong> a joystick that goes silent or freezes stops the car.</li>
+<li><strong>The Rust ESP32 firmware:</strong> brakes fully 0.1 s after the Orin's heartbeat stops (the
+  C++ never does), with Arsh's state machine.</li>
+<li><strong>Where am I:</strong> two EKFs by default; AMCL, NDT, NDT-EKF and KISS-ICP as trials. NDT-EKF
+  is 10 times closer to the truth.</li>
+<li><strong>Planning:</strong> the State Lattice by default (it reverses and makes the U-turn);
+  Hybrid-A* forward only; a diffusion planner as a trial.</li>
+<li><strong>Perception:</strong> RF-DETR Nano on the camera stream sees a stop sign at 20 m (YOLO: 10 m);
+  the lidar as a flat scan or as cubes.</li>
+<li><strong>Safety in layers:</strong> e-stops, hold-to-drive, timeouts, the output mux, the sensor
+  watchdog, collision_monitor, a 30 m geofence.</li>
+<li><strong>Car day, written:</strong> Day A destroys nothing, Day B upgrades. Named roles, sign-offs,
+  and <code>car_setup.sh</code> for each computer.</li>
+<li><strong>45 commands,</strong> down from 89, and <code>pixi run pick</code> to choose the switches from a menu.</li>
+<li><strong>The little robot:</strong> a tribute to WALL-E, peeking from three of the screens.</li>
+</ul>
+</section>
+<section class="card"><h2 id="the-screens">The screens</h2>
+<p>Five screens. Each one: the picture, the command, what it shows, what it's for.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Screen</th>
+<th>Where it runs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HUD</td>
+<td>the car's small screen</td>
+</tr>
+<tr>
+<td>Map</td>
+<td>the car's big screen</td>
+</tr>
+<tr>
+<td>Debug screen</td>
+<td>a laptop or the lab</td>
+</tr>
+<tr>
+<td>Hardware panel</td>
+<td>the Orin's screen or a wired laptop</td>
+</tr>
+<tr>
+<td>Cockpit (Lichtblick)</td>
+<td>any laptop, no ROS needed</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-hud">The HUD</h3>
+<p><img alt="The HUD in Initial D" src="../img/hud-initial-d.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Run it</strong></td>
+<td><code>pixi run hud --demo</code> (pretend data, no ROS); <code>pixi run hud</code> beside <code>pixi run sim</code></td>
+</tr>
+<tr>
+<td><strong>What it shows</strong></td>
+<td>speed, gear, mode, the camera, and the GO / STOP panel: may the car move, and if not, the one main reason</td>
+</tr>
+<tr>
+<td><strong>Use it for</strong></td>
+<td>the safety driver's view in the seat; its E-STOP button stops the car</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-map">The map</h3>
+<p><img alt="The map in Initial D" src="../img/map-initial-d.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Run it</strong></td>
+<td><code>pixi run map --demo</code>; with Gazebo: <code>pixi run sim world:=test_lot map:=true</code></td>
+</tr>
+<tr>
+<td><strong>What it shows</strong></td>
+<td>the car on Ottawa's streets, with Nav2's route</td>
+</tr>
+<tr>
+<td><strong>Use it for</strong></td>
+<td>search for a place, and send the car there. Once: <code>pixi run get street-map</code>, <code>pixi run get places</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-debug-screen">The debug screen</h3>
+<p><img alt="The debug screen in Initial D" src="../img/debug-hud-initial-d.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Run it</strong></td>
+<td><code>pixi run debug-hud --demo</code> (no ROS); <code>pixi run demo --debug</code> (with Gazebo)</td>
+</tr>
+<tr>
+<td><strong>What it shows</strong></td>
+<td>what the car sees, in 3D: the lidar's cubes, where each localizer puts the car, the health checks</td>
+</tr>
+<tr>
+<td><strong>Use it for</strong></td>
+<td>finding out why the car did something. Keys 1-4 swap the path follower (sim only)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-hardware-panel">The hardware panel</h3>
+<p><img alt="The hardware panel in Initial D" src="../img/hw-panel-initial-d.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Run it</strong></td>
+<td><code>pixi run hw-panel --demo</code>; with Gazebo: <code>pixi run sim world:=test_lot</code>, then <code>pixi run hw-panel</code></td>
+</tr>
+<tr>
+<td><strong>What it shows</strong></td>
+<td>every sensor's number, straight from its own node; very simple buttons</td>
+</tr>
+<tr>
+<td><strong>Use it for</strong></td>
+<td>the hardware test in front of the car (<a href="#b-the-hardware-test-in-front-of-the-car">recipe B</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-steering-calibration-page">The steering calibration page</h3>
+<p>The hardware panel's second page: press <strong>Tab</strong>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Passed</th>
+<th>Stopped on a stiff spot</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="The calibration page after a passed check" src="../img/hw-panel-calibration.png" /></td>
+<td><img alt="The calibration page stopped on resistance" src="../img/hw-panel-calibration-stopped.png" /></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Run it</strong></td>
+<td><code>pixi run hw-panel --demo</code>, then Tab</td>
+</tr>
+<tr>
+<td><strong>What it shows</strong></td>
+<td>the steering actuator's position in counts, the three marks (left, centre, right), the equal limits, the check</td>
+</tr>
+<tr>
+<td><strong>Use it for</strong></td>
+<td>the steering pulls right: this finds its true centre. Needs the Rust firmware (a later day)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-cockpit-the-drive-screen">The cockpit (the Drive screen)</h3>
+<p><img alt="The cockpit in Lichtblick: the Algorithms table, the localizers, the cubes" src="../img/cockpit-drive.jpg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Run it</strong></td>
+<td><code>pixi run sim world:=test_lot foxglove:=true</code>, then Lichtblick (<a href="#the-cockpit-step-by-step">step by step</a>)</td>
+</tr>
+<tr>
+<td><strong>What it shows</strong></td>
+<td>both cameras, the status lights, the street map, a big 3D view, the speed and steering plots, which algorithms run</td>
+</tr>
+<tr>
+<td><strong>Use it for</strong></td>
+<td>watching a drive from any laptop, and sending Nav2 a goal (sim)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-little-robot">The little robot</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>On the map</th>
+<th>Peeking on the panel</th>
+<th>After a passed check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="The robot as the car on the map" src="../img/robot-map.png" /></td>
+<td><img alt="The eyes peeking" src="../img/robot-eyes-panel.png" /></td>
+<td><img alt="The robot drives along the bottom" src="../img/robot-driving.png" /></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Run it</strong></td>
+<td><code>pixi run hw-panel --demo --robot-now</code>; on the map, <code>car_marker: robot</code> in <code>map.yaml</code></td>
+</tr>
+<tr>
+<td><strong>What it shows</strong></td>
+<td>a tribute to WALL-E: big round eyes after 60 s of quiet; never while the car moves or anything warns</td>
+</tr>
+<tr>
+<td><strong>Use it for</strong></td>
+<td>a smile. Off: <code>easter_egg: false</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-cockpit-step-by-step">The cockpit, step by step</h2>
+<p><strong>Yes, it runs.</strong> Seen live in Gazebo's test lot on 3 November.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Start Gazebo with the bridge, and the trials you want to see: <code>pixi run sim world:=test_lot foxglove:=true voxels:=true ndt:=true kiss_icp:=true amcl:=true</code> (NDT needs its map once: <code>pixi run ndt-map drive</code>, about 6 min)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Get <strong>Lichtblick</strong> (free, open source): github.com/lichtblick-suite/lichtblick, Releases. On a Mac, the first time: right-click it in Applications → Open</td>
+</tr>
+<tr>
+<td>3</td>
+<td>In Lichtblick: <strong>Open connection → Foxglove WebSocket</strong>, <code>ws://localhost:8765</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Layouts → Import from file</strong>: <code>tools/foxglove/cockpit.json</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Send a goal: in the 3D panel, the <strong>Publish</strong> tool (top right), set to <strong>Pose</strong>, then click and drag on the road. Nav2 plans and drives</td>
+</tr>
+</tbody>
+</table></div>
+<pre class="highlight"><code class="language-text">┌──────────────┬────────────┬──────────────────┐
+│ front camera │ status     │ street map       │
+├──────────────┤ (5 lights) │                  │
+│ chase camera │            │                  │
+├──────────────┴────────────┼──────────────────┤
+│                           │ ALGORITHMS table │
+│  3D: the car, lidar,      │ speed plot       │
+│  cubes, costmap, plan,    │ steering plot    │
+│  each localizer           │ tabs             │
+└───────────────────────────┴──────────────────┘</code></pre>
+<p><strong>Panel by panel: what it tells you</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Panel</th>
+<th>It tells you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Front camera</td>
+<td>what the car's front left camera sees, once a second</td>
+</tr>
+<tr>
+<td>Chase camera</td>
+<td>Gazebo's view from behind the car (sim only)</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>e-stop, sensor watchdog, localization health, output gate, warnings: green is good</td>
+</tr>
+<tr>
+<td>Street map</td>
+<td>the EKF's position (blue) against the raw GPS (orange)</td>
+</tr>
+<tr>
+<td>3D</td>
+<td>the car, the lidar, the cubes, the costmap, Nav2's plan and goal, and each localizer's guess: local EKF blue, global EKF green, NDT purple, AMCL orange</td>
+</tr>
+<tr>
+<td>Algorithms</td>
+<td>which planner, path follower, obstacles and localizers this run uses</td>
+</tr>
+<tr>
+<td>Speed plot</td>
+<td>the wheels, the local EKF and KISS-ICP against the speed asked</td>
+</tr>
+<tr>
+<td>Steering plot</td>
+<td>the steering asked against measured</td>
+</tr>
+<tr>
+<td>Tab: Localizers</td>
+<td>NDT and KISS-ICP lights: OK, WARN, LOST, or off</td>
+</tr>
+<tr>
+<td>Tab: Swap tracker</td>
+<td>swap the path follower live (sim, with <code>tracker:=</code>)</td>
+</tr>
+<tr>
+<td>Tab: Launch switches</td>
+<td>what each switch does; changing one needs a restart (<code>pixi run pick</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Tips</strong></p>
+<ul>
+<li>Changed the layout? Lichtblick keeps its old copy: import it under a new name.</li>
+<li>On the car the cockpit is <strong>watch only</strong>: a click sends nothing.</li>
+<li>The street map needs the internet.</li>
+</ul>
+<p><strong>Not showing yet</strong></p>
+<ul>
+<li>The EKFs' arrows and NDT's scan (two scripts inside the layout).</li>
+<li>NDT's map and KISS-ICP's cloud: no topic yet. The debug screen shows them.</li>
+</ul>
+<p>More: <a href="foxglove.html#cockpit">Watch from a laptop</a>.</p>
+</section>
+<section class="card"><h2 id="how-to-use-it">How to use it</h2>
+<h3 id="a-try-it-on-a-laptop">(a) Try it on a laptop</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>You see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>pixi install</code>, <code>pixi run build</code></td>
+<td>everything built (the first time, minutes)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>pixi run hud --demo</code>, then <code>pixi run hw-panel --demo</code></td>
+<td>two screens with pretend data, no ROS</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>pixi run demo</code> (<code>--debug</code> adds the debug screen)</td>
+<td>Gazebo's test lot, RViz, the HUD and the map at once</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>pixi run pick</code></td>
+<td>a menu: planner, path follower, where-am-I. It prints the command and runs it</td>
+</tr>
+<tr>
+<td>5</td>
+<td>In RViz or the cockpit, send a goal</td>
+<td>the car plans and drives there</td>
+</tr>
+</tbody>
+</table></div>
+<p>Goals accepted but the car never moves? Stop everything, <code>pixi run fastdds shm clean</code>,
+start again.</p>
+<h3 id="b-the-hardware-test-in-front-of-the-car">(b) The hardware test in front of the car</h3>
+<p><strong>On stands: all four wheels off the ground.</strong> From <a href="car-day.html">Car day</a>, A6-A9b.</p>
+<p><strong>Who stands where</strong></p>
+<pre class="highlight"><code class="language-text">                 ┌───────────── the car, on stands ─────────────┐
+   E-STOP PERSON │  front wheels           rear wheels (driven) │ HARDWARE LEAD
+   Kar-Tech stop │  (steering)                                  │ at the actuators
+   in hand,      └──────────────────────────────────────────────┘
+   nothing else            LAPTOP PERSON: the wired laptop        APPROVER signs ✍ steps</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E-stop person</td>
+<td>holds the <strong>Kar-Tech stop</strong>, the main stop, whenever the car has power. Nothing else</td>
+</tr>
+<tr>
+<td>Hardware lead</td>
+<td>decides every hardware question; sets the actuators</td>
+</tr>
+<tr>
+<td>Laptop person</td>
+<td>runs the commands; keeps the recordings</td>
+</tr>
+<tr>
+<td>Safety driver</td>
+<td>in the seat, for every move on the ground</td>
+</tr>
+<tr>
+<td>Approver</td>
+<td>signs each step you can't undo; not the laptop person</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The order on the day</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What</th>
+<th>With</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A6</td>
+<td>the steering actuator's ends and centre</td>
+<td>Pololu's program over USB (Way A; the Jrk G2's); the <a href="actuator-tests.html#the-sheet">sheet</a></td>
+</tr>
+<tr>
+<td>A7</td>
+<td>the brake holds, with the power on and off</td>
+<td>by hand</td>
+</tr>
+<tr>
+<td>A8</td>
+<td>the Rust ESP32 flashed, then 14 checks; roll back on the first failure</td>
+<td>the hardware lead's OK, Ben on a call</td>
+</tr>
+<tr>
+<td>A9</td>
+<td>the keyboard: forward, back, left, let go, every e-stop</td>
+<td><code>pixi run keyboard</code></td>
+</tr>
+<tr>
+<td>A9b</td>
+<td>the joystick (<a href="#c-the-joystick-on-the-motor-pi-alone">recipe c</a>)</td>
+<td>the Motor Pi alone</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The hardware panel at the car</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>On the Orin: <code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin max_speed:=0.3 gps:=false lidar:=false stands:=true</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>On the wired laptop: <code>export ROS_DOMAIN_ID=42</code>, then <code>pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true</code> (or on the Orin's own screen)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Read each sensor:</strong> every row has its own number and age. A grey or STALE row: check that sensor's cable and driver</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>The buttons</strong> (Gazebo and the bench today; on the car once a driven-wheel speed exists, TODO 49b)</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Button (key)</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SPEED + / SPEED − (Up, Down)</td>
+<td>the asked speed, 0.1 m/s a press; never reverse, never above the cap</td>
+</tr>
+<tr>
+<td>Hold <strong>Space</strong></td>
+<td>the car moves <strong>only while it's held</strong>; let go and it stops</td>
+</tr>
+<tr>
+<td>LEFT / RIGHT (Left, Right)</td>
+<td>steer 0.05 rad a press, while creeping</td>
+</tr>
+<tr>
+<td>CENTRE (C)</td>
+<td>wheels straight at a creep, then stop</td>
+</tr>
+<tr>
+<td>STOP (S)</td>
+<td>the asked speed to 0 at once</td>
+</tr>
+<tr>
+<td>E-STOP (E)</td>
+<td>the e-stop; clear it with <code>pixi run clear estop</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>On the real car today the speed buttons are <strong>off</strong>, and the panel says why: the wheel
+sensors are on the front, the motor drives the rear. On stands the keyboard drives (A9).</p>
+<p><strong>The steering calibration page</strong> (Tab), on a later day with the Rust firmware:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>GO LIMP</strong> (L)</td>
+<td>the motor lets go; turn the wheels by hand</td>
+</tr>
+<tr>
+<td>2</td>
+<td>or <strong>STEP LEFT / RIGHT</strong></td>
+<td>small steps, 25 counts a press</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>MARK</strong> left (1), centre (2), right (3)</td>
+<td>equal limits: the smaller side, less 5 %</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>LOCK-TO-LOCK CHECK</strong> (K)</td>
+<td>centre → left → centre → right → centre; stops and holds at any stiff spot</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>SAVE</strong> (W)</td>
+<td>a file with the numbers; a person copies them in a pull request</td>
+</tr>
+</tbody>
+</table></div>
+<p>The sensor check without driving: <code>pixi run actuator-test preflight --stands --no-drive --skip steering gps lidar</code>
+(on the Orin): one PASS or FAIL per sensor, nothing moves.</p>
+<h3 id="c-the-joystick-on-the-motor-pi-alone">(c) The joystick on the Motor Pi alone</h3>
+<p>Car day A9b. The Rust ESP32 only (the C++ has no timeout). No Orin.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>You see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Stands; Kar-Tech stop in hand; theirs stopped (<code>aav_serial_bridge</code> inactive)</td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td>On the Motor Pi: <code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=motor_pi_alone max_speed:=0.3</code></td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>~/aav-jazzy/aav.sh ros2 topic echo /drivers/joy/alive</code></td>
+<td><code>WAITING</code>, then <code>OK</code> once the trigger is released</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Hold the trigger (button 0), a little throttle</td>
+<td>the wheels turn</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Turn the joystick off</strong> while driving</td>
+<td>the wheels stop within 3 s: <code>SILENT</code> or <code>FROZEN</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>Unplug the receiver while driving</td>
+<td>stops within 1 s; stays stopped until the trigger is released and pressed</td>
+</tr>
+</tbody>
+</table></div>
+<p>Try it in Gazebo first: <code>pixi run sim teleop:=true</code> with the pad plugged in.</p>
+<h3 id="d-record-a-drive">(d) Record a drive</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>On the car: <code>~/aav-jazzy/aav.sh tools/record.sh --lidar &lt;name&gt;</code>; in Gazebo: <code>tools/record.sh --lidar &lt;name&gt;</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>It writes <code>bags/&lt;date&gt;_&lt;name&gt;/</code> (MCAP): sensors, commands, what the stack decided. About 5 GB per 10 min</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The same drives build the lot's NDT map: <code>pixi run ndt-map build bags/&lt;name&gt; --poses /localization/odom/global --out maps/ndt/&lt;lot&gt;</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Bags stay out of git. Record all of car day.</p>
+<h3 id="e-score-a-trial">(e) Score a trial</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>Gives</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>pixi run measure controllers --tours lot</code></td>
+<td>each planner and follower on the same routes: legs finished, time</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>pixi run measure controllers --planners lattice diffusion --reversing --tours lot</code></td>
+<td>two planners side by side</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>pixi run measure atob &lt;bag&gt;</code></td>
+<td>one A-to-B run scored</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Replay a car-day bag with a trial on and off (<code>ndt_ekf</code>, <code>kiss_ekf</code>, <code>voxels</code>)</td>
+<td>the best, on real data (<a href="tests.html#4e-record-the-lot-the-maps-and-the-scores">tests 4.22</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>A trial becomes the default only with its numbers (<a href="trials.html">Trials</a>).</p>
+</section>
+<section class="card"><h2 id="the-words-spelled-out">The words, spelled out</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Short</th>
+<th>Full name</th>
+<th>In one line</th>
+<th>Where we use it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Ackermann</strong></td>
+<td>Ackermann steering (Rudolph Ackermann)</td>
+<td>the front wheels turn by different angles, so every wheel circles one point</td>
+<td>ego's commands; Gazebo's car</td>
+</tr>
+<tr>
+<td><strong>AMCL</strong></td>
+<td>Adaptive Monte Carlo Localization</td>
+<td>many guesses of where the car is; keeps those that match the walls</td>
+<td>a localizer trial (<code>amcl:=true</code>)</td>
+</tr>
+<tr>
+<td><strong>CAN</strong></td>
+<td>Controller Area Network</td>
+<td>the car's two-wire bus: short frames between boards</td>
+<td>the spine; the wheel sensors (0x200, 0x201)</td>
+</tr>
+<tr>
+<td><strong>Core ML</strong></td>
+<td>Apple's Core ML</td>
+<td>runs a model on a Mac's GPU and Neural Engine</td>
+<td>the detector on MacBooks</td>
+</tr>
+<tr>
+<td><strong>Costmap</strong></td>
+<td>(Nav2's costmap)</td>
+<td>a grid of how bad it is to drive over each cell</td>
+<td>Nav2's planner and follower</td>
+</tr>
+<tr>
+<td><strong>Cubes (voxels)</strong></td>
+<td>voxel: volume pixel</td>
+<td>the lidar's points sorted into 0.25 m boxes</td>
+<td>a trial in place of the flat scan (<code>voxels:=true</code>)</td>
+</tr>
+<tr>
+<td><strong>DAC</strong></td>
+<td>Digital-to-Analog Converter</td>
+<td>turns a number into a voltage</td>
+<td>the throttle (0-1023)</td>
+</tr>
+<tr>
+<td><strong>DDS, Cyclone</strong></td>
+<td>Data Distribution Service; Eclipse Cyclone DDS</td>
+<td>how ROS 2 nodes find each other and send messages</td>
+<td>Cyclone on the car</td>
+</tr>
+<tr>
+<td><strong>Diffusion planner</strong></td>
+<td>(a denoising diffusion model)</td>
+<td>a small model draws 16 paths from noise; a guard checks each</td>
+<td>a planner trial (<code>planner:=diffusion</code>)</td>
+</tr>
+<tr>
+<td><strong>EKF</strong></td>
+<td>Extended Kalman Filter</td>
+<td>blends noisy sensors into one best guess, with how sure it is</td>
+<td><code>ekf_local</code>, <code>ekf_global</code>: the default</td>
+</tr>
+<tr>
+<td><strong>ESP32</strong></td>
+<td>(Espressif's ESP32, a name)</td>
+<td>a small microcontroller board</td>
+<td>drives the throttle, brake and steering actuators</td>
+</tr>
+<tr>
+<td><strong>FSM</strong></td>
+<td>Finite State Machine</td>
+<td>a fixed set of states and the rules to move between them</td>
+<td>Arsh's <code>fsm.rs</code> in the spine</td>
+</tr>
+<tr>
+<td><strong>Foxglove, Lichtblick</strong></td>
+<td>(app names)</td>
+<td>watch ROS from any laptop; Lichtblick is the open-source one</td>
+<td>the cockpit</td>
+</tr>
+<tr>
+<td><strong>Gazebo</strong></td>
+<td>Gazebo Harmonic</td>
+<td>a 3D robot simulator with physics and sensors</td>
+<td><code>pixi run sim</code></td>
+</tr>
+<tr>
+<td><strong>GPS, RTK GPS</strong></td>
+<td>Global Positioning System; Real-Time Kinematic</td>
+<td>where on Earth; RTK uses a base station to reach about 2 cm</td>
+<td><code>ekf_global</code>; RTK: the ground truth, later</td>
+</tr>
+<tr>
+<td><strong>HUD</strong></td>
+<td>Head-Up Display</td>
+<td>the driver's screen</td>
+<td>the in-car screen</td>
+</tr>
+<tr>
+<td><strong>Hybrid-A*</strong></td>
+<td>Hybrid A-star search</td>
+<td>searches moves a car can make, cell by cell</td>
+<td>the planner when forward only</td>
+</tr>
+<tr>
+<td><strong>I2C</strong></td>
+<td>Inter-Integrated Circuit</td>
+<td>a two-wire bus for chips on one board</td>
+<td>the ESP32 to the Jrk boards</td>
+</tr>
+<tr>
+<td><strong>ICP</strong></td>
+<td>Iterative Closest Point</td>
+<td>pairs each lidar point with the nearest old one, then moves to close the pairs</td>
+<td>inside KISS-ICP</td>
+</tr>
+<tr>
+<td><strong>IMU</strong></td>
+<td>Inertial Measurement Unit</td>
+<td>measures turning and acceleration</td>
+<td>the Yahboom IMU, into both EKFs</td>
+</tr>
+<tr>
+<td><strong>Jrk</strong></td>
+<td>(Pololu's Jrk G2, a name)</td>
+<td>the motor controller board in each actuator</td>
+<td>the steering and brake actuators</td>
+</tr>
+<tr>
+<td><strong>KISS-ICP</strong></td>
+<td>Keep It Small and Simple ICP</td>
+<td>how far the car moved, from the lidar alone, no map</td>
+<td>a localizer trial (<code>kiss_icp:=true</code>)</td>
+</tr>
+<tr>
+<td><strong>Lidar</strong></td>
+<td>Light Detection and Ranging</td>
+<td>a spinning laser that measures distances all round</td>
+<td>the roof lidar: scan, cubes, NDT</td>
+</tr>
+<tr>
+<td><strong>LQR</strong></td>
+<td>Linear Quadratic Regulator</td>
+<td>a formula for the best steering at each moment</td>
+<td>a path-follower trial (<code>tracker:=lqr</code>)</td>
+</tr>
+<tr>
+<td><strong>LQI</strong></td>
+<td>Linear Quadratic Integral</td>
+<td>LQR with a memory of the error, so it ends exactly on the speed</td>
+<td>a speed-loop trial (<code>speed_loop:=lqi</code>)</td>
+</tr>
+<tr>
+<td><strong>MCP</strong></td>
+<td>Model Context Protocol</td>
+<td>lets an AI app read tools and data</td>
+<td>our read-only server for Claude Code</td>
+</tr>
+<tr>
+<td><strong>MPC</strong></td>
+<td>Model Predictive Control</td>
+<td>tries the next 1.5 s of steering, keeps the best, repeats</td>
+<td>a path-follower trial (<code>tracker:=mpc</code>)</td>
+</tr>
+<tr>
+<td><strong>MPPI</strong></td>
+<td>Model Predictive Path Integral</td>
+<td>tries hundreds of random short futures, blends the best</td>
+<td>Nav2's path follower: the default</td>
+</tr>
+<tr>
+<td><strong>Nav2</strong></td>
+<td>Navigation 2</td>
+<td>ROS 2's navigation: maps, planners, followers</td>
+<td>plans and drives to a goal</td>
+</tr>
+<tr>
+<td><strong>NDT</strong></td>
+<td>Normal Distributions Transform</td>
+<td>turns a saved map into blobs and slides the lidar's scan onto them</td>
+<td>a localizer trial (<code>ndt:=true</code>)</td>
+</tr>
+<tr>
+<td><strong>NDT-EKF</strong></td>
+<td>NDT into the EKF</td>
+<td>the global EKF uses NDT beside the GPS</td>
+<td>a trial: 1.8 cm off, against 17 cm</td>
+</tr>
+<tr>
+<td><strong>ONNX</strong></td>
+<td>Open Neural Network Exchange</td>
+<td>one file format for a model, any runtime</td>
+<td>the diffusion model</td>
+</tr>
+<tr>
+<td><strong>PI, PID</strong></td>
+<td>Proportional-Integral(-Derivative)</td>
+<td>pushes harder the further off it is, and the longer</td>
+<td>the default speed loop</td>
+</tr>
+<tr>
+<td><strong>QEMU</strong></td>
+<td>Quick Emulator</td>
+<td>runs the ESP32's firmware on a laptop</td>
+<td><code>pixi run esp qemu-check</code></td>
+</tr>
+<tr>
+<td><strong>REP-103, REP-105</strong></td>
+<td>ROS Enhancement Proposals 103 and 105</td>
+<td>metres, radians, x forward, left positive; the <code>map → odom → base_link</code> frames</td>
+<td>every node</td>
+</tr>
+<tr>
+<td><strong>RF-DETR</strong></td>
+<td>Roboflow's DEtection TRansformer</td>
+<td>finds objects in a picture, in real time</td>
+<td>the detector: RF-DETR Nano</td>
+</tr>
+<tr>
+<td><strong>RPP</strong></td>
+<td>Regulated Pure Pursuit</td>
+<td>aims at a point ahead on the path, slows in bends</td>
+<td>a path-follower trial (<code>controller:=rpp</code>)</td>
+</tr>
+<tr>
+<td><strong>Simplex guard</strong></td>
+<td>(the Simplex architecture)</td>
+<td>a clever part proposes; a simple, trusted part checks, or takes over</td>
+<td>the diffusion planner's guard</td>
+</tr>
+<tr>
+<td><strong>Smac</strong></td>
+<td>(Steve Macenski's planners)</td>
+<td>Nav2's planners for cars: Hybrid-A*, State Lattice, 2D</td>
+<td><code>SmacPlannerHybrid</code>, <code>SmacPlannerLattice</code></td>
+</tr>
+<tr>
+<td><strong>State Lattice</strong></td>
+<td>(a lattice of motion primitives)</td>
+<td>joins short moves the car can really make, forwards and backwards</td>
+<td>the default planner</td>
+</tr>
+<tr>
+<td><strong>TensorRT</strong></td>
+<td>NVIDIA TensorRT</td>
+<td>runs a model fast on NVIDIA's GPU</td>
+<td>the detector on the Orin</td>
+</tr>
+<tr>
+<td><strong>TF</strong></td>
+<td>Transform (ROS's tf2)</td>
+<td>where each frame is against the others, over time</td>
+<td><code>map → odom → base_link</code></td>
+</tr>
+<tr>
+<td><strong>UART</strong></td>
+<td>Universal Asynchronous Receiver-Transmitter</td>
+<td>a plain serial wire</td>
+<td>the Motor Pi to the ESP32</td>
+</tr>
+<tr>
+<td><strong>YOLO</strong></td>
+<td>You Only Look Once</td>
+<td>finds objects in one pass over the picture</td>
+<td>the old detector; RF-DETR replaced it</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="whats-left">What's left</h2>
+<p><strong>Before car day</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The people named, with phones (hardware lead, e-stop person, safety driver, laptop person, approver)</td>
+<td>Ben and the team</td>
+</tr>
+<tr>
+<td>The hardware lead's OK for the ESP32 flash (A8) and H1 (is CORTEX the Motor Pi?)</td>
+<td>the hardware lead</td>
+</tr>
+<tr>
+<td>A spare SD card for the restore test</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>PR #21 merged (Arsh reviews)</td>
+<td>Ben, Arsh</td>
+</tr>
+<tr>
+<td>The throttle cap's number for the first moves (TODO 74b)</td>
+<td>Ben and the hardware lead</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>At the car</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>TODO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Back up every machine, then our stack beside theirs</td>
+<td>A2, A5</td>
+</tr>
+<tr>
+<td>Measure: the steering's ends, the wheel size by tape, the track front and rear</td>
+<td>60, 61, 67</td>
+</tr>
+<tr>
+<td>Flash the Rust ESP32, with the hardware lead's OK</td>
+<td>A8</td>
+</tr>
+<tr>
+<td>The joystick-off test on the real pad</td>
+<td>82, A9b</td>
+</tr>
+<tr>
+<td>The timing test on the Orin (<code>pixi run measure timing</code>)</td>
+<td>76</td>
+</tr>
+<tr>
+<td>Record everything, with the lidar</td>
+<td>63</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>After car day</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>TODO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Why the cubes once let the car into a post</td>
+<td>93</td>
+</tr>
+<tr>
+<td>Drive-to-point stops 0.61 m past its goal (the limit is 0.5 m)</td>
+<td>94</td>
+</tr>
+<tr>
+<td>The diffusion planner: 73 % of plans from the model, the goal 90 %</td>
+<td>78</td>
+</tr>
+<tr>
+<td>NDT-EKF the default of the test-lot demos</td>
+<td>95</td>
+</tr>
+<tr>
+<td>The cockpit's missing layers: the EKFs' arrows, NDT's scan and map</td>
+<td>87</td>
+</tr>
+</tbody>
+</table></div>
+<p>When 0.2 is done: every box on <a href="car-day.html#ready-for-car-day-the-02-checklist">the 0.2 checklist</a>.
+The full list: <a href="../../TODO.md">TODO.md</a>.</p>
+</section>
+<section class="card"><h2 id="coming-in-03">Coming in 0.3</h2>
+<ul>
+<li><strong>It drives.</strong> The real car, on the ground, at walking pace, then faster.</li>
+<li><strong>One screen per concept:</strong> <strong>Drive</strong> (the cockpit takes in the debug screen) and
+  <strong>Hardware</strong> (only what we control).</li>
+<li><strong>The hardware panel's pages:</strong> actuators off, measure, direct control, the car tests.</li>
+<li><strong>Brake and throttle setting,</strong> measured and set like the steering.</li>
+<li><strong>Rust where the Orin says so:</strong> what misses its time budget moves to Rust.</li>
+<li><strong>A model that builds our algorithms</strong> from car day's recordings, each one a trial
+  beside the default, scored on the same routes.</li>
+</ul>
+</section>
+<section class="card"><h2 id="by-the-numbers">By the numbers</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>How many</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Built</td>
+<td>12 October to 3 November 2026, about 820 commits</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>1575, 0 failures; CI green on Linux and 64-bit ARM</td>
+</tr>
+<tr>
+<td>Switches</td>
+<td>23 of 23 started and finished a leg in Gazebo</td>
+</tr>
+<tr>
+<td>Gazebo checks</td>
+<td><code>sim-check</code> 9 of 9, <code>bench-check</code> 11 of 11</td>
+</tr>
+<tr>
+<td>Timing test (Gazebo)</td>
+<td>0 messages over 0.5 s late, 10 minutes</td>
+</tr>
+<tr>
+<td>ESP32 in QEMU</td>
+<td>6 of 6: full brake 112-119 ms after the heartbeat stops</td>
+</tr>
+<tr>
+<td>ROS 2 packages</td>
+<td>44</td>
+</tr>
+<tr>
+<td>Commands</td>
+<td>45 <code>pixi run</code> tasks, down from 89</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="credits">Credits</h2>
+<ul>
+<li><strong>Ben:</strong> most of 0.2: the screens, the cockpit, the joystick-alive check, the
+  localizer and planner trials, the Rust ESP32 firmware, the car-day runbook.</li>
+<li><strong>Arsh:</strong> the spine's state machine and self-test, the getting-started guide, the
+  previous teams' repos imported, CONTRIBUTING and the merge queue; reviews.</li>
+<li><strong>Betsi:</strong> the localization health checks, and the car's first measurements.</li>
+<li><strong>The 2025-26 and 2024-25 teams,</strong> whose code and lessons this builds on.</li>
+<li><strong>Open source:</strong> ROS 2 Jazzy, Nav2, robot_localization, Gazebo, RoboStack and Pixi,
+  rclrs, raylib, Lichtblick, KISS-ICP, Roboflow's RF-DETR, Catppuccin, embedded-hal and
+  Embassy.</li>
+</ul>
+</section>
+<section class="card"><h2 id="release-01-the-first-pass-11-october">Release 0.1: the first pass (11 October)</h2>
+<blockquote>
 <p><strong>A snapshot from 11 October 2026.</strong> What's true now: <a href="status.html">Status</a> and <a href="features.html">Features</a>.</p>
 </blockquote>
 <p class="release-line">The AAV 2026–27 autonomy stack · 11 October 2026</p>
@@ -113,8 +1272,9 @@ car.</p></div>
 <div class="tile"><b>3</b><span>simulators: turtlesim, Gazebo and bench mode, plus replay</span></div>
 <div class="tile"><b>0</b><span>failing tests: 291 colcon, 230 Python, 208 Rust</span></div>
 <div class="tile"><b>2</b><span>platforms, one setup: Linux and macOS</span></div>
-</div></div>
-<section class="card"><h2 id="highlights">Highlights</h2>
+</div>
+
+<h3 id="highlights_1">Highlights</h3>
 <ul>
 <li><strong>One workspace for the whole car.</strong> Code from 11 of the previous teams' repos, merged
   and cleaned up, each with a record of where it came from. Six more were replaced by
@@ -136,8 +1296,7 @@ car.</p></div>
 <li><strong>Ready for AI tools.</strong> A read-only MCP server lets Claude or another AI app read the
   docs, the contracts and the live graph, and never move the car.</li>
 </ul>
-</section>
-<section class="card"><h2 id="everything-in-one-workspace">Everything in one workspace</h2>
+<h3 id="everything-in-one-workspace">Everything in one workspace</h3>
 <p><strong>Merged in and cleaned up</strong>, each with a <code>PROVENANCE.md</code> (its repo, its commit, every
 change since):</p>
 <ul>
@@ -157,8 +1316,7 @@ change since):</p>
 (Nav2), the obstacle avoidance (Nav2's costmaps and collision monitor), the QNX layer
 (twist_mux, the spine's watchdog and <code>ros2 bag</code>), and the joystick driver
 (teleop_twist_joy).</p>
-</section>
-<section class="card"><h2 id="driving-one-path-from-any-driver-to-the-wheels">Driving: one path from any driver to the wheels</h2>
+<h3 id="driving-one-path-from-any-driver-to-the-wheels">Driving: one path from any driver to the wheels</h3>
 <ul>
 <li><strong>Five drivers:</strong> the joystick (with a deadman button), the keyboard (from any laptop),
   scripted drives, Nav2, and lane keeping.</li>
@@ -171,8 +1329,7 @@ change since):</p>
 <li><strong>One backend at a time:</strong> the turtle, Gazebo, today's car (the 2025-26 ESP32, over
   UART), or the new CAN spine. A driver can't tell which one is running.</li>
 </ul>
-</section>
-<section class="card"><h2 id="knowing-where-the-car-is">Knowing where the car is</h2>
+<h3 id="knowing-where-the-car-is">Knowing where the car is</h3>
 <ul>
 <li><strong>Two EKFs</strong> (robot_localization): <code>ekf_local</code> (wheel speed and the IMU) for smooth
   steering, and <code>ekf_global</code> (adding GPS) for planning.</li>
@@ -180,8 +1337,7 @@ change since):</p>
   recording within 0.03 m.</li>
 <li><strong>GPS:</strong> the stock u-blox driver by default, with NMEA and <code>ublox_dgnss</code> as options.</li>
 </ul>
-</section>
-<section class="card"><h2 id="navigation-built-for-a-car">Navigation built for a car</h2>
+<h3 id="navigation-built-for-a-car">Navigation built for a car</h3>
 <ul>
 <li><strong>Nav2, set up for Ackermann steering:</strong> SmacPlannerHybrid plans paths a car can drive,
   Regulated Pure Pursuit follows them, and there's no Spin behaviour.</li>
@@ -191,14 +1347,13 @@ change since):</p>
 <li><strong>Proven in Gazebo and on the bench:</strong> goals of 8 m and 9.5 m in Gazebo, and a 40 m
   bench route that stops at a stop sign on the way.</li>
 </ul>
-</section>
-<section class="card"><h2 id="perception-and-ai-on-every-gpu">Perception and AI on every GPU</h2>
+<h3 id="perception-and-ai-on-every-gpu">Perception and AI on every GPU</h3>
 <ul>
 <li><strong>YOLO11</strong> (Ultralytics) finds stop signs, cars, people: 80 kinds of everyday object.</li>
 <li><strong>One model, three formats:</strong> <code>.pt</code> for PyTorch anywhere, <code>.mlpackage</code> for Core ML on a
   Mac, <code>.engine</code> for TensorRT on the Orin.</li>
 <li><strong>Core ML on a MacBook:</strong> 21 ms a picture, so all 10 pictures a second, and the stop sign
-  first seen 20 m away. One command makes the model: <code>pixi run -e ml export-coreml</code>.</li>
+  first seen 20 m away. One command makes the model: <code>pixi run -e ml python3 tools/export_model.py --format coreml</code>.</li>
 <li><strong>TensorRT on the Orin:</strong> a tool builds the engine on the Orin itself, ready for its
   JetPack reflash.</li>
 <li><strong>One detector per computer,</strong> each under its own name. The stop-sign watcher hears them
@@ -207,8 +1362,7 @@ change since):</p>
   car from 0.3 m off the centre line back to within 5 cm in about 6 s.</li>
 <li><strong>Radar clustering</strong> turns the radar's points into objects.</li>
 </ul>
-</section>
-<section class="card"><h2 id="firmware-a-can-spine-in-rust">Firmware: a CAN spine, in Rust</h2>
+<h3 id="firmware-a-can-spine-in-rust">Firmware: a CAN spine, in Rust</h3>
 <ul>
 <li><strong>The CAN contract</strong> (<code>aav.dbc</code>): every frame between ROS and the spine, tested from both
   sides against the same vectors.</li>
@@ -222,8 +1376,7 @@ change since):</p>
 <li><strong>Today's car keeps running:</strong> the 2025-26 C++ boards build in their own Pixi
   environment, until each Rust version replaces them.</li>
 </ul>
-</section>
-<section class="card"><h2 id="from-c-to-rust">From C++ to Rust</h2>
+<h3 id="from-c-to-rust">From C++ to Rust</h3>
 <ul>
 <li><strong>The rule:</strong> firmware and hardware drivers in Rust, and our C++ moving to Rust, each
   written in Rust's own style.</li>
@@ -233,8 +1386,7 @@ change since):</p>
 <li><strong>In the works:</strong> the Rust IMU driver as the only one, and the radar clustering as a
   Rust node.</li>
 </ul>
-</section>
-<section class="card"><h2 id="simulation-and-bench-mode">Simulation and bench mode</h2>
+<h3 id="simulation-and-bench-mode">Simulation and bench mode</h3>
 <ul>
 <li><strong>turtlesim:</strong> a turtle that steers like the car. The first thing a new member drives.</li>
 <li><strong>Gazebo:</strong> the car in 3D, with Ackermann steering, an IMU and GPS, driven by Nav2 to
@@ -245,8 +1397,7 @@ change since):</p>
 <li><strong>Safe by design:</strong> the stand-ins never leave the computer they run on, so a pretend car
   can never reach the real one.</li>
 </ul>
-</section>
-<section class="card"><h2 id="macs-are-first-class">Macs are first-class</h2>
+<h3 id="macs-are-first-class">Macs are first-class</h3>
 <ul>
 <li><strong>Pixi and RoboStack:</strong> one <code>pixi.toml</code> gives the same ROS 2 Jazzy, Gazebo and Nav2 on a
   Mac and on any Linux, with no admin rights.</li>
@@ -257,8 +1408,7 @@ change since):</p>
   car's WiFi.</li>
 <li><strong>A network doctor:</strong> <code>pixi run doctor</code> checks that a Mac is ready to join the car.</li>
 </ul>
-</section>
-<section class="card"><h2 id="the-hud">The HUD</h2>
+<h3 id="the-hud_1">The HUD</h3>
 <ul>
 <li><strong>The 2025-26 touchscreen app,</strong> connected to our topics: an e-stop button, the camera,
   the car's status and the map.</li>
@@ -266,8 +1416,7 @@ change since):</p>
 <li><strong>On the bench,</strong> its e-stop button stopped the car in 0.3 s.</li>
 <li><strong>Next: one Rust program</strong> (raylib and rclrs), decided on 11 October.</li>
 </ul>
-</section>
-<section class="card"><h2 id="ready-for-ai-tools-the-mcp-server">Ready for AI tools: the MCP server</h2>
+<h3 id="ready-for-ai-tools-the-mcp-server">Ready for AI tools: the MCP server</h3>
 <ul>
 <li><strong>What it does:</strong> lets Claude, or any AI app that speaks MCP, read the docs, the three
   contracts and the live ROS graph, check the graph against the contract, and run the
@@ -275,8 +1424,7 @@ change since):</p>
 <li><strong>What it can't do:</strong> publish, call services or change parameters, so it can't move the
   car; or read anything outside git. A test checks both.</li>
 </ul>
-</section>
-<section class="card"><h2 id="safety-by-design">Safety by design</h2>
+<h3 id="safety-by-design">Safety by design</h3>
 <ul>
 <li><strong>Four e-stops:</strong> the car's own red button (untouched: it always works), the joystick's
   button, <code>pixi run estop</code> from any laptop, and the HUD's button.</li>
@@ -288,8 +1436,7 @@ change since):</p>
 <li><strong>No secrets in git:</strong> checked across the whole history. The old repos' leaked
   credentials were never copied.</li>
 </ul>
-</section>
-<section class="card"><h2 id="quality-tests-contracts-and-docs">Quality: tests, contracts and docs</h2>
+<h3 id="quality-tests-contracts-and-docs">Quality: tests, contracts and docs</h3>
 <ul>
 <li><strong><code>pixi run test</code>:</strong> builds everything, then runs 291 colcon tests, 230 Python and 208
   Rust: 0 failures. The style check and the HUD app's own tests run too.</li>
@@ -300,8 +1447,7 @@ change since):</p>
 <li><strong>29 pages of docs,</strong> in HTML and one PDF, written to scan: a first-day guide, a page
   per area, the decisions, and every question answered.</li>
 </ul>
-</section>
-<section class="card"><h2 id="by-the-numbers">By the numbers</h2>
+<h3 id="by-the-numbers_1">By the numbers</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -344,8 +1490,7 @@ change since):</p>
 </tr>
 </tbody>
 </table></div>
-</section>
-<section class="card"><h2 id="coming-next">Coming next</h2>
+<h3 id="coming-next-from-01">Coming next (from 0.1)</h3>
 <ul>
 <li><strong>16 October: the hardware audit</strong> at the car, read-only first: backups, the
   inventory, the measurements.</li>
@@ -355,8 +1500,7 @@ change since):</p>
   in Rust.</li>
 <li><strong>Then:</strong> the board drivers in Rust, and the raylib HUD.</li>
 </ul>
-</section>
-<section class="card"><h2 id="credits">Credits</h2>
+<h3 id="credits_1">Credits</h3>
 <ul>
 <li><strong>The 2025-26 team</strong> (AAV-2025-2026) and <strong>the 2024-25 team</strong> (Carleton-AAV-Capstone),
   whose code and lessons this release builds on.</li>

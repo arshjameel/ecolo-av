@@ -84,7 +84,7 @@ pub struct LqiConfig {
 impl LqiConfig {
     /// The gains for `vehicle.yaml`'s guesses (every actuator number there is a GUESS).
     ///
-    /// Made by `pixi run vehicle-model --lqi` (`VehicleModel.speed_lqi` in
+    /// Made by `pixi run python3 tools/vehicle_model.py --lqi` (`VehicleModel.speed_lqi` in
     /// `ros/ego/aav_ego/aav_ego/vehicle_model.py`): states [speed error, the pedals' lag,
     /// the error's integral], the slower lag (the brake's 0.2 s), held for the 10 ms tick;
     /// weights Q = diag(2, 0, 0.5), R = 1; then the discrete Riccati equation, solved by

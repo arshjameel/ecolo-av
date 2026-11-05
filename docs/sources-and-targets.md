@@ -12,7 +12,7 @@ everything is real. Package `aav_io_mux`, built 23 Oct.
       Nothing reads `/ego/actuator_cmd` directly any more.
     - The real car's topic carries commands only while **every** source is REAL. One SIM
       or BENCH anywhere on the network, and it goes silent, **latched**: the car brakes.
-    - Reopen it, once the cause is gone: `pixi run gate-clear` (the service
+    - Reopen it, once the cause is gone: `pixi run clear gate` (the service
       `/safety/output_mux/clear`).
     - The HUD shows it (24 Oct): a red **STOP** with the reason, such as "GPS is SIM";
       amber **WAIT**; green **GO** ([HUD](hud.md#may-the-car-move-the-go-stop-panel)).

@@ -319,6 +319,8 @@ pub struct Demo {
     bench: Option<CubeScan>,
     tracker: Tracker,
     replies: Vec<Update>,
+    /// Parked (`--robot-now`): the car stands still, so the little robot may peek.
+    parked: bool,
 }
 
 impl Demo {
@@ -327,6 +329,7 @@ impl Demo {
         settings: CubeSettings,
         voxels: VoxelSettings,
         bench_cubes: Option<usize>,
+        parked: bool,
     ) -> Self {
         let size = settings.size.0 as f32;
         Self {
@@ -340,11 +343,30 @@ impl Demo {
             bench: bench_cubes.map(|n| bench_scan(n, size)),
             tracker: Tracker::PurePursuit,
             replies: Vec::new(),
+            parked,
         }
     }
 
     fn t(&self, now: Instant) -> f64 {
         now.duration_since(self.start).as_secs_f64()
+    }
+
+    /// Where along its circle the car is at `t`: still at the start when parked.
+    fn driven(&self, t: f64) -> f64 {
+        if self.parked {
+            0.0
+        } else {
+            t
+        }
+    }
+
+    /// The car's speed, m/s.
+    fn speed(&self) -> f64 {
+        if self.parked {
+            0.0
+        } else {
+            SPEED
+        }
     }
 }
 
@@ -367,7 +389,8 @@ impl DataSource for Demo {
             return std::mem::take(&mut self.replies);
         }
         let t = self.t(now);
-        let car = car_at(t);
+        let speed = self.speed();
+        let car = car_at(self.driven(t));
         let truth = in_map(car);
         // The global EKF wanders round the truth; AMCL jitters.
         let global = Pose::new(
@@ -390,9 +413,9 @@ impl DataSource for Demo {
             who,
             pose,
             frame: frame.into(),
-            speed: Some(SPEED),
+            speed: Some(speed),
         };
-        let angle = SPEED * t / RADIUS;
+        let angle = SPEED * self.driven(t) / RADIUS;
         let plan: Vec<Point> = (0..80)
             .map(|i| {
                 let a = angle + f64::from(i) * 0.04;
@@ -424,16 +447,16 @@ impl DataSource for Demo {
             },
             heard(
                 Source::Imu,
-                &format!("yaw rate {:+.1} deg/s", (SPEED / RADIUS).to_degrees()),
+                &format!("yaw rate {:+.1} deg/s", (speed / RADIUS).to_degrees()),
             ),
             heard(Source::Gps, "fix, 3 m"),
-            heard(Source::Wheels, &format!("{SPEED:.2} m/s")),
-            heard(Source::WheelOdom, &format!("{SPEED:.2} m/s")),
+            heard(Source::Wheels, &format!("{speed:.2} m/s")),
+            heard(Source::WheelOdom, &format!("{speed:.2} m/s")),
             Update::Vehicle(VehicleStatus {
                 mode: Mode::Computer,
                 armed: true,
                 estop_active: false,
-                speed: MetresPerSecond(SPEED as f32),
+                speed: MetresPerSecond(speed as f32),
                 steering_angle: Radians(steer),
                 throttle: Fraction::new(0.2),
                 brake: Fraction::new(0.0),
@@ -478,7 +501,7 @@ impl DataSource for Demo {
             return None;
         }
         let t = self.t(now);
-        let car = car_at(t);
+        let car = car_at(self.driven(t));
         let lidar = Transform3 {
             translation: LIDAR,
             ..Transform3::IDENTITY
@@ -493,7 +516,7 @@ impl DataSource for Demo {
             return None;
         }
         let t = self.t(now);
-        let car = car_at(t);
+        let car = car_at(self.driven(t));
         let centres = nav2_centres(&sweep(car), self.voxels.size.0);
         let stamp = Stamp((t * 1e9) as i64);
         let scan = voxels::build(centres, &Transform3::IDENTITY, car, stamp, self.voxels);

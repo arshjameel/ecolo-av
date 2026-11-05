@@ -1,4 +1,4 @@
-# Espressif's Rust, for the ESP32's Xtensa cores. Not in Pixi: `pixi run esp-tools`
+# Espressif's Rust, for the ESP32's Xtensa cores. Not in Pixi: `pixi run esp tools`
 # installs it with espup into ~/.rustup/toolchains/esp (docs/rust-firmware.md).
 [toolchain]
 channel = "esp"

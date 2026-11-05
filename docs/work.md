@@ -70,7 +70,7 @@ From the design doc's next steps, in order.
 ### The spine and CAN
 
 - Choose the microcontroller, the board and the owner (Q10–Q13).
-- Try the Pico 2 program (`boards/pico2`) on a spare Pico 2 with a 3.3 V MCP2515 module: `pixi run spine-uf2`. If the team picks an STM32, write its board program the same way: it implements `spine-board`'s `Board` trait.
+- Try the Pico 2 program (`boards/pico2`) on a spare Pico 2 with a 3.3 V MCP2515 module: `pixi run pico spine build`. If the team picks an STM32, write its board program the same way: it implements `spine-board`'s `Board` trait.
 - Decide: the steering on an e-stop (hold, or centre as the old firmware did); the brake after boot; the RC gear switch's brake. Each is one constant in `spine-core` now. [Firmware](firmware.md) has the details.
 - Tune the speed loop on the car: on the bench it lags a ramp by about a second.
 - Wire CAN: a transceiver on the Orin (or a USB adapter), 120 Ω at each end (Q14, Q15).
@@ -115,7 +115,7 @@ From the design doc's next steps, in order.
 
 - ~~Keep the Flutter app or not (Q29)~~: answered. The raylib HUD replaced it (Ben, 15 Oct); the app, its back end and its boot scripts were archived on 25 Oct (`archive/2026-27-flutter-hud/`).
 - Try the raylib HUD and the map window on the car's screens ([The two screens](car-screens.md)).
-- The map database downloads with `pixi run get-places`; street routes come from Valhalla ([Street routes](routes.md)).
+- The map database downloads with `pixi run get places`; street routes come from Valhalla ([Street routes](routes.md)).
 
 ### Simulation
 

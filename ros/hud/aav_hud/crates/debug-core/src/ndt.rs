@@ -200,7 +200,7 @@ pub enum MapFile {
 impl MapFile {
     /// What `pixi run ndt-map drive` makes, said once for the panel and the README.
     pub const HOW_TO_MAKE: &'static str =
-        "make it with pixi run ndt-map drive (about 6 min), then pixi run debugdemo";
+        "make it with pixi run ndt-map drive (about 6 min), then pixi run demo --debug";
 
     /// Reads `path` (a PCD) into cells of `size` metres. An empty path is missing.
     pub fn read(path: &str, size: f64) -> Self {

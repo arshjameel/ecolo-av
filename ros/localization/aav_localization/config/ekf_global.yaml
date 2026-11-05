@@ -65,7 +65,7 @@ ekf_global:
     # The heading from the GPS receiver's velocity (gps_heading, aav_gps_heading): yaw only,
     # while the car moves faster than 0.3 m/s, forward or reversing. Its variance says how
     # sure it is (the velocity's noise over the speed). TODO 13, Gazebo 25 Oct, 4 runs each
-    # (pixi run heading-check): heading off by a median 1.6-2.1 deg (was 2.2-2.8), worst
+    # (pixi run tools/ros.sh --local python3 tools/heading_check.py): heading off by a median 1.6-2.1 deg (was 2.2-2.8), worst
     # 8.5-13.6 (was 11.4-27.1), forward and reversing alike.
     imu1: /localization/gps/heading
     imu1_config: [false, false, false,

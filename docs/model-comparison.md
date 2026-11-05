@@ -136,7 +136,7 @@ The Gazebo frames: the front left camera (640 x 360) on the road world's centre 
 | | Orin (TensorRT) | Mac (Core ML) |
 |---|---|---|
 | YOLO11, YOLO26 | `yolo export format=engine half=True` on the Orin: `tools/build_engine.py` (written, [[untested]]). YOLO26 needs no NMS step, so the engine is all on the GPU | `yolo export format=coreml`: **ran**, 2 s each, 5-37 MB |
-| RF-DETR | `tools/build_engine.py` on the Orin (24 Oct): `model.export(format="onnx")`, then TensorRT's own builder in FP16 (what `trtexec --fp16` does). Not `rfdetr[tensorrt]`: it brings PyPI's TensorRT, not JetPack's. No NMS step either. [[untested]] | `pixi run -e ml export-coreml`: `model.export(format="coreml")`, **ran**, 8 s, 108 MB. The detector node runs it: 10 ms a picture, against 16 on Metal |
+| RF-DETR | `tools/build_engine.py` on the Orin (24 Oct): `model.export(format="onnx")`, then TensorRT's own builder in FP16 (what `trtexec --fp16` does). Not `rfdetr[tensorrt]`: it brings PyPI's TensorRT, not JetPack's. No NMS step either. [[untested]] | `pixi run -e ml python3 tools/export_model.py --format coreml`: `model.export(format="coreml")`, **ran**, 8 s, 108 MB. The detector node runs it: 10 ms a picture, against 16 on Metal |
 
 An engine runs only on the GPU and TensorRT version that built it: build each on the
 Orin itself.
@@ -245,7 +245,7 @@ covers every one: `aav_language/llm_openai.py` (standard library only).
 | `mlx_lm.server --model <id>` | Mac | MIT |
 
 ```bash
-pixi run -e llm llm-eval --backend openai --base-url http://127.0.0.1:8080/v1 --models <name>
+pixi run -e llm tools/ros.sh python3 -m aav_language.run_eval --backend openai --base-url http://127.0.0.1:8080/v1 --models <name>
 ```
 
 **Tried on the Mac** through `mlx_lm.server` with Gemma 4 E4B: **22 of 23**, 0.2 s a step
@@ -255,8 +255,8 @@ server's own reading of the tool call failed. [[untested]] on the Orin.
 ### Run it again
 
 ```bash
-pixi run -e llm llm-eval                                   # the five models on plain-english.md
-HF_HOME=~/aav-models/hf pixi run -e llm llm-eval --models newer --out ~/aav-models/llm.json
+pixi run -e llm tools/ros.sh python3 -m aav_language.run_eval                                   # the five models on plain-english.md
+HF_HOME=~/aav-models/hf pixi run -e llm tools/ros.sh python3 -m aav_language.run_eval --models newer --out ~/aav-models/llm.json
 ```
 
 `--models newer` is the S6 list (`run_eval.NEWER`). The models download into the Hugging

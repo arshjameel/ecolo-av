@@ -24,6 +24,8 @@ keeps. `map-core` shares its health, origin, watchdog and formatting code.
 | `state` | `HudState::new`, `apply(Update, now)`, `estop_pressed`, `take_new_picture` |
 | `format` | numbers as short text for the screen |
 | `screen` | which monitor a window opens on (`--monitor HDMI-1`) |
+| `theme` | every colour of the four screens (HUD, map, debug screen, hardware panel): `Theme`, `ThemeName` (`initial_d`, the default; `mocha`, `latte`, `calm`), `Style` (glass or arcade; `corner`), `Rgba` with `contrast` (WCAG); Catppuccin's palettes (MIT) |
+| `robot` | the little robot, the screens' easter egg (a tribute to WALL-E, our own drawing): `top_view` (the map's car from above, 2.5D, `TILT`), `Odometer` (turns the treads), `peek` (two eyes over a bottom edge), `side_view` (driving across); `EasterEgg::update(now, Watch)` → `Show`: when it peeks, drives, hides. Its colours: `Theme::robot()` |
 
 ## Invariants
 
@@ -31,8 +33,13 @@ keeps. `map-core` shares its health, origin, watchdog and formatting code.
 - The e-stop sends only `true`, five times, 100 ms apart. Nothing here makes a `false`.
 - A heartbeat only while the drawn-frame count rises: a frozen screen stops it.
 - Topic names come from `config/hud.yaml`; a unit test checks it parses.
+- Every theme passes the contrast test: 4.5 : 1 for words, 3 : 1 for shapes (the e-stop).
+  `initial_d` also passes every screen's lines and marks, and has no Catppuccin colour
+  but the localizers'.
 - SI units inside (m/s, rad, s); km/h only in text for the screen.
 - Times use `Instant` (a steady clock).
+- The little robot never shows while the car moves, an e-stop is on or a warning
+  shows, and hides on any input or change (`EasterEgg`; its tests).
 
 ## Side Effects
 

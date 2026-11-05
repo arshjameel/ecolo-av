@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -183,7 +187,7 @@ code and its config exist, but it hasn't run yet. The plan and the work left are
 </tr>
 <tr>
 <td>Path followers (22 Oct)</td>
-<td>Nav2's MPPI (default) or Regulated Pure Pursuit, <code>controller:=rpp</code>; <code>pixi run controller-compare</code></td>
+<td>Nav2's MPPI (default) or Regulated Pure Pursuit, <code>controller:=rpp</code>; <code>pixi run measure controllers</code></td>
 <td><span class="badge b-works">works</span> in Gazebo: in the lot both reached all 4 goals in the best run; MPPI reached the first goal cleanly in every run. <code>sim-check --obstacle</code> passes with MPPI. Open: stuck facing a wall after a wide turn (forward only); MPPI's forward U-turn (<a href="path-followers.html">Path followers</a>). <span class="badge b-untested">untested</span> on the Orin</td>
 </tr>
 <tr>
@@ -203,7 +207,7 @@ code and its config exist, but it hasn't run yet. The plan and the work left are
 </tr>
 <tr>
 <td>The car's linear model (24 Oct)</td>
-<td><code>aav_ego</code> <code>vehicle_model.py</code>, <code>pixi run vehicle-model</code>: transfer functions, state space, Bode margins with the delays; never drives the car</td>
+<td><code>aav_ego</code> <code>vehicle_model.py</code>, <code>pixi run python3 tools/vehicle_model.py</code>: transfer functions, state space, Bode margins with the delays; never drives the car</td>
 <td><span class="badge b-works">works</span> in its 30 tests (textbook cases, the bicycle's Jacobian, discrete vs continuous). Every actuator number a guess until the actuator tests (<a href="vehicle-model.html">The car as a linear model</a>)</td>
 </tr>
 <tr>
@@ -279,7 +283,7 @@ code and its config exist, but it hasn't run yet. The plan and the work left are
 <tr>
 <td>ESP32 board program (Rust)</td>
 <td><code>firmware/spine/boards/esp32-umod</code></td>
-<td><span class="badge b-untested">untested</span> builds with Espressif's Rust (<code>pixi run esp-tools</code>), both links; never flashed. Merged 15 Oct; the C++ stays on the car until it is proven. In QEMU (24 Oct): brakes 111-120 ms after the Motor Pi's frames stop, and latches (<code>pixi run esp-qemu-check</code>). <a href="esp32-bench.html">First flash on the bench</a></td>
+<td><span class="badge b-untested">untested</span> builds with Espressif's Rust (<code>pixi run esp tools</code>), both links; never flashed. Merged 15 Oct; the C++ stays on the car until it is proven. In QEMU (24 Oct): brakes 111-120 ms after the Motor Pi's frames stop, and latches (<code>pixi run esp qemu-check</code>). <a href="esp32-bench.html">First flash on the bench</a></td>
 </tr>
 <tr>
 <td>Spine board program</td>
@@ -309,7 +313,7 @@ code and its config exist, but it hasn't run yet. The plan and the work left are
 <tr>
 <td>Front cameras, streamed</td>
 <td>the camera Pi's MediaMTX -&gt; <code>camera_stream_front_left</code>, <code>_front_right</code> (the <code>camera_stream</code> part, <code>orin.yaml</code>), the detector inside; the sensor watchdog watches their detections</td>
-<td><span class="badge b-works">works</span> on a Mac (<code>pixi run -e ml stream-check --gst</code>: 26 ms to detections; the watchdog OK, then STALE when the stream stops). <span class="badge b-untested">untested</span> on the Orin and the Pi: skipped there until RF-DETR's TensorRT engine is built (<a href="camera-pipeline.html">camera pipeline</a>)</td>
+<td><span class="badge b-works">works</span> on a Mac (<code>pixi run -e ml measure stream --gst</code>: 26 ms to detections; the watchdog OK, then STALE when the stream stops). <span class="badge b-untested">untested</span> on the Orin and the Pi: skipped there until RF-DETR's TensorRT engine is built (<a href="camera-pipeline.html">camera pipeline</a>)</td>
 </tr>
 <tr>
 <td>Stop signs</td>
@@ -339,7 +343,7 @@ code and its config exist, but it hasn't run yet. The plan and the work left are
 <tr>
 <td>HUD and map window in Rust (raylib)</td>
 <td><code>aav_hud</code></td>
-<td><span class="badge b-works">works</span> on a Mac: <code>--demo</code>, and as a node fed by <code>ros2 topic pub</code>; its e-stop reaches a subscriber as 5 trues. Its heartbeat (23 Oct): the real window beat at 9.3 Hz, and freezing or closing it made the watchdog say <code>hud STALE</code> in 1 s. Since 24 Oct a dropout after its first 5 s is latched (<code>hud LOST</code>, <code>pixi run watchdog-clear</code>), and a GO / STOP panel says whether the car may move (logic tested; not yet seen on screen). <span class="badge b-works">works</span> next to bench mode too. <span class="badge b-untested">untested</span> on a Pi and on the car's screen</td>
+<td><span class="badge b-works">works</span> on a Mac: <code>--demo</code>, and as a node fed by <code>ros2 topic pub</code>; its e-stop reaches a subscriber as 5 trues. Its heartbeat (23 Oct): the real window beat at 9.3 Hz, and freezing or closing it made the watchdog say <code>hud STALE</code> in 1 s. Since 24 Oct a dropout after its first 5 s is latched (<code>hud LOST</code>, <code>pixi run clear watchdog</code>), and a GO / STOP panel says whether the car may move (logic tested; not yet seen on screen). <span class="badge b-works">works</span> next to bench mode too. <span class="badge b-untested">untested</span> on a Pi and on the car's screen</td>
 </tr>
 <tr>
 <td>CARLA</td>
@@ -348,7 +352,7 @@ code and its config exist, but it hasn't run yet. The plan and the work left are
 </tr>
 <tr>
 <td>Heading from the GPS velocity (25 Oct)</td>
-<td><code>aav_gps_heading</code> <code>gps_heading</code> -&gt; <code>ekf_global</code> (yaw only), <code>pixi run heading-check</code></td>
+<td><code>aav_gps_heading</code> <code>gps_heading</code> -&gt; <code>ekf_global</code> (yaw only), <code>pixi run tools/ros.sh --local python3 tools/heading_check.py</code></td>
 <td><span class="badge b-works">works</span> in Gazebo: at walking pace the heading's median error fell from 2.2-2.8° to 1.6-2.1°, forward and reversing. <span class="badge b-untested">untested</span> on the car: needs <code>gps_driver:=ublox</code> for the velocity</td>
 </tr>
 <tr>

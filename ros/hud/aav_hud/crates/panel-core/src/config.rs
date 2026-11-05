@@ -1,4 +1,5 @@
-//! The hardware panel's settings: every topic name, and the buttons' steps and caps.
+//! The hardware panel's settings: every topic name, the buttons' steps and caps, and the
+//! look.
 //!
 //! They live in `config/hw_panel.yaml`, a ROS parameters file. The program carries a copy
 //! of it as its defaults ([`PanelConfig::default`]), so no topic name is written in the
@@ -6,6 +7,9 @@
 
 use std::time::Duration;
 
+use hud_core::{robot::EggSettings, theme::ThemeName};
+
+use crate::{calibration::CalSettings, sweep::SweepSettings};
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -37,11 +41,17 @@ pub enum Topic {
     Radar,
     Camera,
     Battery,
+    /// Read: the steering actuator's raw counts and the firmware's calibration state.
+    SteeringRaw,
+    /// Sent: the calibration page's limp or jog, 10 a second while it asks.
+    SteeringCalibration,
+    /// Read: the bridge's one line about the calibration.
+    CalibrationLine,
 }
 
 impl Topic {
     /// Every topic.
-    pub const ALL: [Topic; 17] = [
+    pub const ALL: [Topic; 20] = [
         Topic::Buttons,
         Topic::Estop,
         Topic::Control,
@@ -59,6 +69,9 @@ impl Topic {
         Topic::Radar,
         Topic::Camera,
         Topic::Battery,
+        Topic::SteeringRaw,
+        Topic::SteeringCalibration,
+        Topic::CalibrationLine,
     ];
 
     /// The ROS parameter that holds this topic's name.
@@ -81,6 +94,9 @@ impl Topic {
             Self::Radar => "radar_topic",
             Self::Camera => "camera_topic",
             Self::Battery => "battery_topic",
+            Self::SteeringRaw => "steering_raw_topic",
+            Self::SteeringCalibration => "steering_calibration_topic",
+            Self::CalibrationLine => "calibration_line_topic",
         }
     }
 }
@@ -94,16 +110,22 @@ pub enum Number {
     Creep,
     SimCap,
     StandsCap,
+    SweepRate,
+    SweepStall,
+    EasterEggAfter,
 }
 
 impl Number {
-    pub const ALL: [Number; 6] = [
+    pub const ALL: [Number; 9] = [
         Number::StaleAfter,
         Number::SpeedStep,
         Number::SteerStep,
         Number::Creep,
         Number::SimCap,
         Number::StandsCap,
+        Number::SweepRate,
+        Number::SweepStall,
+        Number::EasterEggAfter,
     ];
 
     pub fn parameter(self) -> &'static str {
@@ -114,6 +136,36 @@ impl Number {
             Self::Creep => "creep",
             Self::SimCap => "sim_cap",
             Self::StandsCap => "stands_cap",
+            Self::SweepRate => "sweep_rate",
+            Self::SweepStall => "sweep_stall",
+            Self::EasterEggAfter => "easter_egg_after",
+        }
+    }
+}
+
+/// Each count in the settings (the steering actuator's units, 0..4095): whole numbers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Count {
+    JogStep,
+    JogMin,
+    JogMax,
+    SweepMaxError,
+}
+
+impl Count {
+    pub const ALL: [Count; 4] = [
+        Count::JogStep,
+        Count::JogMin,
+        Count::JogMax,
+        Count::SweepMaxError,
+    ];
+
+    pub fn parameter(self) -> &'static str {
+        match self {
+            Self::JogStep => "jog_step",
+            Self::JogMin => "jog_min",
+            Self::JogMax => "jog_max",
+            Self::SweepMaxError => "sweep_max_error",
         }
     }
 }
@@ -138,6 +190,9 @@ pub struct PanelConfig {
     pub radar_topic: String,
     pub camera_topic: String,
     pub battery_topic: String,
+    pub steering_raw_topic: String,
+    pub steering_calibration_topic: String,
+    pub calibration_line_topic: String,
     /// Seconds without a message before a topic shows STALE.
     pub stale_after: f64,
     /// m/s a press of Speed + or Speed -.
@@ -150,6 +205,25 @@ pub struct PanelConfig {
     pub sim_cap: f64,
     /// m/s: on stands.
     pub stands_cap: f64,
+    /// Counts a STEP on the calibration page.
+    pub jog_step: u16,
+    /// Counts: the calibration page's jog targets stay inside these (the firmware's
+    /// software limits).
+    pub jog_min: u16,
+    pub jog_max: u16,
+    /// Counts a second: the lock-to-lock check's speed.
+    pub sweep_rate: f64,
+    /// Counts behind the target: resistance.
+    pub sweep_max_error: u16,
+    /// s without movement while the target moves: resistance.
+    pub sweep_stall: f64,
+    /// The colours (`hud_core::theme`), as the HUD's.
+    pub theme: ThemeName,
+    /// The little robot (hud-core's `robot`): its eyes peek after `easter_egg_after`
+    /// seconds of quiet; it drives across at start-up and after a check passes.
+    pub easter_egg: bool,
+    /// Seconds without input, change or movement before the eyes peek.
+    pub easter_egg_after: f64,
 }
 
 /// Why a settings file can't be used.
@@ -161,6 +235,10 @@ pub enum ConfigError {
     Number(&'static str, f64),
     #[error("stands_cap ({stands}) must not be above sim_cap ({sim})")]
     Caps { stands: f64, sim: f64 },
+    #[error("{0} must be a count from 1 to 4095, not {1}")]
+    Count(&'static str, i64),
+    #[error("jog_min ({min}) must be below jog_max ({max})")]
+    JogRange { min: u16, max: u16 },
 }
 
 #[derive(Deserialize)]
@@ -197,6 +275,18 @@ impl PanelConfig {
                 sim: self.sim_cap,
             });
         }
+        if let Some(c) = Count::ALL
+            .into_iter()
+            .find(|&c| !(1..=4095).contains(&self.count(c)))
+        {
+            return Err(ConfigError::Count(c.parameter(), i64::from(self.count(c))));
+        }
+        if self.jog_min >= self.jog_max {
+            return Err(ConfigError::JogRange {
+                min: self.jog_min,
+                max: self.jog_max,
+            });
+        }
         Ok(())
     }
 
@@ -220,6 +310,9 @@ impl PanelConfig {
             Topic::Radar => &self.radar_topic,
             Topic::Camera => &self.camera_topic,
             Topic::Battery => &self.battery_topic,
+            Topic::SteeringRaw => &self.steering_raw_topic,
+            Topic::SteeringCalibration => &self.steering_calibration_topic,
+            Topic::CalibrationLine => &self.calibration_line_topic,
         }
     }
 
@@ -243,6 +336,9 @@ impl PanelConfig {
             Topic::Radar => &mut self.radar_topic,
             Topic::Camera => &mut self.camera_topic,
             Topic::Battery => &mut self.battery_topic,
+            Topic::SteeringRaw => &mut self.steering_raw_topic,
+            Topic::SteeringCalibration => &mut self.steering_calibration_topic,
+            Topic::CalibrationLine => &mut self.calibration_line_topic,
         };
         *slot = name;
     }
@@ -255,6 +351,9 @@ impl PanelConfig {
             Number::Creep => self.creep,
             Number::SimCap => self.sim_cap,
             Number::StandsCap => self.stands_cap,
+            Number::SweepRate => self.sweep_rate,
+            Number::SweepStall => self.sweep_stall,
+            Number::EasterEggAfter => self.easter_egg_after,
         }
     }
 
@@ -266,8 +365,56 @@ impl PanelConfig {
             Number::Creep => &mut self.creep,
             Number::SimCap => &mut self.sim_cap,
             Number::StandsCap => &mut self.stands_cap,
+            Number::SweepRate => &mut self.sweep_rate,
+            Number::SweepStall => &mut self.sweep_stall,
+            Number::EasterEggAfter => &mut self.easter_egg_after,
         };
         *slot = value;
+    }
+
+    pub fn count(&self, c: Count) -> u16 {
+        match c {
+            Count::JogStep => self.jog_step,
+            Count::JogMin => self.jog_min,
+            Count::JogMax => self.jog_max,
+            Count::SweepMaxError => self.sweep_max_error,
+        }
+    }
+
+    /// Sets a count (from a ROS parameter, an i64): call [`PanelConfig::validate`] after.
+    pub fn set_count(&mut self, c: Count, value: i64) -> Result<(), ConfigError> {
+        let v = u16::try_from(value).map_err(|_| ConfigError::Count(c.parameter(), value))?;
+        let slot = match c {
+            Count::JogStep => &mut self.jog_step,
+            Count::JogMin => &mut self.jog_min,
+            Count::JogMax => &mut self.jog_max,
+            Count::SweepMaxError => &mut self.sweep_max_error,
+        };
+        *slot = v;
+        Ok(())
+    }
+
+    /// The little robot's settings.
+    pub fn easter_egg_settings(&self) -> EggSettings {
+        EggSettings {
+            on: self.easter_egg,
+            idle_after: Duration::from_secs_f64(self.easter_egg_after),
+        }
+    }
+
+    /// The calibration page's numbers; the check's others are sweep's defaults.
+    pub fn calibration(&self) -> CalSettings {
+        CalSettings {
+            jog_step: self.jog_step,
+            jog_min: self.jog_min,
+            jog_max: self.jog_max,
+            sweep: SweepSettings {
+                rate: self.sweep_rate,
+                max_error: self.sweep_max_error,
+                stall_after: Duration::from_secs_f64(self.sweep_stall),
+                ..SweepSettings::default()
+            },
+        }
     }
 
     /// [`PanelConfig::stale_after`] as a Duration.
@@ -298,6 +445,24 @@ mod tests {
         assert_eq!((c.speed_step, c.steer_step), (0.1, 0.05));
         assert_eq!((c.sim_cap, c.stands_cap), (1.0, 0.3));
         assert_eq!(c.topic(Topic::Buttons), "/drivers/buttons/cmd_vel");
+        assert_eq!(c.theme, ThemeName::InitialD);
+        assert!(c.easter_egg);
+        assert_eq!(c.easter_egg_settings().idle_after, Duration::from_secs(60));
+        let cal = c.calibration();
+        assert_eq!((cal.jog_step, cal.jog_min, cal.jog_max), (25, 400, 3500));
+        assert!(cal.sweep.rate < 300.0, "slower than the firmware's own jog");
+    }
+
+    #[test]
+    fn the_theme_can_change() {
+        let day = BUILT_IN_YAML.replace("theme: initial_d", "theme: latte");
+        let c = PanelConfig::from_yaml(&day).expect("latte is a theme");
+        assert_eq!(c.theme, ThemeName::Latte);
+        let bad = BUILT_IN_YAML.replace("theme: initial_d", "theme: purple");
+        assert!(matches!(
+            PanelConfig::from_yaml(&bad),
+            Err(ConfigError::Yaml(_))
+        ));
     }
 
     #[test]
@@ -319,6 +484,16 @@ mod tests {
         assert!(matches!(
             PanelConfig::from_yaml(&bad),
             Err(ConfigError::Number("speed_step", _))
+        ));
+        let bad = BUILT_IN_YAML.replace("jog_max: 3500", "jog_max: 300");
+        assert!(matches!(
+            PanelConfig::from_yaml(&bad),
+            Err(ConfigError::JogRange { .. })
+        ));
+        let bad = BUILT_IN_YAML.replace("jog_step: 25", "jog_step: 0");
+        assert!(matches!(
+            PanelConfig::from_yaml(&bad),
+            Err(ConfigError::Count("jog_step", 0))
         ));
         let bad = BUILT_IN_YAML.replace("stands_cap: 0.3", "stands_cap: 3.0");
         assert!(matches!(

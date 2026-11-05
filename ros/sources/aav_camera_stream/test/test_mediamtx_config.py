@@ -4,7 +4,7 @@ The camera Pi's MediaMTX settings (pi/mediamtx.yml), and MediaMTX reading them.
 The decided stream, and that MediaMTX itself accepts the file.
 
 MediaMTX refuses a file with a key it doesn't know (`json: unknown field`), so where
-vendor/mediamtx is downloaded (pixi run get-mediamtx) the real program loads it, on
+vendor/mediamtx is downloaded (pixi run get mediamtx) the real program loads it, on
 private local ports. Off a Pi it can't open the cameras: that error is expected.
 """
 
@@ -62,7 +62,7 @@ def free_port():
 
 
 @pytest.mark.skipif(not os.access(MEDIAMTX, os.X_OK),
-                    reason='needs vendor/mediamtx (pixi run get-mediamtx)')
+                    reason='needs vendor/mediamtx (pixi run get mediamtx)')
 def test_mediamtx_accepts_it(tmp_path):
     s = settings()
     # The same file on private ports, on this computer only: RTSP over TCP alone and no

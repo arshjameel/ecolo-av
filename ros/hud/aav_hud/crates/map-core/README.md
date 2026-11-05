@@ -17,6 +17,7 @@ map of Ottawa, and the place search.
 | `grid` | `Grid`: Nav2's occupancy grid, `to_rgba`; `GridInfo`, `Bounds` |
 | `route` | `Route::progress(car)`: the nearest point, the distance left |
 | `car` | `CarShape::from_vehicle_yaml`: the outline and arrow |
+| `robot` | `CarMarker` (`car_marker`: `outline`, `robot`); `pieces(shape, pose, min_length, travelled)`: the little robot on the car's true outline and heading, from above (2.5D) |
 | `view` | map to screen and back: follow the car, the whole map, zoom, the scale bar |
 | `trip` | `Trip`: NO GOAL, DRIVING, ARRIVED...; `time_left` |
 | `tiles`, `pmtiles`, `streets`, `tilecache` | the street map: which tiles, reading the PMTiles file, water, parks, buildings and roads as triangles, the cache |
@@ -41,6 +42,8 @@ use its `health`, `origin`, `units` and `watchdog`.
   `include_str!`; unit tests check each one parses.
 - A place off Nav2's map, or no car position, can't become a goal.
 - The place database is opened read-only.
+- The little robot's treads cover exactly the car's outline: its middle is the car's
+  middle, its eyes face the car's heading (unit tests).
 
 ## Side Effects
 

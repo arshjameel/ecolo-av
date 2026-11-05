@@ -104,6 +104,9 @@ impl Calibration {
         // and JRK_MAX), but hardware_configs.h also says centre 500, range 0 to 1550,
         // and rc_handler.cpp says "JRK 0-1550". docs/firmware.md: "about 0-3500".
         // Is the sensor wired to the Jrk, and is its feedback scaled to the target?
+        // Measure them: docs/actuator-tests.md, "Find the steering actuator's ends and
+        // centre" (the hardware panel's limp and jog, or Pololu's utility), then
+        // `steering_limits` gives this block.
         steering: Steering {
             centre: 1950,
             // TODO(Q1): 1550 counts to full lock, taken as 0.5 rad (vehicle.yaml

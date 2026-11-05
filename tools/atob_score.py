@@ -5,12 +5,12 @@ A-to-B scorer: how well the car sped up, held its speed and stopped on point B.
 Scores Gazebo runs and recorded car runs from the same numbers (docs/a-to-b.md, "Scoring
 a run"). Each input is one run: a bag folder (MCAP, from tools/record.sh) or a CSV file.
 
-    pixi run atob-score bags/2026-11-02_point                 B from the point driver's feedback
-    pixi run atob-score bags/... --b-latlon 45.38630 -75.69580
-    pixi run atob-score bags/... --b-xy 30 5 --speed 1.0
-    pixi run atob-score bags/... --taped -0.12 0.05          the tape: 12 cm short, 5 cm left
-    pixi run atob-score run1.csv run2.csv --json
-    pixi run atob-score bags/... --save-csv run.csv          the run as CSV, for anywhere
+    pixi run measure atob bags/2026-11-02_point                 B from the point driver's feedback
+    pixi run measure atob bags/... --b-latlon 45.38630 -75.69580
+    pixi run measure atob bags/... --b-xy 30 5 --speed 1.0
+    pixi run measure atob bags/... --taped -0.12 0.05          the tape: 12 cm short, 5 cm left
+    pixi run measure atob run1.csv run2.csv --json
+    pixi run measure atob bags/... --save-csv run.csv          the run as CSV, for anywhere
 
 Where each number comes from:
 

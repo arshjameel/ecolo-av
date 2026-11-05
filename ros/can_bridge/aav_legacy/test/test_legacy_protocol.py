@@ -2,11 +2,12 @@ import importlib.util
 import json
 from pathlib import Path
 
+from aav_legacy import legacy_protocol as lp
 from aav_legacy.legacy_protocol import (
     crc8, encoder_counts, EncoderSpeed, FRAME_V2_LEN, FrameV2, LegacyMapping, metres_per_count,
     MODE_COMPUTER, MODE_STOPPED, pack_frame, pack_frame_v2, pack_uplink, stop_command,
     SWITCH_NONE, SWITCH_RC_VIA_ROS, to_legacy, unpack_frame, unpack_frame_v2, unpack_uplink,
-    Uplink, UPLINK_LEN, UplinkParser)
+    Uplink, UPLINK_LEN, UPLINK_V2_LEN, UplinkParser)
 import pytest
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -174,6 +175,44 @@ def test_rust_v2_vectors_decode_here_as_in_the_firmware():
         assert in_range == (case['cpp'] is not None), case['name']
 
 
+@pytest.mark.skipif(not VECTORS.exists(), reason='not in a full checkout')
+def test_rust_v3_vectors_are_what_this_module_sends_and_reads():
+    gen = load_generator()
+    doc = json.loads(VECTORS.read_text())
+    assert [c['bytes'] for c in doc['v3_cases']] == [list(f) for _, _, f, _ in gen.V3_CASES]
+    assert doc['v3_stream'] == list(gen.V3_STREAM)
+    for case in doc['v3_cases']:
+        frame = bytes(case['bytes'])
+        if case['error']:
+            with pytest.raises(ValueError):
+                lp.unpack_frame_v3(frame)
+            continue
+        f = lp.unpack_frame_v3(frame)
+        assert (f.counter, f.armed, f.estop, f.cal_mode, f.jog_target) == (
+            case['counter'], case['armed'], case['estop'], case['cal_mode'],
+            case['jog_target']), case['name']
+    # Five frames in the mixed stream: v3, v2, v3, v2 (counter 0xA5), v3.
+    assert [len(f) for f in doc['v3_stream_frames']] == [20, 17, 20, 17, 20]
+
+
+def test_v3_layout_and_calibration_requests():
+    frame = lp.pack_frame_v3(0.0, 0.0, -1.0, 7, False, False, lp.CAL_MODE_JOG, 0x0123)
+    assert len(frame) == lp.FRAME_V3_LEN == 20
+    assert frame[:2] == bytes([0xA5, 3]) and frame[14:19] == bytes([7, 0, 2, 0x23, 0x01])
+    assert frame[19] == crc8(frame[1:19])
+    assert lp.unpack_frame_v3(frame).jog_target == 0x123
+    # Limp carries no target, whatever is passed; a jog target is clamped to 0..4095.
+    assert lp.unpack_frame_v3(lp.pack_frame_v3(0, 0, -1, 1, False, False,
+                                               lp.CAL_MODE_LIMP, 999)).jog_target == 0
+    assert lp.unpack_frame_v3(lp.pack_frame_v3(0, 0, -1, 1, False, False,
+                                               lp.CAL_MODE_JOG, 9999)).jog_target == 4095
+    with pytest.raises(ValueError):
+        lp.pack_frame_v3(0, 0, -1, 1, False, False, 3)
+    # A version 2 decoder turns a version 3 frame down whole.
+    with pytest.raises(ValueError):
+        unpack_frame_v2(frame[:17])
+
+
 # --- Version 2 (TODO 50) ---
 
 
@@ -241,8 +280,8 @@ def uplink(**changes):
 
 
 def test_uplink_layout():
-    frame = pack_uplink(uplink())
-    assert len(frame) == UPLINK_LEN == 35
+    frame = pack_uplink(uplink(), version=2)
+    assert len(frame) == UPLINK_V2_LEN == 35
     assert frame[:8] == bytes([0xA5, 2, 1, 3, 17, MODE_COMPUTER, SWITCH_RC_VIA_ROS, 0b1101])
     assert frame[8:10] == bytes([0x00, 0x01])
     assert frame[34] == crc8(frame[1:34])
@@ -252,8 +291,35 @@ def test_uplink_layout():
     assert unpack_uplink(pack_uplink(quiet)) == quiet
 
 
+def test_uplink_version_3_adds_the_counts_and_the_calibration():
+    u = uplink(steering_counts=2048, brake_counts=None, calibration=lp.CAL_LIMP)
+    frame = pack_uplink(u)
+    assert len(frame) == UPLINK_LEN == 40
+    assert frame[1] == 3 and frame[7] == 0b0100_1101
+    assert frame[34:39] == bytes([0x00, 0x08, 0, 0, lp.CAL_LIMP])
+    assert frame[39] == crc8(frame[1:39])
+    assert unpack_uplink(frame) == u
+    # Counts with their flag clear, a state past 9, or a v3 frame cut to 35: turned down.
+    for at, value in ((36, 1), (38, 10)):
+        b = bytearray(frame)
+        b[at] = value
+        b[39] = crc8(bytes(b[1:39]))
+        with pytest.raises(ValueError):
+            unpack_uplink(bytes(b))
+    with pytest.raises(ValueError):
+        unpack_uplink(frame[:35])
+
+
+def test_uplink_parser_reads_both_versions():
+    stream = (pack_uplink(uplink(sequence=1), version=2) + b'\xa5\x07'
+              + pack_uplink(uplink(sequence=2)) + pack_uplink(uplink(sequence=3), version=2))
+    parser = UplinkParser()
+    assert [u.sequence for u in parser.feed(stream)] == [1, 2, 3]
+    assert parser.bad == 1
+
+
 def test_uplink_catches_every_one_bit_error():
-    """CRC-8 over 33 bytes: every 1-bit error (2-bit: all but 1 of 36,856, tried once)."""
+    """CRC-8 over 38 bytes: every 1-bit error is caught."""
     frame = pack_uplink(uplink())
     for bit in range(8, UPLINK_LEN * 8):
         b = bytearray(frame)
@@ -281,7 +347,9 @@ def test_rust_uplink_vectors_are_what_this_module_packs_and_reads():
     doc = json.loads(VECTORS.read_text())
     cases = doc['uplink_cases']
     good = [c for c in cases if c['error'] is None]
-    assert [c['bytes'] for c in good] == [list(pack_uplink(u)) for _, _, u in gen.UPLINK_CASES]
+    assert [c['bytes'] for c in good] == (
+        [list(pack_uplink(u)) for _, _, u in gen.UPLINK_CASES]
+        + [list(pack_uplink(u, version=2)) for _, _, u in gen.UPLINK_V2_CASES])
     for c in good:
         assert unpack_uplink(bytes(c['bytes'])) == Uplink(**c['fields']), c['name']
     for c in cases:

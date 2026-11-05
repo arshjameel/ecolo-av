@@ -36,6 +36,7 @@ map-frame layers (EKF global, AMCL, NDT, truth, plan, particles, NDT's map)
 | `orbit` | `Orbit`: the 3D camera; `Mode` chase / follow / free |
 | `track` | `TrackStatus::from_values`: aav_track's `/drivers/nav/track/status` |
 | `swap` | keys 1-4: `Tracker::on_key`, `allowed(&Origins)` (SIM only), `Reply` |
+| `easter_egg` | the little robot's eyes (hud-core's `robot`): `watch(state, input, now)` -> `Watch` (still? a warning: an e-stop, a STALE row, the health checks' WARN, a frame or cloud problem? the screen's fingerprint) |
 | `state` | `DebugState`, `Update`, `Localizer` (EKF local, global, truth, AMCL, NDT), `Source` (the panel's rows); `drawn_cubes()`, `nav2_cubes()`, `particles_in_odom()`; for the seeing screen `pose_in_map()`, `scan_in_map()` |
 
 It builds on (path dependencies): [`hud-core`](../hud-core/README.md) (`health`,

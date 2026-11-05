@@ -14,8 +14,8 @@
 #   rust-crates.tar.gz              every crate our Rust packages use (cargo vendor)
 #   models/                         the YOLO model files in models/, if any
 #   maps/                           the map window's street map and place database, if
-#                                   downloaded (pixi run get-street-map, get-places)
-#   car_install.sh, README.md, KIT.txt, SHA256SUMS
+#                                   downloaded (pixi run get street-map, get places)
+#   car_install.sh, car_setup.sh, README.md, KIT.txt, SHA256SUMS
 #
 # Downloads are cached in vendor/car-kit-cache, so a second run is quick.
 # Portable: bash 3.2, no GNU-only flags.
@@ -110,7 +110,7 @@ for m in models/*; do
   echo "  $m"
   n=$((n + 1))
 done
-[[ $n -gt 0 ]] || echo "  none in models/ (pixi run get-models downloads the stock one)"
+[[ $n -gt 0 ]] || echo "  none in models/ (pixi run get models downloads the stock one)"
 
 step "The map window's offline files (docs/car-screens.md)"
 for m in maps/streets/ottawa.pmtiles maps/places/ottawa.db; do
@@ -119,13 +119,14 @@ for m in maps/streets/ottawa.pmtiles maps/places/ottawa.db; do
     cp "$m" "$OUT/$m"
     echo "  $m"
   else
-    echo "  no $m (pixi run get-street-map, pixi run get-places): the map works without it"
+    echo "  no $m (pixi run get street-map, pixi run get places): the map works without it"
   fi
 done
 
 step "The installer, the README, the checksums"
 cp tools/car_install.sh "$OUT/car_install.sh"
-chmod +x "$OUT/car_install.sh"
+cp tools/car_setup.sh "$OUT/car_setup.sh"   # the per-machine setup (docs/car-setup.md)
+chmod +x "$OUT/car_install.sh" "$OUT/car_setup.sh"
 cat > "$OUT/KIT.txt" <<EOF
 AAV car kit, made $(date '+%Y-%m-%d %H:%M') on $(uname -n)
 commit:     $(git log -1 --format='%h %s')
@@ -156,6 +157,9 @@ and the map then start at login, full screen, one on each (docs/car-screens.md).
 | works with no internet | start any driver by itself |
 
 Undo everything: `rm -rf ~/aav-jazzy`
+
+The whole setup of one computer (back up, upgrade, this install, start at boot):
+`bash car_setup.sh <role>` prints it; docs/car-setup.md is the runbook.
 
 KIT.txt says which commit this is. SHA256SUMS checks the copy (car_install.sh does it).
 EOF

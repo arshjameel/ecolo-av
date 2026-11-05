@@ -59,12 +59,13 @@ The order of the writes, every tick:
 | `Devices::new(steering, brake, dac, expander, &cal)` | the four I2C devices; share one bus with `embedded-hal-bus` |
 | `SpineBoard::new(board, devices, uart, cal, config)` | the whole spine, with the computer on CAN |
 | `SpineBoard::with_link(board, devices, uart, link, cal, config)` | the same, with the commands through `link` |
-| `CommandLink`, `CanLink`, `LegacyLink` | where the commands come from: CAN through the board (`aav.dbc`), or the Motor-Pi's UART frames (`legacy-link`: version 2 with the Orin's heartbeat counter, or the 13-byte version 1), turned into the same Jrk and DAC targets as the 2025-26 C++. With version 2, a frame whose counter didn't change is no command (`FrameVersion`, `LinkStats`) |
+| `CommandLink`, `CanLink`, `LegacyLink` | where the commands come from: CAN through the board (`aav.dbc`), or the Motor-Pi's UART frames (`legacy-link`: version 2 with the Orin's heartbeat counter, or the 13-byte version 1), turned into the same Jrk and DAC targets as the 2025-26 C++. With version 2 (and 3), a frame whose counter didn't change is no command (`FrameVersion`, `LinkStats`). Version 3 frames can ask for the steering actuator limp or a jog target: `CommandLink::steering` gives `legacy_link::SteerCal`'s decision each tick (1 Nov) |
 | `SpineBoard::init()`, `tick()` | power-up, then one pass of the loop |
 | `SpineBoard::state()` | the spine's five state regions after the latest tick (`spine_core::fsm`) |
 | `SpineBoard::board()`, `link()`, `actuators()` | the parts inside, to use or read (LEDs, link stats) |
 | `FEEDBACK_PERIOD_MS`, `STATUS_PERIOD_MS` | 20, 100: how often VEHICLE_FEEDBACK and VEHICLE_STATUS go out |
 | `Actuators::apply(&outputs, now_ms)` | drives the devices; returns fault bits |
+| `Actuators::apply_with(&outputs, now_ms, steering)` | the same, the steering actuator as a `SteeringDrive` says: the spine's target, its motor off (the Jrk's stop motor), or a target in counts inside the limits; anything but the spine's holds the DAC at 0 |
 | `Actuators::read()` | the steering angle, both Jrks' positions (steering and brake), and their faults |
 | `Actuators::new(devices, cal)`, `init()`, `release()` | the devices with their calibration; power-up (throttle 0, brake on, forward, centre); the devices back |
 | `Actuators::throttle_code()`, `reverse()`, `devices()` | the last DAC code, the last direction, the devices themselves |
@@ -72,7 +73,7 @@ The order of the writes, every tick:
 | `SpokeSensors::TODAY.update(a, b, now_ms)` | for a board that reads the two spoke sensors itself, every millisecond: the 2025-26 encoder Pico's rule, a count on A's rising edge, backwards if B rose in the 20 ms before. From the `wheel-encoder` crate, re-exported (15 Oct) |
 | `LegacyLink::new(uart, cal, version)`, `with_uplink(uart, tx, cal, version)` | the UART link, without or with the `legacy-link` uplink status frame every `UPLINK_PERIOD_MS` (20 ms) on TX; `NoUplink` sends nothing. `stats()` gives its `LinkStats`; `uplink_frame(&report, seq)` builds one uplink frame |
 | `Report` | one tick as the spine saw it (outputs, RC, positions), handed to the link after each tick |
-| `Positions`, `Readings` | where the Jrks are; what `Actuators::read()` found |
+| `Positions`, `Readings` | where the Jrks are (in radians and 0..1, and raw in counts: `steering_counts`, `brake_counts`); what `Actuators::read()` found |
 | `StandInBus`, `DeviceTargets` | stand-in devices on an I2C bus for a board with none wired (the ESP32 in QEMU); not for the car |
 
 It depends on `spine-core`, `aav-inputs`, `wheel-encoder`, `legacy-link`, `jrk-g2`,

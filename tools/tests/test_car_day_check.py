@@ -107,7 +107,7 @@ def test_the_stick_has_this_kit():
 
 BUILD = {'made': '24 Oct 2026 16:00', 'firmware/spine': 'tree1',
          cdc.LEGACY: 'tree2', 'v2': 'PASS', 'v1': 'PASS',
-         'esp-qemu-check': 'PASS', 'legacy-esp32': 'PASS'}
+         'esp qemu-check': 'PASS', 'legacy-esp32': 'PASS'}
 FILES = list(cdc.FIRMWARES) + ['BUILD.txt', 'qemu-check.log']
 
 
@@ -136,12 +136,12 @@ def test_a_missing_link_version_is_named():
 
 
 def test_a_failed_or_skipped_qemu_check_is_missing():
-    failed = cdc.firmware_lines({**BUILD, 'esp-qemu-check': 'FAIL (exit 1)'}, FILES,
+    failed = cdc.firmware_lines({**BUILD, 'esp qemu-check': 'FAIL (exit 1)'}, FILES,
                                 'tree1', 'tree2')
     assert failed[1].status == 'MISSING' and 'FAIL' in failed[1].detail
-    skipped = cdc.firmware_lines({**BUILD, 'esp-qemu-check': 'skipped: no QEMU here'},
+    skipped = cdc.firmware_lines({**BUILD, 'esp qemu-check': 'skipped: no QEMU here'},
                                  FILES, 'tree1', 'tree2')
-    assert 'esp-qemu-tools' in skipped[1].fix
+    assert 'esp qemu-tools' in skipped[1].fix
 
 
 def test_nothing_built_yet():
@@ -158,7 +158,7 @@ def test_build_txt_is_read_as_key_value_lines():
 
 def test_the_build_script_writes_the_keys_the_check_reads():
     script = (ROOT / 'tools/car_day_build.sh').read_text()
-    for key in ('firmware/spine:', '$LEGACY:', 'esp-qemu-check:', 'legacy-esp32:',
+    for key in ('firmware/spine:', '$LEGACY:', 'esp qemu-check:', 'legacy-esp32:',
                 'made:'):
         assert f'\n{key} ' in script
     for name in cdc.FIRMWARES:

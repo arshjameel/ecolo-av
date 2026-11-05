@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -102,12 +106,14 @@
 <li>How does any of it relate to the real car?</li>
 </ol>
 <blockquote>
-<p><strong>The short version</strong>
-- <strong>Gazebo works</strong>, and it <strong>does produce sensor data</strong>: an IMU, a GPS, wheel speed, a camera, a radar and a lidar, all on <code>main</code>.
-- The three cameras, the radar and the lidar are in the <strong>road world</strong> and the <strong>parking lot</strong>: <code>pixi run sim world:=road</code> or <code>world:=test_lot</code> (all on by default since 15 Oct; <code>lidar:=false</code> drops the lidar).
-- <strong>The car's lidar</strong> is a roof Velodyne VLP-16: the stock <code>velodyne</code> driver, on by default on the car, untested with the real lidar.
-- <strong>None of our code has run on the real car yet.</strong> Everything "works" in simulation or on the bench only.
-- The point of simulation: the <strong>same nodes</strong> run in all three places. Only the bottom layer changes.</p>
+<p><strong>The short version</strong></p>
+<ul>
+<li><strong>Gazebo works</strong>, and it <strong>does produce sensor data</strong>: an IMU, a GPS, wheel speed, a camera, a radar and a lidar, all on <code>main</code>.</li>
+<li>The three cameras, the radar and the lidar are in the <strong>road world</strong> and the <strong>parking lot</strong>: <code>pixi run sim world:=road</code> or <code>world:=test_lot</code> (all on by default since 15 Oct; <code>lidar:=false</code> drops the lidar).</li>
+<li><strong>The car's lidar</strong> is a roof Velodyne VLP-16: the stock <code>velodyne</code> driver, on by default on the car, untested with the real lidar.</li>
+<li><strong>None of our code has run on the real car yet.</strong> Everything "works" in simulation or on the bench only.</li>
+<li>The point of simulation: the <strong>same nodes</strong> run in all three places. Only the bottom layer changes.</li>
+</ul>
 </blockquote></div>
 <section class="card"><h2 id="1-the-big-idea-swap-the-bottom-layer">1. The big idea: swap the bottom layer</h2>
 <p>Most of the software doesn't know whether it's driving a real car or a pretend one.</p>

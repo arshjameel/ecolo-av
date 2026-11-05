@@ -1,5 +1,5 @@
 """
-How much each topic sends: the numbers `pixi run bandwidth` prints (tools/bandwidth.py).
+How much each topic sends: the numbers `pixi run measure bandwidth` prints (tools/bandwidth.py).
 
 No ROS here, so the tests run anywhere (tools/tests/test_topic_load.py).
 

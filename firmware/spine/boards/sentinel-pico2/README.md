@@ -72,8 +72,8 @@ Raspberry Pi (`PROVENANCE.md`).
 ## Verification
 
 ```sh
-pixi run sentinel-uf2     # build it, and make sentinel-pico2.uf2 here, to drag on
-pixi run sentinel-flash   # or flash it through a debug probe (pixi run spine-tools first)
+pixi run pico sentinel build     # build it, and make sentinel-pico2.uf2 here, to drag on
+pixi run pico sentinel flash   # or flash it through a debug probe (pixi run pico spine tools first)
 ```
 
 `tools/test.sh` builds it (`cargo build --release --locked` here) and checks its UF2 file.

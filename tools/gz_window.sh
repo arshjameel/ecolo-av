@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Gazebo's window, for a simulator already running (pixi run gz-window), with its camera
+# Gazebo's window, for a simulator already running (pixi run tools/ros.sh tools/gz_window.sh), with its camera
 # following the car, as gazebo.launch.py's follow:=true does when the window starts with
 # the simulator. Run through tools/ros.sh, inside pixi.
 gz sim -g &

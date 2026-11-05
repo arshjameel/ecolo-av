@@ -80,7 +80,7 @@ A driver fault (steering, brake, throttle or encoder) stops the car in any mode.
 | `speed_loop` | `SpeedLoop::update(target, measured, dt)` | a PI with a setpoint weight, or the LQI: a `Drive` (throttle, brake, `reverse`) |
 | | `SpeedLoop::open_loop(target, full_throttle_speed)`, `reset()` | throttle in proportion to the target, with no wheel speed; clear the integral |
 | | `SpeedLoopConfig` (and `smooth()`, `lqi()`), `AntiWindup` | the gains; how the integral is bounded: `Bounds` (today) or `Clamp` |
-| | `SpeedLaw`, `LqiConfig` (`MODEL`, `pedals()`) | `Pi` (the default) or `Lqi`: one signed acceleration, throttle + or brake −, never both; its gains are constants made by `pixi run vehicle-model --lqi` (TODO 3) |
+| | `SpeedLaw`, `LqiConfig` (`MODEL`, `pedals()`) | `Pi` (the default) or `Lqi`: one signed acceleration, throttle + or brake −, never both; its gains are constants made by `pixi run python3 tools/vehicle_model.py --lqi` (TODO 3) |
 | | `SpeedLoopProfile`, `UnknownProfile` | named sets (`Default`, `Smooth`, `Lqi`) for the sims and car days; parsing a name it doesn't know gives `UnknownProfile` |
 | `encoder` | `Quadrature`, `SpeedEstimator` | quadrature decoding; speed from the time between counts |
 | `watchdog` | `Watchdog` | trips when no valid command came for its timeout |

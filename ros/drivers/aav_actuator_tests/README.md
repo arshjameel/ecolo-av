@@ -17,7 +17,7 @@ pixi run actuator-test steer-sweep --sim            # Gazebo, this computer only
 pixi run actuator-test steer-sweep --stands         # the real car, wheels off the ground
 pixi run actuator-test speed-up                     # the real car, in an empty lot
 pixi run actuator-test --analyse ~/aav-tests/<run>  # a run's report again, from its CSV
-pixi run preflight --sim                            # the preflight (actuator-test preflight --stands)
+pixi run actuator-test preflight --stands --sim                            # the preflight (actuator-test preflight --stands)
 ```
 
 | Test | Stage | Measures |
@@ -31,14 +31,14 @@ pixi run preflight --sim                            # the preflight (actuator-te
 | `throttle-map` | 4.4 | throttle level vs acceleration |
 | `circles` | 4.5 | the real wheel angle, both ways |
 | `straight` | 4.7 | sideways drift over 10 m |
-| `preflight` | 3.P | on stands: speed up, hold, slow, brake, steer, every sensor at once: PASS / FAIL per line |
+| `actuator-test preflight --stands` | 3.P | on stands: speed up, hold, slow, brake, steer, every sensor at once: PASS / FAIL per line |
 
 ## Interface
 
 Executable `actuator_test` (`ros2 run aav_actuator_tests actuator_test`, wrapped by
 `tools/actuator_test.sh`). Options: `<test>`, `--list`, `--sim`, `--bench`, `--stands`,
 `--max-speed`, `--speeds`, `--angles`, `--max-distance`, `--max-time`, `--out`, `--bag`,
-`--analyse RUN_FOLDER`; for `preflight` only, `--skip SENSOR...` and `--no-drive`.
+`--analyse RUN_FOLDER`; for `actuator-test preflight --stands` only, `--skip SENSOR...` and `--no-drive`.
 
 | Item | What |
 |---|---|

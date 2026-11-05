@@ -46,7 +46,7 @@ ecolo-av/
     spine/              Rust: spine-core (the spine's logic), aav-inputs, the device drivers,
                         and boards/pico2, the spine's board program
     legacy/             the 2025-26 ESP32 and Pico code that runs the car today
-  models/             trained model files, not in git: pixi run get-models
+  models/             trained model files, not in git: pixi run get models
   tools/              scripts: see the table below
   docs/               these pages; docs/history/ keeps the Q&A, Ben's requests and the audits
   archive/            reference only, never built: the older teams' repos, the Flutter HUD
@@ -117,25 +117,25 @@ Every one, with what it does: README's [Every command](../README.md#every-comman
 | `check_graph.py` | compares a running system with `docs/interfaces.yaml` | `pixi run check <profile>` |
 | `gen_interfaces_md.py` | makes the Topics page from the contract | see the contracts table |
 | `doctor.py` | network checks for joining the car | `pixi run doctor` |
-| `bandwidth.py`, `topic_load.py` | measures every topic's rate and load; the numbers (no ROS) | `pixi run bandwidth` |
-| `can_load.py` | the CAN bus load from the DBC's frames and rates (no ROS) | `pixi run can-load` |
+| `bandwidth.py`, `topic_load.py` | measures every topic's rate and load; the numbers (no ROS) | `pixi run measure bandwidth` |
+| `can_load.py` | the CAN bus load from the DBC's frames and rates (no ROS) | `pixi run python3 tools/can_load.py` |
 | `record.sh` | records a drive into `bags/` | `pixi run tools/record.sh <name>` |
 | `replay_commands.sh` | plays a recorded drive's commands back into the mux | `pixi run tools/ros.sh tools/replay_commands.sh <bag>` |
 | `make_map.py` | draws a Nav2 map from a short spec | `pixi run python tools/make_map.py <spec>` |
 | `build_docs.py` | builds the docs pages and the PDF | `pixi run docs` |
 | `progress_mail.py` | emails a blue-and-white progress report: Ben only | see its docstring |
 | `bench_check.py` | starts bench mode and tests the whole graph | `pixi run bench-check` |
-| `graph_picture.py` | draws the running graph, grouped by layer | `pixi run graph-picture` |
+| `graph_picture.py` | draws the running graph, grouped by layer | `pixi run tools/ros.sh python3 tools/graph_picture.py` |
 | `mcp_server.py`, `mcp_parts.py` | the read-only MCP server for AI apps, and its parts | an AI app, through `.mcp.json` |
 | `legacy_firmware.sh` | builds today's ESP32 firmware with PlatformIO | `pixi run -e firmware legacy-esp32` |
 | `tests/` | the tools' own tests: the MCP server's parts and its smoke test, the UF2 converter | inside `pixi run test` |
-| `get_models.sh` | downloads the stock RF-DETR Nano and YOLO models, checksums pinned | `pixi run get-models` |
+| `get_models.sh` | downloads the stock RF-DETR Nano and YOLO models, checksums pinned | `pixi run get models` |
 | `build_engine.py` | builds the Orin's TensorRT model, RF-DETR Nano by default, on the Orin itself (JetPack's Python) | `python3 tools/build_engine.py` on the Orin |
-| `export_model.py` | exports a detector model to Core ML or ONNX (RF-DETR through rfdetr, YOLO through Ultralytics) | `pixi run -e ml export-coreml` |
-| `get_places.sh` | downloads the place database into `maps/places/`, for the map window's search, checksum pinned | `pixi run get-places` |
-| `get_street_map.sh` | cuts Ottawa out of Protomaps' world street map, checksums pinned | `pixi run get-street-map` |
-| `elf2uf2.py` | turns the Pico 2 program into a UF2 file | `pixi run spine-uf2` |
-| `vendor.py` | downloads the source in `vendor/*.repos` | `pixi run vendor` |
+| `export_model.py` | exports a detector model to Core ML or ONNX (RF-DETR through rfdetr, YOLO through Ultralytics) | `pixi run -e ml python3 tools/export_model.py --format coreml` |
+| `get_places.sh` | downloads the place database into `maps/places/`, for the map window's search, checksum pinned | `pixi run get places` |
+| `get_street_map.sh` | cuts Ottawa out of Protomaps' world street map, checksums pinned | `pixi run get street-map` |
+| `elf2uf2.py` | turns the Pico 2 program into a UF2 file | `pixi run pico spine build` |
+| `vendor.py` | downloads the source in `vendor/*.repos` | `pixi run get vendor` |
 | `udev/99-aav.rules` | stable device names on the car (`/dev/aav/imu`, ...) | install on the car's Linux computers |
 
 ## Launch profiles: the same nodes, a different car
@@ -250,7 +250,7 @@ needs a sign-in: on the run's page, or `gh run download <run id> -n sim-logs`.
 !!! warning "What never goes in git"
   Build output (`build/`, `install/`, `log/`, `.pixi/`, `target/`), recordings (`bags/`),
   and secrets. `.gitignore` lists them. Downloaded third-party source, such as ROS's own
-  code, lives in `vendor/`, which git doesn't track: `pixi run vendor`.
+  code, lives in `vendor/`, which git doesn't track: `pixi run get vendor`.
 
 ## Where to find what happened
 

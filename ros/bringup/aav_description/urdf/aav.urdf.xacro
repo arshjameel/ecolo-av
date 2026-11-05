@@ -20,6 +20,9 @@
   <!-- With sim: the roof lidar is simulated too (aav.sensors.gazebo.xacro). Its frame,
        lidar_link, is always there: the car has one. -->
   <xacro:arg name="lidar" default="false"/>
+  <!-- With sim: a chase camera behind and above the car, for Lichtblick's cockpit layout
+       (aav.sensors.gazebo.xacro). Gazebo's only: no frame, nothing on the real car. -->
+  <xacro:arg name="chase_camera" default="false"/>
   <!-- With sim: Gazebo's AckermannSteering steering_limit, which is not
        max_steering_angle. description.launch.py works it out from vehicle.yaml
        (aav_description.vehicle.gazebo_steering_limit). -->

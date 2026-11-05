@@ -2,8 +2,9 @@
 """
 NDT and ICP, from above: the teaching example for matching a lidar scan to a map.
 
-    pixi run ndt-demo                 print the numbers, draw docs/img/learn-ndt.png, learn-icp.png
-    pixi run ndt-demo --no-figures    the numbers only
+    pixi run python3 tools/ndt_demo.py               print the numbers, draw the figures
+                                                     (docs/img/learn-ndt.png, learn-icp.png)
+    pixi run python3 tools/ndt_demo.py --no-figures  the numbers only
 
 The page that walks through it: docs/learn-localization.md, section 8. The lot is made
 up (a wall, two curbs, three posts, a parked car), seen from above, in 2D; the real

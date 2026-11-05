@@ -90,7 +90,7 @@ Layers, from the person outward. Each one works even if the ones after it fail.
 
 ### How do I press the e-stop from a laptop?
 
-`pixi run estop` publishes `true` on `/safety/estop`. `pixi run estop-clear` clears it.
+`pixi run estop` publishes `true` on `/safety/estop`. `pixi run clear estop` clears it.
 The HUD's button only ever sets it: clearing is always a person's deliberate act.
 
 ### Who wins when two drivers talk at once?
@@ -239,7 +239,7 @@ Answer by number: "Q12: ...".
 pixi run turtle              # terminal 1: a turtle that steers like the car
 pixi run keyboard --local    # terminal 2: hold i to drive
 pixi run estop               # terminal 3: the turtle stops
-pixi run estop-clear         #             and drives again
+pixi run clear estop         #             and drives again
 ```
 
 ## Where this lives in the code

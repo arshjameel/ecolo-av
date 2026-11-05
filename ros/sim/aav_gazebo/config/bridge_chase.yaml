@@ -1,0 +1,10 @@
+# Gazebo's chase camera (chase_camera:=true, a world that renders sensors): a third
+# bridge, gz_chase_bridge, so the road bridge's list stays the car's sensors. The camera
+# is aav_description/urdf/aav.sensors.gazebo.xacro's; gazebo.launch.py's chase_jpeg
+# (image_transport republish) makes the JPEG that Lichtblick's cockpit layout shows,
+# /vehicle/gazebo/chase_camera/compressed. Only the cockpit reads it.
+- ros_topic_name: /vehicle/gazebo/chase_camera/image_raw
+  gz_topic_name: /aav/chase_camera/image
+  ros_type_name: sensor_msgs/msg/Image
+  gz_type_name: gz.msgs.Image
+  direction: GZ_TO_ROS

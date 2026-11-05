@@ -108,15 +108,15 @@ machine file names the one to use.
 
 | Format | Runs on | Make it with | Machine file |
 |---|---|---|---|
-| `rf-detr-nano.pth` | anything, with PyTorch: CUDA, Metal or the CPU | `pixi run get-models` | `laptop.yaml`, `all.yaml` |
-| `rf-detr-nano.mlpackage` | Macs, with Core ML | `pixi run -e ml export-coreml`, on a Mac | `laptop.yaml` (one line to uncomment) |
+| `rf-detr-nano.pth` | anything, with PyTorch: CUDA, Metal or the CPU | `pixi run get models` | `laptop.yaml`, `all.yaml` |
+| `rf-detr-nano.mlpackage` | Macs, with Core ML | `pixi run -e ml python3 tools/export_model.py --format coreml`, on a Mac | `laptop.yaml` (one line to uncomment) |
 | `rf-detr-nano.engine` | the Orin, with TensorRT | `python3 tools/build_engine.py`, on the Orin itself | `orin.yaml` |
 
-- YOLO has the same three: `yolo11n.pt`, and `export-coreml models/yolo11n.pt` or
+- YOLO has the same three: `yolo11n.pt`, and `python3 tools/export_model.py --format coreml models/yolo11n.pt` or
   `build_engine.py models/yolo11n.pt` for the other two.
 - An exported RF-DETR keeps `rf-detr` in its name. That's how the detector tells it from
   a YOLO export.
-- `pixi run get-models` downloads both `.pth` and `.pt` (RF-DETR's is 366 MB: a training
+- `pixi run get models` downloads both `.pth` and `.pt` (RF-DETR's is 366 MB: a training
   checkpoint), each checked against its pinned checksum: a model file is a Python pickle,
   so a wrong one could run code.
 
@@ -168,9 +168,9 @@ on the Orin, once it's on JetPack 7.2 (Q24):
 
 ### Core ML, on a Mac
 
-- `pixi run -e ml export-coreml` makes `models/rf-detr-nano.mlpackage` from the `.pth`
+- `pixi run -e ml python3 tools/export_model.py --format coreml` makes `models/rf-detr-nano.mlpackage` from the `.pth`
   (8 s), and downloads the `.pth` first if it's missing.
-- YOLO's: `pixi run -e ml export-coreml models/yolo11n.pt` (2 s).
+- YOLO's: `pixi run -e ml python3 tools/export_model.py --format coreml models/yolo11n.pt` (2 s).
 - Then `pixi run detect model:=models/rf-detr-nano.mlpackage`. [[works]] stop sign, 0.96.
 
 ### In another program

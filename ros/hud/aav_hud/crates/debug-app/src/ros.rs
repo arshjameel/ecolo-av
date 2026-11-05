@@ -797,11 +797,13 @@ fn announcement(m: &DataSource) -> Announcement {
     }
 }
 
-/// The node's parameters: each topic and frame's name, and the numbers. Read once.
+/// The node's parameters: each topic and frame's name, the numbers and the theme. Read
+/// once.
 struct Params {
     _names: Vec<ReadOnlyParameter<Arc<str>>>,
     _numbers: Vec<ReadOnlyParameter<f64>>,
     _max_cubes: ReadOnlyParameter<i64>,
+    _easter_egg: ReadOnlyParameter<bool>,
 }
 
 impl Params {
@@ -837,6 +839,12 @@ impl Params {
             .read_only()?;
         config.ndt_map = map.get().to_string();
         names.push(map);
+        let theme = node
+            .declare_parameter::<Arc<str>>("theme")
+            .default(config.theme.as_str().into())
+            .read_only()?;
+        config.theme = theme.get().parse()?;
+        names.push(theme);
         let mut numbers = Vec::new();
         for n in Number::ALL {
             let p = node
@@ -852,11 +860,17 @@ impl Params {
             .read_only()?;
         config.max_cubes =
             u32::try_from(max_cubes.get()).context("max_cubes must be a positive whole number")?;
+        let easter_egg = node
+            .declare_parameter("easter_egg")
+            .default(config.easter_egg)
+            .read_only()?;
+        config.easter_egg = easter_egg.get();
         config.validate()?;
         let params = Self {
             _names: names,
             _numbers: numbers,
             _max_cubes: max_cubes,
+            _easter_egg: easter_egg,
         };
         Ok((params, config))
     }
@@ -1135,7 +1149,7 @@ mod tests {
     /// Against a running simulator (not run by default): the node with the built-in
     /// topics, for `secs` seconds (DEBUG_HUD_LIVE_SECS, 20), printing what the panel and
     /// the cubes would show, then asking the track node for `lqr` and printing its answer.
-    /// `pixi run debugdemo` without a screen: start the sim headless on a domain, then
+    /// `pixi run demo --debug` without a screen: start the sim headless on a domain, then
     /// `cargo test --release -p debug-app -- --ignored --nocapture live_sim` on it.
     #[test]
     #[ignore]

@@ -3,9 +3,9 @@
 # maps/routes/. It all stays out of git: a download, made again by this script.
 # docs/routes.md says how street_route uses it.
 #
-# usage: pixi run -e routes get-routes
-#        ROUTES_DIR=/elsewhere pixi run -e routes get-routes   # another folder
-#        ROUTES_PBF=/path/x.osm.pbf pixi run -e routes get-routes   # your own extract
+# usage: pixi run get routes
+#        ROUTES_DIR=/elsewhere pixi run get routes   # another folder
+#        ROUTES_PBF=/path/x.osm.pbf pixi run get routes   # your own extract
 #
 # The data: BBBike's weekly extract of Ottawa (about 50 MB of .osm.pbf), cut from
 # OpenStreetMap: © OpenStreetMap contributors, under the ODbL. BBBike keeps only the
@@ -28,7 +28,7 @@ mkdir -p "$dir"
 dir=$(cd "$dir" && pwd)
 
 if ! command -v valhalla_build_config >/dev/null; then
-  echo "no Valhalla here: run this as pixi run -e routes get-routes" >&2
+  echo "no Valhalla here: run this as pixi run get routes" >&2
   exit 1
 fi
 

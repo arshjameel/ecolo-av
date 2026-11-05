@@ -16,7 +16,7 @@ step at a time, with our car in every step. Our own numbers live in
     - **Shocks and roll:** at our 1 m/s they barely matter (0.2° of roll). At 3 m/s on
       full lock: 2° of roll and 46 % of the weight moves to the outside wheels. Not a
       control problem; worth knowing for the lidar.
-    - **Run it:** `pixi run state-space-demo` prints every number here and draws every
+    - **Run it:** `pixi run python3 tools/state_space_demo.py` prints every number here and draws every
       figure.
 
 ## The process, on one picture
@@ -482,7 +482,7 @@ ego use the kinematic one; that's right for us.
 | **LQR** | choose weights (how much you hate error vs steering effort) instead of poles; `scipy.linalg.solve_continuous_are` gives K for u = −K x | the same A, B as pure pursuit's; a better K, 60° phase margin guaranteed (before delays) |
 | **Observers** | estimate the states you can't measure, from the ones you can: x̂' = A x̂ + B u + L(y − C x̂) | the heading error from the camera's lane lines |
 | **Kalman filter** | an observer whose L is chosen from how noisy each sensor is | robot_localization's EKF: x' = f(x, u) + noise, linearised by its Jacobian every step ([Learn: localization](learn-localization.md)) |
-| **System identification** | measure the input and output, fit A, B (or τ, K) | the car day's [actuator tests](actuator-tests.md) fit `drag`, `throttle_lag`, `steer_lag`; `pixi run vehicle-model --set ...` |
+| **System identification** | measure the input and output, fit A, B (or τ, K) | the car day's [actuator tests](actuator-tests.md) fit `drag`, `throttle_lag`, `steer_lag`; `pixi run python3 tools/vehicle_model.py --set ...` |
 
 ## 12. Cheat sheet
 
@@ -512,9 +512,9 @@ ego use the kinematic one; that's right for us.
 ## Run it
 
 ```bash
-pixi run state-space-demo                 # every number on this page, and the figures
-pixi run state-space-demo --no-figures    # the numbers only
-pixi run vehicle-model                    # our car's full model: margins, delays, Gazebo
+pixi run python3 tools/state_space_demo.py                 # every number on this page, and the figures
+pixi run python3 tools/state_space_demo.py --no-figures    # the numbers only
+pixi run python3 tools/vehicle_model.py                    # our car's full model: margins, delays, Gazebo
 ```
 
 | File | What |

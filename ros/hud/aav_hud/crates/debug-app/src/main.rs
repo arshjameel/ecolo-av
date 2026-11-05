@@ -40,7 +40,8 @@
 //! Parameters  the topics above; odom_frame, base_frame, map_frame; stale_after (s),
 //!             cube_size (m), max_cubes, pose_window (s), ground_height (m),
 //!             keep_cubes_for (s), ndt_map (a PCD file, key M), ndt_map_cell (m),
-//!             voxels_cube_size (m), health_stale_after (s)
+//!             voxels_cube_size (m), health_stale_after (s), theme (initial_d, mocha, latte, calm),
+//!             easter_egg (the little robot's eyes, true), easter_egg_after (s)
 //! Reads       ndt_map at start-up, if it is there (else the panel says how to make it)
 //!
 //! raylib owns the main thread (macOS needs that); rclrs spins on its own thread; clouds
@@ -49,9 +50,11 @@
 //!
 //! usage: debug_hud [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
 //!                  [--config FILE] [--vehicle FILE] [--own-box X0,Y0,X1,Y1]
-//!                  [--screenshot FILE [--after S]] [--bench-cubes N] [--ros-args ...]
+//!                  [--screenshot FILE [--after S]] [--bench-cubes N] [--robot-now]
+//!                  [--ros-args ...]
 
 mod demo;
+mod robot;
 #[cfg(feature = "ros")]
 mod ros;
 mod source;
@@ -66,6 +69,7 @@ use anyhow::{bail, Context as _, Result};
 use debug_core::{
     config::DebugConfig,
     cubes::OwnBox,
+    easter_egg,
     keys::Action,
     ndt::MapFile,
     orbit::Orbit,
@@ -73,7 +77,10 @@ use debug_core::{
     swap::{self, Reply, Tracker},
 };
 use hud_app::window;
-use hud_core::screen::Monitor;
+use hud_core::{
+    robot::{EasterEgg, Show},
+    screen::Monitor,
+};
 use map_core::car::CarShape;
 use raylib::prelude::*;
 
@@ -86,7 +93,8 @@ use crate::{
 const USAGE: &str = "\
 usage: debug_hud [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
                  [--config FILE] [--vehicle FILE] [--own-box X0,Y0,X1,Y1]
-                 [--screenshot FILE [--after S]] [--bench-cubes N] [--ros-args ...]
+                 [--screenshot FILE [--after S]] [--bench-cubes N] [--robot-now]
+                 [--ros-args ...]
 
   --demo             pretend data: no ROS, no car
   --fullscreen       fill the screen (F11 switches too)
@@ -99,6 +107,8 @@ usage: debug_hud [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
   --screenshot FILE  save the window as a PNG after --after seconds (4), then quit
   --bench-cubes N    the drawing test (with --demo): N cubes; prints the frame rate over
                      10 s, then quits
+  --robot-now        the little robot's eyes (the easter egg) after 1 s of quiet; with
+                     --demo the pretend car is parked, so they may peek (screenshots)
   --ros-args ...     passed to ROS, e.g. --ros-args -p lidar_topic:=/x
 
 keys: drag turn, right-drag (or shift-drag) move, wheel zoom, C chase / follow / free,
@@ -127,6 +137,7 @@ struct Options {
     screenshot: Option<PathBuf>,
     after: Option<f64>,
     bench_cubes: Option<usize>,
+    robot_now: bool,
 }
 
 impl Options {
@@ -145,6 +156,7 @@ impl Options {
                 "--ros-args" => break,
                 "--demo" => opts.demo = true,
                 "--fullscreen" => opts.fullscreen = true,
+                "--robot-now" => opts.robot_now = true,
                 "--list-monitors" => opts.list_monitors = true,
                 "--monitor" => opts.monitor = Some(value("--monitor")?.parse()?),
                 "--config" => opts.config = Some(value("--config")?.into()),
@@ -229,6 +241,7 @@ fn open_source(
             config.cube_settings(),
             config.voxel_settings(),
             opts.bench_cubes,
+            opts.robot_now,
         );
         return Ok((Box::new(demo), config));
     }
@@ -264,7 +277,13 @@ fn run(
     rl.set_target_fps(if opts.bench_cubes.is_some() { 0 } else { 60 });
     rl.set_window_min_size(1000, 600);
     window::place(&mut rl, opts.monitor.as_ref(), opts.fullscreen)?;
-    let mut ui = Ui::new(&mut rl, &thread, car, config.cube_size as f32);
+    let mut ui = Ui::new(
+        &mut rl,
+        &thread,
+        car,
+        config.cube_size as f32,
+        config.theme.theme(),
+    );
     let mut state = DebugState::new(config);
     // NDT's map: the demo's own lot, or the file; shown from the start when there is one.
     let map = match source.built_in_map() {
@@ -282,6 +301,13 @@ fn run(
     let started = Instant::now();
     let screenshot_after = Duration::from_secs_f64(opts.after.unwrap_or(4.0));
     let mut bench = Bench::default();
+    // The little robot's eyes peek when all is quiet.
+    let mut egg_settings = config.easter_egg_settings();
+    if opts.robot_now {
+        egg_settings.on = true;
+        egg_settings.idle_after = Duration::from_secs(1);
+    }
+    let mut egg = EasterEgg::new(egg_settings, started);
 
     while !rl.window_should_close() && !source.has_stopped() {
         let now = Instant::now();
@@ -294,6 +320,17 @@ fn run(
         if let Some(cubes) = source.take_nav2_cubes() {
             state.set_nav2_cubes(cubes, now);
         }
+
+        // Any touch at all hides the little robot.
+        let touched = rl.get_key_pressed().is_some()
+            || [
+                MouseButton::MOUSE_BUTTON_LEFT,
+                MouseButton::MOUSE_BUTTON_RIGHT,
+            ]
+            .into_iter()
+            .any(|b| rl.is_mouse_button_down(b))
+            || rl.get_mouse_delta().length() > 0.0
+            || rl.get_mouse_wheel_move() != 0.0;
 
         // The mouse, over the 3D view only.
         let view_w = ui::view_width(rl.get_screen_width() as f32, state.layers.layout);
@@ -359,8 +396,12 @@ fn run(
             bench: opts.bench_cubes,
             map: &map,
         };
+        let show = egg.update(now, easter_egg::watch(&state, touched, now));
         let mut d = rl.begin_drawing(&thread);
-        ui.draw(&mut d, &state, &frame);
+        let corner = ui.draw(&mut d, &state, &frame);
+        if let (Show::Peek(pose), Some(r)) = (show, corner) {
+            robot::peek(&mut d, config.theme.theme(), r, pose);
+        }
         drop(d);
 
         if let Some(n) = opts.bench_cubes {

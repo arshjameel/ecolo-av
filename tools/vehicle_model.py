@@ -2,14 +2,16 @@
 """
 The car's linear model: print its poles, step responses and margins, and draw them.
 
-    pixi run vehicle-model                      today's numbers (vehicle.yaml)
-    pixi run vehicle-model --set throttle_lag=0.25 --set steer_lag=0.15
-                                                the car day's numbers, from the actuator tests
-    pixi run vehicle-model --no-figures         the tables only
-    pixi run vehicle-model --speed-loop         TODO 27: the speed loop's designs against the
-                                                throttle's 5x uncertainty (and its figure)
-    pixi run vehicle-model --lqi                TODO 3: the speed LQI's gains, as the Rust
-                                                constants (paste into speed_loop.rs)
+Run it with pixi run python3 tools/vehicle_model.py [options] (no pixi task):
+
+    (no options)          today's numbers (vehicle.yaml)
+    --set throttle_lag=0.25 --set steer_lag=0.15
+                          the car day's numbers, from the actuator tests
+    --no-figures          the tables only
+    --speed-loop          TODO 27: the speed loop's designs against the throttle's 5x
+                          uncertainty (and its figure)
+    --lqi                 TODO 3: the speed LQI's gains, as the Rust constants (paste
+                          into speed_loop.rs)
 
 The maths: ros/ego/aav_ego/aav_ego/vehicle_model.py. The page: docs/vehicle-model.md.
 The figures go to docs/img/vehicle-model-*.png, drawn with matplotlib (in Pixi's default
@@ -440,7 +442,7 @@ def main(argv=None):
     try:
         import matplotlib  # noqa: F401
     except ImportError:
-        print('no matplotlib here: the tables only (pixi run vehicle-model has it)')
+        print('no matplotlib here: the tables only (under pixi run, matplotlib is there)')
         return 0
     for f in figures(model, Path(args.out)):
         print(f'wrote {f.relative_to(ROOT) if f.is_relative_to(ROOT) else f}')

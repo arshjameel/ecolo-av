@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What&#x27;s new: 22 October to 1 November · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/whats-new.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>What&#x27;s new: 22 October to 1 November</h1>
+<div class="meta">15 min read · 10 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a class="here" href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<span class="sep">Learn:</span>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#hardware-interface-the-two-screens">Hardware interface: the two screens</a><a href="#localization-where-am-i">Localization: where am I?</a><a href="#perception-whats-around">Perception: what&#x27;s around?</a><a href="#navigation-in-2d-and-3d-the-lidar-for-nav2">Navigation in 2D and 3D: the lidar for Nav2</a><a href="#navigation-the-route-and-the-steering">Navigation: the route and the steering</a><a href="#talking-to-the-car">Talking to the car</a><a href="#the-best-version-what-goes-on-the-car">The best version: what goes on the car</a><a href="#carla-whats-left-to-work-with-our-graph">CARLA: what&#x27;s left to work with our graph</a><a href="#the-computers-which-ubuntu">The computers: which Ubuntu</a><a href="#tools-to-find-all-this-again">Tools to find all this again</a></nav>
+<div class="lead"><blockquote>
+<p><strong>Frozen on 1 November, as history.</strong> From 0.2 on, what's new goes in <a href="release-notes.html">the release notes</a>.</p>
+</blockquote>
+<p>Everything the last few pull requests added (#13 to #19, and the branch after), by area;
+then the best version to take to the car, what's left for CARLA, and which Ubuntu each
+computer should run. Every feature, with who built it: <a href="features.html">Features</a>. How to
+switch each trial on: <a href="switches.html">Switches</a>.</p>
+<blockquote>
+<p><strong>The short version</strong></p>
+<ul>
+<li><strong>Screens:</strong> a hardware panel with simple buttons, and a debug screen that shows what the car sees in 3D.</li>
+<li><strong>Where am I:</strong> the lidar's point cloud now feeds NDT (a map match) and KISS-ICP (how far it moved), beside the two EKFs.</li>
+<li><strong>What's around:</strong> RF-DETR (not YOLO) for objects, OpenCV for lanes, the lidar as a flat scan or as cubes.</li>
+<li><strong>Getting there:</strong> five planners, six path followers, reversing and the U-turn.</li>
+<li><strong>Talking to it:</strong> a local Qwen model with our own harness, and MCP so Claude can drive the sim.</li>
+<li>Everything here has run in Gazebo; <strong>none of it has driven the real car yet.</strong></li>
+</ul>
+</blockquote>
+<p><img alt="The stack: blue boxes are what the last few pull requests built" src="../img/whats-new-stack.svg" /></p>
+<p><em>Blue: built in the last few pull requests. Grey: there before.</em></p>
+<p><strong>Status:</strong> <em>sim</em> = works in Gazebo; <em>built</em> = built and tested, not yet in a full run.</p></div>
+<section class="card"><h2 id="hardware-interface-the-two-screens">Hardware interface: the two screens</h2>
+<h3 id="the-hardware-panel-pixi-run-hw-panel">The hardware panel (<code>pixi run hw-panel</code>)</h3>
+<p>Every sensor's number from its own node, and very simple buttons: speed up and down,
+left, right, centre, stop. The car moves only while you <strong>hold</strong> Space (or GO).</p>
+<p><img alt="The hardware panel in Gazebo" src="../img/hw-panel-gazebo.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Why</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OK / STALE / NEVER for each sensor</td>
+<td>see at a glance what's missing</td>
+<td>sim</td>
+</tr>
+<tr>
+<td>Hold to drive, through twist_mux's slot 45</td>
+<td>a person always outranks it; let go and it stops</td>
+<td>sim</td>
+</tr>
+<tr>
+<td>SIM and BENCH only</td>
+<td>not on the real car until its own test (TODO 49b)</td>
+<td>built</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-debug-screen-pixi-run-demo-debug">The debug screen (<code>pixi run demo --debug</code>)</h3>
+<p>Left: the lidar as cubes in 3D, and where each localizer thinks the car is. Right: the
+lidar map from above, and NDT's match. New on 1 Nov: <strong>Nav2's cubes</strong> in red (key V), and
+<strong>localization health</strong>.</p>
+<p><img alt="The debug screen: cubes, localizers, Nav2's cubes and the health checks" src="../img/debug-hud-health.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Colour</th>
+<th>Who says where the car is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>blue</td>
+<td>EKF local (wheels, IMU)</td>
+</tr>
+<tr>
+<td>green</td>
+<td>EKF global (plus GPS)</td>
+</tr>
+<tr>
+<td>purple</td>
+<td>NDT</td>
+</tr>
+<tr>
+<td>orange</td>
+<td>AMCL</td>
+</tr>
+<tr>
+<td>white</td>
+<td>Gazebo's truth (sim only)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-firmware-behind-it">The firmware behind it</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Who</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The spine's state machine, self-test at boot, hardware test mode</td>
+<td>Arsh</td>
+<td>built</td>
+</tr>
+<tr>
+<td>The ESP32's Rust firmware: brakes 111-120 ms after the Orin's heartbeat stops</td>
+<td>Ben</td>
+<td>built (QEMU)</td>
+</tr>
+<tr>
+<td>The preflight on stands (<code>pixi run actuator-test preflight --stands</code>)</td>
+<td>Ben</td>
+<td>sim</td>
+</tr>
+<tr>
+<td>Geofence and stop hold (new twist_mux locks)</td>
+<td>Ben</td>
+<td>sim</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="localization-where-am-i">Localization: where am I?</h2>
+<p><img alt="Localization: the point cloud feeds NDT and KISS-ICP, beside the two EKFs" src="../img/whats-new-localization.svg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>What it does</th>
+<th>Switch</th>
+<th>Result in Gazebo</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>EKF local and global</strong></td>
+<td>the default: wheels + IMU, then GPS</td>
+<td>always</td>
+<td>0.2 m off the truth</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><strong>NDT</strong> (ours, Rust)</td>
+<td>matches the lidar to a saved map</td>
+<td><code>ndt:=true</code></td>
+<td>1-3 cm off, 2 ms a match</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><strong>NDT into EKF global</strong></td>
+<td>uses that match to correct the map position</td>
+<td><code>ndt_ekf:=true</code></td>
+<td>17 cm → <strong>1.6 cm</strong>; holds with the GPS off</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><strong>KISS-ICP</strong> (stock, MIT)</td>
+<td>how far the car moved, from lidar alone</td>
+<td><code>kiss_icp:=true</code></td>
+<td>0.04 m drift per 100 m (wheels: 0.33)</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><strong>KISS-ICP into EKF local</strong></td>
+<td>its speed and turn rate into the EKF</td>
+<td><code>kiss_ekf:=true</code></td>
+<td>not a clear win yet: off by default</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><strong>AMCL</strong> (stock)</td>
+<td>a particle filter on a 2D map</td>
+<td><code>amcl:=true</code></td>
+<td>lost itself: the EKF wins</td>
+<td>built</td>
+</tr>
+<tr>
+<td><strong>Health checks</strong> (Betsi)</td>
+<td>warns on gyro bias, a tilted IMU, bad GPS, wrong frames</td>
+<td><code>health:=true</code></td>
+<td>on the debug screen, in <code>pixi run check</code></td>
+<td>sim</td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="NDT keeps the global EKF to 1.6 cm, with or without the GPS" src="../img/whats-new-ndt.png" /></p>
+<p><img alt="KISS-ICP drifts 8 times less than the wheels, in Gazebo" src="../img/whats-new-odometry.png" /></p>
+<h3 id="ndt-in-one-picture">NDT, in one picture</h3>
+<p>The map becomes blobs; a new scan slides and turns until it sits on them.</p>
+<p><img alt="NDT: the map, its blobs, a new scan, and the match" src="../img/learn-ndt.png" /></p>
+<h3 id="icp-in-one-picture">ICP, in one picture</h3>
+<p>Each scan point pairs with its nearest map point; move to close the pairs; repeat.</p>
+<p><img alt="ICP: pair the points, then move to close the pairs" src="../img/learn-icp.png" /></p>
+</section>
+<section class="card"><h2 id="perception-whats-around">Perception: what's around?</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>What it does</th>
+<th>Result</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RF-DETR Nano</strong> (not YOLO; Apache-2.0)</td>
+<td>finds objects and stop signs</td>
+<td>a stop sign from 20 m (YOLO11n: 10 m), no false finds</td>
+<td>sim</td>
+</tr>
+<tr>
+<td>A second detector on a Mac (Core ML)</td>
+<td>a second opinion over WiFi</td>
+<td>21 ms a picture on a MacBook</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><strong>Lane finder</strong> (classic OpenCV, no model)</td>
+<td>finds the lane from the camera</td>
+<td>0.78 ms a picture</td>
+<td>sim</td>
+</tr>
+<tr>
+<td>Radar clustering (Rust)</td>
+<td>radar points into objects</td>
+<td>the same answers as the C++, bit for bit</td>
+<td>sim</td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="RF-DETR finds a stop sign twice as far away as YOLO" src="../img/whats-new-detector.png" /></p>
+<p><img alt="RF-DETR finds the stop sign on the bench camera" src="../img/bench-stop-sign.png" /></p>
+<p><img alt="The lane finder: the camera, and its bird's-eye view" src="../img/lane-finder.png" /></p>
+</section>
+<section class="card"><h2 id="navigation-in-2d-and-3d-the-lidar-for-nav2">Navigation in 2D and 3D: the lidar for Nav2</h2>
+<p>The lidar sends about 29,000 points ten times a second. Nav2 reads them one of two ways:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Flat scan</strong> (2D, the default)</th>
+<th><strong>Cubes</strong> (3D, a trial: <code>voxels:=true</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What</td>
+<td>one slice: 720 distances round the car</td>
+<td>0.25 m cubes, measured from the road fitted to each cloud</td>
+</tr>
+<tr>
+<td>Size</td>
+<td>720 numbers</td>
+<td>about 1,200 cubes</td>
+</tr>
+<tr>
+<td>Sees height?</td>
+<td>no</td>
+<td>yes: a kerb, a table edge; a leaning car doesn't see the road</td>
+</tr>
+<tr>
+<td>Result in Gazebo</td>
+<td>the default</td>
+<td>stopped 0.44 m before a post; 4 of 4 legs; 6 ms a cloud</td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="The roof lidar from above: one sweep" src="../img/sim-lidar.png" /></p>
+</section>
+<section class="card"><h2 id="navigation-the-route-and-the-steering">Navigation: the route and the steering</h2>
+<h3 id="planners-who-draws-the-route-planner">Planners: who draws the route (<code>planner:=</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Planner</th>
+<th>Keeps to the turning circle?</th>
+<th>Gazebo, the lot tour</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>State Lattice</strong> (on our own moves)</td>
+<td>yes</td>
+<td>every leg, <strong>184 s</strong> a tour (with reversing)</td>
+<td><strong>the default</strong> since 1 Nov</td>
+</tr>
+<tr>
+<td>Hybrid-A*</td>
+<td>yes</td>
+<td>every leg, 213 s</td>
+<td>the default when forward only</td>
+</tr>
+<tr>
+<td>Lattice, 32 headings</td>
+<td>yes</td>
+<td>every leg, 197 s: no better</td>
+<td>trial</td>
+</tr>
+<tr>
+<td>Smac 2D</td>
+<td>no</td>
+<td>2 of 4 (forward only)</td>
+<td>trial</td>
+</tr>
+<tr>
+<td>NavFn, Theta*</td>
+<td>no</td>
+<td>not tried</td>
+<td>trial</td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="The lattice drives the lot tour 29 s quicker than Hybrid-A*" src="../img/whats-new-planners.png" /></p>
+<p>The lattice strings together short moves our car can really make, worked out from
+<code>vehicle.yaml</code> (<code>pixi run python3 tools/lattice_primitives.py</code>):</p>
+<p><img alt="The lattice's moves for our car" src="../img/lattice-primitives.png" /></p>
+<h3 id="path-followers-who-steers-along-it">Path followers: who steers along it</h3>
+<p><code>tracker:=pure_pursuit</code> (or <code>stanley</code>, <code>lqr</code>, <code>mpc</code>) swaps them; in Gazebo, live, with
+keys 1-4 on the debug screen.</p>
+<p><img alt="Legs finished by each path follower, forward only" src="../img/whats-new-followers.png" /></p>
+<p>MPPI finished fewest, but stays the default: it reads the costmap, so it steers round
+obstacles; the trackers only follow the line.</p>
+<h3 id="reversing-and-the-u-turn">Reversing and the U-turn</h3>
+<p>On again on the car since 1 Nov, at 0.5 m/s at most, only where the lidar watches behind.
+Forward only, a U-turn in a narrow lane fails about half the time; reversing, the car
+makes a three-point turn (16 of 16 legs with the lattice).</p>
+<p><img alt="The lot tour with reversing" src="../img/controllers-lot-reversing.svg" /></p>
+</section>
+<section class="card"><h2 id="talking-to-the-car">Talking to the car</h2>
+<p><img alt="Talking to the car: Qwen on the laptop, Claude through MCP" src="../img/whats-new-language.svg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>What it does</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Qwen 3 (4B) with our own harness</strong> (<code>pixi run -e llm talk</code>)</td>
+<td>plain English ("drive 10 m forward") into steps, on the laptop, no internet; asks <strong>yes</strong> before the car moves</td>
+<td>sim</td>
+</tr>
+<tr>
+<td>The harness (<code>aav_language</code>: <code>react.py</code>)</td>
+<td>our own ReAct loop: reads Qwen's, Llama's, Gemma's and Mistral's tool formats</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><strong>MCP drive server</strong> (<code>aav-drive</code>)</td>
+<td>lets Claude (or any MCP app) drive: distance, turn, go to a GPS point, stop, e-stop; hard limits it won't break</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><strong>MCP read-only server</strong> (<code>aav</code>)</td>
+<td>lets Claude read the docs, the topic contract and the live ROS graph; never writes</td>
+<td>built</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-best-version-what-goes-on-the-car">The best version: what goes on the car</h2>
+<p>One pick per job: the car's defaults. The trials stay as switches; real data decides
+them next (<a href="tests.html">Every test</a>, 4e: record the lot, then score them on replay).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Job</th>
+<th>The best version</th>
+<th>Why</th>
+<th>Next in line, and what it waits for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Where am I</td>
+<td>the two EKFs, with the GPS</td>
+<td>works anywhere, no map needed</td>
+<td><strong>NDT into EKF global</strong>: a lidar map of the lot (test 4.21)</td>
+</tr>
+<tr>
+<td>How far it moved</td>
+<td>wheels + IMU</td>
+<td>always there</td>
+<td><strong>KISS-ICP into EKF local</strong>: real wheels that slip (4.22)</td>
+</tr>
+<tr>
+<td>What's around</td>
+<td>RF-DETR Nano</td>
+<td>twice YOLO's range, Apache-2.0</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Sees obstacles</td>
+<td>the flat lidar scan</td>
+<td>small, proven</td>
+<td><strong>cubes</strong>: a real, bumpy lot (4.22)</td>
+</tr>
+<tr>
+<td>Draws the route</td>
+<td>State Lattice (Hybrid-A* forward only)</td>
+<td>every leg, the quickest</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Steers along it</td>
+<td>MPPI</td>
+<td>reads the costmap</td>
+<td>pure pursuit, if the trackers learn the costmap</td>
+</tr>
+<tr>
+<td>Reverses?</td>
+<td>yes, 0.5 m/s, where the lidar sees behind</td>
+<td>the U-turn needs it</td>
+<td>wheels that tell direction (H5)</td>
+</tr>
+<tr>
+<td>Talks</td>
+<td>Qwen on the laptop</td>
+<td>no internet, asks yes first</td>
+<td>Claude through MCP: the sim only</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>test_car_launch.py</code> checks the car's defaults are exactly these.</p>
+</section>
+<section class="card"><h2 id="carla-whats-left-to-work-with-our-graph">CARLA: what's left to work with our graph</h2>
+<p>CARLA runs on the lab's Ubuntu desktop. Our side (<code>aav_carla</code>, <code>pixi run carla-car</code>)
+publishes the same topics as Gazebo, so the rest of the graph can't tell them apart. It is
+tested against a pretend server only: <strong>it has never met a real one.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Left</th>
+<th>Who</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Which CARLA</strong> is on the desktop: <code>CarlaUE4</code> = 0.9.x, <code>CarlaUnreal</code> = 0.10. Its Python client, the same version, in our environment (<a href="carla.html">CARLA</a>, step 2)</td>
+<td>the lab</td>
+<td>30 min</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>The first real run:</strong> <code>pixi run carla-car host:=127.0.0.1</code> with the server up; drive with the keyboard, then a Nav2 goal</td>
+<td>the lab</td>
+<td>1 h</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>A <code>carla</code> profile in the graph check</strong> (<code>pixi run check carla</code>): the contract doesn't list which topics must be live in CARLA yet</td>
+<td>Claude, now</td>
+<td>small</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>The new switches in <code>carla.launch.py</code>:</strong> it passes reversing, but not <code>planner</code>, <code>tracker</code>, <code>voxels</code>, <code>kiss_icp</code>, <code>kiss_ekf</code> (it gets Nav2's defaults)</td>
+<td>Claude, now</td>
+<td>small</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>A <code>carla-check</code></strong>, like <code>sim-check</code>: the graph, a drive, the EKF against CARLA's truth</td>
+<td>Claude, then the lab</td>
+<td>1 day</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Signs nobody has seen:</strong> the IMU's roll and pitch, the radar's speed sign, the GPS line-up</td>
+<td>the lab, with 5</td>
+<td>1 h</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Carleton's streets:</strong> only CARLA 0.9.16 builds roads from OpenStreetMap; 0.10 can't yet</td>
+<td>the lab</td>
+<td>1 h</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>NDT in CARLA:</strong> needs a lidar map of the CARLA town (<code>ndt-map</code> drives Gazebo only today)</td>
+<td>Claude</td>
+<td>half a day</td>
+</tr>
+</tbody>
+</table></div>
+<p>Not on the list, on purpose: CARLA's own ROS 2 (<code>--ros2</code>) stalls on Jazzy, so our adapter
+talks to CARLA through its Python client instead (<a href="carla.html">CARLA</a>, "Other ways").</p>
+</section>
+<section class="card"><h2 id="the-computers-which-ubuntu">The computers: which Ubuntu</h2>
+<p><strong>Can each one be upgraded? Yes</strong>: Ubuntu 24.04 (Jazzy's own) runs on the Pi 4 and the
+Pi 5, and NVIDIA's JetPack 7.2 is Ubuntu 24.04 for the Orin. <strong>But car day doesn't need
+it:</strong> our car kit runs on today's Ubuntu 22.04 through Pixi (CI tests that on every
+push). Upgrading is the hardware lead's call (Q24).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Computer</th>
+<th>Today</th>
+<th>Should be</th>
+<th>How</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Orin</strong> (JETSON, .140)</td>
+<td>Ubuntu 22.04, JetPack 6</td>
+<td>JetPack 7.2 (Ubuntu 24.04)</td>
+<td>SDK Manager on the lab's desktop, <strong>after</strong> its full image</td>
+<td>the only one that needs the x86 desktop</td>
+</tr>
+<tr>
+<td><strong>Motor Pi</strong> (CORTEX, .120), Pi 4</td>
+<td>Ubuntu 22.04</td>
+<td>Ubuntu 24.04 Server</td>
+<td>a <strong>new SD card</strong> (Raspberry Pi Imager); turn the UART on</td>
+<td>keep the old card: undo is a card swap</td>
+</tr>
+<tr>
+<td><strong>LOCALIZATION</strong> (.113), Pi 4</td>
+<td>Ubuntu 22.04</td>
+<td>Ubuntu 24.04 Server</td>
+<td>a new SD card</td>
+<td>the IMU and GPS are USB: no change</td>
+</tr>
+<tr>
+<td><strong>aav-desktop</strong> (.196), Pi 4, the dashboard</td>
+<td>Ubuntu 22.04</td>
+<td><strong>Ubuntu 24.04 Desktop</strong></td>
+<td>a new SD card</td>
+<td>runs the HUD and the map window: it needs a desktop; check it has 4 GB or more</td>
+</tr>
+<tr>
+<td><code>.211</code>, a Pi</td>
+<td>Ubuntu 22.04</td>
+<td>ask the team first</td>
+<td></td>
+<td>its job is unknown</td>
+</tr>
+<tr>
+<td><strong>CAM1-PI</strong>, <strong>CAM2-PI</strong> (.108, .118), Pi 5</td>
+<td>Debian 13 (Pi OS)</td>
+<td><strong>keep Pi OS</strong></td>
+<td>-</td>
+<td>no ROS on them; the Pi camera works best on Pi OS</td>
+</tr>
+<tr>
+<td><strong>The lab's desktop</strong> (x86, NVIDIA)</td>
+<td>Ubuntu, running CARLA</td>
+<td><strong>keep as it is</strong></td>
+<td>-</td>
+<td>our stack runs there through Pixi on 22.04 or 24.04; don't upgrade under a working CARLA</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="tools-to-find-all-this-again">Tools to find all this again</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pixi run pick</code></td>
+<td>a menu of every switch above, in plain words; it runs the command</td>
+</tr>
+<tr>
+<td><a href="switches.html">Switches</a></td>
+<td>every switch on one page</td>
+</tr>
+<tr>
+<td><a href="trials.html">Trials</a></td>
+<td>every result, and how it was measured</td>
+</tr>
+<tr>
+<td><code>pixi run check &lt;profile&gt;</code></td>
+<td>the running graph against the contract, then the health line</td>
+</tr>
+<tr>
+<td><code>pixi run python3 tools/whats_new_figures.py</code></td>
+<td>redraws this page's diagrams and charts</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="release-0.2.html"><small>Previous</small>← The 0.2 guide</a>
+<a class="next" href="audit-friday.html"><small>Next</small>Audit, 16 Oct →</a></nav>
+</main>
+<footer>Source: <code>docs/whats-new.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

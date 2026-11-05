@@ -138,7 +138,7 @@ def test_guesses_come_from_the_comments(tmp_path):
 def test_the_doc_holds_today_s_table():
     text = mm.DOC.read_text(encoding='utf-8')
     inside = text.split(mm.START, 1)[1].split(mm.END, 1)[0]
-    assert inside.strip() == mm.sheet().strip(), 'run: pixi run measure-map'
+    assert inside.strip() == mm.sheet().strip(), 'run: pixi run python3 tools/measure_map.py'
 
 
 def test_readings_file_round_trip(tmp_path, capsys):

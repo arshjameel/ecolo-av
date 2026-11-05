@@ -115,3 +115,12 @@ def test_a_build_skips_clouds_without_truth():
 def test_the_route_is_not_a_scored_tour():
     tours = [(x, y) for x, y in [(15.0, 15.0), (35.0, 42.0), (20.0, 42.0), (30.0, 0.0)]]
     assert not any((x, y) in tours for _, x, y, _ in m.ROUTE)
+
+
+def test_a_map_from_a_real_drive_says_what_placed_it_and_claims_no_test_lot():
+    points = np.array([[0.0, 0.0, 1.0], [2.0, 1.0, 1.5]], dtype=np.float32)
+    sim = m.describe(points, 'bags/x', {})
+    assert sim['world'] == 'test_lot' and sim['poses'] == m.TRUTH_TOPIC and sim['route']
+    real = m.describe(points, 'bags/y', {}, poses='/localization/odom/global')
+    assert real['world'] == 'real' and real['route'] is None
+    assert real['poses'] == '/localization/odom/global' and real['datum'] != m.DATUM

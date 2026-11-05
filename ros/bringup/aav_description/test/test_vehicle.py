@@ -491,16 +491,17 @@ LATTICE_JSON = ROOT / 'ros/drivers/aav_navigation/config/lattice_ackermann.json'
 SEARCH_MODEL = 'planner_server.ros__parameters.GridBased.motion_model_for_search'
 
 
-def test_planners_lattice_by_default_hybrid_on_the_car_and_only_car_shaped_ones_there():
+def test_planners_lattice_by_default_hybrid_forward_only_and_only_car_shaped_ones_on_the_car():
     assert vehicle.DEFAULT_PLANNER == 'lattice'
-    assert vehicle.CAR_DEFAULT_PLANNER == 'hybrid'
-    assert {vehicle.DEFAULT_PLANNER, vehicle.CAR_DEFAULT_PLANNER} <= set(vehicle.CAR_PLANNERS)
+    assert vehicle.default_planner(reversing=True) == 'lattice'
+    assert vehicle.default_planner(reversing=False) == 'hybrid'
+    assert {vehicle.DEFAULT_PLANNER, vehicle.FORWARD_ONLY_PLANNER} <= set(vehicle.CAR_PLANNERS)
     assert set(vehicle.CAR_PLANNERS) < set(vehicle.PLANNERS)
     assert set(vehicle.PLANNER_BLOCKS) == set(vehicle.PLANNERS)
     assert vehicle.check_planner(' Lattice ') == 'lattice'
     assert vehicle.check_planner('navfn') == 'navfn'
     assert vehicle.check_planner('lattice', real=True) == 'lattice'
-    for name in ('smac2d', 'navfn', 'theta_star'):
+    for name in ('smac2d', 'navfn', 'theta_star', 'diffusion'):
         with pytest.raises(ValueError, match='turning radius'):
             vehicle.check_planner(name, real=True)
     with pytest.raises(ValueError, match='pick one of'):
@@ -517,7 +518,7 @@ def test_every_planner_has_its_block_in_nav2_yaml():
 def test_nav2_tuned_puts_the_planner_under_gridbased(planner):
     nav2 = yaml.safe_load(NAV2_YAML.read_text())
     v = vehicle.load(CONFIG)['vehicle']
-    lattice = '/x/lattice.json' if planner == 'lattice' else None
+    lattice = '/x/lattice.json' if vehicle.server_planner(planner) == 'lattice' else None
     plans = vehicle.nav2_tuned(nav2, v, planner=planner,
                                lattice_file=lattice)['planner_server']['ros__parameters']
     want = nav2['planner_server']['ros__parameters'][vehicle.PLANNER_BLOCKS[planner]]
@@ -527,6 +528,21 @@ def test_nav2_tuned_puts_the_planner_under_gridbased(planner):
     assert (SEARCH_MODEL in vehicle.nav2_rewrites(v, planner=planner)) == (planner == 'hybrid')
     # nav2.yaml itself is left as it was.
     assert 'Lattice' in nav2['planner_server']['ros__parameters']
+
+
+def test_the_diffusion_trial_stands_on_the_lattice():
+    # planner:=diffusion: planner_server runs the lattice, the fallback (aav_diffusion_planner).
+    assert vehicle.server_planner('diffusion') == 'lattice'
+    assert vehicle.server_planner('hybrid') == 'hybrid'
+    assert 'diffusion' not in vehicle.CAR_PLANNERS
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+    v = vehicle.load(CONFIG)['vehicle']
+    with pytest.raises(ValueError, match='lattice_file'):
+        vehicle.nav2_tuned(nav2, v, planner='diffusion')
+    grid = vehicle.nav2_tuned(nav2, v, reversing=True, planner='diffusion',
+                              lattice_file='/x/l.json')['planner_server'][
+                                  'ros__parameters']['GridBased']
+    assert grid['plugin'].endswith('SmacPlannerLattice') and grid['allow_reverse_expansion']
 
 
 def test_lattice_needs_its_file_and_reverses_only_with_reversing():

@@ -128,14 +128,14 @@ def test_mppi_unless_regulated_pure_pursuit_is_asked_for():
 
 
 def test_who_may_reverse():
-    # Gazebo and the bench: yes. The car only with reversing:=true since 26 Oct (the wheels
-    # can't tell direction yet, H5), and where the lidar sees behind (test_car_launch.py).
+    # Gazebo and the bench: yes. The car too since 1 Nov (Ben: "reverse and uturn should be
+    # in"), where the lidar sees behind (test_car_launch.py).
     assert sent_to_navigation(SIM)['reversing'] == 'true'
     assert sent_to_navigation(SIM, reversing='false')['reversing'] == 'false'
     assert sent_to_navigation(SIM, sim_speed='3')['max_speed'] == '3'
     assert sent_to_navigation(BENCH)['reversing'] == 'true'
-    assert sent_to_navigation(CAR, machine='all')['reversing'] == 'false'
-    assert sent_to_navigation(CAR, machine='all', reversing='true')['reversing'] == 'true'
+    assert sent_to_navigation(CAR, machine='all')['reversing'] == 'true'
+    assert sent_to_navigation(CAR, machine='all', reversing='false')['reversing'] == 'false'
 
 
 def whole_file(**args):
@@ -283,6 +283,26 @@ def test_a_tracker_takes_follow_path_with_nav2s_own_checks():
     assert 'track' not in manager['node_names']
 
 
+def test_diffusion_takes_compute_path_to_pose_with_the_lattice_behind_it():
+    assert 'diffusion_planner' not in nav_nodes()
+    assert ('compute_path_to_pose', 'compute_path_to_pose_lattice') not in remaps(
+        nav_nodes()['planner_server'])
+    nodes = nav_nodes(planner='diffusion', reversing='true')
+    # planner_server keeps the lattice, its action and its /plan out of the way.
+    assert ('compute_path_to_pose', 'compute_path_to_pose_lattice') in remaps(
+        nodes['planner_server'])
+    assert ('plan', '/drivers/nav/diffusion/lattice_plan') in remaps(nodes['planner_server'])
+    p = given(nodes['diffusion_planner'])
+    v = vehicle.load()['vehicle']
+    assert p['reversing'] is True
+    assert p['min_radius'] == pytest.approx(0.95 * vehicle.min_turning_radius(v))
+    assert p['goal_xy'] == 1.0 and p['goal_yaw'] == 0.75
+    assert p['model'] == '' and p['provider'] == 'CPUExecutionProvider'
+    # The outline, padded as the global costmap pads it (0.05 m).
+    front = yaml.safe_load(p['footprint'])[0]
+    assert front[0] == pytest.approx(vehicle.footprint_points(v)[0][0] + 0.05, abs=1e-3)
+
+
 def test_bad_trackers_and_reversing_trackers_are_refused():
     with pytest.raises(ValueError, match='pick one of'):
         nav_nodes(tracker='mppi')
@@ -351,7 +371,9 @@ PLUGINS = {'hybrid': 'nav2_smac_planner::SmacPlannerHybrid',
            'lattice': 'nav2_smac_planner::SmacPlannerLattice',
            'smac2d': 'nav2_smac_planner::SmacPlanner2D',
            'navfn': 'nav2_navfn_planner::NavfnPlanner',
-           'theta_star': 'nav2_theta_star_planner::ThetaStarPlanner'}
+           'theta_star': 'nav2_theta_star_planner::ThetaStarPlanner',
+           # The trial stands on the lattice: planner_server runs it, as the fallback.
+           'diffusion': 'nav2_smac_planner::SmacPlannerLattice'}
 
 
 def planner_settings(**args):
@@ -393,7 +415,7 @@ def test_lattice_uses_our_primitives_forward_only_unless_reversing():
 def test_lattice_is_refused_on_a_map_with_other_cells(tmp_path):
     fine = tmp_path / 'fine.yaml'
     fine.write_text('image: fine.pgm\nresolution: 0.05\norigin: [0.0, 0.0, 0.0]\n')
-    with pytest.raises(ValueError, match='lattice-primitives'):
+    with pytest.raises(ValueError, match='python3 tools/lattice_primitives.py'):
         settings(map=str(fine), planner='lattice')
 
 
@@ -406,7 +428,12 @@ def test_the_sim_passes_any_planner_and_the_car_only_car_shaped_ones():
     assert sent_to_navigation(SIM)['planner'] == 'lattice'
     for planner in vehicle.PLANNERS:
         assert sent_to_navigation(SIM, planner=planner)['planner'] == planner
-    assert sent_to_navigation(CAR, machine='all')['planner'] == 'hybrid'    # forward only
+    # The car picks by reversing: the lattice, or Hybrid-A* forward only (or blind behind).
+    assert sent_to_navigation(CAR, machine='all')['planner'] == 'lattice'
+    assert sent_to_navigation(CAR, machine='all', reversing='false')['planner'] == 'hybrid'
+    assert sent_to_navigation(CAR, machine='all', lidar='false')['planner'] == 'hybrid'
+    assert sent_to_navigation(CAR, machine='all', reversing='false',
+                              planner='lattice')['planner'] == 'lattice'
     assert sent_to_navigation(CAR, machine='all', planner='lattice')['planner'] == 'lattice'
     for planner in set(vehicle.PLANNERS) - set(vehicle.CAR_PLANNERS):
         with pytest.raises(ValueError, match='turning radius'):

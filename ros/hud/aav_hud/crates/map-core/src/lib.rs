@@ -11,6 +11,7 @@
 //! | [`grid`] | Nav2's occupancy grid, and its pixels for the screen |
 //! | [`route`] | the planned path: the nearest point to the car, the distance left |
 //! | [`car`] | the car's outline, from `vehicle.yaml` |
+//! | [`robot`] | the car as the little robot (`car_marker: robot`), on its true outline |
 //! | [`view`] | map to screen and back: follow the car, the whole map, zoom, the scale bar |
 //! | [`trip`] | NO GOAL, DRIVING, ARRIVED... and the time left |
 //! | [`tiles`] | the street map's tiles: which ones the view needs, at which zoom |
@@ -31,6 +32,7 @@ pub mod grid;
 pub mod keyboard;
 pub mod places;
 pub mod pmtiles;
+pub mod robot;
 pub mod route;
 pub mod state;
 pub mod streets;

@@ -29,9 +29,30 @@ FrameV2): 17 bytes,
   when it hasn't changed for 100 ms, however many frames still arrive.
   Both sides check firmware/spine/crates/legacy-link/vectors.json.
 
+Version 3 (1 Nov, legacy-link's FrameV3): version 2 and the steering actuator's
+calibration, for finding its ends and centre (docs/actuator-tests.md). 20 bytes:
+  0xA5, 3 (version), the same three float32, counter, flags (as version 2), then
+  byte 16 the calibration mode (0 off: drive; 1 limp: the steering actuator's motor off,
+  turned by hand; 2 jog: go to a target), bytes 17..18 the jog target in counts (u16 LE,
+  0..4095; 0 unless jog), then CRC-8/SAE-J1850 of bytes 1..18. A new version, not new
+  flags in version 2: the target needs two more bytes, and a firmware that knows only
+  version 2 turns a version 3 frame down whole (its watchdog then brakes) rather than
+  misread it. The Rust firmware reads version 2 and 3 frames alike (ParserV3).
+  Its rules, in the firmware (legacy-link's SteerCal; tested there):
+  - only while the frame asks for no speed (|speed| < 0.03) and a brake (accel below
+    -0.05), and the spine's throttle is 0 and its brake on; not with an e-stop, nor while
+    the RC (direct) or a test drives; not without a position from the steering actuator
+    (its Jrk's feedback must be analog);
+  - any frame asking for a mode has its throttle held at 0, refused or not;
+  - a jog target is clamped to the software limits (today 400..3500) and moves at
+    300 counts a second; so does the way back to the frame's steering after a mode;
+  - leaving a mode holds where the wheels are (target = position) and moves back slowly;
+    no fresh frame (a new counter) asking for it for 100 ms ends it, and holds there
+    until fresh frames come again.
+
 The uplink (TODO 50, 48; legacy-link's Uplink): ESP32 -> Motor Pi on the ESP32's TX1
 (GPIO17), 50 Hz, only with the firmware's `uplink` feature (the wire is the hardware
-lead's to confirm). 35 bytes:
+lead's to confirm). Version 2, 35 bytes:
   0xA5, 2 (version), 1 (kind: status), sequence, echo (the last Orin counter the ESP32
   took), mode (0 stopped, 1 RC direct, 2 computer: VehicleStatus.mode's numbers),
   switch (the transmitter's mode switch: 0 no signal, 1 computer, 2 RC via ROS,
@@ -39,6 +60,13 @@ lead's to confirm). 35 bytes:
   4 brake position known, 5 gear on brake), faults (u16 LE), six float32 (steering rad,
   brake position 0..1, throttle out, brake out, RC throttle -1..1, RC steering -1..1),
   then CRC-8/SAE-J1850 of bytes 1..33. Unknown positions are NaN, their flag clear.
+  Version 3 (1 Nov), what today's Rust firmware sends: 40 bytes, version byte 3, the
+  same bytes 2..33, then the steering and the brake actuators' positions in counts
+  (u16 LE each, 0..4095: the Jrk's scaled feedback, in target units, the same scale as
+  the targets; 0 and flag clear when unknown; flags bit 6 steering counts known, bit 7
+  brake counts known), byte 38 the steering calibration's state (CAL_*), then CRC-8 of
+  bytes 1..38. The steering in radians is converted with the firmware's calibration,
+  the very one being measured; the counts are not. unpack_uplink reads both versions.
 
 UDP from the wheel encoder (Wheel_Encoders, wiznet.ino:9-19,110-131):
   a 4-byte big-endian int32: signed spoke count since the previous packet,
@@ -183,9 +211,63 @@ def unpack_frame_v2(frame: bytes) -> FrameV2:
                    bool(frame[15] & FLAG_ESTOP))
 
 
+# --- Version 3: the steering actuator's calibration ---
+
+FRAME_V3_LEN = 20
+VERSION_3 = 3
+# Byte 16: what the steering actuator does.
+CAL_MODE_OFF, CAL_MODE_LIMP, CAL_MODE_JOG = 0, 1, 2
+COUNTS_MAX = 4095
+
+
+@dataclass(frozen=True)
+class FrameV3:
+    """One version 3 frame's contents (a version 2 frame has cal_mode off)."""
+
+    steering: float
+    speed: float
+    accel: float
+    counter: int
+    armed: bool
+    estop: bool
+    cal_mode: int    # CAL_MODE_*
+    jog_target: int  # counts, 0..4095; 0 unless cal_mode is jog
+
+
+def pack_frame_v3(steering: float, speed: float, accel: float, counter: int, armed: bool,
+                  estop: bool, cal_mode: int = CAL_MODE_OFF, jog_target: int = 0) -> bytes:
+    """Return a version 3 frame: the values clamped to -1..1, the target to 0..4095."""
+    if cal_mode not in (CAL_MODE_OFF, CAL_MODE_LIMP, CAL_MODE_JOG):
+        raise ValueError(f'calibration mode {cal_mode}: use CAL_MODE_OFF, _LIMP or _JOG')
+    target = max(0, min(COUNTS_MAX, int(jog_target))) if cal_mode == CAL_MODE_JOG else 0
+    flags = (FLAG_ARMED if armed else 0) | (FLAG_ESTOP if estop else 0)
+    body = (bytes([VERSION_3])
+            + struct.pack('<fff', clamp1(steering), clamp1(speed), clamp1(accel))
+            + bytes([counter & 0xFF, flags, cal_mode]) + struct.pack('<H', target))
+    return bytes([SYNC]) + body + bytes([crc8(body)])
+
+
+def unpack_frame_v3(frame: bytes) -> FrameV3:
+    """Decode a version 3 frame (for tests and bench tools). Raises ValueError if invalid."""
+    if len(frame) != FRAME_V3_LEN or frame[0] != SYNC:
+        raise ValueError('not a version 3 frame')
+    if crc8(frame[1:19]) != frame[19]:
+        raise ValueError('bad CRC')
+    if frame[1] != VERSION_3 or frame[15] & ~(FLAG_ARMED | FLAG_ESTOP):
+        raise ValueError('unknown version or flags')
+    mode, (target,) = frame[16], struct.unpack('<H', frame[17:19])
+    if not ((mode in (CAL_MODE_OFF, CAL_MODE_LIMP) and target == 0)
+            or (mode == CAL_MODE_JOG and target <= COUNTS_MAX)):
+        raise ValueError('unknown calibration mode or target')
+    steering, speed, accel = struct.unpack('<fff', frame[2:14])
+    return FrameV3(steering, speed, accel, frame[14], bool(frame[15] & FLAG_ARMED),
+                   bool(frame[15] & FLAG_ESTOP), mode, target)
+
+
 # --- The uplink: the ESP32's status ---
 
-UPLINK_LEN = 35
+UPLINK_LEN = 40       # version 3
+UPLINK_V2_LEN = 35
 KIND_STATUS = 1
 # Byte 5: who drives, as VehicleStatus.mode.
 MODE_STOPPED, MODE_RC_DIRECT, MODE_COMPUTER = 0, 1, 2
@@ -194,6 +276,20 @@ SWITCH_NONE, SWITCH_COMPUTER, SWITCH_RC_VIA_ROS, SWITCH_RC_DIRECT = 0, 1, 2, 3
 # Byte 7.
 UP_ARMED, UP_ESTOP, UP_ECHO, UP_STEERING, UP_BRAKE, UP_STICK_BRAKE = (1 << i for i in range(6))
 UP_FLAGS = 0x3F
+UP_STEERING_COUNTS, UP_BRAKE_COUNTS = 1 << 6, 1 << 7   # version 3 only
+# Byte 38 (version 3): what the steering calibration does (legacy-link's CalState).
+CAL_OFF, CAL_LIMP, CAL_JOG, CAL_HOLD, CAL_RETURN = 0, 1, 2, 3, 4
+CAL_REFUSED_MOVING, CAL_REFUSED_NOT_BRAKED, CAL_REFUSED_NO_FEEDBACK = 5, 6, 7
+CAL_REFUSED_ESTOP, CAL_REFUSED_OTHER_DRIVER = 8, 9
+CAL_STATES = {
+    CAL_OFF: 'OFF', CAL_LIMP: 'LIMP', CAL_JOG: 'JOG', CAL_HOLD: 'HOLD',
+    CAL_RETURN: 'RETURN', CAL_REFUSED_MOVING: 'REFUSED - the speed command is not zero',
+    CAL_REFUSED_NOT_BRAKED: 'REFUSED - not braked, or the throttle is on',
+    CAL_REFUSED_NO_FEEDBACK: 'REFUSED - no position from the steering actuator '
+                             '(the feedback of its Jrk must be analog)',
+    CAL_REFUSED_ESTOP: 'REFUSED - e-stop', CAL_REFUSED_OTHER_DRIVER:
+        'REFUSED - the RC (direct) or a test drives',
+}
 
 
 @dataclass(frozen=True)
@@ -214,52 +310,87 @@ class Uplink:
     rc_throttle: float              # -1..1, + forward (the gear switch gives the sign)
     rc_steering: float              # -1..1, + left
     rc_brake: bool                  # the gear switch on brake
+    # Version 3 only (None and CAL_OFF in version 2):
+    steering_counts: Optional[int] = None  # 0..4095, the steering Jrk's scaled feedback
+    brake_counts: Optional[int] = None     # 0..4095, the brake Jrk's
+    calibration: int = CAL_OFF             # CAL_*
 
 
-def pack_uplink(u: Uplink) -> bytes:
-    """Return the 35 bytes the ESP32 sends for `u` (for tests and the bench)."""
+def uplink_length(version: int) -> Optional[int]:
+    """Return an uplink frame's length for its version byte, or None if unknown."""
+    return {VERSION: UPLINK_V2_LEN, VERSION_3: UPLINK_LEN}.get(version)
+
+
+def pack_uplink(u: Uplink, version: int = VERSION_3) -> bytes:
+    """Return the bytes the ESP32 sends for `u`: version 3 (40), or 2 (35)."""
+    if uplink_length(version) is None:
+        raise ValueError(f'uplink version {version}: use 2 or 3')
     flags = ((UP_ARMED if u.armed else 0) | (UP_ESTOP if u.estop else 0)
              | (UP_ECHO if u.echo is not None else 0)
              | (UP_STEERING if u.steering is not None else 0)
              | (UP_BRAKE if u.brake_position is not None else 0)
              | (UP_STICK_BRAKE if u.rc_brake else 0))
+    if version == VERSION_3:
+        flags |= ((UP_STEERING_COUNTS if u.steering_counts is not None else 0)
+                  | (UP_BRAKE_COUNTS if u.brake_counts is not None else 0))
     nan = float('nan')
-    body = (bytes([VERSION, KIND_STATUS, u.sequence & 0xFF,
+    body = (bytes([version, KIND_STATUS, u.sequence & 0xFF,
                    (u.echo or 0) & 0xFF, u.mode, u.switch, flags])
             + struct.pack('<H6f', u.faults & 0xFFFF,
                           nan if u.steering is None else u.steering,
                           nan if u.brake_position is None else u.brake_position,
                           u.throttle_out, u.brake_out, u.rc_throttle, u.rc_steering))
+    if version == VERSION_3:
+        body += struct.pack('<HHB', u.steering_counts or 0, u.brake_counts or 0,
+                            u.calibration)
     return bytes([SYNC]) + body + bytes([crc8(body)])
 
 
 def unpack_uplink(frame: bytes) -> Uplink:
-    """Decode an uplink frame. Raises ValueError if it isn't a good one."""
-    if len(frame) != UPLINK_LEN or frame[0] != SYNC:
+    """Decode an uplink frame, version 2 or 3. Raises ValueError if it isn't a good one."""
+    if len(frame) < 2 or frame[0] != SYNC:
         raise ValueError('not an uplink frame')
-    if crc8(frame[1:34]) != frame[34]:
+    length = uplink_length(frame[1])
+    if length is None or len(frame) != length:
+        raise ValueError('unknown version, or the wrong length for it')
+    if crc8(frame[1:length - 1]) != frame[length - 1]:
         raise ValueError('bad CRC')
-    if frame[1] != VERSION or frame[2] != KIND_STATUS:
-        raise ValueError('unknown version or kind')
+    if frame[2] != KIND_STATUS:
+        raise ValueError('unknown kind')
+    v3 = frame[1] == VERSION_3
     sequence, echo, mode, switch, flags = frame[3:8]
-    if flags & ~UP_FLAGS or mode > MODE_COMPUTER or switch > SWITCH_RC_DIRECT:
+    known = UP_FLAGS | (UP_STEERING_COUNTS | UP_BRAKE_COUNTS if v3 else 0)
+    if flags & ~known or mode > MODE_COMPUTER or switch > SWITCH_RC_DIRECT:
         raise ValueError('unknown flags, mode or switch')
     faults, steering, brake, throttle_out, brake_out, rc_t, rc_s = struct.unpack(
         '<H6f', frame[8:34])
+    counts, calibration = [None, None], CAL_OFF
+    if v3:
+        raw = struct.unpack('<HH', frame[34:38])
+        for i, (value, bit) in enumerate(zip(raw, (UP_STEERING_COUNTS, UP_BRAKE_COUNTS))):
+            if flags & bit and value <= COUNTS_MAX:
+                counts[i] = value
+            elif flags & bit or value:
+                raise ValueError('counts past 4095, or counts with their flag clear')
+        calibration = frame[38]
+        if calibration not in CAL_STATES:
+            raise ValueError('unknown calibration state')
     return Uplink(sequence, echo if flags & UP_ECHO else None, mode, switch,
                   bool(flags & UP_ARMED), bool(flags & UP_ESTOP), faults,
                   steering if flags & UP_STEERING else None,
                   brake if flags & UP_BRAKE else None,
-                  throttle_out, brake_out, rc_t, rc_s, bool(flags & UP_STICK_BRAKE))
+                  throttle_out, brake_out, rc_t, rc_s, bool(flags & UP_STICK_BRAKE),
+                  counts[0], counts[1], calibration)
 
 
 class UplinkParser:
     """
-    Bytes in, uplink frames out: as legacy-link's ParserV2 finds version 2 frames.
+    Bytes in, uplink frames out (version 2 or 3): as legacy-link's ParserV3 finds frames.
 
-    Wait for 0xA5, take 35 bytes; a bad frame is dropped (and counted in `bad`), and
-    the search starts again at the next 0xA5 inside it. Bytes outside a frame count
-    in `skipped`.
+    Wait for 0xA5; the version byte after it gives the length (35 or 40); take that
+    many. A bad frame, or an unknown version, is dropped (and counted in `bad`), and the
+    search starts again at the next 0xA5 inside it. Bytes outside a frame count in
+    `skipped`.
     """
 
     def __init__(self):
@@ -275,9 +406,14 @@ class UplinkParser:
                 self.skipped += 1
                 continue
             self.buf.append(b)
-            if len(self.buf) < UPLINK_LEN:
+            if len(self.buf) < 2:
+                continue
+            length = uplink_length(self.buf[1])
+            if length is not None and len(self.buf) < length:
                 continue
             try:
+                if length is None:
+                    raise ValueError('unknown version')
                 out.append(unpack_uplink(bytes(self.buf)))
                 self.buf.clear()
             except ValueError:

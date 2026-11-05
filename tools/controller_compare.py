@@ -4,51 +4,56 @@ Controller comparison: Nav2's followers and the trial trackers over the same rou
 
 Each drives the test lot, headless, and is measured against where the car really was.
 
-    pixi run controller-compare                   (both controllers, both tours: ~15 min)
-    pixi run controller-compare --tours obstacle   (only the box in the lane)
-    pixi run controller-compare --controllers mppi
-    pixi run controller-compare --speed 3          (Nav2 and ego up to 3 m/s: sim_speed:=3)
-    pixi run controller-compare --tours lot --legs 1   (only the first leg: a quick check)
-    pixi run controller-compare --reversing        (Nav2 may reverse: the car's reversing:=true)
-    pixi run controller-compare --plans            (keep every plan, not just each leg's first)
+    pixi run measure controllers                   (both controllers, both tours: ~15 min)
+    pixi run measure controllers --tours obstacle   (only the box in the lane)
+    pixi run measure controllers --controllers mppi
+    pixi run measure controllers --speed 3          (Nav2 and ego up to 3 m/s: sim_speed:=3)
+    pixi run measure controllers --tours lot --legs 1   (only the first leg: a quick check)
+    pixi run measure controllers --reversing        (Nav2 may reverse: the car's reversing:=true)
+    pixi run measure controllers --plans            (keep every plan, not just each leg's first)
 
 The trials (docs/trials.md):
-    pixi run controller-compare --trackers pure_pursuit stanley lqr mpc --runs 3
+    pixi run measure controllers --trackers pure_pursuit stanley lqr mpc --runs 3
                     aav_track's trackers (tracker:=), forward only; with --trackers alone,
                     only them: add --controllers rpp mppi for the whole-stack table too
-    pixi run controller-compare --runs 3           (each follower 3 times: the mean and spread)
-    pixi run controller-compare --amcl             (AMCL beside the EKF, amcl:=true: scored
+    pixi run measure controllers --runs 3           (each follower 3 times: the mean and spread)
+    pixi run measure controllers --amcl             (AMCL beside the EKF, amcl:=true: scored
                     against the truth, as the EKF is)
-    pixi run controller-compare --ndt              (NDT beside the EKF, ndt:=true, on the map
+    pixi run measure controllers --ndt              (NDT beside the EKF, ndt:=true, on the map
                     pixi run ndt-map drive made: its errors, the share of clouds that gave
                     a pose, time over 1 m off, each match's wall-clock time; and its
                     covariance against its errors: NEES, the k that would make it honest,
                     and how far off each band of score per point was)
-    pixi run controller-compare --ndt-ekf          (the same, with NDT's pose into the global
+    pixi run measure controllers --ndt-ekf          (the same, with NDT's pose into the global
                     EKF, ndt_ekf:=true: compare its EKF numbers with --ndt's)
-    pixi run controller-compare --ndt --gps-off    (the GPS stops once the EKF has its first
+    pixi run measure controllers --ndt --gps-off    (the GPS stops once the EKF has its first
                     fix; with watchdog:=false geofence:=false, or they would hold Nav2)
-    pixi run controller-compare --voxels --tours lot
+    pixi run measure controllers --voxels --tours lot
                     the costmap and collision_monitor read the lidar as cubes (voxels:=true,
                     aav_voxels) instead of the flat scan: the same legs, and each leg's
                     note says the voxels node's ms a cloud and cubes a cloud
-    pixi run controller-compare --kiss-icp         (KISS-ICP lidar odometry, kiss_icp:=true,
+    pixi run measure controllers --kiss-icp         (KISS-ICP lidar odometry, kiss_icp:=true,
                     beside ekf_local: each lined up with the truth at the start, its drift
                     per 100 m, its heading at the end, each match's wall-clock time; per
                     leg and for the whole tour. Needs pixi install --locked -e kiss)
-    pixi run controller-compare --kiss-ekf         (the same, with KISS-ICP's twist into
+    pixi run measure controllers --kiss-ekf         (the same, with KISS-ICP's twist into
                     ekf_local, kiss_ekf:=true: compare its ekf_local numbers with
                     --kiss-icp's)
-    pixi run controller-compare --planners hybrid lattice smac2d --tours lot
+    pixi run measure controllers --planners hybrid lattice smac2d --tours lot
                     Nav2's planners (planner:=), each with MPPI unless --controllers or
                     --trackers says otherwise. Before each leg it also asks the planner
                     alone for a path (/compute_path_to_pose): its planning time, the path's
                     length and its tightest turn against the car's full lock. Then a
                     table of the whole tour: legs finished, time, path length, planning
                     time, kept to the turning radius (docs/controllers.md, Planners)
-    pixi run controller-compare --planners hybrid lattice lattice32 --reversing --runs 3
+    pixi run measure controllers --planners hybrid lattice lattice32 --reversing --runs 3
                     the same with reversing on (MPPI follows backwards too; the trackers
                     can't), and lattice32: the lattice on its 32-heading file
+    pixi run measure controllers --planners lattice diffusion --reversing --tours lot
+                    the diffusion trial beside the lattice: each leg's note says how many
+                    plans came from the model, how many from the lattice (the guard's
+                    fallback) and why, and the guard's refusals by check.
+                    diffusion_nomodel: the same with no model file (every plan the lattice's)
 
 For each tour and controller it:
 1. starts sim.launch.py world:=test_lot gui:=false rviz:=false controller:=<rpp|mppi>
@@ -197,6 +202,7 @@ class Recorder(Node):
         self.ndt, self.ndt_status, self.ndt_fits = [], [], []
         self.voxels = []     # (ms a cloud, cubes) from the voxels trial's status
         self.kiss, self.kiss_status, self.local = [], [], []
+        self.diffusion = []  # each plan's status, with planner:=diffusion
         self.last_truth = self.glob = None
         self.lock, self.locked, self.states = None, False, set()
         self.monitor, self.monitor_stops = None, 0
@@ -219,6 +225,8 @@ class Recorder(Node):
                                  self.on_kiss_status, 10)
         self.create_subscription(DiagnosticStatus, '/drivers/nav/track/status',
                                  self.on_loop, 10)
+        self.create_subscription(DiagnosticStatus, '/drivers/nav/diffusion/status',
+                                 self.on_diffusion, 10)
         self.create_subscription(AckermannDriveStamped, '/ego/actuator_cmd', self.on_steering,
                                  10)
         self.create_subscription(TwistStamped, '/cmd_vel_nav', self.on_asked, 10)
@@ -236,6 +244,7 @@ class Recorder(Node):
         self.ndt, self.ndt_status, self.ndt_fits = [], [], []
         self.voxels = []
         self.kiss, self.kiss_status, self.local = [], [], []
+        self.diffusion = []
         self.locked, self.states, self.monitor_stops = False, set(), 0
         self.recording = True
 
@@ -305,6 +314,10 @@ class Recorder(Node):
                                          int(v['clouds_dropped'])))
             except (KeyError, ValueError):
                 pass
+
+    def on_diffusion(self, msg):
+        if self.recording:
+            self.diffusion.append({kv.key: kv.value for kv in msg.values})
 
     def on_loop(self, msg):
         if self.recording:
@@ -467,6 +480,8 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server
                      (': ' + '; '.join(sorted(rec.states)) if rec.states else ''))
     if rec.monitor_stops:
         notes.append(f'collision_monitor stopped the car {rec.monitor_stops}x')
+    if rec.diffusion:
+        notes.append(diffusion_note(rec.diffusion))
     if rec.voxels:
         ms = sorted(m for m, _ in rec.voxels)
         cubes = [c for _, c in rec.voxels]
@@ -488,9 +503,27 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server
         leg['kiss'], leg['kiss_status'], leg['local'] = rec.kiss, rec.kiss_status, rec.local
     if rec.loops:
         leg['loops'] = rec.loops
+    if rec.diffusion:
+        leg['diffusion'] = rec.diffusion
     if planned is not None:
         leg['planned'] = planned
     return leg, notes
+
+
+def diffusion_note(plans):
+    """Return a leg's note from diffusion_planner's statuses: whose plans, why, how fast."""
+    model = sum(p.get('source') == 'model' for p in plans)
+    late = sum(p.get('source') != 'model' and 'late' in p.get('why', '') for p in plans)
+    refused = {c: sum(int(p.get(f'refused_{c}', 0)) for p in plans)
+               for c in ('G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8')}
+    samples = sum(int(p.get('samples', 0)) for p in plans)
+    passed = sum(int(p.get('samples_passed', 0)) for p in plans)
+    ms = [float(p['model_and_guard_ms']) for p in plans if 'model_and_guard_ms' in p]
+    return (f'diffusion: {model} of {len(plans)} plans from the model ({model / len(plans):.0%})'
+            f", {len(plans) - model} the lattice's ({late} late); samples passed {passed} of "
+            f'{samples}; refused ' + ', '.join(f'{c} {n}' for c, n in refused.items() if n) +
+            (f'; model and guard {sum(ms) / len(ms):.0f} ms mean, {max(ms):.0f} worst'
+             if ms else ''))
 
 
 def ndt_cov():
@@ -614,6 +647,9 @@ def followers(args):
 # lattice32: the State Lattice on its 32-heading trial file (lattice_headings:=32).
 PLANNER_VARIANTS = {f'lattice{h}': ('lattice', [f'lattice_headings:={h}'])
                     for h in vehicle.LATTICE_HEADINGS[1:]}
+# diffusion_nomodel: the diffusion trial with no model file, so every plan must be the
+# lattice's (its guard's fallback test: docs/tests.md).
+PLANNER_VARIANTS['diffusion_nomodel'] = ('diffusion', ['diffusion_model:=/nonexistent.onnx'])
 PLANNER_WORDS = vehicle.PLANNERS + tuple(PLANNER_VARIANTS)
 
 
@@ -735,6 +771,8 @@ def session(tour, follower, args, out_dir, body, used, run=1):
                     # point, so its turns and cusps can be scored again from the file.
                     drawn['planned'] = [[round(x, 3), round(y, 3)]
                                         for x, y in leg['planned']['path']]
+                if leg.get('diffusion'):
+                    drawn['diffusion'] = leg['diffusion']   # each plan's status
                 if leg.get('ndt_fits'):
                     # Each fit's error at its own stamp, for ndt_calibration().
                     drawn['ndt_errors'] = drive_metrics.fit_errors(leg['truth'],

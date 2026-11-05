@@ -39,7 +39,7 @@ OSRM's public demo server, asked once by hand: **1986.4 m**, the same shape.
 ## Run it
 
 ```bash
-pixi run -e routes get-routes    # once: Ottawa (50 MB, BBBike), then the graph
+pixi run get routes    # once: Ottawa (50 MB, BBBike), then the graph
 pixi run -e routes router        # the router, on 127.0.0.1:8002 (keep it running)
 pixi run build
 tools/ros.sh ros2 launch aav_routes street_router.launch.py
@@ -58,7 +58,7 @@ tools/ros.sh ros2 service call /drivers/nav/route/follow std_srvs/srv/Trigger
 |---|---|---|
 | `maps/routes/download/Ottawa.osm.pbf` | 49 MB | no (`/maps/` is ignored) |
 | `maps/routes/tiles/` | 59 MB | no |
-| `maps/routes/valhalla.json` | 10 kB | no: `get-routes` writes it |
+| `maps/routes/valhalla.json` | 10 kB | no: `get routes` writes it |
 
 `ROUTES_DIR=/elsewhere` puts it all somewhere else; `ROUTES_PBF=file.osm.pbf` uses your
 own extract (Geofabrik's Ontario, 1 GB, for a bigger area).
@@ -104,7 +104,7 @@ Full contract: [Topics](interfaces.md).
 |---|---|
 | `osrm_route.py` unit tests: 27, on three recorded answers (Valhalla polyline6 and GeoJSON, OSRM's demo) and an error | all pass |
 | `street_router` with a fake router, fake `/fromLL` and fake Nav2 (`colcon test`): 4 | all pass; nothing reaches Nav2 before `follow` |
-| `get-routes` on this Mac | 49 MB download, graph in 5 s |
+| `get routes` on this Mac | 49 MB download, graph in 5 s |
 | A real route, Carleton (45.3876, -75.6960) to Lansdowne | 1.99 km, 4 min, 76 waypoints |
 | Gazebo, headless, `empty` world, private domain: a street 80 m south of the datum | the car drove it and stopped **0.5 m** from the route's end, in 140 s |
 | `map-core` test: a street route is shown, never treated as the plan | passes |
@@ -131,7 +131,7 @@ Full contract: [Topics](interfaces.md).
 - The router's time is for **a normal car** on the speed limit, not ours (1 m/s to start).
 - Nav2 drives to each waypoint in turn and slows at each: that's why they're 10-30 m apart.
 - The data: © OpenStreetMap contributors, ODbL. BBBike's extract changes every week, so
-  `get-routes` checks it against BBBike's own checksum, not a fixed one.
+  `get routes` checks it against BBBike's own checksum, not a fixed one.
 - **No older code copied.** The 2025-26 team's Navigation-LocalPathGenerator read OSRM
   routes too, and followed them itself ([Older code](older-code.md)). Here Nav2 follows,
   so only a small parser was needed: written new, with tests.

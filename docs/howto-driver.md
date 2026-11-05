@@ -151,7 +151,7 @@ pixi run graph                                             # terminal 3
 - rqt_graph shows `circle_driver` → `/drivers/circle/cmd_vel` → `twist_mux`;
 - `pixi run keyboard` in another terminal: hold `i`, and the keyboard (90) takes over at
   once. Let go, and the circle comes back after half a second;
-- `pixi run estop` stops everything, and `pixi run estop-clear` lets it go again.
+- `pixi run estop` stops everything, and `pixi run clear estop` lets it go again.
 
 Then `pixi run check turtle` should still say `0 failed`, and Gazebo is the next rung:
 `pixi run sim`.
@@ -185,7 +185,7 @@ On a Mac, 10 October, in a copy of the repo: every step on this page as written.
 | `ros2 pkg create`, then the node, the mux input and the contract entry from this page | [[works]] 20 packages build |
 | The driver alone | [[works]] the turtle circles left |
 | A priority-90 command on `/drivers/keyboard/cmd_vel` (what the keyboard sends) | [[works]] it takes over and drives straight; the circle returns after it stops |
-| `pixi run estop`, then `pixi run estop-clear` | [[works]] the turtle stops, then drives again |
+| `pixi run estop`, then `pixi run clear estop` | [[works]] the turtle stops, then drives again |
 | `pixi run check turtle` | [[works]] `/drivers/circle/cmd_vel` ok, 0 failed |
 
 ## A sensor driver is different

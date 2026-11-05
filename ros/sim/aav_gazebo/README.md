@@ -25,6 +25,8 @@ Gazebo odometry, joints ─bridge─> gazebo_adapter ─> /vehicle/odom, wheels,
 A world renders sensors only if it loads Gazebo's Sensors system (`worlds.has_sensors`).
 `test_lot.sdf` and `road.sdf` both do. In such a world the lidar and the radar run by
 default (`lidar:=true`, `radar:=true`); set either to false to leave it out.
+So does a chase camera behind and above the car (`chase_camera:=true`), for Lichtblick's
+cockpit layout: `/vehicle/gazebo/chase_camera/compressed` (`config/bridge_chase.yaml`).
 That needs a GPU, ogre2 on a Mac, or `tools/software_gl.sh`. Every world is named
 `aav`, and its origin must sit on the datum in `navsat.yaml`.
 

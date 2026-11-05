@@ -1,4 +1,4 @@
-//! The map window's settings: every topic name, and its limits.
+//! The map window's settings: every topic name, its limits, and the look.
 //!
 //! They live in `config/map.yaml`, a ROS parameters file. The program carries a copy of
 //! it as its defaults ([`MapConfig::default`]), so no topic name is written in the code.
@@ -6,6 +6,9 @@
 
 use std::time::Duration;
 
+use hud_core::theme::ThemeName;
+
+use crate::robot::CarMarker;
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -84,6 +87,12 @@ pub struct MapConfig {
     pub street_map: String,
     /// The place search's file (SQLite, `ottawa.db`), found the same way.
     pub places: String,
+    /// The colours (`hud_core::theme`), as the HUD's.
+    pub theme: ThemeName,
+    /// Frosted glass: the map blurred behind the boxes drawn over it.
+    pub blur: bool,
+    /// How the car is drawn: its outline (the default) or the little robot.
+    pub car_marker: CarMarker,
 }
 
 /// Why a settings file can't be used.
@@ -194,6 +203,9 @@ mod tests {
         assert!(c.plan_stale_after() > c.stale_after());
         assert!(c.plan_kept_for() > c.plan_stale_after());
         assert!(c.final_approach > c.arrive_within);
+        assert_eq!(c.theme, ThemeName::InitialD);
+        assert!(c.blur);
+        assert_eq!(c.car_marker, CarMarker::Outline);
         // Every name is absolute (docs/conventions.md), and none is empty.
         for t in Topic::ALL {
             assert!(c.topic(t).starts_with('/'), "{t:?}: {}", c.topic(t));
@@ -222,5 +234,25 @@ mod tests {
                 ..
             })
         ));
+        let bad = BUILT_IN_YAML.replace("theme: initial_d", "theme: purple");
+        assert!(matches!(
+            MapConfig::from_yaml(&bad),
+            Err(ConfigError::Yaml(_))
+        ));
+    }
+
+    #[test]
+    fn the_look_can_change() {
+        let day = BUILT_IN_YAML
+            .replace("theme: initial_d", "theme: latte")
+            .replace("blur: true", "blur: false");
+        let c = MapConfig::from_yaml(&day).expect("latte, no blur");
+        assert_eq!(c.theme, ThemeName::Latte);
+        assert!(!c.blur);
+        let robot = BUILT_IN_YAML.replace("car_marker: outline", "car_marker: robot");
+        let c = MapConfig::from_yaml(&robot).expect("the little robot");
+        assert_eq!(c.car_marker, CarMarker::Robot);
+        let bad = BUILT_IN_YAML.replace("car_marker: outline", "car_marker: tank");
+        assert!(MapConfig::from_yaml(&bad).is_err());
     }
 }

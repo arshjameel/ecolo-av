@@ -25,6 +25,7 @@ setup(
         'console_scripts': [
             'legacy_uart_bridge = aav_legacy.legacy_uart_bridge:main',
             'encoder_udp = aav_legacy.encoder_udp:main',
+            'steering_limits = aav_legacy.steering_limits:main',
         ],
     },
 )

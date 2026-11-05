@@ -171,7 +171,7 @@ impl Place {
 /// Why the place file can't be used.
 #[derive(Debug, Error)]
 pub enum PlacesError {
-    #[error("no place database at {0}: pixi run get-places")]
+    #[error("no place database at {0}: pixi run get places")]
     Missing(PathBuf),
     #[error("can't open {path}: {source}")]
     Open {
@@ -718,7 +718,7 @@ mod tests {
         assert_eq!(great_circle(HERE, HERE).0, 0.0);
     }
 
-    /// The real file, when it's there (pixi run get-places): fast enough to search as
+    /// The real file, when it's there (pixi run get places): fast enough to search as
     /// someone types. The limit is for a release build (the window's); a debug build's
     /// SQLite is unoptimised, and tests run side by side, so it gets more room.
     #[test]

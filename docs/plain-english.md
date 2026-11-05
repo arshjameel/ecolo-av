@@ -88,7 +88,7 @@ server checks it.
 | Speeding up, slowing down | 0.5 m/s², never above ego's limits | `safety.Caps` |
 | E-stop on | every move refused: `/safety/estop`, `/vehicle/status`, or twist_mux's own report on `/diagnostics` says so | `DriveTools._may_move` |
 | No word from twist_mux | every move refused: whether the e-stop is on is unknown | `DriveTools._may_move` |
-| Clearing the e-stop | **never**: a person runs `pixi run estop-clear` | it has no such tool |
+| Clearing the e-stop | **never**: a person runs `pixi run clear estop` | it has no such tool |
 | One drive at a time | refused while one runs | `DriveTools._may_move` |
 | A twist_mux lock | refused while a lock holds the driver that would carry the move: the stop-sign and sensor locks (30) hold Nav2 (20), so `go_to_gps`; not the scripted driver (50), so not `drive` or `turn` | `safety.holding_locks` |
 | The real car | refused unless started with `--car` | `safety.allowed_here` |
@@ -155,8 +155,8 @@ What the test found, and changed:
 The first round (before those changes) scored 6, 21, 16, 21 and 15 of 23. The test is
 small (23 requests): one or two answers either way is noise.
 
-Run it again: `pixi run -e llm llm-eval` (all five), or
-`pixi run -e llm llm-eval --models mlx-community/Qwen3-8B-4bit --only fwd100 far5k`.
+Run it again: `pixi run -e llm tools/ros.sh python3 -m aav_language.run_eval` (all five), or
+`pixi run -e llm tools/ros.sh python3 -m aav_language.run_eval --models mlx-community/Qwen3-8B-4bit --only fwd100 far5k`.
 
 ### Licences
 

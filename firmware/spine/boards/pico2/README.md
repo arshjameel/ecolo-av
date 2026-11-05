@@ -80,8 +80,8 @@ It is a workspace of its own, not a member of `firmware/spine`'s: it builds only
 RP2350 (`thumbv8m.main-none-eabihf`), with Embassy's HAL for that chip.
 
 ```sh
-pixi run spine-uf2         # build it, and make spine-pico2.uf2 here, to drag on
-pixi run spine-flash       # or flash it through a debug probe (pixi run spine-tools first)
+pixi run pico spine build         # build it, and make spine-pico2.uf2 here, to drag on
+pixi run pico spine flash       # or flash it through a debug probe (pixi run pico spine tools first)
 cd firmware/spine/boards/pico2 && cargo build --release   # pixi run test does this too
 ```
 

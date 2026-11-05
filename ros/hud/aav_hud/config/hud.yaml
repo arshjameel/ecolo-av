@@ -15,3 +15,5 @@ hud:
     output_mux_topic: /safety/output_mux/state            # std_msgs/msg/String: the output mux's gate, OPEN / WAIT / STOP: the GO / STOP panel
     heartbeat_topic: /hud/heartbeat                       # std_msgs/msg/UInt64: published, 10 Hz while the screen draws (frames drawn)
     stale_after: 1.0                                      # s: a topic this quiet shows STALE
+    max_speed: 1.0                                        # m/s: ego's forward cap (aav_ego config/ego.yaml); the gauge's redline starts here. hud.launch.py copies ego.yaml's
+    theme: initial_d                                      # the colours: initial_d (black, white, Carleton red; the arcade gauge), mocha (dark, night), latte (light, day)

@@ -119,7 +119,8 @@ impl Demo {
 
     fn vehicle(&mut self, now: Instant) -> VehicleStatus {
         let t = self.t(now);
-        let cruising = 4.0 + 3.0 * (t / 4.0).sin(); // m/s
+        // m/s: up and down under ego's 1 m/s cap (hud.yaml's max_speed), as the car drives.
+        let cruising = 0.6 + 0.35 * (t / 4.0).sin();
         let stopped_for = self
             .estop_since
             .map(|since| now.saturating_duration_since(since));

@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">73 min read · 4 sections</div></header>
+<div class="meta">82 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -115,9 +119,25 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/joy/joy</code></td>
 <td><code>sensor_msgs/msg/Joy</code></td>
 <td><code>joy_node</code></td>
-<td><code>teleop_twist_joy_node</code>, <code>joy_teleop</code></td>
+<td><code>joy_alive</code>, <code>joy_teleop</code></td>
 <td>-</td>
-<td>Joystick axes and buttons, 20 Hz while held. joy_node, teleop_twist_joy_node and joy_teleop run in the namespace /drivers/joy (aav_teleop teleop.launch.py), so their relative topics land here.</td>
+<td>Joystick axes and buttons, 20 Hz while the USB receiver is in - joy_node repeats the last state (autorepeat_rate), so a pad turned off with its receiver still in may repeat a held trigger and stick (TODO 74a). joy_node, joy_alive, teleop_twist_joy_node and joy_teleop run in the namespace /drivers/joy (aav_teleop teleop.launch.py), so their relative topics land here. bench_check.py publishes it itself to play a live, frozen and silent pad (teleop.launch.py joy_device:=false).</td>
+</tr>
+<tr>
+<td><code>/drivers/joy/joy_checked</code></td>
+<td><code>sensor_msgs/msg/Joy</code></td>
+<td><code>joy_alive</code></td>
+<td><code>teleop_twist_joy_node</code></td>
+<td>-</td>
+<td>The joystick, only while it is really there and moving (aav_safety joy_alive, joy_alive.py) - each /drivers/joy/joy message as it came, or while stopped a released copy (every axis and button 0), so teleop_twist_joy sends one zero and nothing more; once more the moment silence trips it. It stops on SILENT (no Joy for 0.5 s - the receiver unplugged, joy_node dead) and FROZEN (the deadman held and the throttle axis off centre, every axis and button bit-identical for 2 s - a dead pad's receiver repeating itself; a stick pinned at its edge trips it too). Both latch until the deadman is seen released; at start-up nothing passes until it has been released once (WAITING). aav_teleop config/joy_alive.yaml.</td>
+</tr>
+<tr>
+<td><code>/drivers/joy/alive</code></td>
+<td><code>std_msgs/msg/String</code></td>
+<td><code>joy_alive</code></td>
+<td>-</td>
+<td>-</td>
+<td>One line for people, 10 Hz - OK, WAITING, SILENT or FROZEN, a dash, and why, such as "FROZEN - the same values for over 2 s while driving - a dead pad? Release the deadman to drive again". bench_check.py reads it (the frozen-pad check).</td>
 </tr>
 <tr>
 <td><code>/drivers/joy/cmd_vel</code></td>
@@ -149,7 +169,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>actuator_test</code></td>
 <td><code>twist_mux</code>, <code>language_drive</code></td>
 <td>-</td>
-<td>Priority 60, below both people (joystick 100, keyboard 90) and above every other program. Only while an actuator test runs (aav_actuator_tests, pixi run actuator-test; docs/tests.md stages 3-4), or the preflight on stands (pixi run preflight, that is actuator-test preflight, which also counts every sensor topic it subscribes to). It also reads /control/cmd_vel, to stop when someone else takes over.</td>
+<td>Priority 60, below both people (joystick 100, keyboard 90) and above every other program. Only while an actuator test runs (aav_actuator_tests, pixi run actuator-test; docs/tests.md stages 3-4), or the preflight on stands (pixi run actuator-test preflight --stands, that is actuator-test preflight, which also counts every sensor topic it subscribes to). It also reads /control/cmd_vel, to stop when someone else takes over.</td>
 </tr>
 <tr>
 <td><code>/drivers/buttons/cmd_vel</code></td>
@@ -158,6 +178,14 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>twist_mux</code>, <code>language_drive</code></td>
 <td>-</td>
 <td>Priority 45 (twist_mux's buttons slot) - the hardware panel's simple buttons (aav_hud hw_panel, pixi run hw-panel; docs/hud.md; docs/designs/2026-10-29_two-screens.md, option A). Below people (90-100), the actuator tests (60) and a scripted run (50); above replay (40), the point driver (25), Nav2 (20) and AI (10). The geofence's lock (51) and the no-timeout lock (60) hold it; the stop-sign and sensor locks (30) don't, so it works on stands. Sent only while GO (Space, or the button) is held, then 0.5 s of zeros, at 10 Hz and only while the panel's window draws (hud-core's heartbeat), so a frozen window stops it; speed only on SIM and BENCH (at most 1.0 m/s), never the real car on the ground, and on stands only once a driven-wheel speed exists (TODO 49b). An e-stop, someone else driving (/control/cmd_vel not the panel's for 0.3 s) or a /system/source change zeroes it and needs GO pressed again. Steering is sent as a turn rate (v tan(delta) / L), so it moves only while creeping. Stamp 0 (twist_mux and ego go by arrival).</td>
+</tr>
+<tr>
+<td><code>/drivers/buttons/steering_calibration</code></td>
+<td><code>aav_interfaces/msg/SteeringCalibration</code></td>
+<td><code>hw_panel</code></td>
+<td><code>legacy_uart_bridge</code></td>
+<td>-</td>
+<td>A person on the hardware panel asks for the steering actuator's calibration mode, to find its ends and centre (docs/actuator-tests.md) - MODE_LIMP (its motor off, the wheels turned by hand) or MODE_JOG to target counts (moved slowly, at 300 counts a second, inside the software limits), MODE_OFF to stop. Sent at 10 Hz while the person holds the mode, and only while the panel's window draws; the bridge drops it after 0.5 s of silence. Only from the panel, never Nav2 or a program; not through twist_mux - it carries no motion. legacy_uart_bridge passes it on in its version 3 frames only with steering_calibration stands or bench (the hardware lead's say-so; none by default, and in legacy.yaml), frame_version 3, a fresh uplink, no e-stop, ego not asking for speed and the wheel speed under 0.05 m/s; meanwhile its frames stand the car still (no speed, brake full, not armed). The firmware then checks again (standing, braked, analog feedback, no e-stop or other driver) and holds the throttle at 0 (legacy-link's SteerCal). The panel's STEERING CAL page sends it (1 Nov) - GO LIMP, HOLD and STEP (jog, inside jog_min..jog_max, 400-3500), and its lock-to-lock check (jog inside the measured limits, stopped and held on resistance); END sends MODE_OFF for 0.5 s. ros2 topic pub works on the bench too.</td>
 </tr>
 <tr>
 <td><code>/drivers/scripted/cmd_vel</code></td>
@@ -432,6 +460,14 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td>Latched (reliable, transient local, depth 1). Where the data comes from - REAL, SIM, BENCH or REPLAY - per sensor, one list per announcer. Gazebo and turtlesim announce SIM; spine_bridge REAL on the car, BENCH on the bench and SIM in Gazebo's spine profile (its source parameter; gazebo_adapter then announces only the sensors), with each bench stand-in - with role:=sensors (today's wiring, the Orin's CAN bus with only the wheel sensors) only odometry and wheels, never an actuator; legacy_uart_bridge REAL; replay.launch.py REPLAY; each camera_stream_<camera> its camera (camera_front_left...) as its source parameter says, REAL on the car. The HUD shows a banner when anything isn't REAL. The sensor mux and the output mux count an announcement only while its announcer still publishes here, and refuse a run where any announcement differs from the source the run asked for.</td>
 </tr>
 <tr>
+<td><code>/system/algorithms</code></td>
+<td><code>diagnostic_msgs/msg/DiagnosticStatus</code></td>
+<td><code>run_info</code></td>
+<td>-</td>
+<td>sim</td>
+<td>Which algorithms this run uses, as the launch chose them (aav_run_info run_info; sim.launch.py always, car.launch.py where Nav2 runs). Latched (reliable, transient local, depth 1), again every 2 s. name algorithms, level OK, message one short line (lattice, mppi, voxels, NDT scored...), hardware_id the run (sim world:=road, car); values one row each - run, planner, path follower (MPPI or RPP, or a trial tracker), obstacles (lidar scan or voxels, radar), local EKF and global EKF (their inputs), NDT, KISS-ICP, AMCL (off, scored only, or into an EKF). What the launch asked for, not what is alive - a live tracker swap shows on /drivers/nav/track/status. The cockpit layout's Algorithms table shows it.</td>
+</tr>
+<tr>
 <td><code>/system/sensor_mux/state</code></td>
 <td><code>aav_interfaces/msg/SourceCheck</code></td>
 <td><code>sensor_mux</code></td>
@@ -462,6 +498,30 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>actuator_test</code>, <code>hw_panel</code></td>
 <td>turtle, sim, bench</td>
 <td>The steering, the virtual centre wheel (rad, + left) - command (from /ego/actuator_cmd) and measured. In Gazebo, measured is the actuator model's angle (its speed, lag, offset and deadband). For plots and the actuator tests; /vehicle/status keeps it too. legacy_uart_bridge (uplink true, 50 Hz) - command ego's steering_angle while fresh (else NaN), measured the steering Jrk's scaled feedback in rad (NaN when the Jrk has no feedback set up).</td>
+</tr>
+<tr>
+<td><code>/vehicle/steering_actuator/raw</code></td>
+<td><code>aav_interfaces/msg/ActuatorRaw</code></td>
+<td><code>legacy_uart_bridge</code></td>
+<td><code>hw_panel</code></td>
+<td>-</td>
+<td>The steering actuator's position, raw - its Jrk's scaled feedback in counts (0..4095, the same units as its targets), not converted with the firmware's calibration, so it can measure that calibration (docs/actuator-tests.md, "Find the steering actuator's ends and centre"). valid false when the Jrk's feedback isn't analog or the read failed. calibration is the firmware's steering calibration state (OFF, LIMP, JOG, HOLD, RETURN, or REFUSED and why). legacy_uart_bridge, 50 Hz, only with uplink true; the counts come in the firmware's version 3 uplink (1 Nov) - an older firmware's version 2 uplink has none, so valid is false. The hardware panel's STEERING CAL page reads it - the live position, the marks, and the lock-to-lock check's following.</td>
+</tr>
+<tr>
+<td><code>/vehicle/brake_actuator/raw</code></td>
+<td><code>aav_interfaces/msg/ActuatorRaw</code></td>
+<td><code>legacy_uart_bridge</code></td>
+<td>-</td>
+<td>-</td>
+<td>The brake actuator's position, raw - as /vehicle/steering_actuator/raw (counts, 0..4095, not converted); calibration is always OFF. legacy_uart_bridge, 50 Hz, with uplink true (valid false with a version 2 uplink).</td>
+</tr>
+<tr>
+<td><code>/vehicle/steering_actuator/calibration</code></td>
+<td><code>std_msgs/msg/String</code></td>
+<td><code>legacy_uart_bridge</code></td>
+<td><code>hw_panel</code></td>
+<td>-</td>
+<td>One line for people, on each change and at 2 Hz while anyone asks - what the steering calibration does and why, such as "LIMP - the steering actuator's motor is off" or "REFUSED - steering_calibration is none - stands or bench only, set by the hardware lead". The bridge's own refusals come first (its steering_calibration parameter, frame_version 3, a fresh uplink, no e-stop, ego not driving, the car not moving); then the firmware's state from the uplink. Only with uplink true.</td>
 </tr>
 <tr>
 <td><code>/vehicle/throttle</code></td>
@@ -709,7 +769,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>voxels</code></td>
 <td><code>debug_hud</code></td>
 <td>-</td>
-<td>The voxels trial after every cloud - name voxels, level OK (the road fitted) or WARN (no good fit - taken as flat, as lidar_scan does); values ms (wall clock, the cloud read to the cubes published), cubes, ground_cubes, points (finite, off the car, in range), fitted, roll_deg, pitch_deg (the body's lean on the fitted road, REP-103), clouds_dropped (from the stamps). sim-check --voxels and controller-compare --voxels read it; so does the debug HUD (its Nav2 cubes section and row).</td>
+<td>The voxels trial after every cloud - name voxels, level OK (the road fitted) or WARN (no good fit - taken as flat, as lidar_scan does); values ms (wall clock, the cloud read to the cubes published), cubes, ground_cubes, points (finite, off the car, in range), fitted, roll_deg, pitch_deg (the body's lean on the fitted road, REP-103), clouds_dropped (from the stamps). sim-check --voxels and measure controllers --voxels read it; so does the debug HUD (its Nav2 cubes section and row).</td>
 </tr>
 <tr>
 <td><code>/perception/radar/clusters</code></td>
@@ -856,6 +916,22 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td>Where the Gazebo car really is (map frame - the world's origin is the datum - 50 Hz), like the bench's /vehicle/bench/truth. Only the stand-ins read it - gazebo_gps, for the receiver's velocity (/sensors/gps/fix_velocity), never for a position; tools/sim_check.py compares it with /localization/odom/global. Gazebo's other topics (/gazebo/odom, imu, navsat, cmd_vel, radar/points) only link the bridges, gazebo_adapter and the sensor nodes (gazebo_imu, gazebo_gps, gazebo_radar, gazebo_camera - one process per sensor, as on the car).</td>
 </tr>
 <tr>
+<td><code>/vehicle/gazebo/chase_camera/image_raw</code></td>
+<td><code>sensor_msgs/msg/Image</code></td>
+<td><code>gz_chase_bridge</code></td>
+<td><code>chase_jpeg</code></td>
+<td>road</td>
+<td>Gazebo's chase camera (aav_description aav.sensors.gazebo.xacro, chase_camera:=true, the default in sim.launch.py) - 7 m behind the rear axle and 3.5 m up, fixed to the car, 640 x 360 RGB, 10 Hz, frame base_link. Only where the world renders sensors (road, test_lot); never on the car. Big (6.9 MB/s), so the bridge's WiFi list leaves it out (image_raw); chase_jpeg makes the JPEG Lichtblick shows.</td>
+</tr>
+<tr>
+<td><code>/vehicle/gazebo/chase_camera/compressed</code></td>
+<td><code>sensor_msgs/msg/CompressedImage</code></td>
+<td><code>chase_jpeg</code></td>
+<td><code>foxglove_bridge</code></td>
+<td>road</td>
+<td>The chase camera as JPEG, every picture (10 Hz, about 30 kB each) - image_transport republish (chase_jpeg, aav_gazebo gazebo.launch.py). For Lichtblick's cockpit layout (tools/foxglove/cockpit.json), so it shows Gazebo's picture without Gazebo's window. Sim only - the car has no such topic.</td>
+</tr>
+<tr>
 <td><code>/vehicle/gazebo/spine_outputs</code></td>
 <td><code>aav_interfaces/msg/SpineOutputs</code></td>
 <td><code>spine_sim</code></td>
@@ -933,7 +1009,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>amcl</code></td>
 <td><code>controller_compare</code>, <code>debug_hud</code></td>
 <td>-</td>
-<td>A trial (docs/trials.md) - stock nav2_amcl's particle filter on the 2D map and the lidar scan, map frame (its amcl_pose, renamed). Only with amcl:=true (sim.launch.py world:=test_lot nav:=true lidar:=true). Its tf_broadcast is false - ekf_global keeps map -&gt; odom - so nothing drives by it; controller-compare --amcl scores it against Gazebo's truth. Published only once the car has moved (update_min_d, update_min_a).</td>
+<td>A trial (docs/trials.md) - stock nav2_amcl's particle filter on the 2D map and the lidar scan, map frame (its amcl_pose, renamed). Only with amcl:=true (sim.launch.py world:=test_lot nav:=true lidar:=true). Its tf_broadcast is false - ekf_global keeps map -&gt; odom - so nothing drives by it; measure controllers --amcl scores it against Gazebo's truth. Published only once the car has moved (update_min_d, update_min_a).</td>
 </tr>
 <tr>
 <td><code>/localization/amcl/particles</code></td>
@@ -973,7 +1049,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>ndt</code></td>
 <td><code>debug_hud</code></td>
 <td>-</td>
-<td>NDT's state after every cloud - name ndt, level OK (a good fit), WARN (a poor fit, or no start yet) or ERROR (LOST), message TRACKING, WAITING or LOST and why; values stamp (the cloud's, s), score_per_point, overlap, iterations, match_ms (wall clock, the match alone), points (after the filters), poor_in_row, restarts (from ekf_global after LOST), clouds_dropped (arrived while one was being matched), x, y, yaw, and for a fit cov_xx, cov_xy, cov_xyaw, cov_yy, cov_yyaw, cov_yawyaw (-H^-1 before the scale k and the floors, to fit k). WARN's why says which poor fit - score too low, out of iterations, or jumped from the guess. The debug HUD's panel shows it; controller-compare --ndt scores it.</td>
+<td>NDT's state after every cloud - name ndt, level OK (a good fit), WARN (a poor fit, or no start yet) or ERROR (LOST), message TRACKING, WAITING or LOST and why; values stamp (the cloud's, s), score_per_point, overlap, iterations, match_ms (wall clock, the match alone), points (after the filters), poor_in_row, restarts (from ekf_global after LOST), clouds_dropped (arrived while one was being matched), x, y, yaw, and for a fit cov_xx, cov_xy, cov_xyaw, cov_yy, cov_yyaw, cov_yawyaw (-H^-1 before the scale k and the floors, to fit k). WARN's why says which poor fit - score too low, out of iterations, or jumped from the guess. The debug HUD's panel shows it; measure controllers --ndt scores it.</td>
 </tr>
 <tr>
 <td><code>/localization/ndt/initial_pose</code></td>
@@ -989,7 +1065,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>kiss_icp</code></td>
 <td><code>ekf_local</code></td>
 <td>-</td>
-<td>A trial (docs/designs/2026-10-30_kiss-icp.md) - lidar odometry by KISS-ICP (MIT, PRBonn; aav_kiss_icp, its PyPI wheel in the kiss Pixi environment, run as a child program). How far base_link moved, from the lidar alone - frame kiss_odom (its own, where the car was at the first scan; drifts), child base_link, stamped with the cloud's stamp. Twist in base_link from the last step over the time between clouds. KISS-ICP gives no covariance - the pose's is a fixed 1, the twist's the node's twist_linear_sd and twist_angular_sd (0.15 m/s, 0.01 rad/s, measured against Gazebo's truth 1 Nov). Only with kiss_icp:=true or kiss_ekf:=true (sim.launch.py, a world with the lidar). Never TF. With kiss_ekf:=true (a trial, off by default) ekf_local fuses its twist - vx and vyaw only, never its pose (it drifts, in its own frame) - beside the wheels and the IMU (odom1, refused past 5 sigma; aav_localization config/ekf_local_kiss.yaml); otherwise nothing reads it to drive. controller-compare --kiss-icp scores it against Gazebo's truth and ekf_local; --kiss-ekf scores ekf_local with it.</td>
+<td>A trial (docs/designs/2026-10-30_kiss-icp.md) - lidar odometry by KISS-ICP (MIT, PRBonn; aav_kiss_icp, its PyPI wheel in the kiss Pixi environment, run as a child program). How far base_link moved, from the lidar alone - frame kiss_odom (its own, where the car was at the first scan; drifts), child base_link, stamped with the cloud's stamp. Twist in base_link from the last step over the time between clouds. KISS-ICP gives no covariance - the pose's is a fixed 1, the twist's the node's twist_linear_sd and twist_angular_sd (0.15 m/s, 0.01 rad/s, measured against Gazebo's truth 1 Nov). Only with kiss_icp:=true or kiss_ekf:=true (sim.launch.py, a world with the lidar). Never TF. With kiss_ekf:=true (a trial, off by default) ekf_local fuses its twist - vx and vyaw only, never its pose (it drifts, in its own frame) - beside the wheels and the IMU (odom1, refused past 5 sigma; aav_localization config/ekf_local_kiss.yaml); otherwise nothing reads it to drive. measure controllers --kiss-icp scores it against Gazebo's truth and ekf_local; --kiss-ekf scores ekf_local with it.</td>
 </tr>
 <tr>
 <td><code>/localization/kiss_icp/status</code></td>
@@ -1034,10 +1110,18 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <tr>
 <td><code>/plan</code></td>
 <td><code>nav_msgs/msg/Path</code></td>
-<td><code>planner_server</code></td>
+<td><code>planner_server</code>, <code>diffusion_planner</code></td>
 <td><code>map</code>, <code>debug_hud</code></td>
 <td>-</td>
-<td>The planned path, for RViz/Foxglove, and the map window (map, aav_hud) - the line, the goal (its last point) and the distance left along it. Nav2 plans again every second while it drives. Which planner makes it is navigation.launch.py planner:= (docs/controllers.md, Planners) - hybrid (SmacPlannerHybrid, the default) or lattice (SmacPlannerLattice, our own primitives) keep to the car's turning radius; smac2d, navfn and theta_star, trials in sim and bench only, don't. Always the plugin GridBased, so the behaviour trees never change.</td>
+<td>The planned path, for RViz/Foxglove, and the map window (map, aav_hud) - the line, the goal (its last point) and the distance left along it. Nav2 plans again every second while it drives. Which planner makes it is navigation.launch.py planner:= (docs/controllers.md, Planners) - hybrid (SmacPlannerHybrid, the default) or lattice (SmacPlannerLattice, our own primitives) keep to the car's turning radius; smac2d, navfn and theta_star, trials in sim and bench only, don't. Always the plugin GridBased, so the behaviour trees never change. With planner:=diffusion (aav_diffusion_planner, a trial) diffusion_planner publishes it - the path it returned, the model's or the lattice's - and planner_server's own goes to /drivers/nav/diffusion/lattice_plan.</td>
+</tr>
+<tr>
+<td><code>/drivers/nav/diffusion/lattice_plan</code></td>
+<td><code>nav_msgs/msg/Path</code></td>
+<td><code>planner_server</code></td>
+<td>-</td>
+<td>-</td>
+<td>Only with planner:=diffusion - planner_server's own /plan, renamed - the lattice's path for each plan, the fallback, whether or not the car got it.</td>
 </tr>
 <tr>
 <td><code>/cmd_vel_nav</code></td>
@@ -1046,6 +1130,14 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>velocity_smoother</code></td>
 <td>-</td>
 <td>Nav2's own name, inside Nav2 - the path follower's command, before the velocity smoother, collision_monitor and /drivers/nav/cmd_vel. controller_server publishes it (tracker:=none, the default), or aav_track's track node with a trial tracker on (tracker:=pure_pursuit</td>
+</tr>
+<tr>
+<td><code>/drivers/nav/diffusion/status</code></td>
+<td><code>diagnostic_msgs/msg/DiagnosticStatus</code></td>
+<td><code>diffusion_planner</code></td>
+<td><code>controller_compare</code></td>
+<td>-</td>
+<td>Only with planner:=diffusion (aav_diffusion_planner, a trial) - one a plan. name diffusion_planner; level OK (the model's path), WARN (the lattice's - the fallback) or ERROR (neither); message the source and why (no model answer, every sample failed the guard, late). values source, why, model_ms, model_and_guard_ms (against budget_ms, 150), total_ms, samples, samples_passed, lattice_ms, refused_G1..G8 (samples failing each check, this plan) and refused_G*_total, plans, from_model, share_from_model (since the node started), and with the model's path length_m, cusps, lattice_length_m, gap_to_lattice_m.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/track/status</code></td>
@@ -1195,13 +1287,13 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/safety/sensor_watchdog/clear</code></td>
 <td><code>std_srvs/srv/Trigger</code></td>
 <td><code>sensor_watchdog</code></td>
-<td>A person says all is right again after a fault the watchdog latches - a GPS jump, wheels that disagreed with the IMU and GPS, a HUD that dropped out (LOST). pixi run watchdog-clear (pixi run sim-fault clear in Gazebo).</td>
+<td>A person says all is right again after a fault the watchdog latches - a GPS jump, wheels that disagreed with the IMU and GPS, a HUD that dropped out (LOST). pixi run clear watchdog (pixi run sim-fault clear in Gazebo).</td>
 </tr>
 <tr>
 <td><code>/safety/geofence/clear</code></td>
 <td><code>std_srvs/srv/Trigger</code></td>
 <td><code>geofence</code></td>
-<td>A person drove the car back inside the fence after OUTSIDE, or understood a JUMP (both latch) - pixi run geofence-clear. Refused, with the reason, while the car is still outside or the global pose can't be trusted. NEAR and LOST let go by themselves. Only people call it - never aav_language's drive server or the MCP tools (aav_language test_drive_tools.py checks).</td>
+<td>A person drove the car back inside the fence after OUTSIDE, or understood a JUMP (both latch) - pixi run clear geofence. Refused, with the reason, while the car is still outside or the global pose can't be trusted. NEAR and LOST let go by themselves. Only people call it - never aav_language's drive server or the MCP tools (aav_language test_drive_tools.py checks).</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/route/follow</code></td>
@@ -1213,7 +1305,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/track/set_parameters</code></td>
 <td><code>rcl_interfaces/srv/SetParameters</code></td>
 <td><code>track</code></td>
-<td>aav_track's own parameter service (every ROS node has one). Listed for the one change that matters - tracker, swapped live (a trial, docs/trials.md) - refused unless the node runs with live_swap:=true, which only sim.launch.py sets. Called by the debug HUD's keys 1-4 (debug_hud, aav_hud), only while /system/source says SIM, and by <code>ros2 param set /track tracker lqr</code>.</td>
+<td>aav_track's own parameter service (every ROS node has one). Listed for the one change that matters - tracker, swapped live (a trial, docs/trials.md) - refused unless the node runs with live_swap:=true, which only sim.launch.py sets. Called by the debug HUD's keys 1-4 (debug_hud, aav_hud), only while /system/source says SIM, by Lichtblick's cockpit layout (its Call Service panel, through foxglove_bridge on 127.0.0.1), and by <code>ros2 param set /track tracker lqr</code>.</td>
 </tr>
 </tbody>
 </table></div>
@@ -1251,7 +1343,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/compute_path_to_pose</code></td>
 <td><code>nav2_msgs/action/ComputePathToPose</code></td>
 <td><code>planner_server</code></td>
-<td>Nav2's own - one path from the car to a pose, planner_id GridBased (whichever planner:= runs). bt_navigator calls it every second while it drives; controller_compare (tools/controller_compare.py --planners) calls it once before each leg, to score the planner alone - its planning_time, the path's length and tightest turn. Planning only, nothing moves.</td>
+<td>Nav2's own - one path from the car to a pose, planner_id GridBased (whichever planner:= runs). With planner:=diffusion diffusion_planner serves it instead, and planner_server's own is renamed /compute_path_to_pose_lattice, which diffusion_planner calls for each plan (the fallback). bt_navigator calls it every second while it drives; controller_compare (tools/controller_compare.py --planners) calls it once before each leg, to score the planner alone - its planning_time, the path's length and tightest turn. Planning only, nothing moves.</td>
 </tr>
 <tr>
 <td><code>/navigate_to_pose</code></td>

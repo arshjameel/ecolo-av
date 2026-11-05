@@ -1,0 +1,204 @@
+{
+  "about": "The steering actuator's limits from its marks (counts): shared by aav_legacy's steering_limits.py (test_steering_limits.py) and the hardware panel's Rust twin (panel-core steering_limits.rs). Change both, and this file, together.",
+  "margin": 0.05,
+  "cases": [
+    {
+      "name": "the 2025-26 guess: left raises, the right side shorter",
+      "left": 3500,
+      "centre": 1950,
+      "right": 500,
+      "left_deg": null,
+      "right_deg": null,
+      "expect": {
+        "lo": 573,
+        "hi": 3327,
+        "half": 1377,
+        "sign": 1,
+        "counts_per_rad": null,
+        "max_steering_angle": null,
+        "warnings": []
+      }
+    },
+    {
+      "name": "equal sides, 30 degrees each",
+      "left": 3500,
+      "centre": 2000,
+      "right": 500,
+      "left_deg": 30.0,
+      "right_deg": 30.0,
+      "expect": {
+        "lo": 575,
+        "hi": 3425,
+        "half": 1425,
+        "sign": 1,
+        "counts_per_rad": 2864.7889756541163,
+        "max_steering_angle": 0.4974188368183839,
+        "warnings": []
+      }
+    },
+    {
+      "name": "left lowers the target",
+      "left": 600,
+      "centre": 2000,
+      "right": 3400,
+      "left_deg": 28.0,
+      "right_deg": 28.0,
+      "expect": {
+        "lo": 670,
+        "hi": 3330,
+        "half": 1330,
+        "sign": -1,
+        "counts_per_rad": -2864.788975654116,
+        "max_steering_angle": 0.4642575810304917,
+        "warnings": []
+      }
+    },
+    {
+      "name": "one angle only: no gain",
+      "left": 3420,
+      "centre": 1985,
+      "right": 610,
+      "left_deg": 31.0,
+      "right_deg": null,
+      "expect": {
+        "lo": 679,
+        "hi": 3291,
+        "half": 1306,
+        "sign": 1,
+        "counts_per_rad": null,
+        "max_steering_angle": null,
+        "warnings": []
+      }
+    },
+    {
+      "name": "the centre off the middle, lopsided",
+      "left": 3500,
+      "centre": 2600,
+      "right": 400,
+      "left_deg": null,
+      "right_deg": null,
+      "expect": {
+        "lo": 1745,
+        "hi": 3455,
+        "half": 855,
+        "sign": 1,
+        "counts_per_rad": null,
+        "max_steering_angle": null,
+        "warnings": [
+          "centre_off",
+          "lopsided"
+        ]
+      }
+    },
+    {
+      "name": "clipped at both ends, gains differ",
+      "left": 4095,
+      "centre": 2048,
+      "right": 0,
+      "left_deg": 30.0,
+      "right_deg": 20.0,
+      "expect": {
+        "lo": 104,
+        "hi": 3992,
+        "half": 1944,
+        "sign": 1,
+        "counts_per_rad": 4888.284922124473,
+        "max_steering_angle": 0.3976854931678426,
+        "warnings": [
+          "clipped_left",
+          "clipped_right",
+          "gains_differ"
+        ]
+      }
+    },
+    {
+      "name": "the demo car: centre a little right",
+      "left": 3420,
+      "centre": 1985,
+      "right": 610,
+      "left_deg": 31.0,
+      "right_deg": 29.0,
+      "expect": {
+        "lo": 679,
+        "hi": 3291,
+        "half": 1306,
+        "sign": 1,
+        "counts_per_rad": 2684.4251758520886,
+        "max_steering_angle": 0.4865101146227517,
+        "warnings": []
+      }
+    },
+    {
+      "name": "an odd half: floor",
+      "left": 3001,
+      "centre": 2000,
+      "right": 999,
+      "left_deg": null,
+      "right_deg": null,
+      "expect": {
+        "lo": 1050,
+        "hi": 2950,
+        "half": 950,
+        "sign": 1,
+        "counts_per_rad": null,
+        "max_steering_angle": null,
+        "warnings": []
+      }
+    },
+    {
+      "name": "the feedback doesn't change",
+      "left": 2000,
+      "centre": 2000,
+      "right": 1950,
+      "left_deg": null,
+      "right_deg": null,
+      "expect": {
+        "error": "no_span"
+      }
+    },
+    {
+      "name": "the centre beyond an end",
+      "left": 3500,
+      "centre": 3600,
+      "right": 500,
+      "left_deg": null,
+      "right_deg": null,
+      "expect": {
+        "error": "centre_not_between"
+      }
+    },
+    {
+      "name": "the centre is an end",
+      "left": 3500,
+      "centre": 500,
+      "right": 500,
+      "left_deg": null,
+      "right_deg": null,
+      "expect": {
+        "error": "centre_not_between"
+      }
+    },
+    {
+      "name": "a count above 4095",
+      "left": 5000,
+      "centre": 2000,
+      "right": 500,
+      "left_deg": null,
+      "right_deg": null,
+      "expect": {
+        "error": "out_of_range"
+      }
+    },
+    {
+      "name": "a negative angle",
+      "left": 3500,
+      "centre": 2000,
+      "right": 500,
+      "left_deg": -30.0,
+      "right_deg": 30.0,
+      "expect": {
+        "error": "angles"
+      }
+    }
+  ]
+}

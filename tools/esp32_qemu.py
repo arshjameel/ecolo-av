@@ -1,7 +1,7 @@
 """
 The ESP32 firmware in QEMU: the heartbeat, the uplink and the RC's modes, checked.
 
-`pixi run esp-qemu-check` (tools/esp32.sh qemu) builds the Rust firmware with
+`pixi run esp qemu-check` (tools/esp32.sh qemu-check) builds the Rust firmware with
 `--features qemu,uplink`, makes a flash image, and runs this. No ROS here, so the tests run
 anywhere (tools/tests/test_esp32_qemu.py). docs/esp32-bench.md, "Before the board: the
 emulator", has the picture and the results.
@@ -128,14 +128,23 @@ class Line:
                 return value
 
 
+# A field near each kind's end (main.rs: log_line, the LINK and DEVICES lines). A line
+# without it arrived cut short (QEMU's UART drops bytes on a busy computer): it is CUT,
+# not judged, and the summary counts it.
+LAST_FIELD = {'EVENT': 'faults', 'STATUS': 'faults', 'LINK': 'counter',
+              'DEVICES': 'expander'}
+
+
 def parse_line(text: str, host: float) -> Line:
     """Read one log line; anything that isn't EVENT, STATUS, LINK or DEVICES is TEXT."""
     text = ANSI.sub('', text).strip()
-    for kind in ('EVENT', 'STATUS', 'LINK', 'DEVICES'):
+    for kind, last in LAST_FIELD.items():
         marker = kind + ' t='
         at = text.find(marker)
         if at >= 0:
             fields = dict(FIELD.findall(text[at + len(kind):]))
+            if last not in fields:
+                return Line(host, 'CUT', text=text)
             return Line(host, kind, int(fields['t']), fields, text)
     return Line(host, 'TEXT', text=text)
 
@@ -270,7 +279,8 @@ def judge(cycle: Cycle, lines: List[Line], clock: ClockMap) -> Result:
     if cycle.resume_counters and all('counter' in ln.fields for ln in status):
         resumed = []
         for ln in (ln for ln in status if ln.t >= t_resume - 500):
-            if ln.get('counter') in cycle.resume_counters:
+            if ln.fields.get('counter') is not None \
+                    and ln.get('counter') in cycle.resume_counters:
                 resumed.append(ln)
             elif resumed:
                 break
@@ -819,6 +829,9 @@ def main(argv=None) -> int:
         args.log.write_text(''.join(f'{ln.host:.4f} {ln.text}\n' for ln in lines))
     boot = next((ln.text for ln in lines if 'spine-esp32-umod' in ln.text), '(no boot line)')
     print(boot)
+    cut = sum(ln.kind == 'CUT' for ln in lines)
+    if cut:
+        print(f'{cut} log lines arrived cut short (a busy computer): not judged')
     print(table(results, clock))
     lost = lost_uplinks(ups)
     print()

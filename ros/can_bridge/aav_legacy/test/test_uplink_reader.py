@@ -55,3 +55,26 @@ def test_steering_brake_and_sticks():
     assert brake_state(up(brake_position=0.5, brake_out=0.5)) == (0.5, 0.5)
     assert rc_fields(u) == {'mode_switch': SWITCH_RC_VIA_ROS, 'throttle': 0.5,
                             'steering': -0.75, 'brake': False}
+
+
+def test_raw_fields_and_the_calibration_line():
+    from aav_legacy.legacy_protocol import CAL_LIMP, CAL_REFUSED_NO_FEEDBACK
+    from aav_legacy.uplink_reader import calibration_line, raw_fields
+    assert raw_fields(2048, CAL_LIMP) == {'valid': True, 'position': 2048, 'calibration': 1}
+    assert raw_fields(None) == {'valid': False, 'position': 0, 'calibration': 0}
+    limp = up(steering_counts=3010, calibration=CAL_LIMP)
+    assert calibration_line(True, None, limp).startswith('LIMP - ')
+    assert '(at 3010 counts)' in calibration_line(True, None, limp)
+    assert calibration_line(True, 'the e-stop is on', limp) == 'REFUSED - the e-stop is on'
+    # A refusal the panel didn't ask about says nothing; the firmware's own state shows.
+    assert calibration_line(False, 'the e-stop is on', None) == 'OFF'
+    refused = up(calibration=CAL_REFUSED_NO_FEEDBACK)
+    assert 'analog' in calibration_line(True, None, refused)
+
+
+def test_a_version_3_uplink_carries_the_counts():
+    r = UplinkReader()
+    (u,) = r.feed(pack_uplink(up(steering_counts=1234, brake_counts=400)), 0.0)
+    assert (u.steering_counts, u.brake_counts) == (1234, 400)
+    (u,) = r.feed(pack_uplink(up(sequence=1), version=2), 0.0)
+    assert (u.steering_counts, u.brake_counts, u.calibration) == (None, None, 0)

@@ -307,6 +307,9 @@ struct Params {
     _topics: Vec<ReadOnlyParameter<Arc<str>>>,
     _files: Vec<ReadOnlyParameter<Arc<str>>>,
     _numbers: Vec<ReadOnlyParameter<f64>>,
+    _theme: ReadOnlyParameter<Arc<str>>,
+    _blur: ReadOnlyParameter<bool>,
+    _car_marker: ReadOnlyParameter<Arc<str>>,
 }
 
 impl Params {
@@ -346,11 +349,32 @@ impl Params {
             *slot = p.get().to_string();
             files.push(p);
         }
+        let theme = node
+            .declare_parameter::<Arc<str>>("theme")
+            .default(config.theme.as_str().into())
+            .read_only()?;
+        config.theme = theme.get().parse()?;
+        let blur = node
+            .declare_parameter("blur")
+            .default(config.blur)
+            .read_only()?;
+        config.blur = blur.get();
+        let car_marker = node
+            .declare_parameter::<Arc<str>>("car_marker")
+            .default(config.car_marker.as_str().into())
+            .read_only()?;
+        config.car_marker = car_marker
+            .get()
+            .parse()
+            .map_err(|e: String| anyhow::anyhow!(e))?;
         config.validate()?;
         let params = Self {
             _topics: topics,
             _files: files,
             _numbers: numbers,
+            _theme: theme,
+            _blur: blur,
+            _car_marker: car_marker,
         };
         Ok((params, config))
     }

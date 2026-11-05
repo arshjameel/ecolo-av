@@ -22,7 +22,7 @@ this computer has), or PyTorch's own names: cuda, cuda:N, mps (a Mac's GPU), cpu
 The models themselves are in detectors.py, with no ROS: other programs load them too.
 
 It needs PyTorch and rfdetr or Ultralytics, from the ml environment. Try it:
-  pixi run get-models                                                # once
+  pixi run get models                                                # once
   pixi run detect picture:=ros/perception/aav_detector/test/stop_sign.jpg
   pixi run detect detector:=yolo picture:=ros/perception/aav_detector/test/stop_sign.jpg
 """

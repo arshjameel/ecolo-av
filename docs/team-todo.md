@@ -47,7 +47,7 @@ Tick a task by moving it to "Done" at the bottom, with the date and the commit.
 | A3 | Jazzy and our stack on the new Orin, from apt; replace the Pixi kit there | S | A2 | `pixi run test` passes there, or `colcon test`; `ros2 launch aav_bringup car.launch.py machine:=orin gps:=false` starts | | |
 | A4 | The Pis to **Ubuntu 24.04** (or keep their OS and use the Pixi kit), one at a time | M each | A1 (that Pi's SD image); which Pis we still need (audit, W9) | each Pi runs its part of our stack (`machine:=motor_pi` etc.) | | |
 | A5 | **Rotate the leaked secrets**: revoke the GitHub token, the Firebase keys; change the car's WiFi password; set new logins | S | whoever controls the accounts (Q34) | the old token fails; the old WiFi password fails | | |
-| A6 | **The network**: fixed IPs for every machine; one ROS domain (42); multicast working (or static peers); a written network map | S | audit W1-W5 | `pixi run doctor` OK on a laptop; `pixi run net-map` matches the network map, written in the audit page | | |
+| A6 | **The network**: fixed IPs for every machine; one ROS domain (42); multicast working (or static peers); a written network map | S | audit W1-W5 | `pixi run doctor` OK on a laptop; `pixi run bash tools/net_map.sh` matches the network map, written in the audit page | | |
 | A7 | **Time**: chrony on every machine, the Orin as the server | S | A6 | `chronyc tracking` under 10 ms on each | | |
 | A8 | **Start at boot**: our stack as systemd services on each machine, replacing the 2025-26 ones (kept, disabled, for a way back) | M | A3, A4; the boot list from the audit | power on → `pixi run check car` passes, with no one logged in | | |
 

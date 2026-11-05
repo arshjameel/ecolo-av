@@ -1,4 +1,5 @@
-//! The HUD's settings: every topic name, and when a topic counts as stale.
+//! The HUD's settings: every topic name, when a topic counts as stale, the car's top
+//! speed (the gauge's redline) and the colours.
 //!
 //! They live in `config/hud.yaml`, a ROS parameters file. The program carries a copy of
 //! it as its defaults ([`HudConfig::default`]), so no topic name is written in the code.
@@ -8,6 +9,12 @@ use std::time::Duration;
 
 use serde::Deserialize;
 use thiserror::Error;
+
+use crate::{
+    gauge::{BadMaxSpeed, Scale},
+    theme::ThemeName,
+    units::MetresPerSecond,
+};
 
 /// `config/hud.yaml`, built in.
 pub const BUILT_IN_YAML: &str = include_str!("../../../config/hud.yaml");
@@ -91,6 +98,12 @@ pub struct HudConfig {
     pub heartbeat_topic: String,
     /// Seconds without a message before a topic shows STALE.
     pub stale_after: f64,
+    /// m/s: the car's forward cap, ego's `max_speed`. The arcade gauge's redline starts
+    /// here and its scale fits it (`hud_core::gauge`). hud.launch.py sets it from
+    /// aav_ego's ego.yaml.
+    pub max_speed: f64,
+    /// The colours (`hud_core::theme`).
+    pub theme: ThemeName,
 }
 
 /// Why a settings file can't be used.
@@ -100,6 +113,8 @@ pub enum ConfigError {
     Yaml(#[from] serde_yaml_ng::Error),
     #[error("stale_after must be a positive number of seconds, not {0}")]
     StaleAfter(f64),
+    #[error(transparent)]
+    MaxSpeed(#[from] BadMaxSpeed),
 }
 
 #[derive(Deserialize)]
@@ -124,11 +139,21 @@ impl HudConfig {
 
     /// Checks the numbers. Call it after changing a setting by hand.
     pub fn validate(&self) -> Result<(), ConfigError> {
-        if self.stale_after.is_finite() && self.stale_after > 0.0 {
-            Ok(())
-        } else {
-            Err(ConfigError::StaleAfter(self.stale_after))
+        if !(self.stale_after.is_finite() && self.stale_after > 0.0) {
+            return Err(ConfigError::StaleAfter(self.stale_after));
         }
+        self.gauge()?;
+        Ok(())
+    }
+
+    /// [`HudConfig::max_speed`] in its type.
+    pub fn max_speed(&self) -> MetresPerSecond {
+        MetresPerSecond(self.max_speed as f32)
+    }
+
+    /// The arcade gauge's scale, for [`HudConfig::max_speed`].
+    pub fn gauge(&self) -> Result<Scale, BadMaxSpeed> {
+        Scale::for_max_speed(self.max_speed())
     }
 
     /// The name of one topic.
@@ -187,6 +212,9 @@ mod tests {
     fn the_built_in_file_reads() {
         let c = HudConfig::from_yaml(BUILT_IN_YAML).expect("config/hud.yaml must parse");
         assert!(c.stale_after() > Duration::ZERO);
+        assert_eq!(c.theme, ThemeName::InitialD);
+        assert_eq!(c.max_speed(), MetresPerSecond(1.0));
+        assert_eq!(c.gauge().map(|g| g.full_scale()), Ok(5.0));
         // Every name is absolute (docs/conventions.md), and none is empty.
         for t in Topic::LISTENED.into_iter().chain(Topic::UNLISTED) {
             assert!(c.topic(t).starts_with('/'), "{t:?}: {}", c.topic(t));
@@ -212,5 +240,18 @@ mod tests {
             HudConfig::from_yaml(&bad),
             Err(ConfigError::StaleAfter(_))
         ));
+        let bad = BUILT_IN_YAML.replace("max_speed: 1.0", "max_speed: 0.0");
+        assert!(matches!(
+            HudConfig::from_yaml(&bad),
+            Err(ConfigError::MaxSpeed(_))
+        ));
+        let bad = BUILT_IN_YAML.replace("theme: initial_d", "theme: purple");
+        assert!(matches!(
+            HudConfig::from_yaml(&bad),
+            Err(ConfigError::Yaml(_))
+        ));
+        let light = BUILT_IN_YAML.replace("theme: initial_d", "theme: latte");
+        let c = HudConfig::from_yaml(&light).expect("latte is a theme");
+        assert_eq!(c.theme, ThemeName::Latte);
     }
 }

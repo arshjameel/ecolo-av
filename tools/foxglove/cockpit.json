@@ -1,0 +1,447 @@
+{
+  "configById": {
+    "3D!cockpit": {
+      "followMode": "follow-pose",
+      "followTf": "base_link",
+      "cameraState": {
+        "distance": 28,
+        "perspective": true,
+        "phi": 55,
+        "thetaOffset": 90,
+        "targetOffset": [
+          6,
+          0,
+          0
+        ],
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "scene": {
+        "enableStats": false
+      },
+      "publish": {
+        "type": "pose",
+        "poseTopic": "/goal_pose",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "layers": {
+        "grid": {
+          "layerId": "foxglove.Grid",
+          "visible": true,
+          "frameId": "base_link",
+          "size": 60,
+          "divisions": 60,
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "topics": {
+        "/robot_description": {
+          "visible": true
+        },
+        "/local_costmap/costmap": {
+          "visible": true,
+          "colorMode": "costmap",
+          "alpha": 0.45
+        },
+        "/sensors/lidar/scan": {
+          "visible": true,
+          "pointSize": 3,
+          "colorMode": "flat",
+          "flatColor": "#00e5ff"
+        },
+        "/perception/voxels/cubes": {
+          "visible": true,
+          "pointShape": "square",
+          "pointSize": 9,
+          "colorMode": "colormap",
+          "colorField": "z",
+          "colorMap": "turbo"
+        },
+        "/sensors/radar/points": {
+          "visible": true,
+          "pointSize": 6,
+          "colorMode": "flat",
+          "flatColor": "#ff3b30"
+        },
+        "/perception/radar/cluster_boxes": {
+          "visible": true
+        },
+        "/plan": {
+          "visible": true,
+          "lineWidth": 0.2,
+          "color": "#2196f3"
+        },
+        "/goal_pose": {
+          "visible": true,
+          "type": "arrow"
+        },
+        "/drivers/nav/route/path": {
+          "visible": true,
+          "lineWidth": 0.1,
+          "color": "#9c27b0"
+        },
+        "/safety/collision_monitor/stop_zone": {
+          "visible": true
+        },
+        "/map": {
+          "visible": true,
+          "colorMode": "map",
+          "alpha": 0.35
+        },
+        "/localization/ndt/pose": {
+          "visible": true,
+          "type": "arrow",
+          "arrowScale": [
+            2.5,
+            0.3,
+            0.3
+          ],
+          "color": "#ab47bcff",
+          "showCovariance": true,
+          "covarianceColor": "#ab47bc40"
+        },
+        "/localization/amcl/pose": {
+          "visible": true,
+          "type": "arrow",
+          "arrowScale": [
+            2.5,
+            0.3,
+            0.3
+          ],
+          "color": "#ff9800ff",
+          "showCovariance": true,
+          "covarianceColor": "#ff980040"
+        },
+        "/studio_script/ekf_poses": {
+          "visible": true
+        },
+        "/studio_script/ndt_scan": {
+          "visible": true
+        }
+      },
+      "transforms": {
+        "showLabel": false,
+        "axisScale": 0.5
+      }
+    },
+    "Image!camera": {
+      "imageMode": {
+        "imageTopic": "/perception/camera/front_left/preview/compressed"
+      }
+    },
+    "Image!chase": {
+      "imageMode": {
+        "imageTopic": "/vehicle/gazebo/chase_camera/compressed"
+      }
+    },
+    "map!gps": {
+      "layer": "map",
+      "zoomLevel": 18,
+      "maxNativeZoom": 18,
+      "followTopic": "/localization/gps/fix",
+      "disabledTopics": [],
+      "topicColors": {
+        "/localization/gps/fix": "#2196f3",
+        "/sensors/gps/fix": "#ff9800"
+      }
+    },
+    "Indicator!estop": {
+      "path": "/vehicle/status.estop_active",
+      "style": "background",
+      "fallbackColor": "#2e7d32",
+      "fallbackLabel": "No e-stop",
+      "rules": [
+        {
+          "operator": "=",
+          "rawValue": "true",
+          "color": "#c62828",
+          "label": "E-STOP"
+        }
+      ]
+    },
+    "Indicator!watchdog": {
+      "path": "/safety/sensor_watchdog/lock.data",
+      "style": "background",
+      "fallbackColor": "#2e7d32",
+      "fallbackLabel": "Sensors OK (or no watchdog yet)",
+      "rules": [
+        {
+          "operator": "=",
+          "rawValue": "true",
+          "color": "#c62828",
+          "label": "STOP: a sensor Nav2 needs has failed"
+        }
+      ]
+    },
+    "Indicator!health": {
+      "path": "/localization/health.data",
+      "style": "background",
+      "fallbackColor": "#f9a825",
+      "fallbackLabel": "Localization: WARN (see the text below)",
+      "rules": [
+        {
+          "operator": "=",
+          "rawValue": "OK",
+          "color": "#2e7d32",
+          "label": "Localization: OK"
+        }
+      ]
+    },
+    "RawMessages!health": {
+      "topicPath": "/localization/health.data",
+      "diffEnabled": false,
+      "expansion": "all"
+    },
+    "RawMessages!gate": {
+      "topicPath": "/safety/output_mux/state.data",
+      "diffEnabled": false,
+      "expansion": "all"
+    },
+    "DiagnosticSummary!all": {
+      "topicToRender": "/diagnostics",
+      "minLevel": 1,
+      "pinnedIds": [],
+      "hardwareIdFilter": "",
+      "sortByLevel": true,
+      "secondsUntilStale": 5
+    },
+    "Plot!speed": {
+      "paths": [
+        {
+          "value": "/vehicle/odom.twist.twist.linear.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "wheels (m/s)"
+        },
+        {
+          "value": "/localization/odom/local.twist.twist.linear.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "local EKF"
+        },
+        {
+          "value": "/localization/kiss_icp/odom.twist.twist.linear.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "KISS-ICP (lidar)"
+        },
+        {
+          "value": "/control/cmd_vel.twist.linear.x",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "asked"
+        }
+      ],
+      "showLegend": true,
+      "xAxisVal": "timestamp",
+      "followingViewWidth": 30
+    },
+    "Plot!steering": {
+      "paths": [
+        {
+          "value": "/vehicle/steering.measured",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "measured steering (rad, + left)"
+        },
+        {
+          "value": "/vehicle/steering.command",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "asked steering (rad)"
+        }
+      ],
+      "showLegend": true,
+      "xAxisVal": "timestamp",
+      "followingViewWidth": 30
+    },
+    "CallService!tracker": {
+      "serviceName": "/track/set_parameters",
+      "requestPayload": "{\n  \"parameters\": [\n    {\n      \"name\": \"tracker\",\n      \"value\": {\n        \"type\": 4,\n        \"string_value\": \"lqr\"\n      }\n    }\n  ]\n}",
+      "layout": "horizontal",
+      "buttonText": "Set the tracker",
+      "buttonTooltip": "Sim only (live_swap). Write pure_pursuit, stanley, lqr, mpc or mpc_full in string_value, then press. Needs a tracker at launch (tracker:=...): with none, there is no /track to call.",
+      "buttonColor": "#1565c0"
+    },
+    "Table!switches": {
+      "topicPath": "/studio_script/launch_switches.switches"
+    },
+    "Table!algorithms": {
+      "topicPath": "/system/algorithms.values"
+    },
+    "Indicator!ndt": {
+      "path": "/localization/ndt/status.level",
+      "style": "background",
+      "fallbackColor": "#616161",
+      "fallbackLabel": "NDT: off (ndt:=true, test_lot)",
+      "rules": [
+        {
+          "operator": "=",
+          "rawValue": "0",
+          "color": "#2e7d32",
+          "label": "NDT: OK"
+        },
+        {
+          "operator": "=",
+          "rawValue": "1",
+          "color": "#f9a825",
+          "label": "NDT: WARN (poor fit, or waiting)"
+        },
+        {
+          "operator": "=",
+          "rawValue": "2",
+          "color": "#c62828",
+          "label": "NDT: LOST or failed"
+        }
+      ]
+    },
+    "Indicator!kiss": {
+      "path": "/localization/kiss_icp/status.level",
+      "style": "background",
+      "fallbackColor": "#616161",
+      "fallbackLabel": "KISS-ICP: off (kiss_icp:=true)",
+      "rules": [
+        {
+          "operator": "=",
+          "rawValue": "0",
+          "color": "#2e7d32",
+          "label": "KISS-ICP: OK"
+        },
+        {
+          "operator": "=",
+          "rawValue": "1",
+          "color": "#f9a825",
+          "label": "KISS-ICP: WARN"
+        },
+        {
+          "operator": "=",
+          "rawValue": "2",
+          "color": "#c62828",
+          "label": "KISS-ICP: LOST or failed"
+        }
+      ]
+    },
+    "RawMessages!ndt": {
+      "topicPath": "/localization/ndt/status.message",
+      "diffEnabled": false,
+      "expansion": "all"
+    },
+    "Tab!more": {
+      "activeTabIdx": 0,
+      "tabs": [
+        {
+          "title": "Localizers",
+          "layout": {
+            "direction": "column",
+            "splitPercentage": 40,
+            "first": {
+              "direction": "row",
+              "splitPercentage": 50,
+              "first": "Indicator!ndt",
+              "second": "Indicator!kiss"
+            },
+            "second": "RawMessages!ndt"
+          }
+        },
+        {
+          "title": "Swap tracker",
+          "layout": "CallService!tracker"
+        },
+        {
+          "title": "Launch switches",
+          "layout": "Table!switches"
+        }
+      ]
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {
+    "launch-switches": {
+      "name": "launch_switches",
+      "sourceCode": "// The launch switches: each one needs a restart (pixi run pick, or pixi run sim ... name:=value).\n// Shown in the cockpit's Table panel. It runs on each /diagnostics message, so it shows\n// whenever something is connected. Nothing here talks to the car.\nimport { Input } from \"./types\";\n\nexport const inputs = [\"/diagnostics\"];\nexport const output = \"/studio_script/launch_switches\";\n\ntype Switch = { switch: string; what: string; values: string };\ntype Output = { restart: string; switches: Switch[] };\n\nconst switches: Switch[] = [\n  { switch: \"planner:=\", what: \"Nav2's planner\", values: \"lattice (default), hybrid; trials: smac2d, navfn, theta_star\" },\n  { switch: \"tracker:=\", what: \"the path follower (the panel above swaps it live)\", values: \"none (default: MPPI), pure_pursuit, stanley, lqr, mpc, mpc_full\" },\n  { switch: \"voxels:=\", what: \"Nav2 sees the lidar as 0.25 m cubes\", values: \"false (default), true\" },\n  { switch: \"amcl:=\", what: \"stock AMCL beside the EKF, scored only (test_lot)\", values: \"false (default), true\" },\n  { switch: \"ndt:=\", what: \"NDT on the lidar map, scored only (test_lot)\", values: \"false (default), true\" },\n  { switch: \"ndt_ekf:=\", what: \"NDT's pose into ekf_global\", values: \"false (default), true\" },\n  { switch: \"kiss_icp:=\", what: \"KISS-ICP lidar odometry, scored only\", values: \"false (default), true\" },\n  { switch: \"kiss_ekf:=\", what: \"KISS-ICP's speed into ekf_local\", values: \"false (default), true\" },\n  { switch: \"chase_camera:=\", what: \"Gazebo's camera behind the car\", values: \"true (default), false\" },\n];\n\nexport default function script(_event: Input<\"/diagnostics\">): Output {\n  return { restart: \"These need a restart: pixi run pick\", switches };\n}\n"
+    },
+    "ekf-poses": {
+      "name": "ekf_poses",
+      "sourceCode": "// The EKFs' poses as arrows in the 3D view, over the car's roof: local blue, global green,\n// as the debug HUD draws them. Lichtblick's 3D panel draws no nav_msgs/Odometry, so this\n// turns each into a Marker. Each arrow sits where its EKF puts base_link.\nimport { Input, Messages } from \"./types\";\n\nexport const inputs = [\"/localization/odom/local\", \"/localization/odom/global\"];\nexport const output = \"/studio_script/ekf_poses\";\n\ntype Odom = Input<\"/localization/odom/local\"> | Input<\"/localization/odom/global\">;\nconst looks: { [topic: string]: { id: number; label: string; r: number; g: number; b: number } } = {\n  \"/localization/odom/local\": { id: 0, label: \"local EKF\", r: 0.13, g: 0.59, b: 0.95 },\n  \"/localization/odom/global\": { id: 1, label: \"global EKF\", r: 0.3, g: 0.69, b: 0.31 },\n};\nconst last: { [topic: string]: any[] } = {};\n\nfunction marker(header: any, id: number, type: number, pose: any, scale: any, color: any,\n                text: string): any {\n  return {\n    header, ns: \"ekf\", id, type, action: 0, pose, scale, color, text,\n    lifetime: { sec: 1, nsec: 0 }, frame_locked: false, points: [], colors: [],\n    mesh_resource: \"\", mesh_use_embedded_materials: false,\n  };\n}\n\nexport default function script(event: Odom): Messages.visualization_msgs__MarkerArray {\n  const look = looks[event.topic];\n  const msg: any = event.message;\n  const color = { r: look.r, g: look.g, b: look.b, a: 1 };\n  const p = msg.pose.pose;\n  // Lifted over the roof (2.2 m, 3 m for the label), or the car's model hides it.\n  const arrow = { position: { x: p.position.x, y: p.position.y, z: p.position.z + 2.2 },\n                  orientation: p.orientation };\n  const label = { position: { x: p.position.x, y: p.position.y, z: p.position.z + 3.0 + look.id * 0.7 },\n                  orientation: p.orientation };\n  last[event.topic] = [\n    marker(msg.header, look.id * 2, 0, arrow, { x: 2.5, y: 0.3, z: 0.3 }, color, \"\"),\n    marker(msg.header, look.id * 2 + 1, 9, label, { x: 0, y: 0, z: 0.5 }, color, look.label),\n  ];\n  let markers: any[] = [];\n  for (const topic of Object.keys(last)) {\n    markers = markers.concat(last[topic]);\n  }\n  return { markers } as any;\n}\n"
+    },
+    "ndt-scan": {
+      "name": "ndt_scan",
+      "sourceCode": "// NDT's scan: the lidar scan placed where NDT puts the car, purple, over /map. Where it\n// lies on the walls, NDT's fit is good; the cyan scan is the same scan where the EKF puts\n// the car. Only while NDT runs (ndt:=true, test_lot).\nimport { Input, Messages } from \"./types\";\n\nexport const inputs = [\"/localization/ndt/pose\", \"/sensors/lidar/scan\"];\nexport const output = \"/studio_script/ndt_scan\";\n\ntype In = Input<\"/localization/ndt/pose\"> | Input<\"/sensors/lidar/scan\">;\nlet pose: any = undefined;\n\nexport default function script(event: In): Messages.visualization_msgs__Marker | undefined {\n  if (event.topic === \"/localization/ndt/pose\") {\n    pose = (event.message as any).pose.pose;\n    return undefined;\n  }\n  if (pose === undefined) {\n    return undefined;\n  }\n  const scan: any = event.message;\n  const q = pose.orientation;\n  const yaw = Math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z));\n  const points: any[] = [];\n  for (let i = 0; i < scan.ranges.length; i++) {\n    const r = scan.ranges[i];\n    if (!isFinite(r) || r < scan.range_min || r > scan.range_max) {\n      continue;\n    }\n    // The scan is in base_link: turn it by NDT's yaw, move it to NDT's position.\n    const a = scan.angle_min + i * scan.angle_increment + yaw;\n    points.push({ x: pose.position.x + r * Math.cos(a), y: pose.position.y + r * Math.sin(a), z: 0.4 });\n  }\n  return {\n    header: { stamp: scan.header.stamp, frame_id: \"map\" }, ns: \"ndt_scan\", id: 0, type: 8,\n    action: 0, pose: { position: { x: 0, y: 0, z: 0 }, orientation: { x: 0, y: 0, z: 0, w: 1 } },\n    scale: { x: 0.2, y: 0.2, z: 0 }, color: { r: 0.67, g: 0.28, b: 0.74, a: 1 },\n    lifetime: { sec: 0, nsec: 300000000 }, frame_locked: false, points, colors: [], text: \"\",\n    mesh_resource: \"\", mesh_use_embedded_materials: false,\n  } as any;\n}\n"
+    }
+  },
+  "layout": {
+    "direction": "column",
+    "splitPercentage": 40,
+    "first": {
+      "direction": "row",
+      "splitPercentage": 30,
+      "first": {
+        "direction": "column",
+        "splitPercentage": 50,
+        "first": "Image!camera",
+        "second": "Image!chase"
+      },
+      "second": {
+        "direction": "row",
+        "splitPercentage": 45,
+        "first": {
+          "direction": "column",
+          "splitPercentage": 13,
+          "first": "Indicator!estop",
+          "second": {
+            "direction": "column",
+            "splitPercentage": 15,
+            "first": "Indicator!watchdog",
+            "second": {
+              "direction": "column",
+              "splitPercentage": 14,
+              "first": "Indicator!health",
+              "second": {
+                "direction": "column",
+                "splitPercentage": 22,
+                "first": "RawMessages!health",
+                "second": {
+                  "direction": "column",
+                  "splitPercentage": 18,
+                  "first": "RawMessages!gate",
+                  "second": "DiagnosticSummary!all"
+                }
+              }
+            }
+          }
+        },
+        "second": "map!gps"
+      }
+    },
+    "second": {
+      "direction": "row",
+      "splitPercentage": 64,
+      "first": "3D!cockpit",
+      "second": {
+        "direction": "column",
+        "splitPercentage": 38,
+        "first": "Table!algorithms",
+        "second": {
+          "direction": "column",
+          "splitPercentage": 33,
+          "first": "Plot!speed",
+          "second": {
+            "direction": "column",
+            "splitPercentage": 45,
+            "first": "Plot!steering",
+            "second": "Tab!more"
+          }
+        }
+      }
+    }
+  }
+}

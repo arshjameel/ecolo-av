@@ -2,13 +2,16 @@
 """
 Heading check: how far off the global EKF's heading is at walking pace, forward and back.
 
-    pixi run heading-check                  (one run, about 4 minutes, this computer only)
-    pixi run heading-check --runs 3         (three runs, one after the other)
-    pixi run heading-check --gyro-bias 0.6  (the simulated gyro reads 0.6 deg/s too much)
-    pixi run heading-check --gps-every 5    (one GPS fix a second, the receiver's factory rate)
-    pixi run heading-check --wrong-start 30 (the global EKF told the car faces 30 deg off,
-                                             just before the drive: how soon is it right?)
-    pixi run heading-check -- gps_heading:=false   (anything after -- goes to sim.launch.py)
+Run it through tools/ros.sh --local (no pixi task: it's rare):
+pixi run tools/ros.sh --local python3 tools/heading_check.py [options]
+
+    (no options)        one run, about 4 minutes, this computer only
+    --runs 3            three runs, one after the other
+    --gyro-bias 0.6     the simulated gyro reads 0.6 deg/s too much
+    --gps-every 5       one GPS fix a second, the receiver's factory rate
+    --wrong-start 30    the global EKF told the car faces 30 deg off, just before the
+                        drive: how soon is it right?
+    -- gps_heading:=false   anything after -- goes to sim.launch.py
 
 TODO 13. Starts Gazebo's empty world headless (no Nav2, lidar or radar: a light run) on
 a private ROS domain and Gazebo partition, drives a fixed walking-pace profile through

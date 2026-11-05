@@ -10,7 +10,7 @@ the board, exists. It runs on a Mac or on Linux.
 
 Read it left to right: the stand-ins for the hardware, the sensors, perception,
 localization, the drivers and the HUD, the mux and ego, then the backend. `pixi run
-graph-picture` draws this from whatever is running.
+tools/ros.sh python3 tools/graph_picture.py` draws this from whatever is running.
 
 ## Run it
 
@@ -111,7 +111,7 @@ In a terminal opened with `pixi shell`, then `source install/setup.zsh`
 |---|---|
 | A scripted drive | `ros2 action send_goal /scripted_drive aav_interfaces/action/ScriptedDrive "{target_speed: 1.0, acceleration: 0.5, deceleration: 1.0, hold_time: 5.0}"` |
 | A Nav2 goal | RViz's 2D Goal Pose, or the command in [Your first day](first-day.md) |
-| The e-stop | `pixi run estop`, then `pixi run estop-clear` |
+| The e-stop | `pixi run estop`, then `pixi run clear estop` |
 | The hardware e-stop | `ros2 topic pub -t 3 /vehicle/bench/hw_estop std_msgs/msg/Bool "{data: true}"`, then `false` |
 | A driver failing | `ros2 topic pub -t 3 /vehicle/bench/driver_faults std_msgs/msg/UInt16 "{data: 8}"` (8 = steering, 16 = brake, 32 = throttle DAC, 64 = encoder) |
 | Arming again | `ros2 service call /spine/arm std_srvs/srv/SetBool "{data: true}"` |
@@ -225,4 +225,4 @@ Start the real part, and stop the stand-in: same topic, same type, same frame.
 | `ros/sim/aav_spine_sim` | `spine_sim`: `crates/bench-car` (the model and the loop, 22 tests, no ROS) and `crates/spine-sim` (the ROS node) |
 | `ros/sim/aav_bench` | the pretend sensors, their tests, and `config/bench.yaml` |
 | `tools/bench_check.py` | `pixi run bench-check` |
-| `tools/graph_picture.py` | `pixi run graph-picture`: the picture at the top |
+| `tools/graph_picture.py` | `pixi run tools/ros.sh python3 tools/graph_picture.py`: the picture at the top |

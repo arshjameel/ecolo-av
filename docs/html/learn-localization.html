@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -568,7 +572,7 @@ three things can:</p>
 </table></div>
 <p>robot_localization can't do this alone: it turns a world-frame velocity into the car's
 frame with its own heading, so a wrong heading never shows.</p>
-<p>What we looked at (<code>pixi run heading-check</code>: Gazebo, 3.5 min forward and back at
+<p>What we looked at (<code>pixi run tools/ros.sh --local python3 tools/heading_check.py</code>: Gazebo, 3.5 min forward and back at
 0.5-1 m/s, against the truth):</p>
 <div class="table-wrap"><table>
 <thead>
@@ -780,7 +784,7 @@ where I am on the map goes to <code>ekf_global</code>. Results of NDT into <code
 <p>Not Tesla's way: Tesla has no lidar. Its "occupancy network" turns camera images into
 3D cubes, each marked filled or empty. That looks like NDT's squares, but it doesn't
 match a scan to a map.</p>
-<p><code>pixi run ndt-demo</code> draws both pictures with real NDT and ICP (<code>tools/ndt_demo.py</code>,
+<p><code>pixi run python3 tools/ndt_demo.py</code> draws both pictures with real NDT and ICP (<code>tools/ndt_demo.py</code>,
 numpy only). Each ends within about 2 cm.</p>
 <p>From the lidar's points to cubes, the costmap and NDT, step by step:
 <a href="learn-lidar.html">Learn: lidar</a>.</p>
@@ -858,7 +862,7 @@ That's the GPS soaking up the drift.</p>
 </tr>
 <tr>
 <td>Measure the heading in Gazebo</td>
-<td><code>pixi run heading-check</code> (<code>tools/heading_check.py</code>)</td>
+<td><code>pixi run tools/ros.sh --local python3 tools/heading_check.py</code> (<code>tools/heading_check.py</code>)</td>
 </tr>
 <tr>
 <td>Sensor positions on the car</td>

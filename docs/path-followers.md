@@ -7,7 +7,7 @@ second. We have two, and a script that compares them on the same drives in Gazeb
 > - **MPPI** is the default (since 22 Oct): it tries 2000 possible futures every cycle through a model of the car, and picks the best blend. It turns to a goal's heading; it costs more computer.
 > - **Regulated Pure Pursuit (RPP)** is the other choice: it chases a point 2-4 m ahead on the path. Simple and light, but it aims only at a point, so it often arrives at a goal facing the wrong way.
 > - **Switch:** `controller:=rpp` on `sim.launch.py` or `navigation.launch.py`.
-> - **Compare:** `pixi run controller-compare` (about 25 min, headless, on this computer only; `--legs 1` for a quick check).
+> - **Compare:** `pixi run measure controllers` (about 25 min, headless, on this computer only; `--legs 1` for a quick check).
 > - **Results, night of 22 Oct (Gazebo's lot, four runs):** after five fixes (below), MPPI reached the first goal in 29-30 s in every run; Pure Pursuit looped there in two of three. In the best run both reached all 4 goals. MPPI uses twice the CPU (20% of a Mac core).
 > - **No more circling goals (29 Oct, TODO 17):** Nav2 planned a new path every second, also in the last metres, where a new path is often a loop for a car. Now it keeps its path for the last 8 m ([below](#circling-a-goal-found-and-fixed-29-october-todo-17)).
 
@@ -40,10 +40,10 @@ turning radius, its reverse speed and its top speed from `vehicle.yaml`
 ## Compare them
 
 ```bash
-pixi run controller-compare                    # both controllers, both tours
-pixi run controller-compare --tours obstacle   # only the box in the lane
-pixi run controller-compare --controllers mppi --speed 2
-pixi run controller-compare --trackers lqr mpc --runs 3   # the trial trackers (docs/trials.md)
+pixi run measure controllers                    # both controllers, both tours
+pixi run measure controllers --tours obstacle   # only the box in the lane
+pixi run measure controllers --controllers mppi --speed 2
+pixi run measure controllers --trackers lqr mpc --runs 3   # the trial trackers (docs/trials.md)
 ```
 
 For each tour and controller the script starts Gazebo's test lot with no windows, on a ROS
@@ -84,7 +84,7 @@ What the numbers mean (`tools/drive_metrics.py`):
 Now and then the car drove a full loop at a goal it had nearly reached: about 50 m
 for a 21 m leg. Always the first leg (the left turn to 15, 15, facing north), any follower.
 
-**How it was found:** `pixi run controller-compare --tours lot --legs 1 --plans`, 3 runs
+**How it was found:** `pixi run measure controllers --tours lot --legs 1 --plans`, 3 runs
 each of RPP, MPPI and `aav_track`'s pure_pursuit and lqr. `--plans` keeps every plan, so
 each plan can be set against where the car really was when it came.
 

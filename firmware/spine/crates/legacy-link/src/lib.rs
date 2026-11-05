@@ -35,17 +35,39 @@
 //!        0xA5  2  kind  seq  echo  mode  switch  flags  faults  six f32 values CRC-8 of 1..33
 //! ```
 //!
+//! Version 3 ([`FrameV3`], [`ParserV3`], 1 Nov) adds the steering actuator's calibration
+//! to version 2: limp (its motor off, turned by hand) or a jog target in counts; its
+//! rules are [`SteerCal`]'s. The version 3 uplink adds both Jrks' positions in counts and
+//! the calibration's state. [`ParserV3`] and [`Uplink::decode`] read version 2 too.
+//!
+//! ```text
+//!  byte  0     1   2..13            14       15     16        17..18      19
+//!        0xA5  3   the three f32    counter  flags  cal mode  jog target  CRC-8 of 1..18
+//! ```
+//!
 //! Version 1 goes one way only: the 2025-26 C++ sent nothing back.
 #![no_std]
 
 mod frame;
 mod parser;
+mod steer_cal;
 mod targets;
 mod uplink;
 mod v2;
+mod v3;
 
 pub use frame::{Frame, FrameError, BAUD, FRAME_LEN};
-pub use parser::{Parser, ParserV2};
-pub use targets::{Targets, Throttle, BRAKE_FULL, BRAKE_RELEASED, DAC_CAP, STEER_CENTRE};
-pub use uplink::{DriveMode, ModeSwitch, Sticks, Uplink, KIND_STATUS, UPLINK_LEN};
+pub use parser::{Parser, ParserV2, ParserV3};
+pub use steer_cal::{
+    Ask, CalRequest, CalState, Refusal, Situation, SteerCal, SteeringDrive, CAL_RATE,
+    CAL_TIMEOUT_MS, COUNTS_MAX,
+};
+pub use targets::{
+    Targets, Throttle, BRAKE_BELOW, BRAKE_FULL, BRAKE_RELEASED, DAC_CAP, SPEED_DEADBAND,
+    STEER_CENTRE,
+};
+pub use uplink::{
+    Counts, DriveMode, ModeSwitch, Sticks, Uplink, KIND_STATUS, UPLINK_LEN, UPLINK_V2_LEN,
+};
 pub use v2::{crc8, Flags, FrameV2, Heartbeat, FRAME_V2_LEN, SYNC, VERSION};
+pub use v3::{FrameV3, FRAME_V3_LEN, VERSION_3};

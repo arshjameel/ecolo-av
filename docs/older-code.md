@@ -23,7 +23,7 @@ be private (an org's private repos don't show to non-members), or not on GitHub.
 |---|---|
 | Already in `aav` (all or part) | AAV_cortex, Motor_Steering (its numbers), User-Interface, Wheel_Encoders, yahboom-IMU, Lane_Detection_ROS2, Nav_Radar; from 2024-25: Battery-Monitor-ROS, camera_ros2_ws, camera_Yolo_detection, cameras |
 | Replaced by stock ROS packages | Navigation_PathPlanning_ObstacleAvoidance, Navigation-LocalPathGenerator-rf_cpp, Obstacle_Avoidance_logic, Odometry, Real-Time-OS, joy_teleop_ackerman |
-| Looked at, then dropped (15 Oct) | Navigation-LocalPathGenerator's OSRM parser (on GitHub, main @ 1486f69; `street_router` does that job now); the HUD's place database (`pixi run get-places` downloads it; back in use from 15 Oct: the map window's place search reads it); Motor-Control's `FinalRev` (below); AAV_dashboard (its README is now `docs/reference/2025-26-camera-system`) |
+| Looked at, then dropped (15 Oct) | Navigation-LocalPathGenerator's OSRM parser (on GitHub, main @ 1486f69; `street_router` does that job now); the HUD's place database (`pixi run get places` downloads it; back in use from 15 Oct: the map window's place search reads it); Motor-Control's `FinalRev` (below); AAV_dashboard (its README is now `docs/reference/2025-26-camera-system`) |
 | Empty | Navigation-BehaviorPlanning |
 | Not surveyed yet | three 2025-26 repos and seven 2024-25 repos (the tables below) |
 

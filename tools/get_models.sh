@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Download the stock detector models into models/. Model files stay out of git.
 #
-# usage: tools/get_models.sh      (or: pixi run get-models)
+# usage: tools/get_models.sh      (or: pixi run get models)
 #
 # Both know COCO's 80 everyday things, "stop sign" and "person" among them:
 #   rf-detr-nano.pth  RF-DETR Nano, the detector's default (detector:=rfdetr). 366 MB: the

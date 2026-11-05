@@ -29,6 +29,7 @@ use crate::calibration::Calibration;
 use ad5311::Ad5311;
 use embedded_hal::i2c::I2c;
 use jrk_g2::{ErrorFlags, JrkG2};
+use legacy_link::SteeringDrive;
 use pca9555::Pca9555;
 use spine_core::{faults, Outputs};
 
@@ -64,6 +65,10 @@ pub struct Positions {
     pub steering: Option<f32>,
     /// The brake (0 released .. 1 full).
     pub brake: Option<f32>,
+    /// The same, raw: each Jrk's scaled feedback, 0 to 4095 counts in target units, not
+    /// converted with the calibration (for measuring it).
+    pub steering_counts: Option<u16>,
+    pub brake_counts: Option<u16>,
 }
 
 /// What the devices said this tick.
@@ -127,13 +132,14 @@ impl<I2C: I2c> Actuators<I2C> {
     /// until the computer arms again. A failed position read is the Jrk's fault bit.
     pub fn read(&mut self) -> Readings {
         let mut bits = 0;
-        let steering = match position(&mut self.dev.steering, &mut self.steering_feedback) {
-            Ok(target) => target.map(|t| self.cal.steering.angle(t)),
+        let steering_counts = match position(&mut self.dev.steering, &mut self.steering_feedback) {
+            Ok(target) => target,
             Err(()) => {
                 bits |= faults::STEERING_DRIVER;
                 None
             }
         };
+        let steering = steering_counts.map(|t| self.cal.steering.angle(t));
         if let Some(angle) = steering {
             self.steering = angle;
         }
@@ -141,23 +147,36 @@ impl<I2C: I2c> Actuators<I2C> {
             self.dev.steering.take_error_flags(),
             faults::STEERING_DRIVER,
         );
-        let brake = match position(&mut self.dev.brake, &mut self.brake_feedback) {
-            Ok(target) => target.map(|t| self.cal.brake.fraction(t)),
+        let brake_counts = match position(&mut self.dev.brake, &mut self.brake_feedback) {
+            Ok(target) => target,
             Err(()) => {
                 bits |= faults::BRAKE_DRIVER;
                 None
             }
         };
+        let brake = brake_counts.map(|t| self.cal.brake.fraction(t));
         bits |= jrk_fault(self.dev.brake.take_error_flags(), faults::BRAKE_DRIVER);
         Readings {
             steering: self.steering,
-            positions: Positions { steering, brake },
+            positions: Positions {
+                steering,
+                brake,
+                steering_counts,
+                brake_counts,
+            },
             faults: bits,
         }
     }
 
     /// Drive every device from the spine's outputs. Returns the fault bits.
     pub fn apply(&mut self, out: &Outputs, now_ms: u32) -> u16 {
+        self.apply_with(out, now_ms, SteeringDrive::Spine)
+    }
+
+    /// The same, with the steering actuator driven as `steering` says (the link's
+    /// steering calibration: `legacy_link::SteerCal`). Anything but
+    /// [`SteeringDrive::Spine`] also holds the DAC at 0. Returns the fault bits.
+    pub fn apply_with(&mut self, out: &Outputs, now_ms: u32, steering: SteeringDrive) -> u16 {
         // spine-core never asks for both. If it ever did, the brake would win.
         debug_assert!(
             !(out.throttle > 0.0 && out.brake > 0.0),
@@ -168,7 +187,8 @@ impl<I2C: I2c> Actuators<I2C> {
 
         let turning = out.reverse != self.reverse;
         let mut want = self.cal.throttle.code(out.throttle);
-        if out.brake > 0.0 || turning || !self.expander_ready {
+        let calibrating = steering != SteeringDrive::Spine;
+        if out.brake > 0.0 || turning || !self.expander_ready || calibrating {
             want = 0;
         }
         let rise = self.cal.throttle.max_rise(dt_ms);
@@ -186,7 +206,11 @@ impl<I2C: I2c> Actuators<I2C> {
             let ok = brake_fault == 0 && self.expander_ready;
             bits |= self.write_throttle(if ok { want } else { self.throttle_code });
         }
-        bits | self.write_steering(out.steering_target)
+        bits | match steering {
+            SteeringDrive::Spine => self.write_steering(out.steering_target),
+            SteeringDrive::MotorOff => self.stop_steering(),
+            SteeringDrive::Target(target) => self.write_steering_target(target),
+        }
     }
 
     /// The code last written to the DAC (or, after a failed write, the higher one).
@@ -271,8 +295,23 @@ impl<I2C: I2c> Actuators<I2C> {
     }
 
     fn write_steering(&mut self, angle: f32) -> u16 {
-        let target = self.cal.steering.target(angle);
+        self.write_steering_target(self.cal.steering.target(angle))
+    }
+
+    /// A target in counts, kept inside the calibration's limits.
+    fn write_steering_target(&mut self, target: u16) -> u16 {
+        let s = &self.cal.steering;
+        let target = target.clamp(s.min.min(s.max), s.max.max(s.min));
         match self.dev.steering.set_target(target) {
+            Ok(()) => 0,
+            Err(_) => faults::STEERING_DRIVER,
+        }
+    }
+
+    /// The steering Jrk's motor off (its "stop motor" command), every tick, so a Jrk that
+    /// reset gets it again. A target, next, turns it back on.
+    fn stop_steering(&mut self) -> u16 {
+        match self.dev.steering.stop_motor() {
             Ok(()) => 0,
             Err(_) => faults::STEERING_DRIVER,
         }

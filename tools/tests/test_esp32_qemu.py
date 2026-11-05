@@ -71,6 +71,13 @@ def test_lines_are_read_with_their_numbers():
     assert q.parse_line('I (833) boot: Loaded app', 5.0).kind == 'TEXT'
 
 
+def test_a_line_cut_short_is_not_judged():
+    """Skip a line QEMU cut short on a busy computer (3 Nov: a DEVICES line with no dac)."""
+    assert q.parse_line('INFO - DEVICES t=1415 steering=1950 brake=35', 5.0).kind == 'CUT'
+    assert q.parse_line('INFO - STATUS t=1415 mode=Computer armed=true', 5.0).kind == 'CUT'
+    assert q.parse_line(DEVICES, 5.0).kind == 'DEVICES'
+
+
 def test_the_clocks_map_through_the_fastest_line():
     lines = [q.parse_line(status(t, armed=False, throttle=0, brake=1), 100 + t / 1000 + lag)
              for t, lag in [(0, 0.004), (200, 0.001), (400, 0.003)]]

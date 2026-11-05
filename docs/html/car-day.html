@@ -7,7 +7,7 @@
 <!-- Generated from docs/car-day.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Car day: the runbook</h1>
-<div class="meta">39 min read · 16 sections</div></header>
+<div class="meta">66 min read · 30 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a class="here" href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -94,188 +98,391 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-day-at-a-glance">The day at a glance</a><a href="#the-machines">The machines</a><a href="#what-to-bring">What to bring</a><a href="#session-0-before-leaving-at-home">Session 0: before leaving (at home)</a><a href="#session-1-safety-first">Session 1: safety first</a><a href="#session-2-measure-and-weigh">Session 2: measure and weigh</a><a href="#session-3-questions-for-the-hardware-lead">Session 3: questions for the hardware lead</a><a href="#session-4-the-orin-and-the-motor-pi">Session 4: the Orin (and the Motor Pi)</a><a href="#session-5-the-camera-pi">Session 5: the camera Pi</a><a href="#session-6-the-esp32">Session 6: the ESP32</a><a href="#session-7-can-read-only">Session 7: CAN, read-only</a><a href="#session-8-foxglove-from-a-laptop">Session 8: Foxglove from a laptop</a><a href="#session-9-the-first-drive-on-stands">Session 9: the first drive, on stands</a><a href="#session-10-what-to-record">Session 10: what to record</a><a href="#before-you-leave-the-car">Before you leave the car</a><a href="#afterwards-at-home">Afterwards, at home</a></nav>
-<div class="lead"><p>Written 24 October 2026, for the team. Ben, 24 Oct: "Lets get everything prepared so the
-only thing left is to get into the car." Everything that can be done without the car is
-done or built; this page is the rest, <strong>in order</strong>.</p>
+<nav class="toc"><span>On this page:</span><a href="#the-people">The people</a><a href="#logins">Logins</a><a href="#the-machines">The machines</a><a href="#the-order">The order</a><a href="#ready-for-car-day-the-02-checklist">Ready for car day (the 0.2 checklist)</a><a href="#what-to-bring">What to bring</a><a href="#session-0-before-leaving-at-home">A0 · Session 0: before leaving (at home)</a><a href="#day-a-nothing-destroyed">Day A: nothing destroyed</a><a href="#session-1-safety-first">A1 · Session 1: safety first</a><a href="#a2-back-up-every-machine">A2 · Back up every machine</a><a href="#session-2-measure-and-weigh">A3 · Session 2: measure and weigh</a><a href="#session-3-questions-for-the-hardware-lead">A4 · Session 3: questions for the hardware lead</a><a href="#session-4-the-orin-and-the-motor-pi">A5 · Session 4: our stack, on the Orin and the Motor Pi</a><a href="#a6-the-steering-actuators-ends-way-a">A6 · The steering actuator&#x27;s ends, Way A</a><a href="#a7-the-brake-on-stands">A7 · The brake, on stands</a><a href="#session-6-the-esp32">A8 · Session 6: the Rust ESP32, on stands</a><a href="#session-9-the-first-drive-on-stands">A9 · Session 9: the keyboard, on stands</a><a href="#a9b-the-joystick-on-stands">A9b · The joystick, on stands</a><a href="#a10-the-ground-at-walking-pace">A10 · The ground, at walking pace</a><a href="#any-time-on-day-a-after-a5">Any time on Day A, after A5</a><a href="#session-5-the-camera-pi">Session 5: the camera Pi</a><a href="#session-7-can-read-only">Session 7: CAN, read-only</a><a href="#session-8-foxglove-from-a-laptop">Session 8: Foxglove from a laptop</a><a href="#session-10-what-to-record">Session 10: what to record</a><a href="#day-b-upgrades-and-the-reflash">Day B: upgrades and the reflash</a><a href="#b3-the-orin-its-image-then-the-reflash">B3 · The Orin: its image, then the reflash</a><a href="#b4-the-lab-desktop-stays-frozen">B4 · The lab desktop stays frozen</a><a href="#session-11-the-labs-ubuntu-desktop">Session 11: the lab&#x27;s Ubuntu desktop</a><a href="#before-you-leave-the-car">Before you leave the car</a><a href="#afterwards-at-home">Afterwards, at home</a></nav>
+<div class="lead"><p>Written 24 October 2026, for the team; split into two days on 1 November (Ben: "Split
+it"). This page <strong>owns the order</strong>: <a href="car-setup.html">Car setup</a> only says how to set up
+one computer.</p>
 <blockquote>
-<p><strong>The short version</strong>
-- <strong>Before you leave:</strong> <code>pixi run car-day-build</code>, then <code>pixi run car-day-check</code> until it says <strong>0 missing</strong>.
-- <strong>At the car:</strong> ten sessions, in order. Each says who, how long, what to bring, the commands, what you should see, and what to do if not.
-- <strong>Wheels off the ground all day.</strong> Nothing drives on the ground.
-- 🔒 = waits on the hardware lead's answer (session 3). Skip it until then, and go on.
-- <strong>Stop at each stop point.</strong> Something failed? Write it down, then go to the next session that doesn't need it.
-- <strong>Secrets:</strong> the logins are in Ben's Mac's Keychain. Type them; never paste them into a file, a chat or the repo.</p>
+<p><strong>The short version</strong></p>
+<ul>
+<li><strong>Two days.</strong> <strong>Day A changes nothing</strong> you can't undo: backups, the steering's ends, the brake, the Rust ESP32 and the joystick on stands, then walking pace. <strong>Day B</strong>, later: the upgrades and the Orin's reflash, once a restore is proven.</li>
+<li><strong>Before you leave:</strong> <code>pixi run car-day-build</code>, then <code>pixi run car-day-check</code> until it says <strong>0 missing</strong>.</li>
+<li><strong>Name the people first</strong> (the roles table). Every ✍ step needs a signature: who, and the time.</li>
+<li><strong>Wheels off the ground</strong> until step A10's signature.</li>
+<li><strong>Record every session</strong>, stands too: <code>record.sh --lidar</code> (session 10).</li>
+<li>🔒 = waits on the hardware lead's answer (session 3). Skip it, and go on.</li>
+<li><strong>Secrets:</strong> logins come from the team's password vault. Type them; never paste them into a file, a chat or the repo.</li>
+</ul>
 </blockquote></div>
-<section class="card"><h2 id="the-day-at-a-glance">The day at a glance</h2>
-<pre class="highlight"><code class="language-text"> 0 at home ──► 1 safety ──► 2 measure ──────────────────────────────────────► 10 record
-                  │         3 questions (hardware lead) ──┐                    (all day)
-                  └──► 4 the Orin (+ Motor Pi) ──┬──► 5 camera Pi
-                                                 ├──► 6 ESP32 🔒 ──► 9 first drive, stands
-                                                 ├──► 7 CAN 🔒
-                                                 └──► 8 Foxglove</code></pre>
+<section class="card"><h2 id="the-people">The people</h2>
+<p>Fill this in before the day. Nobody does two jobs at once.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>#</th>
-<th>Session</th>
-<th>Who</th>
-<th>How long</th>
-<th>Needs</th>
-<th>🔒 Blocked on</th>
+<th>Role</th>
+<th>Does</th>
+<th>Name</th>
+<th>Phone</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>0</td>
-<td><a href="#session-0-before-leaving-at-home">Before leaving</a></td>
-<td>the laptop person</td>
-<td>30-60 min</td>
-<td>internet</td>
-<td></td>
-</tr>
-<tr>
-<td>1</td>
-<td><a href="#session-1-safety-first">Safety first</a></td>
-<td>everyone</td>
-<td>15 min</td>
+<td><strong>Hardware lead</strong></td>
+<td>decides every hardware question; sets the steering and brake actuators' settings</td>
 <td></td>
 <td></td>
 </tr>
 <tr>
-<td>2</td>
-<td><a href="#session-2-measure-and-weigh">Measure and weigh</a></td>
-<td>2 measurers</td>
-<td>90 min</td>
-<td>1</td>
-<td>due <strong>30 Oct</strong> (Gate 1)</td>
-</tr>
-<tr>
-<td>3</td>
-<td><a href="#session-3-questions-for-the-hardware-lead">Questions for the hardware lead</a></td>
-<td>the hardware lead + 1</td>
-<td>30 min</td>
+<td><strong>E-stop person</strong></td>
+<td>holds the <strong>Kar-Tech wireless stop</strong> whenever the car has power. Does nothing else</td>
 <td></td>
-<td>it answers the 🔒</td>
-</tr>
-<tr>
-<td>4</td>
-<td><a href="#session-4-the-orin-and-the-motor-pi">The Orin (and the Motor Pi)</a></td>
-<td>the laptop person</td>
-<td>1-3 h (the backup runs on its own)</td>
-<td>1</td>
 <td></td>
 </tr>
 <tr>
-<td>5</td>
-<td><a href="#session-5-the-camera-pi">The camera Pi</a></td>
-<td>1 + the laptop</td>
-<td>60 min</td>
-<td>4</td>
-<td>which Pi (.108 or .102)</td>
-</tr>
-<tr>
-<td>6</td>
-<td><a href="#session-6-the-esp32">The ESP32</a></td>
-<td>laptop person, e-stop person, hardware lead</td>
-<td>90 min</td>
-<td>1, 4</td>
-<td>H1, Ben's OK (on a call)</td>
-</tr>
-<tr>
-<td>7</td>
-<td><a href="#session-7-can-read-only">CAN, read-only</a></td>
-<td>1</td>
-<td>30 min</td>
-<td>4</td>
-<td>H3, H4, H7</td>
-</tr>
-<tr>
-<td>8</td>
-<td><a href="#session-8-foxglove-from-a-laptop">Foxglove from a laptop</a></td>
-<td>anyone</td>
-<td>15 min</td>
-<td>4</td>
+<td><strong>Safety driver</strong></td>
+<td>in the seat for every ground move; the brake pedal</td>
+<td></td>
 <td></td>
 </tr>
 <tr>
-<td>9</td>
-<td><a href="#session-9-the-first-drive-on-stands">The first drive, on stands</a></td>
-<td>safety driver, e-stop person, laptop person</td>
-<td>45 min</td>
-<td>1, 4, 6 (or the C++)</td>
-<td>H1, S1-S3</td>
+<td><strong>Laptop person</strong></td>
+<td>runs the commands; keeps the recordings</td>
+<td></td>
+<td></td>
 </tr>
 <tr>
-<td>10</td>
-<td><a href="#session-10-what-to-record">What to record</a></td>
-<td>the laptop person</td>
-<td>all day</td>
-<td>4</td>
+<td><strong>Approver</strong></td>
+<td>signs each ✍ step. Not the laptop person</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The Kar-Tech stop is the main stop</strong>, all day. The HUD's button, <code>pixi run estop</code> and the
+joystick's button come second.</p>
+<p><strong>A ✍ step</strong> can't be undone, or moves the car more than before. Its line:
+<code>✍ Signed: ________ at __:__</code>. No signature, no step.</p>
+</section>
+<section class="card"><h2 id="logins">Logins</h2>
+<p>Today the logins are only in Ben's Mac's Keychain, so only Ben can log in. The team needs
+a <strong>shared password vault</strong> (Q34). Write here only where it is and what type, never a
+password:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>☐</th>
+<th>The vault</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>☐</td>
+<td>Where (which service, who invites)</td>
+<td><strong><em>_</em></strong>_</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Type</td>
+<td>a password manager the whole team can open</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Each machine's entry, named as in the table below (<code>aav-jetson</code>...)</td>
 <td></td>
 </tr>
 </tbody>
 </table></div>
 </section>
 <section class="card"><h2 id="the-machines">The machines</h2>
-<p>As the 21 Oct audit found them (<a href="../history/audit-2026-10-21-car.md">audit</a>).
-Usernames: <code>~/aav-audit/hosts.txt</code> on Ben's Mac. Passwords: the Keychain entry (Keychain
-Access → search the entry → Show password). Every address is <code>192.168.1.x</code>.</p>
+<p>As the 21 Oct audit found them (<a href="../history/audit-2026-10-21-car.md">audit</a>). Every address
+is <code>192.168.1.x</code>. <strong>Role</strong> is the name <code>car_setup.sh</code> uses. Usernames: none are in the
+repo yet: fill them in from the vault.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Machine</th>
 <th>Address</th>
-<th>Keychain entry</th>
+<th>Role</th>
+<th>Username</th>
+<th>Vault entry</th>
 <th>Runs today (2025-26, Humble, domain 0)</th>
+<th>Day B: should be</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>JETSON, <strong>the Orin</strong></td>
+<td>JETSON, <strong>the Orin</strong> (AGX Orin)</td>
 <td>.140</td>
+<td><code>orin</code></td>
+<td>☐</td>
 <td><code>aav-jetson</code></td>
-<td>the Velodyne driver (UDP 2368), lidar SLAM, <code>foxglove-bridge</code> (port 8765)</td>
+<td>the Velodyne driver (UDP 2368), lidar SLAM, <code>foxglove-bridge</code> (8765). JetPack 6 (R36.4.7, 22.04)</td>
+<td>JetPack 7.2 (24.04): a reflash</td>
 </tr>
 <tr>
-<td>CORTEX, <strong>the Motor Pi?</strong> (H1)</td>
+<td>CORTEX, <strong>the Motor Pi?</strong> (H1), Pi 4</td>
 <td>.120</td>
+<td><code>motor_pi</code></td>
+<td>☐</td>
 <td><code>aav-cortex</code></td>
-<td><code>aav_serial_bridge</code> on <code>/dev/ttyAMA0</code> (to the ESP32), joystick teleop</td>
+<td><code>aav_serial_bridge</code> on <code>/dev/ttyAMA0</code> (to the ESP32), joystick teleop. Ubuntu 22.04</td>
+<td>24.04, only after the Rust ESP32</td>
 </tr>
 <tr>
-<td>CAM1-PI, <strong>the front cameras</strong></td>
-<td>.108 (also seen at .102)</td>
-<td><code>aav-cam1</code></td>
-<td>MediaMTX, RTSP on 8554</td>
-</tr>
-<tr>
-<td>LOCALIZATION</td>
+<td>LOCALIZATION, Pi 4</td>
 <td>.113</td>
+<td><code>localization</code></td>
+<td>☐</td>
 <td><code>aav-localization</code></td>
-<td>the IMU (200 Hz) and GPS (10 Hz) drivers</td>
+<td>the IMU (200 Hz) and GPS (10 Hz) drivers. Ubuntu 22.04</td>
+<td>24.04, only once a machine file runs its IMU and GPS</td>
 </tr>
 <tr>
-<td>CAM2-PI</td>
+<td>aav-desktop, <strong>the dash</strong>, Pi 4</td>
+<td>.196</td>
+<td><code>dash</code></td>
+<td>☐</td>
+<td><code>aav-desktop</code></td>
+<td>the two screens. Ubuntu 22.04 Desktop</td>
+<td>24.04 Desktop</td>
+</tr>
+<tr>
+<td>CAM1-PI, <strong>the front cameras</strong>, Pi 5</td>
+<td>.108 (also seen at .102: C1)</td>
+<td><code>camera_pi</code></td>
+<td>☐</td>
+<td><code>aav-cam1</code></td>
+<td>MediaMTX, RTSP on 8554. Pi OS</td>
+<td>Pi OS, updated</td>
+</tr>
+<tr>
+<td>CAM2-PI, Pi 5</td>
 <td>.118</td>
+<td><code>camera_pi</code></td>
+<td>☐</td>
 <td><code>aav-cam2</code></td>
-<td>MediaMTX with a USB camera</td>
+<td>MediaMTX with a USB camera. Pi OS</td>
+<td>Pi OS, updated</td>
+</tr>
+<tr>
+<td><code>.211</code>, a Pi</td>
+<td>.211</td>
+<td>none</td>
+<td>☐</td>
+<td>☐</td>
+<td>unknown (Ubuntu 22.04)</td>
+<td>ask the hardware lead first</td>
 </tr>
 <tr>
 <td>the ESP32</td>
 <td>.132 (WiFi)</td>
 <td>none</td>
+<td>none</td>
+<td>none</td>
 <td>the 2025-26 C++ firmware: <strong>no command timeout</strong></td>
+<td>the Rust firmware (Day A, A8)</td>
 </tr>
 <tr>
 <td>the Velodyne</td>
 <td>.201</td>
 <td>none</td>
+<td>none</td>
+<td>none</td>
 <td>sends to the Orin</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>the lab's Ubuntu desktop</strong> (x86, NVIDIA; stays in the lab)</td>
+<td>☐</td>
+<td><code>lab_desktop</code></td>
+<td>☐</td>
+<td>☐</td>
+<td>CARLA (☐ which version)</td>
+<td><strong>frozen</strong> until the Orin's reflash is done (Day B)</td>
 </tr>
 </tbody>
 </table></div>
 <p>Our stack runs in <strong>ROS domain 42</strong>, so it never mixes with theirs (domain 0).</p>
+</section>
+<section class="card"><h2 id="the-order">The order</h2>
+<pre class="highlight"><code class="language-text"> DAY A: nothing destroyed                                     DAY B: later
+ ─────────────────────────────────────────────                ───────────────────────────
+ A0 at home ─► A1 safety ─► A2 back up everything ✍           B1 a restore proven ✍
+                              │                                B2 the Pis: upgrade ✍
+                              ├─► A3 measure   A4 questions    B3 the Orin: image, reflash ✍
+                              ▼                                B4 the lab desktop ✍
+ A5 our stack, beside theirs ─► A6 steering ends (Way A) ─► A7 brake on stands
+   ─► A8 the Rust ESP32 ✍ ─► A9 keyboard and joystick on stands ─► A10 walking pace ✍
+   ─► A11 the car tests and the map            (recording all day: session 10)</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What</th>
+<th>Section</th>
+<th>Who</th>
+<th>Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A0</td>
+<td>Before leaving, at home</td>
+<td><a href="#session-0-before-leaving-at-home">session 0</a></td>
+<td>laptop person</td>
+<td>internet</td>
+</tr>
+<tr>
+<td>A1</td>
+<td>Safety first</td>
+<td><a href="#session-1-safety-first">session 1</a></td>
+<td>everyone</td>
+<td>the people named</td>
+</tr>
+<tr>
+<td>A2 ✍</td>
+<td><strong>Back up every machine</strong>, checked</td>
+<td><a href="#a2-back-up-every-machine">A2</a></td>
+<td>laptop person</td>
+<td>the encrypted drive</td>
+</tr>
+<tr>
+<td>A3</td>
+<td>Measure and weigh (any time on Day A)</td>
+<td><a href="#session-2-measure-and-weigh">session 2</a></td>
+<td>2 measurers</td>
+<td>A1</td>
+</tr>
+<tr>
+<td>A4</td>
+<td>Questions for the hardware lead (best: the week before)</td>
+<td><a href="#session-3-questions-for-the-hardware-lead">session 3</a></td>
+<td>hardware lead + 1</td>
+<td></td>
+</tr>
+<tr>
+<td>A5</td>
+<td>Our stack, beside theirs, on the Orin and the Motor Pi</td>
+<td><a href="#session-4-the-orin-and-the-motor-pi">session 4</a></td>
+<td>laptop person</td>
+<td>A2</td>
+</tr>
+<tr>
+<td>A6</td>
+<td><strong>The steering's ends, Way A</strong> (Pololu's utility), on stands</td>
+<td><a href="#a6-the-steering-actuators-ends-way-a">A6</a></td>
+<td>hardware lead + laptop person</td>
+<td>A2</td>
+</tr>
+<tr>
+<td>A7</td>
+<td><strong>The brake, on stands</strong></td>
+<td><a href="#a7-the-brake-on-stands">A7</a></td>
+<td>hardware lead, e-stop person</td>
+<td>A1</td>
+</tr>
+<tr>
+<td>A8 ✍</td>
+<td><strong>The Rust ESP32</strong>, on stands</td>
+<td><a href="#session-6-the-esp32">session 6</a></td>
+<td>laptop person, e-stop person, hardware lead</td>
+<td>A2, A5, A7; H1 🔒</td>
+</tr>
+<tr>
+<td>A9</td>
+<td>The keyboard, then the <strong>joystick</strong>, on stands</td>
+<td><a href="#session-9-the-first-drive-on-stands">session 9</a>, <a href="#a9b-the-joystick-on-stands">A9b</a></td>
+<td>safety driver, e-stop person, laptop person</td>
+<td>A8</td>
+</tr>
+<tr>
+<td>A10 ✍</td>
+<td><strong>The ground, at walking pace</strong></td>
+<td><a href="#a10-the-ground-at-walking-pace">A10</a></td>
+<td>all five</td>
+<td>A6-A9 passed</td>
+</tr>
+<tr>
+<td>A11</td>
+<td>The car tests and the lot's map</td>
+<td><a href="know-the-car.html">Know the car</a></td>
+<td>all five</td>
+<td>A10</td>
+</tr>
+<tr>
+<td>any</td>
+<td>The camera Pi; CAN, read-only; Foxglove</td>
+<td>sessions <a href="#session-5-the-camera-pi">5</a>, <a href="#session-7-can-read-only">7</a>, <a href="#session-8-foxglove-from-a-laptop">8</a></td>
+<td>1 each</td>
+<td>A5</td>
+</tr>
+<tr>
+<td>all day</td>
+<td>What to record</td>
+<td><a href="#session-10-what-to-record">session 10</a></td>
+<td>laptop person</td>
+<td></td>
+</tr>
+<tr>
+<td>B1-B4</td>
+<td>Day B</td>
+<td><a href="#day-b-upgrades-and-the-reflash">Day B</a></td>
+<td>laptop person, hardware lead, approver</td>
+<td>Day A done; a restore proven</td>
+</tr>
+</tbody>
+</table></div>
+<p>Autonomy (Nav2 goals on the ground) comes after A11, on another day: <a href="tests.html">Every test</a>, stage 5.</p>
+</section>
+<section class="card"><h2 id="ready-for-car-day-the-02-checklist">Ready for car day (the 0.2 checklist)</h2>
+<p>0.2 is "car-ready" when every box here is ticked. <a href="release-notes.html#whats-left">Release 0.2</a> links here.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Check</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>☐</td>
+<td>Every test green</td>
+<td><code>pixi run test</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>The kit ready</td>
+<td><code>pixi run car-day-check</code>: <strong>0 missing</strong></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>The ESP32's emulator check</td>
+<td><code>pixi run esp qemu-check</code>: PASS</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>car_setup.sh</code>'s dry run, every role</td>
+<td><code>bash tools/car_setup.sh &lt;role&gt;</code> on a laptop (<code>--host-ok</code> on a Linux one): no STOP but <code>upgrade</code>'s two refusals (<code>localization</code>, <code>motor_pi</code>)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>The first-move gaps (TODO 74)</td>
+<td>each closed, or signed off by the hardware lead</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>The people named</td>
+<td>the table above: names and phones</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>The hardware lead's answers</td>
+<td>H1 (which Pi is the Motor Pi), C1 (CAM1's address), <code>.211</code>'s job, who owns the router</td>
+</tr>
+</tbody>
+</table></div>
 </section>
 <section class="card"><h2 id="what-to-bring">What to bring</h2>
 <div class="table-wrap"><table>
@@ -299,6 +506,16 @@ Access → search the entry → Show password). Every address is <code>192.168.1
 </tr>
 <tr>
 <td>☐</td>
+<td>an SD card reader for the Mac, and <strong>a spare SD card</strong> (B1's restore)</td>
+<td>A2, B1</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>a laptop with Pololu's <strong>Jrk G2 utility</strong>, a USB cable for the Jrks</td>
+<td>A2, A6, A7</td>
+</tr>
+<tr>
+<td>☐</td>
 <td>USB-C Ethernet dongle, 2 Ethernet cables, a USB-C hub</td>
 <td>the car's switch</td>
 </tr>
@@ -310,7 +527,7 @@ Access → search the entry → Show password). Every address is <code>192.168.1
 <tr>
 <td>☐</td>
 <td><strong>stands</strong> for all four wheels, wheel chocks</td>
-<td>sessions 1, 6, 9</td>
+<td>sessions 1, 6, 9; A6, A7</td>
 </tr>
 <tr>
 <td>☐</td>
@@ -354,13 +571,13 @@ Access → search the entry → Show password). Every address is <code>192.168.1
 </tr>
 <tr>
 <td>☐</td>
-<td>the backup drive (encrypted: the backups hold passwords)</td>
-<td>sessions 4, 6</td>
+<td>the backup drive (<strong>encrypted</strong>: the backups hold passwords), room for every card image</td>
+<td>A2</td>
 </tr>
 </tbody>
 </table></div>
 </section>
-<section class="card"><h2 id="session-0-before-leaving-at-home">Session 0: before leaving (at home)</h2>
+<section class="card"><h2 id="session-0-before-leaving-at-home">A0 · Session 0: before leaving (at home)</h2>
 <p><strong>Who:</strong> the laptop person. <strong>How long:</strong> 30-60 min. <strong>Bring:</strong> internet.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -380,7 +597,7 @@ Access → search the entry → Show password). Every address is <code>192.168.1
 </tr>
 <tr>
 <td>2</td>
-<td><code>pixi run get-models</code> (once)</td>
+<td><code>pixi run get models</code> (once)</td>
 <td><code>models/rf-detr-nano.pth</code>, <code>models/yolo11n.pt</code></td>
 <td>the internet</td>
 </tr>
@@ -393,7 +610,7 @@ Access → search the entry → Show password). Every address is <code>192.168.1
 <tr>
 <td>4</td>
 <td><code>pixi run car-day-build</code></td>
-<td><code>v2: PASS</code>, <code>v1: PASS</code>, <code>esp-qemu-check: PASS</code>, <code>legacy-esp32: PASS</code>, <code>docs: PASS</code></td>
+<td><code>v2: PASS</code>, <code>v1: PASS</code>, <code>esp qemu-check: PASS</code>, <code>legacy-esp32: PASS</code>, <code>docs: PASS</code></td>
 <td>each step's log is in <code>car-day/esp32/</code></td>
 </tr>
 <tr>
@@ -410,7 +627,7 @@ Access → search the entry → Show password). Every address is <code>192.168.1
 </tr>
 <tr>
 <td>7</td>
-<td><code>pixi run net-map</code> and <code>pixi run doctor</code> once</td>
+<td><code>pixi run bash tools/net_map.sh</code> and <code>pixi run doctor</code> once</td>
 <td>macOS asks about the local network: <strong>Allow</strong></td>
 <td>System Settings → Privacy → Local Network</td>
 </tr>
@@ -492,7 +709,7 @@ there stops every ROS program. At the car:
 <h3 id="pixi-run-car-day-check-on-bens-mac-24-oct"><code>pixi run car-day-check</code> on Ben's Mac, 24 Oct</h3>
 <p>After step 4, before steps 1, 5 and 6: so the repo, the build and the kit are its 3
 missing, and Cyclone a reminder. (The repo line's advice is today's wording.) No secrets: the Keychain is only asked whether each
-entry exists.</p>
+entry exists (on a laptop without them, the vault holds them).</p>
 <pre class="highlight"><code class="language-text">Car day: is /Users/ben/Code/ecolo-av ready? (car-day.md)
 
   MISSING  repo         main at 54304074 has commits GitHub hasn't
@@ -509,7 +726,7 @@ entry exists.</p>
   OK       MediaMTX     vendor/mediamtx (to test a stream on the laptop)
   OK       ESP32 tools  Xtensa Rust, espflash (vendor/esp, vendor/cargo-tools)
   OK       ESP32 Rust   v2 and v1 built 24 Oct 2026 15:47, in car-day/esp32/
-  OK       ESP32 QEMU   esp-qemu-check passed 24 Oct 2026 15:47: brakes when the heartbeat stops
+  OK       ESP32 QEMU   esp qemu-check passed 24 Oct 2026 15:47: brakes when the heartbeat stops
   OK       ESP32 C++    the 2025-26 C++ builds (the way back), 24 Oct 2026 15:47
   REMIND   ESP32 C++    secrets.h has the placeholders: a C++ built again can't join the WiFi; the backup (session 6) restores it all
                         -&gt; firmware/legacy/aav_umod_esp32/src/secrets.h: the WiFi from the team, typed in, never committed
@@ -530,8 +747,13 @@ entry exists.</p>
 
 14 OK, 3 missing, 6 to tick by hand.</code></pre>
 </section>
-<section class="card"><h2 id="session-1-safety-first">Session 1: safety first</h2>
-<p><strong>Who:</strong> everyone; name the <strong>e-stop person</strong> and the <strong>safety driver</strong> (Q32). <strong>How long:</strong>
+<section class="card"><h2 id="day-a-nothing-destroyed">Day A: nothing destroyed</h2>
+<p>Every change on Day A undoes from a checked backup: our code goes in <code>~/aav-jazzy</code>, beside
+theirs; the ESP32's flash goes back from its copy. <strong>Nothing is upgraded, reflashed or
+disabled.</strong> Theirs is only stopped (<code>systemctl stop</code>), never turned off at boot.</p>
+</section>
+<section class="card"><h2 id="session-1-safety-first">A1 · Session 1: safety first</h2>
+<p><strong>Who:</strong> everyone, as named in <a href="#the-people">the people</a> (Q32). <strong>How long:</strong>
 15 min. <strong>Bring:</strong> stands, chocks, the RC transmitter.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -579,11 +801,169 @@ entry exists.</p>
 <td></td>
 <td></td>
 </tr>
+<tr>
+<td>7</td>
+<td>Start recording, and keep it on for every session, stands too: <code>~/aav-jazzy/aav.sh tools/record.sh --lidar &lt;session&gt;</code> on the Orin once A5 is done; before that, theirs (session 10, rows 1-2)</td>
+<td>a folder in <code>bags/</code> per session</td>
+<td></td>
+</tr>
 </tbody>
 </table></div>
 <p><strong>Stop point:</strong> stands, e-stop in a hand, RC off.</p>
 </section>
-<section class="card"><h2 id="session-2-measure-and-weigh">Session 2: measure and weigh</h2>
+<section class="card"><h2 id="a2-back-up-every-machine">A2 · Back up every machine</h2>
+<p><strong>Who:</strong> the laptop person. <strong>How long:</strong> 2-4 h (the copies run while A3 and A4 go on).
+<strong>Bring:</strong> the <strong>encrypted</strong> backup drive (the backups hold passwords: WiFi, keys), an SD
+card reader for the Mac. Nothing else starts until this step's signature.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Machine</th>
+<th>What</th>
+<th>How</th>
+<th>Checked by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The Orin</td>
+<td>its home folder and <code>/etc</code></td>
+<td><a href="#4a-look-the-backup-is-a2">4a's</a> look, then the two rows below</td>
+<td><code>tar tzf etc.tgz &gt; /dev/null</code></td>
+</tr>
+<tr>
+<td>The Motor Pi, LOCALIZATION, the dash (Ubuntu)</td>
+<td>the <strong>whole SD card</strong>, as an image</td>
+<td>the box below</td>
+<td><code>gunzip -t</code></td>
+</tr>
+<tr>
+<td>CAM1-PI, CAM2-PI (Pi OS)</td>
+<td>the whole SD card, the same way</td>
+<td>the box below</td>
+<td><code>gunzip -t</code></td>
+</tr>
+<tr>
+<td>Every Linux computer</td>
+<td>the package lists, services, crontab, addresses, <code>/etc</code> (a second copy)</td>
+<td><code>bash car_setup.sh &lt;role&gt; backup --apply</code> (<a href="car-setup.html#running-the-script">Car setup</a>)</td>
+<td>its folder lists the files</td>
+</tr>
+<tr>
+<td>The ESP32</td>
+<td>its whole flash (4 MB)</td>
+<td><a href="#6a-back-up-whats-on-the-board">6a</a></td>
+<td>the file is 4194304 bytes</td>
+</tr>
+<tr>
+<td>The steering and brake actuators</td>
+<td>their settings files (Pololu's utility, File → Save settings file)</td>
+<td><a href="actuator-tests.html#way-a-pololus-utility-over-usb-car-day">Way A, A2</a>, for each</td>
+<td>the file opens</td>
+</tr>
+</tbody>
+</table></div>
+<p>The Orin, from the laptop (the user from the vault):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>You should see</th>
+<th>If not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>rsync -a --exclude .cache --exclude aav-jazzy &lt;user&gt;@192.168.1.140:/home/&lt;user&gt;/ /Volumes/&lt;drive&gt;/aav-backup/jetson-$(date +%F)/home/</code></td>
+<td>it copies (1-3 h); go on meanwhile</td>
+<td>it stops: run it again, it resumes</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>ssh &lt;user&gt;@192.168.1.140 'sudo tar czf /tmp/etc.tgz /etc'</code>, then <code>scp</code> it to the same folder, then <code>sudo rm /tmp/etc.tgz</code> there</td>
+<td><code>etc.tgz</code>, under 50 MB</td>
+<td>no sudo: write it down</td>
+</tr>
+</tbody>
+</table></div>
+<p>The Orin's <strong>full disk image</strong> needs the lab desktop: Day B (<a href="#b3-the-orin-its-image-then-the-reflash">B3</a>).</p>
+<div class="admonition note">
+<p class="admonition-title">A Pi's SD card, from a Mac: the whole card</p>
+<p>Undo is then a card swap. One Pi at a time: shut it down (<code>sudo poweroff</code>), take its
+card out, into the Mac's reader.</p>
+<pre class="highlight"><code class="language-bash">diskutil list                                   # the card: "external, physical", its size
+diskutil unmountDisk /dev/disk4                 # disk4: the number diskutil showed
+sudo dd if=/dev/rdisk4 of=/Volumes/&lt;drive&gt;/aav-backup/cortex-$(date +%F).img bs=1m   # Ctrl-T: progress
+gzip /Volumes/&lt;drive&gt;/aav-backup/cortex-$(date +%F).img
+gunzip -t /Volumes/&lt;drive&gt;/aav-backup/cortex-$(date +%F).img.gz &amp;&amp; echo GOOD
+diskutil eject /dev/disk4</code></pre>
+<ul>
+<li>Check the disk number twice: <code>dd</code> only reads the card here, so a wrong number only wastes time.</li>
+<li>No <code>GOOD</code>: the copy is bad. Do it again before the card goes back in.</li>
+<li>To put it back (Day B, B1): Raspberry Pi Imager → Choose OS → <strong>Use custom</strong> → the <code>.img.gz</code>.</li>
+</ul>
+</div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Backed up and checked</th>
+<th>File on the drive</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>☐</td>
+<td>the Orin: home, <code>etc.tgz</code></td>
+<td></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>the Motor Pi's card (<code>gunzip -t</code>: GOOD)</td>
+<td></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>LOCALIZATION's card (GOOD)</td>
+<td></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>the dash's card (GOOD)</td>
+<td></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>CAM1-PI's card (GOOD)</td>
+<td></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>CAM2-PI's card (GOOD)</td>
+<td></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>the ESP32's flash (4194304 bytes)</td>
+<td></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>the steering actuator's settings</td>
+<td></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>the brake actuator's settings</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Stop point:</strong> every box ticked. <code>✍ Signed (approver): ________ at __:__</code></p>
+</section>
+<section class="card"><h2 id="session-2-measure-and-weigh">A3 · Session 2: measure and weigh</h2>
 <p><strong>Who:</strong> 2 measurers. <strong>How long:</strong> 90 min. <strong>Bring:</strong> the printed sheet, tape, string,
 plumb line, phone level, 4 scales, 2 blocks, a protractor. <strong>Due 30 Oct</strong> (Gate 1,
 <a href="plan.html">PLAN</a>).</p>
@@ -633,8 +1013,9 @@ plumb line, phone level, 4 scales, 2 blocks, a protractor. <strong>Due 30 Oct</s
 <p><strong>Stop point:</strong> the sheet photographed. At home the numbers go into
 <code>ros/bringup/aav_description/config/vehicle.yaml</code>, then <code>pixi run test</code> and <code>pixi run view</code>.</p>
 </section>
-<section class="card"><h2 id="session-3-questions-for-the-hardware-lead">Session 3: questions for the hardware lead</h2>
-<p><strong>Who:</strong> the hardware lead, and one person writing. <strong>How long:</strong> 30 min. <strong>Bring:</strong> this
+<section class="card"><h2 id="session-3-questions-for-the-hardware-lead">A4 · Session 3: questions for the hardware lead</h2>
+<p><strong>Who:</strong> the hardware lead, and one person writing. <strong>How long:</strong> 30 min. <strong>Best the
+week before:</strong> H1, C1, <code>.211</code> and the router's owner are on the <a href="#ready-for-car-day-the-02-checklist">0.2 checklist</a>. <strong>Bring:</strong> this
 table, a pen. The hardware lead decides these: write down what they say, don't argue it.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -708,19 +1089,36 @@ table, a pen. The hardware lead decides these: write down what they say, don't a
 <tr>
 <td>S1-S3</td>
 <td>What the e-stops cut; the brake without power; anything else that stops a frozen Pi</td>
-<td>session 9</td>
+<td>session 9; A7</td>
+</tr>
+<tr>
+<td>R1</td>
+<td><strong>The router:</strong> who owns it? Can the car's computers keep fixed addresses (reservations)?</td>
+<td>C1; <code>car_setup.sh --address</code></td>
+</tr>
+<tr>
+<td>P1</td>
+<td><strong><code>.211</code>:</strong> what is it for? Can we leave it alone?</td>
+<td>the machines table</td>
+</tr>
+<tr>
+<td>L1</td>
+<td>The steering actuator's current limit for A6, and the brake actuator's: which numbers?</td>
+<td>A6, A7</td>
 </tr>
 </tbody>
 </table></div>
 <p>All the other questions: <a href="audit-questions.html">audit questions</a>.</p>
 <p><strong>Stop point:</strong> the answers written down, with who said them.</p>
 </section>
-<section class="card"><h2 id="session-4-the-orin-and-the-motor-pi">Session 4: the Orin (and the Motor Pi)</h2>
+<section class="card"><h2 id="session-4-the-orin-and-the-motor-pi">A5 · Session 4: our stack, on the Orin and the Motor Pi</h2>
 <p><strong>Who:</strong> the laptop person. <strong>How long:</strong> 1-3 h; the backup runs while you do the rest.
 <strong>Bring:</strong> the stick, the backup drive, a cable to the car's switch.</p>
+<p>Day A: our stack goes <strong>beside</strong> theirs, in <code>~/aav-jazzy</code>; nothing of theirs changes.
+The upgrades wait for <a href="#day-b-upgrades-and-the-reflash">Day B</a>.</p>
 <p>First, on the laptop: <code>cp ~/.config/aav/cyclonedds-car.xml ~/.config/aav/cyclonedds.xml</code>,
 dongle in, then <code>pixi run doctor</code> (it should find the car's network).</p>
-<h3 id="4a-look-then-back-up">4a. Look, then back up</h3>
+<h3 id="4a-look-the-backup-is-a2">4a. Look (the backup is A2)</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -735,7 +1133,7 @@ dongle in, then <code>pixi run doctor</code> (it should find the car's network).
 <td>1</td>
 <td><code>ssh &lt;user&gt;@192.168.1.140</code> (the user: <code>hosts.txt</code>, JETSON)</td>
 <td>a prompt on <code>ubuntu</code></td>
-<td><code>pixi run net-map</code>: the Orin's address may have changed</td>
+<td><code>pixi run bash tools/net_map.sh</code>: the Orin's address may have changed</td>
 </tr>
 <tr>
 <td>2</td>
@@ -749,22 +1147,9 @@ dongle in, then <code>pixi run doctor</code> (it should find the car's network).
 <td>the module (AGX Orin), its memory (32 or 64 GB), <strong>13 GB free</strong> or more</td>
 <td>not enough room: stop, ask the team</td>
 </tr>
-<tr>
-<td>4</td>
-<td>On the laptop, a second terminal: <code>rsync -a --exclude .cache --exclude aav-jazzy &lt;user&gt;@192.168.1.140:/home/&lt;user&gt;/ ~/aav-backup/jetson-$(date +%F)/home/</code></td>
-<td>it copies (1-3 h); go on meanwhile</td>
-<td>it stops: run it again, it resumes</td>
-</tr>
-<tr>
-<td>5</td>
-<td><code>/etc</code>: <code>ssh &lt;user&gt;@192.168.1.140 'sudo tar czf /tmp/etc.tgz /etc'</code>, then <code>scp</code> it to the same folder, then <code>sudo rm /tmp/etc.tgz</code></td>
-<td><code>etc.tgz</code>, under 50 MB</td>
-<td>no sudo: skip, write it down</td>
-</tr>
 </tbody>
 </table></div>
-<p>The full disk image (<code>l4t_backup_restore.sh</code>) needs an x86 Ubuntu PC: not today. It comes
-before the reflash (T1.3), never after.</p>
+<p>The home folder and <code>/etc</code>: <a href="#a2-back-up-every-machine">A2</a>. The full disk image needs the lab desktop: Day B, <a href="#b3-the-orin-its-image-then-the-reflash">B3</a>.</p>
 <h3 id="4b-our-stack-from-the-stick">4b. Our stack, from the stick</h3>
 <p>Changes nothing of theirs: everything goes in <code>~/aav-jazzy</code> (<a href="car-install.html">From a USB stick</a>).</p>
 <div class="table-wrap"><table>
@@ -917,9 +1302,58 @@ its TensorRT version).</p>
 </table></div>
 <p><strong>Stop point:</strong> our stack built on the Orin and the Motor Pi; the engine built (or why not).</p>
 </section>
-<section class="card"><h2 id="session-5-the-camera-pi">Session 5: the camera Pi</h2>
-<p><strong>Who:</strong> one person, with the laptop. <strong>How long:</strong> 60 min. <strong>Bring:</strong> the checkerboard,
-2 phones. 🔒 C1: which address. The plan and the settings: <a href="camera-pipeline.html">camera pipeline</a>.</p>
+<section class="card"><h2 id="a6-the-steering-actuators-ends-way-a">A6 · The steering actuator's ends, Way A</h2>
+<p><strong>Who:</strong> the hardware lead, and the laptop person. <strong>How long:</strong> 45 min. <strong>Bring:</strong> a
+laptop with Pololu's Jrk G2 utility, a USB cable, a protractor,
+<a href="actuator-tests.html#the-sheet">the sheet</a> printed. On stands.</p>
+<p><strong>Way A is the car-day path.</strong> Way B (the hardware panel) needs the Rust firmware with the
+uplink and link version 3: a later day (<a href="#one-link-version-on-the-car">why</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>You should see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The steering actuator's settings saved (A2 did it)</td>
+<td>the file</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Power off first.</strong> Then, with the hardware lead, keep the ESP32 from driving the Jrk: leave the ESP32 off, or unplug its I2C <strong>while everything is off</strong>. Never unplug I2C with the power on</td>
+<td>the ESP32 can't send a target</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The current limit low, set by the hardware lead (Motor tab). The number: <strong>______</strong> (old: ______)</td>
+<td>written on the sheet</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Steps A1-A10 of <a href="actuator-tests.html#way-a-pololus-utility-over-usb-car-day">Way A</a>: Stop motor, then by hand full left, straight, full right; the angle at each end</td>
+<td>the sheet: left end, centre, right end (counts), the two angles</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Power off, I2C back in (power still off), the settings as they were (A10 there)</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Stop point:</strong> the sheet filled in. No analog feedback: tell the hardware lead, and skip
+3.10 in session 9.</p>
+<p><strong>The sweep (session 9, test 3.10) runs only inside the measured ends.</strong> The firmware's
+software limits today are 400-3500 counts. Run 3.10 only if both measured ends lie
+<strong>outside</strong> 400-3500, or after the measured ends are in <code>calibration.rs</code> and that
+firmware is flashed. Otherwise skip it: write "3.10 skipped: ends inside the limits".</p>
+</section>
+<section class="card"><h2 id="a7-the-brake-on-stands">A7 · The brake, on stands</h2>
+<p><strong>Who:</strong> the hardware lead and the e-stop person. <strong>How long:</strong> 20 min. <strong>Before any
+ground move</strong>, with whatever firmware is on the ESP32 now. Wheels off the ground.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -932,91 +1366,80 @@ its TensorRT version).</p>
 <tbody>
 <tr>
 <td>1</td>
-<td><code>ssh &lt;user&gt;@192.168.1.108</code>; <code>hostname; ip -br addr</code></td>
-<td><code>aav-cam1</code>; its addresses (.108, .102?)</td>
-<td>try .102. Write down which is wired</td>
+<td>Power on, nothing driving</td>
+<td>the brake actuator goes to full. Push the car's brake pedal: it's already down, or hard</td>
+<td>stop: tell the hardware lead</td>
 </tr>
 <tr>
 <td>2</td>
-<td>Keep theirs: <code>systemctl status mediamtx</code>, then <code>sudo cp /usr/local/etc/mediamtx.yml /usr/local/etc/mediamtx.yml.2025-26</code></td>
-<td>the service, and its file's place</td>
-<td>the file is elsewhere: <code>status</code> names it; use that path</td>
+<td>Try to turn a rear wheel by hand</td>
+<td>it won't turn</td>
+<td>the brake doesn't hold: no ground today</td>
 </tr>
 <tr>
 <td>3</td>
-<td><code>rpicam-hello --list-cameras</code></td>
-<td>2 cameras, 0 and 1</td>
-<td>one: ribbon loose? (N4). USB? <code>v4l2-ctl --list-devices</code></td>
-</tr>
-<tr>
-<td>4</td>
-<td>Ours, from the laptop: <code>scp ros/sources/aav_camera_stream/pi/mediamtx.yml &lt;user&gt;@192.168.1.108:/tmp/</code>, then <code>ssh &lt;user&gt;@192.168.1.108 'sudo cp /tmp/mediamtx.yml /usr/local/etc/mediamtx.yml &amp;&amp; sudo systemctl restart mediamtx'</code></td>
-<td><code>systemctl status mediamtx</code>: active</td>
-<td>put theirs back (step 2's copy)</td>
-</tr>
-<tr>
-<td>5</td>
-<td>Which is left: in a browser, <code>http://192.168.1.108:8889/front_left</code>; cover the <strong>left</strong> lens with a hand</td>
-<td>the picture goes dark</td>
-<td>the right one went dark: swap <code>rpiCameraCamID</code> 0 and 1 in the file, step 4 again</td>
-</tr>
-<tr>
-<td>6</td>
-<td>The Orin decodes both: <code>~/aav-jazzy/aav.sh ros2 launch aav_camera_stream camera_stream.launch.py host:=192.168.1.108 decoder:=gst-nvidia detector:=none</code></td>
-<td><code>~/aav-jazzy/aav.sh ros2 topic echo /diagnostics</code>: <code>fps_in</code> 15 for each</td>
-<td>no <code>/usr/bin/gst-launch-1.0</code>: JetPack's GStreamer is missing, write it down</td>
-</tr>
-<tr>
-<td>7</td>
-<td>The Pi's CPU, both streams on: <code>top</code> on the Pi, then <code>vcgencmd measure_temp</code></td>
-<td>under 50% of the Pi; under 80 °C</td>
-<td>write down the numbers anyway</td>
-</tr>
-<tr>
-<td>8</td>
-<td>Bitrate: <code>curl http://127.0.0.1:9997/v3/paths/list</code> on the Pi, twice, 10 s apart</td>
-<td><code>bytesSent</code> up about 2.5 MB each 10 s (2 Mbit/s)</td>
+<td>The Kar-Tech stop pressed</td>
+<td>write down what it cuts (S1); the brake stays full</td>
 <td></td>
 </tr>
 <tr>
-<td>9</td>
-<td><strong>The delay:</strong> a stopwatch on phone 1 in front of the camera, the browser view beside it; phone 2 films both</td>
-<td>the difference between the two times: under 150 ms. Do 3 photos</td>
-<td>write down what you got</td>
+<td>4</td>
+<td>Power off, then try the rear wheel again</td>
+<td>write down: does the brake hold without power? (S2)</td>
+<td></td>
 </tr>
 <tr>
-<td>10</td>
-<td><strong>Calibration:</strong> the steps below, for <code>front_left</code>, then <code>front_right</code></td>
-<td><code>ros/sources/aav_camera_stream/config/calibrations/front_left.yaml</code> (and <code>front_right</code>) written; commit them at home</td>
-<td>no picture: the stream (step 6); save pictures as a backup (below)</td>
+<td>5</td>
+<td>The brake actuator's settings saved (A2)</td>
+<td>the file</td>
+<td></td>
 </tr>
 </tbody>
 </table></div>
-<p>Step 10, calibration:</p>
-<ol>
-<li>The printed checkerboard: 9x6, 25 mm squares (<code>pixi run calibrate-camera board</code>).
-   Measure one square with the ruler.</li>
-<li>On the laptop: <code>pixi run calibrate-camera front_left --host 192.168.1.108 --square &lt;measured, in m&gt;</code>.</li>
-<li>Someone moves the board slowly: near, far, the corners, tilted. Wait until the X, Y,
-   Size and Skew bars go green.</li>
-<li>CALIBRATE, then SAVE. Then the same for <code>front_right</code>.</li>
-<li>Backup, if the window shows no picture: <code>mkdir -p ~/aav-calib</code>, then
-   <code>pixi run ffmpeg -rtsp_transport tcp -i rtsp://192.168.1.108:8554/front_left -vf fps=1 -frames:v 30 ~/aav-calib/front_left_%02d.png</code></li>
-</ol>
-<p>At home: the delay goes in <code>orin.yaml</code>'s <code>camera_stream</code> <code>delay</code> (0.06 s today); commit
-the two calibration files (<code>docs/camera-calibration.md</code>). Until they're in, the stop-sign
-rule uses Gazebo's lens and the car stops too early.</p>
-<p><strong>Stop point:</strong> both streams at 15 fps on the Orin, the delay measured, both cameras calibrated.</p>
+<p><strong>Stop point:</strong> 1-2 pass; 3-4 written down. The brake's strength is measured on the
+ground later (tests 4.3, <a href="know-the-car.html">Know the car</a>).</p>
 </section>
-<section class="card"><h2 id="session-6-the-esp32">Session 6: the ESP32</h2>
+<section class="card"><h2 id="session-6-the-esp32">A8 · Session 6: the Rust ESP32, on stands</h2>
 <p><strong>Who:</strong> the laptop person, the e-stop person, the hardware lead. <strong>How long:</strong> 90 min.
 <strong>Bring:</strong> the ESP32's USB cable, the RC transmitter, a multimeter.
 🔒 <strong>H1</strong> (the link to the Motor Pi) and <strong>Ben's OK</strong> (on a call):
 <a href="esp32-bench.html">First flash on the bench</a> says "do it with Ben".</p>
-<p><strong>Before:</strong> session 1 done; the Motor Pi and the Orin have our stack (session 4); the
+<p><strong>Before:</strong> A2 (the board's backup, 6a) and A7 (the brake) done; the Motor Pi and the Orin have our stack (session 4); the
 laptop's USB cable in the ESP32 MicroMod. Every command below runs on the laptop, in the
 repo.</p>
+<h3 id="one-link-version-on-the-car">One link version on the car</h3>
+<p>The serial link between the Motor Pi and the ESP32 has a version, and both ends must
+agree. <strong>All of Day A: version 2.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Firmware on the ESP32</th>
+<th><code>legacy.yaml</code> <code>frame_version</code></th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the 2025-26 C++</td>
+<td><strong>1</strong></td>
+<td>until 6b; and after a roll-back (6d)</td>
+</tr>
+<tr>
+<td>the Rust, <code>spine-esp32-umod-v2.elf</code> (or <code>-v2-uplink</code>)</td>
+<td><strong>2</strong></td>
+<td>Day A, from 6b</td>
+</tr>
+<tr>
+<td>the Rust with the uplink, for Way B (the hardware panel)</td>
+<td><strong>3</strong>, with <code>uplink: true</code></td>
+<td>a later day, once H9 says yes and the hardware lead agrees (<a href="actuator-tests.html#way-b-the-hardware-panel-rust-firmware">Way B</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The Rust reads version 2 and 3 alike, so moving to 3 later needs no new flash; only
+<code>legacy.yaml</code> changes, in one place, on the Motor Pi.</p>
 <h3 id="6a-back-up-whats-on-the-board">6a. Back up what's on the board</h3>
+<p>Done in A2. If not:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1049,6 +1472,8 @@ repo.</p>
 </table></div>
 <p>The backup holds the C++'s WiFi password: it's a secret. Never in git (<code>car-day/</code> isn't).</p>
 <h3 id="6b-flash-the-rust-and-switch-the-motor-pi-to-version-2">6b. Flash the Rust, and switch the Motor Pi to version 2</h3>
+<p>The flash overwrites the C++: only with 6a's file checked (4194304 bytes).
+<code>✍ Signed (approver): ________ at __:__ · Hardware lead: ________ · Ben (on the call): ________</code></p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1079,7 +1504,7 @@ repo.</p>
 </tr>
 <tr>
 <td>4</td>
-<td>Start the Orin: <code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin max_speed:=0.3 gps:=false lidar:=false</code></td>
+<td>Start the Orin: <code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin max_speed:=0.3 gps:=false lidar:=false stands:=true</code></td>
 <td>the output mux makes the heartbeat. Its <code>foxglove_bridge</code> can't open port 8765 (theirs holds it): harmless, see session 8</td>
 <td></td>
 </tr>
@@ -1254,6 +1679,488 @@ switch. Both yes, and 1-14 passed:</p>
 before, without the positions coming back.</p>
 <p><strong>Stop point:</strong> 1-14 and 9a-9c pass, or the C++ is back and the reason is written down.</p>
 </section>
+<section class="card"><h2 id="session-9-the-first-drive-on-stands">A9 · Session 9: the keyboard, on stands</h2>
+<p><strong>Who:</strong> the safety driver, the e-stop person, the laptop person. <strong>How long:</strong> 45 min.
+🔒 H1 and S1-S3. <strong>Wheels off the ground</strong>, the speed capped at <strong>0.3 m/s</strong>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Before</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>☐</td>
+<td>all four wheels off the ground (session 1)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>the e-stop person ready; everyone knows what it cuts (S1)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>theirs stopped: <code>aav_serial_bridge</code> inactive. <strong>Never two drive paths</strong></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>which ESP32 firmware: the Rust (session 6 passed). The C++ (<strong>no timeout</strong>) only for 3.1-3.8, never the joystick or the ground</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>legacy.yaml</code>'s <code>frame_version</code>: 2 with the Rust, 1 with the C++</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>A6 done: the steering's ends on the sheet (3.0). A7 done: the brake holds</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>with the C++ (1): the bridge's log says <code>no-timeout lock ON</code>. twist_mux then holds every program (scripted, point, Nav2, AI); the keyboard and the actuator tests below still drive. Leave <code>allow_programs_without_timeout: false</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>everyone knows: <strong>the throttle's strength is a guess.</strong> Two guesses disagree by 5 times (<a href="vehicle-model.html">the car's model</a>: full throttle holds 15 m/s by the drag guess, 3 m/s by the ESP32's open loop). 0.3 m/s asked may spin the wheels much faster: the e-stop person watches 3.2</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where</th>
+<th>Run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the Motor Pi</td>
+<td><code>~/aav-jazzy/aav.sh car motor_pi</code></td>
+</tr>
+<tr>
+<td>the Orin</td>
+<td><code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin max_speed:=0.3 gps:=false lidar:=false stands:=true</code></td>
+</tr>
+<tr>
+<td>the laptop, each terminal</td>
+<td><code>export ROS_DOMAIN_ID=42</code>, then <code>pixi run keyboard</code>, and <code>pixi run hud</code></td>
+</tr>
+<tr>
+<td>the Orin, a second terminal</td>
+<td><code>~/aav-jazzy/aav.sh tools/record.sh --lidar stands</code> (session 10)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The HUD's GO / STOP panel says whether the car may move, and why not. A latched gate:
+<code>pixi run clear gate</code>; a latched watchdog (such as <code>hud LOST</code>): <code>pixi run clear watchdog</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Test</th>
+<th>Expect</th>
+<th>If not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3.1</td>
+<td>Nothing pressed</td>
+<td>wheels still; the HUD shows 0</td>
+<td>e-stop</td>
+</tr>
+<tr>
+<td>3.2</td>
+<td>Forward, gently</td>
+<td>the drive wheels turn <strong>forward</strong>, slowly</td>
+<td>backwards: write it down (<code>legacy_protocol.py</code>), not fixed at the car. <strong>Fast:</strong> e-stop, write down the speed (3.12's tachometer), and no ground driving until tests 4.2 and 4.4</td>
+</tr>
+<tr>
+<td>3.2b</td>
+<td>Backward, gently (the keyboard's back key)</td>
+<td>the drive wheels turn <strong>backward</strong>, slowly; the HUD's speed reads negative</td>
+<td>forward: the ESP32's direction switch (ask the hardware lead). <strong>Nav2 must not reverse on the ground until this passes:</strong> <code>reversing:=false</code></td>
+</tr>
+<tr>
+<td>3.3</td>
+<td>Left</td>
+<td>the front wheels turn <strong>left</strong></td>
+<td>right: <code>steering_sign</code> (Q2)</td>
+</tr>
+<tr>
+<td>3.4</td>
+<td>Let go of the key</td>
+<td>slows to 0 within 0.3 s</td>
+<td></td>
+</tr>
+<tr>
+<td>3.5</td>
+<td>The HUD's e-stop button</td>
+<td>brakes at once; nothing moves until <code>pixi run clear estop</code></td>
+<td></td>
+</tr>
+<tr>
+<td>3.6</td>
+<td>Stop the keyboard program</td>
+<td>the bridge brakes: its commands go stale</td>
+<td></td>
+</tr>
+<tr>
+<td>3.7</td>
+<td>Ctrl-C the Motor Pi's bridge</td>
+<td>a last stop frame</td>
+<td></td>
+</tr>
+<tr>
+<td>3.8</td>
+<td>The Kar-Tech e-stop</td>
+<td>everything stops</td>
+<td></td>
+</tr>
+<tr>
+<td>3.9</td>
+<td>Unplug the Motor Pi's serial cable while driving</td>
+<td>the Rust: brakes within 200 ms. The C++: it doesn't (S3)</td>
+<td></td>
+</tr>
+<tr>
+<td>3.0</td>
+<td>The steering actuator's ends and centre</td>
+<td>done in <a href="#a6-the-steering-actuators-ends-way-a">A6</a></td>
+<td></td>
+</tr>
+<tr>
+<td>3.10</td>
+<td><strong>Only inside the measured ends</strong> (<a href="#a6-the-steering-actuators-ends-way-a">A6's rule</a>): <code>pixi run actuator-test steer-sweep --stands</code> (the laptop)</td>
+<td>it asks each wheel angle: the protractor</td>
+<td>the ends inside 400-3500: skip it, write why</td>
+</tr>
+<tr>
+<td>3.11</td>
+<td><code>pixi run actuator-test steer-centre --stands</code></td>
+<td>under 1°, or the offset written down</td>
+<td></td>
+</tr>
+<tr>
+<td>3.12</td>
+<td>Wheel speed: <code>/vehicle/odom</code> against a phone tachometer app</td>
+<td>within 10%</td>
+<td></td>
+</tr>
+<tr>
+<td>3.P</td>
+<td><code>pixi run actuator-test preflight --stands --no-drive --skip steering gps lidar</code> (the Orin, ssh + tmux)</td>
+<td>every sensor line PASS; nothing moves</td>
+<td>a FAIL names the sensor: its driver, its cable, its rate</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The preflight's drive</strong> (speed up, hold, brake, steer, every sensor at once) is refused
+on the car today: the wheel sensors are on the front, the motor drives the rear, so on
+stands nothing measures the spinning wheels (TODO 49b). Once a rear-wheel speed exists
+(<code>vehicle.yaml</code> <code>speed_wheels: rear</code>): <code>pixi run actuator-test preflight --stands --skip steering gps lidar</code>,
+with the e-stop person and someone on the rear wheels' tachometer (<a href="actuator-tests.html#the-preflight-on-stands">the preflight</a>).</p>
+<p><strong>The ground</strong> comes only through <a href="#a10-the-ground-at-walking-pace">A10</a>: walking pace, signed. Tests 4.2 (<code>coast</code>)
+and 4.4 (<code>throttle-map</code>) then measure the drag and the throttle, and settle the 5 times
+disagreement (TODO 52b): <a href="tests.html#stage-4-the-car-in-an-empty-lot">Every test</a>, stage 4, recorded with the lidar (4e).</p>
+<p>Next: the joystick, <a href="#a9b-the-joystick-on-stands">A9b</a>. At the end of the day, put it back: Ctrl-C everything; theirs again (<code>sudo systemctl start aav_serial_bridge</code>)
+only with the C++ on the ESP32 (6d), as the team decides.</p>
+<p><strong>Stop point:</strong> 3.1-3.8 and 3.2b pass. Anything that turned the wrong way: written down.</p>
+</section>
+<section class="card"><h2 id="a9b-the-joystick-on-stands">A9b · The joystick, on stands</h2>
+<p>Ben, 1 Nov: "We do still need a way to move the vehicle to get to our first test. Should
+we allow the joystick to have direct control like before? ... if the connection drops we
+stop?" <strong>Yes, through our stack, all on the Motor Pi</strong> (<code>machine:=motor_pi_alone</code>): the
+heartbeat is made beside the ESP32, so the ESP32 brakes when the Pi, the bridge or the
+wire stops. No Orin needed.</p>
+<pre class="highlight"><code class="language-text">joystick (USB, on the Pi) ─► joy_alive ─► teleop ─► twist_mux ─► ego ─► output mux ─► legacy bridge ─► ESP32
+                             silent 0.5 s  hold-to-   0.5 s       0.3 s   the heartbeat   0.3 s           brakes 100 ms
+                             frozen 2 s    drive      timeout     timeout counter         stale→brake     after it stops</code></pre>
+<p><strong>The joystick-alive check</strong> (<code>joy_alive</code>, TODO 74a) stops the joystick when it goes
+silent for 0.5 s (receiver unplugged) or its values freeze for 2 s while driving (a dead
+pad repeated by its receiver). It latches: release the trigger, press again.
+<code>/drivers/joy/alive</code> says <code>OK</code>, <code>WAITING</code>, <code>SILENT</code> or <code>FROZEN</code>, and why.</p>
+<p><strong>The Rust firmware only</strong> (A8 passed): the C++ has no timeout.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>You should see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Stands; the Kar-Tech stop in the e-stop person's hand. The Rust on the ESP32, <code>frame_version: 2</code></td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Theirs stopped: <code>aav_serial_bridge</code> inactive. The Orin <strong>not</strong> running <code>car orin</code> (two muxes would both drive)</td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td>On the Motor Pi: <code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=motor_pi_alone max_speed:=0.3</code></td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>The buttons and sticks: <code>~/aav-jazzy/aav.sh ros2 topic echo /drivers/joy/joy</code> (deadman: button 0; throttle: axis 1; e-stop: button 2)</td>
+<td>the numbers match; write down any that don't (TODO 74d), and change <code>teleop_twist_joy.yaml</code> and <code>joy_alive.yaml</code> together</td>
+</tr>
+<tr>
+<td>4b</td>
+<td>A second terminal: <code>~/aav-jazzy/aav.sh ros2 topic echo /drivers/joy/alive</code></td>
+<td><code>WAITING</code>, then <code>OK - idle</code> once the trigger was released</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Session 9's tests 3.1-3.9 with the joystick</td>
+<td>as there</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>The joystick-off test:</strong> hold the trigger, a little throttle, then <strong>turn the joystick off</strong> (its receiver still in)</td>
+<td>the wheels stop within 3 s; <code>alive</code> says <code>SILENT</code> or <code>FROZEN</code> (<a href="tests.html#3a-joy-the-joystick-on-stands">tests 3.J1-3.J3</a>). They keep going: <strong>e-stop</strong>, and no ground with the joystick</td>
+</tr>
+<tr>
+<td>6b</td>
+<td><strong>Unplug the receiver</strong> while driving, plug it in with the trigger held</td>
+<td>stops within 1 s (<code>SILENT</code>); stays stopped until the trigger is released and pressed</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Hold the stick still</strong> 10 s, then pinned fully forward 10 s</td>
+<td>write down when <code>FROZEN</code> comes. Pinned trips it after 2 s (release, press again). A still hand that trips it often: raise <code>frozen_after</code>; a pad whose receiver goes silent when off: <code>frozen_after: 0.0</code> is allowed</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="what-keeps-it-safe">What keeps it safe</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>With the Rust ESP32</th>
+<th>With the 2025-26 C++</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hold-to-drive: let go of the trigger, it stops</td>
+<td>✅ teleop_twist_joy, one zero on release</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>The joystick's USB receiver unplugged</td>
+<td>✅ no commands: twist_mux 0.5 s, ego 0.3 s, the bridge brakes</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><strong>The joystick turned off or out of range, its receiver still in</strong></td>
+<td>✅ on the bench: <code>joy_node</code> repeats the last state 20 times a second, so <code>joy_alive</code> stops it when the values freeze for 2 s while driving (<code>FROZEN</code>) or stop coming for 0.5 s (<code>SILENT</code>). <strong>Step 6 tests the real pad</strong></td>
+<td>✅ the same (it's in ROS)</td>
+</tr>
+<tr>
+<td>The Pi, the bridge or the serial wire stops</td>
+<td>✅ brakes 100 ms after the heartbeat stops (QEMU: 111-120 ms)</td>
+<td>❌ the last throttle stays: only the e-stop</td>
+</tr>
+<tr>
+<td>The network drops</td>
+<td>✅ nothing on the network: all on the Pi</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>A speed cap</td>
+<td>✅ ego's <code>max_speed:=0.3</code>, on the Pi</td>
+<td>✅ the same</td>
+</tr>
+<tr>
+<td>A <strong>throttle cap</strong> in the firmware</td>
+<td>⚠️ only the throttle's top (DAC 700 of 1023). The ESP32 can't see the speed, so it can only cap the throttle (TODO 74b)</td>
+<td>⚠️ the same</td>
+</tr>
+<tr>
+<td>The joystick's e-stop button</td>
+<td>✅ <code>/safety/estop</code>: the bridge brakes</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>The RC transmitter turned off</td>
+<td>✅ brakes within 0.1 s</td>
+<td>❌ no RC timeout</td>
+</tr>
+<tr>
+<td><strong>The Kar-Tech stop</strong> (the main stop)</td>
+<td>✅ hardware: what it cuts is S1</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table></div>
+<p>The 2025-26 path ("like before": <code>joy_to_ackermann</code> → <code>aav_serial_bridge</code> → the C++) has
+the deadman but <strong>no timeout anywhere</strong>: we don't use it.</p>
+<p><strong>Stop point:</strong> 1-7 pass, or why not written down.</p>
+</section>
+<section class="card"><h2 id="a10-the-ground-at-walking-pace">A10 · The ground, at walking pace</h2>
+<p><strong>Who:</strong> all five people. The car comes off the stands only when every box is ticked.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Before</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>☐</td>
+<td>A6 (the steering's ends), A7 (the brake), A8 (session 6c, 9a-9c) passed</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Session 9: 3.1-3.9 and 3.2b passed</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>A9b passed, <strong>the joystick-off test too</strong> (or only the keyboard drives)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>An empty lot; the safety driver in the seat; the e-stop person beside it, the Kar-Tech stop in hand</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>max_speed:=0.3</code>; recording (<code>record.sh --lidar ground</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>✍ Signed (approver): ________ at __:__ · Hardware lead: ________</code></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>You should see</th>
+<th>If not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Forward 2 m, at walking pace, then let go</td>
+<td>it stops by itself</td>
+<td>Kar-Tech stop</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The Kar-Tech stop, rolling slowly</td>
+<td>it stops; the distance written down</td>
+<td>no more ground today</td>
+</tr>
+<tr>
+<td>3</td>
+<td>10 m straight, slowly</td>
+<td>it drives straight (or the pull written down)</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>Then the car tests and the map: <a href="know-the-car.html">Know the car</a> (A11), bagged with the lidar.</p>
+</section>
+<section class="card"><h2 id="any-time-on-day-a-after-a5">Any time on Day A, after A5</h2>
+<p>These three need our stack (A5) and nothing else. One person each, beside the main line.</p>
+</section>
+<section class="card"><h2 id="session-5-the-camera-pi">Session 5: the camera Pi</h2>
+<p><strong>Who:</strong> one person, with the laptop. <strong>How long:</strong> 60 min. <strong>Bring:</strong> the checkerboard,
+2 phones. 🔒 C1: which address. The plan and the settings: <a href="camera-pipeline.html">camera pipeline</a>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>You should see</th>
+<th>If not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>ssh &lt;user&gt;@192.168.1.108</code>; <code>hostname; ip -br addr</code></td>
+<td><code>aav-cam1</code>; its addresses (.108, .102?)</td>
+<td>try .102. Write down which is wired</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Keep theirs: <code>systemctl status mediamtx</code>, then <code>sudo cp /usr/local/etc/mediamtx.yml /usr/local/etc/mediamtx.yml.2025-26</code></td>
+<td>the service, and its file's place</td>
+<td>the file is elsewhere: <code>status</code> names it; use that path</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>rpicam-hello --list-cameras</code></td>
+<td>2 cameras, 0 and 1</td>
+<td>one: ribbon loose? (N4). USB? <code>v4l2-ctl --list-devices</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Ours, from the laptop: <code>scp ros/sources/aav_camera_stream/pi/mediamtx.yml &lt;user&gt;@192.168.1.108:/tmp/</code>, then <code>ssh &lt;user&gt;@192.168.1.108 'sudo cp /tmp/mediamtx.yml /usr/local/etc/mediamtx.yml &amp;&amp; sudo systemctl restart mediamtx'</code></td>
+<td><code>systemctl status mediamtx</code>: active</td>
+<td>put theirs back (step 2's copy)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Which is left: in a browser, <code>http://192.168.1.108:8889/front_left</code>; cover the <strong>left</strong> lens with a hand</td>
+<td>the picture goes dark</td>
+<td>the right one went dark: swap <code>rpiCameraCamID</code> 0 and 1 in the file, step 4 again</td>
+</tr>
+<tr>
+<td>6</td>
+<td>The Orin decodes both: <code>~/aav-jazzy/aav.sh ros2 launch aav_camera_stream camera_stream.launch.py host:=192.168.1.108 decoder:=gst-nvidia detector:=none</code></td>
+<td><code>~/aav-jazzy/aav.sh ros2 topic echo /diagnostics</code>: <code>fps_in</code> 15 for each</td>
+<td>no <code>/usr/bin/gst-launch-1.0</code>: JetPack's GStreamer is missing, write it down</td>
+</tr>
+<tr>
+<td>7</td>
+<td>The Pi's CPU, both streams on: <code>top</code> on the Pi, then <code>vcgencmd measure_temp</code></td>
+<td>under 50% of the Pi; under 80 °C</td>
+<td>write down the numbers anyway</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Bitrate: <code>curl http://127.0.0.1:9997/v3/paths/list</code> on the Pi, twice, 10 s apart</td>
+<td><code>bytesSent</code> up about 2.5 MB each 10 s (2 Mbit/s)</td>
+<td></td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>The delay:</strong> a stopwatch on phone 1 in front of the camera, the browser view beside it; phone 2 films both</td>
+<td>the difference between the two times: under 150 ms. Do 3 photos</td>
+<td>write down what you got</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Calibration:</strong> the steps below, for <code>front_left</code>, then <code>front_right</code></td>
+<td><code>ros/sources/aav_camera_stream/config/calibrations/front_left.yaml</code> (and <code>front_right</code>) written; commit them at home</td>
+<td>no picture: the stream (step 6); save pictures as a backup (below)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Step 10, calibration:</p>
+<ol>
+<li>The printed checkerboard: 9x6, 25 mm squares (<code>pixi run calibrate-camera board</code>).
+   Measure one square with the ruler.</li>
+<li>On the laptop: <code>pixi run calibrate-camera front_left --host 192.168.1.108 --square &lt;measured, in m&gt;</code>.</li>
+<li>Someone moves the board slowly: near, far, the corners, tilted. Wait until the X, Y,
+   Size and Skew bars go green.</li>
+<li>CALIBRATE, then SAVE. Then the same for <code>front_right</code>.</li>
+<li>Backup, if the window shows no picture: <code>mkdir -p ~/aav-calib</code>, then
+   <code>pixi run ffmpeg -rtsp_transport tcp -i rtsp://192.168.1.108:8554/front_left -vf fps=1 -frames:v 30 ~/aav-calib/front_left_%02d.png</code></li>
+</ol>
+<p>At home: the delay goes in <code>orin.yaml</code>'s <code>camera_stream</code> <code>delay</code> (0.06 s today); commit
+the two calibration files (<code>docs/camera-calibration.md</code>). Until they're in, the stop-sign
+rule uses Gazebo's lens and the car stops too early.</p>
+<p><strong>Stop point:</strong> both streams at 15 fps on the Orin, the delay measured, both cameras calibrated.</p>
+</section>
 <section class="card"><h2 id="session-7-can-read-only">Session 7: CAN, read-only</h2>
 <p><strong>Who:</strong> one person, on the Orin. <strong>How long:</strong> 30 min. <strong>Bring:</strong> a multimeter.
 🔒 H3, H4, H7: the bitrate, the interface, what's on the bus. We send nothing.</p>
@@ -1331,7 +2238,7 @@ Their <code>foxglove-bridge</code> already holds port 8765 on the Orin, so ours 
 <tbody>
 <tr>
 <td>1</td>
-<td>Theirs, read-only: <code>pixi run layout-check ws://192.168.1.140:8765</code></td>
+<td>Theirs, read-only: <code>pixi run python3 tools/layout_check.py ws://192.168.1.140:8765</code></td>
 <td>their topics (Humble, domain 0); ours aren't there</td>
 <td></td>
 </tr>
@@ -1343,7 +2250,7 @@ Their <code>foxglove-bridge</code> already holds port 8765 on the Orin, so ours 
 </tr>
 <tr>
 <td>3</td>
-<td><code>pixi run layout-check ws://192.168.1.140:8766 --data</code></td>
+<td><code>pixi run python3 tools/layout_check.py ws://192.168.1.140:8766 --data</code></td>
 <td>every layout topic of the running parts served, and kB/s each</td>
 <td>missing ones: their part isn't running</td>
 </tr>
@@ -1363,175 +2270,6 @@ Their <code>foxglove-bridge</code> already holds port 8765 on the Orin, so ours 
 </table></div>
 <p>The map panel needs the internet for its tiles: offline it shows the dots on a blank map.</p>
 <p><strong>Stop point:</strong> a layout open on a laptop.</p>
-</section>
-<section class="card"><h2 id="session-9-the-first-drive-on-stands">Session 9: the first drive, on stands</h2>
-<p><strong>Who:</strong> the safety driver, the e-stop person, the laptop person. <strong>How long:</strong> 45 min.
-🔒 H1 and S1-S3. <strong>Wheels off the ground</strong>, the speed capped at <strong>0.3 m/s</strong>.</p>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>☐</th>
-<th>Before</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>☐</td>
-<td>all four wheels off the ground (session 1)</td>
-</tr>
-<tr>
-<td>☐</td>
-<td>the e-stop person ready; everyone knows what it cuts (S1)</td>
-</tr>
-<tr>
-<td>☐</td>
-<td>theirs stopped: <code>aav_serial_bridge</code> inactive. <strong>Never two drive paths</strong></td>
-</tr>
-<tr>
-<td>☐</td>
-<td>which ESP32 firmware: the Rust (session 6 passed) or the C++ (<strong>no timeout</strong>: test 3.9 then fails, as expected)</td>
-</tr>
-<tr>
-<td>☐</td>
-<td><code>legacy.yaml</code>'s <code>frame_version</code>: 2 with the Rust, 1 with the C++</td>
-</tr>
-<tr>
-<td>☐</td>
-<td>with the C++ (1): the bridge's log says <code>no-timeout lock ON</code>. twist_mux then holds every program (scripted, point, Nav2, AI); the keyboard and the actuator tests below still drive. Leave <code>allow_programs_without_timeout: false</code></td>
-</tr>
-<tr>
-<td>☐</td>
-<td>everyone knows: <strong>the throttle's strength is a guess.</strong> Two guesses disagree by 5 times (<a href="vehicle-model.html">the car's model</a>: full throttle holds 15 m/s by the drag guess, 3 m/s by the ESP32's open loop). 0.3 m/s asked may spin the wheels much faster: the e-stop person watches 3.2</td>
-</tr>
-</tbody>
-</table></div>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>Where</th>
-<th>Run</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>the Motor Pi</td>
-<td><code>~/aav-jazzy/aav.sh car motor_pi</code></td>
-</tr>
-<tr>
-<td>the Orin</td>
-<td><code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin max_speed:=0.3 gps:=false lidar:=false</code></td>
-</tr>
-<tr>
-<td>the laptop, each terminal</td>
-<td><code>export ROS_DOMAIN_ID=42</code>, then <code>pixi run keyboard</code>, and <code>pixi run hud</code></td>
-</tr>
-<tr>
-<td>the Orin, a second terminal</td>
-<td><code>~/aav-jazzy/aav.sh tools/record.sh stands</code> (session 10)</td>
-</tr>
-</tbody>
-</table></div>
-<p>The HUD's GO / STOP panel says whether the car may move, and why not. A latched gate:
-<code>pixi run gate-clear</code>; a latched watchdog (such as <code>hud LOST</code>): <code>pixi run watchdog-clear</code>.</p>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>#</th>
-<th>Test</th>
-<th>Expect</th>
-<th>If not</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>3.1</td>
-<td>Nothing pressed</td>
-<td>wheels still; the HUD shows 0</td>
-<td>e-stop</td>
-</tr>
-<tr>
-<td>3.2</td>
-<td>Forward, gently</td>
-<td>the drive wheels turn <strong>forward</strong>, slowly</td>
-<td>backwards: write it down (<code>legacy_protocol.py</code>), not fixed at the car. <strong>Fast:</strong> e-stop, write down the speed (3.12's tachometer), and no ground driving until tests 4.2 and 4.4</td>
-</tr>
-<tr>
-<td>3.3</td>
-<td>Left</td>
-<td>the front wheels turn <strong>left</strong></td>
-<td>right: <code>steering_sign</code> (Q2)</td>
-</tr>
-<tr>
-<td>3.4</td>
-<td>Let go of the key</td>
-<td>slows to 0 within 0.3 s</td>
-<td></td>
-</tr>
-<tr>
-<td>3.5</td>
-<td>The HUD's e-stop button</td>
-<td>brakes at once; nothing moves until <code>pixi run estop-clear</code></td>
-<td></td>
-</tr>
-<tr>
-<td>3.6</td>
-<td>Stop the keyboard program</td>
-<td>the bridge brakes: its commands go stale</td>
-<td></td>
-</tr>
-<tr>
-<td>3.7</td>
-<td>Ctrl-C the Motor Pi's bridge</td>
-<td>a last stop frame</td>
-<td></td>
-</tr>
-<tr>
-<td>3.8</td>
-<td>The Kar-Tech e-stop</td>
-<td>everything stops</td>
-<td></td>
-</tr>
-<tr>
-<td>3.9</td>
-<td>Unplug the Motor Pi's serial cable while driving</td>
-<td>the Rust: brakes within 200 ms. The C++: it doesn't (S3)</td>
-<td></td>
-</tr>
-<tr>
-<td>3.10</td>
-<td><code>pixi run actuator-test steer-sweep --stands</code> (the laptop)</td>
-<td>it asks each wheel angle: the protractor</td>
-<td></td>
-</tr>
-<tr>
-<td>3.11</td>
-<td><code>pixi run actuator-test steer-centre --stands</code></td>
-<td>under 1°, or the offset written down</td>
-<td></td>
-</tr>
-<tr>
-<td>3.12</td>
-<td>Wheel speed: <code>/vehicle/odom</code> against a phone tachometer app</td>
-<td>within 10%</td>
-<td></td>
-</tr>
-<tr>
-<td>3.P</td>
-<td><code>pixi run preflight --no-drive --skip steering gps lidar</code> (the Orin, ssh + tmux)</td>
-<td>every sensor line PASS; nothing moves</td>
-<td>a FAIL names the sensor: its driver, its cable, its rate</td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>The preflight's drive</strong> (speed up, hold, brake, steer, every sensor at once) is refused
-on the car today: the wheel sensors are on the front, the motor drives the rear, so on
-stands nothing measures the spinning wheels (TODO 49b). Once a rear-wheel speed exists
-(<code>vehicle.yaml</code> <code>speed_wheels: rear</code>): <code>pixi run preflight --skip steering gps lidar</code>,
-with the e-stop person and someone on the rear wheels' tachometer (<a href="actuator-tests.html#the-preflight-on-stands">the preflight</a>).</p>
-<p><strong>Not today: the car on the ground.</strong> That waits for tests 4.2 (<code>coast</code>) and 4.4 (<code>throttle-map</code>): they measure the drag and the throttle, and settle the 5 times disagreement (TODO 52b).</p>
-<p>Then put it back: Ctrl-C everything; theirs again (<code>sudo systemctl start aav_serial_bridge</code>)
-only with the C++ on the ESP32 (6d), as the team decides.</p>
-<p><strong>Stop point:</strong> 3.1-3.8 pass. Anything that turned the wrong way: written down.</p>
 </section>
 <section class="card"><h2 id="session-10-what-to-record">Session 10: what to record</h2>
 <p><strong>Who:</strong> the laptop person. <strong>All day.</strong> These feed the sim-versus-real report (PLAN T2.7),
@@ -1560,9 +2298,9 @@ the sensors' real noise (T2.4) and the replay (T2.5). Bags stay out of git.</p>
 </tr>
 <tr>
 <td>3</td>
-<td><strong>The stands drive</strong> (session 9)</td>
-<td>on the Orin: <code>~/aav-jazzy/aav.sh tools/record.sh stands</code></td>
-<td>ego and the actuator model against real</td>
+<td><strong>Every session of ours</strong>, stands too (A6-A11)</td>
+<td>on the Orin: <code>~/aav-jazzy/aav.sh tools/record.sh --lidar &lt;session&gt;</code></td>
+<td>ego and the actuator model against real; the lot's map</td>
 </tr>
 <tr>
 <td>4</td>
@@ -1592,6 +2330,255 @@ the sensors' real noise (T2.4) and the replay (T2.5). Bags stay out of git.</p>
 </table></div>
 <p>Copy home: <code>rsync -a &lt;user&gt;@192.168.1.140:aav-jazzy/aav/bags/ ~/aav-bags/jetson/</code>, and
 <code>~/aav-bags/</code> from LOCALIZATION and the Orin the same way.</p>
+</section>
+<section class="card"><h2 id="day-b-upgrades-and-the-reflash">Day B: upgrades and the reflash</h2>
+<p><strong>Not before Day A is done, and a restore is proven (B1).</strong> Each machine as
+<a href="car-setup.html">Car setup</a> says; this page says the order. Every step is ✍: an upgrade
+ends the 2025-26 software on that computer, and the backup is the only way back.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What</th>
+<th>Before it</th>
+<th>✍</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B1</td>
+<td><strong>A restore, proven</strong>: one Pi's card image written to a <strong>spare</strong> card (Raspberry Pi Imager → Use custom), booted in that Pi</td>
+<td>it boots, answers <code>ssh</code>, and runs as before. Then its own card back in</td>
+<td><code>✍ ________ at __:__</code></td>
+</tr>
+<tr>
+<td>B2a</td>
+<td>The dash: <code>upgrade</code> (<a href="car-setup.html#step-2-the-ubuntu-2204-pis-to-2404">Car setup, step 2</a>)</td>
+<td>its card image GOOD (A2)</td>
+<td><code>✍ ________ at __:__</code></td>
+</tr>
+<tr>
+<td>B2b</td>
+<td>The camera Pis: <code>apt full-upgrade</code> only (<a href="car-setup.html#step-3-the-pis-on-raspberry-pi-os">step 3</a>)</td>
+<td>their card images GOOD</td>
+<td><code>✍ ________ at __:__</code></td>
+</tr>
+<tr>
+<td>B2c</td>
+<td>The Motor Pi: <code>upgrade --after-esp32</code></td>
+<td>the Rust ESP32 passed session 6; its card image GOOD</td>
+<td><code>✍ ________ at __:__</code></td>
+</tr>
+<tr>
+<td>B2d</td>
+<td>LOCALIZATION: <strong>not yet</strong>. <code>car_setup.sh</code> refuses until a machine file runs its IMU and GPS</td>
+<td>that machine file (TODO 75)</td>
+<td></td>
+</tr>
+<tr>
+<td>B3</td>
+<td>The Orin: its full image, then the reflash</td>
+<td>the box below</td>
+<td><code>✍ ________ at __:__</code></td>
+</tr>
+<tr>
+<td>B4</td>
+<td>The lab desktop: its update</td>
+<td>B3 done</td>
+<td><code>✍ ________ at __:__</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="b3-the-orin-its-image-then-the-reflash">B3 · The Orin: its image, then the reflash</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Before starting</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>☐</td>
+<td><strong>JetPack 7.2 supports Jetson AGX Orin</strong>: NVIDIA's 7.2 release notes, read today. The result, and where it says so: <strong><em>_</em></strong>_ (no: stop, stay on JetPack 6)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Which Orin (W7: 32 or 64 GB), and its module's part number (<a href="platforms.html#moving-the-orin-to-jetpack-72">Platforms</a>)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>SDK Manager's host Ubuntu for 7.2: the lab desktop has it, <strong>as it is now</strong> (it stays frozen)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>The hardware lead's OK</td>
+</tr>
+</tbody>
+</table></div>
+<ol>
+<li>The full disk image: <a href="#11b-in-the-lab-the-orins-full-image">session 11b</a>, on the lab desktop.</li>
+<li>Its restore rehearsed, or at least the image's size and files checked.</li>
+<li>The reflash: <a href="car-setup.html#step-6-the-orin-to-jetpack-72">Car setup, step 6</a>.</li>
+</ol>
+</section>
+<section class="card"><h2 id="b4-the-lab-desktop-stays-frozen">B4 · The lab desktop stays frozen</h2>
+<p>The lab desktop is the Orin's flashing host, and holds its image. <strong>Don't upgrade its
+OS until the Orin's reflash is done</strong> and the Orin runs: an upgrade could stop SDK Manager
+or <code>l4t_backup_restore.sh</code> working. Then: <a href="car-setup.html#step-7-the-lab-desktop">Car setup, step 9</a>.</p>
+</section>
+<section class="card"><h2 id="session-11-the-labs-ubuntu-desktop">Session 11: the lab's Ubuntu desktop</h2>
+<p>The team's x86 Ubuntu desktop with the NVIDIA card <strong>stays in the lab</strong>: it already runs
+CARLA. It's also the one computer that can take a <strong>full disk image of the Orin</strong> (a Mac
+can't). At the drive, Ben's MacBook is the ground station: it does everything else here.
+<strong>Its OS stays as it is until the Orin's reflash is done</strong> (<a href="#b4-the-lab-desktop-stays-frozen">B4</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Job</th>
+<th>Where</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Rehearse car day in CARLA</strong></td>
+<td>the lab</td>
+<td>the week before (11a)</td>
+</tr>
+<tr>
+<td><strong>The Orin's full disk image</strong> (<code>l4t_backup_restore.sh</code>)</td>
+<td>the lab, the Orin beside the desktop</td>
+<td>Day B, before the reflash (11b)</td>
+</tr>
+<tr>
+<td>Reflash the Orin with SDK Manager (Q24)</td>
+<td>the lab</td>
+<td>Day B, <a href="#b3-the-orin-its-image-then-the-reflash">B3</a>: after the image, with the hardware lead's OK</td>
+</tr>
+<tr>
+<td>Record, replay, build NDT's map at the drive</td>
+<td>Ben's MacBook</td>
+<td>the day (11c)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="11a-in-the-lab-the-week-before">11a. In the lab, the week before</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>You should see</th>
+<th>If not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Which CARLA: <code>docker images \| grep carla</code>, or the folder's name (<code>CarlaUE4</code> = 0.9.x, <code>CarlaUnreal</code> = 0.10); <code>lsb_release -d; nvidia-smi</code></td>
+<td>the version, Ubuntu's, the GPU and its memory: write them in the machines table</td>
+<td>0.10 needs 16 GB of video memory; Carleton's map needs 0.9.16 (<a href="carla.html">CARLA</a>)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Clone ecolo-av, then <code>pixi run build</code> and <code>pixi run test</code></td>
+<td>all green</td>
+<td>as on any laptop (<a href="getting-started.html">Getting started</a>)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>CARLA's server, headless (<a href="carla.html">CARLA</a>, steps 1-2), its Python client the same version</td>
+<td>the server listens on 2000</td>
+<td>the client must match the server</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>The rehearsal:</strong> <code>pixi run carla-car host:=127.0.0.1</code>, then the car day's own steps: the keyboard, a scripted drive, a Nav2 goal, a goal behind (the U-turn)</td>
+<td>the car drives each, in CARLA</td>
+<td>write down what failed: fix it before the day</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="11b-in-the-lab-the-orins-full-image">11b. In the lab: the Orin's full image</h3>
+<p>Only with the Orin in the lab beside the desktop, and the hardware lead's OK: the Orin
+reboots into recovery mode and is off for the whole copy. Not possible at the drive.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>You should see</th>
+<th>If not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>NVIDIA's L4T BSP <strong>matching the Orin's release</strong> (session 4a, step 2: R36.4.x), unpacked on the desktop; then <code>sudo ./tools/l4t_flash_prerequisites.sh</code> in it. Read <code>tools/backup_restore/README</code> there</td>
+<td><code>l4t_backup_restore.sh</code></td>
+<td>NVIDIA's Jetson Linux archive</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Room for the image: the Orin's disk size plus 10 %</td>
+<td>free space, or an external drive</td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td>The home folder and <code>/etc</code> copied first (session 4a, 4-5)</td>
+<td>done</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>USB-C from the desktop to the Orin's flashing port; the Orin into <strong>recovery mode</strong> (its buttons: the dev kit's guide)</td>
+<td><code>lsusb</code> shows NVIDIA (<code>0955:</code>)</td>
+<td>a data cable, the right port</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>sudo ./tools/backup_restore/l4t_backup_restore.sh -e &lt;disk&gt; -b jetson-agx-orin-devkit</code> (<code>&lt;disk&gt;</code>: <code>mmcblk0</code> built-in, <code>nvme0n1</code> an SSD: 4a, step 3's <code>df</code>). The README is the authority</td>
+<td>every partition copied (30-90 min)</td>
+<td>the BSP's version must match the Orin's</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Reboot the Orin normally; <code>ssh</code> in; the image onto the encrypted backup drive too</td>
+<td>it boots as before; two copies</td>
+<td>the hardware lead</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="11c-at-the-drive-bens-macbook">11c. At the drive: Ben's MacBook</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Copy each recording off the Orin as it ends (session 10's <code>rsync</code>)</td>
+<td>the recordings in two places</td>
+</tr>
+<tr>
+<td>2</td>
+<td>After the lot's recording (tests.md 4.19): <code>pixi run ndt-map build ... --poses /localization/odom/global</code></td>
+<td><strong>NDT's map before leaving</strong>: if it blurs, record again while the car is there</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Back in the lab: play the recordings on the desktop too</td>
+<td>its screen, and CARLA beside it</td>
+</tr>
+</tbody>
+</table></div>
 </section>
 <section class="card"><h2 id="before-you-leave-the-car">Before you leave the car</h2>
 <div class="table-wrap"><table>
@@ -1644,7 +2631,7 @@ the sensors' real noise (T2.4) and the replay (T2.5). Bags stay out of git.</p>
 </tr>
 <tr>
 <td>The car's linear model, refit</td>
-<td><code>pixi run vehicle-model</code>: new poles and margins from the measured lags (<a href="vehicle-model.html">The car as a linear model</a>)</td>
+<td><code>pixi run python3 tools/vehicle_model.py</code>: new poles and margins from the measured lags (<a href="vehicle-model.html">The car as a linear model</a>)</td>
 </tr>
 <tr>
 <td>The answers</td>
@@ -1657,7 +2644,7 @@ the sensors' real noise (T2.4) and the replay (T2.5). Bags stay out of git.</p>
 </tbody>
 </table></div></section>
 <nav class="prevnext"><a class="prev" href="audit-questions.html"><small>Previous</small>← Audit questions</a>
-<a class="next" href="tests.html"><small>Next</small>Every test →</a></nav>
+<a class="next" href="car-setup.html"><small>Next</small>Car setup →</a></nav>
 </main>
 <footer>Source: <code>docs/car-day.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

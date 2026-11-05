@@ -16,6 +16,11 @@
   With lidar:=true, a roof lidar too, bridged by aav_gazebo/config/bridge_lidar.yaml:
 
     /aav/lidar/points         gz.msgs.PointCloudPacked -> /sensors/lidar/points
+
+  With chase_camera:=true, a camera behind and above the car, bridged by
+  aav_gazebo/config/bridge_chase.yaml (for tools/foxglove/cockpit.json):
+
+    /aav/chase_camera/image   gz.msgs.Image          -> /vehicle/gazebo/chase_camera/image_raw
 -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
@@ -133,6 +138,32 @@
             <stddev>0.03</stddev>
           </noise>
         </lidar>
+      </sensor>
+    </gazebo>
+  </xacro:if>
+
+  <!-- A chase camera, with chase_camera:=true: Gazebo's picture of the car, so Lichtblick's
+       cockpit layout shows it without Gazebo's window. Fixed to base_link, 7 m behind the
+       rear axle and 3.5 m up, looking down 0.28 rad (at the road 5 m ahead of the axle),
+       70 degrees across. 640 x 360 at 10 Hz, to cost Gazebo little (docs/foxglove.md).
+       No frame of its own: nothing but the cockpit reads it. -->
+  <xacro:if value="$(arg chase_camera)">
+    <gazebo reference="base_link">
+      <sensor name="chase_camera" type="camera">
+        <pose>-7.0 0 3.5 0 0.28 0</pose>
+        <always_on>1</always_on>
+        <update_rate>10</update_rate>
+        <topic>/aav/chase_camera/image</topic>
+        <gz_frame_id>base_link</gz_frame_id>
+        <camera>
+          <horizontal_fov>${radians(70)}</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>360</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip><near>0.5</near><far>200</far></clip>
+        </camera>
       </sensor>
     </gazebo>
   </xacro:if>

@@ -1,0 +1,23 @@
+# The first moves: the Motor Pi alone drives the car, a person on the joystick (TODO 74,
+# docs/car-day.md, A9b). For the days before the Orin runs our stack (its
+# reflash), and to drive the car to the first test. Never with `car orin` running too:
+# two muxes and two egos on domain 42 would both drive.
+#
+#   joystick (USB on this Pi) -> teleop -> twist_mux -> ego -> output mux -> legacy_uart_bridge
+#                                                                 (the heartbeat, made here)
+#
+# Everything is on this Pi, so the Orin's heartbeat is this Pi's: with the Rust ESP32
+# firmware (frame_version: 2), the ESP32 brakes 100 ms after the Pi, its bridge or the
+# serial wire stops. The C++ firmware has no timeout: stands only.
+#
+# The geofence and the sensor watchdog come with the mux: with no GPS or EKF here they
+# hold every program (scripted, Nav2...), never a person. So only the joystick (and the
+# keyboard, and the RC through ROS) drives.
+parts:
+  mux: true
+  ego: true
+  stop_signs: true        # one watcher per car, next to the mux (test_car_launch.py): with no
+                          # camera here it sees nothing, and it never holds a person
+  teleop: true            # the joystick's USB receiver is plugged into this Pi (21 Oct audit)
+  legacy_uart: true       # the ESP32 on /dev/ttyAMA0 (H1)
+  legacy_encoder: false   # see motor_pi.yaml

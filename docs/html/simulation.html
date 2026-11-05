@@ -7,7 +7,7 @@
 <!-- Generated from docs/simulation.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Simulation: Gazebo, replay, and when nothing moves</h1>
-<div class="meta">47 min read · 8 sections</div></header>
+<div class="meta">48 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -229,7 +233,7 @@ pixi run sim world:=road         # the bench's road, for the car's camera and ra
 </tr>
 </tbody>
 </table></div>
-<p><strong>Debugging Gazebo itself:</strong> its source is in <code>vendor/gazebo/</code> (<code>pixi run vendor</code>), at the
+<p><strong>Debugging Gazebo itself:</strong> its source is in <code>vendor/gazebo/</code> (<code>pixi run get vendor</code>), at the
 releases we run. <code>vendor/README.md</code> says which library does each job: the steering, the
 sensors, the physics, the ROS bridge.</p>
 <h3 id="what-gazebo-simulates">What Gazebo simulates</h3>
@@ -318,6 +322,14 @@ real-time factor at 0.98-0.99.</p>
 <td>10 Hz</td>
 <td>3 cm</td>
 <td>road and test_lot; on by default, <code>lidar:=false</code> drops it</td>
+</tr>
+<tr>
+<td>Chase camera (Gazebo's view, not a sensor)</td>
+<td><code>/aav/chase_camera/image</code></td>
+<td><code>/vehicle/gazebo/chase_camera/image_raw</code>, and its JPEG <code>.../compressed</code>, for Lichtblick's <a href="foxglove.html#cockpit">cockpit</a></td>
+<td>10 Hz</td>
+<td>none</td>
+<td>road and test_lot; on by default, <code>chase_camera:=false</code> drops it</td>
 </tr>
 <tr>
 <td>Where the car really is</td>
@@ -683,7 +695,7 @@ real drives. In Gazebo, raise it for ego and Nav2 together:</p>
 </tr>
 </tbody>
 </table></div>
-<p>If you reopen Gazebo's window (<code>pixi run gz-window</code>), its camera follows the car again.</p>
+<p>If you reopen Gazebo's window (<code>pixi run tools/ros.sh tools/gz_window.sh</code>), its camera follows the car again.</p>
 </section>
 <section class="card"><h2 id="the-road-world-the-cars-whole-graph">The road world: the car's whole graph</h2>
 <p>At home there is no car, so Gazebo runs everything the car runs. The road world is the

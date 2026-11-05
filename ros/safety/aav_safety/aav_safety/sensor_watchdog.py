@@ -34,7 +34,7 @@ Publishes   safety/sensor_watchdog/lock   std_msgs/Bool, at rate_hz: true while 
                                           longest gap in that second and ever
 Serves      safety/sensor_watchdog/clear  std_srvs/Trigger: forget a latched GPS jump,
                                           wheel disagreement or lost HUD (LOST), once a
-                                          person has checked (pixi run watchdog-clear)
+                                          person has checked (pixi run clear watchdog)
 
 What each check means is in watchdog.py (no ROS there). Each change of state is logged
 once: a warning when an input goes wrong, info when it is back.

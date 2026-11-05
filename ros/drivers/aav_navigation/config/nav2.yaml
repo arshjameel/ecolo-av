@@ -434,7 +434,7 @@ planner_server:
     # The launch file copies the chosen block into GridBased, the name the behaviour trees
     # ask for, and drops the rest (vehicle.nav2_tuned), as it does with the MPPI block.
     # State Lattice: car-shaped moves from our own primitives file, made for the car's
-    # turning radius and the maps' 25 cm cells (pixi run lattice-primitives). Its radius
+    # turning radius and the maps' 25 cm cells (pixi run python3 tools/lattice_primitives.py). Its radius
     # comes from that file. lattice_filepath and allow_reverse_expansion (reversing:=true)
     # are set by the launch file.
     Lattice:

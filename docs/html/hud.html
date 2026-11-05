@@ -7,7 +7,7 @@
 <!-- Generated from docs/hud.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The HUD (in-car screen)</h1>
-<div class="meta">48 min read · 6 sections</div></header>
+<div class="meta">65 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -94,7 +98,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a class="here" href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-hud-in-rust-raylib">The HUD in Rust (raylib)</a><a href="#the-map-window-big-screen">The map window (big screen)</a><a href="#the-debug-hud">The debug HUD</a><a href="#the-hardware-panel">The hardware panel</a><a href="#the-flutter-app-2025-26-archived">The Flutter app (2025-26): archived</a><a href="#the-place-database">The place database</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-hud-in-rust-raylib">The HUD in Rust (raylib)</a><a href="#the-map-window-big-screen">The map window (big screen)</a><a href="#themes-the-screens-colours">Themes: the screens&#x27; colours</a><a href="#the-debug-hud">The debug HUD</a><a href="#the-hardware-panel">The hardware panel</a><a href="#the-little-robot-easter-egg">The little robot (easter egg)</a><a href="#the-flutter-app-2025-26-archived">The Flutter app (2025-26): archived</a><a href="#the-place-database">The place database</a></nav>
 <div class="lead"><p>Four raylib programs in one package, <code>ros/hud/aav_hud</code>, each also its own ROS node:</p>
 <div class="table-wrap"><table>
 <thead>
@@ -132,6 +136,7 @@
 </tr>
 </tbody>
 </table></div>
+<p>An easter egg hides in three of them: <a href="#the-little-robot-easter-egg">the little robot</a>.</p>
 <p><strong>Two screens for testing (Ben, 29 Oct evening):</strong> "one screen just to test all the
 sensors and operate all the actuators and another screen to show off the voxels". The
 seeing screen is <code>debug_hud</code>; the hardware screen is <code>hw_panel</code>. Design:
@@ -145,7 +150,7 @@ a second program. Each opens full screen on its own monitor at boot:
 <a href="car-screens.html">The two screens</a>.</p></div>
 <section class="card"><h2 id="the-hud-in-rust-raylib">The HUD in Rust (raylib)</h2>
 <p><code>ros/hud/aav_hud</code>: one window, which is also the ROS node <code>hud</code>.</p>
-<p><img alt="The driving screen, with pretend data (--demo)" src="../img/hud-raylib.png" /></p>
+<p><img alt="The driving screen in Initial D, with pretend data (--demo)" src="../img/hud-initial-d.png" /></p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -210,13 +215,13 @@ one colour:</p>
 </tr>
 </tbody>
 </table></div>
-<p>Taken with <code>pixi run hud-demo --screenshot FILE --screenshot-after 50</code> (STOP) and <code>37.5</code>
+<p>Taken with <code>pixi run hud --demo --screenshot FILE --screenshot-after 50</code> (STOP) and <code>37.5</code>
 (AUTO STOP): the demo goes round GO, WAIT, AUTO STOP and STOP every minute.</p>
 <pre class="highlight"><code class="language-text"> +-------------------------------+   +-------------------------------+
  |  (tick)   GO                  |   |  (stop    STOP                |
  |           all REAL            |   |   sign)   GPS is SIM          |
  |           the car may move    |   |           clear: pixi run     |
- +-------------------------------+   |           gate-clear          |
+ +-------------------------------+   |           clear gate          |
         green                        +-------------------------------+
                                             red</code></pre>
 <div class="table-wrap"><table>
@@ -270,13 +275,13 @@ one colour:</p>
 <td>1</td>
 <td>the car's e-stop (<code>/vehicle/status</code>)</td>
 <td>E-STOP ON</td>
-<td>clear: pixi run estop-clear</td>
+<td>clear: pixi run clear estop</td>
 </tr>
 <tr>
 <td>2</td>
 <td>the output mux, latched (<a href="sources-and-targets.html">sources and targets</a>)</td>
 <td>GPS is SIM, 2 sources: IMU, sensor mux wants SIM...</td>
-<td>clear: pixi run gate-clear</td>
+<td>clear: pixi run clear gate</td>
 </tr>
 <tr>
 <td>3</td>
@@ -294,7 +299,7 @@ one colour:</p>
 <td>5</td>
 <td>the sensor watchdog's lock: its first input that stops</td>
 <td>GPS STALE, HUD LOST, WHEELS DISAGREE...</td>
-<td>people can still drive; latched ones: clear: pixi run watchdog-clear</td>
+<td>people can still drive; latched ones: clear: pixi run clear watchdog</td>
 </tr>
 <tr>
 <td>6</td>
@@ -324,7 +329,7 @@ one colour:</p>
 <li><code>--demo</code> walks through GO, WAIT, AUTO STOP (the GPS silent) and STOP (a SIM camera).</li>
 </ul>
 <h3 id="run-it">Run it</h3>
-<pre class="highlight"><code class="language-bash">pixi run hud-demo                  # pretend data: no ROS, no car, any Mac
+<pre class="highlight"><code class="language-bash">pixi run hud --demo                  # pretend data: no ROS, no car, any Mac
 pixi run build &amp;&amp; pixi run hud     # the real node (ros2 launch aav_hud hud.launch.py)
 pixi run hud fullscreen:=true      # full screen; F11 switches too
 pixi run hud fullscreen:=true monitor:=HDMI-2   # on that monitor, by name or number</code></pre>
@@ -401,7 +406,7 @@ pixi run hud fullscreen:=true monitor:=HDMI-2   # on that monitor, by name or nu
    one dropout in the grace: forgiven      any dropout: hud LOST, latched
    (held only while it lasts)              (held even once it beats again)
 
- a person checks the screen ──► pixi run watchdog-clear ──► Nav2 may drive</code></pre>
+ a person checks the screen ──► pixi run clear watchdog ──► Nav2 may drive</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -423,7 +428,7 @@ pixi run hud fullscreen:=true monitor:=HDMI-2   # on that monitor, by name or nu
 <td>the second dropout latches</td>
 </tr>
 <tr>
-<td><code>pixi run watchdog-clear</code></td>
+<td><code>pixi run clear watchdog</code></td>
 <td>Nav2 drives again, if the HUD beats; the grace starts again</td>
 </tr>
 <tr>
@@ -526,7 +531,7 @@ in <code>aav_safety</code> <code>watchdog.py</code>, with tests. The HUD shows i
 </tr>
 <tr>
 <td>The GO / STOP panel on screen (24 Oct)</td>
-<td>✅ seen: Ben ran <code>pixi run hud-demo --screenshot docs/img/hud-gate.png</code> (GO, green, "all REAL"; the picture above). STOP and AUTO STOP seen too (24 Oct, the pictures above)</td>
+<td>✅ seen: Ben ran <code>pixi run hud --demo --screenshot docs/img/hud-gate.png</code> (GO, green, "all REAL"; the picture above). STOP and AUTO STOP seen too (24 Oct, the pictures above)</td>
 </tr>
 <tr>
 <td>The HUD latch (24 Oct, <code>aav_safety</code> tests)</td>
@@ -698,7 +703,7 @@ Nav2.</p>
 </tbody>
 </table></div>
 <h3 id="run-it_1">Run it</h3>
-<pre class="highlight"><code class="language-bash">pixi run map-demo                          # pretend data: no ROS, no car
+<pre class="highlight"><code class="language-bash">pixi run map --demo                          # pretend data: no ROS, no car
 pixi run build &amp;&amp; pixi run map             # the real node (ros2 launch aav_hud map.launch.py)
 pixi run sim world:=test_lot map:=true     # Gazebo, Nav2 and the map window together
 pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor</code></pre>
@@ -785,7 +790,7 @@ and its path sit on real streets. It works with no internet: the map is a file.<
 </thead>
 <tbody>
 <tr>
-<td><code>pixi run get-street-map</code></td>
+<td><code>pixi run get street-map</code></td>
 <td>40 MB into <code>maps/streets/ottawa.pmtiles</code> (git ignores <code>maps/</code>)</td>
 </tr>
 <tr>
@@ -806,11 +811,11 @@ and its path sit on real streets. It works with no internet: the map is a file.<
 </tr>
 <tr>
 <td>Newer streets</td>
-<td><code>STREET_MAP_BUILD=latest pixi run get-street-map</code> (delete the old file first; no checksum then)</td>
+<td><code>STREET_MAP_BUILD=latest pixi run get street-map</code> (delete the old file first; no checksum then)</td>
 </tr>
 </tbody>
 </table></div>
-<p>No file: the window still runs, and says <strong>No street map: pixi run get-street-map</strong>.</p>
+<p>No file: the window still runs, and says <strong>No street map: pixi run get street-map</strong>.</p>
 <h4 id="licence-and-credit">Licence and credit</h4>
 <div class="table-wrap"><table>
 <thead>
@@ -1138,7 +1143,7 @@ a bug.</p>
 <tbody>
 <tr>
 <td>File</td>
-<td><code>maps/places/ottawa.db</code> (<code>places</code> in <code>config/map.yaml</code>, or <code>--places FILE</code>): <code>pixi run get-places</code></td>
+<td><code>maps/places/ottawa.db</code> (<code>places</code> in <code>config/map.yaml</code>, or <code>--places FILE</code>): <code>pixi run get places</code></td>
 </tr>
 <tr>
 <td>Opened</td>
@@ -1246,6 +1251,356 @@ a bug.</p>
 <p>The sim's datum is the placeholder near Carleton, so in Gazebo "University Drive" lands
 inside the test lot. On the car, the datum is the real test site.</p>
 </section>
+<section class="card"><h2 id="themes-the-screens-colours">Themes: the screens' colours</h2>
+<p>All four screens share one set of colours, a <strong>theme</strong>: the HUD, the map window, the
+debug screen and the hardware panel.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Date</th>
+<th>What changed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 Nov</td>
+<td>Ben found the old look "kind of ugly": too many bright primary colours. Soft Catppuccin colours, <strong>frosted glass</strong> panels</td>
+</tr>
+<tr>
+<td>2 Nov</td>
+<td>"Something nicer than Catppuccin": Ben chose <strong>Initial D red and black</strong>, on every screen. Now the default</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Before</th>
+<th>Mocha (1 Nov)</th>
+<th><strong>Initial D (2 Nov, the default)</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HUD</td>
+<td><img alt="Before" src="../img/hud-before-theme.png" /></td>
+<td><img alt="Mocha" src="../img/hud-raylib.png" /></td>
+<td><img alt="Initial D" src="../img/hud-initial-d.png" /></td>
+</tr>
+<tr>
+<td>Map</td>
+<td><img alt="Before" src="../img/map-before-theme.png" /></td>
+<td><img alt="Mocha" src="../img/map-streets-demo.png" /></td>
+<td><img alt="Initial D" src="../img/map-initial-d.png" /></td>
+</tr>
+<tr>
+<td>Debug screen</td>
+<td><img alt="Before" src="../img/debug-hud-before-theme.png" /></td>
+<td><img alt="Mocha" src="../img/debug-hud-seeing.png" /></td>
+<td><img alt="Initial D" src="../img/debug-hud-initial-d.png" /></td>
+</tr>
+<tr>
+<td>Hardware panel</td>
+<td><img alt="Before" src="../img/hw-panel-before-theme.png" /></td>
+<td><img alt="Mocha" src="../img/hw-panel-demo.png" /></td>
+<td><img alt="Initial D" src="../img/hw-panel-initial-d.png" /></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-themes">The themes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Theme</th>
+<th>When</th>
+<th>Picture</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>initial_d</code> (<strong>default</strong>, every screen)</td>
+<td>the car, day or night: black, white and Carleton's red</td>
+<td>the "Initial D" pictures above</td>
+</tr>
+<tr>
+<td><code>mocha</code></td>
+<td>night, and glare in the cabin: dark and soft</td>
+<td>the "Mocha" pictures above</td>
+</tr>
+<tr>
+<td><code>latte</code></td>
+<td>daytime: light</td>
+<td><img alt="Latte HUD" src="../img/hud-latte.png" /> <img alt="Latte map" src="../img/map-latte.png" /> <img alt="Latte debug screen" src="../img/debug-hud-latte.png" /> <img alt="Latte hardware panel" src="../img/hw-panel-latte.png" /></td>
+</tr>
+</tbody>
+</table></div>
+<p>Mocha and Latte are <a href="https://catppuccin.com">Catppuccin</a>'s palettes (MIT licence), with
+its official colour values. The code still accepts <code>calm</code>, an old name for a copy of
+Mocha: no Calm theme is coming (Ben, 3 Nov).</p>
+<h3 id="initial-d-what-each-screen-looks-like">Initial D: what each screen looks like</h3>
+<p>A tribute to the arcade gauges of Initial D, in Carleton's red (RGB 233, 28, 36, from
+Carleton's logo guide). Sharp, not glass: black panels, thin white edges, small corners,
+no glow.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Screen</th>
+<th>In <code>initial_d</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HUD</td>
+<td>the speed as an arcade gauge (white ticks, a red needle, red redline blocks), 7-segment digits, our logo, a faint car in lines behind</td>
+</tr>
+<tr>
+<td>Map</td>
+<td>a night street map in greys; highways dark red; Carleton's campus a faint red; Nav2's plan <strong>white</strong>, the street route <strong>red</strong>; black boxes with white edges; the faint car at the foot of the right panel</td>
+</tr>
+<tr>
+<td>Debug screen</td>
+<td>black 3D view, grey ground grid, the lidar's cubes teal, Nav2's cubes red wireframes; black side panel with a white edge; the faint car at its foot</td>
+</tr>
+<tr>
+<td>Hardware panel</td>
+<td>white words on black, dark grey buttons with white edges, square pills; the faint car bottom right</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-faint-car">The faint car</h3>
+<p>A mid-80s hatchback in thin lines (<code>hud_core::silhouette</code>), behind every Initial D
+screen (Ben, 3 Nov: "there was an outline of the car in the background before. I
+liked that"). The other themes don't draw it.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Screen</th>
+<th>Where it stands</th>
+<th>What goes over it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HUD</td>
+<td>low right, behind TOPICS and GPS</td>
+<td>the panels</td>
+</tr>
+<tr>
+<td>Map</td>
+<td>the foot of the right column</td>
+<td>the TOPICS and KEYS cards</td>
+</tr>
+<tr>
+<td>Debug screen</td>
+<td>the foot of the right side</td>
+<td>the side's glass</td>
+</tr>
+<tr>
+<td>Hardware panel</td>
+<td>bottom right, right of the sensors' words</td>
+<td>nothing: drawn as faint as under a panel</td>
+</tr>
+</tbody>
+</table></div>
+<p>One function draws it on all four: <code>hud_app::paint::faint_car</code>. The theme tests check
+that dim and red words still read on it (4.5 : 1), and that it still shows. The little
+robot is drawn after it, so it always goes in front.</p>
+<p>Only the localizers keep Catppuccin's colours (blue, green, orange, purple, yellow), so
+a picture means the same in every theme. Corners come from <code>Style::corner</code>: soft in the
+glass themes, under a third as round in Initial D.</p>
+<p>The pictures (2 Nov, Ben's Mac, pretend data): <code>pixi run hud --demo --screenshot FILE</code>;
+<code>pixi run map --demo --zoom 2.5 --screenshot FILE</code>; <code>pixi run debug-hud --demo
+--screenshot FILE --after 8</code>; <code>pixi run hw-panel --demo --screenshot FILE --after 12</code>.</p>
+<h3 id="switch-theme">Switch theme</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The car (ROS)</td>
+<td><code>theme: mocha</code> (or <code>latte</code>) in <code>config/hud.yaml</code>, <code>map.yaml</code>, <code>debug_hud.yaml</code> or <code>hw_panel.yaml</code> (each screen has its own), or <code>--ros-args -p theme:=mocha</code></td>
+</tr>
+<tr>
+<td>A demo</td>
+<td><code>--config FILE</code>, a copy of the yaml with <code>theme: mocha</code></td>
+</tr>
+<tr>
+<td>Blur off (map)</td>
+<td><code>blur: false</code> in <code>config/map.yaml</code>, or <code>-p blur:=false</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="status-colours-keep-their-meaning">Status colours keep their meaning</h3>
+<p>GO green, WAIT amber, STOP and the e-stop red, in every theme. The e-stop is a deep red
+with white words and a white ring: Carleton's red in Initial D, Catppuccin Latte's red
+in Mocha and Latte (Mocha's own red is a soft pink, and an e-stop must shout).</p>
+<p>A unit test (<code>hud_core::theme</code>) checks every pair against WCAG: <strong>4.5 : 1</strong> for words,
+<strong>3 : 1</strong> for big words and shapes. It checks words on the glass over the window and
+over every street colour.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Pair</th>
+<th>Initial D</th>
+<th>Mocha</th>
+<th>Latte</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Text on a panel</td>
+<td>21</td>
+<td>9.4</td>
+<td>7.7</td>
+</tr>
+<tr>
+<td>Green / amber / red words on a panel</td>
+<td>10.7 / 13.0 / 5.7</td>
+<td>9.2 / 10.8 / 5.9</td>
+<td>6.5 / 6.1 / 5.2</td>
+</tr>
+<tr>
+<td>GO's words on green</td>
+<td>10.7</td>
+<td>12.6</td>
+<td>6.8</td>
+</tr>
+<tr>
+<td>E-STOP's white words on red</td>
+<td>5.2</td>
+<td>5.4</td>
+<td>5.4</td>
+</tr>
+<tr>
+<td>The e-stop button on the window</td>
+<td>4.0</td>
+<td>3.0</td>
+<td>4.8</td>
+</tr>
+</tbody>
+</table></div>
+<p>For Initial D the tests also check every line and mark on each screen (2 Nov): the plan,
+the goal and the street route on the map's ground, walls on free cells, the bars on
+their tracks, the 3D view's lines; that its surfaces are plain greys with no Catppuccin
+left; and that the e-stop's red stays far from amber, orange and the red roads.</p>
+<p>Latte's own green, yellow and peach are too light for words on white, so the theme
+darkens them (the test caught it).</p>
+<h3 id="frosted-glass">Frosted glass</h3>
+<p>In Initial D the boxes are near-solid black with a white edge and no shine: the same
+code, with the arcade style's colours and corners.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Screen</th>
+<th>Glass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HUD</td>
+<td>see-through panels over a soft gradient; no blur (nothing behind them moves)</td>
+</tr>
+<tr>
+<td>Map</td>
+<td>the search box, results, keyboard, chips and scale bar show the map <strong>blurred</strong> behind them (<code>blur: true</code>)</td>
+</tr>
+<tr>
+<td>Debug screen</td>
+<td>the legends over the 3D view (where the car is, the keys)</td>
+</tr>
+<tr>
+<td>Hardware panel</td>
+<td>none: words sit straight on the window, so they read best</td>
+</tr>
+</tbody>
+</table></div>
+<p>How the blur works (<code>map-app/src/frost.rs</code>): once the map is drawn, the graphics card
+copies the screen, shrinks it to a quarter and blurs it (two Gaussian passes, twice).
+Each glass box draws its piece of it, cut to its round corners. If the card refuses the
+shaders, the window says so and keeps see-through glass.</p>
+<p><code>map --demo --bench 6</code> prints the frame rate. Ben's Mac (M4 Max), 1 Nov:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>View</th>
+<th>Blur on</th>
+<th>Blur off</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Window, zoomed in</td>
+<td>238 fps</td>
+<td>345 fps</td>
+</tr>
+<tr>
+<td>Full screen, zoomed in, keyboard open</td>
+<td>140 fps</td>
+<td>191 fps</td>
+</tr>
+<tr>
+<td>Full screen, zoomed out (<code>--zoom 0.3</code>), keyboard open</td>
+<td>27 fps</td>
+<td>28 fps</td>
+</tr>
+</tbody>
+</table></div>
+<p>The blur costs little. Zoomed far out the street map itself is slow, blur or not (many
+tiles); the window asks for 30 fps.</p>
+<h3 id="the-debug-screens-colours">The debug screen's colours</h3>
+<p>Each localizer keeps its colour in every theme, so a picture means the same by day and
+by night:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Colour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EKF local (the car)</td>
+<td>blue</td>
+</tr>
+<tr>
+<td>EKF global</td>
+<td>green</td>
+</tr>
+<tr>
+<td>Gazebo's truth</td>
+<td>white (dark grey in Latte)</td>
+</tr>
+<tr>
+<td>AMCL, its particles</td>
+<td>orange</td>
+</tr>
+<tr>
+<td>NDT, its map</td>
+<td>purple</td>
+</tr>
+<tr>
+<td>Nav2's plan</td>
+<td>yellow</td>
+</tr>
+<tr>
+<td>Nav2's cubes</td>
+<td>red wireframes</td>
+</tr>
+<tr>
+<td>The lidar's cubes</td>
+<td>Catppuccin teal, standing out more the higher they are (in Initial D, the first band grey)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Tests (<code>hud_core::theme</code>) check that these marks stand out on the 3D view, stay apart
+from each other and from the cubes (a colour distance, OKLab), and keep their hue.
+The pills (OK, STALE, WARN, LOST, E-STOP) are the same on both screens.</p>
+</section>
 <section class="card"><h2 id="the-debug-hud">The debug HUD</h2>
 <p><code>ros/hud/aav_hud</code>, binary <code>debug_hud</code>: what the car <strong>sees</strong> and what it <strong>thinks</strong>, in
 one window. It only listens: it never touches an actuator. Ben, 29 Oct: "the low level
@@ -1304,7 +1659,7 @@ drive</code>). No map -&gt; odom yet: only the map-frame cars are drawn.</p>
 </thead>
 <tbody>
 <tr>
-<td>Cubes (20 cm), coloured by height: dark ground, then teal to pale. <strong>Kept</strong> for 2 s and fading darker (key K: this scan's only)</td>
+<td>Cubes (20 cm), coloured by height: grey ground, then the theme's teal, standing out more the higher. <strong>Kept</strong> for 2 s and fading darker (key K: this scan's only)</td>
 <td><code>/sensors/lidar/points</code></td>
 <td>lidar_link -&gt; base_link -&gt; odom</td>
 </tr>
@@ -1458,10 +1813,10 @@ another tracker, in the simulator only (the design's D3: never an actuator).</p>
 </tbody>
 </table></div>
 <h3 id="run-it_2">Run it</h3>
-<pre class="highlight"><code class="language-bash">pixi run debugdemo               # Gazebo, RViz, the HUD, the map window and the debug HUD
-pixi run debug-hud-demo          # pretend data: no ROS (a walled lot, a ray-cast lidar)
+<pre class="highlight"><code class="language-bash">pixi run demo --debug               # Gazebo, RViz, the HUD, the map window and the debug HUD
+pixi run debug-hud --demo          # pretend data: no ROS (a walled lot, a ray-cast lidar)
 pixi run build &amp;&amp; pixi run debug-hud    # the node alone, beside a running sim</code></pre>
-<p><code>debugdemo</code> is <code>demo</code> with <code>amcl:=true tracker:=pure_pursuit reversing:=false</code>, so AMCL
+<p><code>demo --debug</code> is <code>demo</code> with <code>amcl:=true tracker:=pure_pursuit reversing:=false</code>, so AMCL
 and the trial tracker have something to show; and <code>ndt:=true</code> too when
 <code>maps/ndt/test_lot.pcd</code> is there. No map yet: <code>pixi run ndt-map drive</code> once (about 6
 min, headless; the map stays out of git). Swap the tracker live with keys 1-4, or
@@ -1517,7 +1872,7 @@ own screen.</p>
 <td>10 scans a second, ~6,000-7,000 cubes from ~16,000-19,000 points, none cut; every panel row OK; EKF global 0.02 m, truth 0.24 m, AMCL 0.70 m from EKF local; key 3's swap to lqr accepted mid-path, which then drove 9 mm off the path</td>
 </tr>
 <tr>
-<td>The window itself, <code>pixi run debugdemo</code>, the 20,000-cube drawing test</td>
+<td>The window itself, <code>pixi run demo --debug</code>, the 20,000-cube drawing test</td>
 <td><strong>untested</strong> that night: the Mac's screen was locked</td>
 </tr>
 </tbody>
@@ -1577,7 +1932,7 @@ own screen.</p>
 </tbody>
 </table></div>
 <p><strong>Not yet seen:</strong> NDT's LOST and WAITING on the live window (only in <code>--demo</code>); <code>pixi run
-debugdemo</code> itself (RViz, the HUD and the map window as well: run here piece by piece);
+demo --debug</code> itself (RViz, the HUD and the map window as well: run here piece by piece);
 the keys pressed by hand (K, M, A, H: their logic is tested, the window wasn't clicked).</p>
 </section>
 <section class="card"><h2 id="the-hardware-panel">The hardware panel</h2>
@@ -1684,13 +2039,141 @@ relies on <code>speed_wheels</code> and the no-timeout lock (both refuse today's
 </tbody>
 </table></div>
 <h3 id="run-it_3">Run it</h3>
-<pre class="highlight"><code class="language-bash">pixi run hw-panel-demo                 # a pretend car: no ROS, any laptop
-pixi run sim world:=test_lot           # Gazebo (or: pixi run debugdemo) ...
+<pre class="highlight"><code class="language-bash">pixi run hw-panel --demo                 # a pretend car: no ROS, any laptop
+pixi run sim world:=test_lot           # Gazebo (or: pixi run demo --debug) ...
 pixi run hw-panel                      # ... and the panel beside it, localhost-only
 pixi run hw-panel stands:=true         # on the car's stands (speed stays off until 49b)</code></pre>
 <p>Run it from the Orin's own screen or a wired laptop, not a Mac over WiFi. For checks,
 <code>hw_panel --self-test 0.3:8</code> presses Speed + to 0.3 m/s and holds GO for 8 s, through the
 same buttons and rules, and prints what was asked and seen.</p>
+<h3 id="the-steering-calibration-page">The steering calibration page</h3>
+<p>Tab (or the STEERING CAL tab) opens it: find the steering actuator's ends and centre,
+set equal limits, then check them lock to lock (Ben, 1 Nov). The procedure, and the
+bridge's settings it needs: <a href="actuator-tests.html#way-b-the-hardware-panel-rust-firmware">actuator-tests.md, way B</a>.</p>
+<p><img alt="The steering calibration page (--demo): marked, equal limits, the check passed" src="../img/hw-panel-calibration.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part of the page</th>
+<th>Shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>top line</td>
+<td><strong>ALLOWED</strong>, or <strong>NOT ALLOWED</strong> and every reason: the e-stop, the car moving, the speed or the position not seen</td>
+</tr>
+<tr>
+<td>bridge</td>
+<td>the bridge's own line (<code>/vehicle/steering_actuator/calibration</code>): what it does, or REFUSED and why</td>
+</tr>
+<tr>
+<td>big number</td>
+<td>the position now, in counts (<code>/vehicle/steering_actuator/raw</code>); the firmware's state; what the page asks</td>
+</tr>
+<tr>
+<td>the bar</td>
+<td>0 to 4095, the steering's <strong>left on the left</strong>: the jog range, the limits (green), the marks L C R, the target (box), the position (arrow)</td>
+</tr>
+<tr>
+<td>MARKS AND LIMITS</td>
+<td>the three marks, the equal limits, the warnings, the lines to copy</td>
+</tr>
+<tr>
+<td>LOCK-TO-LOCK CHECK</td>
+<td>running: the leg, target and position; then PASSED, or STOPPED and why</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Button (key)</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GO LIMP (L)</td>
+<td>the steering actuator's motor off: turn the wheels by hand</td>
+</tr>
+<tr>
+<td>HOLD (H)</td>
+<td>jog to where the wheels are now: they stay there</td>
+</tr>
+<tr>
+<td>&lt; STEP LEFT, STEP RIGHT &gt; (Left, Right)</td>
+<td>jog 25 counts that way; never outside 400-3500 (the firmware's software limits)</td>
+</tr>
+<tr>
+<td>END (O)</td>
+<td>stop asking: the firmware moves the wheels back slowly</td>
+</tr>
+<tr>
+<td>MARK LEFT, MARK CENTRE, MARK RIGHT (1, 2, 3)</td>
+<td>the position now is that end, or the centre</td>
+</tr>
+<tr>
+<td>CLEAR MARKS</td>
+<td>forget the three marks</td>
+</tr>
+<tr>
+<td>SAVE (W)</td>
+<td>write the result to a file (below)</td>
+</tr>
+<tr>
+<td>LOCK-TO-LOCK CHECK (K)</td>
+<td>centre to the left limit, back, to the right limit, back, at 100 counts a second</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>What it sends:</strong> <code>/drivers/buttons/steering_calibration</code> at 10 Hz, only while the window
+draws: limp, or jog to a target. END sends "off" for 0.5 s, then nothing. Not allowed, or
+the page left (Tab): it ends at once. GO never drives on this page.</p>
+<p><strong>The lock-to-lock check stops and holds</strong> (HOLD where the wheels are) at the first of:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Sign</th>
+<th>Default (<code>hw_panel.yaml</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the position more than this behind the target</td>
+<td>150 counts (<code>sweep_max_error</code>)</td>
+</tr>
+<tr>
+<td>no movement while the target moves</td>
+<td>0.6 s (<code>sweep_stall</code>)</td>
+</tr>
+<tr>
+<td>a leg's end not reached</td>
+<td>within 20 counts in 2 s</td>
+</tr>
+<tr>
+<td>no position</td>
+<td>0.3 s</td>
+</tr>
+<tr>
+<td>the firmware not jogging: refused, holding, returning</td>
+<td>at once (refused), or after 0.5 s</td>
+</tr>
+</tbody>
+</table></div>
+<p>It only asks for targets between the limits, and won't start with the wheels outside them.</p>
+<p><strong>Save, and where the numbers go.</strong> SAVE writes a new file,
+<code>~/.local/share/aav/steering-calibration/steering-&lt;UTC time&gt;.txt</code> (or under
+<code>$XDG_DATA_HOME</code>), and prints the same to the log. It holds the marks, the check's
+result, and the lines for <code>calibration.rs</code> (<code>Steering</code>) and <code>vehicle.yaml</code>. <strong>It never
+writes <code>vehicle.yaml</code> or the firmware</strong>: a person copies the lines, in a pull request, with
+the sheet; the hardware lead reviews it. <code>max_steering_angle</code> and the gain need the wheel
+angles: the file has the <code>steering_limits</code> command to run with them.</p>
+<p><strong>Try it without a car:</strong> <code>hw_panel --demo --page calibration</code>. The demo's actuator has
+ends at 3420 and 610 and a centre at 1985 (it steers right). <code>--cal-self-test</code> drives the
+page itself (limp, mark, hold, check); <code>--demo-bind 2800</code> adds a stiff spot, which the
+check must find:</p>
+<p><img alt="The check stopped by a stiff spot at 2800 (--demo-bind 2800)" src="../img/hw-panel-calibration-stopped.png" /></p>
 <h3 id="how-its-built_3">How it's built</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -1702,15 +2185,15 @@ same buttons and rules, and prints what was asked and seen.</p>
 <tbody>
 <tr>
 <td><code>crates/panel-core</code></td>
-<td>the logic, no ROS, no raylib: <code>buttons</code>, <code>gate</code>, <code>rules</code> (safety.py's), <code>state</code> (every sensor's number), <code>config</code>, <code>vehicle</code>. <code>cargo test -p panel-core</code></td>
+<td>the logic, no ROS, no raylib: <code>buttons</code>, <code>gate</code>, <code>rules</code> (safety.py's), <code>state</code> (every sensor's number), <code>config</code>, <code>vehicle</code>; the calibration page's <code>calibration</code>, <code>steering_limits</code> (steering_limits.py's, on shared vectors) and <code>sweep</code> (the lock-to-lock check). <code>cargo test -p panel-core</code></td>
 </tr>
 <tr>
 <td><code>crates/panel-app</code></td>
-<td>the window (raylib) and the node (rclrs): the 10 ms timer sends the buttons' command (heartbeat-gated) and the e-stop burst</td>
+<td>the window (raylib) and the node (rclrs): the 10 ms timer sends the buttons' command and the calibration request (heartbeat-gated) and the e-stop burst</td>
 </tr>
 <tr>
 <td><code>config/hw_panel.yaml</code></td>
-<td>every topic name, the steps (0.1 m/s, 0.05 rad), the creep, the caps (1.0, 0.3 m/s)</td>
+<td>every topic name, the steps (0.1 m/s, 0.05 rad), the creep, the caps (1.0, 0.3 m/s); the calibration page's jog step and range, and the check's speed and stops</td>
 </tr>
 </tbody>
 </table></div>
@@ -1757,14 +2240,143 @@ same buttons and rules, and prints what was asked and seen.</p>
 </tr>
 </tbody>
 </table></div>
-<p>| Gazebo (<code>pixi run debugdemo</code>), <strong>both windows on screen</strong>, 29 Oct 22:50: <code>hw_panel --self-test 0.3:8</code> | asked 0.30, twist_mux 0.300, seen 0.30-0.35 m/s; GO let go: 0.00 about 0.5 s later. Pictures below |
+<p>| Gazebo (<code>pixi run demo --debug</code>), <strong>both windows on screen</strong>, 29 Oct 22:50: <code>hw_panel --self-test 0.3:8</code> | asked 0.30, twist_mux 0.300, seen 0.30-0.35 m/s; GO let go: 0.00 about 0.5 s later. Pictures below |
 | The same run, the seeing screen | NDT TRACKING, 3.3 per point, 3.3 ms a match; the lot's map, every localizer's car and the scan on NDT's cells all drawn, 58 fps |</p>
 <p><img alt="The seeing screen against Gazebo, NDT tracking" src="../img/debug-hud-seeing-gazebo.png" /></p>
 <p><img alt="The hardware panel against Gazebo: every sensor OK (Gazebo has no battery)" src="../img/hw-panel-gazebo.png" /></p>
 <p><strong>Not yet seen:</strong> the keys and the mouse pressed by hand (macOS blocks scripted keys); the bench
 check (a person's joystick beats the buttons); key L on the live window. Gazebo's output
 mux latched STOP once at start-up (an announcement race) and opened by itself the next
-runs; <code>pixi run gate-clear</code> reopens it.</p>
+runs; <code>pixi run clear gate</code> reopens it.</p>
+</section>
+<section class="card"><h2 id="the-little-robot-easter-egg">The little robot (easter egg)</h2>
+<p>A small robot hides in three of the screens: a boxy body on two tank treads, a neck,
+and two big round eyes. <strong>A tribute to WALL-E</strong> (Ben, 1 Nov: "a huge fan of wall-e and
+his round eyes"). It is our own drawing, made only of shapes, so it takes the theme's
+colours and grows with the window. No picture files.</p>
+<h3 id="where-it-shows">Where it shows</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Screen</th>
+<th>What it does</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Map window</td>
+<td>the car <strong>is</strong> the robot, from above, a little tilted; its treads roll as it drives</td>
+<td><code>car_marker: robot</code> (off by default)</td>
+</tr>
+<tr>
+<td>Hardware panel</td>
+<td>its eyes peek over the bottom edge, look left and right, and blink</td>
+<td>60 s with no input, nothing changing, the car still</td>
+</tr>
+<tr>
+<td>Hardware panel</td>
+<td>it drives across the bottom, under the page</td>
+<td>at start-up, and when a lock-to-lock check PASSES</td>
+</tr>
+<tr>
+<td>Debug screen</td>
+<td>its eyes peek over the bottom of the 3D view</td>
+<td>60 s with no input, nothing changing, the car still</td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="The map's car as the little robot" src="../img/robot-map.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Peeking (hardware panel)</th>
+<th>Driving across (after a check passed)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="The eyes peek over the bottom right" src="../img/robot-eyes-panel.png" /></td>
+<td><img alt="The robot drives along the bottom" src="../img/robot-driving.png" /></td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="The eyes on the debug screen, between the keys and the panel" src="../img/robot-eyes-debug.png" /></p>
+<h3 id="the-rules-it-keeps">The rules it keeps</h3>
+<ul>
+<li>It <strong>never</strong> covers a button, the e-stop or a line of words: it only goes in a strip
+  the page left empty (no room: it doesn't show).</li>
+<li>It <strong>never</strong> shows while the car moves, the buttons ask for speed, the check sweeps,
+  an e-stop is on, or a warning shows (a STALE sensor, a zero, the health checks' WARN).</li>
+<li>It <strong>hides at once</strong> on any key, click, mouse move, or change on the screen.</li>
+<li>On the map, the robot sits exactly on the car's outline from <code>vehicle.yaml</code>: the same
+  position and heading as the plain marker. Its eyes face the way the car faces.</li>
+</ul>
+<h3 id="turn-it-on-or-off">Turn it on or off</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Screen</th>
+<th>Setting</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Map window</td>
+<td><code>car_marker: robot</code> or <code>outline</code> in <code>config/map.yaml</code> (or <code>-p car_marker:=robot</code>)</td>
+<td><code>outline</code></td>
+</tr>
+<tr>
+<td>Hardware panel</td>
+<td><code>easter_egg: false</code> in <code>config/hw_panel.yaml</code>; <code>easter_egg_after</code> (s)</td>
+<td>on, 60 s</td>
+</tr>
+<tr>
+<td>Debug screen</td>
+<td><code>easter_egg: false</code> in <code>config/debug_hud.yaml</code>; <code>easter_egg_after</code> (s)</td>
+<td>on, 60 s</td>
+</tr>
+</tbody>
+</table></div>
+<p>For screenshots, <code>--robot-now</code> shows it at once (the debug demo parks its car):</p>
+<pre class="highlight"><code class="language-sh">pixi run map --demo --robot-now --zoom 70 --screenshot $PWD/docs/img/robot-map.png
+pixi run hw-panel --demo --robot-now --screenshot $PWD/docs/img/robot-eyes-panel.png --after 12
+pixi run hw-panel --demo --cal-self-test --screenshot $PWD/docs/img/robot-driving.png --after 71
+pixi run debug-hud --demo --robot-now --screenshot $PWD/docs/img/robot-eyes-debug.png --after 8</code></pre>
+<h3 id="how-its-built_4">How it's built</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Its shapes (from above, peeking, from the side) and when it shows (<code>EasterEgg</code>)</td>
+<td><code>hud-core/src/robot.rs</code>, unit tests</td>
+</tr>
+<tr>
+<td>Its colours (<code>Theme::robot()</code>: an amber body, grey treads, dark glass)</td>
+<td><code>hud-core/src/theme.rs</code></td>
+</tr>
+<tr>
+<td>The map's robot on the car's outline (<code>car_marker</code>)</td>
+<td><code>map-core/src/robot.rs</code>, unit tests</td>
+</tr>
+<tr>
+<td>Still? A warning? Did the screen change?</td>
+<td><code>panel-core/src/easter_egg.rs</code>, <code>debug-core/src/easter_egg.rs</code>, unit tests</td>
+</tr>
+<tr>
+<td>Drawing it</td>
+<td><code>map-app/src/ui.rs</code>, <code>panel-app/src/robot.rs</code>, <code>debug-app/src/robot.rs</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Not yet on the in-car HUD: it is being restyled (the Initial D look); the eyes go there
+after that lands.</p>
 </section>
 <section class="card"><h2 id="the-flutter-app-2025-26-archived">The Flutter app (2025-26): archived</h2>
 <div class="table-wrap"><table>
@@ -1800,7 +2412,7 @@ runs; <code>pixi run gate-clear</code> reopens it.</p>
 <p>The map window's <a href="#search-for-a-place-and-drive-there">place search</a> reads <code>ottawa.db</code>:
 51 MB of SQLite, 606,628 named places around Ottawa. It's too big for git, so a task
 downloads it:</p>
-<pre class="highlight"><code class="language-bash">pixi run get-places      # into maps/places/ottawa.db</code></pre>
+<pre class="highlight"><code class="language-bash">pixi run get places      # into maps/places/ottawa.db</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>

@@ -3,9 +3,9 @@
 target = "thumbv8m.main-none-eabihf"
 
 # `cargo run --release` flashes through a debug probe, and shows the logs: it needs probe-rs
-# on your PATH. `pixi run spine-tools` installs it into vendor/cargo-tools/bin, and
-# `pixi run wheel-flash` runs that one, with this chip name. Without a probe, use the UF2
-# file instead: `pixi run wheel-uf2` (docs/rust-firmware.md).
+# on your PATH. `pixi run pico spine tools` installs it into vendor/cargo-tools/bin, and
+# `pixi run pico wheel flash` runs that one, with this chip name. Without a probe, use the UF2
+# file instead: `pixi run pico wheel build` (docs/rust-firmware.md).
 [target.thumbv8m.main-none-eabihf]
 runner = "probe-rs run --chip RP235x"
 

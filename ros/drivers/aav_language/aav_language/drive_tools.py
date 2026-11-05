@@ -150,7 +150,7 @@ class DriveTools:
             return ("twist_mux's report (/diagnostics) isn't arriving, so whether the e-stop "
                     'is on is unknown. Is the stack running?')
         if s.estop or s.vehicle_estop or s.mux_locks.get('estop'):
-            return ('the e-stop is on. A person must clear it (pixi run estop-clear); '
+            return ('the e-stop is on. A person must clear it (pixi run clear estop); '
                     'this server never does')
         held = safety.holding_locks(driver, self.mux_inputs, self.mux_locks, s.mux_locks)
         if held:
@@ -363,7 +363,7 @@ class DriveTools:
             self.backend.cancel_all()
             self.backend.estop()
             return {'ok': True, 'message': 'e-stop sent (/safety/estop true). Only a person '
-                    'can clear it: pixi run estop-clear'}
+                    'can clear it: pixi run clear estop'}
         return self._call('estop', {}, body)
 
     def wait(self, seconds: float) -> dict:

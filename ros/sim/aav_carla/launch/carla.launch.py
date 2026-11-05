@@ -12,7 +12,7 @@ on a Mac it stops with a one-line explanation.
 
   town:=Town10HD_Opt          load one of the server's maps ('' keeps what it has)
   osm:=maps/carla/carleton.osm  Carleton's roads from OpenStreetMap (pixi run
-                              get-carla-osm), lined up with our datum. CARLA 0.9.x only
+                              get carla-osm), lined up with our datum. CARLA 0.9.x only
   frame:=auto                 the map frame: CARLA's world when its map is round our datum
                               (a Carleton map), else the spawn point facing east (a town)
   spawn:=3 or spawn:=x,y,yaw  where the car starts (x,y,yaw: our map frame)

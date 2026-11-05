@@ -357,7 +357,7 @@ class Run:
             return 1
         node.spin_for(1.0)   # the rest of the sensors
         if node.estop:
-            self.say('REFUSED: /safety/estop is true. Clear it first (pixi run estop-clear)')
+            self.say('REFUSED: /safety/estop is true. Clear it first (pixi run clear estop)')
             return 1
         why = safety.geofence_stop(*node.geofence_says(), self.args.stands, self.decision.real,
                                    starting=True)
@@ -697,7 +697,8 @@ def parse(argv):
         if unknown:
             p.error(f'--skip: no sensor {", ".join(unknown)} (pick from {", ".join(NAMES)})')
         if not args.stands:
-            p.error('the preflight runs on stands: add --stands (pixi run preflight does)')
+            p.error('the preflight runs on stands: add --stands '
+                    '(pixi run actuator-test preflight --stands)')
         if args.speeds or args.angles or args.max_distance or args.max_time:
             p.error('the preflight has fixed steps: no --speeds, --angles, --max-distance '
                     'or --max-time')

@@ -1,4 +1,4 @@
-"""topic_load: the rates, sizes and loads `pixi run bandwidth` prints, on made-up messages."""
+"""topic_load: the rates, sizes and loads `pixi run measure bandwidth` prints, on fake messages."""
 
 import math
 from pathlib import Path

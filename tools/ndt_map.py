@@ -7,6 +7,10 @@ NDT's map of Gazebo's test lot: the lidar's clouds, laid down where the car trul
     pixi run ndt-map build <bag>        build the map from a bag already recorded
     pixi run ndt-map drive --keep-bag   ... and keep the bag (bags/ndt-map-<time>: ~1 MB
                                         a cloud, about 3 GB for the route)
+    pixi run ndt-map build <bag> --poses /localization/odom/global --out maps/ndt/<place>
+                                        a real drive (tools/record.sh --lidar): no truth, so
+                                        the clouds go where an Odometry topic in the bag
+                                        says (docs/tests.md, 4.21)
 
 The map goes to maps/ndt/test_lot.pcd (binary PCD: x y z float32, map frame) with
 maps/ndt/test_lot.yaml beside it (frame, datum, source bag, git commit, voxel size, the
@@ -23,7 +27,7 @@ the lidar's noise through: the roof's corners and the front cameras drew a ghost
 line 1.5 m up along the whole route (found 30 Oct).
 
 The truth is used only here, offline: aav_ndt's node never reads it (aav_gazebo's rule).
-The mapping route is not one of controller-compare's tours, and has no obstacle.
+The mapping route is not one of the tours of pixi run measure controllers, and has no obstacle.
 Gazebo's lidar noise isn't seeded by us, so two drives give maps a few millimetres apart.
 
 The maths (everything but read_bag and drive) needs no ROS: tools/tests/test_ndt_map.py.
@@ -247,17 +251,20 @@ def git_commit():
     return out.stdout.strip() or 'unknown'
 
 
-def describe(points, bag, notes, voxel=VOXEL, self_box_m=None):
-    """Return the YAML beside the PCD, as a dict."""
+def describe(points, bag, notes, voxel=VOXEL, self_box_m=None, poses=TRUTH_TOPIC):
+    """Return the YAML beside the PCD, as a dict (the test lot's datum and route: truth only)."""
     lo, hi = (points.min(axis=0), points.max(axis=0)) if len(points) else ([0] * 3, [0] * 3)
+    sim = poses == TRUTH_TOPIC
     return {
-        'frame': 'map', 'datum': DATUM, 'source_bag': str(bag), 'git_commit': git_commit(),
+        'frame': 'map', 'datum': DATUM if sim else "the car's navsat datum when recorded",
+        'poses': poses, 'source_bag': str(bag), 'git_commit': git_commit(),
         'voxel_m': voxel, 'points': int(len(points)),
         'ground_removed_below_m': MIN_HEIGHT, 'max_range_m': MAX_RANGE,
         'self_box_m': self_box_m,
         'bounds_m': {'min': [round(float(v), 2) for v in lo],
                      'max': [round(float(v), 2) for v in hi]},
-        'world': 'test_lot', 'route': [list(leg) for leg in ROUTE],
+        'world': 'test_lot' if sim else 'real',
+        'route': [list(leg) for leg in ROUTE] if sim else None,
         'made': datetime.datetime.now().isoformat(timespec='seconds'), **notes,
         'note': "Gazebo's lidar has no sweep (one instant per turn); the car's VLP-16 does",
     }
@@ -265,8 +272,13 @@ def describe(points, bag, notes, voxel=VOXEL, self_box_m=None):
 
 # --- ROS: the bag and the drive --------------------------------------------------------
 
-def read_bag(bag):
-    """Return ([(t, points)], Truth) from a bag with the lidar and Gazebo's truth."""
+def read_bag(bag, poses=TRUTH_TOPIC):
+    """
+    Return ([(t, points)], Truth) from a bag with the lidar and an Odometry topic.
+
+    poses: Gazebo's truth by default; on a real drive, the car's own (the global EKF, or
+    KISS-ICP's odometry): the map is then only as good as that topic.
+    """
     import rosbag2_py
     from rclpy.serialization import deserialize_message
     from nav_msgs.msg import Odometry
@@ -288,7 +300,7 @@ def read_bag(bag):
                                m.pose.pose.position.z),
                     (m.pose.pose.orientation.x, m.pose.pose.orientation.y,
                      m.pose.pose.orientation.z, m.pose.pose.orientation.w))
-                   for m in messages(TRUTH_TOPIC, Odometry)])
+                   for m in messages(poses, Odometry)])
     clouds = ((stamp(m), cloud_xyz([(f.name, f.offset, f.datatype, f.count) for f in m.fields],
                                    m.point_step, m.data, m.width, m.height, m.row_step,
                                    m.is_bigendian))
@@ -351,6 +363,9 @@ def main():
     d.add_argument('--keep-bag', action='store_true', help='keep the recorded bag')
     b = sub.add_parser('build', help='build the map from a bag')
     b.add_argument('bag', type=Path)
+    b.add_argument('--poses', default=TRUTH_TOPIC,
+                   help="the Odometry topic that places each cloud (default: Gazebo's truth; "
+                        'a real drive: /localization/odom/global)')
     parser.add_argument('--out', type=Path, default=OUT,
                         help='where the map goes, without .pcd (default maps/ndt/test_lot)')
     parser.add_argument('--voxel', type=float, default=VOXEL, help='m (default 0.1)')
@@ -368,15 +383,17 @@ def main():
     else:
         bag = args.bag
     started = time.monotonic()
-    clouds, truth = read_bag(bag)
+    poses = getattr(args, 'poses', TRUTH_TOPIC)
+    clouds, truth = read_bag(bag, poses)
     points, notes = build(clouds, truth, mount, body, args.voxel)
     if len(points) == 0:
-        raise SystemExit(f'{bag}: no cloud had truth around it; nothing to map')
+        raise SystemExit(f'{bag}: no cloud had {poses} around it; nothing to map')
     args.out.parent.mkdir(parents=True, exist_ok=True)
     write_pcd(args.out.with_suffix('.pcd'), points)
     with open(args.out.with_suffix('.yaml'), 'w') as f:
         yaml.safe_dump(describe(points, bag, notes, args.voxel,
-                                [[round(a, 3), round(b, 3)] for a, b in body]), f, sort_keys=False)
+                                [[round(a, 3), round(b, 3)] for a, b in body], poses),
+                       f, sort_keys=False)
     print(f'{len(points)} points from {notes["clouds_used"]} clouds '
           f'({notes["clouds_skipped_no_truth"]} without truth) in '
           f'{time.monotonic() - started:.0f} s: {args.out.with_suffix(".pcd")}')

@@ -67,7 +67,7 @@ lidar (16 rings, 360°).
 | 4. Fuse | its pose into `ekf_global` beside the GPS |
 
 Pictures of NDT and ICP, step by step: [Learn: localization](../learn-localization.md),
-section 8 (`pixi run ndt-demo`).
+section 8 (`pixi run python3 tools/ndt_demo.py`).
 
 **Also:** KISS-ICP's odometry alone, fused into `ekf_local`, is a better dead reckoning
 than wheels at low speed. **Catch:** a bare lot gives the lidar little to match: curbs,

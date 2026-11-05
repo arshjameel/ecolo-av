@@ -7,14 +7,14 @@
 #   car-day/esp32/spine-esp32-umod-v2-uplink.elf  version 2 with the uplink on TX1 and the
 #                                           three-position RC switch: only once H9 and H10
 #                                           say yes (docs/esp32-bench.md)
-#   car-day/esp32/qemu-check.log            esp-qemu-check: it brakes when the heartbeat stops
+#   car-day/esp32/qemu-check.log            esp qemu-check: it brakes when the heartbeat stops
 #   car-day/esp32/legacy-esp32.log          the 2025-26 C++ still builds: the way back
 #   car-day/esp32/BUILD.txt, SHA256SUMS     when, from which commit, each step's result
 # and the docs (pixi run docs: the PDF, to read with no internet).
 # pixi run car-day-check reads BUILD.txt. car-day/ is out of git: make it again any time.
 #
-# usage: pixi run car-day-build       (about 3-5 min; the ESP32 needs pixi run esp-tools,
-#                                      QEMU pixi run esp-qemu-tools)
+# usage: pixi run car-day-build       (about 3-5 min; the ESP32 needs pixi run esp tools,
+#                                      QEMU pixi run esp qemu-tools)
 # Flash one at the car: vendor/cargo-tools/bin/espflash flash --chip esp32 --monitor \
 #                         car-day/esp32/spine-esp32-umod-v2.elf
 # Portable: bash 3.2, no GNU-only flags.
@@ -67,12 +67,12 @@ rc=$?
 result $rc
 UPLINK=$RESULT
 
-step "esp-qemu-check: the firmware in QEMU brakes when the Orin's heartbeat stops"
-tools/esp32.sh qemu > "$OUT/qemu-check.log" 2>&1
+step "esp qemu-check: the firmware in QEMU brakes when the Orin's heartbeat stops"
+tools/esp32.sh qemu-check > "$OUT/qemu-check.log" 2>&1
 rc=$?
 tail -3 "$OUT/qemu-check.log"
 if grep -q '^skipped' "$OUT/qemu-check.log"; then
-  QEMU='skipped: no QEMU here (pixi run esp-qemu-tools)'
+  QEMU='skipped: no QEMU here (pixi run esp qemu-tools)'
   FAILED=1
   echo "$QEMU"
 else
@@ -104,7 +104,7 @@ $LEGACY: $(tree_id "$LEGACY")
 v2: $V2
 v1: $V1
 uplink: $UPLINK
-esp-qemu-check: $QEMU
+esp qemu-check: $QEMU
 legacy-esp32: $LEGACY_RESULT
 docs: $DOCS
 EOF

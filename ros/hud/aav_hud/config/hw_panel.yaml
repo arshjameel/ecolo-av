@@ -25,6 +25,10 @@ hw_panel:
     radar_topic: /sensors/radar/points            # sensor_msgs/msg/PointCloud2: counted (Hz)
     camera_topic: /sensors/camera/front_left/image_raw  # sensor_msgs/msg/Image: counted (Hz), best effort, keep last 1
     battery_topic: /vehicle/battery               # sensor_msgs/msg/BatteryState: volts
+    # --- the steering calibration page (Tab; docs/actuator-tests.md, way B) ---
+    steering_raw_topic: /vehicle/steering_actuator/raw          # aav_interfaces/msg/ActuatorRaw: counts, and the firmware's calibration state
+    steering_calibration_topic: /drivers/buttons/steering_calibration  # aav_interfaces/msg/SteeringCalibration: sent at 10 Hz while the page asks (limp, jog)
+    calibration_line_topic: /vehicle/steering_actuator/calibration  # std_msgs/msg/String: the bridge's line, what it does and why not
     # --- the buttons ---
     stale_after: 1.0      # s: a topic this quiet shows STALE
     speed_step: 0.1       # m/s a press of Speed + or Speed -
@@ -32,3 +36,14 @@ hw_panel:
     creep: 0.1            # m/s: CENTRE turns the wheels straight at this speed (they don't turn at a standstill)
     sim_cap: 1.0          # m/s: the most the buttons ask for in Gazebo or on the bench
     stands_cap: 0.3       # m/s: on stands (--stands), once the preflight's rules allow it (TODO 49b)
+    # --- the steering calibration page (counts: the steering actuator's 0..4095) ---
+    jog_step: 25          # counts a STEP
+    jog_min: 400          # counts: no jog target below this (the firmware's software limits today, calibration.rs)
+    jog_max: 3500         # counts: nor above this
+    sweep_rate: 100.0     # counts a second: the lock-to-lock check (the firmware jogs at 300 at most)
+    sweep_max_error: 150  # counts behind the target: resistance, stop and hold
+    sweep_stall: 0.6      # s without movement while the target moves: resistance, stop and hold
+    # --- the look ---
+    theme: initial_d          # the colours: initial_d (black, white, Carleton red; every screen's default), mocha (dark, night), latte (light, day)
+    easter_egg: true      # the little robot: eyes peek over the bottom after easter_egg_after of quiet; it drives across at start-up and after a check passes. Never while the car moves, an e-stop or a warning shows
+    easter_egg_after: 60.0  # s without input, change or movement before the eyes peek

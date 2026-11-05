@@ -100,7 +100,7 @@ Phase 0 on the hardware we have now, before the spine exists.
 |---|---|
 | Read first | [HUD](hud.md) |
 | Run first | Foxglove or Lichtblick on `ws://<the computer>:8765` while `pixi run sim` runs: see [Your Mac](mac.md) |
-| First tasks | 1. Run the HUD and the map window: `pixi run hud-demo`, `pixi run map-demo`. 2. Try both on the car's screens ([The two screens](car-screens.md)). (Q29 answered: the raylib HUD replaced the Flutter app, archived 25 Oct) |
+| First tasks | 1. Run the HUD and the map window: `pixi run hud --demo`, `pixi run map --demo`. 2. Try both on the car's screens ([The two screens](car-screens.md)). (Q29 answered: the raylib HUD replaced the Flutter app, archived 25 Oct) |
 | Files | `ros/hud/aav_hud/` |
 | Open questions | Q30 |
 

@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -175,7 +179,7 @@ package, one per row: <a href="packages.html">Packages</a>.</p></div>
 </tr>
 <tr>
 <td><code>models/</code></td>
-<td>the detector models, RF-DETR Nano (the default) and YOLO: <code>pixi run get-models</code> downloads them (not in git)</td>
+<td>the detector models, RF-DETR Nano (the default) and YOLO: <code>pixi run get models</code> downloads them (not in git)</td>
 <td><a href="perception.html">Perception</a></td>
 </tr>
 <tr>
@@ -185,7 +189,7 @@ package, one per row: <a href="packages.html">Packages</a>.</p></div>
 </tr>
 <tr>
 <td><code>vendor/</code></td>
-<td>other people's source, to look things up: ROS 2 Jazzy and rclrs. Not ours, and not in git: <code>pixi run vendor</code> downloads it</td>
+<td>other people's source, to look things up: ROS 2 Jazzy and rclrs. Not ours, and not in git: <code>pixi run get vendor</code> downloads it</td>
 <td></td>
 </tr>
 <tr>
@@ -584,7 +588,7 @@ finder).</p>
 <td>The HUD app (Flutter), its Flask back end and boot scripts</td>
 <td>2025-26 <code>User-Interface</code></td>
 <td><code>archive/2026-27-flutter-hud/</code></td>
-<td>ported to our topics (10-11 Oct), then archived 25 Oct: the raylib HUD replaced it (Q29). Its route maths lives on in <code>aav_routes/route.py</code>, its place database in <code>pixi run get-places</code></td>
+<td>ported to our topics (10-11 Oct), then archived 25 Oct: the raylib HUD replaced it (Q29). Its route maths lives on in <code>aav_routes/route.py</code>, its place database in <code>pixi run get places</code></td>
 </tr>
 <tr>
 <td>The ESP32 actuator firmware (C++)</td>
@@ -698,7 +702,7 @@ avoidance, odometry and QNX layer. <a href="older-code.html">The older code</a> 
 </tr>
 <tr>
 <td>The HUD</td>
-<td>the build for the car's Pi; its tile server and OSRM route data. The map database downloads with <code>pixi run get-places</code></td>
+<td>the build for the car's Pi; its tile server and OSRM route data. The map database downloads with <code>pixi run get places</code></td>
 <td><a href="hud.html">HUD</a></td>
 </tr>
 <tr>

@@ -177,7 +177,7 @@ sudo dd if=/dev/rdiskN bs=4m | gzip > ~/aav-backup/<machine>.img.gz
     passwords, and none is ever written to a file. Add an entry with
     `security add-generic-password -s aav-jetson -a aavjetson -w` (it asks).
 
-!!! note "Now a script: `pixi run survey`"
+!!! note "Now a script: `pixi run bash tools/survey_car.sh`"
     [Friday 16 Oct: the to-do list](history/friday-todo-2026-10-16.md) part 2: `tools/machine_survey.sh` does all of the block
     below and more (boot scripts, who holds each device, camera and power errors, code and
     weights found only here), on every machine in `~/aav-audit/hosts.txt`. The block below

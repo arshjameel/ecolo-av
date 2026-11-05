@@ -4,7 +4,7 @@
 # Needs a ROS environment: `pixi run lint`, or source ROS first.
 set -e
 cd "$(dirname "$0")/.."
-OURS=(ros/bringup/aav_bringup ros/bringup/aav_description ros/can_bridge ros/sim/aav_gazebo ros/sim/aav_turtlesim ros/sim/aav_carla ros/drivers ros/ego ros/localization
+OURS=(ros/bringup/aav_bringup ros/bringup/aav_description ros/bringup/aav_run_info ros/can_bridge ros/sim/aav_gazebo ros/sim/aav_turtlesim ros/sim/aav_carla ros/drivers ros/ego ros/localization
       ros/command_mux ros/io_mux ros/safety ros/sources/aav_sensors ros/sources/aav_camera_stream tools firmware/can firmware/spine/crates/legacy-link/gen_vectors.py
       ros/perception/aav_detector/aav_detector ros/perception/aav_detector/launch
       ros/perception/aav_detector/test ros/perception/aav_detector/setup.py ros/sim/aav_bench

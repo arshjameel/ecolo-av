@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a class="here" href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -100,12 +104,14 @@
 <code>ros/bringup/aav_description/config/vehicle.yaml</code>, the one place the software reads them from.
 Every number there today is a guess.</p>
 <blockquote>
-<p><strong>The short version</strong>
-- <strong>Everything is measured from one spot: on the floor, under the middle of the rear axle.</strong> We call it the <strong>zero point</strong>.
-- <strong>Forward = +x. Left = +y. Up = +z.</strong> Right of the centre line is a <strong>minus</strong> number.
-- <strong>Write centimetres</strong> (to the nearest 1 cm), and <strong>degrees</strong> for angles. We convert them.
-- Two people, a tape measure, chalk or masking tape, a plumb line (a string with a weight), a phone with a level app.
-- <strong>Follow <a href="#the-measuring-map">the measuring map</a></strong>: 16 steps round the car, each from a mark you already have.</p>
+<p><strong>The short version</strong></p>
+<ul>
+<li><strong>Everything is measured from one spot: on the floor, under the middle of the rear axle.</strong> We call it the <strong>zero point</strong>.</li>
+<li><strong>Forward = +x. Left = +y. Up = +z.</strong> Right of the centre line is a <strong>minus</strong> number.</li>
+<li><strong>Write centimetres</strong> (to the nearest 1 cm), and <strong>degrees</strong> for angles. We convert them.</li>
+<li>Two people, a tape measure, chalk or masking tape, a plumb line (a string with a weight), a phone with a level app.</li>
+<li><strong>Follow <a href="#the-measuring-map">the measuring map</a></strong>: 16 steps round the car, each from a mark you already have.</li>
+</ul>
 </blockquote></div>
 <section class="card"><h2 id="the-measuring-map">The measuring map</h2>
 <p>Ben's idea (29 Oct): start at the zero point, then measure <strong>each new spot from one you
@@ -149,7 +155,7 @@ circles are the steps, in order. The blue dots are the sensors.</p>
 </table></div>
 <h3 id="the-route">The route</h3>
 <p>The steps, with today's guesses (the script writes this table: don't edit it by hand).</p>
-<!-- measure-map:start (pixi run measure-map writes this table) -->
+<!-- measure-map:start (pixi run python3 tools/measure_map.py writes this table) -->
 
 <div class="table-wrap"><table>
 <thead>
@@ -376,7 +382,7 @@ circles are the steps, in order. The blue dots are the sensors.</p>
 <tbody>
 <tr>
 <td>1</td>
-<td><code>pixi run measure-map --blank &gt; readings.yaml</code>: a file with one line per step</td>
+<td><code>pixi run python3 tools/measure_map.py --blank &gt; readings.yaml</code>: a file with one line per step</td>
 </tr>
 <tr>
 <td>2</td>
@@ -384,11 +390,11 @@ circles are the steps, in order. The blue dots are the sensors.</p>
 </tr>
 <tr>
 <td>3</td>
-<td><code>pixi run measure-map --readings readings.yaml</code>: it prints the yaml's numbers, in metres</td>
+<td><code>pixi run python3 tools/measure_map.py --readings readings.yaml</code>: it prints the yaml's numbers, in metres</td>
 </tr>
 <tr>
 <td>4</td>
-<td>Copy them into <code>vehicle.yaml</code>, delete each <code>TODO</code>, then <code>pixi run measure-map</code> to redraw the map</td>
+<td>Copy them into <code>vehicle.yaml</code>, delete each <code>TODO</code>, then <code>pixi run python3 tools/measure_map.py</code> to redraw the map</td>
 </tr>
 </tbody>
 </table></div>
@@ -870,7 +876,7 @@ track (77 cm) lowers the speed at which it could tip in a turn. The maths:
 </tbody>
 </table></div>
 <p>Programmer's detail (what reads each number, the maths): <a href="car_measurements.html">docs/car_measurements.md</a>.</p></section>
-<nav class="prevnext"><a class="prev" href="tests.html"><small>Previous</small>← Every test</a>
+<nav class="prevnext"><a class="prev" href="know-the-car.html"><small>Previous</small>← Know the car</a>
 <a class="next" href="decisions.html"><small>Next</small>Decisions →</a></nav>
 </main>
 <footer>Source: <code>docs/measure-the-car.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>

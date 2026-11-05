@@ -39,7 +39,7 @@ pub struct Verdict {
     pub headline: &'static str,
     /// The one main reason, a few words: "E-STOP ON", "GPS is SIM", "GPS STALE".
     pub reason: String,
-    /// What a person can do, smaller: "clear: pixi run gate-clear".
+    /// What a person can do, smaller: "clear: pixi run clear gate".
     pub hint: &'static str,
 }
 
@@ -140,14 +140,14 @@ pub fn verdict(
 ) -> Verdict {
     use Light::{Go, Stop, Unknown, Wait};
     if estop_on {
-        return Verdict::new(Stop, "STOP", "E-STOP ON", "clear: pixi run estop-clear");
+        return Verdict::new(Stop, "STOP", "E-STOP ON", "clear: pixi run clear estop");
     }
     let gate_state = match gate {
         (Health::Ok(_), Some(text)) => Some(Gate::parse(text)),
         _ => None,
     };
     if let Some(Gate::Stop(why)) = &gate_state {
-        return Verdict::new(Stop, "STOP", why.as_str(), "clear: pixi run gate-clear");
+        return Verdict::new(Stop, "STOP", why.as_str(), "clear: pixi run clear gate");
     }
     if let Health::Stale(_) = gate.0 {
         return Verdict::new(Stop, "STOP", "gate silent", "nothing reaches the car");
@@ -165,7 +165,7 @@ pub fn verdict(
             let sensors = Sensors::parse(text);
             if let Sensors::Held { input, state } = &sensors {
                 let hint = if sensors.is_latched() {
-                    "clear: pixi run watchdog-clear"
+                    "clear: pixi run clear watchdog"
                 } else {
                     "people can still drive"
                 };
@@ -338,7 +338,7 @@ mod tests {
     fn the_estop_comes_first() {
         let v = verdict(true, (OK, Some(OPEN)), (OK, Some("STOP: gps STALE (x)")));
         assert_eq!((v.light, v.reason.as_str()), (Light::Stop, "E-STOP ON"));
-        assert!(v.hint.contains("estop-clear"));
+        assert!(v.hint.contains("clear estop"));
     }
 
     #[test]
@@ -347,7 +347,7 @@ mod tests {
         let v = verdict(false, (OK, Some(stop)), (OK, Some("STOP: imu STALE (x)")));
         assert_eq!((v.light, v.headline), (Light::Stop, "STOP"));
         assert_eq!(v.reason, "GPS is SIM");
-        assert!(v.hint.contains("gate-clear"));
+        assert!(v.hint.contains("clear gate"));
     }
 
     #[test]
@@ -372,7 +372,7 @@ mod tests {
             (OK, Some("STOP: hud LOST (went STALE)")),
         );
         assert_eq!(v.reason, "HUD LOST");
-        assert!(v.hint.contains("watchdog-clear"));
+        assert!(v.hint.contains("clear watchdog"));
         let v = verdict(
             false,
             (OK, Some(OPEN)),

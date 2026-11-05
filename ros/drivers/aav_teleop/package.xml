@@ -12,6 +12,7 @@
   <exec_depend>joy</exec_depend>
   <exec_depend>teleop_twist_joy</exec_depend>
   <exec_depend>joy_teleop</exec_depend>
+  <exec_depend>aav_safety</exec_depend>   <!-- joy_alive -->
   <exec_depend>teleop_twist_keyboard</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>launch</exec_depend>

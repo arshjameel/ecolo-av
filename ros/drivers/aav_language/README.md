@@ -23,7 +23,7 @@ pixi run -e llm talk                          # ask, plan, confirm, drive
 pixi run -e llm talk --fake                   # a pretend car, no ROS
 pixi run -e mcp drive-server                  # turtle, sim or bench (this computer only)
 AAV_DISCOVERY=SUBNET pixi run -e mcp drive-server --car   # the real car: only with a safety driver
-pixi run -e llm llm-eval                      # score local models on the test set
+pixi run -e llm tools/ros.sh python3 -m aav_language.run_eval                      # score local models on the test set
 ```
 
 The `aav-drive` entry in `.mcp.json` starts the drive server for Claude Code.
@@ -77,7 +77,7 @@ Modules:
 | `fake_backend.py`, `eval_set.py` | no | a pretend car; the model test's requests and `score()` |
 | `llm_mlx.py`, `llm_openai.py` | no | `MlxChat` (Apple silicon), `OpenAiChat` (llama-server, Ollama, trtllm-serve, mlx_lm.server on this computer) |
 | `ros_backend.py` | yes | `RosBackend`: the node, on its own thread |
-| `drive_server.py`, `agent.py`, `run_eval.py` | | the entry points: `drive_server`, `talk`, `llm-eval` |
+| `drive_server.py`, `agent.py`, `run_eval.py` | | the entry points: `drive_server`, `talk`, `tools/ros.sh python3 -m aav_language.run_eval` |
 
 ## Invariants
 
@@ -104,7 +104,7 @@ Modules:
   drops so both ramps fit.
 - When the app that started the server goes away (stdin closes), it cancels any drive.
 - Models are meant to run on this computer: MLX in this process, or a server at
-  `127.0.0.1:8080` by default. Nothing enforces it: `OpenAiChat` and `llm-eval --base-url`
+  `127.0.0.1:8080` by default. Nothing enforces it: `OpenAiChat` and `tools/ros.sh python3 -m aav_language.run_eval --base-url`
   take any URL (and `OpenAiChat` an API key).
 - Greedy decoding: the same request gives the same plan.
 - Turn angles: + = left.

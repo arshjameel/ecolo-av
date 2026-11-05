@@ -62,7 +62,7 @@ yarn-error.log*
 *.log
 
 # Downloaded third-party source (vendor/README.md says what and how): only the list
-# of repositories is committed; `pixi run vendor` downloads the rest.
+# of repositories is committed; `pixi run get vendor` downloads the rest.
 /vendor/*
 !/vendor/README.md
 !/vendor/CLAUDE.md
@@ -70,12 +70,12 @@ yarn-error.log*
 !/vendor/COLCON_IGNORE
 
 # Model files, downloaded or trained (models/README.md says which): only the README is
-# committed (and its CLAUDE.md); `pixi run get-models` downloads the stock model.
+# committed (and its CLAUDE.md); `pixi run get models` downloads the stock model.
 /models/*
 !/models/README.md
 !/models/CLAUDE.md
-# The map window's street map (40 MB) and the tool that cuts it (`pixi run get-street-map`),
-# and its place database (`pixi run get-places`).
+# The map window's street map (40 MB) and the tool that cuts it (`pixi run get street-map`),
+# and its place database (`pixi run get places`).
 /maps/
 
 # Secrets: copy the .example file and fill it in locally

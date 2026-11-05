@@ -8,7 +8,9 @@
 //! - the buttons' command, through hud-core's `Heartbeat`: at most 10 a second, and only
 //!   while the frame count rises, so a frozen window sends nothing and twist_mux (0.5 s)
 //!   and ego (0.3 s) stop the car;
-//! - the E-STOP's burst (hud-core's `EstopButton`): true 5 times, never false.
+//! - the E-STOP's burst (hud-core's `EstopButton`): true 5 times, never false;
+//! - the calibration page's request (limp, jog, off), at the same beat and under the same
+//!   rule: the bridge drops it after 0.5 s without one, so a frozen window ends it.
 //!
 //! QoS:
 //! - the lidar, the radar and the camera: best effort, keep last 1 (only counted);
@@ -16,6 +18,7 @@
 //!   (latched);
 //! - `/safety/estop`, both ways: reliable, depth 10, as the backends;
 //! - the buttons' command and `/control/cmd_vel`: reliable, depth 10 (twist_mux's);
+//! - the calibration request and the bridge's line: reliable, depth 10 (the bridge's);
 //! - everything else: best effort (SensorDataQoS), which takes reliable publishers too.
 //!
 //! The command's stamp is left at 0: twist_mux and ego go by arrival, and ego warns only
@@ -43,16 +46,18 @@ use hud_core::{
 };
 use panel_core::{
     buttons::Command,
-    config::{Number, PanelConfig, Topic, NODE_NAME},
+    calibration::{FirmwareState, Raw, Request},
+    config::{Count, Number, PanelConfig, Topic, NODE_NAME},
     state::{Actuator, ImuReading, Row, Update, Wheels},
 };
 use rclrs::*;
 use ros_env::aav_interfaces::msg::{
-    ActuatorState, DataSource, VehicleStatus as VehicleStatusMsg, WheelSpeeds,
+    ActuatorRaw, ActuatorState, DataSource, SteeringCalibration, VehicleStatus as VehicleStatusMsg,
+    WheelSpeeds,
 };
 use ros_env::geometry_msgs::msg::{Twist, TwistStamped, Vector3};
 use ros_env::sensor_msgs::msg::{BatteryState, Image, Imu, NavSatFix, PointCloud2};
-use ros_env::std_msgs::msg::{Bool, Header};
+use ros_env::std_msgs::msg::{Bool, Header, String as StringMsg};
 
 /// How many updates may wait for the screen. More are dropped: the screen is stuck.
 const QUEUE: usize = 512;
@@ -65,6 +70,8 @@ struct Shared {
     frames: AtomicU64,
     /// The buttons' latest command (None: send nothing).
     command: Mutex<Option<Command>>,
+    /// The calibration page's latest request (None: send nothing).
+    calibration: Mutex<Option<Request>>,
     estop_presses: AtomicU64,
     stopped: AtomicBool,
 }
@@ -89,6 +96,7 @@ impl RosSource {
         let shared = Arc::new(Shared {
             frames: AtomicU64::new(0),
             command: Mutex::new(None),
+            calibration: Mutex::new(None),
             estop_presses: AtomicU64::new(0),
             stopped: AtomicBool::new(false),
         });
@@ -142,12 +150,17 @@ impl crate::source::DataSource for RosSource {
         self.shared.estop_presses.fetch_add(1, Ordering::SeqCst);
     }
 
-    fn frame_drawn(&mut self, command: Option<Command>) {
+    fn frame_drawn(&mut self, command: Option<Command>, calibration: Option<Request>) {
         *self
             .shared
             .command
             .lock()
             .unwrap_or_else(PoisonError::into_inner) = command;
+        *self
+            .shared
+            .calibration
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = calibration;
         self.shared.frames.fetch_add(1, Ordering::Relaxed);
     }
 
@@ -287,10 +300,28 @@ fn spin(
             move |m: Bool| send(&tx, Update::NoTimeoutLock(m.data))
         })?;
 
+    let _raw = node.create_subscription(topic(Topic::SteeringRaw).as_str().sensor_data_qos(), {
+        let tx = tx.clone();
+        move |m: ActuatorRaw| {
+            let raw = Raw {
+                position: m.valid.then_some(m.position),
+                state: FirmwareState::from_byte(m.calibration),
+            };
+            send(&tx, Update::SteeringRaw(raw))
+        }
+    })?;
+    let _cal_line =
+        node.create_subscription(topic(Topic::CalibrationLine).as_str().qos(reliable10), {
+            let tx = tx.clone();
+            move |m: StringMsg| send(&tx, Update::CalibrationLine(m.data))
+        })?;
+
     let estop_pub: Publisher<Bool> =
         node.create_publisher(topic(Topic::Estop).as_str().qos(reliable10))?;
     let buttons_pub: Publisher<TwistStamped> =
         node.create_publisher(topic(Topic::Buttons).as_str().qos(reliable10))?;
+    let calibration_pub: Publisher<SteeringCalibration> =
+        node.create_publisher(topic(Topic::SteeringCalibration).as_str().qos(reliable10))?;
     let _timer = node.create_timer_repeating(TICK, {
         let node = Arc::clone(&node);
         let shared = Arc::clone(shared);
@@ -298,6 +329,7 @@ fn spin(
         let mut button = EstopButton::default();
         let mut presses_seen = 0;
         let mut failed = false;
+        let mut cal_failed = false;
         move || {
             let now = Instant::now();
             // The buttons: only while the window draws.
@@ -313,6 +345,23 @@ fn spin(
                         Err(e) if !failed => {
                             failed = true;
                             log_error!(node.logger(), "the buttons' command wasn't published: {e}");
+                        }
+                        Err(_) => {}
+                    }
+                }
+                let calibration = *shared
+                    .calibration
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner);
+                if let Some(r) = calibration {
+                    match calibration_pub.publish(steering_calibration(r)) {
+                        Ok(()) => cal_failed = false,
+                        Err(e) if !cal_failed => {
+                            cal_failed = true;
+                            log_error!(
+                                node.logger(),
+                                "the calibration request wasn't published: {e}"
+                            );
                         }
                         Err(_) => {}
                     }
@@ -378,6 +427,20 @@ fn twist(c: Command) -> TwistStamped {
     }
 }
 
+/// The calibration page's request as the bridge takes it (stamp 0: it goes by arrival).
+fn steering_calibration(r: Request) -> SteeringCalibration {
+    let (mode, target) = match r {
+        Request::Off => (SteeringCalibration::MODE_OFF, 0),
+        Request::Limp => (SteeringCalibration::MODE_LIMP, 0),
+        Request::Jog(target) => (SteeringCalibration::MODE_JOG, target),
+    };
+    SteeringCalibration {
+        header: Header::default(),
+        mode,
+        target,
+    }
+}
+
 fn vehicle(m: &VehicleStatusMsg) -> VehicleStatus {
     VehicleStatus {
         mode: Mode::from(m.mode),
@@ -417,10 +480,12 @@ fn announcement(m: &DataSource) -> Announcement {
     }
 }
 
-/// The node's parameters: each topic's name, and the numbers. Read once.
+/// The node's parameters: each topic's name, the numbers and the theme. Read once.
 struct Params {
     _names: Vec<ReadOnlyParameter<Arc<str>>>,
     _numbers: Vec<ReadOnlyParameter<f64>>,
+    _counts: Vec<ReadOnlyParameter<i64>>,
+    _easter_egg: ReadOnlyParameter<bool>,
 }
 
 impl Params {
@@ -436,6 +501,12 @@ impl Params {
             config.set_topic(t, p.get().to_string());
             names.push(p);
         }
+        let theme = node
+            .declare_parameter::<Arc<str>>("theme")
+            .default(config.theme.as_str().into())
+            .read_only()?;
+        config.theme = theme.get().parse()?;
+        names.push(theme);
         let mut numbers = Vec::new();
         for n in Number::ALL {
             let p = node
@@ -445,10 +516,26 @@ impl Params {
             config.set_number(n, p.get());
             numbers.push(p);
         }
+        let mut counts = Vec::new();
+        for c in Count::ALL {
+            let p = node
+                .declare_parameter(c.parameter())
+                .default(i64::from(config.count(c)))
+                .read_only()?;
+            config.set_count(c, p.get())?;
+            counts.push(p);
+        }
+        let easter_egg = node
+            .declare_parameter("easter_egg")
+            .default(config.easter_egg)
+            .read_only()?;
+        config.easter_egg = easter_egg.get();
         config.validate()?;
         let params = Self {
             _names: names,
             _numbers: numbers,
+            _counts: counts,
+            _easter_egg: easter_egg,
         };
         Ok((params, config))
     }
@@ -461,8 +548,9 @@ mod tests {
     use std::sync::atomic::AtomicUsize;
 
     /// The real node, as twist_mux would hear it: no command before the window draws;
-    /// the buttons' command at about 10 Hz while it draws; none once it stops drawing,
-    /// even with a command still held; and an E-STOP press is five trues, never false.
+    /// the buttons' command (and the calibration request, as the bridge would hear it)
+    /// at about 10 Hz while it draws; none once it stops drawing, even with a command
+    /// still held; and an E-STOP press is five trues, never false.
     /// Needs ROS sourced; runs on this computer only, on ROS_DOMAIN_ID (95 unless set),
     /// with topics of its own.
     #[test]
@@ -476,6 +564,8 @@ mod tests {
         let mut config = PanelConfig::default();
         config.set_topic(Topic::Buttons, buttons.clone());
         config.set_topic(Topic::Estop, estop.clone());
+        let cal_topic = format!("{prefix}/steering_calibration");
+        config.set_topic(Topic::SteeringCalibration, cal_topic.clone());
         let (mut panel, _) = RosSource::start(vec!["hw_panel".into()], config)?;
 
         let context = Context::default_from_env()?;
@@ -491,6 +581,17 @@ mod tests {
                     .push(m.twist.linear.x)
             }
         })?;
+        let requests = Arc::new(Mutex::new(Vec::<(u8, u16)>::new()));
+        let _cal_sub =
+            listener.create_subscription(cal_topic.as_str().reliable().keep_last(10), {
+                let requests = Arc::clone(&requests);
+                move |m: SteeringCalibration| {
+                    requests
+                        .lock()
+                        .unwrap_or_else(PoisonError::into_inner)
+                        .push((m.mode, m.target))
+                }
+            })?;
         let (trues, falses) = (Arc::new(AtomicUsize::new(0)), Arc::new(AtomicUsize::new(0)));
         let _estop_sub =
             listener.create_subscription(estop.as_str().reliable().keep_last(10), {
@@ -517,7 +618,7 @@ mod tests {
         let held = Command::from_steering(0.3, 0.0, 1.57);
         let end = Instant::now() + Duration::from_secs(2);
         while Instant::now() < end {
-            panel.frame_drawn(Some(held));
+            panel.frame_drawn(Some(held), Some(Request::Jog(2000)));
             spin(&mut executor, 33);
         }
         let drawing = count();
@@ -528,8 +629,27 @@ mod tests {
             .iter()
             .all(|&v| (v - 0.3).abs() < 1e-9));
 
+        // The calibration request goes at the same beat, as the bridge reads it.
+        let asked = requests
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        assert!(
+            (15..=21).contains(&asked.len()),
+            "{} requests in 2 s",
+            asked.len()
+        );
+        assert!(asked
+            .iter()
+            .all(|&r| r == (SteeringCalibration::MODE_JOG, 2000)));
+
         // The window freezes with the command still held: nothing more goes out.
         spin(&mut executor, 1000);
+        let after = requests
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .len();
+        assert!(after <= asked.len() + 1, "requests after the freeze");
         assert!(
             count() <= drawing + 1,
             "{} after the window froze",

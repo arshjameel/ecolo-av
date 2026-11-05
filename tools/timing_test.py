@@ -6,9 +6,9 @@ Starts Gazebo's test lot headless with the car's whole graph, then measures ever
 arrivals, first with the car parked, then while Nav2 drives controller_compare.py's lot
 tour round and round. Made to compare the messaging (TODO 11 and 32, docs/mac.md):
 
-    pixi run timing-test                          (Cyclone DDS: 5 min parked, 5 driving)
-    AAV_RMW=fastdds pixi run timing-test          (the same on Fast DDS)
-    pixi run timing-test --parked 60 --driving 60     (a quick look)
+    pixi run measure timing                          (Cyclone DDS: 5 min parked, 5 driving)
+    AAV_RMW=fastdds pixi run measure timing          (the same on Fast DDS)
+    pixi run measure timing --parked 60 --driving 60     (a quick look)
 
 For each phase it prints:
 - the key topics (the IMU, wheels, GPS, both EKFs, /tf, /clock, the cameras, the lidar,

@@ -27,7 +27,7 @@ its own speed (`Command.speed`), within the policy's limits.
 
 ```sh
 pixi run sim world:=test_lot reversing:=false tracker:=lqr
-pixi run controller-compare --trackers pure_pursuit lqr --tours lot --legs 1
+pixi run measure controllers --trackers pure_pursuit lqr --tours lot --legs 1
 ```
 
 ## Interface
@@ -107,7 +107,7 @@ pixi run build && colcon test --packages-select aav_track && colcon test-result 
 ```
 
 Quick, without ROS: `cd ros/drivers/aav_track && python3 -m pytest -q` (`tools/test.sh`
-runs it). In Gazebo: `pixi run controller-compare --trackers ...`.
+runs it). In Gazebo: `pixi run measure controllers --trackers ...`.
 
 | Test | Covers |
 |---|---|

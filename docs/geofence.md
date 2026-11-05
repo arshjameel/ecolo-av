@@ -57,8 +57,8 @@ path, the margin and σ.
 | `STARTING` | **on** | under 3 s of good poses | by itself |
 | `NEAR` | **on** | a stopping path reaches the margin | when 0.5 m further in |
 | `LOST` | **on** | no pose for 1 s; σ over 3 m; NaN; **no GPS into the EKF for 2 s** | by itself, once good |
-| `OUTSIDE` | **on** | the car itself is outside | a person drives in, then `pixi run geofence-clear` |
-| `JUMP` | **on** | the pose jumped further than speed × time + 2 m | a person: `pixi run geofence-clear` |
+| `OUTSIDE` | **on** | the car itself is outside | a person drives in, then `pixi run clear geofence` |
+| `JUMP` | **on** | the pose jumped further than speed × time + 2 m | a person: `pixi run clear geofence` |
 | `COASTING` | **on** | the backend can't brake to a stop (below) | when test 4.3 measures it |
 | `STANDS` | open | stands mode: **no fence** (logged every 5 s) | |
 
@@ -116,7 +116,7 @@ Not yet run: Gazebo with a fence you can reach, and the real car.
 ```sh
 pixi run bench-check --geofence     # a scripted drive at a 12 m fence must stop inside it
 pixi run sim world:=test_lot geofence_radius:=15   # watch /safety/geofence/state
-pixi run geofence-clear             # after OUTSIDE or JUMP, once the car is back in
+pixi run clear geofence             # after OUTSIDE or JUMP, once the car is back in
 ```
 
 Design: `docs/designs/2026-10-29_geofence.md`.

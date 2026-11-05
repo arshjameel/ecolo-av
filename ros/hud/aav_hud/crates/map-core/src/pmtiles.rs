@@ -436,7 +436,7 @@ mod tests {
         ));
     }
 
-    /// The real Ottawa extract, when `pixi run get-street-map` has downloaded it.
+    /// The real Ottawa extract, when `pixi run get street-map` has downloaded it.
     #[test]
     fn the_ottawa_extract_has_carleton() {
         let path = concat!(
@@ -444,7 +444,7 @@ mod tests {
             "/../../../../../maps/streets/ottawa.pmtiles"
         );
         let Ok(bytes) = std::fs::read(path) else {
-            eprintln!("skipped: no {path} (pixi run get-street-map)");
+            eprintln!("skipped: no {path} (pixi run get street-map)");
             return;
         };
         let a = Archive::new(bytes).expect("the extract reads");

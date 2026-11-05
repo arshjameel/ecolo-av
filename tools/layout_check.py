@@ -27,6 +27,7 @@ import base64
 import json
 import os
 from pathlib import Path
+import re
 import socket
 import struct
 import sys
@@ -50,7 +51,21 @@ OPTIONAL = {
     '/perception/camera/front_left/preview/compressed':
         "a camera: camera_stream on the car, foxglove.launch.py's preview elsewhere",
     '/safety/collision_monitor/stop_zone': 'a radar or lidar (collision_monitor)',
+    '/perception/voxels/cubes': 'voxels:=true (the voxels trial, with the lidar)',
+    '/vehicle/gazebo/chase_camera/compressed':
+        "Gazebo's chase camera (a world that renders sensors; sim only)",
+    '/localization/ndt/pose': 'ndt:=true (the NDT trial: world:=test_lot, its map made)',
+    '/localization/ndt/status': 'ndt:=true (the NDT trial)',
+    '/localization/amcl/pose': 'amcl:=true (the AMCL trial), once the car has moved',
+    '/localization/kiss_icp/odom': 'kiss_icp:=true (the KISS-ICP trial, with the lidar)',
+    '/localization/kiss_icp/status': 'kiss_icp:=true (the KISS-ICP trial)',
 }
+# The services the layouts call, and the parts that serve them only when asked for.
+OPTIONAL_SERVICES = {
+    '/track/set_parameters': 'a trial tracker at launch (tracker:=lqr...), sim only',
+}
+# Topics a layout's own user scripts make, inside the app: never asked of the bridge.
+SCRIPT_PREFIX = '/studio_script/'
 # Nav2's own topics the layouts show, outside docs/interfaces.yaml (Nav2 names them).
 NAV2_OWN = {'/local_costmap/costmap'}
 # What a 3D panel reads besides its topics: the frames, to place each one.
@@ -59,12 +74,31 @@ FRAMES = {'/tf', '/tf_static'}
 WHILE_DRIVING = {'/control/cmd_vel', '/plan'}
 
 
+def script_inputs(layout):
+    """Return the topics a layout's user scripts read (each script's `inputs`)."""
+    inputs = set()
+    for script in layout.get('userNodes', {}).values():
+        found = re.search(r'export const inputs = \[([^\]]*)\]', script['sourceCode'])
+        inputs |= set(re.findall(r'"([^"]+)"', found.group(1))) if found else set()
+    return inputs
+
+
+def shown_services(layout):
+    """Return the set of services a layout's Call Service panels call."""
+    return {config['serviceName'] for panel, config in layout['configById'].items()
+            if panel.split('!')[0] == 'CallService'}
+
+
 def shown_topics(layout):
-    """Return the set of topics a layout's panels read, from each panel's own setting."""
+    """
+    Return the set of topics a layout's panels read, from each panel's own setting.
+
+    A user script's output (/studio_script/...) is the app's own: its inputs count instead.
+    """
     def topic(path):
         return path.split('.')[0]
 
-    shown = set()
+    shown = script_inputs(layout)
     for panel, config in layout['configById'].items():
         kind = panel.split('!')[0]
         if kind == '3D':
@@ -73,6 +107,12 @@ def shown_topics(layout):
             shown.add(config['imageMode']['imageTopic'])
         elif kind == 'Indicator':
             shown.add(topic(config['path']))
+        elif kind == 'CallService':
+            continue                           # a service: shown_services
+        elif kind == 'Tab':
+            continue                           # its panels are in configById too
+        elif kind == 'Table':
+            shown.add(topic(config['topicPath']))
         elif kind in ('Plot', 'StateTransitions'):
             shown |= {topic(p['value']) for p in config['paths']}
         elif kind == 'RawMessages':
@@ -85,11 +125,15 @@ def shown_topics(layout):
                 shown.add(config['followTopic'])
         else:
             raise ValueError(f'{panel}: a panel this check does not know')
-    return shown
+    return {t for t in shown if not t.startswith(SCRIPT_PREFIX)}
 
 
-def advertised(payloads):
-    """Return {topic: channel id} from the bridge's text messages (its 'advertise' ops)."""
+def advertised(payloads, services=None):
+    """
+    Return {topic: channel id} from the bridge's text messages (its 'advertise' ops).
+
+    Given a set as services, it also collects the services the bridge advertises.
+    """
     channels = {}
     for payload in payloads:
         message = json.loads(payload)
@@ -98,6 +142,8 @@ def advertised(payloads):
         elif message.get('op') == 'unadvertise':
             gone = set(message['channelIds'])
             channels = {t: i for t, i in channels.items() if i not in gone}
+        elif message.get('op') == 'advertiseServices' and services is not None:
+            services.update(s['name'] for s in message['services'])
     return channels
 
 
@@ -232,15 +278,19 @@ def main():
     args = ap.parse_args()
 
     layouts = [Path(p) for p in args.layout] if args.layout else LAYOUTS
-    want = {}
+    want, calls = {}, {}
     for path in layouts:
-        for topic in shown_topics(json.loads(path.read_text())):
+        layout = json.loads(path.read_text())
+        for topic in shown_topics(layout):
             want.setdefault(topic, []).append(path.stem)
+        for service in shown_services(layout):
+            calls.setdefault(service, []).append(path.stem)
     found = connect(args.url)
     if found is None:
         return 2
     conn, protocol = found
-    channels = advertised(conn.text_frames(args.seconds))
+    services = set()
+    channels = advertised(conn.text_frames(args.seconds), services)
     print(f'{args.url} ({protocol}) serves {len(channels)} topics; '
           f'the layouts ({", ".join(p.stem for p in layouts)}) show {len(want)}:')
     faults = 0
@@ -252,6 +302,13 @@ def main():
         else:
             print(f'  MISSING   {topic}   ({", ".join(want[topic])})')
             faults += 1
+    for service in sorted(calls):
+        # A watch-only bridge (the car's) advertises no services: none is a fault there.
+        if service in services:
+            print(f'  served    {service}   (a service)')
+        else:
+            why = OPTIONAL_SERVICES.get(service, 'a bridge that allows services')
+            print(f'  off       {service}   (a service: only with {why})')
     if args.data:
         served = {t: c for t, c in channels.items() if t in want}
         counts = measure(conn, served, args.seconds)

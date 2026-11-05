@@ -2,7 +2,8 @@
 """
 Save a picture of the running ROS graph: every node and topic, and who talks to whom.
 
-    pixi run graph-picture                    (docs/img/graph.svg and .png; start a profile first)
+    pixi run tools/ros.sh python3 tools/graph_picture.py
+        docs/img/graph.svg and .png (start a profile first)
     tools/ros.sh python3 tools/graph_picture.py --out /tmp/graph.svg [--wait 4] [--all]
 
 Like rqt_graph's Nodes/Topics view, but in a file, and grouped by layer: sensors at the

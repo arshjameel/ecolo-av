@@ -35,7 +35,7 @@ Each launch file's docstring lists all its arguments. The common ones:
 | `perception`, `lane`, `camera_obstacles` | sim, bench | the object detector and the stop-sign watcher; lane keeping; boxes into Nav2's costmap |
 | `hud` | sim, bench | the HUD window (`aav_hud`, raylib); needs a screen |
 | `bridge:=rust\|python` | sim, bench, car | which `spine_bridge` (`aav_spine.bridges`) |
-| `reversing` | car, sim, bench, carla | may Nav2 back up (at 0.5 m/s at most). `true` in sim, bench and carla; `false` on the car until the wheels tell direction (H5) |
+| `reversing` | car, sim, bench, carla | may Nav2 back up (at 0.5 m/s at most). `true` everywhere; on the car only where the lidar watches behind. Until the wheels tell direction (H5), the sign is the last command's |
 | `max_speed`; `sim_speed` | car; sim, carla | the top speed, m/s |
 | `start_y` (m), `start_yaw` (rad); the car also `start_x` | car, sim, bench | where the car starts in the map frame |
 | `arm` | sim (`spine:=true`), bench | `arm_when_open` arms the spine after 12 s |
@@ -50,6 +50,7 @@ detector's and camera streams' settings. Arguments win over the file (`gps:=fals
 |---|---|
 | `orin` | description, mux, ego, scripted, drive_to_point, sensors, lidar, camera_stream, stop_signs, localization, navigation, spine, foxglove |
 | `motor_pi` | `legacy_uart` only: the Pi wired to the ESP32's UART |
+| `motor_pi_alone` | the first moves: mux, ego, stop_signs, teleop and `legacy_uart`, all on the Motor Pi, so the heartbeat is made there. Never with `car orin` too (docs/car-day.md, A9b) |
 | `laptop` | teleop and a detector |
 | `all` | everything on one computer |
 

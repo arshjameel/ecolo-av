@@ -5,9 +5,16 @@
 # The actuators' own reports and the go-to driver's feedback (hidden: its action topic)
 # let tools/atob_score.py score an A-to-B run from the bag; Gazebo's truth when in sim.
 #
-# usage: tools/record.sh [name]       -> bags/<date>_<name>/ (MCAP, Jazzy's default)
+# usage: tools/record.sh [--lidar] [name]   -> bags/<date>_<name>/ (MCAP, Jazzy's default)
+#   --lidar  also the lidar's cloud, to build the NDT map at home (pixi run ndt-map build):
+#            about 9 MB/s, so 10 min is about 5 GB (docs/tests.md, 4.19)
 set -euo pipefail
 cd "$(dirname "$0")/.."
+lidar=()
+if [[ "${1:-}" == --lidar ]]; then
+  lidar=(/sensors/lidar/points)
+  shift
+fi
 name="${1:-drive}"
 out="bags/$(date +%Y-%m-%d_%H%M%S)_${name}"
 mkdir -p bags
@@ -22,4 +29,4 @@ exec tools/ros.sh ros2 bag record -o "$out" --include-hidden-topics --topics \
   /drivers/point/cmd_vel /drivers/rc/cmd_vel /drivers/tests/cmd_vel /drive_to_point/_action/feedback /drive_to_point/_action/status \
   /ego/actuator_cmd /can/tx /can/rx \
   /localization/odom/local /localization/odom/global /localization/gps/odom /localization/gps/fix /localization/gps/heading \
-  /tf /tf_static /robot_description /plan /goal_pose /clock
+  /tf /tf_static /robot_description /plan /goal_pose /clock ${lidar[@]+"${lidar[@]}"}

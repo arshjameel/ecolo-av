@@ -50,12 +50,13 @@ def test_followers_match_vehicle_py():
 
 def test_programs_are_pixi_tasks():
     text = _read(PIXI)
-    for name, _ in pick.PROGRAMS:
+    for program, _ in pick.PROGRAMS:
+        name = program.split()[0]   # demo --debug: the demo task, with its flag
         assert re.search(rf'^{name} *=', text, re.M), name
 
 
 def test_every_row_sets_every_localizer():
-    # debugdemo turns AMCL and NDT on; the last value wins, so each row says them all.
+    # demo --debug turns AMCL and NDT on; the last value wins, so each row says them all.
     for _, _, args in pick.LOCALIZERS:
         names = {a.split(':=')[0] for a in args}
         assert {'ndt', 'ndt_ekf', 'amcl', 'kiss_icp', 'kiss_ekf'} <= names
@@ -72,14 +73,14 @@ def test_kiss_ekf_on_the_empty_world_moves_to_the_test_lot():
 
 def test_enter_takes_the_defaults():
     cmd = pick.questions(read=lambda _: '', say=lambda *_: None)
-    assert cmd[:3] == ['pixi', 'run', 'debugdemo']
+    assert cmd[:4] == ['pixi', 'run', 'demo', '--debug']
     assert 'planner:=lattice' in cmd
     assert 'controller:=mppi' in cmd and 'tracker:=none' in cmd
-    # debugdemo's default: NDT and AMCL both on, so the seeing screen shows every finder.
+    # demo --debug's default: NDT and AMCL both on, so the seeing screen shows every finder.
     assert 'ndt:=true' in cmd and 'amcl:=true' in cmd
 
 
-def test_debugdemo_still_offers_every_finder():
+def test_debug_demo_still_offers_every_finder():
     said = []
     answers = iter([''] * 6)
     pick.questions(read=lambda _: next(answers), say=said.append)
@@ -90,7 +91,7 @@ def test_debugdemo_still_offers_every_finder():
 def test_demo_defaults_to_the_ekfs_only():
     answers = iter(['2'] + [''] * 5)
     cmd = pick.questions(read=lambda _: next(answers), say=lambda *_: None)
-    assert cmd[2] == 'demo'
+    assert cmd[2] == 'demo' and '--debug' not in cmd
     assert 'ndt:=false' in cmd and 'amcl:=false' in cmd
 
 

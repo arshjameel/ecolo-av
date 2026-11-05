@@ -12,7 +12,7 @@ the end, mapped to these numbers.
 > - **Software, built and tested in simulation: about 43%** of the committed tasks. **Proven on the car: about 5%** (the audits).
 > - **Ahead:** the drivers, ego, the muxes, Gazebo, Nav2, A to B, the HUD. **Behind:** everything that needs the car or new parts: power, calibration, the closed loop.
 > - **Next gate, 30 Oct (Know the car):** the car isn't measured yet. That's the most urgent job.
-> - **MPPI:** Nav2's default since 22 Oct, tuned for the car in Gazebo, and compared with Regulated Pure Pursuit by `pixi run controller-compare` (`controller:=rpp` for the old one; [controllers](path-followers.md)). It steers round an obstacle the sensors see.
+> - **MPPI:** Nav2's default since 22 Oct, tuned for the car in Gazebo, and compared with Regulated Pure Pursuit by `pixi run measure controllers` (`controller:=rpp` for the old one; [controllers](path-followers.md)). It steers round an obstacle the sensors see.
 > - **Status:** ✅ done · 🧪 done in simulation only · 🔧 started · ⬜ not started · 🎯 stretch.
 
 ## How far along, by sub-project
@@ -77,7 +77,7 @@ the next concrete step.
 | T1.4 | Raspberry Pis to Ubuntu 24.04 | 27 Nov | 🔧 | 10 | one imaging script; the car kit is ready (`pixi run car-kit`) |
 | T1.5 | One launch, `target:=` and `source:=`; the sensor mux and output mux | 4 Dec | 🧪 | 80 | built 23 Oct (`aav_io_mux`, `stack.launch.py target:=`; [sources and targets](sources-and-targets.md)): every profile runs both muxes; `sim-check` and `bench-check` pass with them. Next: on the car, `/safety/output_mux/state` says OPEN with only the car's own nodes; the team agrees D3 |
 | T1.6 | Contract test | 4 Dec | ✅ | 80 | add topic rates to the nightly check |
-| T1.7 | Measure the computers and the network | 18 Dec | 🔧 | 35 | the load report on the Mac (22 Oct, below); the bandwidth budget (23 Oct, [bandwidth](bandwidth.md)): only raw cameras overflow a link, CAN 8.5% busy; `pixi run bandwidth` measured Gazebo (33-35 MB/s). Next: run it on the car, then the Orin's CPU |
+| T1.7 | Measure the computers and the network | 18 Dec | 🔧 | 35 | the load report on the Mac (22 Oct, below); the bandwidth budget (23 Oct, [bandwidth](bandwidth.md)): only raw cameras overflow a link, CAN 8.5% busy; `pixi run measure bandwidth` measured Gazebo (33-35 MB/s). Next: run it on the car, then the Orin's CPU |
 | T1.8 | Port to Rust, one module at a time | Jan-Mar | 🔧 | 65 | IMU, radar and the CAN bridge done (`aav_spine_bridge`, the default since 23 Oct; the Python one goes once the Rust has run on the car); next the battery monitor |
 | T1.9 | Second Orin (stretch) | Feb-Mar | 🎯 | 0 | KEFC decision, 2 Nov |
 
@@ -104,7 +104,7 @@ the next concrete step.
 | T3.3 | Steering range and centre | 20 Nov | ⬜ | 10 | `pixi run actuator-test` has the sweeps; the car on stands |
 | T3.4 | Linkage re-mount (if needed) | 4 Dec | ⬜ | 0 | after T3.3 |
 | T3.5 | CAN bus, wheel nodes, brake sensor | 11 Dec | 🔧 | 30 | the message set (`firmware/can/aav.dbc`) and the logic exist; the parts are on the KEFC list |
-| T3.6 | Spine firmware in Rust | 27 Nov | 🔧 | 70 | 24 Oct: boots in QEMU and brakes 111-120 ms after the Motor Pi's frames stop (`pixi run esp-qemu-check`). The same day, TODO 50: the version 2 serial frame carries the Orin's heartbeat (counter, flags, CRC-8); QEMU brakes 111-120 ms after the counter freezes or the CRCs go bad. Next: flash it on the bench ([ESP32 bench](esp32-bench.md)), with `frame_version: 2` |
+| T3.6 | Spine firmware in Rust | 27 Nov | 🔧 | 70 | 24 Oct: boots in QEMU and brakes 111-120 ms after the Motor Pi's frames stop (`pixi run esp qemu-check`). The same day, TODO 50: the version 2 serial frame carries the Orin's heartbeat (counter, flags, CRC-8); QEMU brakes 111-120 ms after the counter freezes or the CRCs go bad. Next: flash it on the bench ([ESP32 bench](esp32-bench.md)), with `frame_version: 2` |
 | T3.7 | Bench rig | 20 Nov | 🔧 | 40 | `pixi run bench` covers the software; build the board |
 | T3.8 | Hardware test suite | 18 Dec | 🔧 | 60 | the scripts exist (tests.md stages 3-4); run them on stands |
 | T3.9 | Brake and throttle loops | 22 Jan | 🔧 | 20 | the PI loop is in `spine-core`; tune it on stands. With today's guessed gains it overshoots about 15% (the Gazebo model, 22 Oct: 0.57 m/s backing up for 0.5). A `smooth` profile (setpoint weight) is ready to try on stands, 0% in the model and Gazebo: TODO 27 |
@@ -184,7 +184,7 @@ the next concrete step.
 | T9.5 | Faults, battery and health | 18 Dec | 🧪 | 75 | 24 Oct: the HUD's GO / STOP panel says whether the car may move, and the one main reason (the e-stop, the output mux's gate, the sensor watchdog). Next: rail voltages (T4.5) |
 | T9.6 | Boot and crash tests | 18 Dec | 🔧 | 50 | on the Pi |
 | T9.7 | The language model's plan on screen | 29 Jan | 🔧 | 50 | |
-| T9.8 | HUD stop and heartbeat | 29 Jan | 🧪 | 80 | done 23 Oct: `/hud/heartbeat` while the screen draws; the watchdog stops Nav2 without it (car: `watch_hud:=true`). Passes in Gazebo (`sim-check --faults`, `hud stop`) and with the real window on a Mac. 24 Oct (Ben): latched, a dropout after the HUD's first 5 s holds Nav2 until `pixi run watchdog-clear`. Next: on the car's screen computer |
+| T9.8 | HUD stop and heartbeat | 29 Jan | 🧪 | 80 | done 23 Oct: `/hud/heartbeat` while the screen draws; the watchdog stops Nav2 without it (car: `watch_hud:=true`). Passes in Gazebo (`sim-check --faults`, `hud stop`) and with the real window on a Mac. 24 Oct (Ben): latched, a dropout after the HUD's first 5 s holds Nav2 until `pixi run clear watchdog`. Next: on the car's screen computer |
 
 ### Safety (cross-cutting)
 
@@ -194,7 +194,7 @@ the next concrete step.
 | S-2 | Written permission for the lot (November) | ⬜ | |
 | S-3 | Geofence: everything outside the test area blocked on the map | 🔧 | the lot's map (T7.4) |
 | S-4 | Simulated messages can never reach the car | 🧪 | two layers: stand-ins run `--local`; and (23 Oct) the real backends read only `/control/car/actuator_cmd`, which the output mux fills only while every source is REAL, else a latched stop. Tested: with Gazebo announcing SIM, `spine_bridge` sent no drive frame. Next: the same on the car |
-| S-5 | Speed capped at 1 m/s in the firmware and in ego | 🔧 | ego ✅; the firmware's cap with T3.6 |
+| S-5 | Speed capped at 1 m/s in ego; a **throttle cap** in the firmware (the ESP32 can't see the speed) | 🔧 | ego ✅; the firmware's throttle cap with T3.6 (TODO 74b) |
 
 ## The MPPI track (new)
 
@@ -206,7 +206,7 @@ too". It shares the car's model with ego, as the proposal says (section 8.3).
 | M1 | `controller:=mppi`: one argument switches Nav2's path follower | ✅ 22 Oct | |
 | M2 | Its limits from `vehicle.yaml`: turning radius, outline, top and reverse speed | ✅ | its braking limit from ego (done by hand: `ax_min` = ego's -2.0) |
 | M3 | Tuned for a car, not a robot, in Gazebo | ✅ 22 Oct | moving within 0.5 s at 0.95 m/s; turns to a goal's heading from 2.5 m out ([why](path-followers.md#making-mppi-drive)). Its U-turn in a 14 m lane: forward only it swings wide and fails; allowed to reverse it makes a three-point turn (22 Oct, [controllers](path-followers.md)) |
-| M4 | The comparison: `pixi run controller-compare` | ✅ 22 Oct | six runs overnight; MPPI did at least as well in each. **MPPI is the default** since 22 Oct ([controllers](path-followers.md)) |
+| M4 | The comparison: `pixi run measure controllers` | ✅ 22 Oct | six runs overnight; MPPI did at least as well in each. **MPPI is the default** since 22 Oct ([controllers](path-followers.md)) |
 | M5 | Steering round an obstacle | ✅ 22 Oct, Gazebo | the planner's costmap has the radar and lidar (`plan_around:=true`); both controllers drove round the box 2.6-3.8 m clear. `sim-check --plan-around` |
 | M6 | Its CPU on the Orin | ⬜ | with the load report (T1.7) |
 | M7 | MPPI on the car | ⬜ | after Nav2 passes on the car (T7.8); MPPI is the default now |

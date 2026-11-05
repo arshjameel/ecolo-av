@@ -20,6 +20,7 @@ use hud_core::{
 
 use crate::{
     buttons::Command,
+    calibration::{Raw, Situation as CalSituation},
     rules::{source_kind, Kind},
     vehicle::SpeedWheels,
 };
@@ -41,6 +42,8 @@ pub enum Row {
     /// twist_mux's output, `/control/cmd_vel`.
     Mux,
     GeofenceLock,
+    /// `/vehicle/steering_actuator/raw`: the calibration page's position.
+    SteeringRaw,
 }
 
 impl Row {
@@ -71,6 +74,7 @@ impl Row {
             Self::Battery => "battery",
             Self::Mux => "twist_mux",
             Self::GeofenceLock => "geofence",
+            Self::SteeringRaw => "steering raw",
         }
     }
 }
@@ -128,6 +132,10 @@ pub enum Update {
     NoTimeoutLock(bool),
     /// The E-STOP button's message went out: to this many subscribers (None: failed).
     EstopSent(Option<usize>),
+    /// `/vehicle/steering_actuator/raw`.
+    SteeringRaw(Raw),
+    /// `/vehicle/steering_actuator/calibration`: the bridge's line.
+    CalibrationLine(String),
 }
 
 /// Messages counted over this long for a rate.
@@ -158,6 +166,9 @@ pub struct PanelState {
     pub no_timeout_lock: Option<bool>,
     /// The E-STOP button's last message: sent to how many (None: failed).
     pub estop_sent: Option<Option<usize>>,
+    pub steering_raw: Option<Raw>,
+    /// The bridge's last calibration line, and when.
+    pub calibration_line: Option<(Instant, String)>,
 }
 
 impl PanelState {
@@ -181,6 +192,8 @@ impl PanelState {
             geofence_lock: None,
             no_timeout_lock: None,
             estop_sent: None,
+            steering_raw: None,
+            calibration_line: None,
         }
     }
 
@@ -247,6 +260,11 @@ impl PanelState {
             }
             Update::NoTimeoutLock(on) => self.no_timeout_lock = Some(on),
             Update::EstopSent(n) => self.estop_sent = Some(n),
+            Update::SteeringRaw(r) => {
+                self.steering_raw = Some(r);
+                self.heard(Row::SteeringRaw, now);
+            }
+            Update::CalibrationLine(line) => self.calibration_line = Some((now, line)),
         }
     }
 
@@ -306,6 +324,21 @@ impl PanelState {
             .then_some(f64::from(m))
     }
 
+    /// The raw position message, while fresh.
+    pub fn fresh_raw(&self, now: Instant) -> Option<Raw> {
+        self.steering_raw
+            .filter(|_| self.health(Row::SteeringRaw, now).is_ok())
+    }
+
+    /// What the calibration page needs to know to be allowed.
+    pub fn calibration_situation(&self, now: Instant) -> CalSituation {
+        CalSituation {
+            estop: self.estop_on(),
+            speed: self.seen_speed(now),
+            raw: self.fresh_raw(now),
+        }
+    }
+
     /// One sensor row's number, in a few words. `wheels_note`: on stands, which wheels
     /// are measured when they aren't the driven ones ("front, not driven").
     pub fn detail(&self, row: Row, now: Instant, wheels_note: Option<&str>) -> String {
@@ -352,6 +385,12 @@ impl PanelState {
                 s
             }),
             Row::Lidar | Row::Radar | Row::Camera | Row::Mux | Row::GeofenceLock => hz(),
+            Row::SteeringRaw => self.steering_raw.map_or_else(String::new, |r| {
+                let at = r
+                    .position
+                    .map_or_else(|| "no position".to_owned(), |p| format!("{p} counts"));
+                format!("{at}, {}", r.state)
+            }),
             Row::Battery => self.battery.map_or_else(String::new, |b| {
                 let mut parts = Vec::new();
                 if let Some(v) = b.voltage {
@@ -520,5 +559,26 @@ mod tests {
         s.apply(Update::GeofenceLock(true), t);
         assert!(s.geofence_holds(t));
         assert!(!s.geofence_holds(t + Duration::from_secs(3)));
+    }
+
+    #[test]
+    fn the_calibration_page_sees_only_a_fresh_position() {
+        use crate::calibration::{readiness, FirmwareState, NotReady};
+        let t = Instant::now();
+        let mut s = state();
+        let raw = Raw {
+            position: Some(2010),
+            state: FirmwareState::Limp,
+        };
+        s.apply(Update::SteeringRaw(raw), t);
+        assert_eq!(s.fresh_raw(t), Some(raw));
+        assert_eq!(
+            s.detail(Row::SteeringRaw, t, None),
+            "2010 counts, LIMP (the motor off)"
+        );
+        let later = t + Duration::from_secs(2);
+        assert_eq!(s.fresh_raw(later), None);
+        let why = readiness(&s.calibration_situation(later));
+        assert_eq!(why, vec![NotReady::SpeedUnseen, NotReady::NoRaw]);
     }
 }

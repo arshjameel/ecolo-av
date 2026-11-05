@@ -20,8 +20,8 @@ for pkg in ros/ego/aav_ego ros/io_mux/aav_io_mux ros/can_bridge/aav_spine ros/ca
            ros/sim/aav_gazebo ros/sim/aav_carla \
            ros/drivers/aav_scripted ros/drivers/aav_language ros/drivers/aav_navigation \
            ros/drivers/aav_actuator_tests ros/drivers/aav_drive_to_point ros/drivers/aav_routes ros/drivers/aav_rc \
-           ros/drivers/aav_track \
-           ros/bringup/aav_description ros/localization/aav_gps_heading ros/localization/aav_kiss_icp \
+           ros/drivers/aav_track ros/drivers/aav_diffusion_planner \
+           ros/bringup/aav_description ros/bringup/aav_run_info ros/localization/aav_gps_heading ros/localization/aav_kiss_icp \
            ros/localization/aav_localization_health \
            ros/perception/aav_detector ros/sources/aav_camera_stream \
            ros/perception/aav_lane_finder ros/perception/aav_lane_geometry ros/perception/aav_lidar \
@@ -68,12 +68,12 @@ if command -v cargo >/dev/null; then
         "firmware/spine/boards/$dir/target/thumbv8m.main-none-eabihf/release/$bin"
     done
   fi
-  # Today's ESP32 control board: only with Espressif's Xtensa Rust (pixi run esp-tools).
+  # Today's ESP32 control board: only with Espressif's Xtensa Rust (pixi run esp tools).
   echo "== firmware/spine/boards/esp32-umod: the spine on today's ESP32 control board"
   tools/esp32.sh check
-  # The same firmware in Espressif's QEMU (pixi run esp-qemu-tools): the heartbeat check.
+  # The same firmware in Espressif's QEMU (pixi run esp qemu-tools): the heartbeat check.
   echo "== the ESP32 firmware in QEMU: it brakes when the Orin's heartbeat stops"
-  tools/esp32.sh qemu
+  tools/esp32.sh qemu-check
 else
   echo "skipped: no cargo here (pixi run test has it; or install Rust with rustup)"
 fi
@@ -84,11 +84,17 @@ python3 - <<'PY'
 import re
 import sys
 tasks = dict(re.findall(r'^([\w-]+) = \{ cmd = "([^"]*)"', open('pixi.toml').read(), re.M))
-bad = [t for t in ('turtle', 'sim', 'bench', 'bench-check', 'view', 'laptop-bench',
-                       'sim-check', 'sim-fault', 'carla-car', 'controller-compare',
-                       'timing-test', 'stream-check', 'debugdemo', 'hw-panel',
-                       'ndt-map')
+bad = [t for t in ('turtle', 'sim', 'bench', 'bench-check', 'view', 'sim-check', 'sim-fault',
+                   'demo', 'ndt-map', 'carla-car', 'laptop-bench')
        if not tasks.get(t, '').startswith('tools/ros.sh --local ')]
+# The families that start Gazebo or drive it: each choice's line in its script.
+for script, choices in (('tools/screen.sh', ('hw-panel',)),
+                        ('tools/measure.sh', ('controllers', 'timing', 'stream', 'atob'))):
+    text = open(script).read()
+    for choice in choices:
+        line = re.search(rf'^ *{re.escape(choice)}\) .*$', text, re.M)
+        if not line or 'tools/ros.sh --local' not in line.group(0):
+            bad.append(f'{script} {choice}')
 sys.exit(f'these pixi tasks need "tools/ros.sh --local": {bad}' if bad else None)
 PY
 if [[ -f install/setup.bash ]]; then

@@ -3,7 +3,7 @@
 How busy the car's CAN bus is: every frame in firmware/can/aav.dbc, its size and rate.
 
   python3 tools/can_load.py [firmware/can/aav.dbc] [--bitrate 500000] [--markdown]
-  pixi run can-load
+  pixi run python3 tools/can_load.py
 
 No ROS; the tests are tools/tests/test_can_load.py. The rates come from each frame's
 comment in the DBC ("at 50 Hz"), the bitrate from the file's own comment ("Classic CAN at

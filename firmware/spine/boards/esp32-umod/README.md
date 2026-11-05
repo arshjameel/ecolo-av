@@ -43,7 +43,7 @@ The direction output is pin P00 of the PCA9555, not an ESP32 pin.
 |---|---|
 | `legacy-uart` (default) | today: a drop-in for the C++, with `aav_legacy`'s `legacy_uart_bridge` |
 | `link-v1` | with `legacy-uart`: the 2025-26 13-byte frame, no heartbeat (`frame_version: 1`) |
-| `uplink` | with `legacy-uart`: a status frame back to the Motor-Pi every 20 ms, and the three-position RC mode switch. Off until the hardware lead confirms the wire |
+| `uplink` | with `legacy-uart`: a status frame back to the Motor-Pi every 20 ms (version 3 since 1 Nov: with both Jrks' positions in counts and the steering calibration's state), and the three-position RC mode switch. Off until the hardware lead confirms the wire |
 | `can` | the KEFC plan: `firmware/can/aav.dbc`. Its pins are unknown: see `src/pins.rs` |
 | `estop-input` | the e-stop's spare contact on GPIO27, once wired (Q6) |
 | `qemu` | runs in Espressif's QEMU, never on the car: stand-in I2C devices, a busy-wait tick |
@@ -83,10 +83,10 @@ The direction output is pin P00 of the PCA9555, not an ESP32 pin.
 ## Verification
 
 ```sh
-pixi run esp-tools        # once: Espressif's Rust, espup, espflash (needs rustup)
-pixi run esp-build        # or: --no-default-features --features can
-pixi run esp-qemu-check   # in QEMU: it brakes within 0.2 s when the heartbeat stops
-pixi run esp-flash        # bench only, wheels off the ground: docs/esp32-bench.md
+pixi run esp tools        # once: Espressif's Rust, espup, espflash (needs rustup)
+pixi run esp build        # or: --no-default-features --features can
+pixi run esp qemu-check   # in QEMU: it brakes within 0.2 s when the heartbeat stops
+pixi run esp flash        # bench only, wheels off the ground: docs/esp32-bench.md
 ```
 
 It is a workspace of its own: it builds only for `xtensa-esp32-none-elf`, with the `esp`

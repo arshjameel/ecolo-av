@@ -22,10 +22,12 @@
 //! | [`swap`] | keys 1-4: which tracker, and whether a swap may be asked for (sim only) |
 //! | [`topdown`] | the seeing screen's top-downs: the map frame in a rectangle of the window |
 //! | [`state`] | everything above, as one value the screen draws |
+//! | [`easter_egg`] | when the little robot's eyes may peek: the car still, no warning, nothing changed |
 
 pub mod cloud;
 pub mod config;
 pub mod cubes;
+pub mod easter_egg;
 pub mod frames;
 pub mod keys;
 pub mod localization_health;

@@ -27,6 +27,7 @@ setup(
             'sensor_watchdog = aav_safety.sensor_watchdog:main',
             'stop_hold = aav_safety.stop_hold:main',
             'geofence = aav_safety.geofence_node:main',
+            'joy_alive = aav_safety.joy_alive_node:main',
         ],
     },
 )

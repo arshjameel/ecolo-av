@@ -6,8 +6,8 @@ stream_check: the camera stream end to end on one computer, without the car.
       ──RTSP──> camera_stream_front_left (decode, undistort, RF-DETR) ──> detections
       ──> the sensor watchdog (aav_safety), watching the camera as on the car
 
-  pixi run -e ml stream-check            # RF-DETR Nano, as on the car (needs PyTorch)
-  pixi run stream-check --detector none  # the stream alone, no PyTorch
+  pixi run -e ml measure stream            # RF-DETR Nano, as on the car (needs PyTorch)
+  pixi run measure stream --detector none  # the stream alone, no PyTorch
 
 Measures, over the last --seconds (60): the delay from the time code being drawn to the
 picture leaving the decoder, and to its detections being published (median, 95th
@@ -36,7 +36,7 @@ Options:
 
 It runs on this computer only: a private ROS domain and Gazebo partition, MediaMTX and
 RTSP on 127.0.0.1 with ports picked free, every program in its own process group
-(stopped by group, never by name). Needs vendor/mediamtx: pixi run get-mediamtx.
+(stopped by group, never by name). Needs vendor/mediamtx: pixi run get mediamtx.
 What it can't measure: the camera's own capture and the Pi 5's encoder (its CPU is not
 this computer's), the wired network between the Pi and the Orin, and the Orin's decoder.
 """
@@ -344,16 +344,16 @@ def main():
     speed = float(option(args, '--drive', '0.3'))
     pattern = '--pattern' in args
     if not os.access(MEDIAMTX, os.X_OK):
-        print('No MediaMTX here: pixi run get-mediamtx (once)', file=sys.stderr)
+        print('No MediaMTX here: pixi run get mediamtx (once)', file=sys.stderr)
         return 2
     if shutil.which('ffmpeg') is None:
-        print('No ffmpeg: run this through pixi (pixi run stream-check)', file=sys.stderr)
+        print('No ffmpeg: run this through pixi (pixi run measure stream)', file=sys.stderr)
         return 2
     if detector != 'none':
         try:
             import torch  # noqa: F401
         except ImportError:
-            print(f'--detector {detector} needs PyTorch: pixi run -e ml stream-check, or '
+            print(f'--detector {detector} needs PyTorch: pixi run -e ml measure stream, or '
                   '--detector none', file=sys.stderr)
             return 2
 

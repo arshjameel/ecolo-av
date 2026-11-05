@@ -4,16 +4,17 @@ The real car. One launch file for every machine; a machine file picks the parts.
   ros2 launch aav_bringup car.launch.py machine:=orin
       [gps:=true] [gps_driver:=ublox] [map:=<map yaml>] [start_x:=0] [start_y:=0]
       [start_yaw:=0] [max_speed:=0.3]
-      [reversing:=false]  (off on the car by default (26 Oct): the wheel sensors can't
-                           tell direction yet (H5). true: Nav2 may back up, at 0.5 m/s at
-                           most, where the machine runs something that sees behind: the
-                           lidar, or camera_obstacles with a detector on the rear camera
-                           that keeps people. Without, it stays forward only and says why)
-      [planner:=hybrid]   (Nav2's planner: hybrid (SmacPlannerHybrid) or lattice
-                           (SmacPlannerLattice, our primitives). Hybrid on the car
-                           until H5: forward only, the lattice lost the U-turn. Only
-                           these two on the car: smac2d, navfn and theta_star ignore the
-                           turning radius, and are refused here, with no way round it
+      [reversing:=true]   (on since 1 Nov: Nav2 may back up, at 0.5 m/s at most, where
+                           the machine runs something that sees behind: the lidar, or
+                           camera_obstacles with a detector on the rear camera that keeps
+                           people. Without, it stays forward only and says why. Until the
+                           wheels tell direction (H5), the speed's sign is the last
+                           command's. false: forward only)
+      [planner:=]         (Nav2's planner: empty picks lattice (SmacPlannerLattice, our
+                           primitives) if Nav2 may reverse, else hybrid (SmacPlannerHybrid):
+                           forward only, the lattice lost the U-turn. Only these two on
+                           the car: smac2d, navfn and theta_star ignore the turning
+                           radius, and are refused here, with no way round it
                            (vehicle.check_planner real)
       [lidar:=true]       (false: no lidar anywhere, whatever the machine file says)
       [voxels:=false]     (true: Nav2 reads the lidar as 0.25 m cubes, aav_voxels, a trial
@@ -140,9 +141,10 @@ PARTS = ('description', 'mux', 'ego', 'teleop', 'scripted', 'drive_to_point', 'i
 SECTIONS = ('parts', 'detector', 'camera_stream', 'geofence')
 # Each model format: what runs it, besides PyTorch and Ultralytics, and how to make it.
 FORMATS = {
-    '.pth': ([], 'pixi run get-models'),
-    '.pt': ([], 'pixi run get-models'),
-    '.mlpackage': (['coremltools'], 'pixi run -e ml export-coreml [its .pth or .pt] (on a Mac)'),
+    '.pth': ([], 'pixi run get models'),
+    '.pt': ([], 'pixi run get models'),
+    '.mlpackage': (['coremltools'], 'pixi run -e ml python3 tools/export_model.py '
+                                    '--format coreml [its .pth or .pt] (on a Mac)'),
     '.engine': (['tensorrt'], 'python3 tools/build_engine.py [its .pth or .pt] (on this '
                               'computer, with the python3 of JetPack)'),
 }
@@ -543,8 +545,11 @@ def launch_setup(context):
             reversing = False
         # The local costmap reads the sensors this machine runs. Each is passed, on or
         # off, so none can leak in from another file.
-        # Only planners whose paths keep to the turning radius, on real data.
-        planner = vehicle.check_planner(arg('planner'), real=True)
+        # Only planners whose paths keep to the turning radius, on real data. None asked
+        # for: the lattice if Nav2 may reverse, else Hybrid-A* (the lattice lost the
+        # U-turn forward only).
+        planner = vehicle.check_planner(arg('planner') or vehicle.default_planner(reversing),
+                                        real=True)
         actions.append(include('aav_navigation', 'navigation.launch.py',
                                map=arg('map') or empty_map, radar=on('radar'), planner=planner,
                                lidar=on('lidar'), ghost=flag('ghost'),
@@ -554,6 +559,13 @@ def launch_setup(context):
                                camera_obstacles=on('camera_obstacles'),
                                camera_guard=rear_camera,
                                reversing=reversing))
+        # What this run uses, in words, for the cockpit's Algorithms table (aav_run_info).
+        # The car has no trial localizers and no trial trackers: Nav2's own follower.
+        actions.append(Node(package='aav_run_info', executable='run_info', name='run_info',
+                            parameters=[{'profile': f'car {machine}', 'planner': planner,
+                                         'controller': vehicle.DEFAULT_CONTROLLER,
+                                         'lidar': on('lidar'), 'radar': on('radar'),
+                                         'voxels': bool(flag('voxels') and on('lidar'))}]))
     # Exactly one backend: legacy_uart_bridge with actuators:=uart, the CAN spine with can.
     uart, encoder = on('legacy_uart'), on('legacy_encoder')
     if on('spine'):
@@ -638,21 +650,21 @@ def generate_launch_description():
         DeclareLaunchArgument('start_y', default_value='0.0'),
         DeclareLaunchArgument('start_yaw', default_value='0.0',
                               description='Heading at start, rad counter-clockwise from east'),
-        # Off on the car since 26 Oct (design review F2): the wheel sensors can't tell
-        # direction yet (H5), so a reversing car's speed reads forward. On again once H5
-        # is answered. true (Ben, 22 Oct: "Yes the car can reverse") works where something
-        # sees behind (vehicle.blind_behind). People can always reverse (joystick,
-        # keyboard, RC); this is Nav2 only. sim, bench and carla keep their own true.
-        DeclareLaunchArgument('reversing', default_value='false',
-                              description='false: Nav2 forward only (the default until the '
-                                          'wheels tell direction, H5); true: Nav2 may back '
-                                          'up, with the lidar watching behind '
-                                          '(docs/learn-nav2.md)'),
-        DeclareLaunchArgument('planner', default_value=vehicle.CAR_DEFAULT_PLANNER,
+        # On again since 1 Nov (Ben: "reverse and uturn should be in"; off 26 Oct-1 Nov,
+        # design review F2). Until the wheel sensors tell direction (H5), the speed's sign
+        # is the last command's: wrong only if the car is pushed or rolls back (tests.md
+        # 4.24). Only where something sees behind (vehicle.blind_behind); at 0.5 m/s at
+        # most. People can always reverse (joystick, keyboard, RC); this is Nav2 only.
+        DeclareLaunchArgument('reversing', default_value='true',
+                              description='true: Nav2 may back up, at 0.5 m/s at most, '
+                                          'where the lidar watches behind; false: forward '
+                                          'only (docs/learn-nav2.md)'),
+        DeclareLaunchArgument('planner', default_value='',
                               description=', '.join(vehicle.CAR_PLANNERS) + ": Nav2's "
-                                          'planner on the car (hybrid until H5: forward '
-                                          'only, the lattice lost the U-turn); the grid '
-                                          'planners (sim and bench trials) are refused here'),
+                                          'planner on the car; empty: lattice if Nav2 may '
+                                          'reverse, else hybrid (the lattice lost the '
+                                          'U-turn forward only); the grid planners (sim and '
+                                          'bench trials) are refused here'),
         DeclareLaunchArgument('bridge', default_value=bridges.DEFAULT,
                               description='spine_bridge in rust (aav_spine_bridge) or python '
                                           '(aav_spine), where the machine runs the spine'),

@@ -2,7 +2,7 @@
 # Run tools/machine_survey.sh on every car computer, from a laptop, and save each one's
 # output in ~/aav-audit/. Read-only on the car (machine_survey.sh says how).
 #
-# usage: pixi run survey ~/aav-audit/hosts.txt
+# usage: pixi run bash tools/survey_car.sh ~/aav-audit/hosts.txt
 #
 # hosts.txt: one machine per line, "<label> <user>@<ip> [<keychain entry>]". Lines
 # starting with # are skipped, and so is anything after a # on a line.

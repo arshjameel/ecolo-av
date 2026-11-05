@@ -20,6 +20,11 @@ Bench check: start bench mode, then test the whole car graph on this computer.
    (/localization/odom/global).
 4. Presses the e-stop while driving: the car must stop, and the spine must say so.
 5. Presses the hardware e-stop the same way.
+5b. The joystick (TODO 74a): plays a pad on /drivers/joy/joy (bench teleop:=stand_in, so
+   joy_alive and teleop_twist_joy run, joy_node doesn't). A live hand drives; the same
+   values frozen while driving must stop the car (FROZEN) and stay stopped while the pad
+   comes back with the trigger held; released and pressed again it drives; then the pad
+   goes silent while driving, as an unplugged receiver: it must stop (SILENT).
 6. With --perception: Nav2 drives 40 m east, past the bench's stop sign. The car must stop
    before the sign, wait, and go on to the goal. The camera's picture with the detector's boxes, at
    the moment it stopped, is saved to /tmp/aav-bench-stop-sign.png.
@@ -84,7 +89,7 @@ from rcl_interfaces.srv import SetParameters  # noqa: E402
 import rclpy  # noqa: E402
 from rclpy.action import ActionClient  # noqa: E402
 from rclpy.node import Node  # noqa: E402
-from sensor_msgs.msg import Image  # noqa: E402
+from sensor_msgs.msg import Image, Joy  # noqa: E402
 from std_msgs.msg import Bool, String  # noqa: E402
 from std_srvs.srv import SetBool  # noqa: E402
 import yaml  # noqa: E402
@@ -102,6 +107,9 @@ LANE_TIME = 30.0        # s of driving, from when the car starts moving
 WEAVE_LIMIT = 0.1       # m RMS: the most the car may swing round its own path (--weave)
 LOOKAHEAD = 3.0         # m: where lane_finder measures the offset (its config, lookahead)
 GEOFENCE_RADIUS = 12.0  # m: --geofence's fence round the start, short of the bench's sign
+JOY_THROTTLE = 0.5      # the pad's throttle axis: 0.5 m/s (teleop_twist_joy scale 1.0)
+with open(os.path.join(ROOT, 'ros', 'drivers', 'aav_teleop', 'config', 'joy_alive.yaml')) as f:
+    JOY_ALIVE = yaml.safe_load(f)['/**/joy_alive']['ros__parameters']
 with open(os.path.join(ROOT, 'ros', 'sim', 'aav_bench', 'config', 'bench.yaml')) as f:
     ROAD = yaml.safe_load(f)['mock_camera']['ros__parameters']
 ROAD_Y = ROAD['road_y']            # m: the centre
@@ -167,6 +175,15 @@ class Probe(Node):
         self.create_subscription(Bool, '/safety/geofence/lock', self.on_fence_lock, 10)
         self.keyboard = self.create_publisher(TwistStamped, '/drivers/keyboard/cmd_vel', 10)
         self.output_mux = ''   # the output mux's state: OPEN, WAIT or STOP (aav_io_mux)
+        # The joystick stand-in (bench teleop:=stand_in): the pad we play, joy_alive's
+        # line, and teleop_twist_joy's commands as (time, speed).
+        self.joy = self.create_publisher(Joy, '/drivers/joy/joy', 10)
+        self.joy_alive, self.joy_commands = '', []
+        self.create_subscription(String, '/drivers/joy/alive',
+                                 lambda m: setattr(self, 'joy_alive', m.data), 10)
+        self.create_subscription(TwistStamped, '/drivers/joy/cmd_vel',
+                                 lambda m: self.joy_commands.append(
+                                     (time.monotonic(), m.twist.linear.x)), 10)
         self.create_subscription(String, '/safety/output_mux/state',
                                  lambda m: setattr(self, 'output_mux', m.data), 10)
 
@@ -290,6 +307,70 @@ def check_estop(probe, name, publisher):
     result(name, ok, f'{v_before:.2f} m/s before, {v_after:.2f} m/s 3 s later, '
                      f'spine reported it: {reported}')
     probe.arm_and_hold()
+
+
+def play_pad(probe, seconds, throttle, held, jitter=True, until=None):
+    """Publish a pad at 20 Hz, as joy_node would; return True if `until` came true."""
+    end, i = time.monotonic() + seconds, 0
+    while time.monotonic() < end:
+        # A real hand: a few thousandths of jitter. A dead pad's receiver: the same numbers.
+        wobble = 0.004 * ((i * 7) % 5 - 2) if jitter and throttle else 0.0
+        msg = Joy(axes=[0.0, throttle + wobble], buttons=[int(held), 0, 0, 0])
+        msg.header.stamp = probe.get_clock().now().to_msg()
+        probe.joy.publish(msg)
+        i += 1
+        if probe.spin_for(0.05, until) and until is not None:
+            return True
+    return False
+
+
+def check_joystick(probe):
+    """Check that a frozen pad, then a silent one, stop the car and stay stopped (TODO 74a)."""
+    frozen_after = JOY_ALIVE['frozen_after']
+
+    def speed():
+        return abs(probe.truth.twist.twist.linear.x)
+
+    def live_drive(label):
+        if not probe.status.armed:
+            probe.arm_and_hold()
+        play_pad(probe, 1.0, 0.0, False)            # released once: joy_alive lets go
+        play_pad(probe, 6.0, JOY_THROTTLE, True)
+        ok = speed() > 0.3 and probe.joy_alive.startswith('OK')
+        result(f'joystick: {label}', ok, f'{speed():.2f} m/s, joy_alive "{probe.joy_alive}"')
+        return ok
+
+    if not live_drive('a live hand drives'):
+        return
+    # Frozen: the same values, the trigger held, the throttle at 0.5.
+    t0 = time.monotonic()
+    play_pad(probe, frozen_after + 1.0, JOY_THROTTLE, True, jitter=False,
+             until=lambda: probe.joy_alive.startswith('FROZEN'))
+    seen = time.monotonic() - t0
+    stopped = play_pad(probe, 8.0, JOY_THROTTLE, True, jitter=False,
+                       until=lambda: speed() < 0.05)
+    stop = time.monotonic() - t0
+    ok = probe.joy_alive.startswith('FROZEN') and seen < frozen_after + 0.5 and stopped
+    result('joystick: a frozen pad stops the car', ok,
+           f'FROZEN after {seen:.1f} s (frozen_after {frozen_after:g} s), stopped after '
+           f'{stop:.1f} s, {speed():.2f} m/s')
+    # The pad comes back, the trigger still held: no command may get through.
+    since = time.monotonic()
+    play_pad(probe, 3.0, JOY_THROTTLE, True)
+    leaked = [v for t, v in probe.joy_commands if t >= since and abs(v) > 1e-3]
+    ok = not leaked and probe.joy_alive.startswith('FROZEN') and speed() < 0.05
+    result('joystick: FROZEN latches while the trigger stays held', ok,
+           f'{len(leaked)} moving commands, {speed():.2f} m/s, "{probe.joy_alive}"')
+    if not live_drive('released and pressed again, it drives'):
+        return
+    # Silent: the receiver unplugged while driving. Nothing more is published.
+    t0 = time.monotonic()
+    stopped = probe.spin_for(8.0, lambda: speed() < 0.05
+                             and probe.joy_alive.startswith('SILENT'))
+    result('joystick: a silent pad stops the car', stopped,
+           f'stopped and SILENT after {time.monotonic() - t0:.1f} s, {speed():.2f} m/s, '
+           f'"{probe.joy_alive}"')
+    play_pad(probe, 1.0, 0.0, False)                # leave it released, as found
 
 
 def check_stop_sign(probe):
@@ -830,7 +911,8 @@ def main():
     perception = '--perception' in args
     checks = [check_drive,
               lambda probe: check_estop(probe, 'software e-stop', probe.estop),
-              lambda probe: check_estop(probe, 'hardware e-stop', probe.hw_estop)]
+              lambda probe: check_estop(probe, 'hardware e-stop', probe.hw_estop),
+              check_joystick]
     if '--weave' in args:
         checks.append(check_weave)     # first: from the start spot, along the road
     if perception:
@@ -848,7 +930,8 @@ def main():
     # With --obstacle the planner is blind to the box (it spans the lane, and the bench's map
     # is empty: it would plan off the road round it), so the stop zone must stop the car.
     bridge = ['bridge:=python'] if '--python-bridge' in args else []
-    session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}']
+    session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}',
+             'teleop:=stand_in']
             + (['plan_around:=false'] if {'--obstacle', '--zone-edge'} & set(args) else [])
             + bridge,
             checks, logs[0])

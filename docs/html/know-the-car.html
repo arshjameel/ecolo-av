@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Know the car: the order, and when to stop · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/know-the-car.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Know the car: the order, and when to stop</h1>
+<div class="meta">4 min read · 5 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<a href="tests.html">Every test</a>
+<a class="here" href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<span class="sep">Learn:</span>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#the-loop">The loop</a><a href="#the-order">The order</a><a href="#stop-the-session-when">Stop the session when</a><a href="#map-the-lot-at-the-same-time">Map the lot at the same time</a><a href="#the-record-of-each-pass">The record of each pass</a></nav>
+<div class="lead"><p>Written 1 November 2026. Ben, 1 Nov: "If we do enough tests we should be able to figure
+out the driving characteristics of the car and get more accurate with every pass ... We
+can map the area while there."</p>
+<blockquote>
+<p><strong>The short version</strong></p>
+<ul>
+<li>One page: <strong>the order</strong>, and <strong>when to stop</strong>. How to run each test is on its own page (the links).</li>
+<li>Car day's step A11: only after <a href="car-day.html#a10-the-ground-at-walking-pace">A10</a> is signed. Test 1 is on stands, earlier (A6, session 9).</li>
+<li>Each test fits one number. Run it again until <strong>two runs in a row</strong> are "good enough".</li>
+<li><strong>Record with the lidar the whole time</strong>: the same drives make the lot's map.</li>
+</ul>
+</blockquote></div>
+<section class="card"><h2 id="the-loop">The loop</h2>
+<pre class="highlight"><code class="language-text">  run the test ──► measure ──► fit one number ──► vehicle.yaml ──► run again
+                                                                      │
+                          two runs in a row good enough? ── yes ──► next test</code></pre>
+</section>
+<section class="card"><h2 id="the-order">The order</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Test</th>
+<th>How to run it</th>
+<th>Fits</th>
+<th>Stop when (good enough)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Lock to lock, on stands</td>
+<td><a href="tests.html#3b-steering-on-stands">3.0</a> by <a href="car-day.html#a6-the-steering-actuators-ends-way-a">Way A</a>, then 3.10</td>
+<td><code>steering_limits</code>, <code>max_steering_angle</code></td>
+<td>equal limits each side; the hardware lead agrees</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Fixed-steering circle, both ways</td>
+<td><a href="tests.html#4b-steering-on-the-ground">4.5</a></td>
+<td><code>max_steering_angle</code>, <code>steer_offset</code></td>
+<td>the radius within 5 %; left and right within 5 %</td>
+</tr>
+<tr>
+<td>3</td>
+<td>10 m straight, by tape</td>
+<td><a href="tests.html#4e-record-the-lot-the-maps-and-the-scores">4.7, 4.20</a></td>
+<td><code>wheel_diameter</code></td>
+<td>within 1 % (10 cm in 10 m)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Speed step, 0 to 1 m/s</td>
+<td><a href="tests.html#4a-speed-up-coast-brake">4.1</a></td>
+<td><code>throttle_lag</code>, <code>max_accel</code>, <code>full_throttle_speed</code></td>
+<td>settles within 10 % of the speed asked</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Brake from 1 m/s</td>
+<td><a href="tests.html#4a-speed-up-coast-brake">4.3</a></td>
+<td><code>max_brake</code>, <code>brake_lag</code></td>
+<td>the distance within 10 % of v² ÷ (2 × <code>max_brake</code>)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Coast-down from 2 m/s</td>
+<td><a href="tests.html#4a-speed-up-coast-brake">4.2</a></td>
+<td><code>drag</code></td>
+<td>two runs within 10 %. ❌ not on today's ESP32 (<a href="actuator-tests.html#what-the-car-can-measure-today">why</a>)</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Test 3 again</td>
+<td>as 3</td>
+<td><code>wheel_diameter</code></td>
+<td>a new <code>full_throttle_speed</code> can change it</td>
+</tr>
+</tbody>
+</table></div>
+<p>Why this order: steering first (every other test drives straight with it), then the
+wheels (every speed reads them), then the speed, the brake and the drag.</p>
+<p>How each fit works, and when it is refused: <a href="actuator-tests.html#trusting-the-fits">Trusting the fits</a>.
+What a change does to the car's model: <code>pixi run python3 tools/vehicle_model.py --set &lt;key&gt;=&lt;value&gt;</code>.</p>
+</section>
+<section class="card"><h2 id="stop-the-session-when">Stop the session when</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Stop</th>
+<th>Then</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Anything turns the wrong way, or faster than asked</td>
+<td>the Kar-Tech stop; write it down; no more ground today</td>
+</tr>
+<tr>
+<td>A fit is refused twice</td>
+<td>write down why; go to the next test</td>
+</tr>
+<tr>
+<td>The disk on the Orin has under 5 GB</td>
+<td>copy the bags off (session 10)</td>
+</tr>
+<tr>
+<td>A person says stop</td>
+<td>stop. Ask why after</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="map-the-lot-at-the-same-time">Map the lot at the same time</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>☐</td>
+<td>The lot's corner in <code>navsat.yaml</code>'s <code>datum</code>, the same every time (<a href="tests.html#4e-record-the-lot-the-maps-and-the-scores">4e</a>)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Before the first test: <code>~/aav-jazzy/aav.sh tools/record.sh --lidar learn</code> (5 GB per 10 min)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Between tests: 2 laps and a figure 8 (4.19)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Before leaving: the map (4.21). Blurred? Record again while the car is there</td>
+</tr>
+</tbody>
+</table></div>
+<p>The whole car's score each pass: <a href="a-to-b.html">A to B</a>, tests 5.1 and 5.2 in <a href="tests.html#stage-5-the-whole-drive">Every test</a>.</p>
+</section>
+<section class="card"><h2 id="the-record-of-each-pass">The record of each pass</h2>
+<p>Print it. One line a pass.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Pass</th>
+<th>Test</th>
+<th>Number</th>
+<th>Before</th>
+<th>Measured</th>
+<th>After</th>
+<th>Good enough?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>3</td>
+<td><code>wheel_diameter</code></td>
+<td>0.36</td>
+<td></td>
+<td></td>
+<td>☐</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>☐</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>☐</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>☐</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="tests.html"><small>Previous</small>← Every test</a>
+<a class="next" href="measure-the-car.html"><small>Next</small>Measure the car →</a></nav>
+</main>
+<footer>Source: <code>docs/know-the-car.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

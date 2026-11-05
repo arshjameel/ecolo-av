@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -632,7 +636,7 @@ pixi run tools/ros.sh --local ros2 topic echo /control/cmd_vel
 pixi run tools/ros.sh --local ros2 topic hz /ego/actuator_cmd</code></pre>
 <p>For the CAN path, run <code>pixi run bench</code>, then
 <code>pixi run tools/ros.sh --local ros2 topic echo /can/tx</code>. <code>pixi run estop</code> and
-<code>pixi run estop-clear</code> try the e-stop. <code>pixi run check turtle</code> compares the running graph
+<code>pixi run clear estop</code> try the e-stop. <code>pixi run check turtle</code> compares the running graph
 with <code>docs/interfaces.yaml</code>.</p>
 </section>
 <section class="card"><h2 id="where-this-lives-in-the-code">Where this lives in the code</h2>

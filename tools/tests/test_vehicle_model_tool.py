@@ -135,7 +135,7 @@ def test_the_lqi_constants_are_the_ones_in_spine_core(capsys):
     out = capsys.readouterr().out
     printed = out[out.index('pub const MODEL'):out.index('};') + 2]
     src = (tool.ROOT / 'firmware/spine/crates/spine-core/src/speed_loop.rs').read_text()
-    assert printed in src, 'paste `pixi run vehicle-model --lqi` into speed_loop.rs'
+    assert printed in src, 'paste `python3 tools/vehicle_model.py --lqi` into speed_loop.rs'
     assert 'LQI_MODEL = LqiConfig(' in out
 
 

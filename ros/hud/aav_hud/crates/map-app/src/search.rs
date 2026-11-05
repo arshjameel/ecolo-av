@@ -28,7 +28,7 @@ pub struct Notice {
 
 /// The search box and its database.
 pub struct Search {
-    /// The database, or why there isn't one ("No place database: pixi run get-places").
+    /// The database, or why there isn't one ("No place database: pixi run get places").
     places: Result<Places, String>,
     pub finder: Finder,
     datum: Datum,

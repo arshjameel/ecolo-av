@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a class="here" href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -324,13 +328,13 @@ row says how to answer it and what the answer unblocks. Write the answers into
 <tr>
 <td>W1</td>
 <td>The subnet, and each machine's IP and MAC</td>
-<td><code>pixi run net-map</code> on a laptop; the router's client list; <code>ip -br addr</code> on each</td>
+<td><code>pixi run bash tools/net_map.sh</code> on a laptop; the router's client list; <code>ip -br addr</code> on each</td>
 <td>a network map; <code>vehicle</code> machine files</td>
 </tr>
 <tr>
 <td>W2</td>
 <td>Which <code>ROS_DOMAIN_ID</code> does the 2025-26 software use? (answered 21 Oct: 0, Humble)</td>
-<td><code>pixi run net-map</code> (the ROS column); <code>printenv | grep ROS</code> on each</td>
+<td><code>pixi run bash tools/net_map.sh</code> (the ROS column); <code>printenv | grep ROS</code> on each</td>
 <td>picking ours so the two never mix (our kit uses 42)</td>
 </tr>
 <tr>

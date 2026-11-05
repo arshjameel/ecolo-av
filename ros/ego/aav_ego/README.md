@@ -56,7 +56,7 @@ Modules:
 |---|---|
 | `ackermann.py` | `Limits`, `EgoModel.step(cmd, dt)` -> (speed, steering, accel); `steering_angle`, `turn_rate`, `slew_speed`, `ease_speed`, `curvature`; `LIVE_LIMITS`, `live_change()` |
 | `dynamics.py` | `Body`; `speed_up_limit`, `braking_limit`, `lateral_limit`, `curve_speed`, `stopping_distance`, `energy`, `describe()` (start-up log lines) |
-| `vehicle_model.py` | the car as a linear model (transfer functions, state space, margins), for tuning and the report: `VehicleModel`, `from_vehicle_yaml()`, `summary()`. Never drives the car. Used by `tools/vehicle_model.py` (`pixi run vehicle-model`, `docs/vehicle-model.md`) |
+| `vehicle_model.py` | the car as a linear model (transfer functions, state space, margins), for tuning and the report: `VehicleModel`, `from_vehicle_yaml()`, `summary()`. Never drives the car. Used by `tools/vehicle_model.py` (`pixi run python3 tools/vehicle_model.py`, `docs/vehicle-model.md`) |
 | `ego_node.py` | the ROS node `Ego` |
 
 ## Invariants

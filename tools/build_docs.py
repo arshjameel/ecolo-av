@@ -33,15 +33,16 @@ DOCS = ROOT / 'docs'
 OUT = DOCS / 'html'
 STYLE = DOCS / 'style.css'
 WPM = 150          # an unhurried reading speed, so the times are a promise
-READ_FIRST = 20    # PAGES[:20] are the reading list
-LEARN_END = 35     # PAGES[20:35] are the learn pages; the rest are reference
+READ_FIRST = 24    # PAGES[:24] are the reading list
+LEARN_END = 39     # PAGES[24:39] are the learn pages; the rest are reference
 
 # (file in docs/, menu title, what it's for). A name in ROOT_PAGES is a page kept at the
 # repository's root instead, built the same way (none since 25 Oct: every page is in docs/).
 PAGES = [
     ('index.md', 'Start here', 'The picture, and where to go next'),
     ('overview.md', 'Overview', 'Everything in ecolo-av: ours, stock, inherited, missing'),
-    ('release-notes.md', 'Release notes', 'Release 0.1: what this version does, at a glance'),
+    ('release-notes.md', 'Release notes',
+     'Release 0.2: what it does, the screens, how to use it, the words, what is left; 0.1 below'),
     ('getting-started.md', 'Getting started', 'A new laptop to the turtle in 30 minutes (T1.1)'),
     ('first-day.md', 'Your first day', 'Install, the turtle, rqt_graph, Gazebo, Nav2'),
     ('git.md', 'Git', 'Rebasing, conflicts, worktrees; the flow is in CONTRIBUTING.md'),
@@ -53,10 +54,15 @@ PAGES = [
     ('work.md', 'Work', "The plan, what's done, what needs doing"),
     ('plan.md', 'The plan', 'The proposal as a to-do list: the gates, every task'),
     ('features.md', 'Features', 'What the software does, why, and who built it'),
+    ('release-0.2.md', 'The 0.2 guide',
+     'Each part of 0.2: what it does, how to run it, tips, how solid'),
+    ('whats-new.md', "What's new", '22 Oct to 1 Nov, by area, with pictures (history)'),
     ('audit-friday.md', 'Audit, 16 Oct', 'The hardware audit, machine by machine'),
     ('audit-questions.md', 'Audit questions', 'What only the car can tell us'),
-    ('car-day.md', 'Car day', 'The day at the car, session by session; the preflight'),
+    ('car-day.md', 'Car day', 'The order: Day A changes nothing, Day B upgrades'),
+    ('car-setup.md', 'Car setup', 'One car computer: back up, upgrade, install, start at boot'),
     ('tests.md', 'Every test', 'Every test, in order: sim, bench, stands, lot, the drive'),
+    ('know-the-car.md', 'Know the car', 'The car tests: the order, and when to stop'),
     ('measure-the-car.md', 'Measure the car', 'The sheet for whoever measures the car'),
     ('decisions.md', 'Decisions', 'Decided, Tentative, Proposed, and Q1–Q34'),
     ('infrastructure.md', 'Infrastructure', 'The repo, Pixi, the contracts, profiles, computers'),
@@ -141,10 +147,14 @@ ROOT_PAGES = {}
 ROOT_LINKS = {'../' + file: name for name, file in ROOT_PAGES.items()}
 RELEASE = 'release-notes.md'   # also printed on its own, with a cover, to share
 RELEASE_PDF = 'aav-release-notes.pdf'
-# The release notes' own PDF: a running footer, and the cover on a page of its own.
+# Pages also printed on their own, with a cover, to share: page -> (PDF, footer words).
+SHARED = {RELEASE: (RELEASE_PDF, 'release notes'),
+          'release-0.2.md': ('aav-0.2.pdf', 'the 0.2 guide'),
+          'whats-new.md': ('aav-whats-new.pdf', "what's new")}
+# A shared page's own PDF: a running footer, and the cover on a page of its own.
 RELEASE_STYLE = """
 @page {
-  @bottom-left { content: "AAV 2026-27 autonomy stack · release notes"; font-size: 9px;
+  @bottom-left { content: "AAV 2026-27 autonomy stack · %(footer)s"; font-size: 9px;
                  color: #777; font-family: Verdana, "DejaVu Sans", Tahoma, Arial, sans-serif; }
   @bottom-center { content: none; }
   @bottom-right { content: counter(page) " of " counter(pages); font-size: 9px; color: #777;
@@ -169,17 +179,24 @@ def minutes(text):
 
 
 def loosen(text):
-    """Python-Markdown wants a blank line before a list or table; GitHub doesn't. Add it."""
+    """
+    Python-Markdown wants a blank line before a list or table; GitHub doesn't. Add it.
+
+    Inside a quote box too (`> **The short version**` then `> - ...`): there the blank
+    line is a bare `>`, or the list ran into the paragraph above it (found 1 Nov).
+    """
     out, fence = [], False
     for line in text.splitlines():
         if line.lstrip().startswith('```'):
             fence = not fence
         prev = out[-1] if out else ''
-        starts_block = LIST_ITEM.match(line) or line.startswith('|')
-        prev_is_text = (prev.strip() and not prev.startswith((' ', '|', '\t'))
-                        and not LIST_ITEM.match(prev))
-        if not fence and starts_block and not line.startswith(' ') and prev_is_text:
-            out.append('')
+        quoted = line.startswith('>') and prev.startswith('>')
+        here, before = (line[1:].lstrip(' '), prev[1:].lstrip(' ')) if quoted else (line, prev)
+        starts_block = LIST_ITEM.match(here) or here.startswith('|')
+        prev_is_text = (before.strip() and not before.startswith((' ', '|', '\t'))
+                        and not LIST_ITEM.match(before))
+        if not fence and starts_block and not here.startswith(' ') and prev_is_text:
+            out.append('>' if quoted else '')
         out.append(line)
     return '\n'.join(out) + '\n'
 
@@ -375,8 +392,8 @@ def write_pdf(articles, listing, out):
     HTML(string=doc, base_url=str(OUT) + '/').write_pdf(out)
 
 
-def write_release_pdf(title, intro, sections, out):
-    """Print the release notes on their own: a cover with the pitch, then the sections."""
+def write_release_pdf(title, intro, sections, out, footer='release notes'):
+    """Print a shared page on its own: a cover with the pitch, then the sections."""
     from weasyprint import HTML   # only the docs environment has it
     inside = ''.join(f'<li><a href="#{sid}">{html.escape(text)}</a>'
                      f'<a class="pg" href="#{sid}"></a></li>' for sid, text, _ in sections)
@@ -384,7 +401,8 @@ def write_release_pdf(title, intro, sections, out):
              f'AUTONOMOUS VEHICLE CAPSTONE</div><h1>{html.escape(title)}</h1>{intro}'
              f'<h3 class="inside-title">Inside</h3><ol class="inside">{inside}</ol></section>')
     doc = ('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
-           f'<link rel="stylesheet" href="style.css"><style>{RELEASE_STYLE}</style></head>'
+           f'<link rel="stylesheet" href="style.css">'
+           f'<style>{RELEASE_STYLE % {"footer": footer}}</style></head>'
            f'<body class="print release">{cover}{page_body("", sections)}</body></html>')
     HTML(string=doc, base_url=str(OUT) + '/').write_pdf(out)
 
@@ -404,7 +422,7 @@ def main():
         pages.append((name, title, purpose, minutes(text), convert(text)))
     listing = [(n, t, p, m) for n, t, p, m, _ in pages]
 
-    articles, release = [], None
+    articles, shared = [], {}
     for i, (name, _, _, mins, body) in enumerate(pages):
         body = badges(body).replace('<table>', '<div class="table-wrap"><table>') \
                            .replace('</table>', '</table></div>')
@@ -415,17 +433,18 @@ def main():
         if not args.no_pdf:
             printed = body.replace('<p>[[pages]]</p>', PDF_CONTENTS_NOTE)
             articles.append(pdf_article(name, *split_page(fix_links(printed, pdf=True))))
-            if name == RELEASE:
-                release = split_page(fix_links(body, pdf=True))
+            if name in SHARED:
+                shared[name] = split_page(fix_links(body, pdf=True))
     print(f'{len(pages)} pages -> {OUT.relative_to(ROOT)}/')
 
     if not args.no_pdf:
         pdf = OUT / 'aav-docs.pdf'
         write_pdf(articles, reading_list(listing, pdf=True), pdf)
         print(f'PDF -> {pdf.relative_to(ROOT)} ({pdf.stat().st_size // 1024} KB)')
-        if release:
-            pdf = OUT / RELEASE_PDF
-            write_release_pdf(*release, pdf)
+        for name, page in shared.items():
+            file, footer = SHARED[name]
+            pdf = OUT / file
+            write_release_pdf(*page, pdf, footer)
             print(f'PDF -> {pdf.relative_to(ROOT)} ({pdf.stat().st_size // 1024} KB)')
     return 0
 

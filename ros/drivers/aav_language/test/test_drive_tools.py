@@ -244,7 +244,7 @@ def test_the_drive_tools_never_clear_a_safety_latch():
     for path in package.glob('*.py'):
         text = path.read_text()
         for service in ('/safety/geofence/clear', '/safety/sensor_watchdog/clear',
-                        'geofence/clear', 'geofence-clear'):
+                        'geofence/clear', 'clear geofence', 'clear.sh'):
             if service in text:
                 # Only in a docstring that says it never calls it.
                 assert all('Never calls' in line or 'never' in line.lower()

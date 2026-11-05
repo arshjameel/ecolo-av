@@ -15,7 +15,9 @@
 //!                                                        only after DRIVE HERE then CONFIRM
 //! Parameters  the topics above, stale_after, plan_stale_after (s), final_approach (m),
 //!             plan_kept_for (s), arrive_within (m),
-//!             street_map (the offline street map's file), places (the place database)
+//!             street_map (the offline street map's file), places (the place database),
+//!             theme (initial_d, mocha, latte, calm), blur (frosted glass over the map),
+//!             car_marker (outline, robot: the little robot)
 //!
 //! Under Nav2's map: OpenStreetMap's streets, from an offline file (streets.rs), placed
 //! with navsat_transform's datum (navsat.yaml), so the car sits on real streets.
@@ -33,9 +35,11 @@
 //!            [--whole-map] [--config FILE] [--vehicle FILE]
 //!            [--navsat FILE] [--streets FILE] [--places FILE] [--zoom PX_PER_M]
 //!            [--search TEXT [--pick N]] [--keyboard] [--send-goal TEXT] [--screenshot FILE]
+//!            [--bench SECONDS] [--robot-now]
 //!            [--ros-args ...]
 
 mod demo;
+mod frost;
 #[cfg(feature = "ros")]
 mod ros;
 mod search;
@@ -76,6 +80,7 @@ usage: map [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
            [--whole-map] [--config FILE] [--vehicle FILE]
            [--navsat FILE] [--streets FILE] [--places FILE] [--zoom PX_PER_M]
            [--search TEXT [--pick N]] [--keyboard] [--send-goal TEXT] [--screenshot FILE]
+           [--bench SECONDS] [--robot-now]
            [--ros-args ...]
 
   --demo             pretend data: no ROS, no car
@@ -98,6 +103,8 @@ usage: map [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
   --send-goal TEXT   once the map and the car are known: search TEXT, send the first
                      result inside Nav2's map as the goal, say so on the terminal (tests)
   --screenshot FILE  save the window as a PNG after 4 s, then quit (for the docs)
+  --bench SECONDS    draw as fast as it can for SECONDS, print the frame rate, then quit
+                     (the frosted glass's test: 60 fps or more)
   --ros-args ...     passed to ROS, e.g. --ros-args -p plan_topic:=/plan
 
 keys: / search for a place (Esc closes; Up Down and Enter pick; Enter: DRIVE HERE, then
@@ -132,6 +139,8 @@ struct Options {
     keyboard: bool,
     send_goal: Option<String>,
     screenshot: Option<PathBuf>,
+    bench: Option<Duration>,
+    robot_now: bool,
 }
 
 impl Options {
@@ -162,6 +171,7 @@ impl Options {
                 "--search" => opts.search = Some(value("--search")?),
                 "--send-goal" => opts.send_goal = Some(value("--send-goal")?),
                 "--keyboard" => opts.keyboard = true,
+                "--robot-now" => opts.robot_now = true,
                 "--pick" => {
                     let n: usize = it
                         .next()
@@ -185,6 +195,14 @@ impl Options {
                     opts.zoom = Some(k);
                 }
                 "--screenshot" => opts.screenshot = Some(value("--screenshot")?.into()),
+                "--bench" => {
+                    let s = value("--bench")?;
+                    let secs: f64 = s.parse().with_context(|| format!("not seconds: {s:?}"))?;
+                    opts.bench = Some(
+                        Duration::try_from_secs_f64(secs)
+                            .with_context(|| format!("not a time: {s:?}"))?,
+                    );
+                }
                 "-h" | "--help" => {
                     println!("{USAGE}");
                     std::process::exit(0);
@@ -232,7 +250,10 @@ fn main() -> Result<()> {
             .unwrap_or(Path::new("the built-in navsat.yaml"));
         format!("the datum, in {}", file.display())
     })?;
-    let (source, config) = open_source(&opts, args, config)?;
+    let (source, mut config) = open_source(&opts, args, config)?;
+    if opts.robot_now {
+        config.car_marker = map_core::robot::CarMarker::Robot;
+    }
     let street_file = data_file(opts.streets.as_deref(), &config.street_map);
     let streets = StreetMap::open(&street_file, datum);
     let places_file = data_file(opts.places.as_deref(), &config.places);
@@ -298,10 +319,17 @@ fn run(
         .build();
     // Escape would close the map by accident; the window's close button still does.
     rl.set_exit_key(None);
-    rl.set_target_fps(30);
+    // --bench: as fast as it can, to measure; otherwise 30 frames a second is plenty.
+    rl.set_target_fps(if opts.bench.is_some() { 0 } else { 30 });
     rl.set_window_min_size(800, 450);
     window::place(&mut rl, opts.monitor.as_ref(), opts.fullscreen)?;
-    let mut ui = Ui::new(&mut rl, &thread);
+    let mut ui = Ui::new(
+        &mut rl,
+        &thread,
+        config.theme.theme(),
+        config.blur,
+        config.car_marker,
+    );
     let mut state = MapState::new(config);
     let mut view = View::default();
     if opts.whole_map {
@@ -314,6 +342,7 @@ fn run(
     let mut over_streets = streets.visible();
     let mut dragging = false;
     let started = Instant::now();
+    let mut frames: u64 = 0;
     // --search waits for the first news (the car), so the distances show.
     let mut prefill = opts.search.clone();
     let mut send_goal = opts.send_goal.clone();
@@ -448,6 +477,9 @@ fn run(
             let d = rl.get_mouse_delta();
             view.pan(f64::from(d.x), f64::from(d.y));
         }
+        if let Some(c) = &state.car {
+            ui.roll(c.pose);
+        }
         let car_centre = state.car.as_ref().map(|c| car.centre(c.pose));
         let map_bounds = state.grid.as_ref().map(|g| g.info.bounds());
         view.update(car_centre, map_bounds, &vp);
@@ -461,9 +493,11 @@ fn run(
             .as_ref()
             .filter(|_| rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT))
             .and_then(|kb| kb.key_at(mouse));
+        ui.prepare(&mut rl, &thread);
         let mut d = rl.begin_drawing(&thread);
         ui.draw(
             &mut d,
+            &thread,
             &state,
             &view,
             &car,
@@ -476,6 +510,16 @@ fn run(
         );
         drop(d);
 
+        frames += 1;
+        if let Some(length) = opts.bench {
+            let took = now.duration_since(started);
+            if took > length {
+                let fps = frames as f64 / took.as_secs_f64();
+                let blur = if ui.blurs() { "on" } else { "off" };
+                println!("map: {fps:.0} fps over {took:.1?} (blur {blur})");
+                break;
+            }
+        }
         if let Some(path) = &opts.screenshot {
             if now.duration_since(started) > SCREENSHOT_AFTER {
                 save_screenshot(&mut rl, &thread, path)?;
@@ -623,6 +667,11 @@ mod tests {
                 .list_monitors
         );
         assert!(Options::parse(&args(&["--monitor"])).is_err());
+        assert!(
+            Options::parse(&args(&["--robot-now"]))
+                .expect("valid")
+                .robot_now
+        );
         assert!(Options::parse(&args(&["--monitor", " "])).is_err());
     }
 

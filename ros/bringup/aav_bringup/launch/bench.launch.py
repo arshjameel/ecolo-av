@@ -1,7 +1,7 @@
 """
 Bench mode: the real car's software on one computer, with stand-ins for the hardware.
 
-  ros2 launch aav_bringup bench.launch.py [nav:=true] [teleop:=false] [rviz:=false]
+  ros2 launch aav_bringup bench.launch.py [nav:=true] [teleop:=false|true|stand_in] [rviz:=false]
       [perception:=false] [lane:=false|true|fake] [hud:=false] [arm:=true] [foxglove:=false]
       [start_y:=0.0] [start_yaw:=0.0] [bend_radius:=] [obstacle:=false]
       [camera_obstacles:=false] [reversing:=true] [lidar:=false] [plan_around:=true]
@@ -77,7 +77,7 @@ def include(package, launch_file, **args):
 
 def launch_setup(context):
     flag = {n: LaunchConfiguration(n).perform(context).lower() == 'true'
-            for n in ('nav', 'teleop', 'rviz', 'perception', 'hud', 'arm', 'foxglove',
+            for n in ('nav', 'rviz', 'perception', 'hud', 'arm', 'foxglove',
                       'obstacle', 'camera_obstacles', 'reversing', 'lidar', 'plan_around')}
     lane = LaunchConfiguration('lane').perform(context).lower()
     if lane not in ('false', 'true', 'fake'):
@@ -157,8 +157,14 @@ def launch_setup(context):
     actions.append(include('aav_safety', 'geofence.launch.py', backend='spine',
                            radius=LaunchConfiguration('geofence_radius').perform(context),
                            centre_x=0.0, centre_y=start['start_y'], max_speed=''))
-    if flag['teleop']:
-        actions.append(include('aav_teleop', 'teleop.launch.py'))
+    teleop = LaunchConfiguration('teleop').perform(context).lower()
+    if teleop not in ('false', 'true', 'stand_in'):
+        raise ValueError(f'teleop:={teleop}: use true (a joystick here), stand_in or false')
+    if teleop != 'false':
+        # stand_in: the joystick path without joy_node; a script plays the pad on
+        # /drivers/joy/joy (bench_check.py's live, frozen and silent pad).
+        actions.append(include('aav_teleop', 'teleop.launch.py',
+                               joy_device=str(teleop == 'true').lower()))
     if flag['perception']:
         actions += [
             include('aav_detector', 'detector.launch.py', labels='stop sign'),
@@ -199,7 +205,9 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('nav', default_value='true', description='Nav2'),
         DeclareLaunchArgument('teleop', default_value='false',
-                              description='true if a joystick is plugged into this computer'),
+                              description='true if a joystick is plugged into this computer; '
+                                          'stand_in: the joystick path, a script plays '
+                                          'the pad (no joy_node)'),
         DeclareLaunchArgument('rviz', default_value='false'),
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher '
@@ -233,7 +241,7 @@ def generate_launch_description():
         DeclareLaunchArgument('camera_obstacles', default_value='false',
                               description="the detectors' boxes into the local costmap"),
         DeclareLaunchArgument('reversing', default_value='true',
-                              description='Nav2 may drive backwards: on here, off on the car '
+                              description='Nav2 may drive backwards, as on the car '
                                           '(docs/learn-nav2.md)'),
         DeclareLaunchArgument('plan_around', default_value='true',
                               description="true: Nav2's planner plans round what the radar "

@@ -337,7 +337,7 @@ No drift detected.
 - Line 103 says the ESP32 takes commands "from the Motor-Pi's UART (default) or CAN (`--features can`)". `--features can` on its own fails to build:
   - `boards/esp32-umod/Cargo.toml:20` makes `legacy-uart` a default feature;
   - `boards/esp32-umod/src/main.rs:58-61` stops the build with `compile_error!` when `legacy-uart` and `can` are both on;
-  - the right flags are `--no-default-features --features can`, which is what the message there and the `esp-build` task's description (`pixi.toml:95`) say.
+  - the right flags are `--no-default-features --features can`, which is what the message there and the `esp build` task's description (`pixi.toml:95`) say.
 - Lines 62-63 say "`pixi run test` checks it" (every crate builds for `thumbv8m.main-none-eabihf`), and lines 91-92 say the same for the board programs. `tools/test.sh:48` only runs those builds when that target is installed. If it isn't, they are skipped and nothing is printed.
 
 ## firmware/spine/crates/aav-inputs/README.md
@@ -525,7 +525,7 @@ No drift detected.
 
 - **"What's where", `ros/` row.** It ends "ecolo_msgs the interfaces profiles". That reads garbled. `ros/ecolo_msgs/` holds `aav_interfaces`, "the team's own message and action types" (`ros/README.md:31`).
 - **"What's where", `firmware/` row.** It lists `can/`, `spine/` and `legacy/` only. `firmware/udp/` exists too, with its own README: the wheel encoder's UDP packet vectors (`firmware/udp/README.md`).
-- **"What's where", `models/` row.** It says "the YOLO models, downloaded by `pixi run get-models`". `tools/get_models.sh:6-9` downloads RF-DETR Nano (the detector's default) and YOLO11n. `models/` also holds exports (`.onnx`, `.mlpackage`).
+- **"What's where", `models/` row.** It says "the YOLO models, downloaded by `pixi run get models`". `tools/get_models.sh:6-9` downloads RF-DETR Nano (the detector's default) and YOLO11n. `models/` also holds exports (`.onnx`, `.mlpackage`).
 - **"What's where", `vendor/` row.** It says "the ROS 2 and ros2-rust source". `vendor/` also gets Flutter (`tools/get_flutter.sh`), MediaMTX (`tools/get_mediamtx.sh`), PlatformIO's downloads (`pixi.toml`, `PLATFORMIO_CORE_DIR`), QEMU (`tools/esp32.sh qemu-tools`), `cargo-tools`, `esp` and `car-kit-cache`.
 - **"What's where" leaves out `archive/`** (tracked in git: the 2025-26 repos' files) and `.github/` (the CI workflow and PR template).
 - **"Global side effects", Downloads.** It says downloads go into "`vendor/`, `models/`, `maps/` and `car-kit/`". `get_hud_map.sh` also writes `hud/flutter_pi/assets/databases/ottawa.db` (`tools/get_hud_map.sh:16`).

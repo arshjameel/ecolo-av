@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -368,19 +372,19 @@ standard tree, changed for a car.</p>
 </table></div>
 </section>
 <section class="card"><h2 id="reversing">Reversing</h2>
-<p>One switch, <code>reversing:=</code>, on <code>navigation.launch.py</code>. <strong>On in Gazebo and on the bench;
-off on the car by default since 26 Oct</strong> (design review F2): the wheel sensors can't tell
-direction yet (H5), so a reversing car's speed would read forward. It goes back on once
-H5 is answered. On the car, <code>reversing:=true</code> (Ben, 22 Oct: "Yes the car can reverse")
-works only where something sees behind it: the roof lidar (the radar faces forward; the
+<p>One switch, <code>reversing:=</code>, on <code>navigation.launch.py</code>. <strong>On everywhere: Gazebo, the bench,
+and the car since 1 Nov</strong> (Ben: "reverse and uturn should be in"; off on the car 26 Oct-1
+Nov, design review F2). The wheel sensors can't tell direction yet (H5), so the speed's
+sign is the last command's: wrong only if the car is pushed or rolls back (<a href="tests.html">tests</a>,
+4.25). On the car it works only where something sees behind it: the roof lidar (the radar faces forward; the
 rear camera, later). Without one, <code>car.launch.py</code> keeps Nav2 forward only and says why
 (<code>vehicle.blind_behind</code>).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th></th>
-<th><code>reversing:=false</code> (the car's default)</th>
-<th><code>reversing:=true</code> (the default: Gazebo, the bench)</th>
+<th><code>reversing:=false</code></th>
+<th><code>reversing:=true</code> (the default everywhere)</th>
 </tr>
 </thead>
 <tbody>
@@ -437,7 +441,7 @@ reversing at the same number, whoever drives.</p>
 </tr>
 <tr>
 <td><code>car.launch.py</code>, <code>sim.launch.py</code>, <code>bench.launch.py</code></td>
-<td><code>reversing:=true</code> by default in sim and bench; <code>false</code> on the car until H5 (<code>reversing:=true</code> there needs the lidar running)</td>
+<td><code>reversing:=true</code> by default in each; on the car it needs the lidar running, or it stays forward only</td>
 </tr>
 <tr>
 <td>Gazebo check</td>

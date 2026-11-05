@@ -7,7 +7,7 @@
 <!-- Generated from docs/rust-firmware.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Rust on the hardware</h1>
-<div class="meta">53 min read · 15 sections</div></header>
+<div class="meta">55 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -423,7 +427,7 @@ open loop.</p>
 where U7's TXD and RXD go before using <code>can</code>. GPIO 25 and 26 are free, and are a guess.</p>
 </div>
 <h3 id="the-toolchain-installed-15-oct">The toolchain (installed 15 Oct)</h3>
-<p>The ESP32 is Xtensa: the stock Rust, and Pixi's, can't build for it. <code>pixi run esp-tools</code>
+<p>The ESP32 is Xtensa: the stock Rust, and Pixi's, can't build for it. <code>pixi run esp tools</code>
 installs Espressif's, for one user, with no admin rights. It needs <code>rustup</code>.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -483,27 +487,27 @@ installs Espressif's, for one user, with no admin rights. It needs <code>rustup<
 </thead>
 <tbody>
 <tr>
-<td><code>pixi run esp-tools</code></td>
+<td><code>pixi run esp tools</code></td>
 <td>installs all of the above (once; several minutes)</td>
 </tr>
 <tr>
-<td><code>pixi run esp-build</code></td>
+<td><code>pixi run esp build</code></td>
 <td>builds the default (Motor-Pi UART) program</td>
 </tr>
 <tr>
-<td><code>pixi run esp-build --no-default-features --features can</code></td>
+<td><code>pixi run esp build --no-default-features --features can</code></td>
 <td>builds the CAN one</td>
 </tr>
 <tr>
-<td><code>pixi run esp-flash</code></td>
+<td><code>pixi run esp flash</code></td>
 <td>builds, flashes the board on the USB cable, shows its log: <a href="esp32-bench.html">bench only</a></td>
 </tr>
 <tr>
-<td><code>pixi run esp-qemu-tools</code></td>
+<td><code>pixi run esp qemu-tools</code></td>
 <td>downloads Espressif's QEMU into <code>vendor/qemu</code> (once; macOS arm64)</td>
 </tr>
 <tr>
-<td><code>pixi run esp-qemu-check</code></td>
+<td><code>pixi run esp qemu-check</code></td>
 <td>boots it in QEMU; checks it brakes when the frames stop (<a href="esp32-bench.html#before-the-board-the-emulator">the emulator</a>)</td>
 </tr>
 <tr>
@@ -703,7 +707,7 @@ can't re-arm it.</p>
 <p>Tests: <code>cargo test -p legacy-link -p spine-board</code>; aav_legacy's <code>test_uart_relay.py</code>,
 <code>test_legacy_protocol.py</code> (the shared vectors: 14 version 2 cases and a noisy stream, in
 <code>legacy-link/vectors.json</code>) and <code>test_heartbeat_chain.py</code> (the muxes and the bridge on a
-pseudo-terminal); <code>pixi run esp-qemu-check</code> (a frozen counter, bad CRCs, silence).</p>
+pseudo-terminal); <code>pixi run esp qemu-check</code> (a frozen counter, bad CRCs, silence).</p>
 <h3 id="the-uplink-the-esp32s-status-back-to-the-pi-24-oct">The uplink: the ESP32's status, back to the Pi (24 Oct)</h3>
 <p>TODO 50's next step, and TODO 48's way up. The ESP32 says what it is doing, 50 times a
 second, on <strong>TX1 (GPIO17)</strong>. The 2025-26 C++ set TX1 up and never sent on it, so <strong>the wire
@@ -831,6 +835,82 @@ at both ends.</p>
 </table></div>
 <p>115200 baud: 3 ms a frame, 15 % of the line. It fits the UART's 128-byte FIFO, so the
 write never waits.</p>
+<p><strong>Version 3 (1 Nov), what the firmware sends now:</strong> 40 bytes. Byte 1 is <code>3</code>; bytes 2-33
+as above; then:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Byte</th>
+<th>Field</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7</td>
+<td>flags</td>
+<td>as above, and bit 6 steering counts known, bit 7 brake counts known</td>
+</tr>
+<tr>
+<td>34-35</td>
+<td>steering counts, u16 LE</td>
+<td>0..4095: the Jrk's scaled feedback, <strong>not</strong> converted with the calibration; 0 when unknown</td>
+</tr>
+<tr>
+<td>36-37</td>
+<td>brake counts, u16 LE</td>
+<td>the same, for the brake Jrk</td>
+</tr>
+<tr>
+<td>38</td>
+<td>steering calibration state</td>
+<td>0 off, 1 limp, 2 jog, 3 hold, 4 return, 5-9 refused (moving, not braked, no feedback, e-stop, another driver)</td>
+</tr>
+<tr>
+<td>39</td>
+<td>CRC-8 of bytes 1-38</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><code>legacy_protocol.py</code> reads version 2 and 3 uplinks alike.</p>
+<h4 id="version-3-of-the-downlink-the-steering-calibration-1-nov">Version 3 of the downlink: the steering calibration (1 Nov)</h4>
+<p>To find the steering actuator's ends and centre from the hardware panel
+(<a href="actuator-tests.html#find-the-steering-actuators-ends-and-centre">the procedure</a>).
+20 bytes: version 2's first 16 (with version <code>3</code>), then:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Byte</th>
+<th>Field</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>16</td>
+<td>calibration mode</td>
+<td>0 off (drive), 1 limp (the motor off), 2 jog</td>
+</tr>
+<tr>
+<td>17-18</td>
+<td>jog target, u16 LE</td>
+<td>0..4095 counts; 0 unless jog</td>
+</tr>
+<tr>
+<td>19</td>
+<td>CRC-8 of bytes 1-18</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>A version, not new flags:</strong> the target needs two more bytes, and a firmware that knows
+only version 2 turns a version 3 frame down whole (then its watchdog brakes), never
+misreads it. The Rust firmware reads versions 2 and 3 alike (<code>ParserV3</code>), so
+<code>frame_version: 2</code> still works. The rules are <code>legacy-link</code>'s <code>SteerCal</code>
+(<a href="../../firmware/spine/crates/legacy-link/README.md">its README</a>): standing still and braked
+only, the throttle held at 0, jog clamped to the software limits at 300 counts a second,
+leaving holds where the wheels are, and 100 ms without the Orin's heartbeat ends it.</p>
 <h4 id="the-jrks-positions">The Jrks' positions</h4>
 <div class="table-wrap"><table>
 <thead>
@@ -903,7 +983,7 @@ gives computer and RC direct with both maps.</p>
 <p>Tests: <code>cargo test -p legacy-link -p spine-board -p spine-core -p ibus -p jrk-g2</code>; the
 shared vectors (12 uplink cases in <code>legacy-link/vectors.json</code>, checked by
 <code>test_legacy_protocol.py</code>); aav_legacy's <code>test_uplink_reader.py</code> and
-<code>test_uplink_chain.py</code> (the bridge and <code>rc_driver</code> on ROS); <code>pixi run esp-qemu-check</code> (the
+<code>test_uplink_chain.py</code> (the bridge and <code>rc_driver</code> on ROS); <code>pixi run esp qemu-check</code> (the
 uplink at 50 Hz, its echo, the three modes: <a href="esp32-bench.html#before-the-board-the-emulator">the emulator</a>).</p>
 <h3 id="the-c-beside-the-rust">The C++ beside the Rust</h3>
 <p>Every behaviour of <code>aav_umod_esp32</code>, and where it is now. ⚠️ = different: the team decides.</p>
@@ -1424,7 +1504,7 @@ make are in <code>spine-core</code> (<code>firmware/spine/README.md</code>).</p>
 <tbody>
 <tr>
 <td>1. Build</td>
-<td><code>pixi run spine-uf2</code></td>
+<td><code>pixi run pico spine build</code></td>
 <td>builds the program, and writes <code>firmware/spine/boards/pico2/spine-pico2.uf2</code></td>
 </tr>
 <tr>
@@ -1434,7 +1514,7 @@ make are in <code>spine-core</code> (<code>firmware/spine/README.md</code>).</p>
 </tr>
 <tr>
 <td>or 2. Flash, with a debug probe</td>
-<td><code>pixi run spine-tools</code> (once), then <code>pixi run spine-flash</code></td>
+<td><code>pixi run pico spine tools</code> (once), then <code>pixi run pico spine flash</code></td>
 <td>flashes through the probe, then prints the program's logs</td>
 </tr>
 </tbody>
@@ -1444,7 +1524,7 @@ make are in <code>spine-core</code> (<code>firmware/spine/README.md</code>).</p>
   (<code>rp2350_arm_s</code>, datasheet 5.5.3) and refuses a program without its IMAGE_DEF block in
   the first 4 kB, or the boot ROM wouldn't start it (5.9.5). <code>pixi run test</code> checks the
   real program each time.</li>
-<li><code>spine-tools</code> installs probe-rs 0.32.0 into <code>vendor/cargo-tools/bin</code> (about a minute).
+<li><code>pico spine tools</code> installs probe-rs 0.32.0 into <code>vendor/cargo-tools/bin</code> (about a minute).
   A probe: the Raspberry Pi Debug Probe, or a second Pico running <code>debugprobe</code>, on the
   Pico 2's SWD pins. On Linux, probe-rs needs its udev rules (probe.rs, "Probe setup").</li>
 <li>The logs only come through a probe. With the UF2 file alone, the LED is all you see.</li>
@@ -1492,7 +1572,7 @@ make are in <code>spine-core</code> (<code>firmware/spine/README.md</code>).</p>
 <td>the first flash</td>
 </tr>
 <tr>
-<td><code>spine-flash</code></td>
+<td><code>pico spine flash</code></td>
 <td>probe-rs is installed and knows the RP235x; never run with a probe</td>
 <td>the first flash with a probe</td>
 </tr>
@@ -1693,7 +1773,7 @@ needs RST and INT wired the same way.</p>
 <tbody>
 <tr>
 <td>Build</td>
-<td><code>pixi run wheel-uf2</code>: writes <code>firmware/spine/boards/wheel-encoder-pico2/wheel-encoder-pico2.uf2</code></td>
+<td><code>pixi run pico wheel build</code>: writes <code>firmware/spine/boards/wheel-encoder-pico2/wheel-encoder-pico2.uf2</code></td>
 </tr>
 <tr>
 <td>Flash, USB</td>
@@ -1701,7 +1781,7 @@ needs RST and INT wired the same way.</p>
 </tr>
 <tr>
 <td>Flash, probe</td>
-<td><code>pixi run wheel-flash</code> (after <code>pixi run spine-tools</code> once): shows the logs too</td>
+<td><code>pixi run pico wheel flash</code> (after <code>pixi run pico spine tools</code> once): shows the logs too</td>
 </tr>
 <tr>
 <td>Check</td>
@@ -1874,7 +1954,7 @@ flashed.</strong> Nothing in our stack writes to it yet: the 2025-26 sender isn'
 <tbody>
 <tr>
 <td>Build</td>
-<td><code>pixi run sentinel-uf2</code>: writes <code>firmware/spine/boards/sentinel-pico2/sentinel-pico2.uf2</code></td>
+<td><code>pixi run pico sentinel build</code>: writes <code>firmware/spine/boards/sentinel-pico2/sentinel-pico2.uf2</code></td>
 </tr>
 <tr>
 <td>Flash, USB</td>
@@ -1882,7 +1962,7 @@ flashed.</strong> Nothing in our stack writes to it yet: the 2025-26 sender isn'
 </tr>
 <tr>
 <td>Flash, probe</td>
-<td><code>pixi run sentinel-flash</code> (after <code>pixi run spine-tools</code> once)</td>
+<td><code>pixi run pico sentinel flash</code> (after <code>pixi run pico spine tools</code> once)</td>
 </tr>
 <tr>
 <td>Check</td>
@@ -2009,9 +2089,9 @@ front wheels' sensors are the hardware lead's Arduino (23 Oct), not ESP32 boards
 </tbody>
 </table></div>
 <h3 id="the-toolchain">The toolchain</h3>
-<p>The ESP32 is Xtensa, which stock Rust can't build for. <code>pixi run esp-tools</code>
+<p>The ESP32 is Xtensa, which stock Rust can't build for. <code>pixi run esp tools</code>
 installs Espressif's Rust and <code>espflash</code> for one user, at fixed versions (above, with
-<code>esp-build</code> and <code>esp-flash</code>).</p>
+<code>esp build</code> and <code>esp flash</code>).</p>
 <p>Like <code>boards/pico2</code>, each board crate is a workspace of its own, outside the default build:
 <code>pixi run test</code> keeps working on a laptop without Espressif's Rust (it says "skipped"). The logic crates need nothing:
 they already build and test with stock Rust.</p>
@@ -2128,7 +2208,7 @@ Rust.</p>
 <td>Pico 2 (RP2350, ARM)</td>
 <td><code>thumbv8m.main-none-eabihf</code></td>
 <td><span class="badge b-works">works</span> all thirteen crates and the three Pico 2 board programs build for it; <code>pixi run test</code> checks them</td>
-<td>its USB drive (<code>pixi run spine-uf2</code>, <code>wheel-uf2</code>, <code>sentinel-uf2</code>), or probe-rs (<code>pixi run spine-tools</code>)</td>
+<td>its USB drive (<code>pixi run pico spine build</code>, <code>pico wheel build</code>, <code>pico sentinel build</code>), or probe-rs (<code>pixi run pico spine tools</code>)</td>
 </tr>
 <tr>
 <td>STM32-class ARM (Cortex-M4F, M7)</td>
@@ -2145,8 +2225,8 @@ Rust.</p>
 <tr>
 <td>Classic ESP32 (today's board)</td>
 <td><code>xtensa-esp32-none-elf</code></td>
-<td><span class="badge b-works">works</span> not in Pixi: <code>pixi run esp-tools</code> installs Espressif's Rust for one user (above); <code>tools/test.sh</code> builds the board where it is</td>
-<td><code>espflash</code> (<code>pixi run esp-flash</code>)</td>
+<td><span class="badge b-works">works</span> not in Pixi: <code>pixi run esp tools</code> installs Espressif's Rust for one user (above); <code>tools/test.sh</code> builds the board where it is</td>
+<td><code>espflash</code> (<code>pixi run esp flash</code>)</td>
 </tr>
 <tr>
 <td>Arduino (AVR)</td>

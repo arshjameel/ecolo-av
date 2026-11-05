@@ -67,4 +67,4 @@ pixi run build && colcon test --packages-select aav_gps_heading && colcon test-r
 ```
 
 `tools/test.sh` runs the first; `pixi run test` runs everything. Against Gazebo's
-truth, forward and reversing: `pixi run heading-check` (about 4 min a run).
+truth, forward and reversing: `pixi run tools/ros.sh --local python3 tools/heading_check.py` (about 4 min a run).

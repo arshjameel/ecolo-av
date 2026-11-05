@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -185,7 +189,7 @@ format, so our parser reads OSRM too: switch with <code>router: osrm</code> if a
 OSRM's public demo server, asked once by hand: <strong>1986.4 m</strong>, the same shape.</p>
 </section>
 <section class="card"><h2 id="run-it">Run it</h2>
-<pre class="highlight"><code class="language-bash">pixi run -e routes get-routes    # once: Ottawa (50 MB, BBBike), then the graph
+<pre class="highlight"><code class="language-bash">pixi run get routes    # once: Ottawa (50 MB, BBBike), then the graph
 pixi run -e routes router        # the router, on 127.0.0.1:8002 (keep it running)
 pixi run build
 tools/ros.sh ros2 launch aav_routes street_router.launch.py</code></pre>
@@ -216,7 +220,7 @@ tools/ros.sh ros2 service call /drivers/nav/route/follow std_srvs/srv/Trigger</c
 <tr>
 <td><code>maps/routes/valhalla.json</code></td>
 <td>10 kB</td>
-<td>no: <code>get-routes</code> writes it</td>
+<td>no: <code>get routes</code> writes it</td>
 </tr>
 </tbody>
 </table></div>
@@ -366,7 +370,7 @@ own extract (Geofabrik's Ontario, 1 GB, for a bigger area).</p>
 <td>all pass; nothing reaches Nav2 before <code>follow</code></td>
 </tr>
 <tr>
-<td><code>get-routes</code> on this Mac</td>
+<td><code>get routes</code> on this Mac</td>
 <td>49 MB download, graph in 5 s</td>
 </tr>
 <tr>
@@ -426,7 +430,7 @@ the end. Gazebo's empty world has no streets drawn: the car drove on open ground
 <li>The router's time is for <strong>a normal car</strong> on the speed limit, not ours (1 m/s to start).</li>
 <li>Nav2 drives to each waypoint in turn and slows at each: that's why they're 10-30 m apart.</li>
 <li>The data: © OpenStreetMap contributors, ODbL. BBBike's extract changes every week, so
-  <code>get-routes</code> checks it against BBBike's own checksum, not a fixed one.</li>
+  <code>get routes</code> checks it against BBBike's own checksum, not a fixed one.</li>
 <li><strong>No older code copied.</strong> The 2025-26 team's Navigation-LocalPathGenerator read OSRM
   routes too, and followed them itself (<a href="older-code.html">Older code</a>). Here Nav2 follows,
   so only a small parser was needed: written new, with tests.</li>

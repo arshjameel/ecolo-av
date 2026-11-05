@@ -7,7 +7,7 @@
 <!-- Generated from docs/tests.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Every test we&#x27;ve talked about</h1>
-<div class="meta">14 min read · 8 sections</div></header>
+<div class="meta">24 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a class="here" href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -98,11 +102,15 @@
 <div class="lead"><p>Written 15 October 2026, checked 25 October, for the team: every test from our talks, in one place,
 in the order to run them. Each one says what it proves, how to run it, and when it passes.</p>
 <blockquote>
-<p><strong>The short version</strong>
-- <strong>Five stages</strong>, safest first: the simulator, the bench, the car on stands, the car in an empty lot, then the whole drive.
-- Never skip a stage: a test only runs once the stage before it passes.
-- <strong>Status:</strong> ✅ exists and passes; 🔧 exists, not yet run on the car; ⬜ still to build.
-- On the car, always: a safety driver, the e-stop in someone's hand, and a speed cap.</p>
+<p><strong>The short version</strong></p>
+<ul>
+<li><strong>Five stages</strong>, safest first: the simulator, the bench, the car on stands, the car in an empty lot, then the whole drive.</li>
+<li>Never skip a stage: a test only runs once the stage before it passes.</li>
+<li><strong>Status:</strong> ✅ exists and passes; 🔧 exists, not yet run on the car; ⬜ still to build.</li>
+<li>On the car, always: a safety driver, the e-stop in someone's hand, and a speed cap.</li>
+<li><strong>The first drive on the ground is recorded with the lidar</strong> (4e): it gives the lot's maps and real scores for the trials.</li>
+<li><strong>To learn the car</strong> (its wheel size, speed-up, braking, drag, steering), the stage 3 and 4 tests in order, run again until the error is small: <a href="know-the-car.html">Know the car</a>.</li>
+</ul>
 </blockquote>
 <pre class="highlight"><code class="language-text"> 1 simulator  →  2 bench  →  3 car on stands  →  4 car, empty lot  →  5 the whole drive
  (Gazebo,        (stand-ins,   (wheels off the      (walking pace,       (A to B by GPS)
@@ -125,7 +133,7 @@ in the order to run them. Each one says what it proves, how to run it, and when 
 <td>The whole car graph in Gazebo</td>
 <td><code>pixi run sim-check</code></td>
 <td>all checks PASS: sensors, a 6.5 m drive, the EKF within 0.5 m of the truth</td>
-<td>✅</td>
+<td>✅ 3 Nov: 9 of 9 (the EKF 0.15 m off); also 9 of 9 with each speed loop and <code>--voxels</code>, 10 of 10 <code>--kiss-ekf</code>, 7 of 7 <code>--no-lidar</code></td>
 </tr>
 <tr>
 <td>1.2</td>
@@ -146,19 +154,19 @@ in the order to run them. Each one says what it proves, how to run it, and when 
 <td>Stop for an obstacle</td>
 <td><code>pixi run sim-check --obstacle</code></td>
 <td>stops 0-2 m before the box; drives on when it's gone</td>
-<td>✅ at 272 kg; ⚠️ at 181 kg, unconfirmed (the Mac was overloaded)</td>
+<td>✅ at 272 kg; ⚠️ at 181 kg, unconfirmed (the Mac was overloaded); ✅ 3 Nov: 0.23 m before it</td>
 </tr>
 <tr>
 <td>1.5</td>
 <td>Lane keeping</td>
 <td><code>pixi run sim-check --lane</code></td>
 <td>back to the lane's centre within 5 cm</td>
-<td>✅ 15 Oct</td>
+<td>✅ 15 Oct; 3 Nov: within 5 cm after 5.4 s (its contract check fixed: it asked for stop_hold, which needs Nav2)</td>
 </tr>
 <tr>
 <td>1.6</td>
 <td>The HUD, with pretend data</td>
-<td><code>pixi run hud-demo</code></td>
+<td><code>pixi run hud --demo</code></td>
 <td>the window opens with speed, camera, GPS, e-stop</td>
 <td>✅ Ben, 15 Oct</td>
 </tr>
@@ -195,35 +203,70 @@ in the order to run them. Each one says what it proves, how to run it, and when 
 <td><strong>The lidar alone stops the car</strong></td>
 <td><code>pixi run sim-check --lidar-obstacle</code> (and <code>--plan-around</code>: Nav2 drives round a box it sees)</td>
 <td>radar off: stops 0-2 m before a person-sized post, which shows in the local costmap; drives on when it's gone</td>
-<td>✅ 15 Oct: 0.16-0.55 m before it</td>
+<td>✅ 15 Oct: 0.16-0.55 m before it; 3 Nov: 0.16 m. ❌ with <code>--voxels</code>: 1 of 3 runs drove 1.30 m into the post (2 of 3 stopped 0.25 and 0.29 m before it)</td>
 </tr>
 <tr>
 <td>1.12</td>
 <td><strong>Sensor failures on purpose</strong></td>
 <td><code>pixi run sim-check --faults</code> (<code>--no-watchdog</code>: what happens without the watchdog)</td>
 <td>each of 13 faults (GPS lost, NaN, jump; IMU stopped, frozen, NaN; wheels stopped, frozen, NaN; camera frozen; radar stopped; the watchdog hung, killed) stops the car within 6 s (frozen wheels: 10 s from when they go wrong), and says why; normal driving never trips the wheels' cross check</td>
-<td>✅ 15 Oct: all 13; 24 Oct, with the HUD's heartbeat: all 25 checks, 3 runs of 3</td>
+<td>✅ 15 Oct: all 13; 24 Oct, with the HUD's heartbeat: all 25 checks, 3 runs of 3; 3 Nov: all 25 (14 faults)</td>
 </tr>
 <tr>
 <td>1.13</td>
 <td><strong>The spine in the loop</strong></td>
 <td><code>pixi run sim-check --spine</code></td>
 <td>in Gazebo with <code>spine:=true</code>: the normal checks pass; ego's commands stopped → the spine brakes fully within 0.28 s and latches; <code>/safety/estop</code> and the hardware e-stop → brake within 0.15 s, latched until armed again; disarmed → no motion</td>
-<td>✅ 15 Oct: full brake 195-209 ms, e-stops 1-12 ms</td>
+<td>✅ 15 Oct: full brake 195-209 ms, e-stops 1-12 ms; 3 Nov: all PASS, full brake 202-205 ms, e-stops 2 ms</td>
 </tr>
 <tr>
 <td>1.14</td>
 <td><strong>Drive to a GPS point, smooth stop</strong></td>
 <td><code>pixi run sim-check --drive-to-point</code> (<a href="a-to-b.html">A to B</a>)</td>
 <td>every stop within 2 m of B by Gazebo's truth, no overshoot, braking about half <code>max_brake</code>; a cancel, the e-stop and a GPS fault stop it</td>
-<td>✅ 15 Oct: all within 0.4 m</td>
+<td>✅ 15 Oct: all within 0.4 m. ⚠️ 3 Nov, 2 runs: every stop within 0.46 m of B by the truth, but 1 of 9 drives each run ended 0.61 m past B by its own EKF (the limit 0.5 m): GPS noise, or the GPS's new position, to look at</td>
 </tr>
 <tr>
 <td>1.15</td>
 <td><strong>Ghost obstacles: a pretend person only Nav2 sees</strong></td>
 <td><code>pixi run sim-check --ghost</code> (<a href="ghost-obstacles.html">docs</a>)</td>
 <td>a ghost 15 m ahead (nothing in Gazebo): stops 0-2 m before it (the stop zone or the controller), the local costmap marks it; drives on once it's off</td>
-<td>✅ 16 Oct: 0.21 m before it, the stop zone fired (one run, radar and lidar on too)</td>
+<td>✅ 16 Oct: 0.21 m before it, the stop zone fired (one run, radar and lidar on too); 3 Nov: 0.51 m before it</td>
+</tr>
+<tr>
+<td>1.16</td>
+<td><strong>Every screen in Initial D</strong>, with pretend data</td>
+<td><code>pixi run hud --demo</code>, <code>map --demo</code>, <code>debug-hud --demo</code>, <code>hw-panel --demo</code> (<a href="hud.html#themes-the-screens-colours">Themes</a>)</td>
+<td>each opens black and red with thin white edges and sharp corners, no Catppuccin blue-grey; the e-stop red with white words; GO green, WAIT amber; the localizers keep their colours</td>
+<td>✅ 2 Nov: all four, screenshots on Ben's Mac</td>
+</tr>
+<tr>
+<td>1.17</td>
+<td>The theme's contrast test</td>
+<td><code>cargo test -p hud-core theme</code> (in <code>tools/test.sh</code>)</td>
+<td>every word 4.5 : 1, every shape and mark 3 : 1 on each screen's backgrounds; Initial D has no Catppuccin colour but the localizers'</td>
+<td>✅ 2 Nov</td>
+</tr>
+<tr>
+<td>1.18</td>
+<td><strong>The diffusion planner's lot tour</strong></td>
+<td><code>pixi run measure controllers --planners lattice diffusion --reversing --tours lot</code> (<a href="trials.html#diffusion-2-nov-a-model-draws-the-lattice-guards">trials</a>)</td>
+<td>every leg, as the lattice; no plan tighter than full lock; the share of plans from the model (<code>/drivers/nav/diffusion/status</code>)</td>
+<td>✅ 2 Nov, 2 runs: 8 of 8 legs, 63 % from the model; 3 Nov, 3 runs: 12 of 12 legs, 73 % from the model, never tighter than full lock</td>
+</tr>
+<tr>
+<td>1.19</td>
+<td><strong>The diffusion planner's guard falls back</strong></td>
+<td><code>pixi run measure controllers --planners diffusion_nomodel --reversing --tours lot</code> (no model file); the guard's checks: <code>tools/test.sh</code> (<code>aav_diffusion_planner/test</code>)</td>
+<td>every plan the lattice's, every leg; each check G1-G8 refuses its bad path in the unit tests</td>
+<td>✅ 2 Nov: 156 of 156 plans the lattice's, 4 of 4 legs; 3 Nov (one leg): 25 of 25</td>
+</tr>
+<tr>
+<td>1.20</td>
+<td><strong>Every switch starts and drives a leg</strong></td>
+<td><code>pixi run measure controllers --tours lot --legs 1</code> with each switch (<a href="switches.html">switches</a>, <a href="trials.html#3-nov-everything-for-02">the runs</a>)</td>
+<td>each planner, follower, localizer and <code>voxels</code> starts, and the car finishes the first leg</td>
+<td>✅ 3 Nov: 23 of 23 (lattice32 and smac2d on a second try: the first, on a busy Mac, stalled)</td>
 </tr>
 </tbody>
 </table></div>
@@ -243,10 +286,10 @@ in the order to run them. Each one says what it proves, how to run it, and when 
 <tbody>
 <tr>
 <td>2.1</td>
-<td>The whole car graph, e-stops included</td>
+<td>The whole car graph, e-stops and the joystick-alive check included</td>
 <td><code>pixi run bench-check</code></td>
-<td>7 of 7</td>
-<td>✅</td>
+<td>11 of 11</td>
+<td>✅ 3 Nov: 11 of 11</td>
 </tr>
 <tr>
 <td>2.2</td>
@@ -292,6 +335,12 @@ software stopped; speed capped (<code>max_speed:=0.3</code>).</p>
 <td>🔧</td>
 </tr>
 <tr>
+<td>3.2b</td>
+<td><strong>Backward, gently</strong> (the keyboard's back key)</td>
+<td>the drive wheels turn <strong>backward</strong>, slowly; <code>/vehicle/odom</code> reads <strong>negative</strong> (its sign is the command's until H5)</td>
+<td>🔧</td>
+</tr>
+<tr>
 <td>3.3</td>
 <td>Left</td>
 <td>the front wheels turn <strong>left</strong></td>
@@ -306,7 +355,7 @@ software stopped; speed capped (<code>max_speed:=0.3</code>).</p>
 <tr>
 <td>3.5</td>
 <td>The HUD's e-stop button</td>
-<td>brakes at once; nothing moves until <code>pixi run estop-clear</code></td>
+<td>brakes at once; nothing moves until <code>pixi run clear estop</code></td>
 <td>🔧</td>
 </tr>
 <tr>
@@ -335,6 +384,39 @@ software stopped; speed capped (<code>max_speed:=0.3</code>).</p>
 </tr>
 </tbody>
 </table></div>
+<h3 id="3a-joy-the-joystick-on-stands">3a-joy. The joystick on stands</h3>
+<p>Car day's <a href="car-day.html#a9b-the-joystick-on-stands">A9b</a> (TODO 74a). The joystick-alive check (<code>joy_alive</code>) reports on <code>/drivers/joy/alive</code>. Each test: hold the
+trigger, a little throttle, wheels turning, then:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Test</th>
+<th>Expect</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3.J1</td>
+<td><strong>Unplug the receiver</strong></td>
+<td>the wheels stop within 1 s; <code>/drivers/joy/alive</code> says <code>SILENT</code>. Plugged in again with the trigger held: still stopped, until it is released and pressed</td>
+<td>🔧 bench ✅</td>
+</tr>
+<tr>
+<td>3.J2</td>
+<td><strong>Turn the pad off</strong> (receiver still in)</td>
+<td>the wheels stop within 3 s: <code>SILENT</code> if the receiver drops out or goes quiet, <code>FROZEN</code> if it repeats the last values. <strong>Neither:</strong> the receiver goes neutral (the wheels stop, the trigger reads 0): write it down</td>
+<td>🔧</td>
+</tr>
+<tr>
+<td>3.J3</td>
+<td><strong>Hold the stick still</strong>, 10 s, then pinned fully forward, 10 s</td>
+<td>write down when <code>FROZEN</code> comes. Expected: a still hand rarely trips it (it jitters); pinned at the edge trips it after 2 s, and release-and-press drives again. Too often: raise <code>frozen_after</code> (<code>aav_teleop</code> <code>joy_alive.yaml</code>)</td>
+<td>🔧</td>
+</tr>
+</tbody>
+</table></div>
 <h3 id="3b-steering-on-stands">3b. Steering, on stands</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -348,8 +430,15 @@ software stopped; speed capped (<code>max_speed:=0.3</code>).</p>
 </thead>
 <tbody>
 <tr>
+<td>3.0</td>
+<td><strong>The steering actuator's ends and centre</strong>: before any sweep, its current limit low</td>
+<td>left end, centre, right end in counts, and the wheel angle at each end (protractor). Way A (car day): Pololu's utility, the power off before any I2C is unplugged; way B (later, link version 3): the hardware panel, limp or jog (<a href="actuator-tests.html#find-the-steering-actuators-ends-and-centre">the procedure and sheet</a>)</td>
+<td>the sheet filled in; <code>steering_limits</code> gives equal limits each side; the hardware lead reviews them</td>
+<td>⬜</td>
+</tr>
+<tr>
 <td>3.10</td>
-<td><strong>Steering sweep</strong>: full left, centre, full right, slowly</td>
+<td><strong>Steering sweep</strong>: full left, centre, full right, slowly; <strong>only inside the ends 3.0 measured</strong> (or once they're flashed)</td>
 <td>the wheel angle at each command (protractor or phone app on the wheel). <code>pixi run actuator-test steer-sweep --stands</code>: it asks for each angle</td>
 <td>a table: command → real angle, each way</td>
 <td>🔧</td>
@@ -381,7 +470,8 @@ software stopped; speed capped (<code>max_speed:=0.3</code>).</p>
 <section class="card"><h2 id="stage-4-the-car-in-an-empty-lot">Stage 4: the car in an empty lot</h2>
 <p><strong>Before:</strong> stage 3 passed; the timeout fix (3.9) in; a safety driver; walking pace first.
 The test script (<code>pixi run actuator-test &lt;test&gt;</code>, <a href="actuator-tests.html">docs</a>) logs the IMU (g),
-the wheel speed, the pose and the GPS for every test.</p>
+the wheel speed, the pose and the GPS for every test.
+Which test fits which number, and when to stop repeating it: <a href="know-the-car.html">Know the car</a>.</p>
 <h3 id="4a-speed-up-coast-brake">4a. Speed up, coast, brake</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -557,6 +647,140 @@ and the coast-down (4.2) subtracted, so drag doesn't count as motor or brake.</p
 </tr>
 </tbody>
 </table></div>
+<h3 id="4e-record-the-lot-the-maps-and-the-scores">4e. Record the lot: the maps and the scores</h3>
+<p>The first drive on the ground is by hand, <strong>recorded with the lidar</strong>. At home, that
+recording gives the maps, and real scores for every trial (<a href="trials.html">Trials</a>).</p>
+<p><strong>Before:</strong> the lot's corner (latitude, longitude: a phone is close enough) in
+<code>navsat.yaml</code>'s <code>datum</code>. Today it's a placeholder near Carleton. <strong>Keep it the same for
+every drive</strong>, or the maps won't line up. The Orin needs 20 GB free (the lidar is about
+5 GB per 10 min).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Test</th>
+<th>How</th>
+<th>Gives</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4.19</td>
+<td><strong>Record the lot</strong></td>
+<td>the joystick, slowly: 2 laps, a figure 8, a stop by each cone, then 10 m by tape. <code>tools/record.sh --lidar lot</code> on the Orin</td>
+<td>one recording with the lidar, GPS, IMU and wheels</td>
+<td>🔧</td>
+</tr>
+<tr>
+<td>4.20</td>
+<td><strong>The wheel diameter</strong></td>
+<td>from 4.19's taped 10 m: the wheels' distance against the tape's</td>
+<td><code>vehicle.yaml</code> <code>wheel_diameter</code> (TODO 60)</td>
+<td>🔧</td>
+</tr>
+<tr>
+<td>4.21</td>
+<td><strong>NDT's map of the lot</strong></td>
+<td><code>pixi run ndt-map build bags/&lt;4.19&gt; --poses /localization/odom/global --out maps/ndt/&lt;lot&gt;</code></td>
+<td><code>ndt:=true</code> on the car. Only as good as the EKF that placed it</td>
+<td>🔧</td>
+</tr>
+<tr>
+<td>4.22</td>
+<td><strong>Score the trials</strong></td>
+<td><code>replay.launch.py</code> and <code>ros2 bag play bags/&lt;4.19&gt;</code>: <code>ndt_ekf</code>, <code>kiss_ekf</code>, <code>voxels</code>, on and off</td>
+<td>the best of, decided on real data</td>
+<td>🔧</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="4f-reversing-and-the-u-turn">4f. Reversing and the U-turn</h3>
+<p>Nav2 may back up on the car (at 0.5 m/s at most), where the lidar watches behind. Until
+the wheels tell direction (H5), the speed's sign is the <strong>last command's</strong>: 4.25 checks
+where that goes wrong.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Test</th>
+<th>How</th>
+<th>Passes when</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4.23</td>
+<td><strong>Reverse straight</strong></td>
+<td>the keyboard, 5 m back at 0.3 m/s, then <code>actuator-test straight</code> reversed</td>
+<td>the local EKF goes <strong>back</strong> 5 m (±0.3 m); the GPS agrees</td>
+<td>🔧</td>
+</tr>
+<tr>
+<td>4.24</td>
+<td><strong>Stop for something behind</strong></td>
+<td>a cone 3 m behind, Nav2 told to back up past it</td>
+<td>stops before it: collision_monitor's box behind the bumper (Gazebo: 0.75 m short, <code>sim-check --rear-obstacle</code>; 3 Nov: 0.78 m)</td>
+<td>🔧</td>
+</tr>
+<tr>
+<td>4.25</td>
+<td><strong>Rolling back</strong> (the known flaw)</td>
+<td>on a gentle slope, drive forward, stop, let it roll back by hand on the brake</td>
+<td>written down: how far the EKF thinks it went <strong>forward</strong>, and whether the watchdog noticed (it compares speeds, not directions: maybe not). Too far: wait for H5 before reversing on slopes</td>
+<td>🔧</td>
+</tr>
+<tr>
+<td>4.26</td>
+<td><strong>The U-turn</strong></td>
+<td>Nav2, a goal behind the car in a 14 m lane of cones (Gazebo's "turn back" leg)</td>
+<td>a three-point turn: forward, back about 9 m, forward; no cone touched</td>
+<td>🔧 in Gazebo, 16 of 16 legs with the lattice (30 Oct)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Nav2's map stays <code>empty.yaml</code>: the sensors see obstacles live. A map made from the lidar
+needs a tool we don't have yet.</p>
+<h3 id="the-stack-for-every-test-on-the-ground">The stack for every test on the ground</h3>
+<p>The car's defaults: the best of the Gazebo trials. <code>test_car_launch.py</code> pins them. The
+trials wait for 4.22.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Job</th>
+<th>On the car</th>
+<th>Why this one</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Where am I</td>
+<td>the two EKFs, with the GPS</td>
+<td>NDT needs a map of the lot first (4.21)</td>
+</tr>
+<tr>
+<td>Draws the route</td>
+<td>the lattice (Hybrid-A* if forward only)</td>
+<td>with reversing: every leg, 29 s quicker a tour</td>
+</tr>
+<tr>
+<td>Steers along it</td>
+<td>MPPI</td>
+<td>reads the costmap; the trackers don't</td>
+</tr>
+<tr>
+<td>Sees obstacles</td>
+<td>the flat lidar scan</td>
+<td>the cubes are a trial</td>
+</tr>
+<tr>
+<td>Reverses?</td>
+<td>yes, 0.5 m/s at most, where the lidar sees behind</td>
+<td>the U-turn needs it (4.26); the sign is the command's until H5</td>
+</tr>
+</tbody>
+</table></div>
 </section>
 <section class="card"><h2 id="stage-5-the-whole-drive">Stage 5: the whole drive</h2>
 <div class="table-wrap"><table>
@@ -622,7 +846,7 @@ and the coast-down (4.2) subtracted, so drag doesn't count as motor or brake.</p
 <tr>
 <td>F.1</td>
 <td>Every machine on the network, with its ROS domain</td>
-<td><code>pixi run net-map</code></td>
+<td><code>pixi run bash tools/net_map.sh</code></td>
 <td>✅ at home</td>
 </tr>
 <tr>
@@ -634,7 +858,7 @@ and the coast-down (4.2) subtracted, so drag doesn't count as motor or brake.</p
 <tr>
 <td>F.3</td>
 <td>Every machine surveyed: what runs, what's plugged in, what exists only there</td>
-<td><code>pixi run survey ~/aav-audit/hosts.txt</code></td>
+<td><code>pixi run bash tools/survey_car.sh ~/aav-audit/hosts.txt</code></td>
 <td>✅ Linux CI; 🔧 the car</td>
 </tr>
 <tr>
@@ -654,6 +878,18 @@ and the coast-down (4.2) subtracted, so drag doesn't count as motor or brake.</p
 <td>The camera freeze: the 10-minute watch</td>
 <td><code>history/friday-todo-2026-10-16.md</code> part 5</td>
 <td>🔧</td>
+</tr>
+<tr>
+<td>F.7</td>
+<td><strong>Every screen opens in Initial D on the car's monitors</strong> (HUD, map, debug screen, hardware panel)</td>
+<td><code>tools/car_screen.sh</code> at boot, or <code>pixi run hud</code> / <code>map</code> / <code>debug-hud</code> / <code>hw-panel</code>: black, white and red, no Catppuccin</td>
+<td>🔧</td>
+</tr>
+<tr>
+<td>F.8</td>
+<td><strong>The screens read in daylight and at night</strong></td>
+<td>on the car, in sun and after dark: every word, the speed, GO / WAIT / STOP and the E-STOP read from the driver's seat; if not, <code>theme: latte</code> for day (<a href="hud.html#themes-the-screens-colours">Themes</a>)</td>
+<td>⬜</td>
 </tr>
 </tbody>
 </table></div>
@@ -687,8 +923,8 @@ and the coast-down (4.2) subtracted, so drag doesn't count as motor or brake.</p
 </tr>
 </tbody>
 </table></div></section>
-<nav class="prevnext"><a class="prev" href="car-day.html"><small>Previous</small>← Car day</a>
-<a class="next" href="measure-the-car.html"><small>Next</small>Measure the car →</a></nav>
+<nav class="prevnext"><a class="prev" href="car-setup.html"><small>Previous</small>← Car setup</a>
+<a class="next" href="know-the-car.html"><small>Next</small>Know the car →</a></nav>
 </main>
 <footer>Source: <code>docs/tests.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

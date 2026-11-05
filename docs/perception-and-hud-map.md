@@ -41,8 +41,8 @@ sign", so we start there.
 | Computer | Format | Made by |
 |---|---|---|
 | Orin | `yolo11n.engine` (TensorRT, half precision) | `python3 tools/build_engine.py`, on the Orin itself |
-| Mac | `yolo11n.mlpackage` (Core ML) | `pixi run -e ml export-coreml` |
-| Anything | `yolo11n.pt` (PyTorch) | `pixi run get-models` |
+| Mac | `yolo11n.mlpackage` (Core ML) | `pixi run -e ml python3 tools/export_model.py --format coreml` |
+| Anything | `yolo11n.pt` (PyTorch) | `pixi run get models` |
 
 Measured on a Mac: 7.7 ms a frame through PyTorch and Metal, 4.3 ms through Core ML.
 
@@ -105,7 +105,7 @@ known.
 | Piece | Status |
 |---|---|
 | The 2025-26 Flutter app's map page (`flutter_map`) | written; it needs a tile server on the dash Pi, which isn't in git (answered: archived 25 Oct, Q29) |
-| `ottawa.db`: 606,628 places for the search box | `pixi run get-places` |
+| `ottawa.db`: 606,628 places for the search box | `pixi run get places` |
 | OSRM road routes | Docker on the dash Pi; data not in git (answered: [Street routes](routes.md), Valhalla, since) |
 | The raylib HUD (ours) | speed, e-stop, GPS panel, camera, topic health. **No map yet** (answered: [the map window](hud.md#the-map-window-big-screen), built since) |
 

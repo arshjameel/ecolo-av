@@ -84,7 +84,7 @@ This package has no tests of its own (config only); `aav_bringup`'s
 ```sh
 pixi run build && colcon test --packages-select aav_localization && colcon test-result --verbose
 pixi run sim-check        # Gazebo: compares /localization/odom/global with the truth
-pixi run heading-check    # the global EKF's heading, forward and reversing
+pixi run tools/ros.sh --local python3 tools/heading_check.py    # the global EKF's heading, forward and reversing
 ```
 
 `pixi run test` runs everything.

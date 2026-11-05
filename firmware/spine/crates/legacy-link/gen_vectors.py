@@ -11,6 +11,11 @@ Version 2 (TODO 50): the bytes come from aav_legacy's uart_relay (what legacy_ua
 sends with frame_version 2) and pack_frame_v2; the expected result is the frame's
 counter and flags, or why it is turned down, and the same targets.
 
+Version 3 (1 Nov): the bytes come from uart_relay (frame_version 3, with and without
+the panel's calibration request) and pack_frame_v3; the expected result is the frame's
+counter, flags and calibration request, or why it is turned down. ParserV3 must find the
+same frames as v3_parse, in a stream of version 2 and 3 frames.
+
 The uplink (TODO 50, 48), the other way: the bytes come from pack_uplink, which is what
 legacy_uart_bridge reads (unpack_uplink); the Rust Uplink must encode the same fields
 to the same bytes, and turn down the same bad frames.
@@ -43,7 +48,9 @@ sys.modules['legacy_protocol'] = lp  # dataclasses look the module up while load
 spec.loader.exec_module(lp)
 
 # uart_relay imports aav_legacy.legacy_protocol: give it the module loaded above.
-sys.modules.setdefault('aav_legacy', type(sys)('aav_legacy'))
+# It also imports aav_legacy.speed_control: the stand-in package finds it in that folder.
+package = sys.modules.setdefault('aav_legacy', type(sys)('aav_legacy'))
+package.__path__ = [str(PROTOCOL.parent)]
 sys.modules['aav_legacy.legacy_protocol'] = lp
 spec = importlib.util.spec_from_file_location('aav_legacy.uart_relay',
                                               PROTOCOL.parent / 'uart_relay.py')
@@ -236,13 +243,104 @@ V2_STREAM = (bytes([0x00, 0xFF, 0x13]) + relay_frame(1, (1.0, 0.1))
 V2_STREAM_FRAMES = v2_parse(V2_STREAM)
 
 
+def relay_v3(counter, cmd=None, cal=None, now=1.0):
+    """Return what legacy_uart_bridge sends with frame_version 3, on stands, uplink fresh."""
+    relay = relay_module.Relay(M, cmd_timeout=0.3, version=3, calibration='stands')
+    relay.heartbeat(counter)
+    relay.uplink_seen(now)
+    if cmd is not None:
+        relay.command(*cmd, now)
+    if cal is not None:
+        relay.calibrate(*cal, now)
+    return relay.frame(now)
+
+
+def with_byte_v3(frame, at, value):
+    """Return a version 3 frame with one byte changed and its CRC made right again."""
+    b = bytearray(frame)
+    b[at] = value
+    b[19] = lp.crc8(bytes(b[1:19]))
+    return bytes(b)
+
+
+GOOD_V3 = lp.pack_frame_v3(0.0, 0.0, -1.0, 9, False, False, lp.CAL_MODE_JOG, 2000)
+
+# (name, how the frame was made, the frame's bytes, the error the firmware gives or None)
+V3_CASES = [
+    ('v3_drive', 'relay v3: heartbeat 7, to_legacy(1.5, 0.25)', relay_v3(7, (1.5, 0.25)), None),
+    ('v3_limp', 'relay v3: heartbeat 8, the panel asks for limp',
+     relay_v3(8, cal=(lp.CAL_MODE_LIMP, 0)), None),
+    ('v3_jog', 'relay v3: heartbeat 9, the panel asks for a jog to 2300',
+     relay_v3(9, cal=(lp.CAL_MODE_JOG, 2300)), None),
+    ('v3_jog_clamped', 'pack_frame_v3 jog to 9999: clamped to 4095 by pack',
+     lp.pack_frame_v3(0.0, 0.0, -1.0, 10, False, False, lp.CAL_MODE_JOG, 9999), None),
+    ('v3_refused_while_driving', 'relay v3: ego drives (1.5 m/s), the panel asks for limp',
+     relay_v3(11, (1.5, 0.0), cal=(lp.CAL_MODE_LIMP, 0)), None),
+    ('v3_bad_crc', 'GOOD_V3 with its CRC flipped',
+     bytes(GOOD_V3[:19]) + bytes([GOOD_V3[19] ^ 0xFF]), 'Checksum'),
+    ('v3_mode_3', 'GOOD_V3 with mode 3, its CRC right', with_byte_v3(GOOD_V3, 16, 3), 'Field'),
+    ('v3_limp_with_target', 'GOOD_V3 as limp, keeping its target, its CRC right',
+     with_byte_v3(GOOD_V3, 16, 1), 'Field'),
+    ('v3_target_4096', 'GOOD_V3 with target 4096, its CRC right',
+     with_byte_v3(with_byte_v3(GOOD_V3, 17, 0x00), 18, 0x10), 'Field'),
+    ('v3_unknown_flag', 'GOOD_V3 with flag bit 2, its CRC right',
+     with_byte_v3(GOOD_V3, 15, 0x04), 'Flags'),
+]
+
+
+def v3_parse(stream):
+    """
+    Split a stream as legacy-link's ParserV3 does.
+
+    Wait for 0xA5; the next byte gives the length (2: 17, 3: 20; anything else drops the
+    two and starts again at the next 0xA5 in them); a bad frame is dropped, and the search
+    starts again at the next 0xA5 inside it. A frame that only comes clear after a
+    restart is found one byte later, as in the Rust.
+    """
+    buf, out = [], []
+    for b in stream:
+        if not buf and b != 0xA5:
+            continue
+        buf.append(b)
+        if len(buf) < 2:
+            continue
+        want = {2: 17, 3: 20}.get(buf[1])
+        if want is None:
+            rest = buf[1:]
+            buf = rest[rest.index(0xA5):] if 0xA5 in rest else []
+            continue
+        if len(buf) < want:
+            continue
+        try:
+            frame = bytes(buf[:want])
+            (lp.unpack_frame_v2 if want == 17 else lp.unpack_frame_v3)(frame)
+            out.append(frame)
+            buf = buf[want:]
+        except ValueError:
+            rest = buf[1:want]
+            at = rest.index(0xA5) + 1 if 0xA5 in rest else want
+            buf = buf[at:]
+    return out
+
+
+# Noise, a version 3 frame, a version 2 frame, a frame's tail, an unknown version, a v3
+# frame with a bad CRC, then good frames of both versions.
+V3_STREAM = (bytes([0x00, 0x13]) + relay_v3(1, cal=(lp.CAL_MODE_LIMP, 0))
+             + relay_frame(2, (1.0, 0.1)) + relay_v3(3, cal=(lp.CAL_MODE_JOG, 1500))[7:]
+             + bytes([0xA5, 0x09]) + with_byte(relay_v3(4), 19, 0x00, False)
+             + relay_v3(5, cal=(lp.CAL_MODE_JOG, 1600)) + relay_frame(0xA5, (0.0, 0.0))
+             + relay_v3(6))
+V3_STREAM_FRAMES = v3_parse(V3_STREAM)
+
+
 U = lp.Uplink
 # Values exact in float32, so both sides read the same numbers.
 UPLINK_CASES = [
     ('up_driving', 'computer drives, both positions known, no RC',
      U(sequence=7, echo=42, mode=lp.MODE_COMPUTER, switch=lp.SWITCH_NONE, armed=True,
        estop=False, faults=0, steering=0.125, brake_position=0.0, throttle_out=0.25,
-       brake_out=0.0, rc_throttle=0.0, rc_steering=0.0, rc_brake=False)),
+       brake_out=0.0, rc_throttle=0.0, rc_steering=0.0, rc_brake=False,
+       steering_counts=2338, brake_counts=400)),
     ('up_rc_via_ros', 'the switch on RC via ROS: the sticks go up, the computer drives',
      U(sequence=8, echo=43, mode=lp.MODE_COMPUTER, switch=lp.SWITCH_RC_VIA_ROS, armed=True,
        estop=False, faults=0, steering=-0.0625, brake_position=0.5, throttle_out=0.0,
@@ -255,12 +353,28 @@ UPLINK_CASES = [
     ('up_timeout', 'the heartbeat stopped: braked, latched, fault 1, the last echo',
      U(sequence=0, echo=99, mode=lp.MODE_STOPPED, switch=lp.SWITCH_COMPUTER, armed=False,
        estop=True, faults=0x0001, steering=0.0, brake_position=1.0, throttle_out=0.0,
-       brake_out=1.0, rc_throttle=0.0, rc_steering=0.0, rc_brake=True)),
+       brake_out=1.0, rc_throttle=0.0, rc_steering=0.0, rc_brake=True,
+       steering_counts=1950, brake_counts=3500, calibration=lp.CAL_HOLD)),
+    ('up_limp', 'calibrating: the steering actuator limp, a person at the wheels',
+     U(sequence=2, echo=17, mode=lp.MODE_STOPPED, switch=lp.SWITCH_COMPUTER, armed=False,
+       estop=False, faults=0, steering=0.25, brake_position=1.0, throttle_out=0.0,
+       brake_out=1.0, rc_throttle=0.0, rc_steering=0.0, rc_brake=False,
+       steering_counts=2725, brake_counts=3500, calibration=lp.CAL_LIMP)),
+    ('up_refused', 'calibration refused: no analog feedback on the steering actuator',
+     U(sequence=3, echo=18, mode=lp.MODE_STOPPED, switch=lp.SWITCH_COMPUTER, armed=False,
+       estop=False, faults=0, steering=None, brake_position=1.0, throttle_out=0.0,
+       brake_out=1.0, rc_throttle=0.0, rc_steering=0.0, rc_brake=False,
+       steering_counts=None, brake_counts=3500,
+       calibration=lp.CAL_REFUSED_NO_FEEDBACK)),
     ('up_rc_lost', 'the RC lost via ROS: fault 256, no echo yet (version 1 frames)',
      U(sequence=1, echo=None, mode=lp.MODE_STOPPED, switch=lp.SWITCH_NONE, armed=False,
        estop=False, faults=0x0102, steering=None, brake_position=None, throttle_out=0.0,
        brake_out=1.0, rc_throttle=0.0, rc_steering=0.0, rc_brake=False)),
 ]
+# Version 2 uplinks (before 1 Nov): still read, with no counts and calibration off.
+UPLINK_V2_CASES = [(f'{n}_v2', f'{m}, as version 2', U(**{
+    **vars(u), 'steering_counts': None, 'brake_counts': None, 'calibration': lp.CAL_OFF}))
+    for n, m, u in UPLINK_CASES[:2]]
 UP_GOOD = lp.pack_uplink(UPLINK_CASES[1][2])
 
 
@@ -269,14 +383,14 @@ def with_up_byte(frame, at, value, fix_crc=True):
     b = bytearray(frame)
     b[at] = value
     if fix_crc:
-        b[34] = lp.crc8(bytes(b[1:34]))
+        b[-1] = lp.crc8(bytes(b[1:-1]))
     return bytes(b)
 
 
 # (name, how it was made, bytes, the error the Rust decoder gives)
 UPLINK_BAD = [
     ('up_bad_crc', 'up_rc_via_ros with its CRC flipped',
-     with_up_byte(UP_GOOD, 34, UP_GOOD[34] ^ 0xFF, False), 'Checksum'),
+     with_up_byte(UP_GOOD, 39, UP_GOOD[39] ^ 0xFF, False), 'Checksum'),
     ('up_one_bit_flipped', 'up_rc_via_ros with bit 0 of the faults flipped',
      with_up_byte(UP_GOOD, 8, UP_GOOD[8] ^ 0x01, False), 'Checksum'),
     ('up_wrong_sync', 'up_rc_via_ros starting 0x5A', with_up_byte(UP_GOOD, 0, 0x5A, False),
@@ -287,8 +401,13 @@ UPLINK_BAD = [
      'Field'),
     ('up_switch_4', 'up_rc_via_ros with switch 4, its CRC right', with_up_byte(UP_GOOD, 6, 4),
      'Field'),
-    ('up_unknown_flag', 'up_rc_via_ros with flag bit 6, its CRC right',
-     with_up_byte(UP_GOOD, 7, UP_GOOD[7] | 0x40), 'Flags'),
+    ('up_unknown_flag_v2', 'up_rc_via_ros as version 2 with flag bit 6, its CRC right',
+     with_up_byte(lp.pack_uplink(UPLINK_V2_CASES[1][2], version=2), 7, 0x40 | 0x1B), 'Flags'),
+    ('up_cal_state_10', 'up_rc_via_ros with calibration state 10, its CRC right',
+     with_up_byte(UP_GOOD, 38, 10), 'Field'),
+    ('up_counts_4096', 'up_rc_via_ros with steering counts 4096, its CRC right',
+     with_up_byte(with_up_byte(UP_GOOD, 34, 0x00), 35, 0x10), 'Field'),
+    ('up_v3_cut_to_35', 'up_rc_via_ros, version 3 but 35 bytes long', UP_GOOD[:35], 'Version'),
 ]
 
 RUST_MODE = {lp.MODE_STOPPED: 'Stopped', lp.MODE_RC_DIRECT: 'RcDirect',
@@ -318,7 +437,26 @@ def rust_uplink(u):
             f'brake_position: {rust_opt(u.brake_position, rust_f32)}, '
             f'throttle_out: {rust_f32(u.throttle_out)}, brake_out: {rust_f32(u.brake_out)}, '
             f'sticks: Sticks {{ throttle: {rust_f32(u.rc_throttle)}, '
-            f'steering: {rust_f32(u.rc_steering)}, brake: {rust_bool(u.rc_brake)} }} }}')
+            f'steering: {rust_f32(u.rc_steering)}, brake: {rust_bool(u.rc_brake)} }}, '
+            f'counts: Counts {{ steering: {rust_opt(u.steering_counts, str)}, '
+            f'brake: {rust_opt(u.brake_counts, str)} }}, '
+            f'calibration: {RUST_CAL[u.calibration]} }}')
+
+
+RUST_CAL = {
+    lp.CAL_OFF: 'CalState::Off', lp.CAL_LIMP: 'CalState::Limp', lp.CAL_JOG: 'CalState::Jog',
+    lp.CAL_HOLD: 'CalState::Hold', lp.CAL_RETURN: 'CalState::Return',
+    lp.CAL_REFUSED_MOVING: 'CalState::Refused(Refusal::Moving)',
+    lp.CAL_REFUSED_NOT_BRAKED: 'CalState::Refused(Refusal::NotBraked)',
+    lp.CAL_REFUSED_NO_FEEDBACK: 'CalState::Refused(Refusal::NoFeedback)',
+    lp.CAL_REFUSED_ESTOP: 'CalState::Refused(Refusal::Estop)',
+    lp.CAL_REFUSED_OTHER_DRIVER: 'CalState::Refused(Refusal::OtherDriver)',
+}
+RUST_CAL_REQUEST = {lp.CAL_MODE_OFF: 'CalRequest::Off', lp.CAL_MODE_LIMP: 'CalRequest::Limp'}
+
+
+def rust_cal_request(mode, target):
+    return RUST_CAL_REQUEST.get(mode) or f'CalRequest::Jog({target})'
 
 
 def rust_uplink_tests():
@@ -329,6 +467,11 @@ def rust_uplink_tests():
                 f'    let expected = {rust_uplink(u)};',
                 '    assert_eq!(Uplink::decode(&bytes), Ok(expected));',
                 '    assert_eq!(expected.encode(), bytes);', '}', '']
+    for name, made_by, u in UPLINK_V2_CASES:
+        out += ['#[test]', f'fn {name}() {{', f'    // {made_by}',
+                f'    let bytes = [{hexes(lp.pack_uplink(u, version=2))}];',
+                f'    let expected = {rust_uplink(u)};',
+                '    assert_eq!(Uplink::decode(&bytes), Ok(expected));', '}', '']
     for name, made_by, frame, error in UPLINK_BAD:
         out += ['#[test]', f'fn {name}() {{', f'    // {made_by}',
                 f'    let bytes = [{hexes(frame)}];',
@@ -349,13 +492,55 @@ def hexes(bs):
     return ', '.join(f'0x{b:02x}' for b in bs)
 
 
-def rust_tests(cases, v2):
+def rust_v3_tests(v3):
+    out = []
+    for c in v3:
+        out += ['#[test]', f"fn {c['name']}() {{", f"    // {c['made_by']}",
+                f"    let bytes = [{hexes(c['bytes'])}];"]
+        if c['error']:
+            out += [f"    assert_eq!(FrameV3::decode(&bytes), Err(FrameError::{c['error']}));",
+                    '}', '']
+            continue
+        out += ['    let frame = FrameV3::decode(&bytes).expect("a valid frame");',
+                f"    assert_eq!(frame.counter, {c['counter']});",
+                f"    assert_eq!(frame.flags, Flags {{ armed: {rust_bool(c['armed'])}, "
+                f"estop: {rust_bool(c['estop'])} }});",
+                '    assert_eq!(frame.calibration, '
+                f"{rust_cal_request(c['cal_mode'], c['jog_target'])});",
+                '    assert_eq!(frame.encode(), bytes);',
+                '    assert_eq!(',
+                '        frame.values.check().expect("in range").targets(),',
+                f"        Targets {{ steering: {c['cpp']['steering']}, "
+                f"brake: {c['cpp']['brake']}, "
+                f"throttle: {rust_throttle(c['cpp']['throttle'])} }}",
+                '    );', '}', '']
+    out += ['#[test]', 'fn v3_a_stream_of_both_versions_with_noise() {',
+            f'    let stream = [{hexes(V3_STREAM)}];',
+            '    let mut parser = ParserV3::new();',
+            '    let found: Vec<(u8, FrameV3)> = stream',
+            '        .iter()',
+            '        .filter_map(|&b| parser.push(b))',
+            '        .filter_map(Result::ok)',
+            '        .map(|f| (f.counter, f))',
+            '        .collect();',
+            '    let expected: Vec<(u8, FrameV3)> = vec![']
+    for f in V3_STREAM_FRAMES:
+        if len(f) == 17:
+            out.append(f'        ({f[14]}, FrameV2::decode(&[{hexes(f)}]).unwrap().into()),')
+        else:
+            out.append(f'        ({f[14]}, FrameV3::decode(&[{hexes(f)}]).unwrap()),')
+    out += ['    ];', '    assert_eq!(found, expected);', '}', '']
+    return out
+
+
+def rust_tests(cases, v2, v3):
     out = ['// Generated by gen_vectors.py from legacy_protocol.py and a model of the',
            "// 2025-26 C++. Do not edit. Checks that this crate reads the Motor-Pi's",
            '// bytes, and sends the devices the targets, as the C++ did.',
            '',
-           ('use legacy_link::{DriveMode, Flags, Frame, FrameError, FrameV2, ModeSwitch, Parser, '
-            'ParserV2, Sticks, Targets, Throttle, Uplink};'),
+           ('use legacy_link::{CalRequest, CalState, Counts, DriveMode, Flags, Frame, FrameError, '
+            'FrameV2, FrameV3, ModeSwitch, Parser, ParserV2, ParserV3, Refusal, Sticks, Targets, '
+            'Throttle, Uplink};'),
            '']
     for c in cases:
         out += ['#[test]', f"fn {c['name']}() {{",
@@ -421,6 +606,7 @@ def rust_tests(cases, v2):
             '    let expected: Vec<[u8; 17]> = vec![']
     out += [f'        [{hexes(f)}],' for f in V2_STREAM_FRAMES]
     out += ['    ];', '    assert_eq!(found, expected);', '}', '']
+    out += rust_v3_tests(v3)
     out += rust_uplink_tests()
     return '\n'.join(out)
 
@@ -440,6 +626,15 @@ def main():
             case.update(counter=frame[14], armed=bool(frame[15] & 1),
                         estop=bool(frame[15] & 2), cpp=cpp_targets(steering, speed, accel))
         v2.append(case)
+    v3 = []
+    for name, made_by, frame, error in V3_CASES:
+        case = {'name': name, 'made_by': made_by, 'bytes': list(frame), 'error': error}
+        if error is None:
+            f = lp.unpack_frame_v3(frame)
+            case.update(counter=f.counter, armed=f.armed, estop=f.estop, cal_mode=f.cal_mode,
+                        jog_target=f.jog_target,
+                        cpp=cpp_targets(f.steering, f.speed, f.accel))
+        v3.append(case)
     doc = {'note': 'Generated by gen_vectors.py. bytes: what the Motor-Pi sends; '
                    'cpp: the Jrk and DAC targets the 2025-26 ESP32 firmware set for them '
                    '(null: it turned the frame down).',
@@ -452,21 +647,32 @@ def main():
            'v2_cases': v2,
            'v2_stream': list(V2_STREAM),
            'v2_stream_frames': [list(f) for f in V2_STREAM_FRAMES],
+           'v3_note': 'Version 3 (1 Nov): bytes, what legacy_uart_bridge sends with '
+                      'frame_version 3; error, why the firmware turns it down (null: it '
+                      'takes it); counter, flags, cal_mode and jog_target as it reads '
+                      'them; cpp, the targets of its values. v3_stream mixes versions 2 '
+                      'and 3; v3_stream_frames, the frames ParserV3 finds.',
+           'v3_cases': v3,
+           'v3_stream': list(V3_STREAM),
+           'v3_stream_frames': [list(f) for f in V3_STREAM_FRAMES],
            'uplink_note': 'The uplink (TODO 50, 48), ESP32 to Motor-Pi: bytes, what the '
                           'ESP32 sends (pack_uplink); fields, what legacy_uart_bridge reads '
                           '(null: not known); error, why a bad frame is turned down.',
            'uplink_cases': [{'name': n, 'made_by': m, 'bytes': list(lp.pack_uplink(u)),
                              'fields': vars(u), 'error': None}
                             for n, m, u in UPLINK_CASES]
+           + [{'name': n, 'made_by': m, 'bytes': list(lp.pack_uplink(u, version=2)),
+               'fields': vars(u), 'error': None} for n, m, u in UPLINK_V2_CASES]
            + [{'name': n, 'made_by': m, 'bytes': list(f), 'fields': None, 'error': e}
               for n, m, f, e in UPLINK_BAD]}
     JSON_OUT.write_text(json.dumps(doc, indent=1) + '\n')
     RUST_OUT.parent.mkdir(exist_ok=True)
-    RUST_OUT.write_text(rust_tests(cases, v2))
+    RUST_OUT.write_text(rust_tests(cases, v2, v3))
     if shutil.which('rustfmt'):
         subprocess.run(['rustfmt', '--edition', '2021', str(RUST_OUT)], check=True)
-    print(f'wrote {len(cases)} cases, {len(v2)} version 2 cases, two streams and '
-          f'{len(UPLINK_CASES) + len(UPLINK_BAD)} uplink cases '
+    print(f'wrote {len(cases)} cases, {len(v2)} version 2 cases, {len(v3)} version 3 cases, '
+          f'three streams and '
+          f'{len(UPLINK_CASES) + len(UPLINK_V2_CASES) + len(UPLINK_BAD)} uplink cases '
           f'to {JSON_OUT.relative_to(ROOT)} and {RUST_OUT.relative_to(ROOT)}')
 
 

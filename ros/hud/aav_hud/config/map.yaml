@@ -15,9 +15,12 @@ map:
     final_approach: 8.0                       # m from the plan's end: Nav2 keeps its path here, not replanning (TODO 17; its trees' ArePosesNear)
     plan_kept_for: 25.0                       # s: so there a plan this old is still fine (the trees plan again after 20 s)
     arrive_within: 1.0                        # m: the car this close to the goal = ARRIVED (Nav2's own is 0.5)
-    # The street map under Nav2's map (pixi run get-street-map). A path relative to the
+    theme: initial_d                              # the colours: initial_d (black, white, Carleton red; every screen's default), mocha (dark, night), latte (light, day)
+    blur: true                                # frosted glass: the map blurred behind the boxes over it (false: see-through only)
+    car_marker: outline                       # the car: outline (to scale, with an arrow) or robot (the little robot, an easter egg; the same true outline)
+    # The street map under Nav2's map (pixi run get street-map). A path relative to the
     # folder the window starts in (pixi starts it in the repo); missing = no streets.
     street_map: maps/streets/ottawa.pmtiles
-    # The place search's database (pixi run get-places): OpenStreetMap's names and
+    # The place search's database (pixi run get places): OpenStreetMap's names and
     # addresses, SQLite, read-only. Found the same way as street_map; missing = no search.
     places: maps/places/ottawa.db

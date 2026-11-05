@@ -1,0 +1,16 @@
+# joy_alive (aav_safety): passes /drivers/joy/joy on to teleop_twist_joy only while the
+# joystick is really there and moving (TODO 74a; docs/car-day.md, A9b). The rules:
+# aav_safety joy_alive.py. tools/tests/test_joy_alive_config.py checks that the deadman and
+# the motion axis match teleop_twist_joy.yaml.
+/**/joy_alive:                  # any namespace: teleop.launch.py puts it in /drivers/joy
+  ros__parameters:
+    enable_button: 0            # teleop_twist_joy's enable_button (the deadman)
+    motion_axes: [1]            # teleop_twist_joy's axis_linear.x: the axis that moves the car
+    motion_threshold: 0.05      # |axis| above this asks for motion (0.05 m/s at 1.0 m/s full stick)
+    silent_after: 0.5           # s with no Joy message: SILENT (joy_node sends 20 Hz: 10 missed)
+    # s of bit-identical axes and buttons while the deadman is held and the throttle is off
+    # centre: FROZEN. A stick held hard against its edge reads exactly 1.0 and trips it
+    # too (release the trigger, press again). Car day measures the team's pad (A9b step 7);
+    # 0 turns it off, if the receiver goes neutral or vanishes when the pad is off.
+    frozen_after: 2.0
+    rate_hz: 10.0               # /drivers/joy/alive

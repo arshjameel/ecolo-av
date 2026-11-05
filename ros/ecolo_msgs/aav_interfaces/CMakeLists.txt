@@ -15,6 +15,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/SpineOutputs.msg"
   "msg/Heartbeat.msg"
   "msg/RcSticks.msg"
+  "msg/ActuatorRaw.msg"
+  "msg/SteeringCalibration.msg"
   "action/ScriptedDrive.action"
   "action/DriveToPoint.action"
   DEPENDENCIES std_msgs

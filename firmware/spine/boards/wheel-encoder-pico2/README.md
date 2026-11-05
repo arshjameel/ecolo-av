@@ -63,8 +63,8 @@ Examples both sides check: `firmware/udp/wheel_encoder_vectors.txt`.
 ## Verification
 
 ```sh
-pixi run wheel-uf2     # build it, and make wheel-encoder-pico2.uf2 here, to drag on
-pixi run wheel-flash   # or flash it through a debug probe (pixi run spine-tools first)
+pixi run pico wheel build     # build it, and make wheel-encoder-pico2.uf2 here, to drag on
+pixi run pico wheel flash   # or flash it through a debug probe (pixi run pico spine tools first)
 ```
 
 `tools/test.sh` builds it (`cargo build --release --locked` here) and checks its UF2 file.

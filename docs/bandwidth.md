@@ -13,7 +13,7 @@ How sure each number is:
 
 | Mark | Means |
 |---|---|
-| **measured** | `pixi run bandwidth` in Gazebo on Ben's Mac, 23 Oct |
+| **measured** | `pixi run measure bandwidth` in Gazebo on Ben's Mac, 23 Oct |
 | **config** | from our launch files or `firmware/can/aav.dbc` |
 | **audit** | seen on the car, at the 16 Oct and [21 Oct](history/audit-2026-10-21-car.md) audits |
 | **guess** | worked out, not seen. Measure it on the car |
@@ -74,7 +74,7 @@ of it.
 ## CAN: the bus has plenty of room
 
 From `firmware/can/aav.dbc` v0.2.0, at its 500 kbit/s, counting the worst-case bit
-stuffing (an 8-byte frame is 111 bits, up to 135 with stuffing). `pixi run can-load` works
+stuffing (an 8-byte frame is 111 bits, up to 135 with stuffing). `pixi run python3 tools/can_load.py` works
 it out from the DBC, so it stays right when the contract changes:
 
 | ID | Frame | From | Bytes | Hz | Bits each | kbit/s | Bus % |
@@ -135,7 +135,7 @@ car). Watching over Foxglove or Lichtblick (port 8765) costs only what you open:
 | 5 | **Give the HUD a small picture** | the raylib HUD reads the raw front camera. Feed it a 640x360 copy at 5 Hz (3.5 MB/s raw, ~0.15 MB/s JPEG), or teach the HUD JPEG |
 | 6 | **Same computer: one process** | where a camera and its reader share the Orin, run them in one process (composable nodes), so the picture is passed, not copied |
 | 7 | **Viewers subscribe to one costmap**, not every layer | each Nav2 layer is its own 40-640 kB topic. RViz or Foxglove opening all of them is 5 MB/s |
-| 8 | **Measure on the car** with `pixi run bandwidth` | every "guess" above becomes a number |
+| 8 | **Measure on the car** with `pixi run measure bandwidth` | every "guess" above becomes a number |
 
 ### Cyclone DDS, the default from 23 Oct (Ben)
 
@@ -148,7 +148,7 @@ car). Watching over Foxglove or Lichtblick (port 8765) costs only what you open:
 
 ## Measured in Gazebo (23 Oct)
 
-`pixi run bandwidth --local --seconds 30` beside `pixi run sim world:=road gui:=false
+`pixi run measure bandwidth --local --seconds 30` beside `pixi run sim world:=road gui:=false
 rviz:=false` (Cyclone, its own ROS domain and Gazebo partition), parked; then again while
 Nav2 drove 40 m. Gazebo ran at 0.92-0.98 x real time, so its 10 Hz sensors read 9.2-9.8 Hz.
 
@@ -190,11 +190,11 @@ What Gazebo taught us:
 ## Measure it yourself
 
 ```bash
-pixi run bandwidth --local                  # beside pixi run sim, on this computer
-pixi run bandwidth --seconds 30 --markdown  # on the car's network: a table for this page
-pixi run bandwidth --include /sensors       # only some topics (a pattern; repeat it)
-pixi run bandwidth --exclude image_raw      # leave out the raw pictures
-pixi run can-load                           # the CAN bus, from the DBC
+pixi run measure bandwidth --local                  # beside pixi run sim, on this computer
+pixi run measure bandwidth --seconds 30 --markdown  # on the car's network: a table for this page
+pixi run measure bandwidth --include /sensors       # only some topics (a pattern; repeat it)
+pixi run measure bandwidth --exclude image_raw      # leave out the raw pictures
+pixi run python3 tools/can_load.py                           # the CAN bus, from the DBC
 ```
 
 | Column | Means |

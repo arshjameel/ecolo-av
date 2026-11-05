@@ -64,11 +64,11 @@ tests only the outer one.
 
 | # | Step | Where | Scored by |
 |---|---|---|---|
-| 1 | The bridge uses ego's acceleration: feed-forward + PI for throttle **and** brake | `aav_legacy` (`legacy_protocol.py`), Gazebo, bench | `atob-score` (stop error, overshoot, hold) |
+| 1 | The bridge uses ego's acceleration: feed-forward + PI for throttle **and** brake | `aav_legacy` (`legacy_protocol.py`), Gazebo, bench | `measure atob` (stop error, overshoot, hold) |
 | 2 | Measure the car: speeding up, braking, steering (the actuator tests); the real numbers into the feed-forward and into MPPI | stands, then the lot | the fits' errors |
-| 3 | Move the loop into the ESP32 (Rust `spine-core`), 100 Hz; LQR picks the gains if it beats hand tuning | firmware: **the hardware lead's call** | bench, `atob-score` |
+| 3 | Move the loop into the ESP32 (Rust `spine-core`), 100 Hz; LQR picks the gains if it beats hand tuning | firmware: **the hardware lead's call** | bench, `measure atob` |
 | 4 | Steering: confirm the Jrk has position feedback (H2), tune it with step tests, match MPPI's steering-rate limit | the Jrk | step response |
-| 5 | Compare: LQR for steering, MPC for the whole A to B, against MPPI and pure pursuit | Gazebo, then the car | `atob-score`, `controller-compare` |
+| 5 | Compare: LQR for steering, MPC for the whole A to B, against MPPI and pure pursuit | Gazebo, then the car | `measure atob`, `measure controllers` |
 
 ## Not in this plan
 

@@ -18,7 +18,7 @@ import os
 import re
 from typing import Dict, List, Mapping, Optional, Sequence
 
-# Each detector's default model file (pixi run get-models downloads both), and the file
+# Each detector's default model file (pixi run get models downloads both), and the file
 # types it can load.
 DEFAULT_MODELS = {
     'rfdetr': 'models/rf-detr-nano.pth',

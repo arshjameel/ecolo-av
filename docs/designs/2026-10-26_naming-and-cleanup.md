@@ -75,8 +75,8 @@ using", "meaningful names, some organization", "is Python good for the jobs it's
 | Item | Does | Used by | Class |
 |---|---|---|---|
 | `boards/esp32-umod` | Rust for today's ESP32 board (UART, or CAN) | `test.sh`, `esp-*` tasks, `car-day-build`, QEMU check | optional: the fix for B2, waiting to be flashed |
-| `boards/pico2` | the spine on a Pico 2 + MCP2515 | `test.sh` builds it; `spine-uf2`/`spine-flash` | dormant: the board choice (Q13) is the hardware lead's |
-| `boards/wheel-encoder-pico2` | spokes to UDP via a W5500 | `test.sh` builds it; `wheel-uf2`/`wheel-flash` | **dead** (plan D2: the Arduino on CAN, decided 23 Oct) |
+| `boards/pico2` | the spine on a Pico 2 + MCP2515 | `test.sh` builds it; `pico spine build`/`pico spine flash` | dormant: the board choice (Q13) is the hardware lead's |
+| `boards/wheel-encoder-pico2` | spokes to UDP via a W5500 | `test.sh` builds it; `pico wheel build`/`pico wheel flash` | **dead** (plan D2: the Arduino on CAN, decided 23 Oct) |
 | `boards/sentinel-pico2` | the status display | `test.sh`; `sentinel-*` tasks | dormant: TODO "once we know the display is on the car" |
 | `spine-core`, `spine-board`, `aav-inputs`, `ibus`, `jrk-g2`, `ad5311`, `pca9555` | the spine's logic and drivers | esp32-umod, pico2, `aav_spine_sim` | in use |
 | `legacy-link` | the 13-byte UART link | esp32-umod, spine-board | in use |
@@ -111,13 +111,13 @@ tool reads `archive/`. A few still name retired things (below).
 | Class | Tasks |
 |---|---|
 | in use: CI | `build`, `test`, `sim-check` (`--obstacle`), `car-kit`, `-e mcp` (smoke test) |
-| in use: daily | `lint`, `turtle`, `keyboard`, `sim`, `bench`, `bench-check`, `check`, `car`, `view`, `rviz`, `estop`, `estop-clear`, `gate-clear`, `watchdog-clear`, `doctor`, `shm-clean`, `docs`, `hud`, `hud-demo`, `map`, `map-demo`, `demo`, `graph`, `graph-picture`, `bandwidth`, `layout-check`, `ghost`, `sim-fault`, `gz-window` |
-| in use: car day | `car-day-check`, `car-day-build`, `actuator-test`, `goto`, `atob-score`, `calibrate-camera`, `survey`, `net-map`, `legacy-esp32`, `esp-tools`, `esp-build`, `esp-qemu-tools`, `esp-qemu-check`, `detect`, `laptop-bench`, `export-coreml` |
-| analysis | `vehicle-model`, `state-space-demo`, `controller-compare`, `heading-check`, `timing-test`, `stream-check`, `can-load` |
-| downloads | `vendor`, `get-models`, `get-mediamtx`, `get-hud-map`, `get-street-map` |
-| optional | `mcp`, `drive-server`, `talk`, `llm-eval`, `get-routes`, `router`, `esp-flash`, `spine-tools` |
-| dormant | `carla-car`, `get-carla-osm`, `spine-uf2`, `spine-flash`, `sentinel-uf2`, `sentinel-flash` |
-| **dead** | `rust-listener`, `wheel-uf2`, `wheel-flash` |
+| in use: daily | `lint`, `turtle`, `keyboard`, `sim`, `bench`, `bench-check`, `check`, `car`, `view`, `rviz`, `estop`, `clear estop`, `clear gate`, `clear watchdog`, `doctor`, `fastdds shm clean`, `docs`, `hud`, `hud --demo`, `map`, `map --demo`, `demo`, `graph`, `tools/ros.sh python3 tools/graph_picture.py`, `measure bandwidth`, `python3 tools/layout_check.py`, `ghost`, `sim-fault`, `tools/ros.sh tools/gz_window.sh` |
+| in use: car day | `car-day-check`, `car-day-build`, `actuator-test`, `goto`, `measure atob`, `calibrate-camera`, `bash tools/survey_car.sh`, `bash tools/net_map.sh`, `legacy-esp32`, `esp tools`, `esp build`, `esp qemu-tools`, `esp qemu-check`, `detect`, `laptop-bench`, `python3 tools/export_model.py --format coreml` |
+| analysis | `python3 tools/vehicle_model.py`, `python3 tools/state_space_demo.py`, `measure controllers`, `tools/ros.sh --local python3 tools/heading_check.py`, `measure timing`, `measure stream`, `python3 tools/can_load.py` |
+| downloads | `get vendor`, `get models`, `get mediamtx`, `get-hud-map`, `get street-map` |
+| optional | `mcp`, `drive-server`, `talk`, `tools/ros.sh python3 -m aav_language.run_eval`, `get routes`, `router`, `esp flash`, `pico spine tools` |
+| dormant | `carla-car`, `get carla-osm`, `pico spine build`, `pico spine flash`, `pico sentinel build`, `pico sentinel flash` |
+| **dead** | `rust-listener`, `pico wheel build`, `pico wheel flash` |
 
 ## 2. Removal candidates
 
@@ -129,11 +129,11 @@ Rule: anything `docs/plan.md`, `TODO.md` or `docs/designs/` still needs is **kee
 | `aav_detector/training/` | 2 inherited files; nothing imports them; `best.pt` was never in them | `docs/older-code.md` row | none | **remove now** (the source is on GitHub, as its PROVENANCE says) |
 | `ti_ros2_driver` extras: `obstacle_extractor`, `mock_radar_publisher`, `benchmark.py`, `plotheatmap.py`, 5 `6843aop_*`/`mock_*` launch files | no launch outside `archive/` uses them; `aav_radar_clusters` and `mock_radar` replace them | `setup.py` entry points, PROVENANCE | low | **remove now**; keep `pcl_pub`, `TI.py`, `cfg/` (C5 needs them). Update PROVENANCE |
 | `aav_lane_geometry` `control_test.launch.py`, `geometry_logger.py` | dev-only; the drift report found the launch file broken on a Mac | none | none | **remove now** |
-| `encoder_udp`, part `legacy_encoder`, `firmware/udp/`, `boards/wheel-encoder-pico2`, `wheel-uf2`/`wheel-flash`, the UDP half of `wheel-encoder` | plan D2: the hardware lead's Arduino sends wheel speed on CAN (23 Oct); `false` in every machine file; the Pico wasn't seen on 21 Oct | `car.launch.py` PARTS, `test_car_launch.py`, `legacy.launch.py`, `test.sh` board list, `aav_language/safety.py`, ~25 docs | low, but TODO line 205 still says "flash them" | **move to `archive/`** once Q5 closes (the Arduino's frames seen on the car). Edit TODO 205 to the sentinel only. Keep `wheel-encoder`'s spoke counting: `spine-board` uses it |
+| `encoder_udp`, part `legacy_encoder`, `firmware/udp/`, `boards/wheel-encoder-pico2`, `pico wheel build`/`pico wheel flash`, the UDP half of `wheel-encoder` | plan D2: the hardware lead's Arduino sends wheel speed on CAN (23 Oct); `false` in every machine file; the Pico wasn't seen on 21 Oct | `car.launch.py` PARTS, `test_car_launch.py`, `legacy.launch.py`, `test.sh` board list, `aav_language/safety.py`, ~25 docs | low, but TODO line 205 still says "flash them" | **move to `archive/`** once Q5 closes (the Arduino's frames seen on the car). Edit TODO 205 to the sentinel only. Keep `wheel-encoder`'s spoke counting: `spine-board` uses it |
 | Python `spine_bridge` (`spine_bridge.py`, `output_gate.py`, `wheel_speed.py`) | Rust is the default since 23 Oct | `bridge:=python`, `bench-check --python-bridge`, `aav_io_mux`'s `test_real_backend_guard.py` | medium: the fallback if the Rust one fails on the car | **keep** until the Rust one has run on the car ("kept until", `bridges.py`). Then remove the node. Keep `can_codec.py`: `gen_test_vectors.py` and the DBC rule need it |
 | `aav_lane_finder`, `aav_lane_geometry` | off everywhere by default | decisions.md line 44, features.md, `sim-check`/`bench-check --lane` | — | **keep** (optional, decided) |
-| YOLO path in `aav_detector` | RF-DETR is the default everywhere | plan.md line 61, team-todo D3, `compare_detectors.py`, `get-models`, Ultralytics in `-e ml` | AGPL-3.0 licence (`model-comparison.md`) | **keep** for now. Drop it, and Ultralytics, if TODO 417's `best.pt` is never found |
-| `aav_carla`, `get-carla-osm` | never run against CARLA | plan T2.9 (stretch) | — | **keep** (dormant) |
+| YOLO path in `aav_detector` | RF-DETR is the default everywhere | plan.md line 61, team-todo D3, `compare_detectors.py`, `get models`, Ultralytics in `-e ml` | AGPL-3.0 licence (`model-comparison.md`) | **keep** for now. Drop it, and Ultralytics, if TODO 417's `best.pt` is never found |
+| `aav_carla`, `get carla-osm` | never run against CARLA | plan T2.9 (stretch) | — | **keep** (dormant) |
 | `boards/pico2`, `mcp2515` | never flashed; the board is open | Q13, the hardware lead's choice | — | **keep** (it's cheap: `test.sh` builds it) |
 | `boards/sentinel-pico2`, `sentinel`, `hd44780` | nothing sends it packets | TODO "once we know the display is on the car" | — | **keep** (dormant) |
 | `battery_monitor` | `battery: false` everywhere | a sensor that's on the car | — | **keep** |
@@ -151,12 +151,12 @@ names a keyword, not a job.
 | Node | `point_driver` | `a_to_b_driver` | `stop_at_driver` |
 | twist_mux slot, topic | `point`, `/drivers/point/cmd_vel` | `atob`, `/drivers/atob/cmd_vel` | `stop_at`, `/drivers/stop_at/cmd_vel` |
 | Action, type | `/drive_to_point`, `DriveToPoint` | `/a_to_b`, `AToB` | `/stop_at_point`, `StopAtPoint` |
-| Task | `pixi run drive-to-point` | `pixi run atob` (beside `atob-score`) | `pixi run stop-at` |
-| For | says the job in plain words; matches `/scripted_drive`'s verb style | matches `docs/a-to-b.md`, `atob-score` and plan D4's "the A-to-B driver" | names what makes it different: the stop |
+| Task | `pixi run drive-to-point` | `pixi run atob` (beside `measure atob`) | `pixi run stop-at` |
+| For | says the job in plain words; matches `/scripted_drive`'s verb style | matches `docs/a-to-b.md`, `measure atob` and plan D4's "the A-to-B driver" | names what makes it different: the stop |
 | Against | longest | "A to B" is jargon, and Nav2 goes A to B too | odd as a slot name; hides the driving |
 
 **Pick: A, `aav_drive_to_point`.** A new reader understands it with no doc. Keep "A to B"
-as the name of the demo and of `atob-score`.
+as the name of the demo and of `measure atob`.
 
 **What it touches** (79 files mention `goto`, outside `archive/` and the HTML):
 
@@ -173,7 +173,7 @@ as the name of the demo and of `atob-score`.
 | docs | `a-to-b.md`, `naming.md`, `features.md`, `status.md`, `how-it-fits.md`, about 20 more; the three graph SVGs |
 
 **Cost:** a day with tests. **Contract: yes, team-visible** (a topic, an action, its
-type, a slot). Bags recorded before the change keep `/goto/...`, so `atob-score` needs
+type, a slot). Bags recorded before the change keep `/goto/...`, so `measure atob` needs
 the old feedback name as a fallback. Do it before the car's first A-to-B run, so no car
 bag has the old name.
 
@@ -184,18 +184,18 @@ bag has the old name.
 | `aav_lane_geometry` + slot `ai` | named after its message; it's the lane-keeping **driver**; "ai" is a promise, and lane keeping isn't AI | `aav_lane_keeping` (in `ros/drivers/`), node `lane_keeper`, slot `lane`: `/drivers/lane/cmd_vel`, `/drivers/lane/status`, `/drivers/lane/state`. `LaneGeometry.msg` moves to `aav_interfaces` | `aav_lane_finder` (its import), twist_mux, sensor_watchdog's "AI slot", interfaces.yaml, naming.md, launch files, PROVENANCE | **yes** | yes: the next thing after `aav_goto` |
 | `aav_legacy`, part `legacy_uart`, node `legacy_uart_bridge` | "legacy" will be wrong: the Rust `esp32-umod` speaks the same UART link by default | `aav_esp32_uart`, part `esp32_uart`, node `esp32_uart_bridge` | car.launch, motor_pi/all.yaml, graph_picture, esp32_qemu.py, car_listen.sh, interfaces.yaml `sub:` lists, docs | node name only (no topic) | yes, together with the encoder removal |
 | `aav_mux` | which mux? There are three | `aav_command_mux` (its folder's name) | `package.xml` deps, 6 launch includes, docs | no | yes, cheap |
-| `aav_io_mux` | neither node muxes: one checks sources, one gates ego's output | `aav_source_gate`, folder `ros/source_gate`; **keep** the node names (`/system/sensor_mux/state`, `/safety/output_mux/*`, `gate-clear` are the contract) | 5 launch includes, `bench_check.py`, `stack.launch.py` import, docs | no | maybe: lower value |
+| `aav_io_mux` | neither node muxes: one checks sources, one gates ego's output | `aav_source_gate`, folder `ros/source_gate`; **keep** the node names (`/system/sensor_mux/state`, `/safety/output_mux/*`, `clear gate` are the contract) | 5 launch includes, `bench_check.py`, `stack.launch.py` import, docs | no | maybe: lower value |
 | `aav_spine` vs `aav_spine_bridge` | two packages, one node | no rename. Once the Python node goes, `aav_spine` = launch, config, `can_codec`, `arm_when_open`; say so in its README | — | no | — |
 | `ti_ros2_driver`, `battery_monitor` | break `aav_<kind>_<maker>` | `aav_radar_ti`, `aav_battery_victron` (already in `conventions.md`, "proposed") | sensors.launch, PROVENANCE, interfaces.yaml | no | yes, cheap |
 | `aav_bench` | it's only the mock sensors | `aav_bench_sensors` | bench.launch, sensors.launch | no | low |
 | `aav_scripted`, `aav_ghost` | fine: the docs call them "scripted drive" and "ghost obstacles" everywhere | keep | — | — | no |
 | `ros/ecolo_msgs/` | holds `aav_interfaces` | `ros/interfaces/` | folder only | no | cheap |
 | `ros/can_bridge/` | also holds the UART bridge | `ros/car_bridge/` | folder, `ros/README.md` | no | cheap |
-| `get_hud_map.sh`, `get-hud-map` | gets the place-search database for the **map window**, not the HUD | `get_places.sh`, `get-places` | pixi, README, docs | no | yes |
+| `get_hud_map.sh`, `get-hud-map` | gets the place-search database for the **map window**, not the HUD | `get_places.sh`, `get places` | pixi, README, docs | no | yes |
 | `car_listen.sh` | "listen" suggests it opens ports; it never does | `car_devices.sh` | car_install, car_kit, test.sh, docs | no | low |
 | `demo_all.sh` | the task is `demo` | `demo.sh` | pixi, README | no | low |
 | `carla-car` | every other profile task is its plain name | `carla` | pixi, docs | no | low |
-| `survey` | the script is `survey_car.sh` | `survey-car` | pixi, README, docs | no | low |
+| `bash tools/survey_car.sh` | the script is `survey_car.sh` | `survey-car` | pixi, README, docs | no | low |
 
 Do the renames one per pull request, each updating `features.md` and `interfaces.yaml` first.
 
@@ -274,6 +274,6 @@ the HUD and map, all the firmware.
   "later, once the car drives" idea (`languages.md`).
 - **Measure on the Orin** before car day: `lidar_scan`, `camera_stream` with two
   cameras, `sensor_watchdog`. On the Motor Pi: `legacy_uart_bridge`'s frame jitter.
-  `timing-test` runs on Gazebo, so on the car use `bandwidth` and a `top` snapshot per
+  `measure timing` runs on Gazebo, so on the car use `measure bandwidth` and a `top` snapshot per
   node. A node over half a core, or with gaps past its deadline, gets a Rust port, on the
   pattern of `aav_radar_clusters`.

@@ -80,7 +80,7 @@ pixi install --locked -e kiss
 ```sh
 cd ros/localization/aav_kiss_icp && python3 -m pytest -q   # the maths, the pipe, the worker
 pixi run build && colcon test --packages-select aav_kiss_icp && colcon test-result --verbose
-pixi run controller-compare --kiss-icp --tours lot --controllers mppi   # Gazebo, scored
+pixi run measure controllers --kiss-icp --tours lot --controllers mppi   # Gazebo, scored
 ```
 
 The worker test runs only where the kiss env is installed.

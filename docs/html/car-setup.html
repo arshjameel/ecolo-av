@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Car setup: one computer · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/car-setup.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Car setup: one computer</h1>
+<div class="meta">12 min read · 10 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-day.html">Car day</a>
+<a class="here" href="car-setup.html">Car setup</a>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<span class="sep">Learn:</span>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<span class="sep">Reference:</span>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#running-the-script">Running the script</a><a href="#step-1-back-up">Step 1: back up</a><a href="#step-2-the-ubuntu-2204-pis-to-2404">Step 2: the Ubuntu 22.04 Pis, to 24.04</a><a href="#step-3-the-pis-on-raspberry-pi-os">Step 3: the Pis on Raspberry Pi OS</a><a href="#step-4-install-our-code">Step 4: install our code</a><a href="#step-5-start-at-boot">Step 5: start at boot</a><a href="#step-6-the-orin-to-jetpack-72">Step 6: the Orin, to JetPack 7.2</a><a href="#step-7-the-lab-desktop">Step 7: the lab desktop</a><a href="#this-computers-checklist">This computer&#x27;s checklist</a><a href="#whats-untested">What&#x27;s untested</a></nav>
+<div class="lead"><p>Written 1 November 2026, for a student on their own. Ben, 1 Nov: "we are going to login
+to each node, upgrade the os, and install our code. Make sure we setup the boot process".
+This page sets up <strong>one computer</strong>. <strong>Which one, and when:</strong> <a href="car-day.html">Car day</a> owns the
+order; the upgrades are its <a href="car-day.html#day-b-upgrades-and-the-reflash">Day B</a>.</p>
+<blockquote>
+<p><strong>The short version</strong></p>
+<ul>
+<li><strong>One script per computer:</strong> <code>bash car_setup.sh &lt;role&gt;</code>. With no <code>--apply</code> it only prints what it would do.</li>
+<li><strong>Back up first</strong> (<a href="car-day.html#a2-back-up-every-machine">car day A2</a>). Upgrades are Day B, after a restore is proven.</li>
+<li><strong>The script stops</strong> on a pending reboot, a hostname that isn't the role's, and an upgrade that's too early (below).</li>
+<li>The computers, their roles and addresses: <a href="car-day.html#the-machines">the machines table</a>.</li>
+<li><strong>Logins</strong> come from the team's password vault (<a href="car-day.html#logins">Logins</a>). Type them; never paste them into a file, a chat or the repo.</li>
+<li>Changes to the hardware (the ESP32, the Orin's reflash) wait for <strong>the hardware lead's OK</strong>.</li>
+</ul>
+</blockquote>
+<p>The internet is there: <code>apt</code> and GitHub work.</p></div>
+<section class="card"><h2 id="running-the-script">Running the script</h2>
+<p>Copy it to the computer, log in, and run it there. <code>tmux</code> keeps it running if the ssh drops.</p>
+<pre class="highlight"><code class="language-bash">scp tools/car_setup.sh &lt;user&gt;@192.168.1.120:        # from the laptop, in the repo
+ssh -t &lt;user&gt;@192.168.1.120
+tmux new -s setup                                  # back in after a drop: tmux attach -t setup
+bash car_setup.sh motor_pi                         # a dry run: prints every step, changes nothing
+bash car_setup.sh motor_pi backup --apply          # really: it asks you to type "motor_pi"</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Does</th>
+<th>Needs sudo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>backup</code></td>
+<td><code>~/aav-backup/&lt;host&gt;-&lt;date&gt;/</code>: the package lists, services, crontab, addresses, <code>/etc</code></td>
+<td>yes (<code>/etc</code>)</td>
+</tr>
+<tr>
+<td><code>upgrade</code></td>
+<td><code>apt full-upgrade</code>; prints <code>do-release-upgrade</code> (runs it with <code>--release-upgrade</code>)</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>install</code></td>
+<td>our code from the car kit (<code>car_install.sh</code>); the dash adds <code>--screens</code></td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>services</code></td>
+<td>chrony, udev, groups, Cyclone's card, a fixed address (<code>--address</code>), our stack at boot</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>check</code></td>
+<td>read-only: OK, NOTE or STOP per line. Runs in a dry run too</td>
+<td>no</td>
+</tr>
+</tbody>
+</table></div>
+<p>With no step named, it does all five, in that order. The units it installs:
+<a href="../../tools/systemd/README.md">tools/systemd</a>.</p>
+<h3 id="when-it-stops">When it stops</h3>
+<p>A STOP line ends the run before anything changes (with <code>--apply</code>, before the next step).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>STOP</th>
+<th>Why</th>
+<th>What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>reboot</code></td>
+<td>a reboot is waiting: an upgrade on top of it can break the boot</td>
+<td><code>sudo reboot</code>, log in, run it again</td>
+</tr>
+<tr>
+<td><code>hostname</code></td>
+<td>this isn't the hostname the audit found for the role: maybe the wrong computer</td>
+<td>check the address and the vault's entry. Right after all (a new card, a reflash)? add <code>--host-ok</code></td>
+</tr>
+<tr>
+<td><code>upgrade</code> on <code>localization</code></td>
+<td>its IMU and GPS drivers run on Humble, which 24.04 ends; no machine file of ours runs them yet</td>
+<td>wait for <code>machines/localization.yaml</code> (TODO 75)</td>
+</tr>
+<tr>
+<td><code>upgrade</code> on <code>motor_pi</code></td>
+<td>the 2025-26 <code>aav_serial_bridge</code> (Humble) is the way back to the C++ ESP32</td>
+<td>only after the Rust ESP32 passed car day's session 6: add <code>--after-esp32</code></td>
+</tr>
+<tr>
+<td><code>UART</code>, <code>udev</code> (in <code>check</code>, after an upgrade)</td>
+<td>the ESP32's serial port, or the sensors' <code>/dev/aav</code> names, didn't come back</td>
+<td><code>enable_uart=1</code> in <code>/boot/firmware/config.txt</code> and reboot; the cables, then <code>sudo udevadm trigger</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>On a Mac (a rehearsal) the hostname is only a NOTE.</p>
+</section>
+<section class="card"><h2 id="step-1-back-up">Step 1: back up</h2>
+<p>Before anything changes, on the <strong>encrypted</strong> backup drive (the backups hold passwords),
+never in git. The whole list, with the checks, is car day's
+<a href="car-day.html#a2-back-up-every-machine">A2</a>: every Pi's SD card as an image (checked with
+<code>gunzip -t</code>), the Orin's home and <code>/etc</code>, the ESP32, the actuators' settings.</p>
+<p>On the computer itself, a second copy of what only it has:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Where</th>
+<th>Do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>the computer</td>
+<td><code>bash car_setup.sh &lt;role&gt; backup --apply</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>the laptop</td>
+<td>the <code>rsync</code> line it prints: the home folder, to the backup drive</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="step-2-the-ubuntu-2204-pis-to-2404">Step 2: the Ubuntu 22.04 Pis, to 24.04</h2>
+<p><code>dash</code>; <code>motor_pi</code> with <code>--after-esp32</code>; <code>localization</code> once its machine file exists.
+An upgrade in place: no new card. Car day's <a href="car-day.html#day-b-upgrades-and-the-reflash">Day B</a> says when.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>You should see</th>
+<th>If not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>bash car_setup.sh &lt;role&gt; upgrade --apply</code></td>
+<td>the updates install</td>
+<td>an apt error: write it down, ask the team</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>sudo reboot</code>, log in again, <code>tmux new -s setup</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>bash car_setup.sh &lt;role&gt; upgrade --apply --release-upgrade</code></td>
+<td>it asks questions: keep the <strong>installed</strong> version of each config file</td>
+<td>it refuses: fewer than 5 GB free, or a reboot is pending</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Over ssh it says it opens a <strong>spare ssh on port 1022</strong>: say yes</td>
+<td></td>
+<td>the ssh drops: <code>ssh -p 1022 &lt;user&gt;@&lt;address&gt;</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>At the end, reboot</td>
+<td><code>lsb_release -d</code>: Ubuntu 24.04</td>
+<td>the SD card image (car day A2)</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>bash car_setup.sh &lt;role&gt; check</code></td>
+<td><code>Ubuntu 24.04</code></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition warning">
+<p class="admonition-title">This ends the 2025-26 software on that Pi</p>
+<p>Humble (<code>/opt/ros/humble</code>) is built for 22.04: after the upgrade it stops working.
+The backup is the way back. Our code doesn't need it.</p>
+</div>
+</section>
+<section class="card"><h2 id="step-3-the-pis-on-raspberry-pi-os">Step 3: the Pis on Raspberry Pi OS</h2>
+<p>Pi OS can't become Ubuntu in place: that is a <strong>new SD card</strong> with Ubuntu Server 24.04
+(Raspberry Pi Imager → Other general-purpose OS → Ubuntu).</p>
+<p>The camera Pis <strong>stay on Pi OS</strong> (<a href="whats-new.html#the-computers-which-ubuntu">What's new</a>):
+they run no ROS, and the Pi camera works best on Pi OS. So for them:
+<code>bash car_setup.sh camera_pi upgrade --apply</code>, then <code>services --apply</code> (MediaMTX at boot,
+the Orin's time).</p>
+<p>A new card instead, for any Pi: keep the old card, labelled. Undo is a card swap.</p>
+</section>
+<section class="card"><h2 id="step-4-install-our-code">Step 4: install our code</h2>
+<p><code>orin</code>, <code>motor_pi</code>, <code>localization</code>, <code>dash</code>: from the car kit, made on the laptop.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Where</th>
+<th>Do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>the laptop</td>
+<td><code>pixi run car-kit</code> (once), then <code>scp -r car-kit &lt;user&gt;@&lt;address&gt;:~/</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>the computer</td>
+<td><code>bash ~/car-kit/car_setup.sh &lt;role&gt; install --apply</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>the computer</td>
+<td><code>~/aav-jazzy/aav.sh tools/car_listen.sh</code>: the devices (read-only)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The kit's details: <a href="car-install.html">From a USB stick</a>. The camera Pis get only our
+<code>mediamtx.yml</code> (car day's <a href="car-day.html#session-5-the-camera-pi">session 5</a>).</p>
+</section>
+<section class="card"><h2 id="step-5-start-at-boot">Step 5: start at boot</h2>
+<p><code>bash ~/car-kit/car_setup.sh &lt;role&gt; services --apply</code>, then <code>sudo reboot</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Which roles</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Our stack, <code>car.launch.py machine:=&lt;role&gt;</code></td>
+<td><code>orin</code>, <code>motor_pi</code></td>
+<td><code>aav-car.service</code>, a user unit; linger starts it at boot</td>
+</tr>
+<tr>
+<td>Its settings</td>
+<td>the same</td>
+<td><code>~/.config/aav/car.env</code>: the machine file, <code>max_speed:=0.3</code></td>
+</tr>
+<tr>
+<td>The two screens</td>
+<td><code>dash</code></td>
+<td><code>aav-hud</code>, <code>aav-map</code> (<a href="car-screens.html">The two screens</a>); turn on automatic login, by hand</td>
+</tr>
+<tr>
+<td>The camera stream</td>
+<td><code>camera_pi</code></td>
+<td>MediaMTX, enabled</td>
+</tr>
+<tr>
+<td>Time</td>
+<td>all but the lab desktop</td>
+<td>chrony: the Orin keeps the car's time, the others ask it</td>
+</tr>
+<tr>
+<td>Device names</td>
+<td><code>orin</code>, <code>motor_pi</code>, <code>localization</code></td>
+<td><code>tools/udev/99-aav.rules</code>: <code>/dev/aav/...</code></td>
+</tr>
+<tr>
+<td>Groups</td>
+<td>the same, and <code>dash</code></td>
+<td><code>dialout</code> (serial), <code>plugdev</code>, <code>input</code> (the joystick), <code>video</code></td>
+</tr>
+<tr>
+<td>ROS</td>
+<td>the same</td>
+<td>domain 42 (<code>aav.sh</code>); Cyclone on the 192.168.1.x card</td>
+</tr>
+<tr>
+<td>A fixed address</td>
+<td>any</td>
+<td><code>--address 192.168.1.120/24</code>: beside DHCP's, through <code>netplan try</code> (undoes itself after 120 s unless you press Enter). The router's reservation is better</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Look</th>
+<th>Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Is it running?</td>
+<td><code>systemctl --user status aav-car</code></td>
+</tr>
+<tr>
+<td>Its log</td>
+<td><code>journalctl --user -u aav-car -f</code></td>
+</tr>
+<tr>
+<td>Stop it until the next boot</td>
+<td><code>systemctl --user stop aav-car</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition warning">
+<p class="admonition-title">Never two drive paths</p>
+<p>On the Motor Pi the script won't enable ours while the 2025-26 <code>aav_serial_bridge</code>
+starts at boot. Turn theirs off only when the team agrees:
+<code>sudo systemctl disable --now aav_serial_bridge</code>.</p>
+</div>
+<p>The <code>localization</code> Pi gets no ROS service yet: no machine file has its IMU and GPS
+(<code>orin.yaml</code> assumes they're on the Orin: a TODO for the hardware lead's answer). For the
+same reason <code>upgrade</code> refuses there.</p>
+<p><strong>The first moves</strong> (<code>machine:=motor_pi_alone</code>, the joystick on the Motor Pi): car day's
+<a href="car-day.html#a9b-the-joystick-on-stands">A9b</a>.</p>
+</section>
+<section class="card"><h2 id="step-6-the-orin-to-jetpack-72">Step 6: the Orin, to JetPack 7.2</h2>
+<p>A <strong>reflash</strong>, not an upgrade: <code>do-release-upgrade</code> must never run on a Jetson (the
+script refuses). Everything on the Orin is wiped. <strong>Day B, after the hardware lead's OK</strong>
+(<a href="car-day.html#b3-the-orin-its-image-then-the-reflash">B3</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Check first</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>☐</td>
+<td>NVIDIA's JetPack 7.2 release notes list <strong>Jetson AGX Orin</strong>, and its memory size (W7: 32 or 64 GB). Write what they say here: <strong><em>_</em></strong>_</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>SDK Manager's page: which Ubuntu the <strong>host</strong> needs for 7.2. The lab desktop has it?</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>The module's part number (<a href="platforms.html#moving-the-orin-to-jetpack-72">Platforms</a>: -502 has a reported flashing problem)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Home and <code>/etc</code> copied (<a href="car-day.html#a2-back-up-every-machine">A2</a>); the full image taken (<a href="car-day.html#11b-in-the-lab-the-orins-full-image">11b</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>You should see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The Orin beside the lab desktop, a USB-C data cable to its flashing port, the Orin in <strong>recovery mode</strong></td>
+<td><code>lsusb</code> on the desktop: NVIDIA (<code>0955:</code>)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>SDK Manager on the desktop: Jetson AGX Orin, JetPack 7.2; flash and install the SDK components</td>
+<td>30-90 min; the Orin boots its first-start setup</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Make the user (as in <code>hosts.txt</code>), on the car's network</td>
+<td><code>ssh</code> works</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>bash car_setup.sh orin upgrade --apply</code>, then <code>install --apply</code>, <code>services --apply</code> (a new hostname: <code>--host-ok</code>)</td>
+<td>as steps 4-5</td>
+</tr>
+<tr>
+<td>5</td>
+<td>The TensorRT engine again: <a href="car-day.html#4d-rf-detrs-tensorrt-engine">session 4d</a></td>
+<td>an engine is tied to its TensorRT version</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="step-7-the-lab-desktop">Step 7: the lab desktop</h2>
+<p><strong>Its OS stays frozen until the Orin's reflash is done</strong>: it is the flashing host
+(<a href="car-day.html#b4-the-lab-desktop-stays-frozen">B4</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>You should see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>bash car_setup.sh lab_desktop backup upgrade --apply</code></td>
+<td>updated. A release upgrade only if CARLA's version supports 24.04 (<a href="carla.html">CARLA</a>)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>bash car_setup.sh lab_desktop install --apply</code></td>
+<td><code>~/ecolo-av</code> cloned and built (Pixi first, if missing)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>CARLA running, and the rehearsal: car day's <a href="car-day.html#11a-in-the-lab-the-week-before">session 11a</a></td>
+<td>the car drives in CARLA</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="this-computers-checklist">This computer's checklist</h2>
+<p><code>check</code> is <code>bash car_setup.sh &lt;role&gt; check</code>. Which computers, in which order: <a href="car-day.html#the-order">Car day</a>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Step</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>☐</td>
+<td>1 backed up (car day A2), and its own <code>backup --apply</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>2 or 3: updated, rebooted; <code>check</code> says the release you wanted</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>4 our code installed (not the camera Pis)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>5 services; rebooted; <code>check</code> has no STOP</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>5 time from the Orin (<code>chronyc sources</code>; the Orin serves)</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="whats-untested">What's untested</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>car_setup.sh</code>'s dry run, every role, and its STOPs</td>
+<td><span class="badge b-works">works</span> on a Mac (<code>tools/tests/test_car_setup.py</code>); on Linux: CI runs the same tests, not yet seen there</td>
+</tr>
+<tr>
+<td><code>car_setup.sh --apply</code> on a car computer</td>
+<td><span class="badge b-untested">untested</span>: this day is its first run</td>
+</tr>
+<tr>
+<td><code>aav-car.service</code> at boot</td>
+<td><span class="badge b-untested">untested</span></td>
+</tr>
+<tr>
+<td><code>machine:=motor_pi_alone</code></td>
+<td><span class="badge b-untested">untested</span> on the car; its launch is checked like every machine file</td>
+</tr>
+<tr>
+<td><code>do-release-upgrade</code> on these Pis</td>
+<td><span class="badge b-untested">untested</span></td>
+</tr>
+<tr>
+<td>Which computer is the Motor Pi (H1), CAM1-PI's address (C1), <code>.211</code>'s job</td>
+<td><span class="badge b-needs-you">needs you</span>: the hardware lead</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="car-day.html"><small>Previous</small>← Car day</a>
+<a class="next" href="tests.html"><small>Next</small>Every test →</a></nav>
+</main>
+<footer>Source: <code>docs/car-setup.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

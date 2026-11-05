@@ -7,12 +7,12 @@
 # this computer and never reaches the real car on the network.
 #
 #   pixi run demo                 # windowed
-#   pixi run demo fullscreen      # HUD and map full-screen
-#   pixi run debugdemo            # the same, plus the debug HUD (tools/demo_all.sh debug):
+#   pixi run demo --fullscreen    # HUD and map full-screen
+#   pixi run demo --debug         # the same, plus the debug HUD:
 #                                 # the lidar's cubes, the localizers, every sensor; with
 #                                 # AMCL, a trial tracker, and NDT (if maps/ndt/test_lot.pcd
 #                                 # is there: pixi run ndt-map drive) on (docs/hud.md)
-#   pixi run debugdemo tracker:=mpc ndt:=false   # any sim.launch.py switch, name:=value:
+#   pixi run demo --debug tracker:=mpc ndt:=false   # any sim.launch.py switch, name:=value:
 #                                 # yours come last, so they win (docs/switches.md)
 #   pixi run pick                 # a menu of the switches, instead of remembering them
 #   Ctrl-C                        # stops them all
@@ -28,10 +28,10 @@ debug=false
 extra=""
 for arg in "$@"; do
   case "$arg" in
-    fullscreen) full=true ;;
-    debug) debug=true ;;
+    --fullscreen) full=true ;;
+    --debug) debug=true ;;
     *:=*) extra="$extra $arg" ;;
-    *) echo "usage: tools/demo_all.sh [debug] [fullscreen] [name:=value ...]" >&2; exit 2 ;;
+    *) echo "usage: pixi run demo [--debug] [--fullscreen] [name:=value ...]" >&2; exit 2 ;;
   esac
 done
 # The debug HUD's run: AMCL beside the global EKF and a trial tracker, so every layer
@@ -73,8 +73,8 @@ start() { "$@" & pids="$pids $!"; }
 
 # The map window draws Ottawa's streets and searches places from two downloads, kept out
 # of git. Without them it starts anyway, with no streets and no search: say so first.
-for f in maps/streets/ottawa.pmtiles:get-street-map maps/places/ottawa.db:get-places; do
-  [ -f "${f%%:*}" ] || echo "note: no ${f%%:*}, so the map window misses it: run pixi run ${f##*:} once"
+for f in maps/streets/ottawa.pmtiles:street-map maps/places/ottawa.db:places; do
+  [ -f "${f%%:*}" ] || echo "note: no ${f%%:*}, so the map window misses it: run pixi run get ${f##*:} once"
 done
 
 echo "1/$steps  Gazebo (the car, in the test lot) — give it ~20s to spawn..."

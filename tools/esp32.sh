@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # The Rust firmware for today's ESP32 control board: firmware/spine/boards/esp32-umod.
-#
+# pixi run esp <step> runs it (the steps below).
 # usage: tools/esp32.sh tools          install Espressif's Rust and espflash (once)
 #        tools/esp32.sh build [args]   build it (args go to cargo: --no-default-features --features can)
 #        tools/esp32.sh flash [args]   build, flash it on the USB cable, show its log (args go to espflash)
 #        tools/esp32.sh check          build both links (and version 1 frames), with clippy; "skipped" without the toolchain
 #        tools/esp32.sh qemu-tools     download Espressif's QEMU into vendor/qemu (once; macOS arm64)
-#        tools/esp32.sh qemu [args]    build with --features qemu,uplink, boot it in QEMU, and
+#        tools/esp32.sh qemu-check [args]  build with --features qemu,uplink, boot it in QEMU, and
 #                                      check it brakes when the Motor-Pi's frames stop, its
 #                                      uplink, and the RC's three modes (args go to
 #                                      tools/esp32_qemu.py); "skipped" without the tools
@@ -54,7 +54,7 @@ have_toolchain() {
 
 need_toolchain() {
   if ! have_toolchain; then
-    echo "No Xtensa Rust here: run 'pixi run esp-tools' first (docs/rust-firmware.md)." >&2
+    echo "No Xtensa Rust here: run 'pixi run esp tools' first (docs/rust-firmware.md)." >&2
     exit 1
   fi
   # shellcheck disable=SC1090
@@ -146,10 +146,10 @@ case "${1:-}" in
   qemu-tools)
     qemu_tools
     ;;
-  qemu)
+  qemu-check)
     shift
     if ! have_toolchain || [[ ! -x $QEMU_BIN ]]; then
-      echo "skipped: needs the Xtensa Rust (pixi run esp-tools) and QEMU (pixi run esp-qemu-tools)"
+      echo "skipped: needs the Xtensa Rust (pixi run esp tools) and QEMU (pixi run esp qemu-tools)"
       exit 0
     fi
     # With the uplink: the check reads its frames on UART1, and feeds iBUS on UART2.
@@ -163,7 +163,7 @@ case "${1:-}" in
     ;;
   check)
     if ! have_toolchain; then
-      echo "skipped: no Xtensa Rust here (pixi run esp-tools)"
+      echo "skipped: no Xtensa Rust here (pixi run esp tools)"
       exit 0
     fi
     need_toolchain

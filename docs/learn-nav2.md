@@ -130,15 +130,15 @@ Navigate (up to 6 tries)
 
 ## Reversing
 
-One switch, `reversing:=`, on `navigation.launch.py`. **On in Gazebo and on the bench;
-off on the car by default since 26 Oct** (design review F2): the wheel sensors can't tell
-direction yet (H5), so a reversing car's speed would read forward. It goes back on once
-H5 is answered. On the car, `reversing:=true` (Ben, 22 Oct: "Yes the car can reverse")
-works only where something sees behind it: the roof lidar (the radar faces forward; the
+One switch, `reversing:=`, on `navigation.launch.py`. **On everywhere: Gazebo, the bench,
+and the car since 1 Nov** (Ben: "reverse and uturn should be in"; off on the car 26 Oct-1
+Nov, design review F2). The wheel sensors can't tell direction yet (H5), so the speed's
+sign is the last command's: wrong only if the car is pushed or rolls back ([tests](tests.md),
+4.25). On the car it works only where something sees behind it: the roof lidar (the radar faces forward; the
 rear camera, later). Without one, `car.launch.py` keeps Nav2 forward only and says why
 (`vehicle.blind_behind`).
 
-| | `reversing:=false` (the car's default) | `reversing:=true` (the default: Gazebo, the bench) |
+| | `reversing:=false` | `reversing:=true` (the default everywhere) |
 |---|---|---|
 | Planner (`motion_model_for_search`) | `DUBIN`: forward only | `REEDS_SHEPP`: forward and back; a reverse metre costs 2x (`reverse_penalty`) |
 | Controller (`allow_reversing`) | false | true: follows the backward parts |
@@ -155,7 +155,7 @@ reversing at the same number, whoever drives.
 |---|---|
 | `vehicle.yaml` | `max_reverse_speed: 0.50` |
 | `aav_description/vehicle.py` | `nav2_rewrites(v, reversing)` (planner, controller, MPPI) and `nav2_tuned(...)` (the smoother's list, written into a copy of `nav2.yaml`) |
-| `car.launch.py`, `sim.launch.py`, `bench.launch.py` | `reversing:=true` by default in sim and bench; `false` on the car until H5 (`reversing:=true` there needs the lidar running) |
+| `car.launch.py`, `sim.launch.py`, `bench.launch.py` | `reversing:=true` by default in each; on the car it needs the lidar running, or it stays forward only |
 | Gazebo check | `pixi run sim-check --rear-obstacle`: backing up, the car stops for a post behind it (0.75 m short, 22 Oct) |
 | Tests | `test_vehicle.py` (the values, and that each rewrite lands on a real key); `test_behavior_trees.py` (the two trees differ only by BackUp, inside the reverse speed) |
 

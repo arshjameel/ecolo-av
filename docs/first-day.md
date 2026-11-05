@@ -100,7 +100,7 @@ pixi run sim      # the same on Linux and on a Mac
 ![The car in Gazebo, driving a left curve](img/gazebo-car.png)
 
 On a Mac, Gazebo's window runs as a separate program, and `pixi run sim` starts it for you.
-If you close it, `pixi run gz-window` opens it again.
+If you close it, `pixi run tools/ros.sh tools/gz_window.sh` opens it again.
 
 Drive it with `pixi run keyboard --sim` in another terminal. Then run
 `pixi run check sim`: it should say `0 failed`.

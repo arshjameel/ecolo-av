@@ -200,7 +200,7 @@ does. The spine only listens to it ([Firmware](firmware.md)).
 | See ego's output | `pixi run tools/ros.sh ros2 topic echo /ego/actuator_cmd` |
 | See its limits | `pixi run tools/ros.sh ros2 param dump /ego` |
 | The speed loop, with throttle and brake | `pixi run bench`, then `pixi run tools/ros.sh ros2 topic echo /vehicle/status` |
-| Stop everything | `pixi run estop`, then `pixi run estop-clear` |
+| Stop everything | `pixi run estop`, then `pixi run clear estop` |
 | The speed loop's own tests | `cd firmware/spine && pixi run cargo test -p spine-core speed_loop` |
 | ego's maths tests | `cd ros/ego/aav_ego && pixi run python3 -m pytest -q test/test_ackermann.py` |
 
@@ -212,8 +212,8 @@ does. The spine only listens to it ([Firmware](firmware.md)).
 | The speed loop (PI) | `firmware/spine/crates/spine-core/src/speed_loop.rs` |
 | Spine limits, watchdog, safe-state choices | `firmware/spine/crates/spine-core/src/spine.rs`, `watchdog.rs`, `limits.rs` |
 | Today's open-loop throttle | `ros/can_bridge/aav_legacy/config/legacy.yaml` (`full_throttle_speed`) |
-| State space from zero: models, simulators, poles, Bode, shocks and roll | `tools/state_space_demo.py`, `pixi run state-space-demo` ([Learn: state space](learn-state-space.md)) |
-| The loops as transfer functions and state space: poles, margins, delays | `ros/ego/aav_ego/aav_ego/vehicle_model.py`, `pixi run vehicle-model` ([The car as a linear model](vehicle-model.md)) |
+| State space from zero: models, simulators, poles, Bode, shocks and roll | `tools/state_space_demo.py`, `pixi run python3 tools/state_space_demo.py` ([Learn: state space](learn-state-space.md)) |
+| The loops as transfer functions and state space: poles, margins, delays | `ros/ego/aav_ego/aav_ego/vehicle_model.py`, `pixi run python3 tools/vehicle_model.py` ([The car as a linear model](vehicle-model.md)) |
 | Nav2's controller and smoother | `ros/drivers/aav_navigation/config/nav2.yaml` |
 | Driver timeouts and priorities | `ros/command_mux/aav_command_mux/config/twist_mux.yaml` |
 | Wheelbase, track, steering limit | `ros/bringup/aav_description/config/vehicle.yaml` |

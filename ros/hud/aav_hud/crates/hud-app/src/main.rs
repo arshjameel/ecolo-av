@@ -15,7 +15,8 @@
 //! Publishes   estop_topic           std_msgs/Bool                 only true: the e-stop button
 //!             heartbeat_topic       std_msgs/UInt64               10 Hz while the screen draws:
 //!                                                                 frames drawn (hud_core::heartbeat)
-//! Parameters  the topics above, and stale_after (s)
+//! Parameters  the topics above, stale_after (s), max_speed (m/s: the gauge's redline),
+//!             and theme (initial_d, mocha, latte, calm)
 //!
 //! raylib owns the main thread (macOS needs that); rclrs spins on its own thread and
 //! sends news over a channel (ros.rs). `--demo` swaps the ROS node for pretend data.
@@ -167,7 +168,9 @@ fn run(opts: &Options, mut source: Box<dyn DataSource>, config: HudConfig) -> Re
     rl.set_target_fps(30);
     rl.set_window_min_size(640, 360);
     window::place(&mut rl, opts.monitor.as_ref(), opts.fullscreen)?;
-    let mut ui = Ui::new(&mut rl, &thread);
+    // The speed gauge's scale, from max_speed (validate() has checked it).
+    let dial = config.gauge()?;
+    let mut ui = Ui::new(&mut rl, &thread, config.theme.theme(), dial);
     let mut state = HudState::new(config);
     let started = Instant::now();
 

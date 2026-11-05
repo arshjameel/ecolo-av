@@ -122,7 +122,7 @@ class RfdetrExported:
 
 
 class RfdetrCoreml(RfdetrExported):
-    """RF-DETR exported to Core ML (pixi run -e ml export-coreml): a Mac's GPU and ANE."""
+    """RF-DETR exported to Core ML (tools/export_model.py --format coreml): a Mac's GPU and ANE."""
 
     def __init__(self, model: str):
         import coremltools as ct
@@ -210,7 +210,7 @@ def load_detector(detector: str = 'rfdetr', model: str = '', device: str = 'auto
     root = root or os.environ.get('PIXI_PROJECT_ROOT', os.getcwd())
     model = os.path.join(root, os.path.expanduser(model))
     if not os.path.exists(model):
-        raise FileNotFoundError(f'{model} is missing: pixi run get-models, or '
+        raise FileNotFoundError(f'{model} is missing: pixi run get models, or '
                                 'docs/perception.md ("Models") for the exported ones')
     if model.endswith(('.pt', '.pth')):
         import torch

@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -103,12 +107,14 @@
 <li>How do costmaps relate to all of it?</li>
 </ol>
 <blockquote>
-<p><strong>The short version</strong>
-- <strong>Local EKF:</strong> "how I've moved since I started". Smooth, but it slowly drifts.
-- <strong>Global EKF:</strong> the same, plus GPS. "Where I am on the earth". True, but it can jump a little.
-- The <strong>map frame</strong> is a flat grid in metres, pinned to one GPS point (the <strong>datum</strong>). That's how x/y and latitude/longitude meet.
-- <strong>OpenStreetMap is only for people and routes:</strong> the HUD's map window (streets, place search) and the street router (Valhalla). Nav2 never reads it.
-- <strong>Costmaps</strong> are grids of "how bad is it to drive here". The <strong>global</strong> one is big and coarse (for the whole route). The <strong>local</strong> one is small, fine and live (for what's in front of the car right now).</p>
+<p><strong>The short version</strong></p>
+<ul>
+<li><strong>Local EKF:</strong> "how I've moved since I started". Smooth, but it slowly drifts.</li>
+<li><strong>Global EKF:</strong> the same, plus GPS. "Where I am on the earth". True, but it can jump a little.</li>
+<li>The <strong>map frame</strong> is a flat grid in metres, pinned to one GPS point (the <strong>datum</strong>). That's how x/y and latitude/longitude meet.</li>
+<li><strong>OpenStreetMap is only for people and routes:</strong> the HUD's map window (streets, place search) and the street router (Valhalla). Nav2 never reads it.</li>
+<li><strong>Costmaps</strong> are grids of "how bad is it to drive here". The <strong>global</strong> one is big and coarse (for the whole route). The <strong>local</strong> one is small, fine and live (for what's in front of the car right now).</li>
+</ul>
 </blockquote></div>
 <section class="card"><h2 id="1-your-picture-corrected-a-little">1. Your picture, corrected a little</h2>
 <p>You said: <em>"local EKF gives odometry, then you put it on a map and mix it with GPS."</em></p>
@@ -221,19 +227,19 @@ and for routes</strong>, never inside Nav2. Everything works offline: the data a
 <td>Draw the street map</td>
 <td>Ottawa's streets as vector tiles (Protomaps, 40 MB)</td>
 <td>the HUD's map window, under Nav2's map (<a href="hud.html#the-street-map-under-it">HUD</a>)</td>
-<td>no: <code>pixi run get-street-map</code></td>
+<td>no: <code>pixi run get street-map</code></td>
 </tr>
 <tr>
 <td>Search "Tim Hortons"</td>
 <td><code>ottawa.db</code>: 606,628 named places from OSM (51 MB)</td>
 <td>the HUD's map window (<a href="hud.html#search-for-a-place-and-drive-there">search</a>)</td>
-<td>no: <code>pixi run get-places</code></td>
+<td>no: <code>pixi run get places</code></td>
 </tr>
 <tr>
 <td>Plan a street route</td>
 <td>Valhalla (a road router), Ottawa's OSM data</td>
 <td><code>street_router</code> (<code>aav_routes</code>), on this computer (<a href="routes.html">Street routes</a>)</td>
-<td>no: <code>pixi run -e routes get-routes</code></td>
+<td>no: <code>pixi run get routes</code></td>
 </tr>
 </tbody>
 </table></div>

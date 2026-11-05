@@ -4,6 +4,7 @@ What legacy_uart_bridge reads back from the ESP32: its uplink frames (TODO 50, 4
   ESP32 TX1 ──35-byte frames, 50 Hz──> serial port ──> UplinkReader.feed(bytes, now)
                                                           │
            status_fields / steering_state / brake_state / rc_fields <── the latest frame
+           raw_fields (version 3: the counts), calibration_line
 
 Only with the bridge's `uplink: true` and the firmware built with `--features uplink`:
 the wire from the ESP32's GPIO17 to the Pi's RX is the hardware lead's to confirm.
@@ -14,7 +15,7 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple
 
-from aav_legacy.legacy_protocol import Uplink, UplinkParser
+from aav_legacy.legacy_protocol import CAL_LIMP, CAL_OFF, CAL_STATES, Uplink, UplinkParser
 
 NAN = float('nan')
 
@@ -82,3 +83,26 @@ def rc_fields(u: Uplink) -> dict:
     """Return aav_interfaces/RcSticks's fields for a frame: the same numbers."""
     return {'mode_switch': u.switch, 'throttle': u.rc_throttle, 'steering': u.rc_steering,
             'brake': u.rc_brake}
+
+
+def raw_fields(counts: Optional[int], calibration: int = CAL_OFF) -> dict:
+    """Return aav_interfaces/ActuatorRaw's fields: counts (None: not known), the state."""
+    return {'valid': counts is not None, 'position': counts or 0, 'calibration': calibration}
+
+
+def calibration_line(wanted: bool, refusal: Optional[str], u: Optional[Uplink]) -> str:
+    """
+    Return /vehicle/steering_actuator/calibration's line for people.
+
+    `wanted`: the panel asks for limp or jog; `refusal`: why the bridge doesn't pass it
+    on (None: it does); `u`: the latest uplink, for the firmware's own state.
+    """
+    if wanted and refusal:
+        return f'REFUSED - {refusal}'
+    state = CAL_OFF if u is None else u.calibration
+    words = CAL_STATES.get(state, f'state {state}')
+    if state == CAL_LIMP:
+        words += " - the steering actuator's motor is off: turn the wheels by hand"
+    if u is not None and u.steering_counts is not None:
+        words += f' (at {u.steering_counts} counts)'
+    return words

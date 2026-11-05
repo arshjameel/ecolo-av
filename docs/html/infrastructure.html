@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -174,7 +178,7 @@ tests, and how a change goes from an idea to the car.</p></div>
     spine/              Rust: spine-core (the spine's logic), aav-inputs, the device drivers,
                         and boards/pico2, the spine's board program
     legacy/             the 2025-26 ESP32 and Pico code that runs the car today
-  models/             trained model files, not in git: pixi run get-models
+  models/             trained model files, not in git: pixi run get models
   tools/              scripts: see the table below
   docs/               these pages; docs/history/ keeps the Q&amp;A, Ben's requests and the audits
   archive/            reference only, never built: the older teams' repos, the Flutter HUD</code></pre>
@@ -385,12 +389,12 @@ Every one, with what it does: README's <a href="../../README.md#every-command">E
 <tr>
 <td><code>bandwidth.py</code>, <code>topic_load.py</code></td>
 <td>measures every topic's rate and load; the numbers (no ROS)</td>
-<td><code>pixi run bandwidth</code></td>
+<td><code>pixi run measure bandwidth</code></td>
 </tr>
 <tr>
 <td><code>can_load.py</code></td>
 <td>the CAN bus load from the DBC's frames and rates (no ROS)</td>
-<td><code>pixi run can-load</code></td>
+<td><code>pixi run python3 tools/can_load.py</code></td>
 </tr>
 <tr>
 <td><code>record.sh</code></td>
@@ -425,7 +429,7 @@ Every one, with what it does: README's <a href="../../README.md#every-command">E
 <tr>
 <td><code>graph_picture.py</code></td>
 <td>draws the running graph, grouped by layer</td>
-<td><code>pixi run graph-picture</code></td>
+<td><code>pixi run tools/ros.sh python3 tools/graph_picture.py</code></td>
 </tr>
 <tr>
 <td><code>mcp_server.py</code>, <code>mcp_parts.py</code></td>
@@ -445,7 +449,7 @@ Every one, with what it does: README's <a href="../../README.md#every-command">E
 <tr>
 <td><code>get_models.sh</code></td>
 <td>downloads the stock RF-DETR Nano and YOLO models, checksums pinned</td>
-<td><code>pixi run get-models</code></td>
+<td><code>pixi run get models</code></td>
 </tr>
 <tr>
 <td><code>build_engine.py</code></td>
@@ -455,27 +459,27 @@ Every one, with what it does: README's <a href="../../README.md#every-command">E
 <tr>
 <td><code>export_model.py</code></td>
 <td>exports a detector model to Core ML or ONNX (RF-DETR through rfdetr, YOLO through Ultralytics)</td>
-<td><code>pixi run -e ml export-coreml</code></td>
+<td><code>pixi run -e ml python3 tools/export_model.py --format coreml</code></td>
 </tr>
 <tr>
 <td><code>get_places.sh</code></td>
 <td>downloads the place database into <code>maps/places/</code>, for the map window's search, checksum pinned</td>
-<td><code>pixi run get-places</code></td>
+<td><code>pixi run get places</code></td>
 </tr>
 <tr>
 <td><code>get_street_map.sh</code></td>
 <td>cuts Ottawa out of Protomaps' world street map, checksums pinned</td>
-<td><code>pixi run get-street-map</code></td>
+<td><code>pixi run get street-map</code></td>
 </tr>
 <tr>
 <td><code>elf2uf2.py</code></td>
 <td>turns the Pico 2 program into a UF2 file</td>
-<td><code>pixi run spine-uf2</code></td>
+<td><code>pixi run pico spine build</code></td>
 </tr>
 <tr>
 <td><code>vendor.py</code></td>
 <td>downloads the source in <code>vendor/*.repos</code></td>
-<td><code>pixi run vendor</code></td>
+<td><code>pixi run get vendor</code></td>
 </tr>
 <tr>
 <td><code>udev/99-aav.rules</code></td>
@@ -774,7 +778,7 @@ workflow empties <code>PSModulePath</code>, so colcon uses <code>sh</code>, as o
 <p class="admonition-title">What never goes in git</p>
 <p>Build output (<code>build/</code>, <code>install/</code>, <code>log/</code>, <code>.pixi/</code>, <code>target/</code>), recordings (<code>bags/</code>),
 and secrets. <code>.gitignore</code> lists them. Downloaded third-party source, such as ROS's own
-code, lives in <code>vendor/</code>, which git doesn't track: <code>pixi run vendor</code>.</p>
+code, lives in <code>vendor/</code>, which git doesn't track: <code>pixi run get vendor</code>.</p>
 </div>
 </section>
 <section class="card"><h2 id="where-to-find-what-happened">Where to find what happened</h2>

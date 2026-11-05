@@ -1,6 +1,7 @@
 """legacy_uart_bridge's logic (uart_relay): it relays the Orin's counter, never makes one."""
 
-from aav_legacy.legacy_protocol import LegacyMapping, unpack_frame, unpack_frame_v2
+from aav_legacy.legacy_protocol import (CAL_MODE_JOG, CAL_MODE_LIMP, CAL_MODE_OFF, LegacyMapping,
+                                        unpack_frame, unpack_frame_v2, unpack_frame_v3)
 from aav_legacy.uart_relay import programs_locked, Relay
 import pytest
 
@@ -73,7 +74,7 @@ def test_version_1_is_the_cpp_frame():
 
 def test_an_unknown_version_is_refused():
     with pytest.raises(ValueError):
-        relay(version=3)
+        relay(version=4)
 
 
 def test_programs_are_locked_out_of_the_firmware_with_no_timeout():
@@ -84,8 +85,9 @@ def test_programs_are_locked_out_of_the_firmware_with_no_timeout():
     # The deliberate override, for a supervised stand.
     assert programs_locked(1, allow_programs_without_timeout=True) is False
     assert programs_locked(2, allow_programs_without_timeout=True) is False
+    assert programs_locked(3) is False    # version 3: the same firmware, the same watchdog
     with pytest.raises(ValueError):
-        programs_locked(3)
+        programs_locked(4)
 
 
 def looped():
@@ -129,3 +131,70 @@ def test_disarming_resets_the_speed_loop():
     r.frame(now=0.02)
     unpack_frame_v2(r.frame(now=1.0))          # the command went stale: brake, reset
     assert (r.loop.integral, r.loop.last_target, r.pedals) == (0.0, None, None)
+
+
+# --- Version 3: the steering actuator's calibration (1 Nov) ---
+
+def calibrating(where='stands', now=10.0):
+    """Return a version 3 relay, the uplink fresh, the panel asking for limp at `now`."""
+    r = Relay(M, cmd_timeout=0.3, version=3, calibration=where)
+    r.heartbeat(9)
+    r.uplink_seen(now)
+    r.calibrate(CAL_MODE_LIMP, 0, now)
+    return r
+
+
+def test_calibration_frames_stand_the_car_still():
+    r = calibrating()
+    r.command(0.0, 0.3, now=10.0)        # ego stands still, wheels turned
+    r.frame(now=10.0)
+    f = unpack_frame_v3(r.frame(now=10.02))
+    assert (f.cal_mode, f.speed, f.accel, f.armed, f.counter) == (CAL_MODE_LIMP, 0.0, -1.0,
+                                                                  False, 9)
+    r.calibrate(CAL_MODE_JOG, 2300, now=10.05)
+    f = unpack_frame_v3(r.frame(now=10.06))
+    assert (f.cal_mode, f.jog_target, f.speed) == (CAL_MODE_JOG, 2300, 0.0)
+
+
+def test_calibration_is_off_unless_the_hardware_lead_set_where():
+    r = calibrating(where='none')
+    assert unpack_frame_v3(r.frame(now=10.0)).cal_mode == CAL_MODE_OFF
+    assert 'hardware lead' in r.cal_refusal(10.0)
+    with pytest.raises(ValueError):
+        Relay(M, cmd_timeout=0.3, version=3, calibration='ground')
+
+
+@pytest.mark.parametrize('version', [1, 2])
+def test_calibration_needs_version_3(version):
+    r = Relay(M, cmd_timeout=0.3, version=version, calibration='stands')
+    r.uplink_seen(0.0)
+    r.calibrate(CAL_MODE_LIMP, 0, 0.0)
+    assert not r.cal_active(0.0)
+    assert 'needs 3' in r.cal_refusal(0.0)
+
+
+def test_calibration_refused_while_driving_moving_estop_or_without_uplink():
+    r = calibrating()
+    r.command(1.0, 0.0, now=10.0)
+    assert 'driving' in r.cal_refusal(10.0)
+    f = unpack_frame_v3(r.frame(now=10.0))
+    assert f.cal_mode == CAL_MODE_OFF and f.speed > 0.0   # ego drives on, untouched
+    r = calibrating()
+    r.wheel_speed(0.2, now=10.0)
+    assert 'moves' in r.cal_refusal(10.0)
+    r = calibrating()
+    r.set_estop(True)
+    assert 'e-stop' in r.cal_refusal(10.0)
+    r = calibrating()
+    assert 'uplink' in r.cal_refusal(10.5)               # the last uplink 0.5 s ago
+
+
+def test_calibration_ends_when_the_panel_stops_asking():
+    r = calibrating()
+    r.uplink_seen(10.4)
+    assert unpack_frame_v3(r.frame(now=10.4)).cal_mode == CAL_MODE_LIMP
+    r.uplink_seen(10.6)
+    f = unpack_frame_v3(r.frame(now=10.6))                # 0.6 s since the panel asked
+    assert f.cal_mode == CAL_MODE_OFF and (f.speed, f.accel) == (0.0, -1.0)
+    r.calibrate(CAL_MODE_OFF, 0, now=10.7)
+    assert not r.cal_wanted(10.7)

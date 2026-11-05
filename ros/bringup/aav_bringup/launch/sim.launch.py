@@ -4,7 +4,7 @@ The whole stack in Gazebo: same nodes and configs as the car, simulated hardware
   ros2 launch aav_bringup sim.launch.py [world:=empty|test_lot|road] [nav:=true]
       [teleop:=false] [gui:=true] [rviz:=true]
       [perception:=false] [lane:=false|true|fake] [camera_obstacles:=false] [hud:=false]
-      [map:=false] [foxglove:=false]
+      [map:=false] [foxglove:=false] [chase_camera:=true]
       [obstacle:=false] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true] [radar:=true]
       [actuator_model:=true] [speed_loop:=default|smooth|lqi] [sim_speed:=]
       [reversing:=true] [controller:=mppi] [planner:=lattice] [tracker:=none]
@@ -46,6 +46,11 @@ bench's argument names:
                       computer: open ws://localhost:8765 and a layout from tools/foxglove/
                       (foxglove.launch.py: the car's topic list, and the front camera's
                       preview where the world renders it; docs/foxglove.md)
+  chase_camera:=false no chase camera: by default a camera behind and above the car
+                      (aav_gazebo), for Lichtblick's cockpit layout (tools/foxglove/
+                      cockpit.json): /vehicle/gazebo/chase_camera/compressed
+  run_info            always: which algorithms the run uses, from these arguments, on
+                      /system/algorithms (aav_run_info), for the cockpit's Algorithms table
   obstacle:=true      the bench's 1 m box in the lane, 15 m ahead (aav_gazebo)
   lidar:=false        no roof lidar. It's on by default (15 Oct): a simulated 16-beam
                       lidar on /sensors/lidar/points, which Nav2 reads as a 2D scan
@@ -56,12 +61,16 @@ bench's argument names:
                       the car's 1.0 m/s cap (ego.yaml, nav2.yaml) is for its first drives.
                       ego refuses it outside a simulator
   controller:=rpp     Nav2 follows the path with Regulated Pure Pursuit, not MPPI (the
-                      default): pixi run controller-compare drives both (docs/path-followers.md)
+                      default): pixi run measure controllers drives both (docs/path-followers.md)
   planner:=hybrid     Nav2 plans with another planner (navigation.launch.py planner:=):
                       lattice (the default) or hybrid keep to the car's turning radius;
                       smac2d, navfn and theta_star don't, trials only. pixi run
-                      controller-compare --planners scores them (docs/controllers.md).
+                      measure controllers --planners scores them (docs/controllers.md).
                       lattice_headings:=32: the lattice's trial file, 32 headings
+                      planner:=diffusion: a model draws the path, a guard checks it,
+                      the lattice's path when it fails (aav_diffusion_planner, a trial:
+                      pixi install --locked -e learn, pixi run diffusion train first);
+                      diffusion_model:=<.onnx> another model
   tracker:=lqr        a trial path follower (aav_track: pure_pursuit, stanley, lqr or mpc)
                       in controller_server's place, on Nav2's same planner, smoother and
                       collision_monitor. Forward only: with reversing:=false (docs/trials.md)
@@ -207,7 +216,7 @@ def launch_setup(context):
         SetParameter(name='use_sim_time', value=True),
         include(context, 'aav_gazebo', 'gazebo.launch.py', world=world, gui=arg('gui'),
                 obstacle=arg('obstacle'), start_y=arg('start_y'), start_yaw=arg('start_yaw'),
-                lidar=arg('lidar'), radar=arg('radar'),
+                lidar=arg('lidar'), radar=arg('radar'), chase_camera=arg('chase_camera'),
                 actuator_model=arg('actuator_model'), speed_loop=arg('speed_loop'),
                 faults=flag['faults'],
                 spine=arg('spine'), arm=arg('arm'), bridge=arg('bridge'),
@@ -232,6 +241,15 @@ def launch_setup(context):
         include(context, 'aav_localization', 'localization.launch.py', use_sim_time='true',
                 ndt_ekf=str(ndt_ekf).lower(), kiss_ekf=str(kiss_ekf).lower()),
     ]
+    # What this run uses, in words, for the cockpit's Algorithms table (aav_run_info).
+    actions.append(Node(package='aav_run_info', executable='run_info', name='run_info',
+                        parameters=[{'use_sim_time': True, 'profile': f'sim world:={world}',
+                                     'nav': flag['nav'], 'planner': planner,
+                                     'controller': controller, 'tracker': tracker,
+                                     'lidar': lidar, 'radar': radar,
+                                     'voxels': flag['voxels'], 'amcl': amcl, 'ndt': ndt,
+                                     'ndt_ekf': ndt_ekf, 'kiss_icp': kiss_icp,
+                                     'kiss_ekf': kiss_ekf}]))
     if radar:
         # The radar stand-in, as the bench's: few points per object, so small clusters.
         actions.append(include(context, 'aav_radar_clusters', 'radar_clusters.launch.py',
@@ -250,6 +268,7 @@ def launch_setup(context):
                                reversing=str(flag['reversing']).lower(),
                                controller=controller, tracker=tracker, planner=planner,
                                lattice_headings=arg('lattice_headings'),
+                               diffusion_model=arg('diffusion_model'),
                                # A trial tracker may be swapped live here (the debug
                                # HUD's panel shows which): Gazebo only, never the car.
                                live_swap='true',
@@ -262,14 +281,14 @@ def launch_setup(context):
                                          if amcl else ''),
                                plan_around=str(flag['plan_around']).lower()))
     if ndt:
-        # Scored only (controller-compare --ndt), unless ndt_ekf:=true: then ekf_global
-        # reads its pose (controller-compare --ndt-ekf scores the difference).
+        # Scored only (measure controllers --ndt), unless ndt_ekf:=true: then ekf_global
+        # reads its pose (measure controllers --ndt-ekf scores the difference).
         actions.append(include(context, 'aav_ndt', 'ndt.launch.py', use_sim_time='true',
                                ndt_map=arg('ndt_map'), ndt_x=0.0, ndt_y=arg('start_y'),
                                ndt_yaw=arg('start_yaw')))
     if kiss_icp:
-        # Scored only (controller-compare --kiss-icp), unless kiss_ekf:=true: then
-        # ekf_local reads its twist (controller-compare --kiss-ekf scores the difference).
+        # Scored only (measure controllers --kiss-icp), unless kiss_ekf:=true: then
+        # ekf_local reads its twist (measure controllers --kiss-ekf scores the difference).
         actions.append(include(context, 'aav_kiss_icp', 'kiss_icp.launch.py',
                                use_sim_time='true'))
     if flag['watchdog']:
@@ -365,6 +384,10 @@ def generate_launch_description():
         DeclareLaunchArgument('start_yaw', default_value='0.0',
                               description='rad: start the car turned this far left of east '
                                           '(the EKFs still start facing east)'),
+        DeclareLaunchArgument('chase_camera', default_value='true',
+                              description='a camera behind and above the car, for '
+                                          "Lichtblick's cockpit layout (world:=road or "
+                                          'test_lot)'),
         DeclareLaunchArgument('lidar', default_value='true',
                               description='a simulated 16-beam roof lidar, on '
                                           '/sensors/lidar/points, read by Nav2 '
@@ -427,6 +450,11 @@ def generate_launch_description():
                               description=', '.join(vehicle.PLANNERS) + ": Nav2's planner. "
                                           "hybrid and lattice keep to the car's turning "
                                           'radius; the others are trials (docs/controllers.md)'),
+        DeclareLaunchArgument('diffusion_model', default_value='',
+                              description='with planner:=diffusion: the model (.onnx); '
+                                          'empty: models/diffusion/planner.onnx. A file '
+                                          "that is not there: every plan the lattice's "
+                                          '(the fallback test)'),
         DeclareLaunchArgument('lattice_headings',
                               default_value=str(vehicle.LATTICE_HEADINGS[0]),
                               description='with planner:=lattice: 16 headings (the default) '

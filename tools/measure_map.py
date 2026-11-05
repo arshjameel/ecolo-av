@@ -2,13 +2,13 @@
 r"""
 The measuring map: a tape-measure route round the car, and its pictures.
 
-    pixi run measure-map                         draw docs/img/measure-map-*.png, and
-                                                 write the route table into
-                                                 docs/measure-the-car.md
-    pixi run measure-map --sheet                 print the route table (markdown)
-    pixi run measure-map --blank > readings.yaml a readings file to fill in at the car
-    pixi run measure-map --readings readings.yaml
-                                                 turn the readings into vehicle.yaml's numbers
+Run it with pixi run python3 tools/measure_map.py [option] (no pixi task):
+
+    (no option)                   draw docs/img/measure-map-*.png, and write the route
+                                  table into docs/measure-the-car.md
+    --sheet                       print the route table (markdown)
+    --blank > readings.yaml       a readings file to fill in at the car
+    --readings readings.yaml      turn the readings into vehicle.yaml's numbers
 
 The route starts at base_link (the X on the floor under the middle of the rear axle) and
 walks round the car. Each step is measured from an earlier mark, so nobody has to
@@ -32,7 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VEHICLE_YAML = ROOT / 'ros/bringup/aav_description/config/vehicle.yaml'
 DOC = ROOT / 'docs' / 'measure-the-car.md'
 IMG = ROOT / 'docs' / 'img'
-START = '<!-- measure-map:start (pixi run measure-map writes this table) -->'
+START = '<!-- measure-map:start (pixi run python3 tools/measure_map.py writes this table) -->'
 END = '<!-- measure-map:end -->'
 
 AXES = ('forward', 'left', 'up')          # x, y, z: + forward, + left, + up
@@ -377,7 +377,7 @@ def blank():
     """Return a readings file to fill in, with today's guesses as comments."""
     cfg = load()
     today = readings_today(cfg)
-    lines = ['# Readings for pixi run measure-map --readings <this file>.',
+    lines = ['# Readings for pixi run python3 tools/measure_map.py --readings <this file>.',
              '# Write each reading after its colon: 1.57, 157 cm, 5 ft 2 in, or 5\' 2".',
              "# Back, right or down: write 'back: 3 in' or a minus. Leave blank if not measured.",
              'units: m   # the unit for bare numbers: m, cm, ft or in', '']

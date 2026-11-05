@@ -10,6 +10,12 @@ Subscribes  control/car/actuator_cmd  ackermann_msgs/AckermannDriveStamped: ego'
             control/car/heartbeat     aav_interfaces/Heartbeat: the output mux's counter, one
                               per command passed on (TODO 50)
             safety/estop      std_msgs/Bool (true: full brake now, until false)
+            drivers/buttons/steering_calibration  aav_interfaces/SteeringCalibration: a
+                              person on the hardware panel asks for the steering
+                              actuator limp or jogged (10 Hz while held; dropped after
+                              0.5 s). Passed on only as uart_relay's rules allow:
+                              steering_calibration stands or bench, frame_version 3, a
+                              fresh uplink, no e-stop, ego not driving, the car still
             vehicle/odom      nav_msgs/Odometry, only with speed_loop.mode pi: the wheel speed
                               the loop closes on (twist.linear.x). Older than
                               speed_loop.odom_timeout: feed-forward alone
@@ -24,10 +30,18 @@ Publishes   system/source     aav_interfaces/DataSource, latched: the actuators 
             vehicle/brake     aav_interfaces/ActuatorState: the ESP32's brake, the Jrk's
             vehicle/rc        aav_interfaces/RcSticks: the RC's mode switch and sticks
                               (rc_driver turns them into /drivers/rc/cmd_vel)
+            vehicle/steering_actuator/raw, vehicle/brake_actuator/raw
+                              aav_interfaces/ActuatorRaw, 50 Hz: each Jrk's position in
+                              counts, not converted, and the firmware's steering
+                              calibration state (a version 2 uplink: valid false)
+            vehicle/steering_actuator/calibration  std_msgs/String: one line, on each
+                              change and at 2 Hz: what the calibration does, and why
 Reads       uplink frames on the same serial port (uplink_reader, legacy_protocol), with
             uplink true. Off by default: GPIO17 to the Pi's RX is the hardware lead's to
             confirm, and the firmware needs --features uplink
 Writes      frames at rate_hz on the serial port (uart_relay, legacy_protocol):
+            frame_version 3   20 bytes: version 2, and the steering calibration's mode
+                              (limp, jog to a target): for the Rust firmware of 1 Nov on
             frame_version 2   17 bytes, with the Orin's counter, armed and e-stop flags and
                               a CRC-8: for the Rust ESP32 firmware, which brakes when the
                               counter hasn't changed for 100 ms
@@ -58,8 +72,8 @@ only (wheels off the ground, a person at the e-stop).
 
 import signal
 
-from aav_interfaces.msg import (ActuatorState, DataSource, Heartbeat, RcSticks, SensorSource,
-                                VehicleStatus)
+from aav_interfaces.msg import (ActuatorRaw, ActuatorState, DataSource, Heartbeat, RcSticks,
+                                SensorSource, SteeringCalibration, VehicleStatus)
 from aav_legacy import uplink_reader as ur
 from aav_legacy.legacy_protocol import LegacyMapping
 from aav_legacy.speed_control import SpeedControl, SpeedControlConfig
@@ -71,7 +85,7 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 import serial
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 
 
 class LegacyUartBridge(Node):
@@ -90,6 +104,9 @@ class LegacyUartBridge(Node):
         self.uplink = self.declare_parameter('uplink', False).value
         allow = self.declare_parameter('allow_programs_without_timeout', False).value
         uplink_timeout = self.declare_parameter('uplink_timeout', 0.2).value
+        # Where the steering calibration may run (uart_relay.CAL_WHERE): none, stands or
+        # bench. The hardware lead's to set; none by default.
+        calibration = self.declare_parameter('steering_calibration', 'none').value
         defaults = LegacyMapping()
         mapping = LegacyMapping(**{
             k: self.declare_parameter(k, v).value for k, v in vars(defaults).items()})
@@ -102,7 +119,13 @@ class LegacyUartBridge(Node):
             loop = SpeedControl(SpeedControlConfig(**{
                 k: float(self.declare_parameter(f'speed_loop.{k}', float(v)).value)
                 for k, v in vars(SpeedControlConfig()).items()}))
-        self.relay = Relay(mapping, timeout, version, loop, odom_timeout)
+        self.relay = Relay(mapping, timeout, version, loop, odom_timeout, calibration)
+        self.relay.uplink_timeout = uplink_timeout
+        if calibration != 'none':
+            self.get_logger().warning(
+                f'steering_calibration {calibration}: the hardware panel may make the steering '
+                'actuator limp or jog it. Only with the hardware lead, the car on stands or '
+                'the ESP32 on the bench')
         if loop:
             self.create_subscription(Odometry, 'vehicle/odom', self.on_odom, 10)
             self.get_logger().info(f'speed_loop.mode pi: closed on /vehicle/odom, {loop.cfg}')
@@ -122,6 +145,15 @@ class LegacyUartBridge(Node):
             self.steering_pub = self.create_publisher(ActuatorState, 'vehicle/steering', 10)
             self.brake_pub = self.create_publisher(ActuatorState, 'vehicle/brake', 10)
             self.rc_pub = self.create_publisher(RcSticks, 'vehicle/rc', 10)
+            self.raw_pubs = (
+                self.create_publisher(ActuatorRaw, 'vehicle/steering_actuator/raw', 10),
+                self.create_publisher(ActuatorRaw, 'vehicle/brake_actuator/raw', 10))
+            self.cal_pub = self.create_publisher(String, 'vehicle/steering_actuator/calibration',
+                                                 10)
+            self.cal_line = None
+            self.cal_said = None
+            self.create_subscription(SteeringCalibration, 'drivers/buttons/steering_calibration',
+                                     self.on_calibration, 10)
             self.create_timer(0.01, self.read_uplink)
         # Say once, latched, that this drives the real car (/system/source).
         latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
@@ -161,8 +193,8 @@ class LegacyUartBridge(Node):
                     'a person at the e-stop')
         else:
             self.get_logger().info(
-                'frame_version 2: relaying the counter of the Orin from control/car/heartbeat; '
-                'the ESP32 brakes 100 ms after it stops changing')
+                f'frame_version {version}: relaying the counter of the Orin from '
+                'control/car/heartbeat; the ESP32 brakes 100 ms after it stops changing')
 
     def now(self):
         return self.get_clock().now().nanoseconds * 1e-9
@@ -179,6 +211,20 @@ class LegacyUartBridge(Node):
     def on_estop(self, msg):
         if self.relay.set_estop(msg.data):
             self.get_logger().warning('e-stop ON: braking' if msg.data else 'e-stop released')
+
+    def on_calibration(self, msg):
+        self.relay.calibrate(msg.mode, msg.target, self.now())
+
+    def say_calibration(self, now):
+        """Publish the calibration's line on each change, and at 2 Hz while asked."""
+        line = ur.calibration_line(self.relay.cal_wanted(now), self.relay.cal_refusal(now),
+                                   self.reader.latest)
+        due = self.relay.cal_wanted(now) and (self.cal_said is None or now - self.cal_said >= 0.5)
+        if line != self.cal_line or due:
+            if line != self.cal_line:
+                self.get_logger().info(f'steering calibration: {line}')
+            self.cal_line, self.cal_said = line, now
+            self.cal_pub.publish(String(data=line))
 
     def open_port(self):
         """Open the port (a device or a pyserial URL); on failure, say so and try later."""
@@ -215,7 +261,9 @@ class LegacyUartBridge(Node):
             return
         stamp = self.get_clock().now().to_msg()
         for u in self.reader.feed(data, now):
+            self.relay.uplink_seen(now)
             self.publish_uplink(u, stamp, now)
+        self.say_calibration(now)
         fresh = self.reader.fresh(now)
         if fresh != self.uplink_was_fresh:
             if fresh:
@@ -236,6 +284,11 @@ class LegacyUartBridge(Node):
             msg = ActuatorState(command=float(cmd), measured=float(measured))
             msg.header.stamp = stamp
             pub.publish(msg)
+        for pub, counts, cal in ((self.raw_pubs[0], u.steering_counts, u.calibration),
+                                 (self.raw_pubs[1], u.brake_counts, 0)):
+            raw = ActuatorRaw(**ur.raw_fields(counts, cal))
+            raw.header.stamp = stamp
+            pub.publish(raw)
         if self.last_status is None or now - self.last_status >= 0.1:
             self.last_status = now
             status = VehicleStatus(**ur.status_fields(u))

@@ -1,4 +1,4 @@
-//! The debug HUD's settings: every topic name, the frames, and its limits.
+//! The debug HUD's settings: every topic name, the frames, its limits, and the look.
 //!
 //! They live in `config/debug_hud.yaml`, a ROS parameters file. The program carries a
 //! copy of it as its defaults ([`DebugConfig::default`]), so no topic name is written in
@@ -7,6 +7,7 @@
 
 use std::time::Duration;
 
+use hud_core::{robot::EggSettings, theme::ThemeName};
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -133,10 +134,11 @@ pub enum Number {
     NdtMapCell,
     VoxelsCubeSize,
     HealthStaleAfter,
+    EasterEggAfter,
 }
 
 impl Number {
-    pub const ALL: [Number; 8] = [
+    pub const ALL: [Number; 9] = [
         Number::StaleAfter,
         Number::CubeSize,
         Number::PoseWindow,
@@ -145,6 +147,7 @@ impl Number {
         Number::NdtMapCell,
         Number::VoxelsCubeSize,
         Number::HealthStaleAfter,
+        Number::EasterEggAfter,
     ];
 
     pub fn parameter(self) -> &'static str {
@@ -157,6 +160,7 @@ impl Number {
             Self::NdtMapCell => "ndt_map_cell",
             Self::VoxelsCubeSize => "voxels_cube_size",
             Self::HealthStaleAfter => "health_stale_after",
+            Self::EasterEggAfter => "easter_egg_after",
         }
     }
 }
@@ -210,6 +214,13 @@ pub struct DebugConfig {
     pub voxels_cube_size: f64,
     /// Seconds without `/localization/health` before it shows STALE (it comes at 1 Hz).
     pub health_stale_after: f64,
+    /// The colours (`hud_core::theme`), as the HUD's.
+    pub theme: ThemeName,
+    /// The little robot (hud-core's `robot`): its eyes peek over the bottom of the 3D
+    /// view after `easter_egg_after` seconds of quiet.
+    pub easter_egg: bool,
+    /// Seconds without input, change or movement before the eyes peek.
+    pub easter_egg_after: f64,
     /// The car and its sensors from above, whose points make no cube: not a parameter,
     /// the command line's `--own-box` (the launch file works it out from vehicle.yaml).
     #[serde(skip)]
@@ -364,6 +375,7 @@ impl DebugConfig {
             Number::NdtMapCell => self.ndt_map_cell,
             Number::VoxelsCubeSize => self.voxels_cube_size,
             Number::HealthStaleAfter => self.health_stale_after,
+            Number::EasterEggAfter => self.easter_egg_after,
         }
     }
 
@@ -378,6 +390,7 @@ impl DebugConfig {
             Number::NdtMapCell => &mut self.ndt_map_cell,
             Number::VoxelsCubeSize => &mut self.voxels_cube_size,
             Number::HealthStaleAfter => &mut self.health_stale_after,
+            Number::EasterEggAfter => &mut self.easter_egg_after,
         };
         *slot = value;
     }
@@ -395,6 +408,14 @@ impl DebugConfig {
     /// [`DebugConfig::keep_cubes_for`] as a Duration.
     pub fn keep_cubes_for(&self) -> Duration {
         Duration::from_secs_f64(self.keep_cubes_for)
+    }
+
+    /// The little robot's settings.
+    pub fn easter_egg_settings(&self) -> EggSettings {
+        EggSettings {
+            on: self.easter_egg,
+            idle_after: Duration::from_secs_f64(self.easter_egg_after),
+        }
     }
 
     /// [`DebugConfig::health_stale_after`] as a Duration.
@@ -446,6 +467,21 @@ mod tests {
         assert!(c.ndt_map.ends_with(".pcd"));
         assert_eq!(c.voxel_settings().size, Metres(0.25));
         assert!(c.health_stale_after() > c.stale_after());
+        assert_eq!(c.theme, ThemeName::InitialD);
+        assert!(c.easter_egg);
+        assert_eq!(c.easter_egg_settings().idle_after, Duration::from_secs(60));
+    }
+
+    #[test]
+    fn the_theme_can_change() {
+        let day = BUILT_IN_YAML.replace("theme: initial_d", "theme: latte");
+        let c = DebugConfig::from_yaml(&day).expect("latte is a theme");
+        assert_eq!(c.theme, ThemeName::Latte);
+        let bad = BUILT_IN_YAML.replace("theme: initial_d", "theme: purple");
+        assert!(matches!(
+            DebugConfig::from_yaml(&bad),
+            Err(ConfigError::Yaml(_))
+        ));
     }
 
     #[test]

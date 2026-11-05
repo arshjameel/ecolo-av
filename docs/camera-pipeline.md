@@ -9,7 +9,7 @@ settings and why, what was measured on a Mac, and what to check at the car.
     - On the Orin, **one program per camera** (`camera_stream`) unpacks it, undistorts
       it and runs **RF-DETR Nano**. Raw pictures never cross the network.
     - On a Mac, the whole chain takes **27 ms** from the picture to its detections:
-      GStreamer with VideoToolbox, now the default. Measured with `pixi run stream-check`.
+      GStreamer with VideoToolbox, now the default. Measured with `pixi run measure stream`.
     - Calibrating the cameras at the car: `pixi run calibrate-camera`
       ([camera calibration](camera-calibration.md)).
 
@@ -44,7 +44,7 @@ The same for `front_right`, in a second program.
 | The detector | `aav_detector.detectors.load_detector` | imported, not copied |
 | Start it, the car | `car.launch.py machine:=orin`: its `camera_stream` part, set in `orin.yaml` | [below](#on-the-car-carlaunchpy) |
 | Start it, by hand | `ros2 launch aav_camera_stream camera_stream.launch.py host:=<pi> decoder:=gst-nvidia` | on the Orin |
-| Test it | `pixi run -e ml stream-check` | a Mac, no car |
+| Test it | `pixi run -e ml measure stream` | a Mac, no car |
 | A Mac's decoder | the `gst` environment in `pixi.toml`: `pixi install -e gst` | [below](#decoding-on-a-mac) |
 | Calibrate a camera | `pixi run calibrate-camera front_left` | [camera calibration](camera-calibration.md) |
 
@@ -95,7 +95,7 @@ Check it at the car, and fix it on the router.
 
 | Run | Result |
 |---|---|
-| `pixi run -e ml stream-check --gst` (the watchdog as on the car) | `front_left_stream` OK in all 604 of its states over 60 s; **STALE 1.1 s** after the encoder stopped |
+| `pixi run -e ml measure stream --gst` (the watchdog as on the car) | `front_left_stream` OK in all 604 of its states over 60 s; **STALE 1.1 s** after the encoder stopped |
 | `car.launch.py` itself, with a stand-in machine file: two test streams from a local MediaMTX, `decoder: ffmpeg`, RF-DETR (`.pth`) | both nodes started from the part; 15 detections a second from each camera; the watchdog watched both; the right stream's sender stopped: `front_right_stream STALE`, the left one stayed OK |
 | The Orin, the Pi, the real cameras | [[untested]] |
 
@@ -159,12 +159,12 @@ Check it at the car, and fix it on the router.
     environment's packages (all 22 environment-platform pairs compared, 24 Oct). The node
     runs its `gst-launch-1.0` as the child program, as on the Orin.
 
-`/diagnostics` says which decoder runs (`decoder`); `stream-check` checks a Mac gets
+`/diagnostics` says which decoder runs (`decoder`); `measure stream` checks a Mac gets
 `gst-mac`.
 
 ## Measured on a Mac (24 Oct)
 
-`pixi run -e ml stream-check`, Ben's Mac (Apple silicon), other helpers' work running
+`pixi run -e ml measure stream`, Ben's Mac (Apple silicon), other helpers' work running
 (load average 5-12). Gazebo's road world, the car rolling at 0.3 m/s towards the stop
 sign, 60 s each. **measured**:
 

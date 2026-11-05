@@ -162,7 +162,7 @@ Two more, for the automatic drivers only (Nav2 and the AI slot; never a person o
 
 ## 8. The real graph, three ways
 
-The same layers, as they really run: `pixi run graph-picture` saved each one from a live
+The same layers, as they really run: `pixi run tools/ros.sh python3 tools/graph_picture.py` saved each one from a live
 profile on Ben's Mac (saved 20 Oct, before the output mux). Read them left to right. The middle stays the same in all
 three; only the left edge (where the data comes from) and the right edge (who plays the
 car) change.

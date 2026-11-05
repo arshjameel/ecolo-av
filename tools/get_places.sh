@@ -2,7 +2,7 @@
 # Download the place database, ottawa.db, into maps/places/ (the map window's place
 # search reads it there). It stays out of git: GitHub warns at 50 MB.
 #
-# usage: tools/get_places.sh      (or: pixi run get-places)
+# usage: tools/get_places.sh      (or: pixi run get places)
 #
 # ottawa.db: 51 MB of SQLite, one table of 606,628 named places around Ottawa. The
 # 2025-26 team made it from OpenStreetMap, so the data is © OpenStreetMap contributors,

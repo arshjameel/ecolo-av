@@ -211,7 +211,7 @@ tests 4.1 and 4.3 run in a lot.
 
 ## 9. On stands: disagreeing on purpose
 
-The preflight on stands (`pixi run preflight`, 29 Oct; [Actuator tests](actuator-tests.md#the-preflight-on-stands))
+The preflight on stands (`pixi run actuator-test preflight --stands`, 29 Oct; [Actuator tests](actuator-tests.md#the-preflight-on-stands))
 lifts the car, so the wheels spin in the air. On stands, `actuator-test` caps the speed
 at 0.3 m/s.
 
@@ -231,7 +231,7 @@ at 0.3 m/s.
 |---|---|
 | The wheels | read the motor's speed: exactly what we want to test |
 | `ekf_local` | adds up the wheel speed: it thinks the car drove away. Ignore it on stands |
-| The watchdog | expect **DISAGREE**, latched: 0.3 m/s of wheels against a still GPS is over its 0.15 m/s limit. It holds only Nav2 and friends, not `actuator-test`. Clear it after: `pixi run watchdog-clear` |
+| The watchdog | expect **DISAGREE**, latched: 0.3 m/s of wheels against a still GPS is over its 0.15 m/s limit. It holds only Nav2 and friends, not `actuator-test`. Clear it after: `pixi run clear watchdog` |
 | The preflight's check | wheels follow the command; the IMU's speed change stays under 0.4 x the wheels', the GPS's Doppler under 0.1 m/s: that's a **pass**. While it runs, an IMU that says the car moves stops it |
 
 Off the stands, the same disagreement means a fault. On the stands, it means the wheels

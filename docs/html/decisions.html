@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a class="here" href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -283,7 +287,7 @@ answer.</p>
 <td>Today's loop overshoots about 15% (0.57 m/s for 0.5) because of the PI's zero, not windup. The weight moves the zero and leaves the poles and margins alone. On the model: no overshoot at the guessed throttle, none at a 5x drag, 8% at a 5x weaker throttle (today 17%, and 29% short of 2 m/s); phase margin 42° or more up to a 2x stronger throttle, its lag doubled, 110 ms late. The real gains still come from the measured a_max and drag (TODO 52b)</td>
 </tr>
 <tr>
-<td>A linear state-space model of the car, for tuning and the report (24 Oct): speed (first order, the spine's PI around it), steering (second order), the path errors (the bicycle, linearised), the delays; <code>aav_ego</code> <code>vehicle_model.py</code>, <code>pixi run vehicle-model</code></td>
+<td>A linear state-space model of the car, for tuning and the report (24 Oct): speed (first order, the spine's PI around it), steering (second order), the path errors (the bicycle, linearised), the delays; <code>aav_ego</code> <code>vehicle_model.py</code>, <code>pixi run python3 tools/vehicle_model.py</code></td>
 <td>Ben asked for "a matrix control thing ... maybe second order system" (24 Oct), in SYSC 3600's terms (its professor supervises the capstone). It shows what kinematics can't: the speed loop settles in about 13 s; the delays cost the lateral loop phase margin (52° → 31° at 1 m/s in the worst case); Gazebo steers 0.1 s slower than <code>vehicle.yaml</code>. It never drives the car; it is refit from the actuator tests (<a href="vehicle-model.html">The car as a linear model</a>)</td>
 </tr>
 <tr>
@@ -504,7 +508,7 @@ answer.</p>
 <td>Ben, 22 Oct: "I thought we decided to go mppi"</td>
 </tr>
 <tr>
-<td><strong>The car may back up</strong> (0.5 m/s at most), where the lidar watches behind it (the rear camera later); collision_monitor then guards a box behind the rear bumper. <strong>Off by default on the car since 26 Oct</strong> (<code>reversing:=true</code> to turn it on): the wheel sensors can't tell direction yet (H5); on again once H5 is answered</td>
+<td><strong>The car may back up</strong> (0.5 m/s at most), where the lidar watches behind it (the rear camera later); collision_monitor then guards a box behind the rear bumper. <strong>On the car by default again since 1 Nov</strong> (Ben: "reverse and uturn should be in"; off 26 Oct-1 Nov): until the wheels tell direction (H5), the speed's sign is the last command's; the car's planner is then the lattice</td>
 <td>Driving forward only, a U-turn in a narrow lane works about half the time and can leave the car facing a wall. Allowed to reverse, it makes a three-point turn and reaches every goal</td>
 <td>Ben, 22 Oct: "Yes the car can reverse"</td>
 </tr>
@@ -572,7 +576,7 @@ answer.</p>
 <td>Ben, 24 Oct: "aav detector yes"</td>
 </tr>
 <tr>
-<td><strong>A HUD that drops out holds Nav2 until a person clears it</strong> (latched, <code>hud LOST</code>). One dropout within 5 s of its first beat is forgiven; any other latches, even once it beats again. A person checks the screen, then <code>pixi run watchdog-clear</code> (the same service as a GPS jump)</td>
+<td><strong>A HUD that drops out holds Nav2 until a person clears it</strong> (latched, <code>hud LOST</code>). One dropout within 5 s of its first beat is forgiven; any other latches, even once it beats again. A person checks the screen, then <code>pixi run clear watchdog</code> (the same service as a GPS jump)</td>
 <td>The safety drivers rely on the screen. A HUD that crashed once may crash again; driving on by itself after systemd restarts it hides that. A window's slow first frames shouldn't need a person, so start-up gets one free dropout. The watchdog's own stalls never latch it (<a href="hud.html#the-heartbeat">HUD</a>)</td>
 <td>Ben, 24 Oct</td>
 </tr>

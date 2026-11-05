@@ -46,7 +46,7 @@ It watches `provenance.SENSORS`: IMU, GPS, three cameras, radar, lidar, `/vehicl
 |---|---|
 | Subscribes | `/ego/actuator_cmd` (`ackermann_msgs/AckermannDriveStamped`), `/system/sensor_mux/state`, `/system/source` |
 | Publishes | `/control/<target>/actuator_cmd` (ego's command, unchanged, while OPEN); `/control/<target>/heartbeat` (`aav_interfaces/Heartbeat`, counter +1 per command passed on, a byte); `/safety/output_mux/state` (`std_msgs/String`, 2 Hz and on change: OPEN, WAIT or STOP, the target, and why) |
-| Serves | `/safety/output_mux/clear` (`std_srvs/Trigger`): a person reopens a latched STOP (`pixi run gate-clear`) |
+| Serves | `/safety/output_mux/clear` (`std_srvs/Trigger`): a person reopens a latched STOP (`pixi run clear gate`) |
 | Parameters | `target` (`car`), `settle` (2.0 s), `stale_after` (3.0 s) |
 
 Modules:

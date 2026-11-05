@@ -70,10 +70,10 @@ keyboard → `/drivers/keyboard/cmd_vel` → twist_mux → ego → `/ego/actuato
 | `pixi run sim` | Gazebo instead of the turtle ([Simulation](simulation.md)) |
 | `pixi run bench` | the real car's software, with stand-ins for the hardware ([Bench mode](bench.md)) |
 | `pixi run bench-check` | starts the bench and tests the whole graph: about 2 minutes |
-| `pixi run get-models`, then `pixi run detect picture:=ros/perception/aav_detector/test/stop_sign.jpg` | RF-DETR Nano finds a stop sign in a picture (`detector:=yolo` for YOLO; [Perception](perception.md)) |
-| `pixi run graph-picture` | saves the running graph as a picture |
+| `pixi run get models`, then `pixi run detect picture:=ros/perception/aav_detector/test/stop_sign.jpg` | RF-DETR Nano finds a stop sign in a picture (`detector:=yolo` for YOLO; [Perception](perception.md)) |
+| `pixi run tools/ros.sh python3 tools/graph_picture.py` | saves the running graph as a picture |
 | `pixi run rviz` | RViz with the driving layout |
-| `pixi run estop`, `pixi run estop-clear` | stop every driver; let them go again |
+| `pixi run estop`, `pixi run clear estop` | stop every driver; let them go again |
 | `pixi run doctor` | can this computer join the car's network? What to fix |
 | `pixi run test` | every test |
 | `pixi run docs` | rebuilds these pages |
@@ -94,5 +94,5 @@ network, driving and watching the car, and Gazebo.
 | The turtle doesn't move | click into the keyboard terminal, and hold the key. Then see [when nothing moves](simulation.md#when-nothing-moves). |
 | Odd build errors after `git pull` | delete `build/`, `install/` and `log/`, then `pixi run build` |
 | Two computers can't see each other | the same `ROS_DOMAIN_ID` on both: see [Platforms](platforms.md) |
-| Nodes hang at start-up, or the sim never spawns the car | `pixi run shm-clean`: it removes Fast DDS's shared-memory files left by programs that died (515 of them on 15 Oct). Only with `AAV_RMW=fastdds`: Cyclone, the default since 23 Oct, leaves none. Stop every ROS program first |
+| Nodes hang at start-up, or the sim never spawns the car | `pixi run fastdds shm clean`: it removes Fast DDS's shared-memory files left by programs that died (515 of them on 15 Oct). Only with `AAV_RMW=fastdds`: Cyclone, the default since 23 Oct, leaves none. Stop every ROS program first |
 | Another computer can't see my sim or bench | that's on purpose: the stand-ins stay on their computer. To share one: `AAV_DISCOVERY=SUBNET pixi run sim` |

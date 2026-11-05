@@ -173,7 +173,7 @@ The "standalone" Digital Twin Tool (version 2) was only announced as "coming soo
 
 1. Download Carleton's map data (once; it stays out of git):
    ```bash
-   pixi run get-carla-osm          # maps/carla/carleton.osm, about 6 MB
+   pixi run get carla-osm          # maps/carla/carleton.osm, about 6 MB
    ```
    The box is 900 m west and south, 700 m east and north of our datum: the campus,
    Bronson Avenue, Colonel By Drive, Sunnyside. `CARLA_OSM_AROUND=w,s,e,n` (metres)

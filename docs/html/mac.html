@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -169,7 +173,7 @@ without a reflash.</p>
 <tr>
 <td>2</td>
 <td><code>export ROS_DOMAIN_ID=42</code> in each terminal</td>
-<td>ROS only talks within one domain (0–101 is safe on Linux; Fast DDS breaks above 232). Ours is 42, so it never mixes with the 2025-26 software (<code>pixi run net-map</code> shows which domains theirs uses)</td>
+<td>ROS only talks within one domain (0–101 is safe on Linux; Fast DDS breaks above 232). Ours is 42, so it never mixes with the 2025-26 software (<code>pixi run bash tools/net_map.sh</code> shows which domains theirs uses)</td>
 </tr>
 <tr>
 <td>3</td>
@@ -193,20 +197,20 @@ without a reflash.</p>
 </tr>
 </tbody>
 </table></div>
-<h3 id="see-whats-on-the-network-pixi-run-net-map">See what's on the network: <code>pixi run net-map</code></h3>
+<h3 id="see-whats-on-the-network-pixi-run-bash-toolsnet_mapsh">See what's on the network: <code>pixi run bash tools/net_map.sh</code></h3>
 <p>It lists every machine on the network you've joined: IP, name, MAC, a guess at the maker
 (Raspberry Pi, NVIDIA, Espressif = an ESP32), open ports (SSH, web, Foxglove), and the
 <strong>ROS domains each machine is talking in</strong>. It needs no ROS and no login, and changes
 nothing: it pings, knocks on a few ports, and listens.</p>
-<pre class="highlight"><code class="language-bash">pixi run net-map                       # about 25 s
-pixi run net-map --listen 30 --out ~/net-map.md</code></pre>
+<pre class="highlight"><code class="language-bash">pixi run bash tools/net_map.sh                       # about 25 s
+pixi run bash tools/net_map.sh --listen 30 --out ~/net-map.md</code></pre>
 <ul>
 <li>It hears <strong>Humble and Jazzy alike</strong>: it reads the raw discovery packets, not ROS. So it
   shows which domain the 2025-26 software uses without logging in to anything.</li>
 <li>"No ROS discovery heard" with ROS running means multicast isn't reaching the Mac:
   WiFi routers often drop it. Try Ethernet, or <code>ROS_STATIC_PEERS</code> below.</li>
 <li>On a Mac, programs started by Python see an empty ARP table (Local Network privacy),
-  so <code>net-map</code> reads it from bash. If the MAC column is empty, check step 4b.</li>
+  so <code>bash tools/net_map.sh</code> reads it from bash. If the MAC column is empty, check step 4b.</li>
 <li>Tried on Ben's home network, 15 Oct: 13 machines in 25 s, and a test talker on domain
   77 heard. <strong>Not yet tried on the car.</strong></li>
 </ul>
@@ -246,7 +250,7 @@ clock is off: the car's computers keep the time (the Orin serves it, see
 </tr>
 <tr>
 <td>Stop everything</td>
-<td><code>pixi run estop</code>, then <code>pixi run estop-clear</code> when it's safe</td>
+<td><code>pixi run estop</code>, then <code>pixi run clear estop</code> when it's safe</td>
 </tr>
 <tr>
 <td>The 3D view: map, costmaps, path, the car</td>
@@ -287,7 +291,7 @@ Metal) on the camera's JPEG pictures, which suit WiFi. At home, the bench plays 
 </tr>
 <tr>
 <td>2, once, if you like</td>
-<td><code>pixi run -e ml export-coreml</code></td>
+<td><code>pixi run -e ml python3 tools/export_model.py --format coreml</code></td>
 <td>makes <code>models/rf-detr-nano.mlpackage</code>, the Core ML model (8 s): 10 ms a picture, not 16. Then uncomment its line in <code>laptop.yaml</code></td>
 </tr>
 <tr>
@@ -320,12 +324,12 @@ WiFi connection, with no ROS on the Mac.</p>
 <li><strong>Foxglove:</strong> the same idea; its free plan needs an account.</li>
 </ul>
 <p>In either app: Open connection → Foxglove WebSocket → <code>ws://&lt;the Orin's IP&gt;:8765</code>.</p>
-<p><strong>Our layouts</strong> (24 Oct): <code>tools/foxglove/driving.json</code>, <code>sensors-health.json</code> and
-<code>map.json</code>. In the app's Layouts menu, import one from its file. What each shows, where
+<p><strong>Our layouts</strong> (24 Oct): <code>tools/foxglove/driving.json</code>, <code>sensors-health.json</code>,
+<code>map.json</code>, and <code>cockpit.json</code> (1 Nov: all on one screen). In the app's Layouts menu, import one from its file. What each shows, where
 each bridge listens, and how much it costs the WiFi: <a href="foxglove.html">Watch from a laptop</a>.
 In the simulator: <code>pixi run sim foxglove:=true</code>, then <code>ws://localhost:8765</code>.</p>
-<p><strong>Check a bridge serves the layouts</strong> (no ROS needed): <code>pixi run layout-check</code> (the sim
-here) or <code>pixi run layout-check ws://192.168.1.140:8765</code> (the Jetson); add <code>--data</code> to
+<p><strong>Check a bridge serves the layouts</strong> (no ROS needed): <code>pixi run python3 tools/layout_check.py</code> (the sim
+here) or <code>pixi run python3 tools/layout_check.py ws://192.168.1.140:8765</code> (the Jetson); add <code>--data</code> to
 measure what each topic sends. Each topic is served, off (it needs a part that's off by
 default) or MISSING.</p>
 <div class="table-wrap"><table>
@@ -351,7 +355,7 @@ default) or MISSING.</p>
 <p>On macOS, Gazebo's window has to run as a separate program from the simulator.
 <code>pixi run sim</code> starts both, and points the window's camera at the car:</p>
 <pre class="highlight"><code class="language-bash">pixi run sim               # the simulator, its window, and RViz
-pixi run gz-window         # opens the window again, if you closed it
+pixi run tools/ros.sh tools/gz_window.sh         # opens the window again, if you closed it
 pixi run sim follow:=false # a free camera instead of one that follows the car</code></pre>
 <p>Cameras and lidars inside Gazebo can crash it on some Macs. Ours don't: in the road world
 (<code>pixi run sim world:=road</code>), the cameras, the radar stand-in and the roof
@@ -394,7 +398,7 @@ not the Mac:</p>
 </tr>
 </tbody>
 </table></div>
-<p>The whole graph, 10 min each (<code>pixi run timing-test</code>, Gazebo's lot, 23 Oct):</p>
+<p>The whole graph, 10 min each (<code>pixi run measure timing</code>, Gazebo's lot, 23 Oct):</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>

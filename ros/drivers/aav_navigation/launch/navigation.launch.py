@@ -5,6 +5,7 @@ Nav2 as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out to tw
       [radar:=false] [lidar:=false] [collision_monitor:=<radar or lidar>]
       [camera_obstacles:=false] [ghost:=false] [voxels:=false]
       [reversing:=false] [max_speed:=] [controller:=mppi] [planner:=lattice]
+      [diffusion_model:=] [diffusion_provider:=CPUExecutionProvider]
       [plan_around:=true]
       [tracker:=none] [live_swap:=false] [amcl:=false] [amcl_x:=0.0] [amcl_y:=0.0]
       [amcl_yaw:=0.0] [amcl_map:=]
@@ -36,18 +37,27 @@ localization):
                     over the roof, all the way round), for the costmap and collision_monitor
   lifecycle_manager brings them all up
 
-Trials (docs/trials.md), each beside the default and scored by pixi run controller-compare:
+Trials (docs/trials.md), each beside the default and scored by pixi run measure controllers:
   planner:=hybrid|lattice|smac2d|navfn|theta_star  the planner behind the plugin name
                           GridBased (the behaviour trees never change; docs/controllers.md,
                           Planners). hybrid, the default: SmacPlannerHybrid, Dubins or
                           Reeds-Shepp. lattice: SmacPlannerLattice on our own primitives
-                          (config/lattice_ackermann.json, pixi run lattice-primitives), for
-                          the car's turning radius and the map's cells (refused if either
-                          differs), backwards too with reversing:=true.
+                          (config/lattice_ackermann.json, from
+                          pixi run python3 tools/lattice_primitives.py), for the car's turning
+                          radius and the map's cells (refused if either differs),
+                          backwards too with reversing:=true.
                           lattice_headings:=32 takes the trial file with 32 headings
                           (lattice_ackermann_32.json). smac2d, navfn,
                           theta_star: grid paths that ignore the turning radius, so the
-                          follower must round their corners; car.launch.py refuses them
+                          follower must round their corners; car.launch.py refuses them.
+                          diffusion (aav_diffusion_planner): a model draws 16 paths, a
+                          guard checks them, the lattice's path when none passes or it is
+                          late. Its diffusion_planner serves compute_path_to_pose and
+                          publishes /plan; planner_server runs the lattice behind it, its
+                          action renamed compute_path_to_pose_lattice and its plan
+                          /drivers/nav/diffusion/lattice_plan. diffusion_model:= (empty:
+                          models/diffusion/planner.onnx), diffusion_provider:= (ONNX
+                          Runtime's). car.launch.py refuses it
   tracker:=pure_pursuit|stanley|lqr|mpc|mpc_full  aav_track's track node follows the path instead
                           of controller_server: it serves follow_path (bt_navigator's
                           FollowPath) and publishes cmd_vel_nav; controller_server keeps
@@ -155,7 +165,7 @@ def lattice_for(share, v, map_yaml, headings=vehicle.LATTICE_HEADINGS[0]):
 
     SmacPlannerLattice measures its moves in the file's cells: on a map with other cells,
     or for a car that now turns wider, it would plan moves the car can't make. Refuse
-    rather than start it so (pixi run lattice-primitives makes a new file).
+    rather than start it so (pixi run python3 tools/lattice_primitives.py makes a new file).
     """
     path = f'{share}/config/{vehicle.lattice_file_name(headings)}'
     with open(path) as f:
@@ -167,8 +177,24 @@ def lattice_for(share, v, map_yaml, headings=vehicle.LATTICE_HEADINGS[0]):
         wrong.append(f"{meta.get('num_of_headings')} headings, not {headings}")
     if wrong:
         raise ValueError(f'planner:=lattice: {path}: ' + '; '.join(wrong) +
-                         '. Run pixi run lattice-primitives, or pick another planner')
+                         '. Run pixi run python3 tools/lattice_primitives.py, '
+                         'or pick another planner')
     return path
+
+
+def diffusion_params(nav2, v, reversing):
+    """Return the guard's numbers for diffusion_planner: the outline, turns, the goal."""
+    costmap = nav2['global_costmap']['global_costmap']['ros__parameters']
+    pad = float(costmap.get('footprint_padding', 0.0))
+    outline = [[x + (pad if x > 0 else -pad), y + (pad if y > 0 else -pad)]
+               for x, y in vehicle.footprint_points(v)]
+    server = nav2['controller_server']['ros__parameters']
+    goal = server[server['goal_checker_plugins'][0]]
+    return {'footprint': vehicle.polygon(outline), 'reversing': reversing,
+            # The teachers' own smoothed paths dip just under full lock (the design).
+            'min_radius': 0.95 * vehicle.min_turning_radius(v),
+            'goal_xy': float(goal['xy_goal_tolerance']),
+            'goal_yaw': float(goal['yaw_goal_tolerance'])}
 
 
 def nodes(context):
@@ -200,8 +226,8 @@ def nodes(context):
     map_yaml = LaunchConfiguration('map').perform(context)
     headings = (LaunchConfiguration('lattice_headings').perform(context).strip() or
                 vehicle.LATTICE_HEADINGS[0])
-    lattice_file = (lattice_for(share, v, map_yaml, headings) if planner == 'lattice'
-                    else None)
+    lattice_file = (lattice_for(share, v, map_yaml, headings)
+                    if vehicle.server_planner(planner) == 'lattice' else None)
     trees = '_car_reversing.xml' if reversing else '_car.xml'
     rewrites = vehicle.nav2_rewrites(v, reversing, planner)
     rewrites.update({
@@ -227,9 +253,14 @@ def nodes(context):
         allow_substs=True)
 
     smoothed = '/control/cmd_vel_smoothed' if collision_monitor else '/drivers/nav/cmd_vel'
+    # planner:=diffusion: its node answers compute_path_to_pose (bt_navigator's trees ask
+    # it) and publishes /plan; planner_server's lattice, renamed, is its fallback.
+    diffusion = planner == 'diffusion'
     servers = [
         ('nav2_map_server', 'map_server', []),
-        ('nav2_planner', 'planner_server', []),
+        ('nav2_planner', 'planner_server', [
+            ('compute_path_to_pose', 'compute_path_to_pose_lattice'),
+            ('plan', '/drivers/nav/diffusion/lattice_plan')] if diffusion else []),
         # With a trial tracker, it keeps running but its FollowPath goes unused: rcl_action
         # resolves action names with the node's remappings, as topics are.
         ('nav2_controller', 'controller_server', [('cmd_vel', 'cmd_vel_nav')] + (
@@ -297,6 +328,18 @@ def nodes(context):
                         {'tracker': tracker, 'use_sim_time': use_sim_time,
                          'live_swap': IfCondition(
                              LaunchConfiguration('live_swap')).evaluate(context)}]))
+    if diffusion:
+        # Not a lifecycle node: it serves from the start, and falls back to the lattice
+        # until the lattice answers. The guard's numbers from the car and Nav2's files.
+        with open(f'{share}/config/nav2.yaml') as f:
+            nav2 = yaml.safe_load(f)
+        actions.append(Node(
+            package='aav_diffusion_planner', executable='diffusion_planner',
+            name='diffusion_planner', output='screen',
+            parameters=[diffusion_params(nav2, v, reversing), {
+                'model': LaunchConfiguration('diffusion_model').perform(context),
+                'provider': LaunchConfiguration('diffusion_provider').perform(context),
+                'use_sim_time': use_sim_time}]))
     if amcl:
         config = f'{share}/config/amcl.yaml'
         start = {'set_initial_pose': True, 'use_sim_time': use_sim_time}
@@ -389,6 +432,13 @@ def generate_launch_description():
                                           'behind GridBased. hybrid and lattice keep to the '
                                           "car's turning radius; the others don't (sim and "
                                           'bench only). docs/controllers.md, Planners'),
+        DeclareLaunchArgument('diffusion_model', default_value='',
+                              description='with planner:=diffusion: the model (.onnx); '
+                                          'empty: models/diffusion/planner.onnx'),
+        DeclareLaunchArgument('diffusion_provider', default_value='CPUExecutionProvider',
+                              description="with planner:=diffusion: ONNX Runtime's engine "
+                                          '(CPUExecutionProvider, CoreMLExecutionProvider, '
+                                          'CUDAExecutionProvider, TensorrtExecutionProvider)'),
         DeclareLaunchArgument('lattice_headings',
                               default_value=str(vehicle.LATTICE_HEADINGS[0]),
                               description='with planner:=lattice: 16 headings (the default '

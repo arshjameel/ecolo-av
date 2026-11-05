@@ -95,7 +95,7 @@ class LqiConfig:
         return pedals + (sent - pedals) * dt / (lag + dt)
 
 
-# spine-core's LqiConfig::MODEL: the gains `pixi run vehicle-model --lqi` gives for
+# spine-core's LqiConfig::MODEL: the gains `python3 tools/vehicle_model.py --lqi` gives for
 # vehicle.yaml's guesses (test_actuator_model.py checks both copies and the tool agree).
 LQI_MODEL = LqiConfig(k_speed=1.832, k_accel=0.3169, k_integral=0.7015, setpoint_weight=0.5,
                       integral_limit=1.5, dead_band=0.05, max_accel=1.5, max_brake=3.0,

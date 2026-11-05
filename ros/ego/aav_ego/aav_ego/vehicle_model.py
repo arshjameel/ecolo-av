@@ -2,7 +2,7 @@
 The car as a linear model: transfer functions and state space (SYSC 3600's terms).
 
 No ROS imports; numpy and scipy.signal only (tests: test/test_vehicle_model.py; the
-tables and figures: `pixi run vehicle-model`; the page: docs/vehicle-model.md).
+tables and figures: `pixi run python3 tools/vehicle_model.py`; the page: docs/vehicle-model.md).
 Nothing here drives the car: it is for tuning, for checking the delays, and for the report.
 
 Three parts, each linear about one operating point:
@@ -331,7 +331,7 @@ class VehicleModel:
         tau is the slower of the throttle's and the brake's lags (one set of gains for
         both). Held for a tick (ZOH), then the discrete Riccati equation: u~ = -K x.
         Worked out here, once: spine-core keeps the result as constants (no matrices on
-        the ESP32). `pixi run vehicle-model --lqi` prints them.
+        the ESP32). `pixi run python3 tools/vehicle_model.py --lqi` prints them.
         """
         from scipy import linalg
         dt = tick or self.gains.tick
@@ -798,7 +798,7 @@ def with_delay(tf: TF, delay: float, order: int = 2) -> TF:
     return series(tf, pade(delay, order))
 
 
-# --- The summary for pixi run vehicle-model -----------------------------------------------
+# --- The summary for pixi run python3 tools/vehicle_model.py ---------------------------------
 
 def lateral_speeds() -> Tuple[float, ...]:
     """Return the speeds the tables use: ego's 1 m/s cap now, the spine's 3 later."""

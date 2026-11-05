@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -211,13 +215,13 @@ path, the margin and σ.</p>
 <td><code>OUTSIDE</code></td>
 <td><strong>on</strong></td>
 <td>the car itself is outside</td>
-<td>a person drives in, then <code>pixi run geofence-clear</code></td>
+<td>a person drives in, then <code>pixi run clear geofence</code></td>
 </tr>
 <tr>
 <td><code>JUMP</code></td>
 <td><strong>on</strong></td>
 <td>the pose jumped further than speed × time + 2 m</td>
-<td>a person: <code>pixi run geofence-clear</code></td>
+<td>a person: <code>pixi run clear geofence</code></td>
 </tr>
 <tr>
 <td><code>COASTING</code></td>
@@ -335,7 +339,7 @@ today's firmware anyway.)</p>
 <section class="card"><h2 id="try-it">Try it</h2>
 <pre class="highlight"><code class="language-sh">pixi run bench-check --geofence     # a scripted drive at a 12 m fence must stop inside it
 pixi run sim world:=test_lot geofence_radius:=15   # watch /safety/geofence/state
-pixi run geofence-clear             # after OUTSIDE or JUMP, once the car is back in</code></pre>
+pixi run clear geofence             # after OUTSIDE or JUMP, once the car is back in</code></pre>
 <p>Design: <code>docs/designs/2026-10-29_geofence.md</code>.</p></section>
 <nav class="prevnext"><a class="prev" href="ghost-obstacles.html"><small>Previous</small>← Ghost obstacles</a>
 <a class="next" href="sources-and-targets.html"><small>Next</small>Sources and targets →</a></nav>

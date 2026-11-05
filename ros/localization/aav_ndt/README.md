@@ -6,7 +6,7 @@ NDT in Rust (rclrs), a **trial**: where the car is on a saved lidar map, in x, y
 Ben's idea (28 Oct), after Autoware's `ndt_scan_matcher`; our own code. The design:
 `docs/designs/2026-10-29_ndt.md`. Never TF. Off by default, nothing reads its pose;
 with `ndt_ekf:=true` (a trial) `ekf_global` takes it beside the GPS.
-`controller-compare --ndt` and `--ndt-ekf` score it against Gazebo's truth.
+`measure controllers --ndt` and `--ndt-ekf` score it against Gazebo's truth.
 
 ```
 /sensors/lidar/points ─┐                       ┌─▶ /localization/ndt/pose
@@ -38,7 +38,7 @@ Status: level OK (a good fit), WARN (poor, or no start), ERROR (LOST); message
 `TRACKING`, `WAITING` or `LOST`; values `stamp` (the cloud's), `score_per_point`,
 `overlap`, `iterations`, `match_ms`, `points`, `poor_in_row`, `restarts`,
 `clouds_dropped`, `x`, `y`, `yaw`, and `cov_xx` ... `cov_yawyaw` (-H⁻¹ before k and
-the floors: `controller-compare --ndt` fits k from them).
+the floors: `measure controllers --ndt` fits k from them).
 
 A fit is poor (not published) when its score per point is under
 `min_score_per_point`, it ran out of iterations, or, while tracking, it moved more

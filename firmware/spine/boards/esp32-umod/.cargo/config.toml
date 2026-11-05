@@ -1,5 +1,5 @@
 # Everything here builds for the ESP32 (Xtensa), with Espressif's Rust toolchain:
-# `pixi run esp-tools` installs it, and rust-toolchain.toml picks it ("esp").
+# `pixi run esp tools` installs it, and rust-toolchain.toml picks it ("esp").
 [build]
 target = "xtensa-esp32-none-elf"
 rustflags = [
@@ -11,8 +11,8 @@ rustflags = [
 ]
 
 # `cargo run --release` flashes the board on the USB cable and shows its log: it needs
-# espflash on your PATH (`pixi run esp-tools` puts it in vendor/cargo-tools/bin;
-# `pixi run esp-flash` runs that one).
+# espflash on your PATH (`pixi run esp tools` puts it in vendor/cargo-tools/bin;
+# `pixi run esp flash` runs that one).
 [target.xtensa-esp32-none-elf]
 runner = "espflash flash --chip esp32 --monitor"
 

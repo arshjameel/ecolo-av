@@ -1,5 +1,5 @@
 """
-Late messages and stalls: the numbers `pixi run timing-test` prints (tools/timing_test.py).
+Late messages and stalls: the numbers `pixi run measure timing` prints (tools/timing_test.py).
 
 No ROS here, so the tests run anywhere (tools/tests/test_stalls.py).
 

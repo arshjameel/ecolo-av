@@ -7,7 +7,7 @@
 <!-- Generated from docs/car-screens.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The car&#x27;s two screens</h1>
-<div class="meta">8 min read · 7 sections</div></header>
+<div class="meta">8 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -94,7 +98,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-starts">How it starts</a><a href="#the-settings-configaavscreensenv">The settings: ~/.config/aav/screens.env</a><a href="#which-monitor-names-not-guesses">Which monitor: names, not guesses</a><a href="#install-on-the-car-computer-with-the-screens">Install (on the car computer with the screens)</a><a href="#day-to-day">Day to day</a><a href="#the-2025-26-way-for-comparison">The 2025-26 way, for comparison</a><a href="#what-was-tested">What was tested</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-screens-outside-the-car">The screens outside the car</a><a href="#how-it-starts">How it starts</a><a href="#the-settings-configaavscreensenv">The settings: ~/.config/aav/screens.env</a><a href="#which-monitor-names-not-guesses">Which monitor: names, not guesses</a><a href="#install-on-the-car-computer-with-the-screens">Install (on the car computer with the screens)</a><a href="#day-to-day">Day to day</a><a href="#the-2025-26-way-for-comparison">The 2025-26 way, for comparison</a><a href="#what-was-tested">What was tested</a></nav>
 <div class="lead"><p>Power on the car → the <strong>HUD</strong> fills the small screen, the <strong>map</strong> fills the big one.
 Both start by themselves at login, and come back 5 s after a crash.</p>
 <div class="admonition warning">
@@ -133,6 +137,31 @@ are still to read with <code>--list</code>.</p>
 </tbody>
 </table></div>
 <p>Both are in <code>ros/hud/aav_hud</code> (<a href="hud.html">HUD</a>).</p></div>
+<section class="card"><h2 id="the-screens-outside-the-car">The screens outside the car</h2>
+<p>The HUD and the map stay in the car. Two more screens are for the lab or a laptop, one
+per job (Ben, 3 Nov: "Just the stuff we control"):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Screen</th>
+<th>For</th>
+<th>Where it's going</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Drive</strong>: the <a href="foxglove.html#cockpit">cockpit</a> (Lichtblick)</td>
+<td>Gazebo's view, Nav2's goal, the cubes, the localizers, which algorithms run</td>
+<td>0.3: absorbs the debug screen</td>
+</tr>
+<tr>
+<td><strong>Hardware</strong>: the <a href="hud.html#the-hardware-panel">hardware panel</a></td>
+<td>every sensor, simple buttons, the steering's ends</td>
+<td>stays separate</td>
+</tr>
+</tbody>
+</table></div>
+</section>
 <section class="card"><h2 id="how-it-starts">How it starts</h2>
 <pre class="highlight"><code class="language-text"> power on → desktop login → graphical-session.target ─┬─► aav-hud.service ─► car_screen.sh hud ─► hud --fullscreen --monitor &lt;HUD's&gt;
    (auto-login: a system        (or the autostart     └─► aav-map.service ─► car_screen.sh map ─► map --fullscreen --monitor &lt;map's&gt;
@@ -337,6 +366,10 @@ bash /media/$USER/&lt;stick&gt;/car-kit/car_install.sh --screens             # b
 <td>Try one by hand</td>
 <td><code>~/aav-jazzy/aav.sh ros2 launch aav_hud map.launch.py fullscreen:=true monitor:=HDMI-1</code></td>
 </tr>
+<tr>
+<td>Light colours for a sunny day</td>
+<td><code>theme: latte</code> in <code>ros/hud/aav_hud/config/hud.yaml</code>, <code>map.yaml</code>, <code>debug_hud.yaml</code> and <code>hw_panel.yaml</code>, then restart them (<a href="hud.html#themes-the-screens-colours">Themes</a>); <code>initial_d</code> (black, white, Carleton red) is every screen's default, <code>mocha</code> the soft dark one</td>
+</tr>
 </tbody>
 </table></div>
 <blockquote>
@@ -346,7 +379,7 @@ holds them too. A session with no HUD screen: <code>car.launch.py watch_hud:=fal
 on the test card.</p>
 <p><strong>Latched (24 Oct).</strong> Once the HUD has run 5 s, a crash, freeze or stop holds Nav2
 even after systemd restarts it: the screen says <strong>AUTO STOP, HUD LOST</strong>. A person
-checks the screen, then <code>pixi run watchdog-clear</code>.</p>
+checks the screen, then <code>pixi run clear watchdog</code>.</p>
 </blockquote>
 </section>
 <section class="card"><h2 id="the-2025-26-way-for-comparison">The 2025-26 way, for comparison</h2>

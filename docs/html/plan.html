@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a class="here" href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -102,12 +106,14 @@ into a todo list that we can work through", and "we do want to put mppi in there
 tracker. Only the <strong>MPPI track</strong> (M1-M9) is new. The 15 October plan's S and C items are at
 the end, mapped to these numbers.</p>
 <blockquote>
-<p><strong>The short version</strong>
-- <strong>Software, built and tested in simulation: about 43%</strong> of the committed tasks. <strong>Proven on the car: about 5%</strong> (the audits).
-- <strong>Ahead:</strong> the drivers, ego, the muxes, Gazebo, Nav2, A to B, the HUD. <strong>Behind:</strong> everything that needs the car or new parts: power, calibration, the closed loop.
-- <strong>Next gate, 30 Oct (Know the car):</strong> the car isn't measured yet. That's the most urgent job.
-- <strong>MPPI:</strong> Nav2's default since 22 Oct, tuned for the car in Gazebo, and compared with Regulated Pure Pursuit by <code>pixi run controller-compare</code> (<code>controller:=rpp</code> for the old one; <a href="path-followers.html">controllers</a>). It steers round an obstacle the sensors see.
-- <strong>Status:</strong> ✅ done · 🧪 done in simulation only · 🔧 started · ⬜ not started · 🎯 stretch.</p>
+<p><strong>The short version</strong></p>
+<ul>
+<li><strong>Software, built and tested in simulation: about 43%</strong> of the committed tasks. <strong>Proven on the car: about 5%</strong> (the audits).</li>
+<li><strong>Ahead:</strong> the drivers, ego, the muxes, Gazebo, Nav2, A to B, the HUD. <strong>Behind:</strong> everything that needs the car or new parts: power, calibration, the closed loop.</li>
+<li><strong>Next gate, 30 Oct (Know the car):</strong> the car isn't measured yet. That's the most urgent job.</li>
+<li><strong>MPPI:</strong> Nav2's default since 22 Oct, tuned for the car in Gazebo, and compared with Regulated Pure Pursuit by <code>pixi run measure controllers</code> (<code>controller:=rpp</code> for the old one; <a href="path-followers.html">controllers</a>). It steers round an obstacle the sensors see.</li>
+<li><strong>Status:</strong> ✅ done · 🧪 done in simulation only · 🔧 started · ⬜ not started · 🎯 stretch.</li>
+</ul>
 </blockquote></div>
 <section class="card"><h2 id="how-far-along-by-sub-project">How far along, by sub-project</h2>
 <p>The percentages are judgement, task by task (below), not measurement. "In software" counts
@@ -393,7 +399,7 @@ the next concrete step.</p>
 <td>18 Dec</td>
 <td>🔧</td>
 <td style="text-align: right;">35</td>
-<td>the load report on the Mac (22 Oct, below); the bandwidth budget (23 Oct, <a href="bandwidth.html">bandwidth</a>): only raw cameras overflow a link, CAN 8.5% busy; <code>pixi run bandwidth</code> measured Gazebo (33-35 MB/s). Next: run it on the car, then the Orin's CPU</td>
+<td>the load report on the Mac (22 Oct, below); the bandwidth budget (23 Oct, <a href="bandwidth.html">bandwidth</a>): only raw cameras overflow a link, CAN 8.5% busy; <code>pixi run measure bandwidth</code> measured Gazebo (33-35 MB/s). Next: run it on the car, then the Orin's CPU</td>
 </tr>
 <tr>
 <td>T1.8</td>
@@ -559,7 +565,7 @@ the next concrete step.</p>
 <td>27 Nov</td>
 <td>🔧</td>
 <td style="text-align: right;">70</td>
-<td>24 Oct: boots in QEMU and brakes 111-120 ms after the Motor Pi's frames stop (<code>pixi run esp-qemu-check</code>). The same day, TODO 50: the version 2 serial frame carries the Orin's heartbeat (counter, flags, CRC-8); QEMU brakes 111-120 ms after the counter freezes or the CRCs go bad. Next: flash it on the bench (<a href="esp32-bench.html">ESP32 bench</a>), with <code>frame_version: 2</code></td>
+<td>24 Oct: boots in QEMU and brakes 111-120 ms after the Motor Pi's frames stop (<code>pixi run esp qemu-check</code>). The same day, TODO 50: the version 2 serial frame carries the Orin's heartbeat (counter, flags, CRC-8); QEMU brakes 111-120 ms after the counter freezes or the CRCs go bad. Next: flash it on the bench (<a href="esp32-bench.html">ESP32 bench</a>), with <code>frame_version: 2</code></td>
 </tr>
 <tr>
 <td>T3.7</td>
@@ -1049,7 +1055,7 @@ the next concrete step.</p>
 <td>29 Jan</td>
 <td>🧪</td>
 <td style="text-align: right;">80</td>
-<td>done 23 Oct: <code>/hud/heartbeat</code> while the screen draws; the watchdog stops Nav2 without it (car: <code>watch_hud:=true</code>). Passes in Gazebo (<code>sim-check --faults</code>, <code>hud stop</code>) and with the real window on a Mac. 24 Oct (Ben): latched, a dropout after the HUD's first 5 s holds Nav2 until <code>pixi run watchdog-clear</code>. Next: on the car's screen computer</td>
+<td>done 23 Oct: <code>/hud/heartbeat</code> while the screen draws; the watchdog stops Nav2 without it (car: <code>watch_hud:=true</code>). Passes in Gazebo (<code>sim-check --faults</code>, <code>hud stop</code>) and with the real window on a Mac. 24 Oct (Ben): latched, a dropout after the HUD's first 5 s holds Nav2 until <code>pixi run clear watchdog</code>. Next: on the car's screen computer</td>
 </tr>
 </tbody>
 </table></div>
@@ -1090,9 +1096,9 @@ the next concrete step.</p>
 </tr>
 <tr>
 <td>S-5</td>
-<td>Speed capped at 1 m/s in the firmware and in ego</td>
+<td>Speed capped at 1 m/s in ego; a <strong>throttle cap</strong> in the firmware (the ESP32 can't see the speed)</td>
 <td>🔧</td>
-<td>ego ✅; the firmware's cap with T3.6</td>
+<td>ego ✅; the firmware's throttle cap with T3.6 (TODO 74b)</td>
 </tr>
 </tbody>
 </table></div>
@@ -1130,7 +1136,7 @@ too". It shares the car's model with ego, as the proposal says (section 8.3).</p
 </tr>
 <tr>
 <td>M4</td>
-<td>The comparison: <code>pixi run controller-compare</code></td>
+<td>The comparison: <code>pixi run measure controllers</code></td>
 <td>✅ 22 Oct</td>
 <td>six runs overnight; MPPI did at least as well in each. <strong>MPPI is the default</strong> since 22 Oct (<a href="path-followers.html">controllers</a>)</td>
 </tr>

@@ -92,5 +92,5 @@ gst-soft, gst-mac, opencv), `transport` (tcp or udp), `calibration`, `alpha`, `d
 pixi run build && colcon test --packages-select aav_camera_stream && colcon test-result --verbose
 ```
 
-`pixi run test` runs everything. End to end without the car: `pixi run get-mediamtx`
-once, then `pixi run stream-check`.
+`pixi run test` runs everything. End to end without the car: `pixi run get mediamtx`
+once, then `pixi run measure stream`.

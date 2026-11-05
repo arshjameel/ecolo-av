@@ -157,5 +157,5 @@ colcon ignores `firmware/`. It's built with cargo, PlatformIO or the Pico SDK.
 
 | Part | What it is |
 |---|---|
-| `ros/hud/aav_hud` | the HUD in Rust (raylib and rclrs): the driving screen, the e-stop button, GPS and topic health (`pixi run hud-demo`); and the map window (`pixi run map-demo`). [HUD](hud.md) |
+| `ros/hud/aav_hud` | the HUD in Rust (raylib and rclrs): the driving screen, the e-stop button, GPS and topic health (`pixi run hud --demo`); and the map window (`pixi run map --demo`). [HUD](hud.md) |
 | `archive/2026-27-flutter-hud/` | the 2025-26 Flutter app and its Flask back end, archived 25 Oct (Q29). Not built |

@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">31 min read · 14 sections</div></header>
+<div class="meta">39 min read · 14 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a class="here" href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -253,7 +257,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>NDT on a saved lidar map, our own in Rust (<code>aav_ndt</code>)</td>
-<td>To find the car to centimetres on a map of the lot without RTK, as Autoware does, in code we understand and test on a laptop; scored as a trial before it feeds the EKF</td>
+<td>To find the car to centimetres on a map of the lot without RTK, as Autoware does, in code we understand and test on a laptop; scored as a trial before it feeds the EKF. Its map comes from Gazebo's truth, or from a real drive placed by the car's own EKF (<code>ndt-map build --poses</code>)</td>
 <td>Ben's idea; built by Ben</td>
 <td>2026-10-29</td>
 <td>sim</td>
@@ -394,6 +398,20 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
+<td><a href="car-day.html#a9b-the-joystick-on-stands">First moves on the Motor Pi alone</a> (<code>car.launch.py machine:=motor_pi_alone</code>)</td>
+<td>Ben, 1 Nov: "We do still need a way to move the vehicle to get to our first test": the joystick drives through mux, ego and the output mux all on the Pi, so the heartbeat is made beside the ESP32 and a dead Pi or wire brakes the car, with no Orin needed</td>
+<td>Ben</td>
+<td>2026-11-01</td>
+<td>built</td>
+</tr>
+<tr>
+<td><a href="car-day.html#a9b-the-joystick-on-stands">The joystick-alive check</a> (<code>aav_safety</code> <code>joy_alive</code>, TODO 74a)</td>
+<td>Ben, 2 Nov: "joystick control so we can move the car talking directly from the pi to the esp32". <code>joy_node</code> repeats the last state while the receiver is in, so a pad turned off or out of range could keep driving: now a silent joystick (0.5 s) or one whose values freeze while driving (2 s) stops the car until the trigger is released</td>
+<td>Ben</td>
+<td>2026-11-02</td>
+<td>sim</td>
+</tr>
+<tr>
 <td>RC via ROS (<code>rc_driver</code>) and a three-position mode switch</td>
 <td>A person on the RC transmitter outranks every program, but still passes through ROS's safety checks</td>
 <td>Ben</td>
@@ -401,7 +419,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="actuator-tests.html#the-preflight-on-stands">Preflight on stands</a> (<code>pixi run preflight</code>, <code>actuator-test preflight</code>)</td>
+<td><a href="actuator-tests.html#the-preflight-on-stands">Preflight on stands</a> (<code>pixi run actuator-test preflight --stands</code>)</td>
 <td>One run before the car goes on the ground: it speeds up, holds, slows, brakes and steers while every sensor is checked, and says PASS or FAIL per line. Refused on the real car until a rear-wheel speed exists (TODO 49b); <code>--no-drive</code> checks the sensors alone</td>
 <td>Ben</td>
 <td>2026-10-29</td>
@@ -438,7 +456,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>Reversing, with a stop zone behind the car</td>
-<td>Backing up allows a three-point turn, instead of getting stuck facing a wall. Off by default on the car (26 Oct) until the wheel sensors tell direction (H5)</td>
+<td>Backing up allows a three-point turn, instead of getting stuck facing a wall. On the car too since 1 Nov (Ben: "reverse and uturn should be in"; off 26 Oct-1 Nov): until the wheels tell direction (H5), the speed's sign is the last command's, tested on stands (3.2b) and on the ground (4.23-4.25)</td>
 <td>Ben</td>
 <td>2026-10-22</td>
 <td>sim</td>
@@ -465,10 +483,17 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="controllers.html#planners">Trial planners</a> (<code>planner:=</code> hybrid, lattice, smac2d, navfn or theta_star; the lattice on our own primitives, <code>pixi run lattice-primitives</code>, 16 headings or 32 with <code>lattice_headings:=32</code>)</td>
-<td>To see whether another of Nav2's planners plans better or faster than Hybrid-A<em> on the same routes, scored by <code>controller-compare --planners</code> (<code>--reversing</code> for the car's own setting, <code>lattice32</code> for the 32-heading file), before any replaces the default. The lattice won (30 Oct, reversing: every leg, 29 s quicker a tour) and is the default since 1 Nov; the car, forward only until H5, keeps Hybrid-A</em>. Only hybrid and lattice keep to the turning radius, so the car refuses the other three</td>
+<td><a href="controllers.html#planners">Trial planners</a> (<code>planner:=</code> hybrid, lattice, smac2d, navfn or theta_star; the lattice on our own primitives, <code>pixi run python3 tools/lattice_primitives.py</code>, 16 headings or 32 with <code>lattice_headings:=32</code>)</td>
+<td>To see whether another of Nav2's planners plans better or faster than Hybrid-A<em> on the same routes, scored by <code>measure controllers --planners</code> (<code>--reversing</code> for the car's own setting, <code>lattice32</code> for the 32-heading file), before any replaces the default. The lattice won (30 Oct, reversing: every leg, 29 s quicker a tour) and is the default since 1 Nov; the car, forward only until H5, keeps Hybrid-A</em>. Only hybrid and lattice keep to the turning radius, so the car refuses the other three</td>
 <td>Ben</td>
 <td>2026-10-29</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="trials.html#diffusion-2-nov-a-model-draws-the-lattice-guards">Diffusion planner</a> (<code>planner:=diffusion</code>, <code>aav_diffusion_planner</code>; <code>pixi run diffusion data</code>, <code>train</code>)</td>
+<td>Ben, 1-2 Nov: "Is this using a model to make this happen. Can we do it", then "I want that in" (in 0.2). A small flow-matching model, trained on the lattice's and Hybrid-A*'s paths, draws 16 routes; a guard (G1-G8: collisions, turns, heading, reversing, length) checks them, and the lattice's route is the fallback when none passes or the model is late (simplex). Off by default; the car refuses it. Gazebo, 2 Nov: every leg, 63 % of routes from the model</td>
+<td>Ben</td>
+<td>2026-11-02</td>
 <td>sim</td>
 </tr>
 <tr>
@@ -692,6 +717,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
+<td><a href="actuator-tests.html#find-the-steering-actuators-ends-and-centre">Steering actuator calibration</a> (serial frame version 3, <code>steering_limits</code>)</td>
+<td>The car steers right and nobody has measured the steering actuator's ends or centre; the hardware panel can make it limp or jog it, the uplink sends its raw counts, and <code>steering_limits</code> turns the marked ends and centre into equal limits each side</td>
+<td>Ben</td>
+<td>2026-11-01</td>
+<td>built</td>
+</tr>
+<tr>
 <td>Speed loop in the UART bridge (<code>speed_loop.mode: pi</code>, <code>speed_control.py</code>)</td>
 <td>Today's ESP32 drives open loop and brakes only standing still, so the car coasts past B; feed-forward plus PI on the wheel speed, out as throttle or brake, stops it where ego planned; a smooth stop (Autoware's design) eases the last of the braking so the car stops without a jolt, then holds it firmly</td>
 <td>Ben</td>
@@ -904,8 +936,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td>Record and replay a drive</td>
-<td>A recorded drive runs through the EKFs again, to check them; they match within 0.03 m</td>
+<td>Record and replay a drive (<code>tools/record.sh</code>; <code>--lidar</code> for the lot's map)</td>
+<td>A recorded drive runs through the EKFs again, to check them; they match within 0.03 m. With the lidar, the first drive on the ground also gives NDT's map of the lot and real scores for the trials (tests.md 4e)</td>
 <td>Ben</td>
 <td>2026-10-09</td>
 <td>sim</td>
@@ -968,18 +1000,39 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="hud.html#the-debug-hud">Debug HUD</a> (<code>debug_hud</code>, <code>pixi run debugdemo</code>): the lidar's cubes in 3D, kept and fading (the occupancy-network look), every localizer's car (NDT purple, with its score and LOST in the panel), AMCL's particles, NDT's map as wireframes, every sensor from its own topic; keys 1-4 swap the sim's trial tracker; a key legend on screen. Since 29 Oct it opens as the <strong>seeing screen</strong>: the cubes big on the left, NDT's map from above with every localizer's car, and NDT's match (its cells as ellipses, the scan over them, the score); key L brings the sensor panel back. Since 1 Nov it also draws <strong>Nav2's cubes</strong> (the voxels trial's 0.25 m cubes, red wireframes, key V) over its own, with their road fit, count and ms, and shows the <strong>localization health</strong> checks (OK green, WARN amber with each check)</td>
+<td><a href="hud.html#themes-the-screens-colours">Screen themes</a> (<code>theme:</code> initial_d, mocha, latte) and frosted glass (<code>blur:</code>) for the HUD and the map window; since 1 Nov also the debug screen (glass legends, the localizers' colours kept) and the hardware panel. Since 2 Nov <strong><code>initial_d</code> on every screen</strong> by default: black panels, thin white edges, sharp corners, Carleton's red; its own night street map and 3D view. Since 3 Nov the HUD's faint car in lines behind all four screens' panels</td>
+<td>Calmer screens with soft colours (Ben, 1 Nov: "kind of ugly", too many primary colours): a dark theme for night and cabin glare, a light one for daytime; GO, WAIT and STOP keep their colours, checked for contrast. Then something nicer than Catppuccin: Ben chose Initial D red and black for all four screens (2 Nov), and the car outline behind them (3 Nov: "I liked that")</td>
+<td>Ben</td>
+<td>2026-11-01</td>
+<td>built</td>
+</tr>
+<tr>
+<td><a href="hud.html#the-debug-hud">Debug HUD</a> (<code>debug_hud</code>, <code>pixi run demo --debug</code>): the lidar's cubes in 3D, kept and fading (the occupancy-network look), every localizer's car (NDT purple, with its score and LOST in the panel), AMCL's particles, NDT's map as wireframes, every sensor from its own topic; keys 1-4 swap the sim's trial tracker; a key legend on screen. Since 29 Oct it opens as the <strong>seeing screen</strong>: the cubes big on the left, NDT's map from above with every localizer's car, and NDT's match (its cells as ellipses, the scan over them, the score); key L brings the sensor panel back. Since 1 Nov it also draws <strong>Nav2's cubes</strong> (the voxels trial's 0.25 m cubes, red wireframes, key V) over its own, with their road fit, count and ms, and shows the <strong>localization health</strong> checks (OK green, WARN amber with each check). Since 1 Nov in the screens' theme (<code>theme:</code> mocha or latte), its legends frosted glass</td>
 <td>See what the car sees and what it thinks, side by side, to debug localization (NDT, AMCL) and the trackers without RViz; the seeing screen shows off what the lidar sees (Ben, 29 Oct: "another screen to show off the voxels"); Nav2's cubes show what Nav2 actually stops for beside what the lidar sees, and the health checks say when localization's inputs stop being believable</td>
 <td>Ben</td>
 <td>2026-10-29</td>
 <td>built</td>
 </tr>
 <tr>
-<td><a href="hud.html#the-hardware-panel">Hardware panel</a> (<code>hw_panel</code>, <code>pixi run hw-panel</code>): every sensor's number from its own node with OK / STALE / NEVER, and very simple buttons (Speed +/-, steering, CENTRE, STOP, hold Space to drive, E-STOP) through twist_mux's buttons slot (45), ego and the spine; speed only on SIM and BENCH (1.0 m/s), off on the real car until TODO 49b, with the reason on screen; an e-stop, a takeover or a source change zeroes it</td>
+<td><a href="hud.html#the-hardware-panel">Hardware panel</a> (<code>hw_panel</code>, <code>pixi run hw-panel</code>): every sensor's number from its own node with OK / STALE / NEVER, and very simple buttons (Speed +/-, steering, CENTRE, STOP, hold Space to drive, E-STOP) through twist_mux's buttons slot (45), ego and the spine; speed only on SIM and BENCH (1.0 m/s), off on the real car until TODO 49b, with the reason on screen; an e-stop, a takeover or a source change zeroes it. Since 1 Nov in the screens' theme (<code>theme:</code> mocha or latte)</td>
 <td>Test every sensor and work every actuator from one screen with simple buttons (Ben, 29 Oct: "one screen just to test all the sensors and operate all the actuators", "We need very simple buttons"), without going around the car's caps and e-stop</td>
 <td>Ben</td>
 <td>2026-10-29</td>
 <td>sim</td>
+</tr>
+<tr>
+<td><a href="hud.html#the-little-robot-easter-egg">The little robot</a> (easter egg, a tribute to WALL-E): the map's car as a little tracked robot from above (<code>car_marker: robot</code>); its round eyes peek over the bottom of the hardware panel and the debug screen when all is quiet (<code>easter_egg</code>, <code>easter_egg_after</code>); it drives across the panel at start-up and after a lock-to-lock check passes</td>
+<td>Fun for the team (Ben, 1 Nov: "a huge fan of wall-e and his round eyes"), without ever hiding a control, the e-stop or a warning: never while the car moves or anything warns</td>
+<td>Ben</td>
+<td>2026-11-01</td>
+<td>built</td>
+</tr>
+<tr>
+<td><a href="hud.html#the-steering-calibration-page">Steering calibration page</a> on the hardware panel (Tab): the live raw position, allowed or why not, GO LIMP, HOLD, STEP, MARK left / centre / right, equal limits and warnings (<code>steering_limits</code>' Rust twin, shared test vectors), SAVE to <code>~/.local/share/aav/steering-calibration/</code> for a person to copy, and a lock-to-lock check that stops and holds on resistance; <code>--demo</code> has a pretend steering actuator (<code>--demo-bind</code> a stiff spot)</td>
+<td>Measure and set the steering actuator's ends and centre from a laptop, moving the wheels by hand or with the motor, then test lock to lock and stop if it finds resistance (Ben, 1 Nov)</td>
+<td>Ben</td>
+<td>2026-11-01</td>
+<td>built</td>
 </tr>
 </tbody>
 </table></div>
@@ -998,10 +1051,17 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tbody>
 <tr>
 <td><a href="switches.html">Switch picker</a> (<code>pixi run pick</code>)</td>
-<td>Every swappable part (who steers, where-am-I, speed loop) as a plain-words menu that prints, saves and runs the command, so nobody has to remember the switches; <code>demo</code> and <code>debugdemo</code> take them too</td>
+<td>Every swappable part (who steers, where-am-I, speed loop) as a plain-words menu that prints, saves and runs the command, so nobody has to remember the switches; <code>demo</code> and <code>demo --debug</code> take them too</td>
 <td>Ben</td>
 <td>2026-10-29</td>
 <td>sim</td>
+</tr>
+<tr>
+<td><a href="../../README.md#every-command">Every command</a>: about 45 <code>pixi run</code> tasks, families as one word and a choice (<code>get models</code>, <code>clear estop</code>, <code>pico spine flash</code>, <code>hud --demo</code>)</td>
+<td>Ben, 1 Nov: "Less is more. Everything should be easy and obvious": 89 tasks were too many to find the right one</td>
+<td>Ben</td>
+<td>2026-11-01</td>
+<td>built</td>
 </tr>
 <tr>
 <td>Live graph check (<code>pixi run check</code>)</td>
@@ -1033,7 +1093,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="car-day.html">Car-day kit</a>: runbook and preflight</td>
-<td>Ten sessions at the car, in order, and a check that the laptop has everything</td>
+<td>Ten sessions at the car, in order, and a check that the laptop has everything. 1 Nov (the road-to-0.2 review): split into <strong>Day A</strong>, which destroys nothing (checked backups, the steering's ends, the brake, the Rust ESP32 and the joystick on stands, walking pace once signed), and <strong>Day B</strong> for the upgrades and the reflash; named roles and a signature for every step you can't undo</td>
 <td>Ben</td>
 <td>2026-10-24</td>
 <td>built</td>
@@ -1054,13 +1114,41 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="foxglove.html">Watch from a laptop</a> (Foxglove and Lichtblick)</td>
-<td>One bridge and three layouts to watch any profile from a laptop</td>
+<td>One bridge and four layouts to watch any profile from a laptop</td>
 <td>Ben</td>
 <td>2026-10-24</td>
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="a-to-b.html">A-to-B scorer</a> (<code>pixi run atob-score</code>)</td>
+<td><a href="foxglove.html#cockpit">Cockpit layout</a> and Gazebo's chase camera</td>
+<td>Every driving detail on one screen, like Foxglove's nuScenes demo, so one window replaces Gazebo's, RViz and the HUD while we try the algorithms</td>
+<td>Ben</td>
+<td>2026-11-01</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="foxglove.html#cockpit">Drive screen</a>: the cockpit with the localizers and the algorithms table (<code>aav_run_info</code>, <code>/system/algorithms</code>)</td>
+<td>Ben, 3 Nov: one screen for driving (Gazebo, Nav2, the cubes), one for the hardware, "just the stuff we control"; the cockpit now also shows each localizer and which algorithms the run uses</td>
+<td>Ben</td>
+<td>2026-11-03</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="car-setup.html">Car setup</a>: a runbook and <code>tools/car_setup.sh &lt;role&gt;</code></td>
+<td>Ben, 1 Nov: "a car test that will allow people to do the test so I don't have to. Maybe even install everything like the update and upgrade": each computer backed up, upgraded, installed and started at boot by a student alone; a dry run unless the role is typed. After the review: a pending reboot, a wrong hostname and an upgrade too early (the localization Pi, the Motor Pi before the Rust ESP32) are STOPs</td>
+<td>Ben</td>
+<td>2026-11-01</td>
+<td>built</td>
+</tr>
+<tr>
+<td><a href="know-the-car.html">Know the car</a>: six tests in order, each fitting one <code>vehicle.yaml</code> number</td>
+<td>Ben, 1 Nov: "If we do enough tests we should be able to figure out the driving characteristics of the car and get more accurate with every pass": each test says what to measure, what it fits and when the error is small enough to stop, and the lidar records the lot's map meanwhile</td>
+<td>Ben</td>
+<td>2026-11-01</td>
+<td>built</td>
+</tr>
+<tr>
+<td><a href="a-to-b.html">A-to-B scorer</a> (<code>pixi run measure atob</code>)</td>
 <td>Numbers for how well the car sped up, held its speed and stopped on B, the same for Gazebo and car runs; a tape-measured stop splits the GPS error from the control error</td>
 <td>Ben</td>
 <td>2026-10-26</td>
@@ -1154,7 +1242,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tbody>
 </table></div></section>
 <nav class="prevnext"><a class="prev" href="plan.html"><small>Previous</small>← The plan</a>
-<a class="next" href="audit-friday.html"><small>Next</small>Audit, 16 Oct →</a></nav>
+<a class="next" href="release-0.2.html"><small>Next</small>The 0.2 guide →</a></nav>
 </main>
 <footer>Source: <code>docs/features.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

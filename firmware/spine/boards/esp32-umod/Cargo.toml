@@ -7,7 +7,7 @@ license = "TODO"
 publish = false
 
 # A workspace of its own, not a member of firmware/spine's: it builds only for the ESP32
-# (xtensa-esp32-none-elf), with Espressif's Rust toolchain (`pixi run esp-tools`), while
+# (xtensa-esp32-none-elf), with Espressif's Rust toolchain (`pixi run esp tools`), while
 # the members build and test on any laptop with the stock one.
 [workspace]
 
@@ -29,7 +29,7 @@ link-v1 = []
 # (computer, RC via ROS, RC direct: ibus::RcMap::THREE_POSITION). Off until the hardware
 # lead confirms the wire from GPIO17 to the Motor-Pi's RX (TODO 50, 48).
 uplink = []
-# Run in Espressif's QEMU (tools/esp32.sh qemu), never on the car: stand-in devices on
+# Run in Espressif's QEMU (tools/esp32.sh qemu-check), never on the car: stand-in devices on
 # the I2C bus, and a busy-wait tick instead of interrupts (src/main.rs says why).
 qemu = []
 # The e-stop's spare contact on an input pin. Off until it is wired (Q6): an unwired

@@ -22,14 +22,14 @@ is tested on a laptop, without a board. The board programs are in `boards/`:
 |---|---|---|
 | [`spine-core`](./crates/spine-core/README.md) | the spine's logic: modes, arming, the 100 ms watchdog, the speed loop (closed, or open with no wheel speed), the encoder, the CAN frames, open-loop commands, the state machine and the hardware test mode (`fsm`), and the three choices still open (below) | 120 |
 | [`wheel-core`](./crates/wheel-core/README.md) | the front wheel nodes' logic: Hall sensor pulses to speed, and the WHEEL_SPEED frame | 9 |
-| [`legacy-link`](./crates/legacy-link/README.md) | the 2025-26 UART link: the Motor-Pi's 13-byte frames, and the targets the C++ set for them | 72 |
+| [`legacy-link`](./crates/legacy-link/README.md) | the 2025-26 UART link: the Motor-Pi's 13-byte frames, and the targets the C++ set for them; versions 2 and 3 (the heartbeat; the steering calibration's rules, `SteerCal`) and the uplink | 109 |
 | [`aav-inputs`](./crates/aav-inputs/README.md) | clean inputs: debounced switches, an e-stop that trips at once, counting with a lockout | 9 |
 | [`jrk-g2`](./crates/jrk-g2/README.md) | the Pololu Jrk G2 motor controllers (steering, brake), over I2C | 15 |
 | [`ad5311`](./crates/ad5311/README.md) | the throttle DAC, over I2C | 10 |
 | [`pca9555`](./crates/pca9555/README.md) | the I/O expander (the direction output), over I2C | 6 |
 | [`mcp2515`](./crates/mcp2515/README.md) | the CAN controller a Pico 2 needs, over SPI: bit timing from the crystal, filters, send, receive, error state | 34 |
 | [`ibus`](./crates/ibus/README.md) | the FlySky RC receiver's iBUS frames | 25 |
-| [`spine-board`](./crates/spine-board/README.md) | the glue: spine-core's outputs to the devices, the devices to its inputs, the `Board` trait a board program implements, and the `CommandLink` trait: CAN or the UART | 79 |
+| [`spine-board`](./crates/spine-board/README.md) | the glue: spine-core's outputs to the devices, the devices to its inputs, the `Board` trait a board program implements, and the `CommandLink` trait: CAN or the UART | 86 |
 | [`wheel-encoder`](./crates/wheel-encoder/README.md) (15 Oct) | two spoke sensors, counted the 2025-26 way (the spine and the wheel encoder share it), and the wheel encoder's UDP packet | 12 |
 | [`sentinel`](./crates/sentinel/README.md) (15 Oct) | the status display's logic: its I2C packet, its 13 LCD pages, the knob, the beeps, the matrix | 40 |
 | [`hd44780`](./crates/hd44780/README.md) (15 Oct) | the sentinel's 16x2 character LCD, on six GPIO pins | 5 |
@@ -109,9 +109,9 @@ devices; commands from the Motor-Pi's UART (default) or CAN
 
 | Command | Does |
 |---|---|
-| `pixi run esp-tools` | installs it for your user, once (needs rustup) |
-| `pixi run esp-build` | builds the program |
-| `pixi run esp-flash` | flashes it on the USB cable: bench only (`docs/esp32-bench.md`) |
+| `pixi run esp tools` | installs it for your user, once (needs rustup) |
+| `pixi run esp build` | builds the program |
+| `pixi run esp flash` | flashes it on the USB cable: bench only (`docs/esp32-bench.md`) |
 
 Untested on the board: nothing has been flashed yet. The C++ stays until it is proven.
 
@@ -123,9 +123,9 @@ The pin maps, the wiring rules, and what is untested: `docs/rust-firmware.md`.
 
 | Board | Does | Build a UF2 | Flash through a probe |
 |---|---|---|---|
-| `boards/pico2` | the spine, on the bench: `spine-board`, and CAN through an MCP2515, every 10 ms. The car's chip is still Q10-Q13 | `pixi run spine-uf2` | `pixi run spine-flash` |
-| `boards/wheel-encoder-pico2` | the wheel encoder: spokes to the Motor Pi over UDP, through a W5500. Replaces the 2025-26 C++ one | `pixi run wheel-uf2` | `pixi run wheel-flash` |
-| `boards/sentinel-pico2` | the status display: an I2C device at 0x42; an LCD, a matrix, LEDs, a buzzer. Replaces the 2025-26 C++ one | `pixi run sentinel-uf2` | `pixi run sentinel-flash` |
+| `boards/pico2` | the spine, on the bench: `spine-board`, and CAN through an MCP2515, every 10 ms. The car's chip is still Q10-Q13 | `pixi run pico spine build` | `pixi run pico spine flash` |
+| `boards/wheel-encoder-pico2` | the wheel encoder: spokes to the Motor Pi over UDP, through a W5500. Replaces the 2025-26 C++ one | `pixi run pico wheel build` | `pixi run pico wheel flash` |
+| `boards/sentinel-pico2` | the status display: an I2C device at 0x42; an LCD, a matrix, LEDs, a buzzer. Replaces the 2025-26 C++ one | `pixi run pico sentinel build` | `pixi run pico sentinel flash` |
 
 The UF2 file lands in the board's folder: hold BOOTSEL, plug the Pico 2 in, drag it on.
-Flashing through a probe needs `pixi run spine-tools` once.
+Flashing through a probe needs `pixi run pico spine tools` once.

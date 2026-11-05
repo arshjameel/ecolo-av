@@ -94,7 +94,7 @@ still publishes nothing. The hardware screen is `hw_panel`.
 | The geofence locked: the buttons are held | Gazebo |
 | After an e-stop and the joystick let go, the car stays at 0 | the bench check |
 | twist_mux: a person's joystick beats the buttons | the bench check |
-| Gazebo: press Speed + three times, the car reaches 0.3 m/s; CENTRE stops it | `debugdemo` |
+| Gazebo: press Speed + three times, the car reaches 0.3 m/s; CENTRE stops it | `demo --debug` |
 
 ## Order
 

@@ -5,10 +5,10 @@ Map the network this computer is on, and the ROS domains talking on it.
 Every machine, what it probably is, and which ROS domains are talking. Made for joining
 the car's network from a laptop (Friday 16 Oct).
 
-usage: pixi run net-map                     (or: bash tools/net_map.sh)
-       pixi run net-map --listen 20         (listen longer for ROS)
-       pixi run net-map --interface en7     (this network: an Ethernet dongle, say)
-       pixi run net-map --subnet 192.168.1.0/24 --out net-map.md
+usage: pixi run bash tools/net_map.sh                     (or bash tools/net_map.sh, no pixi)
+       pixi run bash tools/net_map.sh --listen 20         (listen longer for ROS)
+       pixi run bash tools/net_map.sh --interface en7     (this network: an Ethernet dongle, say)
+       pixi run bash tools/net_map.sh --subnet 192.168.1.0/24 --out net-map.md
 
 Run it through tools/net_map.sh: on a Mac, a program started by Python sees an empty ARP
 table (macOS's Local Network privacy), so the wrapper reads it with `arp` itself, after

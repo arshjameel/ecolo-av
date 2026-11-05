@@ -16,8 +16,8 @@ use crate::spine_board::Every;
 use core::convert::Infallible;
 use embedded_io::{Read, ReadReady, Write};
 use legacy_link::{
-    DriveMode, Frame, FrameError, FrameV2, Heartbeat, ModeSwitch, Parser, ParserV2, Sticks,
-    Targets, Throttle, Uplink,
+    Ask, CalRequest, Counts, DriveMode, Frame, FrameError, FrameV3, Heartbeat, ModeSwitch, Parser,
+    ParserV3, Situation, SteerCal, SteeringDrive, Sticks, Targets, Throttle, Uplink,
 };
 use spine_core::protocol::{decode_incoming, EstopCmd, FrameError as CanError, Incoming, Mode};
 use spine_core::{DirectCmd, Inputs, Outputs, RcInput, RcSwitch};
@@ -42,6 +42,18 @@ pub trait CommandLink {
     /// After each tick: what the spine decided, for a link with a status of its own
     /// to send (the UART's uplink). Nothing by default.
     fn report<B: Board>(&mut self, _board: &mut B, _report: &Report) {}
+
+    /// After the spine's step, before the devices are driven: what the steering
+    /// actuator gets. The spine's target by default; the UART link's version 3 frames
+    /// can ask for the steering calibration (`legacy_link::SteerCal`).
+    fn steering(
+        &mut self,
+        _inputs: &Inputs,
+        _out: &Outputs,
+        _positions: &Positions,
+    ) -> SteeringDrive {
+        SteeringDrive::Spine
+    }
 }
 
 /// One tick, as the spine saw it: for a link's status frame.
@@ -94,8 +106,9 @@ impl CommandLink for CanLink {
 pub enum FrameVersion {
     /// The 2025-26 13-byte frame: no counter, no flags, a sum checksum.
     V1,
-    /// 17 bytes with the Orin's heartbeat counter, armed and e-stop flags and a CRC-8
-    /// (TODO 50).
+    /// The sync-byte frames: version 2 (17 bytes with the Orin's heartbeat counter,
+    /// armed and e-stop flags and a CRC-8, TODO 50) and version 3 (20 bytes: version 2
+    /// and the steering calibration, 1 Nov), told apart by their version byte.
     V2,
 }
 
@@ -138,7 +151,7 @@ impl Write for NoUplink {
 enum Decoder {
     V1(Parser),
     V2 {
-        parser: ParserV2,
+        parser: ParserV3,
         heartbeat: Heartbeat,
     },
 }
@@ -174,7 +187,13 @@ enum Decoder {
 ///
 /// With an uplink (TODO 50, 48: [`LegacyLink::with_uplink`], TX1 on today's board), it
 /// sends an [`Uplink`] status frame every 20 ms: the mode, the mode switch, the faults,
-/// the last Orin counter taken (its echo), the Jrks' positions and the RC sticks.
+/// the last Orin counter taken (its echo), the Jrks' positions (in radians and 0..1, and
+/// raw in counts), the RC sticks and the steering calibration's state.
+///
+/// Version 3 frames (1 Nov) can ask for the steering calibration: the steering actuator
+/// limp, or a jog target in counts. Its rules are `legacy_link::SteerCal`'s; this link
+/// gives it each fresh frame's request, and holds the throttle at 0 in any frame that
+/// asks for a mode.
 pub struct LegacyLink<U, T = NoUplink> {
     uart: U,
     tx: Option<T>,
@@ -184,6 +203,9 @@ pub struct LegacyLink<U, T = NoUplink> {
     stats: LinkStats,
     uplink_due: Every,
     sequence: u8,
+    steer_cal: SteerCal,
+    /// The latest frame's e-stop flag.
+    frame_estop: bool,
 }
 
 impl<U: Read + ReadReady> LegacyLink<U, NoUplink> {
@@ -203,10 +225,11 @@ impl<U: Read + ReadReady, T: Write> LegacyLink<U, T> {
         let decoder = match version {
             FrameVersion::V1 => Decoder::V1(Parser::new()),
             FrameVersion::V2 => Decoder::V2 {
-                parser: ParserV2::new(),
+                parser: ParserV3::new(),
                 heartbeat: Heartbeat::new(),
             },
         };
+        let limits = cal.steering;
         LegacyLink {
             uart,
             tx,
@@ -216,6 +239,8 @@ impl<U: Read + ReadReady, T: Write> LegacyLink<U, T> {
             stats: LinkStats::default(),
             uplink_due: Every::new(UPLINK_PERIOD_MS),
             sequence: 0,
+            steer_cal: SteerCal::new(limits.min.min(limits.max), limits.max.max(limits.min)),
+            frame_estop: false,
         }
     }
 
@@ -262,6 +287,11 @@ impl<U: Read + ReadReady, T: Write> LegacyLink<U, T> {
             throttle_out: out.throttle,
             brake_out: out.brake,
             sticks,
+            counts: Counts {
+                steering: report.positions.steering_counts,
+                brake: report.positions.brake_counts,
+            },
+            calibration: self.steer_cal.state(),
         }
     }
 
@@ -335,7 +365,7 @@ impl<U: Read + ReadReady, T: Write> LegacyLink<U, T> {
         }
     }
 
-    fn take_v2(&mut self, result: Result<FrameV2, FrameError>, inputs: &mut Inputs) {
+    fn take_v2(&mut self, result: Result<FrameV3, FrameError>, inputs: &mut Inputs) {
         let frame = match result {
             Ok(frame) => frame,
             Err(FrameError::Sync) => {
@@ -351,6 +381,7 @@ impl<U: Read + ReadReady, T: Write> LegacyLink<U, T> {
         };
         self.stats.frames += 1;
         self.stats.counter = Some(frame.counter);
+        self.frame_estop = frame.flags.estop;
         // An e-stop is always safe to obey: whatever the counter, and it wins in a tick.
         if frame.flags.estop {
             inputs.estop_cmd = Some(EstopCmd {
@@ -371,10 +402,20 @@ impl<U: Read + ReadReady, T: Write> LegacyLink<U, T> {
                 counter: frame.counter,
             });
         }
-        let Some(mut cmd) = self.command_for(frame.values, inputs) else {
+        let values = frame.values;
+        self.steer_cal.take(
+            Ask {
+                request: frame.calibration,
+                speed_zero: values.speed.abs() < legacy_link::SPEED_DEADBAND,
+                braked: values.accel < legacy_link::BRAKE_BELOW,
+            },
+            inputs.now_ms,
+        );
+        let Some(mut cmd) = self.command_for(values, inputs) else {
             return;
         };
-        if !frame.flags.armed {
+        // Asking for the steering calibration, refused or not: no throttle.
+        if !frame.flags.armed || frame.calibration != CalRequest::Off {
             cmd.throttle = 0.0;
             cmd.stop = true;
         }
@@ -414,6 +455,18 @@ impl<U: Read + ReadReady, T: Write> CommandLink for LegacyLink<U, T> {
     /// The CAN frames have no place on this link: nothing to send, and nothing lost.
     fn send<B: Board>(&mut self, _board: &mut B, _id: u16, _data: &[u8]) -> bool {
         true
+    }
+
+    /// The steering calibration's decision for this tick (`legacy_link::SteerCal`).
+    fn steering(&mut self, inputs: &Inputs, out: &Outputs, positions: &Positions) -> SteeringDrive {
+        self.steer_cal.step(&Situation {
+            now_ms: inputs.now_ms,
+            feedback: positions.steering_counts,
+            spine_target: self.cal.steering.target(out.steering_target),
+            stopped: out.throttle == 0.0 && out.brake > 0.0,
+            estop: inputs.hw_estop || self.frame_estop,
+            other_driver: matches!(out.mode, Mode::Rc | Mode::Test),
+        })
     }
 
     /// The uplink frame, every 20 ms, if this link has an uplink.
@@ -543,7 +596,7 @@ mod tests {
     // --- The uplink (TODO 50, 48) ---
 
     use crate::actuators::Positions;
-    use legacy_link::{DriveMode, ModeSwitch, Uplink, UPLINK_LEN};
+    use legacy_link::{DriveMode, FrameV2, ModeSwitch, Uplink, UPLINK_LEN};
     use spine_core::protocol::Mode;
     use spine_core::{Outputs, RcInput, RcSwitch};
     use std::vec::Vec;
@@ -565,6 +618,8 @@ mod tests {
             positions: Positions {
                 steering: Some(0.1),
                 brake: None,
+                steering_counts: Some(2260),
+                brake_counts: None,
             },
         }
     }
@@ -572,7 +627,7 @@ mod tests {
     fn frames(tx: &FakeTx) -> Vec<Uplink> {
         tx.0.borrow()
             .chunks(UPLINK_LEN)
-            .map(|c| Uplink::decode(c.try_into().unwrap()).unwrap())
+            .map(|c| Uplink::decode(c).unwrap())
             .collect()
     }
 

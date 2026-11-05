@@ -84,7 +84,7 @@ sensor_watchdog:
       stop: true
       frozen_after: 1.0         # beats whose frame count stopped rising
       # A HUD that keeps crashing holds Nav2 until a person clears it (Ben, 24 Oct): a
-      # dropout latches LOST, even once it beats again; `pixi run watchdog-clear`. One
+      # dropout latches LOST, even once it beats again; `pixi run clear watchdog`. One
       # dropout within 5 s of its first beat is forgiven: the window starting up.
       latch: true
       latch_grace: 5.0          # s

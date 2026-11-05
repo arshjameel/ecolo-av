@@ -12,7 +12,7 @@ process, from a free-body diagram to a simulator, one step at a time.
     - **Three parts:** speed (second order, with the spine's PI around it), steering
       (second order), and the path errors (state space, 3 states).
     - **Today's numbers are guesses** from `vehicle.yaml`. The car day's actuator tests
-      measure each one; `pixi run vehicle-model --set throttle_lag=0.25` redoes it all.
+      measure each one; `pixi run python3 tools/vehicle_model.py --set throttle_lag=0.25` redoes it all.
     - **The spine's speed loop is slow:** it settles in about 13 s, and overshoots 15%.
       Delays don't matter to it (62° of phase margin even in the worst case).
     - **The `smooth` profile fixes the overshoot** (TODO 27): a setpoint weight. 0%
@@ -422,7 +422,7 @@ Gazebo's gain-10 lag be the linkage):
 | A new `steer_lag` from the car day | nothing to change | the xacro's gain must change with it |
 | Gain 200 | would save 5 ms more, but the joint's catch-up after each 20 ms hold nears the 5 rad/s limit if `steer_rate` grows | |
 
-Lateral phase margin (`pixi run vehicle-model`, typical delays):
+Lateral phase margin (`pixi run python3 tools/vehicle_model.py`, typical delays):
 
 | v (m/s) | The model | Gazebo before (+0.11 s) | Gazebo now (+20 ms) |
 |---|---|---|---|
@@ -454,7 +454,7 @@ rolling about 0.3 s late.
 At the car, the actuator tests print the numbers; then:
 
 ```bash
-pixi run vehicle-model --set throttle_lag=0.25 --set drag=0.3 --set steer_lag=0.15
+pixi run python3 tools/vehicle_model.py --set throttle_lag=0.25 --set drag=0.3 --set steer_lag=0.15
 ```
 
 In code, `model.with_measured(report.yaml)` takes the actuator tests' report as it is.
@@ -502,7 +502,7 @@ response to a new set speed does.
 
 #### The candidates, on the model
 
-`pixi run vehicle-model --speed-loop` runs each one: the spine's own update (Gazebo's port,
+`pixi run python3 tools/vehicle_model.py --speed-loop` runs each one: the spine's own update (Gazebo's port,
 checked against the Rust), ego's 1 m/s² ramp, the wheel speed's delay, and the actuators.
 Each cell is the worst of 6 runs (0.5, 1 and 2 m/s; lag 0.1 s with 30 ms of delay, and lag
 0.2 s with 110 ms).
@@ -633,10 +633,10 @@ section 6), then compare the same step in both: that's the sim-versus-real repor
 ## Run it
 
 ```bash
-pixi run vehicle-model                  # the tables, and the three figures
-pixi run vehicle-model --no-figures     # the tables only
-pixi run vehicle-model --speed-loop     # TODO 27: the speed loop's designs, the uncertainty
-pixi run vehicle-model --lqi            # TODO 3: the speed LQI's gains, as spine-core's constants
+pixi run python3 tools/vehicle_model.py                  # the tables, and the three figures
+pixi run python3 tools/vehicle_model.py --no-figures     # the tables only
+pixi run python3 tools/vehicle_model.py --speed-loop     # TODO 27: the speed loop's designs, the uncertainty
+pixi run python3 tools/vehicle_model.py --lqi            # TODO 3: the speed LQI's gains, as spine-core's constants
 ```
 
 | File | What |

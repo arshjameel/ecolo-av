@@ -10,7 +10,9 @@ legacy_uart_bridge:
     # ESP32 runs the 2025-26 C++, which reads only the 13-byte frame: a version 2 stream
     # can be misread by its resync. 2 the day the Rust firmware is flashed
     # (docs/esp32-bench.md): it carries the Orin's counter, and the ESP32 brakes 100 ms
-    # after it stops changing. The bridge's own default is 2.
+    # after it stops changing. The bridge's own default is 2. 3 (1 Nov): version 2 and the
+    # steering calibration (limp, jog) for the hardware panel; the Rust firmware of 1 Nov
+    # reads 2 and 3 alike.
     frame_version: 1
     # With frame_version 1 (no firmware timeout) the bridge says true on
     # /safety/legacy_uart_bridge/lock: twist_mux's no_timeout lock (priority 60) holds every
@@ -23,6 +25,12 @@ legacy_uart_bridge:
     # Pi's RX, and the Rust firmware is flashed with --features uplink (docs/esp32-bench.md).
     uplink: false
     uplink_timeout: 0.2         # s without a frame: the uplink is stale (they come at 50 Hz)
+    # Finding the steering actuator's ends and centre from the hardware panel (limp, jog;
+    # docs/actuator-tests.md). none, stands (the car on stands, wheels off the ground) or
+    # bench (the ESP32 on a desk). The hardware lead's to set, for that session only; it
+    # also needs frame_version 3, uplink true and the Rust firmware.
+    steering_calibration: none
+
     max_steering_angle: 0.5     # rad at full lock. TODO measure
     # TODO check: +1 must steer RIGHT for this to be -1. The 2025-26 joystick config had
     # invert_steer: true (joy_teleop_ackerman/config/joy_params.yaml), which suggests the

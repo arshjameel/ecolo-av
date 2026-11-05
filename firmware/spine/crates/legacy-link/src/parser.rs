@@ -1,8 +1,9 @@
-//! Finding frames in the byte stream: version 1 the way the C++ did, version 2 by its
-//! sync byte.
+//! Finding frames in the byte stream: version 1 the way the C++ did, versions 2 and 3 by
+//! their sync byte.
 
 use crate::frame::{Frame, FrameError, FRAME_LEN};
-use crate::v2::{FrameV2, FRAME_V2_LEN, SYNC};
+use crate::v2::{FrameV2, FRAME_V2_LEN, SYNC, VERSION};
+use crate::v3::{FrameV3, FRAME_V3_LEN, VERSION_3};
 
 /// Bytes in, frames out. It keeps up to 13 bytes; when the 13th arrives it checks the
 /// sum. A match is a frame, and the buffer starts again. A mismatch drops the oldest byte
@@ -88,6 +89,77 @@ impl ParserV2 {
         self.buf.copy_within(next.., 0);
         self.len = FRAME_V2_LEN - next;
         Some(result)
+    }
+}
+
+/// Bytes in, version 2 and 3 frames out, as [`FrameV3`] (a version 2 frame has no
+/// calibration). It waits for the sync byte (0xA5); the version byte after it says how
+/// long the frame is (17 or 20 bytes). An unknown version is
+/// `Err(FrameError::Version)` at once; a frame that fails is dropped. Either way the
+/// parser starts again at the next 0xA5 inside the bytes it had.
+#[derive(Debug, Clone, Default)]
+pub struct ParserV3 {
+    buf: [u8; FRAME_V3_LEN],
+    len: usize,
+}
+
+impl ParserV3 {
+    pub const fn new() -> Self {
+        ParserV3 {
+            buf: [0; FRAME_V3_LEN],
+            len: 0,
+        }
+    }
+
+    /// One byte. Returns a frame, a frame turned down, or nothing yet.
+    pub fn push(&mut self, byte: u8) -> Option<Result<FrameV3, FrameError>> {
+        if self.len == 0 && byte != SYNC {
+            return Some(Err(FrameError::Sync));
+        }
+        self.buf[self.len] = byte;
+        self.len += 1;
+        if self.len < 2 {
+            return None;
+        }
+        let want = match self.buf[1] {
+            VERSION => FRAME_V2_LEN,
+            VERSION_3 => FRAME_V3_LEN,
+            _ => {
+                self.restart(self.len);
+                return Some(Err(FrameError::Version));
+            }
+        };
+        if self.len < want {
+            return None;
+        }
+        let result = match want {
+            FRAME_V2_LEN => {
+                let mut bytes = [0; FRAME_V2_LEN];
+                bytes.copy_from_slice(&self.buf[..FRAME_V2_LEN]);
+                FrameV2::decode(&bytes).map(FrameV3::from)
+            }
+            _ => FrameV3::decode(&self.buf),
+        };
+        if result.is_ok() {
+            self.drop_front(want);
+        } else {
+            self.restart(want);
+        }
+        Some(result)
+    }
+
+    /// The first `upto` bytes failed: start again at the next 0xA5 among them, if any.
+    fn restart(&mut self, upto: usize) {
+        let next = self.buf[1..upto]
+            .iter()
+            .position(|&b| b == SYNC)
+            .map_or(upto, |at| at + 1);
+        self.drop_front(next);
+    }
+
+    fn drop_front(&mut self, n: usize) {
+        self.buf.copy_within(n..self.len, 0);
+        self.len -= n;
     }
 }
 
@@ -237,6 +309,113 @@ mod v2_tests {
     #[test]
     fn a_version_1_stream_never_gives_a_frame() {
         let mut p = ParserV2::new();
+        let v1: Vec<u8> = (0..20)
+            .flat_map(|i| {
+                Frame {
+                    steering: 0.0,
+                    speed: i as f32 / 20.0,
+                    accel: 0.0,
+                }
+                .encode()
+            })
+            .collect();
+        assert!(feed(&mut p, &v1).0.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod v3_tests {
+    extern crate std;
+
+    use super::*;
+    use crate::steer_cal::CalRequest;
+    use crate::v2::Flags;
+    use std::vec::Vec;
+
+    fn frame(counter: u8, calibration: CalRequest) -> FrameV3 {
+        FrameV3 {
+            values: Frame {
+                steering: 0.0,
+                speed: 0.0,
+                accel: -1.0,
+            },
+            counter,
+            flags: Flags::default(),
+            calibration,
+        }
+    }
+
+    fn v2(counter: u8) -> FrameV2 {
+        FrameV2 {
+            values: frame(0, CalRequest::Off).values,
+            counter,
+            flags: Flags::default(),
+        }
+    }
+
+    fn feed(p: &mut ParserV3, bytes: &[u8]) -> (Vec<FrameV3>, Vec<FrameError>) {
+        let results: Vec<_> = bytes.iter().filter_map(|&b| p.push(b)).collect();
+        let errors = results.iter().filter_map(|r| r.err()).collect();
+        (results.into_iter().flatten().collect(), errors)
+    }
+
+    #[test]
+    fn versions_2_and_3_mixed() {
+        let mut p = ParserV3::new();
+        let stream = [
+            &frame(1, CalRequest::Limp).encode()[..],
+            &v2(2).encode(),
+            &frame(3, CalRequest::Jog(2000)).encode(),
+        ]
+        .concat();
+        let (frames, errors) = feed(&mut p, &stream);
+        assert_eq!(
+            frames,
+            [
+                frame(1, CalRequest::Limp),
+                v2(2).into(),
+                frame(3, CalRequest::Jog(2000))
+            ]
+        );
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn an_unknown_version_and_noise_are_skipped() {
+        let mut p = ParserV3::new();
+        let stream = [
+            &[0x00, 0xA5, 0x07, 0x13][..],
+            &frame(4, CalRequest::Limp).encode(),
+        ]
+        .concat();
+        let (frames, errors) = feed(&mut p, &stream);
+        assert_eq!(frames, [frame(4, CalRequest::Limp)]);
+        assert_eq!(
+            errors,
+            [FrameError::Sync, FrameError::Version, FrameError::Sync]
+        );
+    }
+
+    #[test]
+    fn a_frame_cut_short_does_not_hide_the_next() {
+        let mut p = ParserV3::new();
+        let stream = [
+            &frame(6, CalRequest::Limp).encode()[..9],
+            &frame(7, CalRequest::Limp).encode(),
+            &frame(8, CalRequest::Off).encode(),
+        ]
+        .concat();
+        let (frames, errors) = feed(&mut p, &stream);
+        assert_eq!(
+            frames,
+            [frame(7, CalRequest::Limp), frame(8, CalRequest::Off)]
+        );
+        assert_eq!(errors, [FrameError::Checksum]);
+    }
+
+    #[test]
+    fn a_version_1_stream_never_gives_a_frame() {
+        let mut p = ParserV3::new();
         let v1: Vec<u8> = (0..20)
             .flat_map(|i| {
                 Frame {

@@ -39,7 +39,8 @@ the stop, and a firm brake once stopped), read in its documentation. Our own cod
 copy; the numbers are ours (docs/controllers.md, "Where the ideas came from").
 
 Units: m/s, m/s^2, s. Throttle and brake are 0..1. Forward only: a target below zero
-brakes to a stop (reversing is off on the car, and the legacy path keeps it that way).
+brakes to a stop. Reversing on the legacy path needs speed_loop.mode open (the default),
+where the speed's sign sets the ESP32's direction.
 """
 
 from dataclasses import dataclass

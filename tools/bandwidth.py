@@ -5,11 +5,11 @@ Measure every topic of a running system: how often it sends, how big, how many M
 Like `ros2 topic hz` and `ros2 topic bw` for every topic at once, as one table, biggest
 first. Run it beside Gazebo now, and on the car later (docs/bandwidth.md):
 
-  pixi run bandwidth                    10 s, every topic, a table
-  pixi run bandwidth --local            the same, for pixi run sim on this computer
-  pixi run bandwidth --seconds 30 --markdown        a Markdown table, for the docs
-  pixi run bandwidth --include /sensors --exclude compressed
-  ROS_DOMAIN_ID=57 pixi run bandwidth --local   a sim on its own domain
+  pixi run measure bandwidth                    10 s, every topic, a table
+  pixi run measure bandwidth --local            the same, for pixi run sim on this computer
+  pixi run measure bandwidth --seconds 30 --markdown        a Markdown table, for the docs
+  pixi run measure bandwidth --include /sensors --exclude compressed
+  ROS_DOMAIN_ID=57 pixi run measure bandwidth --local   a sim on its own domain
 
 It subscribes to each topic as raw bytes (no decoding, so it keeps up with cameras), with
 the publishers' reliability (reliable only if all are), always volatile. The size

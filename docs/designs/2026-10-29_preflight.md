@@ -9,7 +9,7 @@ all the sensors before we put it on the ground."
 
 ## The idea in one line
 
-`pixi run preflight`: **one scripted run** with the wheels off the ground (speed up, hold,
+`pixi run actuator-test preflight --stands`: **one scripted run** with the wheels off the ground (speed up, hold,
 slow down, brake; steer left, right, centre) while **every sensor is checked at the same
 time**, then one PASS / FAIL line per check, as `car-day-check` prints.
 
@@ -24,7 +24,7 @@ time**, then one PASS / FAIL line per check, as `car-day-check` prints.
 | 4 | Slipping off the stands isn't caught live; 2.5 m of GPS can't tell stands from rolling | a live IMU watch on stands (below); the GPS line uses Doppler, else it is a WARN only |
 | 5 | The IMU window | from the first command until the wheels reach 95% of it, at most 3 s; the wheels' change over the same window |
 | 6 | Thresholds | each sensor's documented rate, pass at 0.8 x; gravity ± 0.5 m/s²; the centre from `steer_offset` and `steer_deadband`; a missed hold speed on the open-loop ESP32 is a WARN (a throttle-gain finding) |
-| 7 | Reuse | `preflight` is an actuator test (`pr.TESTS`); `pixi run preflight` = `actuator-test preflight --stands`; the same `decide()`, typed word and stops. `--bench` is local, like `--sim` |
+| 7 | Reuse | `actuator-test preflight --stands` is an actuator test (`pr.TESTS`); `pixi run actuator-test preflight --stands` = `actuator-test preflight --stands`; the same `decide()`, typed word and stops. `--bench` is local, like `--sim` |
 | 8 | People | the e-stop person is the stop; someone watches the rear wheels with a tachometer |
 
 ## The script
@@ -83,14 +83,14 @@ From [learn-speed.md §9](../learn-speed.md#9-on-stands-disagreeing-on-purpose).
 The stand-ins say "(sim: on the ground, so the opposite check)" on each line: the same
 maths runs both ways. On stands with a driven-wheel speed, the sensor watchdog may latch
 **DISAGREE** (wheels against a still GPS); it holds only Nav2 and friends, not the
-tests: `pixi run watchdog-clear` after.
+tests: `pixi run clear watchdog` after.
 
 ## Safety
 
 | What | How |
 |---|---|
 | Who must be there | **the e-stop person** on the Kar-Tech: they are the stop (Ctrl-C and the joystick stop the software only); **a rear-wheel watcher** with a tachometer app; the laptop person; the safety driver on the joystick |
-| The word to type | **`preflight`**, after the checklist is read out loud. No keyboard: refused |
+| The word to type | **`actuator-test preflight --stands`**, after the checklist is read out loud. No keyboard: refused |
 | Caps | 0.3 m/s (`STANDS_CAP`); `--max-speed` lowers it only. On the car it is always a stands run |
 | Refused on the car | no driven-wheel speed (`speed_wheels` ≠ `rear`, TODO 49b); the no-timeout lock ON (the C++ ESP32); `speed_loop.mode pi`; no `/vehicle/odom`; ego not answering; `/system/source` not REAL |
 | Stops it live | Ctrl-C; `/safety/estop`; a person taking over; twist_mux silent 2 s; `/vehicle/odom` stale 0.5 s; over 0.46 m/s; the envelope's time or distance; **told to drive, < 0.05 m/s for 4 s**; **the speed rising while the command falls**; a must step timing out; on stands, **the IMU says it moves** (over 0.15 m/s in 2 s, or turning over 0.1 rad/s while steering) |
@@ -119,7 +119,7 @@ the spine yet. The preflight drives the normal way, through twist_mux and ego.
 | the checks, the lines, the IMU watch (no ROS) | `aav_actuator_tests/preflight.py`, `test/test_preflight.py` |
 | the refusals, the live stops | `safety.py`: `preflight_refusal`, `unseen`, `runaway`, `PREFLIGHT_CHECKLIST` |
 | the node: counters, the e-stop, the report | `aav_actuator_tests/preflight_node.py`, used by `actuator_test` |
-| the task | `pixi run preflight` → `tools/actuator_test.sh preflight --stands` |
+| the task | `pixi run actuator-test preflight --stands` → `tools/actuator_test.sh preflight --stands` |
 | the runbook | car-day session 9; `docs/actuator-tests.md` |
 
 Each run saves `~/aav-tests/<time>-preflight/`: `log.csv`, `summary.txt` (the lines),

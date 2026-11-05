@@ -18,6 +18,16 @@ Both start by themselves at login, and come back 5 s after a crash.
 
 Both are in `ros/hud/aav_hud` ([HUD](hud.md)).
 
+## The screens outside the car
+
+The HUD and the map stay in the car. Two more screens are for the lab or a laptop, one
+per job (Ben, 3 Nov: "Just the stuff we control"):
+
+| Screen | For | Where it's going |
+|---|---|---|
+| **Drive**: the [cockpit](foxglove.md#cockpit) (Lichtblick) | Gazebo's view, Nav2's goal, the cubes, the localizers, which algorithms run | 0.3: absorbs the debug screen |
+| **Hardware**: the [hardware panel](hud.md#the-hardware-panel) | every sensor, simple buttons, the steering's ends | stays separate |
+
 ## How it starts
 
 ```text
@@ -109,6 +119,7 @@ Already installed? Just the screens: `bash ~/aav-jazzy/aav/tools/car_screens_ins
 | Stop them until the next boot | `systemctl --user stop aav-hud aav-map` |
 | Never start them | `bash ~/aav-jazzy/aav/tools/car_screens_install.sh uninstall` (keeps `screens.env`) |
 | Try one by hand | `~/aav-jazzy/aav.sh ros2 launch aav_hud map.launch.py fullscreen:=true monitor:=HDMI-1` |
+| Light colours for a sunny day | `theme: latte` in `ros/hud/aav_hud/config/hud.yaml`, `map.yaml`, `debug_hud.yaml` and `hw_panel.yaml`, then restart them ([Themes](hud.md#themes-the-screens-colours)); `initial_d` (black, white, Carleton red) is every screen's default, `mocha` the soft dark one |
 
 > **No HUD, no Nav2.** The HUD sends a [heartbeat](hud.md#the-heartbeat). On the car,
 > the sensor watchdog stops Nav2 and the AI slot while it's missing: stopping `aav-hud`
@@ -117,7 +128,7 @@ Already installed? Just the screens: `bash ~/aav-jazzy/aav/tools/car_screens_ins
 >
 > **Latched (24 Oct).** Once the HUD has run 5 s, a crash, freeze or stop holds Nav2
 > even after systemd restarts it: the screen says **AUTO STOP, HUD LOST**. A person
-> checks the screen, then `pixi run watchdog-clear`.
+> checks the screen, then `pixi run clear watchdog`.
 
 ## The 2025-26 way, for comparison
 

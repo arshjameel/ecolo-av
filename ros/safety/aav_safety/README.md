@@ -16,6 +16,11 @@ monitor:  STOP  go  STOP  go  go  go  go ...  (1 s of go)
 lock:    true  true true true true true ...   false
 ```
 
+And the joystick-alive check (`joy_alive`, TODO 74a): joy_node repeats the joystick's
+last state while its receiver is in, so a pad turned off could keep driving. It sits
+between joy_node and teleop_twist_joy (aav_teleop starts it) and stops the joystick when
+it goes silent (0.5 s) or freezes while driving (2 s), until the deadman is released.
+
 And the geofence (`geofence`): an area no program may leave, without Nav2. It holds
 every program (scripted, replay, point, Nav2, AI) before the car's stopping distance
 reaches the fence's edge, and while the global pose can't be trusted. People still drive
@@ -33,7 +38,7 @@ The watchdog works through a twist_mux lock (priority 30, in `aav_command_mux`).
 | `DISAGREE` | the wheels' speed or turn against the IMU and the GPS (`wheel_check.py`). Latched |
 | `LOST` | a `latch` input (the HUD) dropped out after its start-up. Latched |
 
-A person clears latched faults: `pixi run watchdog-clear`. More in
+A person clears latched faults: `pixi run clear watchdog`. More in
 `docs/simulation.md` ("Sensor failures on purpose").
 
 ## Interface
@@ -59,6 +64,26 @@ A person clears latched faults: `pixi run watchdog-clear`. More in
 Parameters (`config/stop_hold.yaml`): `clear_time` (s, 1.0), `rate_hz` (10).
 `aav_navigation`'s `navigation.launch.py` starts it wherever it starts collision_monitor.
 
+### Node `joy_alive`
+
+In the namespace `/drivers/joy` (aav_teleop `teleop.launch.py`).
+
+| In / out | Topic | Type |
+|---|---|---|
+| in | `/drivers/joy/joy` | `sensor_msgs/Joy`: joy_node, 20 Hz while the receiver is in |
+| out | `/drivers/joy/joy_checked` | `sensor_msgs/Joy`: each message, or a released copy (all 0) while stopped |
+| out | `/drivers/joy/alive`, at `rate_hz` | `std_msgs/String`: `STATE - why` |
+
+| State | Joystick | Lets go |
+|---|---|---|
+| `OK` | passes | |
+| `WAITING` (start-up) | released | the deadman seen released once |
+| `SILENT` (nothing for `silent_after`, 0.5 s) | released | the deadman seen released |
+| `FROZEN` (deadman held, a `motion_axes` axis over `motion_threshold`, all values bit-identical for `frozen_after`, 2 s; 0 off) | released | the deadman seen released |
+
+Parameters: aav_teleop `config/joy_alive.yaml`: `enable_button` 0, `motion_axes` [1],
+`motion_threshold` 0.05, `silent_after` 0.5, `frozen_after` 2.0, `rate_hz` 10.
+
 ### Node `geofence`
 
 | In / out | Topic | Type |
@@ -68,7 +93,7 @@ Parameters (`config/stop_hold.yaml`): `clear_time` (s, 1.0), `rate_hz` (10).
 | out | `/safety/geofence/lock`, at `rate_hz` | `std_msgs/Bool`: twist_mux's `geofence` lock (priority 51, fail-safe 1 s) |
 | out | `/safety/geofence/state`, at `rate_hz` | `std_msgs/String`: `STATE: why` |
 | out | `/safety/geofence/fence` | `geometry_msgs/PolygonStamped`, map frame, transient local |
-| serves | `/safety/geofence/clear` | `std_srvs/Trigger`: a person clears OUTSIDE or JUMP (`pixi run geofence-clear`) |
+| serves | `/safety/geofence/clear` | `std_srvs/Trigger`: a person clears OUTSIDE or JUMP (`pixi run clear geofence`) |
 
 | State | Lock | Lets go |
 |---|---|---|
@@ -121,10 +146,14 @@ each profile passes the inputs it has (sim, bench, car).
 | `stop_hold.py` | no | the node |
 | `geofence.py` | yes | `Circle`, `Polygon`, `site_fence`; `Motion`, `reaction_time`, `braking`, `backend_stale`, `coasts`, `motion_from`, `stopping_distance`, `along_arc`; `Settings`, `Pose`, `Geofence` (the states) |
 | `geofence_node.py` | no | the node `geofence` |
+| `joy_alive.py` | yes | `JoyAlive`: the joystick's `WAITING`, `SILENT`, `FROZEN` and their latch |
+| `joy_alive_node.py` | no | the node `joy_alive` |
 
 ## Invariants
 
-- `watchdog.py`, `wheel_check.py`, `hold.py` and `geofence.py` have no ROS imports, and their own tests.
+- `watchdog.py`, `wheel_check.py`, `hold.py`, `geofence.py` and `joy_alive.py` have no ROS imports, and their own tests.
+- `joy_alive` only ever releases the joystick; it never makes a command of its own. Its
+  latch lets go only on a released deadman, so a pad coming back with the trigger held stays stopped.
 - The geofence's lock (51) holds every program, never a person or the actuator tests.
   Fail-safe: 1 s of silence holds them too. Its fence is fixed (the start spot or a
   site), so a restarted node finds an outside car outside again.

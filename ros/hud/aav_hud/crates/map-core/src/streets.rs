@@ -453,7 +453,7 @@ mod tests {
         assert!((up.angle - std::f32::consts::FRAC_PI_2).abs() < 1e-6);
     }
 
-    /// The real tile at Carleton, when `pixi run get-street-map` has downloaded it:
+    /// The real tile at Carleton, when `pixi run get street-map` has downloaded it:
     /// buildings, green, water (the Rideau River and Canal), and named major roads.
     #[test]
     fn carleton_decodes() {
@@ -462,7 +462,7 @@ mod tests {
             "/../../../../../maps/streets/ottawa.pmtiles"
         );
         let Ok(bytes) = std::fs::read(path) else {
-            eprintln!("skipped: no {path} (pixi run get-street-map)");
+            eprintln!("skipped: no {path} (pixi run get street-map)");
             return;
         };
         let archive = crate::pmtiles::Archive::new(bytes).expect("the extract reads");

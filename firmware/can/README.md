@@ -48,7 +48,7 @@ encoder, 128 CAN bus, 256 RC signal lost, 512 overspeed.
 | The Rust firmware | `firmware/spine/crates/spine-core/src/protocol.rs` |
 | The Rust bridge | `ros/can_bridge/aav_spine_bridge/crates/spine-bridge` |
 | The wheel nodes' logic | `firmware/spine/crates/wheel-core` |
-| The bus load | `tools/can_load.py` (`pixi run can-load`) |
+| The bus load | `tools/can_load.py` (`pixi run python3 tools/can_load.py`) |
 
 ## Invariants
 

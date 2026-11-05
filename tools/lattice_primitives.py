@@ -2,9 +2,11 @@
 """
 Make the car's own motion primitives for Nav2's State Lattice planner (planner:=lattice).
 
-    pixi run lattice-primitives            (writes the file below, and its picture)
-    pixi run lattice-primitives --check    (are the committed files still right for the car?)
-    pixi run lattice-primitives --headings 32   (the trial: 32 headings, its own file)
+Run it with pixi run python3 tools/lattice_primitives.py [option] (no pixi task):
+
+    (no option)       writes the file below, and its picture
+    --check           are the committed files still right for the car?
+    --headings 32     the trial: 32 headings, its own file
 
 SmacPlannerLattice joins short car-shaped moves ("primitives") into a path. Nav2 ships
 primitives only for small robots (0.5 m and 1 m turning radius at 5 cm cells); ours turns
@@ -37,7 +39,7 @@ launch sets with reversing:=true (vehicle.nav2_tuned).
 
 The generator needs numpy, matplotlib and Rtree. Rtree isn't in our environment, so it
 runs in a throwaway one: `pixi exec` (nothing changes in pixi.lock). It needs
-`pixi run vendor` first, for the generator's source.
+`pixi run get vendor` first, for the generator's source.
 --check needs neither: it compares each committed file's turning radius and cells with
 vehicle.yaml and the maps (tools/tests/test_lattice_primitives.py runs it).
 """
@@ -122,7 +124,7 @@ def problems(lattice, v, resolution):
 def generate(cfg):
     """Run Nav2's generator on `cfg` in a throwaway environment; write its file, picture."""
     if not os.path.isfile(os.path.join(GENERATOR, 'generate_motion_primitives.py')):
-        sys.exit(f'No generator at {GENERATOR}: run `pixi run vendor` first')
+        sys.exit(f'No generator at {GENERATOR}: run `pixi run get vendor` first')
     # Its config and pictures in a folder of our own; the source stays read-only.
     work = tempfile.mkdtemp(prefix='lattice_')
     try:
@@ -169,7 +171,7 @@ def main():
         flag = '' if headings == HEADINGS else f' --headings {headings}'
         for line in wrong:
             print(f'FAIL  {os.path.relpath(path, ROOT)}: {line}. '
-                  f'Run pixi run lattice-primitives{flag}')
+                  f'Run pixi run python3 tools/lattice_primitives.py{flag}')
         if not wrong:
             meta = lattice['lattice_metadata']
             print(f"OK    {os.path.relpath(path, ROOT)}: {len(lattice['primitives'])} "

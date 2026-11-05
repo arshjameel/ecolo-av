@@ -116,6 +116,7 @@ blockquote p, .admonition p { margin: 4px 0; }
 
 /* Pictures */
 img { max-width: 100%; height: auto; display: block; margin: 10px auto; }
+.caption { color: var(--muted); font-size: 0.92rem; text-align: center; margin: -4px 0 14px; }
 
 /* Previous / next, footer */
 .prevnext { display: flex; justify-content: space-between; gap: 12px; margin-top: 22px; }

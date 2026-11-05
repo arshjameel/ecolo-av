@@ -5,17 +5,17 @@ use crate::frame::Frame;
 /// The steering Jrk's target for straight ahead (`JRK_CENTER`).
 pub const STEER_CENTRE: u16 = 1950;
 /// The Jrk limits; `setSteer()` and `setBrake()` both clamp to them (`JRK_MIN`, `JRK_MAX`).
-const JRK_MIN: u16 = 400;
-const JRK_MAX: u16 = 3500;
+pub(crate) const JRK_MIN: u16 = 400;
+pub(crate) const JRK_MAX: u16 = 3500;
 /// The brake Jrk's targets: released, and full (`JRK_MIN`, `JRK_MAX`).
 pub const BRAKE_RELEASED: u16 = JRK_MIN;
 pub const BRAKE_FULL: u16 = JRK_MAX;
 /// The throttle DAC's top code (`DAC_MAX_CAP`, of 1023).
 pub const DAC_CAP: u16 = 700;
 /// Below this |speed|, no throttle (`fabsf(speed) < 0.03f`).
-const SPEED_DEADBAND: f32 = 0.03;
+pub const SPEED_DEADBAND: f32 = 0.03;
 /// Below this accel, the brake (`accel < -0.05f`).
-const BRAKE_BELOW: f32 = -0.05;
+pub const BRAKE_BELOW: f32 = -0.05;
 
 /// The C++'s three outputs for one frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

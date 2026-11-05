@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -568,7 +572,7 @@ in <strong>0.5 m</strong> (distance = speed² ÷ (2 × braking) = 1 ÷ 2).</p>
 tests 4.1 and 4.3 run in a lot.</p>
 </section>
 <section class="card"><h2 id="9-on-stands-disagreeing-on-purpose">9. On stands: disagreeing on purpose</h2>
-<p>The preflight on stands (<code>pixi run preflight</code>, 29 Oct; <a href="actuator-tests.html#the-preflight-on-stands">Actuator tests</a>)
+<p>The preflight on stands (<code>pixi run actuator-test preflight --stands</code>, 29 Oct; <a href="actuator-tests.html#the-preflight-on-stands">Actuator tests</a>)
 lifts the car, so the wheels spin in the air. On stands, <code>actuator-test</code> caps the speed
 at 0.3 m/s.</p>
 <div class="admonition warning">
@@ -599,7 +603,7 @@ below needs a rear-wheel speed; until then the preflight only checks the sensors
 </tr>
 <tr>
 <td>The watchdog</td>
-<td>expect <strong>DISAGREE</strong>, latched: 0.3 m/s of wheels against a still GPS is over its 0.15 m/s limit. It holds only Nav2 and friends, not <code>actuator-test</code>. Clear it after: <code>pixi run watchdog-clear</code></td>
+<td>expect <strong>DISAGREE</strong>, latched: 0.3 m/s of wheels against a still GPS is over its 0.15 m/s limit. It holds only Nav2 and friends, not <code>actuator-test</code>. Clear it after: <code>pixi run clear watchdog</code></td>
 </tr>
 <tr>
 <td>The preflight's check</td>

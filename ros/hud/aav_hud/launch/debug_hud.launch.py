@@ -12,7 +12,7 @@ It only listens: it never touches an actuator.
 Topic names, frames and limits: config/debug_hud.yaml. The car's size: aav_description's
 vehicle.yaml, and from it the box round the car whose lidar points are left out
 (vehicle.self_box). monitor: as in hud.launch.py, by name or number. It needs a screen.
-The whole simulated car with it: pixi run debugdemo (tools/demo_all.sh debug).
+The whole simulated car with it: pixi run demo --debug (tools/demo_all.sh --debug).
 Keys: drag turn, right-drag move, wheel zoom, C chase / follow / free, R reset, F11.
 """
 

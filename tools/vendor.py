@@ -44,7 +44,7 @@ def freeze(name):
         else:
             print(f'skipped {rel}: no origin remote, or no commit', file=sys.stderr)
     header = (f'# vendor/{name}/: {len(repos)} repositories, each at an exact commit.\n'
-              f'# Made by tools/vendor.py --freeze {name}; download with pixi run vendor.\n')
+              f'# Made by tools/vendor.py --freeze {name}; download with pixi run get vendor.\n')
     text = yaml.safe_dump({'repositories': repos}, sort_keys=True, default_flow_style=False)
     (VENDOR / f'{name}.repos').write_text(header + text)
     print(f'vendor/{name}.repos: {len(repos)} repositories')

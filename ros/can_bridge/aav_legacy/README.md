@@ -32,11 +32,36 @@ In Gazebo: `pixi run sim esp32:=true`, the C++ firmware standing in (`aav_gazebo
 |---|---|---|---|
 | 1 (the C++, no timeout) | false (the default) | **true** | people (joy, RC, keyboard) and the actuator tests (60) only |
 | 1 | true: **supervised stand only**, wheels off the ground | false | everyone |
-| 2 (the Rust, brakes after 100 ms) | either | false | everyone |
+| 2 or 3 (the Rust, brakes after 100 ms) | either | false | everyone |
 
 twist_mux's `no_timeout` lock (priority 60, timeout 0) reads it. It holds every input
 below 60: scripted, replay, point, Nav2, AI. Timeout 0, so where no legacy bridge runs
 it never locks.
+
+### Finding the steering actuator's ends and centre (1 Nov)
+
+`frame_version: 3` carries the hardware panel's calibration request to the Rust firmware:
+the steering actuator **limp** (its motor off, a person turns the wheels) or a **jog**
+target in counts. The uplink sends back each Jrk's position in raw counts. The procedure
+and its fill-in sheet: `docs/actuator-tests.md`.
+
+| The bridge passes the request on only when | |
+|---|---|
+| `steering_calibration` is `stands` or `bench` (default `none`) | the hardware lead's say-so |
+| `frame_version: 3`, `uplink: true`, an uplink frame within `uplink_timeout` | |
+| no e-stop; ego asks for no speed; the wheel speed (if fresh) under 0.05 m/s | |
+| the panel asked within 0.5 s | it asks at 10 Hz while its person holds |
+
+Meanwhile its frames stand the car still: no speed, the brake full, not armed. The
+firmware checks again and holds the throttle at 0 (`legacy-link`'s `SteerCal`).
+
+`steering_limits` (no ROS) turns the marked left end, centre and right end into equal
+limits each side of the centre (the smaller side less 5 %), the gain and the steering
+limit, with warnings:
+
+```sh
+ros2 run aav_legacy steering_limits --left 3420 --centre 1890 --right 480 --left-deg 31 --right-deg 29
+```
 
 ## Interface
 
@@ -45,6 +70,7 @@ it never locks.
 | Executable | Runs on | Does |
 |---|---|---|
 | `legacy_uart_bridge` | the Pi wired to the ESP32 (`/dev/ttyAMA0`) | commands to serial frames; with `uplink`, the ESP32's frames back |
+| `steering_limits` | any laptop | the steering actuator's limits from its marked ends and centre (no ROS) |
 | `encoder_udp` | the Motor Pi (the encoder sends only there) | UDP spoke counts to speed. Off since 23 Oct: the wheels are on CAN |
 
 ### `legacy_uart_bridge` topics
@@ -60,6 +86,9 @@ it never locks.
 | pub, `uplink` only | `/vehicle/status` (10 Hz) | aav_interfaces/VehicleStatus |
 | pub, `uplink` only | `/vehicle/steering`, `/vehicle/brake` | aav_interfaces/ActuatorState |
 | pub, `uplink` only | `/vehicle/rc` | aav_interfaces/RcSticks |
+| pub, `uplink` only | `/vehicle/steering_actuator/raw`, `/vehicle/brake_actuator/raw` (50 Hz) | aav_interfaces/ActuatorRaw: counts, not converted; the calibration state |
+| pub, `uplink` only | `/vehicle/steering_actuator/calibration` | std_msgs/String: one line, what the calibration does and why |
+| sub, `uplink` only | `/drivers/buttons/steering_calibration` | aav_interfaces/SteeringCalibration: the panel's limp or jog |
 
 `encoder_udp` publishes `/vehicle/odom` (nav_msgs/Odometry, forward speed only, in
 `base_link`).
@@ -70,7 +99,8 @@ it never locks.
 |---|---|---|---|
 | bridge | `port`, `baud` | `/dev/ttyAMA0`, 115200 | |
 | bridge | `rate_hz`, `cmd_timeout` | 50.0, 0.3 | Hz, s |
-| bridge | `frame_version` | 1 today (C++ firmware); 2 for the Rust firmware | |
+| bridge | `frame_version` | 1 today (C++ firmware); 2 for the Rust firmware; 3 adds the steering calibration | |
+| bridge | `steering_calibration` | `none`; `stands` or `bench` only with the hardware lead | |
 | bridge | `allow_programs_without_timeout` | false; true only on a supervised stand | |
 | bridge | `uplink`, `uplink_timeout` | false, 0.2 | s |
 | bridge | `max_steering_angle` | from `vehicle.yaml` | rad |
@@ -98,10 +128,11 @@ and `aav_rc`'s `rc_driver` beside the bridge.
 | Module | ROS? | Holds |
 |---|---|---|
 | `legacy_uart_bridge.py`, `encoder_udp.py` | yes | the nodes |
-| `legacy_protocol.py` | no | the frames: `pack_frame` (v1, 13 bytes), `pack_frame_v2` (17 bytes), `unpack_uplink` (35 bytes), `UplinkParser`, `to_legacy`, `from_pedals`, `stop_command`, `EncoderSpeed` |
+| `legacy_protocol.py` | no | the frames: `pack_frame` (v1, 13 bytes), `pack_frame_v2` (17 bytes), `pack_frame_v3` (20 bytes), `unpack_uplink` (35 or 40 bytes), `UplinkParser`, `to_legacy`, `from_pedals`, `stop_command`, `EncoderSpeed` |
 | `uart_relay.py` | no | `Relay`: what to write each tick; `programs_locked`: the no-timeout lock |
 | `speed_control.py` | no | `SpeedControl`: feed-forward from ego's speed profile plus PI on the wheel speed, out as throttle or brake; the smooth stop |
-| `uplink_reader.py` | no | `UplinkReader`, `status_fields`, `steering_state`, `brake_state`, `rc_fields` |
+| `uplink_reader.py` | no | `UplinkReader`, `status_fields`, `steering_state`, `brake_state`, `rc_fields`, `raw_fields`, `calibration_line` |
+| `steering_limits.py` | no | `compute`: the steering actuator's limits from its marked ends and centre; the `steering_limits` command. The hardware panel has a Rust twin (panel-core); both test against `test/steering_limits_vectors.json` |
 
 ## Invariants
 
@@ -110,7 +141,7 @@ and `aav_rc`'s `rc_driver` beside the bridge.
 - A stale command (`cmd_timeout`) or an e-stop sends brake frames: throttle 0, brake full.
 - The bridge only relays the Orin's heartbeat counter, never makes one up. The Rust
   ESP32 firmware brakes when it hasn't changed for 100 ms.
-- Version 2 frames and the uplink use CRC-8/SAE-J1850, as `aav.dbc`. Both sides check
+- Version 2 and 3 frames and the uplink use CRC-8/SAE-J1850, as `aav.dbc`. Both sides check
   `firmware/spine/crates/legacy-link/vectors.json`.
 - With `frame_version: 1` and no override, the lock says true: no program drives
   through firmware with no command timeout. It is sent again at 5 Hz, as twist_mux's

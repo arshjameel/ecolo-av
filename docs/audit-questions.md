@@ -60,8 +60,8 @@ The ⚠️ rows matter most: they change what we buy, or whether it's safe to dr
 
 | # | Question | How to answer | Unblocks |
 |---|---|---|---|
-| W1 | The subnet, and each machine's IP and MAC | `pixi run net-map` on a laptop; the router's client list; `ip -br addr` on each | a network map; `vehicle` machine files |
-| W2 | Which `ROS_DOMAIN_ID` does the 2025-26 software use? (answered 21 Oct: 0, Humble) | `pixi run net-map` (the ROS column); `printenv | grep ROS` on each | picking ours so the two never mix (our kit uses 42) |
+| W1 | The subnet, and each machine's IP and MAC | `pixi run bash tools/net_map.sh` on a laptop; the router's client list; `ip -br addr` on each | a network map; `vehicle` machine files |
+| W2 | Which `ROS_DOMAIN_ID` does the 2025-26 software use? (answered 21 Oct: 0, Humble) | `pixi run bash tools/net_map.sh` (the ROS column); `printenv | grep ROS` on each | picking ours so the two never mix (our kit uses 42) |
 | W3 ⚠️ | Does multicast pass between the machines? ROS 2 finds its peers with it | `ros2 multicast receive` on one, `ros2 multicast send` on another, both ways, and over WiFi | ROS working across machines at all |
 | W4 | Is IGMP snooping on in the TP-Link switch? It can drop ROS's multicast | the switch's web page | W3 |
 | W5 | Does the car's network reach the internet? | `ping 1.1.1.1` from the Orin | online install, or the offline kit |

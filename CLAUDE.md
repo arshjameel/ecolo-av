@@ -168,7 +168,7 @@ EGM artifact directory: docs/designs
 - **`vendor/`** (inside this repo, but not in git): other people's source, to look things
   up. `vendor/ros2-src/` is ROS 2 Jazzy and the stock packages; `vendor/ros2-rust/` is
   rclrs; `vendor/gazebo/` is Gazebo Harmonic at the releases we run (its README says which
-  library does what); PlatformIO keeps its downloads in `vendor/platformio/`. `pixi run vendor` downloads
+  library does what); PlatformIO keeps its downloads in `vendor/platformio/`. `pixi run get vendor` downloads
   the source at the commits in `vendor/*.repos`. Never edit
   or build them. Search them with `grep -r` or `rg -u`: most search tools skip folders
   that git ignores.

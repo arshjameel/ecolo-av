@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -530,7 +534,7 @@ one-line entry, pointing at their own README (<a href="#more-packages-see-their-
 </tr>
 <tr>
 <td><strong>Status</strong></td>
-<td><span class="badge b-works">works</span> in Gazebo (<code>pixi run heading-check</code>: median heading error 1.6-2.1°, was 2.2-2.8). Car: needs <code>gps_driver:=ublox</code></td>
+<td><span class="badge b-works">works</span> in Gazebo (<code>pixi run tools/ros.sh --local python3 tools/heading_check.py</code>: median heading error 1.6-2.1°, was 2.2-2.8). Car: needs <code>gps_driver:=ublox</code></td>
 </tr>
 <tr>
 <td><strong>Run alone</strong></td>
@@ -771,7 +775,7 @@ one-line entry, pointing at their own README (<a href="#more-packages-see-their-
 </tr>
 <tr>
 <td><strong>Run alone</strong></td>
-<td><code>pixi run -e llm talk --fake</code> (no ROS); <code>pixi run -e llm llm-eval</code> (the model test)</td>
+<td><code>pixi run -e llm talk --fake</code> (no ROS); <code>pixi run -e llm tools/ros.sh python3 -m aav_language.run_eval</code> (the model test)</td>
 </tr>
 <tr>
 <td><strong>Test</strong></td>
@@ -1254,7 +1258,7 @@ one-line entry, pointing at their own README (<a href="#more-packages-see-their-
 </tr>
 <tr>
 <td><strong>Run alone</strong></td>
-<td><code>pixi run get-models</code>, then <code>pixi run detect picture:=ros/perception/aav_detector/test/stop_sign.jpg</code></td>
+<td><code>pixi run get models</code>, then <code>pixi run detect picture:=ros/perception/aav_detector/test/stop_sign.jpg</code></td>
 </tr>
 <tr>
 <td><strong>Test</strong></td>
@@ -1445,7 +1449,7 @@ one-line entry, pointing at their own README (<a href="#more-packages-see-their-
 </tr>
 <tr>
 <td><strong>Run alone</strong></td>
-<td><code>pixi run hud-demo</code>, <code>pixi run map-demo</code> (pretend data); <code>pixi run hud</code>, <code>pixi run map</code> (the nodes)</td>
+<td><code>pixi run hud --demo</code>, <code>pixi run map --demo</code> (pretend data); <code>pixi run hud</code>, <code>pixi run map</code> (the nodes)</td>
 </tr>
 <tr>
 <td><strong>Test</strong></td>
@@ -1823,7 +1827,7 @@ in <code>firmware/spine</code> (part of <code>tools/test.sh</code>). <a href="fi
 </tr>
 </tbody>
 </table></div>
-<p>Run alone: <code>cd firmware/spine &amp;&amp; cargo test -p &lt;crate&gt;</code>. The boards: <code>pixi run esp-build</code> (after <code>pixi run esp-tools</code>), <code>pixi run spine-uf2</code>.
+<p>Run alone: <code>cd firmware/spine &amp;&amp; cargo test -p &lt;crate&gt;</code>. The boards: <code>pixi run esp build</code> (after <code>pixi run esp tools</code>), <code>pixi run pico spine build</code>.
 Runs on: the spine microcontroller, on CAN (not chosen yet, Q10-Q17).</p>
 </section>
 <section class="card"><h2 id="firmware-the-other-pico-2s-rust">Firmware: the other Pico 2s (Rust)</h2>
@@ -1865,7 +1869,7 @@ was deleted from this repo then and stays on GitHub. Same crates workspace as th
 </tr>
 <tr>
 <td><strong>Run alone</strong></td>
-<td><code>pixi run wheel-uf2</code>, then drag the file on; <code>cargo test -p wheel-encoder</code></td>
+<td><code>pixi run pico wheel build</code>, then drag the file on; <code>cargo test -p wheel-encoder</code></td>
 </tr>
 <tr>
 <td><strong>Test</strong></td>
@@ -1912,7 +1916,7 @@ was deleted from this repo then and stays on GitHub. Same crates workspace as th
 </tr>
 <tr>
 <td><strong>Run alone</strong></td>
-<td><code>pixi run sentinel-uf2</code>; <code>cargo test -p sentinel -p hd44780</code></td>
+<td><code>pixi run pico sentinel build</code>; <code>cargo test -p sentinel -p hd44780</code></td>
 </tr>
 <tr>
 <td><strong>Test</strong></td>

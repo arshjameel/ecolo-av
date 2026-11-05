@@ -23,7 +23,7 @@ def committed(headings=lp.HEADINGS):
 @HEADINGS
 def test_the_committed_file_fits_vehicle_yaml_and_the_maps(headings):
     # Fails after a change to the wheelbase, the steering lock or a map's cells:
-    # run pixi run lattice-primitives (--headings 32) and commit what it writes.
+    # run pixi run python3 tools/lattice_primitives.py (--headings 32) and commit what it writes.
     lattice = committed(headings)
     assert lp.problems(lattice, V, lp.nav2_resolution()) == []
     assert lattice['lattice_metadata']['num_of_headings'] == headings

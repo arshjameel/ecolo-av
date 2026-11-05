@@ -2,7 +2,7 @@
 # The actuator tests (docs/tests.md stages 3-4; docs/actuator-tests.md).
 #
 # usage: tools/actuator_test.sh <test> [--sim|--bench] [--stands] [options]
-#        (pixi run actuator-test; pixi run preflight is "preflight --stands")
+#        (pixi run actuator-test ...; the preflight: pixi run actuator-test preflight --stands)
 #   --sim    Gazebo: this computer only (tools/ros.sh --local), on simulated time
 #   --bench  bench mode: this computer only (tools/ros.sh --local)
 #   neither  the real car: whatever shares this ROS domain, so NOT --local. The test asks

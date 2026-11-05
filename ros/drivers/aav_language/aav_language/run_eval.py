@@ -1,10 +1,13 @@
 """
 The model test: each local model plans every request in eval_set.py, and is scored.
 
-    pixi run -e llm llm-eval                                  the default models
-    pixi run -e llm llm-eval --models mlx-community/Qwen3-8B-4bit --out results.json
-    pixi run -e llm llm-eval --backend openai --base-url http://127.0.0.1:8080/v1 \
-        --models qwen3-4b                  a model behind llama-server, Ollama, trtllm-serve
+Run it in the llm environment (no pixi task):
+pixi run -e llm tools/ros.sh python3 -m aav_language.run_eval [options]
+
+    (no options)          the default models
+    --models mlx-community/Qwen3-8B-4bit --out results.json
+    --backend openai --base-url http://127.0.0.1:8080/v1 --models qwen3-4b
+                          a model behind llama-server, Ollama, trtllm-serve
 
 Each request gets a fresh pretend car: the drive server with --fake, over MCP stdio, as
 the agent uses it. Only the plan is scored (nothing runs). Per model: correct plans (all,

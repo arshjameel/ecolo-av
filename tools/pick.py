@@ -23,9 +23,9 @@ LAST = Path.home() / '.config' / 'aav' / 'last-pick'
 NDT_MAP = 'maps/ndt/test_lot.pcd'
 KISS_PYTHON = '.pixi/envs/kiss/bin/python'
 
-# What to start: the pixi task, and what it is.
+# What to start: the pixi task (and its flag), and what it is.
 PROGRAMS = [
-    ('debugdemo', 'Gazebo, RViz, the HUD, the map window and the debug HUD (cubes, NDT)'),
+    ('demo --debug', 'Gazebo, RViz, the HUD, the map window and the debug HUD (cubes, NDT)'),
     ('demo', 'Gazebo, RViz, the HUD and the map window'),
     ('sim', 'Gazebo and the car only (add windows yourself)'),
 ]
@@ -61,12 +61,14 @@ PLANNERS = [
      ['planner:=navfn']),
     ('theta_star', 'Theta*: straight lines, ignores the turning circle (not tried)',
      ['planner:=theta_star']),
+    ('diffusion', 'a model draws it, a guard checks it, the lattice if it fails (a trial)',
+     ['planner:=diffusion']),
 ]
 
 # Where-am-I finders that run beside the EKF and are scored (they never steer yet); with
 # ndt_ekf, the global EKF takes NDT's pose; with kiss_ekf, the local EKF takes KISS-ICP's
 # twist (trials: docs/trials.md).
-# Every row sets each switch, on or off: debugdemo turns some on, and the last value wins.
+# Every row sets each switch, on or off: demo --debug turns some on, and the last value wins.
 NO_KISS = ['kiss_icp:=false', 'kiss_ekf:=false']
 LOCALIZERS = [
     ('ekf', 'the EKFs only: wheels, IMU and GPS (default)',
@@ -96,7 +98,7 @@ SPEED_LOOPS = [
     ('smooth', 'the PI with a smooth stop', ['speed_loop:=smooth']),
 ]
 
-# Only asked for `sim`: demo and debugdemo always use the test lot.
+# Only asked for `sim`: demo and demo --debug always use the test lot.
 WORLDS = [
     ('test_lot', 'the walled lot with a building (NDT and AMCL need it)', ['world:=test_lot']),
     ('road', 'a road with a stop sign', ['world:=road']),
@@ -125,7 +127,7 @@ def command(program, rows):
         for arg in row[2]:
             if arg not in args:
                 args.append(arg)
-    return ['pixi', 'run', program] + args
+    return ['pixi', 'run'] + program.split() + args
 
 
 def questions(read=input, say=print):
@@ -136,9 +138,9 @@ def questions(read=input, say=print):
         rows.append(ask('Which world?', WORLDS, read, say))
     rows.append(ask('Who draws the route?', PLANNERS, read, say))
     rows.append(ask('Who steers along the path?', FOLLOWERS, read, say))
-    # debugdemo is for seeing them all: there, NDT and AMCL come first (Ben, 30 Oct).
+    # demo --debug is for seeing them all: there, NDT and AMCL come first (Ben, 30 Oct).
     finders = LOCALIZERS
-    if program == 'debugdemo':
+    if program == 'demo --debug':
         finders = sorted(LOCALIZERS, key=lambda row: row[0] != 'both')
     where = ask('Where-am-I finders beside the EKF?', finders, read, say)
     if 'ndt:=true' in where[2] and not (ROOT / NDT_MAP).is_file():

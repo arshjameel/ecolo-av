@@ -60,13 +60,13 @@ Hold `i` to drive.
 | # | Do this | Why |
 |---|---|---|
 | 1 | Join the car's own WiFi router | campus WiFi blocks the traffic ROS uses to find other computers |
-| 2 | `export ROS_DOMAIN_ID=42` in each terminal | ROS only talks within one domain (0–101 is safe on Linux; Fast DDS breaks above 232). Ours is 42, so it never mixes with the 2025-26 software (`pixi run net-map` shows which domains theirs uses) |
+| 2 | `export ROS_DOMAIN_ID=42` in each terminal | ROS only talks within one domain (0–101 is safe on Linux; Fast DDS breaks above 232). Ours is 42, so it never mixes with the 2025-26 software (`pixi run bash tools/net_map.sh` shows which domains theirs uses) |
 | 3 | Leave the middleware alone | Pixi sets Cyclone DDS on every computer, the car's too (Ben, 23 Oct). Mixed middlewares may not talk |
 | 4 | When macOS asks whether `python3` or `rviz2` may accept incoming connections, click Allow | otherwise the firewall blocks the car's replies |
 | 4b | System Settings → Privacy & Security → **Local Network**: turn on your terminal app (Terminal, iTerm, VS Code) | since macOS 15, apps need this to reach other machines on the network. macOS asks once; if you said no, nothing on the car answers |
 | 5 | Run `pixi run doctor` | it checks steps 1–4, and whether it can see the car, and says what to fix |
 
-### See what's on the network: `pixi run net-map`
+### See what's on the network: `pixi run bash tools/net_map.sh`
 
 It lists every machine on the network you've joined: IP, name, MAC, a guess at the maker
 (Raspberry Pi, NVIDIA, Espressif = an ESP32), open ports (SSH, web, Foxglove), and the
@@ -74,8 +74,8 @@ It lists every machine on the network you've joined: IP, name, MAC, a guess at t
 nothing: it pings, knocks on a few ports, and listens.
 
 ```bash
-pixi run net-map                       # about 25 s
-pixi run net-map --listen 30 --out ~/net-map.md
+pixi run bash tools/net_map.sh                       # about 25 s
+pixi run bash tools/net_map.sh --listen 30 --out ~/net-map.md
 ```
 
 - It hears **Humble and Jazzy alike**: it reads the raw discovery packets, not ROS. So it
@@ -83,7 +83,7 @@ pixi run net-map --listen 30 --out ~/net-map.md
 - "No ROS discovery heard" with ROS running means multicast isn't reaching the Mac:
   WiFi routers often drop it. Try Ethernet, or `ROS_STATIC_PEERS` below.
 - On a Mac, programs started by Python see an empty ARP table (Local Network privacy),
-  so `net-map` reads it from bash. If the MAC column is empty, check step 4b.
+  so `bash tools/net_map.sh` reads it from bash. If the MAC column is empty, check step 4b.
 - Tried on Ben's home network, 15 Oct: 13 machines in 25 s, and a test talker on domain
   77 heard. **Not yet tried on the car.**
 
@@ -112,7 +112,7 @@ clock is off: the car's computers keep the time (the Orin serves it, see
 | Want | Run this on the Mac |
 |---|---|
 | Drive with the keyboard | `pixi run keyboard` |
-| Stop everything | `pixi run estop`, then `pixi run estop-clear` when it's safe |
+| Stop everything | `pixi run estop`, then `pixi run clear estop` when it's safe |
 | The 3D view: map, costmaps, path, the car | `pixi run rviz` |
 | Nodes and topics, live | `pixi run graph` |
 | Be the safety driver's joystick laptop | `pixi run -e ml car laptop` (`-e ml` for its detector) |
@@ -129,7 +129,7 @@ Metal) on the camera's JPEG pictures, which suit WiFi. At home, the bench plays 
 | Terminal | Run | What it is |
 |---|---|---|
 | 1 | `pixi run bench` | the car's software, with stand-ins for the hardware |
-| 2, once, if you like | `pixi run -e ml export-coreml` | makes `models/rf-detr-nano.mlpackage`, the Core ML model (8 s): 10 ms a picture, not 16. Then uncomment its line in `laptop.yaml` |
+| 2, once, if you like | `pixi run -e ml python3 tools/export_model.py --format coreml` | makes `models/rf-detr-nano.mlpackage`, the Core ML model (8 s): 10 ms a picture, not 16. Then uncomment its line in `laptop.yaml` |
 | 2 | `pixi run -e ml laptop-bench` | your laptop's parts, as on the car: the joystick, and its own detector |
 
 - **See it:** `pixi run graph` shows `object_detector_laptop` reading
@@ -154,13 +154,13 @@ WiFi connection, with no ROS on the Mac.
 
 In either app: Open connection → Foxglove WebSocket → `ws://<the Orin's IP>:8765`.
 
-**Our layouts** (24 Oct): `tools/foxglove/driving.json`, `sensors-health.json` and
-`map.json`. In the app's Layouts menu, import one from its file. What each shows, where
+**Our layouts** (24 Oct): `tools/foxglove/driving.json`, `sensors-health.json`,
+`map.json`, and `cockpit.json` (1 Nov: all on one screen). In the app's Layouts menu, import one from its file. What each shows, where
 each bridge listens, and how much it costs the WiFi: [Watch from a laptop](foxglove.md).
 In the simulator: `pixi run sim foxglove:=true`, then `ws://localhost:8765`.
 
-**Check a bridge serves the layouts** (no ROS needed): `pixi run layout-check` (the sim
-here) or `pixi run layout-check ws://192.168.1.140:8765` (the Jetson); add `--data` to
+**Check a bridge serves the layouts** (no ROS needed): `pixi run python3 tools/layout_check.py` (the sim
+here) or `pixi run python3 tools/layout_check.py ws://192.168.1.140:8765` (the Jetson); add `--data` to
 measure what each topic sends. Each topic is served, off (it needs a part that's off by
 default) or MISSING.
 
@@ -176,7 +176,7 @@ On macOS, Gazebo's window has to run as a separate program from the simulator.
 
 ```bash
 pixi run sim               # the simulator, its window, and RViz
-pixi run gz-window         # opens the window again, if you closed it
+pixi run tools/ros.sh tools/gz_window.sh         # opens the window again, if you closed it
 pixi run sim follow:=false # a free camera instead of one that follows the car
 ```
 
@@ -206,7 +206,7 @@ not the Mac:
 | Its subscriber, worst gap | **0.48 s** | **0.05 s** |
 | Gaps over 0.1 s | 9 | 0 |
 
-The whole graph, 10 min each (`pixi run timing-test`, Gazebo's lot, 23 Oct):
+The whole graph, 10 min each (`pixi run measure timing`, Gazebo's lot, 23 Oct):
 
 | 5 min parked | Fast DDS | Cyclone DDS |
 |---|---|---|

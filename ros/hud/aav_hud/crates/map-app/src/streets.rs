@@ -1,5 +1,5 @@
 //! The street map under Nav2's map: OpenStreetMap's water, parks, buildings and roads,
-//! from the offline Protomaps extract (`pixi run get-street-map`).
+//! from the offline Protomaps extract (`pixi run get street-map`).
 //!
 //! A thread reads the file and decodes tiles (map-core's `streets`), the ones the view
 //! wants, the middle first; the window draws what's ready, a frame at a time, so the
@@ -17,6 +17,8 @@ use std::{
     thread,
 };
 
+use hud_app::paint::ToColor;
+use hud_core::theme::StreetColours;
 use map_core::{
     earth::Datum,
     pmtiles::Archive,
@@ -183,37 +185,30 @@ fn load(file: &Path, datum: Datum, queue: &Queue, tx: &Sender<News>) {
     }
 }
 
-// The street map's colours: dark, so Nav2's map, the plan and the car stay the
-// brightest things on the screen.
-pub const LAND: Color = Color::new(22, 24, 30, 255);
-const GREEN: Color = Color::new(26, 46, 34, 255);
-const CAMPUS: Color = Color::new(32, 31, 44, 255);
-const WATER: Color = Color::new(22, 44, 72, 255);
-const BUILDING: Color = Color::new(44, 46, 56, 255);
-const WATERWAY: Color = Color::new(30, 60, 96, 255);
-const CASING: Color = Color::new(12, 12, 16, 255);
-const LABEL: Color = Color::new(190, 194, 206, 255);
-const LABEL_HALO: Color = Color::new(12, 12, 16, 230);
+// The street map's colours come from the theme (hud_core::theme): quiet, so Nav2's map,
+// the plan and the car stay the brightest things on the screen.
 
-fn area_colour(a: Area) -> Color {
+fn area_colour(s: &StreetColours, a: Area) -> Color {
     match a {
-        Area::Green => GREEN,
-        Area::Campus => CAMPUS,
-        Area::Water => WATER,
-        Area::Building => BUILDING,
+        Area::Green => s.green,
+        Area::Campus => s.campus,
+        Area::Water => s.water,
+        Area::Building => s.building,
     }
+    .rl()
 }
 
-fn road_colour(c: RoadClass) -> Color {
+fn road_colour(s: &StreetColours, c: RoadClass) -> Color {
     match c {
-        RoadClass::Path => Color::new(60, 64, 76, 255),
-        RoadClass::Rail => Color::new(74, 74, 86, 255),
-        RoadClass::Service => Color::new(54, 57, 68, 255),
-        RoadClass::Minor => Color::new(78, 82, 96, 255),
-        RoadClass::Medium => Color::new(104, 108, 124, 255),
-        RoadClass::Major => Color::new(150, 154, 170, 255),
-        RoadClass::Highway => Color::new(196, 160, 84, 255),
+        RoadClass::Path => s.path,
+        RoadClass::Rail => s.rail,
+        RoadClass::Service => s.service,
+        RoadClass::Minor => s.minor,
+        RoadClass::Medium => s.medium,
+        RoadClass::Major => s.major,
+        RoadClass::Highway => s.highway,
     }
+    .rl()
 }
 
 /// A road's width on the screen: its real width, but never thinner than this.
@@ -231,9 +226,11 @@ fn min_px(c: RoadClass) -> f32 {
 const LABELS_FROM: f64 = 0.8;
 
 /// Draws the tiles: the areas, then the roads (casings under the major ones), then the
-/// names. `u` is the window's scale (1 at 1600 x 900).
+/// names, in the theme's `colours`. `u` is the window's scale (1 at 1600 x 900).
+#[allow(clippy::too_many_arguments)]
 pub fn draw<D: RaylibDraw>(
     d: &mut D,
+    colours: &StreetColours,
     font: &impl AsRef<raylib::ffi::Font>,
     measure: impl Fn(&str, f32) -> f32,
     tiles: &[Arc<TileShapes>],
@@ -246,7 +243,7 @@ pub fn draw<D: RaylibDraw>(
         vp.y as i32,
         vp.width as i32,
         vp.height as i32,
-        LAND,
+        colours.land.rl(),
     );
     if tiles.is_empty() {
         return;
@@ -263,7 +260,7 @@ pub fn draw<D: RaylibDraw>(
         m.rl_translatef(-view.centre.x as f32, -view.centre.y as f32, 0.0);
         for area in Area::ALL {
             m.rl_draw(DrawMode::Triangles, |v| {
-                v.color4ub(area_colour(area));
+                v.color4ub(area_colour(colours, area));
                 for t in tiles {
                     for p in t.triangles(area) {
                         v.vertex2f(p[0], p[1]);
@@ -273,10 +270,22 @@ pub fn draw<D: RaylibDraw>(
         }
         // Waterways, then each road class from the least: one batch per colour.
         let width = |px: f32| px / k;
-        lines(&mut *m, tiles, LineKind::Waterway, width(1.5), WATERWAY);
+        lines(
+            &mut *m,
+            tiles,
+            LineKind::Waterway,
+            width(1.5),
+            colours.waterway.rl(),
+        );
         for class in [RoadClass::Major, RoadClass::Highway] {
             let w = (class.width_m() as f32 * k).max(min_px(class)) + 2.0;
-            lines(&mut *m, tiles, LineKind::Road(class), width(w), CASING);
+            lines(
+                &mut *m,
+                tiles,
+                LineKind::Road(class),
+                width(w),
+                colours.casing.rl(),
+            );
         }
         for class in RoadClass::ALL {
             let w = (class.width_m() as f32 * k).max(min_px(class))
@@ -286,13 +295,13 @@ pub fn draw<D: RaylibDraw>(
                 tiles,
                 LineKind::Road(class),
                 width(w.min(80.0)),
-                road_colour(class),
+                road_colour(colours, class),
             );
         }
     }
     d.rl_enable_backface_culling();
     if view.scale.0 >= LABELS_FROM {
-        labels(d, font, measure, tiles, view, vp, u);
+        labels(d, colours, font, measure, tiles, view, vp, u);
     }
 }
 
@@ -336,8 +345,10 @@ fn lines(
 }
 
 /// Street names, along their streets, where they fit and don't crowd each other.
+#[allow(clippy::too_many_arguments)]
 fn labels(
     d: &mut impl RaylibDraw,
+    colours: &StreetColours,
     font: &impl AsRef<raylib::ffi::Font>,
     measure: impl Fn(&str, f32) -> f32,
     tiles: &[Arc<TileShapes>],
@@ -385,10 +396,26 @@ fn labels(
         for (dx, dy) in [(-1.0, 0.0), (1.0, 0.0), (0.0, -1.0), (0.0, 1.0)] {
             let halo = at + Vector2::new(dx, dy) * (1.5 * u);
             d.draw_text_pro(
-                font, &l.text, halo, origin, rotation, size, spacing, LABEL_HALO,
+                font,
+                &l.text,
+                halo,
+                origin,
+                rotation,
+                size,
+                spacing,
+                colours.label_halo.rl(),
             );
         }
-        d.draw_text_pro(font, &l.text, at, origin, rotation, size, spacing, LABEL);
+        d.draw_text_pro(
+            font,
+            &l.text,
+            at,
+            origin,
+            rotation,
+            size,
+            spacing,
+            colours.label.rl(),
+        );
         placed.push((at, r, &l.text));
     }
 }

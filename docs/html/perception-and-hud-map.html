@@ -22,10 +22,14 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
 <a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <span class="sep">Learn:</span>
@@ -108,12 +112,14 @@
 <li>Are there better open-source models, like NVIDIA's per-pixel ones?</li>
 </ol>
 <blockquote>
-<p><strong>The short version</strong>
-- <strong>Use stock YOLO for objects</strong> (answered 23 Oct: RF-DETR Nano by default; YOLO with <code>detector:=yolo</code>): one model, run as TensorRT on the Orin and Core ML on a Mac. <strong>Keep OpenCV for lane lines</strong> (already done: under 1 ms a frame).
-- <strong>The previous teams' trained model is lost</strong> (<code>best.pt</code> was on someone's laptop) and knew one label. Start from stock, and train our own later only if the stock one fails on our recordings.
-- <strong>Lidar: no model to start.</strong> Put its points straight into Nav2's costmap and collision_monitor. Clustering next. A downloaded 3D detector last, and only if needed.
-- <strong>Per-pixel, for where the road is: NVIDIA's CitySemSegFormer</strong> (a ready ONNX file), run with ONNX Runtime, not Isaac ROS: Isaac ROS isn't on Jazzy for the Orin yet (since then: Isaac ROS 4.6 supports the Orin on JetPack 7.2, <a href="perception.html#isaac-ros-nvidia">Perception</a>).
-- <strong>A map on the HUD: yes.</strong> The raylib HUD can draw offline map tiles with the car's GPS dot on top. (Answered: built 15-16 Oct as <a href="hud.html#the-map-window-big-screen">the map window</a>.)</p>
+<p><strong>The short version</strong></p>
+<ul>
+<li><strong>Use stock YOLO for objects</strong> (answered 23 Oct: RF-DETR Nano by default; YOLO with <code>detector:=yolo</code>): one model, run as TensorRT on the Orin and Core ML on a Mac. <strong>Keep OpenCV for lane lines</strong> (already done: under 1 ms a frame).</li>
+<li><strong>The previous teams' trained model is lost</strong> (<code>best.pt</code> was on someone's laptop) and knew one label. Start from stock, and train our own later only if the stock one fails on our recordings.</li>
+<li><strong>Lidar: no model to start.</strong> Put its points straight into Nav2's costmap and collision_monitor. Clustering next. A downloaded 3D detector last, and only if needed.</li>
+<li><strong>Per-pixel, for where the road is: NVIDIA's CitySemSegFormer</strong> (a ready ONNX file), run with ONNX Runtime, not Isaac ROS: Isaac ROS isn't on Jazzy for the Orin yet (since then: Isaac ROS 4.6 supports the Orin on JetPack 7.2, <a href="perception.html#isaac-ros-nvidia">Perception</a>).</li>
+<li><strong>A map on the HUD: yes.</strong> The raylib HUD can draw offline map tiles with the car's GPS dot on top. (Answered: built 15-16 Oct as <a href="hud.html#the-map-window-big-screen">the map window</a>.)</li>
+</ul>
 </blockquote></div>
 <section class="card"><h2 id="1-camera-perception-which-tool-for-which-job">1. Camera perception: which tool for which job</h2>
 <div class="table-wrap"><table>
@@ -188,12 +194,12 @@ sign", so we start there.</p>
 <tr>
 <td>Mac</td>
 <td><code>yolo11n.mlpackage</code> (Core ML)</td>
-<td><code>pixi run -e ml export-coreml</code></td>
+<td><code>pixi run -e ml python3 tools/export_model.py --format coreml</code></td>
 </tr>
 <tr>
 <td>Anything</td>
 <td><code>yolo11n.pt</code> (PyTorch)</td>
-<td><code>pixi run get-models</code></td>
+<td><code>pixi run get models</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -306,7 +312,7 @@ known.</p>
 </tr>
 <tr>
 <td><code>ottawa.db</code>: 606,628 places for the search box</td>
-<td><code>pixi run get-places</code></td>
+<td><code>pixi run get places</code></td>
 </tr>
 <tr>
 <td>OSRM road routes</td>

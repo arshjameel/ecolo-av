@@ -34,7 +34,7 @@ deeper on two parts of this page.
 | 5 | Perception | `/perception/...` | Orin #2 (later); Orin #1 or a laptop today | bench (`--perception`), Gazebo road world |
 | 6 | Drivers | `/drivers/<name>/cmd_vel` | Orin; laptop for keyboard/joystick | turtle, bench, Gazebo |
 | 7 | Choose | `/control/cmd_vel` → `/ego/actuator_cmd` | Orin #1 | turtle (fastest) |
-| 8 | People | `/safety/estop`, reads everything | dash Pi (HUD), laptops | `pixi run hud-demo`, bench |
+| 8 | People | `/safety/estop`, reads everything | dash Pi (HUD), laptops | `pixi run hud --demo`, bench |
 
 ## 2. Each part of the car, from the device up
 

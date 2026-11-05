@@ -139,7 +139,7 @@ one-line entry, pointing at their own README ([below](#more-packages-see-their-r
 | **Runs on** | the Orin |
 | **In → out** | `/sensors/gps/fix_velocity`, `/vehicle/odom` → `/localization/gps/heading` (Imu: an orientation only) |
 | **Origin** | ours: no stock package does it |
-| **Status** | [[works]] in Gazebo (`pixi run heading-check`: median heading error 1.6-2.1°, was 2.2-2.8). Car: needs `gps_driver:=ublox` |
+| **Status** | [[works]] in Gazebo (`pixi run tools/ros.sh --local python3 tools/heading_check.py`: median heading error 1.6-2.1°, was 2.2-2.8). Car: needs `gps_driver:=ublox` |
 | **Run alone** | starts with `localization.launch.py` (`gps_heading:=false` leaves it out) |
 | **Test** | `test/test_course.py` (in `tools/test.sh`) |
 | **Read first** | `aav_gps_heading/course.py` |
@@ -212,7 +212,7 @@ one-line entry, pointing at their own README ([below](#more-packages-see-their-r
 | **In → out** | your words → MCP → `/scripted_drive`, `/follow_gps_waypoints`, `/safety/estop` (true only) |
 | **Origin** | ours; the ReAct design from Ben's SYSC 4415 A3 and `mcpsearch` |
 | **Status** | [[works]] Gazebo and turtle; [[untested]] bench and car |
-| **Run alone** | `pixi run -e llm talk --fake` (no ROS); `pixi run -e llm llm-eval` (the model test) |
+| **Run alone** | `pixi run -e llm talk --fake` (no ROS); `pixi run -e llm tools/ros.sh python3 -m aav_language.run_eval` (the model test) |
 | **Test** | `test/` (in `tools/test.sh`): the distance maths, every safety rule, the ReAct loop |
 | **Read first** | [Plain English](plain-english.md), then `aav_language/drive_tools.py` |
 
@@ -364,7 +364,7 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 | **In → out** | `/sensors/camera/front_left/image_raw` → `/perception/detections` → `/perception/stop_sign`, `/perception/camera_obstacles`, `/perception/camera_view` |
 | **Origin** | inherited, rewritten: 2024-25 `camera_ros2_ws` |
 | **Status** | [[works]] on the bench and in Gazebo, with the stock RF-DETR Nano. The 2024-25 team's trained model is lost. On the car, the detector runs inside `aav_camera_stream` |
-| **Run alone** | `pixi run get-models`, then `pixi run detect picture:=ros/perception/aav_detector/test/stop_sign.jpg` |
+| **Run alone** | `pixi run get models`, then `pixi run detect picture:=ros/perception/aav_detector/test/stop_sign.jpg` |
 | **Test** | `test/` (in `tools/test.sh`); `pixi run bench-check --perception` |
 | **Read first** | `aav_detector/stop_sign.py` |
 
@@ -424,7 +424,7 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 | **In → out** | `/vehicle/status`, `/sensors/gps/fix`, `/localization/gps/fix`, `/perception/stop_sign`, `/vehicle/battery`, the camera → the screen; the button → `/safety/estop` (only true) |
 | **Origin** | ours. Four crates: `hud-core` and `map-core` (logic, no ROS), `hud-app` and `map-app` (window and node) |
 | **Status** | [[works]] on a Mac, alone and next to the bench. [[untested]] on a Pi and the car |
-| **Run alone** | `pixi run hud-demo`, `pixi run map-demo` (pretend data); `pixi run hud`, `pixi run map` (the nodes) |
+| **Run alone** | `pixi run hud --demo`, `pixi run map --demo` (pretend data); `pixi run hud`, `pixi run map` (the nodes) |
 | **Test** | `cargo test -p hud-core`, `-p map-core` (in `tools/test.sh`) |
 | **Read first** | `crates/hud-core/src/lib.rs` |
 
@@ -528,7 +528,7 @@ in `firmware/spine` (part of `tools/test.sh`). [Firmware](firmware.md) and
 | `boards/esp32-umod` | the spine on today's ESP32 control board (Embassy): the C++'s pins; the Motor-Pi's UART or CAN; a 100 ms watchdog | the C++'s replacement, in Rust (Ben, 15 Oct) | ours | [[untested]] builds, never flashed | `src/main.rs`, `src/pins.rs` |
 | `boards/pico2` | the spine's program for a Pico 2 (Embassy), with a 100 ms hardware watchdog | the first real board | ours | [[untested]] builds, never flashed | `src/main.rs` |
 
-Run alone: `cd firmware/spine && cargo test -p <crate>`. The boards: `pixi run esp-build` (after `pixi run esp-tools`), `pixi run spine-uf2`.
+Run alone: `cd firmware/spine && cargo test -p <crate>`. The boards: `pixi run esp build` (after `pixi run esp tools`), `pixi run pico spine build`.
 Runs on: the spine microcontroller, on CAN (not chosen yet, Q10-Q17).
 
 ## Firmware: the other Pico 2s (Rust)
@@ -547,7 +547,7 @@ was deleted from this repo then and stays on GitHub. Same crates workspace as th
 | **In → out** | two IR spoke sensors → UDP to the Motor Pi (192.168.1.193), port 10111, a big-endian int32: `encoder_udp` |
 | **Origin** | ours, rewritten from the 2025-26 `Wheel_Encoders`; `PROVENANCE.md` |
 | **Status** | [[untested]] builds, never flashed. The car's Pico 2 still runs the C++. One count is about 0.12 m |
-| **Run alone** | `pixi run wheel-uf2`, then drag the file on; `cargo test -p wheel-encoder` |
+| **Run alone** | `pixi run pico wheel build`, then drag the file on; `cargo test -p wheel-encoder` |
 | **Test** | `wheel-encoder`: 12 tests, with examples `aav_legacy` checks too (`firmware/udp/wheel_encoder_vectors.txt`) |
 | **Read first** | `crates/wheel-encoder/src/packet.rs`, then `boards/wheel-encoder-pico2/src/main.rs` |
 
@@ -561,7 +561,7 @@ was deleted from this repo then and stays on GitHub. Same crates workspace as th
 | **In → out** | a 46-byte I2C telemetry packet → the display |
 | **Origin** | ours, rewritten from the 2025-26 `AAV_cortex` (`AAV_sentinel/`); `PROVENANCE.md` |
 | **Status** | [[untested]] builds, never flashed. Nothing in our stack sends it packets yet (question 3) |
-| **Run alone** | `pixi run sentinel-uf2`; `cargo test -p sentinel -p hd44780` |
+| **Run alone** | `pixi run pico sentinel build`; `cargo test -p sentinel -p hd44780` |
 | **Test** | `sentinel`: 40 tests (the packet, every page, the knob, the beeps); `hd44780`: 5 |
 | **Read first** | `crates/sentinel/README.md`, then `src/telemetry.rs` |
 

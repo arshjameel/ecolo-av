@@ -96,4 +96,4 @@ pixi run build && colcon test --packages-select aav_detector && colcon test-resu
 ```
 
 `tools/test.sh` runs the first; `pixi run test` runs everything. To try the model:
-`pixi run get-models`, then `pixi run detect picture:=ros/perception/aav_detector/test/stop_sign.jpg`.
+`pixi run get models`, then `pixi run detect picture:=ros/perception/aav_detector/test/stop_sign.jpg`.
