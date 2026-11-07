@@ -597,8 +597,9 @@ mod legacy_loop_tests {
         assert_eq!(rig.last(BRAKE), Some(set_target(3500).to_vec()));
         let out = rig.frames(100, 0.0, 0.5, 0.0);
         assert_eq!(out.mode, Mode::Computer);
-        // The C++'s code for speed 0.5, reached through the ramp; the brake let go.
-        assert_eq!(rig.dac(), 350);
+        // The C++'s code for speed 0.5 is 350; the spine caps it at MAX_SPEED's throttle (1.0
+        // of 3.0 m/s, of 700), reached through the ramp; the brake let go.
+        assert_eq!(rig.dac(), 233);
         assert_eq!(rig.last(BRAKE), Some(set_target(400).to_vec()));
     }
 
@@ -662,7 +663,7 @@ mod legacy_loop_tests {
         rig.moving(5, 0.0, -0.3, &mut counter);
         let out = rig.moving(100, 0.5, 0.0, &mut counter);
         assert_eq!(out.mode, Mode::Computer);
-        assert_eq!(rig.dac(), 350);
+        assert_eq!(rig.dac(), 233);
         (rig, counter)
     }
 
@@ -706,7 +707,7 @@ mod legacy_loop_tests {
         rig.moving(3, 0.0, -0.3, &mut counter);
         let out = rig.moving(100, 0.5, 0.0, &mut counter);
         assert_eq!(out.mode, Mode::Computer);
-        assert_eq!(rig.dac(), 350);
+        assert_eq!(rig.dac(), 233);
     }
 
     #[test]
@@ -926,7 +927,7 @@ mod uplink_loop_tests {
         assert_eq!(up.sticks.throttle, 1.0);
         // The frames drive (as the ROS driver's commands would): the DAC follows them.
         rig.steps(100, 0.5, 0.0, rc);
-        assert_eq!(rig.dac(), 350);
+        assert_eq!(rig.dac(), 233);
     }
 
     #[test]
@@ -949,7 +950,7 @@ mod uplink_loop_tests {
         let rc = Some((VIA_ROS, 1500));
         rig.steps(5, 0.0, -0.3, rc);
         rig.steps(100, 0.5, 0.0, rc);
-        assert_eq!(rig.dac(), 350);
+        assert_eq!(rig.dac(), 233);
         // The receiver goes silent; the frames still drive. 100 ms later: braked.
         let out = rig.steps(8, 0.5, 0.0, None);
         assert_eq!((out.throttle, out.brake), (0.0, 1.0));

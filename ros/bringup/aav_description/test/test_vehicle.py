@@ -13,6 +13,7 @@ CONFIG = Path(__file__).resolve().parents[1] / 'config' / 'vehicle.yaml'
 ROOT = Path(__file__).resolve().parents[4]
 SPINE_RS = ROOT / 'firmware/spine/crates/spine-core/src/spine.rs'
 NAV2_YAML = ROOT / 'ros/drivers/aav_navigation/config/nav2.yaml'
+EGO_YAML = ROOT / 'ros/ego/aav_ego/config/ego.yaml'
 
 
 def rust_const(path, name):
@@ -362,6 +363,13 @@ def test_the_firmware_copies_match_vehicle_yaml():
     v = vehicle.load(CONFIG)['vehicle']
     assert rust_const(SPINE_RS, 'MAX_STEERING_ANGLE') == v['max_steering_angle']
     assert rust_const(SPINE_RS, 'MAX_REVERSE_SPEED') == v['max_reverse_speed']
+
+
+def test_ego_and_the_spine_share_one_forward_speed_limit():
+    # Every driver respects one limit: ego asks for no more, the spine enforces it, the RC
+    # transmitter too. Raise both together, per the test plan.
+    ego = yaml.safe_load(EGO_YAML.read_text())['ego']['ros__parameters']
+    assert rust_const(SPINE_RS, 'MAX_SPEED') == ego['max_speed']
 
 
 CAR = {'wheelbase': 1.57, 'track': 0.77, 'max_steering_angle': 0.5}

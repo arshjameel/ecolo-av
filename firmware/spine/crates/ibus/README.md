@@ -111,5 +111,5 @@ Changed on purpose:
 | Steering scale | 1550 Jrk counts per unit on one side, 1950 on the other | -1 to 1 both ways; `spine-board` turns radians into Jrk counts |
 | Override on, a stick out of range | `jrkSafeStop()`: full brake, wheels straight, throttle off | RC takes over and asks for zero speed and straight wheels |
 | Override switch out of range | read as off, so the computer drives | `None`: no usable RC; `spine-core` stops if RC was driving |
-| Gear switch on brake | brake full on (Jrk target 3500) | `RcInput::brake`; `spine-core`'s `RC_GEAR_BRAKE` decides: zero speed, so the speed loop brakes (proposed), or the full brake |
+| Gear switch on brake | brake full on (Jrk target 3500) | `RcInput::brake`; `spine-core`'s `RC_GEAR_BRAKE` decides: the full brake (today), or zero speed, so the speed loop brakes |
 | What the throttle means | a share of the DAC, open loop | a share of the top speed, for `spine-core`'s speed loop |

@@ -226,6 +226,35 @@ WiFi details: fine for a test build, but that board can't join the car's WiFi.
   The Rust drivers fix each of these. Until the spine replaces this firmware, drive today's
   car with the RC transmitter's switch in reach.
 
+## T3.6: the stops and its done test
+
+Decided by Arsh after talking with the hardware lead, 6 Nov. **Ben and the team haven't
+reviewed these yet.**
+
+| What happens | The spine |
+|---|---|
+| E-stop, driver fault, RC gear switch on brake | hard stop |
+| Lost input: commands, RC, wheel speed | hard stop, latched until re-armed |
+| Past 1.25 m/s (the limit is 1.0) | throttle off, brake 0.5, until under the limit |
+| Still over the limit 2 s later, speeding up or steady | hard stop, latched |
+| RC direct, throttle stick at zero | light brake for 1 s, then the full brake |
+
+The table in full: [`spine-core`](../firmware/spine/crates/spine-core/README.md).
+
+A person stopping any other way is ego's job, and an obstacle stop is Nav2's and ego's: not
+built yet. The wheel speed reaches the firmware only once the Motor Pi sends frame
+version 4: until then the two speed rules stay off.
+
+**The proposed done test.** The proposal's needs the bench rig and the CAN link. The rig
+(T3.7) isn't being built, and the ESP32 stays on the Motor Pi's UART:
+
+> On the car, on stands: unplugging the UART, killing the Motor Pi and killing the Orin
+> each cut the throttle and put the brake full on within **130 ms**, in 10 of 10 trials
+> each. Only a deliberate re-arm releases it. Corrupted frames are tested in QEMU.
+
+The 130 ms is the 100 ms timeout, up to two 10 ms ticks, and a margin over QEMU's measured
+111-120 ms. It times the command, not the actuator's travel.
+
 ## Still to decide
 
 For the team, from the drivers' port. Each is one constant at the top of `spine-core`'s
@@ -235,7 +264,7 @@ For the team, from the drivers' port. Each is one constant at the top of `spine-
 |---|---|---|
 | `ESTOP_STEERING` | `Hold`: the steering stays where it is on any stop | centred it |
 | `IDLE_BRAKE` | `0.0`: the brake lets go once the e-stop clears | kept it full on (1.0) |
-| `RC_GEAR_BRAKE` | `SpeedZero`: the speed loop brakes to a stop and holds | put the brake full on at once |
+| `RC_GEAR_BRAKE` | `FullBrake` (Arsh, 6 Nov, T3.6): the brake full on at once. `SpeedZero` asks the speed loop to stop instead | put the brake full on at once |
 
 ⚠️ `IDLE_BRAKE` matters most: on a slope, a car with its brake off can roll. It is a team
 choice:

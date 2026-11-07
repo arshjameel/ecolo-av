@@ -33,10 +33,10 @@ Five regions, each answering one question, evaluated in this order every tick.
 | # | Region | Question | States |
 |---|---|---|---|
 | 1 | `Lifecycle` | Is the spine ready to run? | `Boot`, `SelfTest` (until no driver that stops the car reports a fault), `Running` |
-| 2 | `Safety` | May anything move? | `Ok`, `Estop`, `Faulted`, `Latched` (the computer must disarm, then arm) |
+| 2 | `Safety` | May anything move? | `Ok`, `Estop`, `Faulted`, `Degraded` (a lost RC or wheel speed), `Overspeed` (coming back under the limit), `Latched` (the computer must disarm, then arm) |
 | 3 | `Authority` | Whose commands count? | `Idle`, `Rc`, `Drive`, `Test` (`Armed`, `Active`) |
 | 4 | `Motion` | Which way may the car move? | `StandstillHold`, `Forward`, `Reverse` (observed) |
-| 5 | `Confidence` | How far do we trust the measurements? | `Full`, `Degraded` (open loop; set by `SpeedFeedback` today) |
+| 5 | `Confidence` | How far do we trust the measurements? | `Full` (a wheel speed, on the board or from the link), `Degraded` (none) |
 
 `Authority` maps onto the wire's `Mode`: `Idle` is `Manual` (0), `Rc` is 1, `Drive` is
 `Computer` (2), `Test` is 3. Steering, throttle and brake are outputs, not states.
@@ -54,6 +54,30 @@ The test mode (proposal 6.5): `Inputs::test_cmd` carries a `TestRequest`:
 
 A driver fault (steering, brake, throttle or encoder) stops the car in any mode.
 
+## The stops (T3.6, Arsh, 6 Nov)
+
+The speed is one more input; the state machine decides what it means.
+
+| What happens | The spine |
+|---|---|
+| E-stop, driver fault, the RC gear switch on brake | hard stop |
+| Lost commands (100 ms), including frozen or corrupted frames | hard stop, latched |
+| Lost RC, in either RC position | hard stop, latched |
+| Lost wheel speed (300 ms, once a link has sent one) | hard stop, latched; `WHEEL_ENCODER` |
+| Past the trip speed: 1.25 m/s, or 0.75 backwards | throttle off and `overspeed_brake` (0.5) until under the limit, then it drives on; `OVERSPEED` |
+| Still over the limit `OVERSPEED_WINDOW_MS` (2 s) after tripping, speeding up or steady | hard stop, latched |
+| RC direct, throttle stick at zero, signal healthy | `rc_stop_brake` (0.33) for `rc_stop_ms` (1 s), then the stop brake |
+
+Latched: the computer must disarm, then arm. RC direct has no arming, so it stays stopped
+until the signal and the speed are back, the throttle stick is at zero and the gear switch
+is on brake (`rc_hold`). The computer going silent still lets RC direct keep driving: its
+own input is fine.
+
+A link that has never sent a speed leaves the overspeed and lost-speed rules off
+(`SpeedReport`), as a Motor-Pi on an older frame version does. The speed only feeds these
+rules: on `SpeedFeedback::None` the throttle stays open loop. `0.33` and `0.5` are guesses,
+for test 4.3.
+
 ## Interface
 
 | Module | Item | Does |
@@ -62,7 +86,8 @@ A driver fault (steering, brake, throttle or encoder) stops the car in any mode.
 | | `feedback_frame(...)`, `status_frame(&outputs)` | VEHICLE_FEEDBACK (send at 50 Hz), VEHICLE_STATUS (10 Hz) |
 | | `mode()`, `state()`, `speed_setpoint()` | who drives; the five regions; the rate-limited speed the loop chases (m/s) |
 | | `Inputs`, `Outputs` | what the board read; what it writes |
-| | `SpineConfig` (and `default()`) | timeout 100 ms, 3.0 m/s, accel 1.5, decel 2.5 m/s², steering 0.6 rad/s... |
+| | `SpineConfig` (and `default()`) | timeout 100 ms, `MAX_SPEED` (1.0 m/s), accel 1.5, decel 2.5 m/s², steering 0.6 rad/s... |
+| | `SpeedReport` | the speed a link sends: `Known(m/s)`, or `Unknown` |
 | | `DirectCmd` | an open-loop command (throttle, brake, steering), from the UART link |
 | | `RcInput`, `RcSwitch` | the sticks, -1..1; the mode switch: `Computer`, `ViaRos`, `Direct` |
 | | `SpeedFeedback` | `Wheel` (closed loop) or `None { full_throttle_speed }` (open loop) |
@@ -72,6 +97,7 @@ A driver fault (steering, brake, throttle or encoder) stops the car in any mode.
 | | `decode_incoming`, `decode_report`, `counter_step`, `frame_crc`, `crc8_sae_j1850` | frames by ID; the 4-bit counter; the CRC |
 | | `Mode`, `Wheel` | `Manual`, `Rc`, `Computer`, `Test`; `Left`, `Right` |
 | `fsm` | `Lifecycle`, `Safety`, `Authority`, `TestStage`, `Motion`, `Confidence`, `State` | the five regions above |
+| | `Overspeed`, `OVERSPEED_WINDOW_MS` | `Clear`, or `Slowing` since when; the 2 s it has |
 | | `Latch`, `TestRequest` (`allowed(confidence)`), `TEST_MAX_THROTTLE`, `TEST_MAX_SPEED`, `STANDSTILL_SPEED` | what Safety remembers; a test mode request, and whether this confidence lets it run; its limits |
 | | `Confidence::measures_speed()` | a wheel speed: the overspeed check and the test mode's speed exit work |
 | | `Incoming`, `Report` | what `decode_incoming` gives (`Estop`, `Drive`); what `decode_report` gives (`Feedback`, `Status`, `WheelSpeed`) |
@@ -106,7 +132,7 @@ Change one only with the team.
 |---|---|---|
 | `ESTOP_STEERING` | `Hold`: on any stop, the wheels stay where they are | `Centre` |
 | `IDLE_BRAKE` | `0.0`: the brake lets go once the e-stop input clears | `1.0` |
-| `RC_GEAR_BRAKE` | `SpeedZero`: the gear switch's brake asks for zero speed | `FullBrake` |
+| `RC_GEAR_BRAKE` | `FullBrake` (Arsh, 6 Nov, T3.6): the gear switch's brake is a hard stop | `FullBrake` |
 
 ## Invariants
 
@@ -120,11 +146,15 @@ Change one only with the team.
   device that stops the car answered without a fault.
 - The test mode moves one actuator at a time; its throttle is forward only, at most
   `TEST_MAX_THROTTLE`, with the brake off. Leaving it always latches.
+- One forward limit for every driver: `MAX_SPEED`, the same as `ego.yaml`'s `max_speed`
+  (`test_vehicle.py` checks). Open-loop commands are capped at `max_speed /
+  full_throttle_speed`, so 700 of 1023 becomes about 233 until the two are raised.
 - No valid command for 100 ms while driving: stop, full brake, latched
   (`CMD_TIMEOUT`). Also while armed but overridden (RC direct): the RC keeps driving,
   but the computer must re-arm before it drives again.
 - A repeated counter is a stuck sender: not a fresh command.
-- A lost RC signal in either RC position brakes (`RC_SIGNAL_LOST`).
+- A lost RC signal in either RC position is a hard stop and latches (`RC_SIGNAL_LOST`). A
+  lost RC with the switch on Computer changes nothing: nobody is listening to it.
 - Throttle and brake are never both above zero.
 - Reverse never faster than `MAX_REVERSE_SPEED` (0.5 m/s), whoever drives.
   Open-loop UART commands too: with no wheel speed their reverse throttle is capped at

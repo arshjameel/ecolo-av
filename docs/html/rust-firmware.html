@@ -281,9 +281,9 @@ RC receiver ── iBUS, GPIO32 ────────────────
 <td>the KEFC plan: <code>spine_bridge</code> on the Orin. Its pins are unknown (below)</td>
 </tr>
 <tr>
-<td><code>uplink</code> (off)</td>
+<td><code>uplink</code> (on)</td>
 <td>the status frame back on TX1 (GPIO17), and the RC's three-position mode switch</td>
-<td>once the hardware lead confirms TX1's wire (H9; <a href="#the-uplink-the-esp32s-status-back-to-the-pi-24-oct">the uplink</a>)</td>
+<td>on by default (T3.6): TX1's wire is assumed (H9; <a href="#the-uplink-the-esp32s-status-back-to-the-pi-24-oct">the uplink</a>); off with <code>--no-default-features --features legacy-uart</code></td>
 </tr>
 <tr>
 <td><code>estop-input</code> (off)</td>
@@ -365,8 +365,8 @@ open loop.</p>
 <tr>
 <td>17</td>
 <td>17</td>
-<td>UART1 TX, 115200, with <code>uplink</code>; else not driven</td>
-<td>Motor-Pi RX: the uplink. <strong>Wire unconfirmed</strong> (H9) <span class="badge b-needs-you">needs you</span></td>
+<td>UART1 TX, 115200, with <code>uplink</code> (the default); else not driven</td>
+<td>Motor-Pi RX: the uplink. <strong>Wire assumed, unconfirmed</strong> (H9) <span class="badge b-needs-you">needs you</span></td>
 <td>set up as TX, never used</td>
 </tr>
 <tr>
@@ -689,7 +689,7 @@ can't re-arm it.</p>
 <tbody>
 <tr>
 <td>Rust firmware</td>
-<td>version 2; <code>--features link-v1</code> for version 1</td>
+<td>version 2 (and 3 and 4); <code>--no-default-features --features legacy-uart,link-v1</code> for version 1</td>
 <td>both our ends speak it</td>
 </tr>
 <tr>
@@ -723,14 +723,14 @@ at both ends.</p>
 <tr>
 <th>End</th>
 <th>The flag</th>
-<th>Off by default because</th>
+<th>Why</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Rust firmware</td>
-<td><code>--features uplink</code></td>
-<td>TX1 isn't driven until the wire is known</td>
+<td><code>uplink</code>, on by default (T3.6)</td>
+<td>the wire is assumed; if it is missing, only the status goes quiet</td>
 </tr>
 <tr>
 <td><code>legacy_uart_bridge</code></td>

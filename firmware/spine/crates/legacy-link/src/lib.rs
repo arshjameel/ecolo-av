@@ -45,6 +45,14 @@
 //!        0xA5  3   the three f32    counter  flags  cal mode  jog target  CRC-8 of 1..18
 //! ```
 //!
+//! Version 4 ([`FrameV4`], [`ParserV4`]) adds the car's wheel speed to version 3, for a
+//! board that can't measure it:
+//!
+//! ```text
+//!  byte  0     1   2..18                   19..22       23
+//!        0xA5  4   as in version 3         wheel speed  CRC-8 of 1..22
+//! ```
+//!
 //! Version 1 goes one way only: the 2025-26 C++ sent nothing back.
 #![no_std]
 
@@ -55,9 +63,10 @@ mod targets;
 mod uplink;
 mod v2;
 mod v3;
+mod v4;
 
 pub use frame::{Frame, FrameError, BAUD, FRAME_LEN};
-pub use parser::{Parser, ParserV2, ParserV3};
+pub use parser::{Parser, ParserV2, ParserV3, ParserV4};
 pub use steer_cal::{
     Ask, CalRequest, CalState, Refusal, Situation, SteerCal, SteeringDrive, CAL_RATE,
     CAL_TIMEOUT_MS, COUNTS_MAX,
@@ -71,3 +80,4 @@ pub use uplink::{
 };
 pub use v2::{crc8, Flags, FrameV2, Heartbeat, FRAME_V2_LEN, SYNC, VERSION};
 pub use v3::{FrameV3, FRAME_V3_LEN, VERSION_3};
+pub use v4::{FrameV4, WheelSpeed, FRAME_V4_LEN, VERSION_4};

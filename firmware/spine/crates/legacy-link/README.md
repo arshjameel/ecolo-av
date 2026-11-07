@@ -85,6 +85,26 @@ The rules, each with its test in `src/steer_cal.rs`:
 | leaving holds where the wheels are (target = position), then moves back at 300 counts a second | no snap |
 | 100 ms with no fresh frame asking for it: leave, and hold there until fresh frames come | the Orin's heartbeat is gone |
 
+### Version 4: the wheel speed (T3.6, 6 Nov)
+
+Version 3, plus the car's speed, so the ESP32 can enforce the speed limit: it has no wheel
+sensor of its own. The receiving side only: `legacy_protocol.py` doesn't send it yet, so
+this version has no shared vectors, and the Motor-Pi stays on an earlier one.
+
+```text
+ byte  0     1   2..18            19..22       23
+       0xA5  4   as in version 3  wheel speed  CRC-8 of bytes 1..22
+```
+
+Bytes 19..22: m/s, `f32`, little-endian, positive forward. NaN: the sender doesn't know it.
+
+| Item | Does |
+|---|---|
+| `FrameV4::encode`, `FrameV4::decode` | 24 bytes ↔ a `FrameV3` and a `WheelSpeed`; an infinite speed is `Field` |
+| `WheelSpeed` | `Known(m/s)`; `Unknown`, sent as NaN; `NotSent`, a frame of an earlier version |
+| `ParserV4::new`, `ParserV4::push` | versions 2, 3 and 4, told apart by byte 1 |
+| `FRAME_V4_LEN`, `VERSION_4` | 24, 4 |
+
 ### The uplink (TODO 50, TODO 48)
 
 The other way: ESP32 to Motor-Pi, 50 times a second. Version 3 (what this firmware

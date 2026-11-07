@@ -7,7 +7,7 @@
 <!-- Generated from docs/firmware.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Firmware: the spine and its CAN contract</h1>
-<div class="meta">16 min read · 9 sections</div></header>
+<div class="meta">17 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -98,7 +98,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#ros-vs-firmware">ros/ vs firmware/</a><a href="#how-a-chip-joins-ros-2">How a chip joins ROS 2</a><a href="#one-interface-many-drivers">One interface, many drivers</a><a href="#the-spines-job">The spine&#x27;s job</a><a href="#the-can-contract">The CAN contract</a><a href="#firmwarespine-the-rust-code">firmware/spine: the Rust code</a><a href="#the-cars-two-other-pico-2s-in-rust-15-october">The car&#x27;s two other Pico 2s, in Rust (15 October)</a><a href="#todays-firmware-firmwarelegacy">Today&#x27;s firmware: firmware/legacy/</a><a href="#still-to-decide">Still to decide</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#ros-vs-firmware">ros/ vs firmware/</a><a href="#how-a-chip-joins-ros-2">How a chip joins ROS 2</a><a href="#one-interface-many-drivers">One interface, many drivers</a><a href="#the-spines-job">The spine&#x27;s job</a><a href="#the-can-contract">The CAN contract</a><a href="#firmwarespine-the-rust-code">firmware/spine: the Rust code</a><a href="#the-cars-two-other-pico-2s-in-rust-15-october">The car&#x27;s two other Pico 2s, in Rust (15 October)</a><a href="#todays-firmware-firmwarelegacy">Today&#x27;s firmware: firmware/legacy/</a><a href="#t36-the-stops-and-its-done-test">T3.6: the stops and its done test</a><a href="#still-to-decide">Still to decide</a></nav>
 <div class="lead"><p>ROS stops at the CAN bus. Below it, a microcontroller called the spine owns the pins, the
 actuators and the watchdog. This page covers what goes where, the CAN contract, and
 what's left to build.</p></div>
@@ -572,6 +572,53 @@ WiFi details: fine for a test build, but that board can't join the car's WiFi.</
 car with the RC transmitter's switch in reach.</p>
 </div>
 </section>
+<section class="card"><h2 id="t36-the-stops-and-its-done-test">T3.6: the stops and its done test</h2>
+<p>Decided by Arsh after talking with the hardware lead, 6 Nov. <strong>Ben and the team haven't
+reviewed these yet.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What happens</th>
+<th>The spine</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E-stop, driver fault, RC gear switch on brake</td>
+<td>hard stop</td>
+</tr>
+<tr>
+<td>Lost input: commands, RC, wheel speed</td>
+<td>hard stop, latched until re-armed</td>
+</tr>
+<tr>
+<td>Past 1.25 m/s (the limit is 1.0)</td>
+<td>throttle off, brake 0.5, until under the limit</td>
+</tr>
+<tr>
+<td>Still over the limit 2 s later, speeding up or steady</td>
+<td>hard stop, latched</td>
+</tr>
+<tr>
+<td>RC direct, throttle stick at zero</td>
+<td>light brake for 1 s, then the full brake</td>
+</tr>
+</tbody>
+</table></div>
+<p>The table in full: <a href="../../firmware/spine/crates/spine-core/README.md"><code>spine-core</code></a>.</p>
+<p>A person stopping any other way is ego's job, and an obstacle stop is Nav2's and ego's: not
+built yet. The wheel speed reaches the firmware only once the Motor Pi sends frame
+version 4: until then the two speed rules stay off.</p>
+<p><strong>The proposed done test.</strong> The proposal's needs the bench rig and the CAN link. The rig
+(T3.7) isn't being built, and the ESP32 stays on the Motor Pi's UART:</p>
+<blockquote>
+<p>On the car, on stands: unplugging the UART, killing the Motor Pi and killing the Orin
+each cut the throttle and put the brake full on within <strong>130 ms</strong>, in 10 of 10 trials
+each. Only a deliberate re-arm releases it. Corrupted frames are tested in QEMU.</p>
+</blockquote>
+<p>The 130 ms is the 100 ms timeout, up to two 10 ms ticks, and a margin over QEMU's measured
+111-120 ms. It times the command, not the actuator's travel.</p>
+</section>
 <section class="card"><h2 id="still-to-decide">Still to decide</h2>
 <p>For the team, from the drivers' port. Each is one constant at the top of <code>spine-core</code>'s
 <code>spine.rs</code>, so the board program and the bench both follow a change:</p>
@@ -596,7 +643,7 @@ car with the RC transmitter's switch in reach.</p>
 </tr>
 <tr>
 <td><code>RC_GEAR_BRAKE</code></td>
-<td><code>SpeedZero</code>: the speed loop brakes to a stop and holds</td>
+<td><code>FullBrake</code> (Arsh, 6 Nov, T3.6): the brake full on at once. <code>SpeedZero</code> asks the speed loop to stop instead</td>
 <td>put the brake full on at once</td>
 </tr>
 </tbody>

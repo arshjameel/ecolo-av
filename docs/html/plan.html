@@ -7,7 +7,7 @@
 <!-- Generated from docs/plan.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The plan: the proposal as a to-do list</h1>
-<div class="meta">25 min read · 7 sections</div></header>
+<div class="meta">26 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -565,7 +565,7 @@ the next concrete step.</p>
 <td>27 Nov</td>
 <td>🔧</td>
 <td style="text-align: right;">70</td>
-<td>24 Oct: boots in QEMU and brakes 111-120 ms after the Motor Pi's frames stop (<code>pixi run esp qemu-check</code>). The same day, TODO 50: the version 2 serial frame carries the Orin's heartbeat (counter, flags, CRC-8); QEMU brakes 111-120 ms after the counter freezes or the CRCs go bad. Next: flash it on the bench (<a href="esp32-bench.html">ESP32 bench</a>), with <code>frame_version: 2</code></td>
+<td>24 Oct: boots in QEMU and brakes 111-120 ms after the Motor Pi's frames stop (<code>pixi run esp qemu-check</code>). The same day, TODO 50: the version 2 serial frame carries the Orin's heartbeat (counter, flags, CRC-8); QEMU brakes 111-120 ms after the counter freezes or the CRCs go bad. 6 Nov (Arsh): the stop rules, the 1.0 m/s limit shared with ego, wheel speed in frame version 4 (the receiving side) and the uplink on by default (<a href="firmware.html#t36-the-stops-and-its-done-test">firmware</a>). Next: flash it on the bench (<a href="esp32-bench.html">ESP32 bench</a>), with <code>frame_version: 2</code>. <strong>The proposal's done test needs the rig and CAN, both gone: a new one is proposed there, for the team to agree</strong></td>
 </tr>
 <tr>
 <td>T3.7</td>
@@ -1098,7 +1098,7 @@ the next concrete step.</p>
 <td>S-5</td>
 <td>Speed capped at 1 m/s in ego; a <strong>throttle cap</strong> in the firmware (the ESP32 can't see the speed)</td>
 <td>🔧</td>
-<td>ego ✅; the firmware's throttle cap with T3.6 (TODO 74b)</td>
+<td>ego ✅; the firmware's throttle cap built with T3.6 (TODO 74b): <code>max_speed / full_throttle_speed</code>, about DAC 233, from a guessed 3.0 m/s. Untested on the car</td>
 </tr>
 </tbody>
 </table></div>

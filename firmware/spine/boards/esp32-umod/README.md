@@ -41,9 +41,9 @@ The direction output is pin P00 of the PCA9555, not an ESP32 pin.
 
 | Feature | Use |
 |---|---|
-| `legacy-uart` (default) | today: a drop-in for the C++, with `aav_legacy`'s `legacy_uart_bridge` |
-| `link-v1` | with `legacy-uart`: the 2025-26 13-byte frame, no heartbeat (`frame_version: 1`) |
-| `uplink` | with `legacy-uart`: a status frame back to the Motor-Pi every 20 ms (version 3 since 1 Nov: with both Jrks' positions in counts and the steering calibration's state), and the three-position RC mode switch. Off until the hardware lead confirms the wire |
+| `legacy-uart` (default) | the frames of versions 2, 3 and 4 (with the wheel speed), today: a drop-in for the C++, with `aav_legacy`'s `legacy_uart_bridge` |
+| `link-v1` | with `legacy-uart` and no `uplink` (`--no-default-features --features legacy-uart,link-v1`): the 2025-26 13-byte frame, no heartbeat (`frame_version: 1`) |
+| `uplink` | with `legacy-uart`: a status frame back to the Motor-Pi every 20 ms (version 3 since 1 Nov: with both Jrks' positions in counts and the steering calibration's state), and the three-position RC mode switch. On by default (T3.6): the wire is assumed; if it is missing, only the status goes quiet. A two-position RC switch works the same |
 | `can` | the KEFC plan: `firmware/can/aav.dbc`. Its pins are unknown: see `src/pins.rs` |
 | `estop-input` | the e-stop's spare contact on GPIO27, once wired (Q6) |
 | `qemu` | runs in Espressif's QEMU, never on the car: stand-in I2C devices, a busy-wait tick |
@@ -96,7 +96,7 @@ clippy on six feature mixes:
 
 | Checked | Never checked |
 |---|---|
-| the default; `can,estop-input`; `qemu`; `link-v1`; `uplink`; `qemu,uplink` | `link-v1` with `uplink`; `can` without `estop-input`; `estop-input` on the UART link |
+| the default (with `uplink`); `can,estop-input`; `legacy-uart` alone; `legacy-uart,qemu`; `legacy-uart,link-v1`; `qemu,uplink` | `link-v1` with `uplink`; `can` without `estop-input`; `estop-input` on the UART link |
 
 The logic is tested on a laptop: `cd firmware/spine && cargo test`.
 
