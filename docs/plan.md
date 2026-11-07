@@ -104,7 +104,7 @@ the next concrete step.
 | T3.3 | Steering range and centre | 20 Nov | ⬜ | 10 | `pixi run actuator-test` has the sweeps; the car on stands |
 | T3.4 | Linkage re-mount (if needed) | 4 Dec | ⬜ | 0 | after T3.3 |
 | T3.5 | CAN bus, wheel nodes, brake sensor | 11 Dec | 🔧 | 30 | the message set (`firmware/can/aav.dbc`) and the logic exist; the parts are on the KEFC list |
-| T3.6 | Spine firmware in Rust | 27 Nov | 🔧 | 70 | 24 Oct: boots in QEMU and brakes 111-120 ms after the Motor Pi's frames stop (`pixi run esp qemu-check`). The same day, TODO 50: the version 2 serial frame carries the Orin's heartbeat (counter, flags, CRC-8); QEMU brakes 111-120 ms after the counter freezes or the CRCs go bad. Next: flash it on the bench ([ESP32 bench](esp32-bench.md)), with `frame_version: 2` |
+| T3.6 | Spine firmware in Rust | 27 Nov | 🔧 | 70 | 24 Oct: boots in QEMU and brakes 111-120 ms after the Motor Pi's frames stop (`pixi run esp qemu-check`). The same day, TODO 50: the version 2 serial frame carries the Orin's heartbeat (counter, flags, CRC-8); QEMU brakes 111-120 ms after the counter freezes or the CRCs go bad. 6 Nov (Arsh): the stop rules, the 1.0 m/s limit shared with ego, wheel speed in frame version 4 (the receiving side) and the uplink on by default ([firmware](firmware.md#t36-the-stops-and-its-done-test)). Next: flash it on the bench ([ESP32 bench](esp32-bench.md)), with `frame_version: 2`. **The proposal's done test needs the rig and CAN, both gone: a new one is proposed there, for the team to agree** |
 | T3.7 | Bench rig | 20 Nov | 🔧 | 40 | `pixi run bench` covers the software; build the board |
 | T3.8 | Hardware test suite | 18 Dec | 🔧 | 60 | the scripts exist (tests.md stages 3-4); run them on stands |
 | T3.9 | Brake and throttle loops | 22 Jan | 🔧 | 20 | the PI loop is in `spine-core`; tune it on stands. With today's guessed gains it overshoots about 15% (the Gazebo model, 22 Oct: 0.57 m/s backing up for 0.5). A `smooth` profile (setpoint weight) is ready to try on stands, 0% in the model and Gazebo: TODO 27 |
@@ -194,7 +194,7 @@ the next concrete step.
 | S-2 | Written permission for the lot (November) | ⬜ | |
 | S-3 | Geofence: everything outside the test area blocked on the map | 🔧 | the lot's map (T7.4) |
 | S-4 | Simulated messages can never reach the car | 🧪 | two layers: stand-ins run `--local`; and (23 Oct) the real backends read only `/control/car/actuator_cmd`, which the output mux fills only while every source is REAL, else a latched stop. Tested: with Gazebo announcing SIM, `spine_bridge` sent no drive frame. Next: the same on the car |
-| S-5 | Speed capped at 1 m/s in ego; a **throttle cap** in the firmware (the ESP32 can't see the speed) | 🔧 | ego ✅; the firmware's throttle cap with T3.6 (TODO 74b) |
+| S-5 | Speed capped at 1 m/s in ego; a **throttle cap** in the firmware (the ESP32 can't see the speed) | 🔧 | ego ✅; the firmware's throttle cap built with T3.6 (TODO 74b): `max_speed / full_throttle_speed`, about DAC 233, from a guessed 3.0 m/s. Untested on the car |
 
 ## The MPPI track (new)
 

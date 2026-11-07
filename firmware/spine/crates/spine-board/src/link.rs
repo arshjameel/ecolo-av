@@ -3,7 +3,7 @@
 //! | Link | Wire | Commands | Reports back |
 //! |---|---|---|---|
 //! | [`CanLink`] | CAN, through [`Board::can_receive`] (`firmware/can/aav.dbc`) | DRIVE_CMD (a speed), ESTOP_CMD | VEHICLE_FEEDBACK, VEHICLE_STATUS |
-//! | [`LegacyLink`] | the Motor-Pi's UART (`legacy-link`): version 2 frames with the Orin's heartbeat, or the 2025-26 13-byte frames | throttle, brake and steering as they are: `DirectCmd`; version 2's e-stop flag | with an uplink ([`LegacyLink::with_uplink`]): the [`Uplink`] status frame at 50 Hz on TX1; otherwise nothing |
+//! | [`LegacyLink`] | the Motor-Pi's UART (`legacy-link`): version 2 frames with the Orin's heartbeat, or the 2025-26 13-byte frames | throttle, brake and steering as they are: `DirectCmd`; version 2's e-stop flag; version 4's wheel speed | with an uplink ([`LegacyLink::with_uplink`]): the [`Uplink`] status frame at 50 Hz on TX1; otherwise nothing |
 //!
 //! [`SpineBoard`](crate::SpineBoard) takes either; the rest of the loop is the same. After
 //! each tick it hands the link a [`Report`]: what the spine decided, the RC, the Jrks'
@@ -16,11 +16,11 @@ use crate::spine_board::Every;
 use core::convert::Infallible;
 use embedded_io::{Read, ReadReady, Write};
 use legacy_link::{
-    Ask, CalRequest, Counts, DriveMode, Frame, FrameError, FrameV3, Heartbeat, ModeSwitch, Parser,
-    ParserV3, Situation, SteerCal, SteeringDrive, Sticks, Targets, Throttle, Uplink,
+    Ask, CalRequest, Counts, DriveMode, Frame, FrameError, FrameV4, Heartbeat, ModeSwitch, Parser,
+    ParserV4, Situation, SteerCal, SteeringDrive, Sticks, Targets, Throttle, Uplink, WheelSpeed,
 };
 use spine_core::protocol::{decode_incoming, EstopCmd, FrameError as CanError, Incoming, Mode};
-use spine_core::{DirectCmd, Inputs, Outputs, RcInput, RcSwitch};
+use spine_core::{DirectCmd, Inputs, Outputs, RcInput, RcSwitch, SpeedReport};
 
 /// The uplink's period: 50 frames a second.
 pub const UPLINK_PERIOD_MS: u32 = 20;
@@ -107,8 +107,9 @@ pub enum FrameVersion {
     /// The 2025-26 13-byte frame: no counter, no flags, a sum checksum.
     V1,
     /// The sync-byte frames: version 2 (17 bytes with the Orin's heartbeat counter,
-    /// armed and e-stop flags and a CRC-8, TODO 50) and version 3 (20 bytes: version 2
-    /// and the steering calibration, 1 Nov), told apart by their version byte.
+    /// armed and e-stop flags and a CRC-8, TODO 50), version 3 (20 bytes: version 2 and
+    /// the steering calibration, 1 Nov) and version 4 (24 bytes: version 3 and the wheel
+    /// speed, 6 Nov), told apart by their version byte.
     V2,
 }
 
@@ -151,7 +152,7 @@ impl Write for NoUplink {
 enum Decoder {
     V1(Parser),
     V2 {
-        parser: ParserV3,
+        parser: ParserV4,
         heartbeat: Heartbeat,
     },
 }
@@ -194,6 +195,9 @@ enum Decoder {
 /// limp, or a jog target in counts. Its rules are `legacy_link::SteerCal`'s; this link
 /// gives it each fresh frame's request, and holds the throttle at 0 in any frame that
 /// asks for a mode.
+///
+/// Version 4 frames (6 Nov) carry the car's wheel speed. It goes to the spine from every
+/// good frame, repeated counter or not: the Orin going quiet says nothing about the wheels.
 pub struct LegacyLink<U, T = NoUplink> {
     uart: U,
     tx: Option<T>,
@@ -225,7 +229,7 @@ impl<U: Read + ReadReady, T: Write> LegacyLink<U, T> {
         let decoder = match version {
             FrameVersion::V1 => Decoder::V1(Parser::new()),
             FrameVersion::V2 => Decoder::V2 {
-                parser: ParserV3::new(),
+                parser: ParserV4::new(),
                 heartbeat: Heartbeat::new(),
             },
         };
@@ -365,9 +369,18 @@ impl<U: Read + ReadReady, T: Write> LegacyLink<U, T> {
         }
     }
 
-    fn take_v2(&mut self, result: Result<FrameV3, FrameError>, inputs: &mut Inputs) {
+    fn take_v2(&mut self, result: Result<FrameV4, FrameError>, inputs: &mut Inputs) {
         let frame = match result {
-            Ok(frame) => frame,
+            Ok(frame) => {
+                match frame.wheel_speed {
+                    WheelSpeed::NotSent => {}
+                    WheelSpeed::Unknown => inputs.speed_report = Some(SpeedReport::Unknown),
+                    WheelSpeed::Known(speed) => {
+                        inputs.speed_report = Some(SpeedReport::Known(speed))
+                    }
+                }
+                frame.command
+            }
             Err(FrameError::Sync) => {
                 self.stats.skipped += 1;
                 inputs.bad_frame = true;
@@ -493,7 +506,62 @@ mod tests {
 
     use super::*;
     use crate::rig::{FakeBoard, FakeTx, FakeUart};
-    use legacy_link::Frame;
+    use legacy_link::{Flags, Frame, FrameV3};
+
+    fn v3(counter: u8) -> FrameV3 {
+        FrameV3 {
+            values: Frame {
+                steering: 0.0,
+                speed: 0.2,
+                accel: 0.0,
+            },
+            counter,
+            flags: Flags {
+                armed: true,
+                estop: false,
+            },
+            calibration: CalRequest::Off,
+        }
+    }
+
+    fn v4(counter: u8, wheel_speed: WheelSpeed) -> [u8; legacy_link::FRAME_V4_LEN] {
+        FrameV4 {
+            command: v3(counter),
+            wheel_speed,
+        }
+        .encode()
+    }
+
+    fn v2_link() -> LegacyLink<FakeUart> {
+        LegacyLink::new(FakeUart::default(), Calibration::TODAY, FrameVersion::V2)
+    }
+
+    #[test]
+    fn a_version_4_frame_carries_the_speed_and_the_command() {
+        let mut l = v2_link();
+        receive(&mut l, &v4(1, WheelSpeed::Known(0.5)));
+        let inputs = receive(&mut l, &v4(2, WheelSpeed::Known(0.75)));
+        assert_eq!(inputs.speed_report, Some(SpeedReport::Known(0.75)));
+        assert!(inputs.direct_cmd.is_some());
+        let inputs = receive(&mut l, &v4(3, WheelSpeed::Unknown));
+        assert_eq!(inputs.speed_report, Some(SpeedReport::Unknown));
+    }
+
+    #[test]
+    fn a_repeated_counter_is_no_command_but_its_speed_still_counts() {
+        let mut l = v2_link();
+        receive(&mut l, &v4(1, WheelSpeed::Known(0.5)));
+        let inputs = receive(&mut l, &v4(1, WheelSpeed::Known(0.25)));
+        assert_eq!(inputs.direct_cmd, None);
+        assert_eq!(inputs.speed_report, Some(SpeedReport::Known(0.25)));
+    }
+
+    #[test]
+    fn an_earlier_frame_reports_no_speed() {
+        let mut l = v2_link();
+        let inputs = receive(&mut l, &v3(1).encode());
+        assert_eq!(inputs.speed_report, None);
+    }
 
     fn frame(steering: f32, speed: f32, accel: f32) -> [u8; 13] {
         Frame {

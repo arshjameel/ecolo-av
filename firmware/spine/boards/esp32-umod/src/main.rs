@@ -12,8 +12,8 @@
 //! | `legacy-uart` + `link-v1` | the Motor-Pi's 2025-26 13-byte frames | a drop-in for the C++: `frame_version: 1`, no heartbeat |
 //! | `can` | `firmware/can/aav.dbc` on the TWAI controller | the KEFC plan: the Orin's `spine_bridge` |
 //!
-//! With `uplink` (off until the hardware lead confirms the wire from TX1, GPIO17, to the
-//! Motor-Pi's RX: TODO 50, 48), the link also sends a status frame back every 20 ms
+//! With `uplink` (on by default; the wire from TX1, GPIO17, to the Motor-Pi's RX is assumed:
+//! TODO 50, 48), the link also sends a status frame back every 20 ms
 //! (`legacy_link::Uplink`): the mode, the RC mode switch, the faults, the last Orin
 //! counter taken, the Jrks' positions and the RC sticks. The same build reads the RC's
 //! mode switch with three positions (`ibus::RcMap::THREE_POSITION`): computer, RC via

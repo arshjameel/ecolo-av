@@ -55,7 +55,7 @@ proposes. Change one only with the team; the board program and the bench both fo
 |---|---|---|
 | `ESTOP_STEERING` | `Hold`: on any stop the spine makes, the wheels stay where they are | centred them (`Centre`) |
 | `IDLE_BRAKE` | `0.0`: with nobody driving, after boot too, the brake lets go once the e-stop input clears | kept it full on (`1.0`) |
-| `RC_GEAR_BRAKE` | `SpeedZero`: the gear switch's brake position asks for zero speed | full brake at once (`FullBrake`) |
+| `RC_GEAR_BRAKE` | `FullBrake`, the same (Arsh, 6 Nov, T3.6): the gear switch's brake position is a hard stop | full brake at once |
 
 ## Invariants
 
@@ -65,8 +65,9 @@ proposes. Change one only with the team; the board program and the bench both fo
 - Logic crates touch no hardware; drivers talk only through `embedded-hal` 1.0 or
   `embedded-io`. A board crate is the only place that knows its chip.
 - `spine-core` decides; `spine-board` and the boards only carry its decisions out.
-- Any e-stop, driver fault, lost RC or 100 ms without a command stops the car. The
-  computer must disarm, then arm, to drive again.
+- Any e-stop, driver fault, lost RC, lost wheel speed or 100 ms without a command is a hard
+  stop. The computer must disarm, then arm, to drive again.
+- One forward limit, 1.0 m/s, for every driver: `MAX_SPEED` and `ego.yaml`'s `max_speed`.
 - Pins, I2C addresses and calibration live here, in the firmware, never in ROS.
 - The CAN frames are `firmware/can/aav.dbc`'s. `spine-core`'s `protocol` and
   `can_codec.py` share generated test vectors; so do `legacy-link` and

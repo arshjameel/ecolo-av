@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">39 min read · 14 sections</div></header>
+<div class="meta">40 min read · 14 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -799,6 +799,27 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Bring-up moves one actuator at a time from a laptop (proposal 6.5), and the mode can't be left on: a stale request or anything unsafe leaves it, latched; no throttle test without a wheel speed, where its speed exit can't fire</td>
 <td>Arsh; Ben (throttle rule)</td>
 <td>2026-10-27</td>
+<td>built</td>
+</tr>
+<tr>
+<td>Spine stop rules (<code>spine-core</code>, T3.6)</td>
+<td>Every lost input is a hard stop, so one rule covers a loose wire and a crash; overspeed first tries to get back under the limit, then hard stops after 2 s, so a brief overshoot doesn't slam the brakes</td>
+<td>Arsh</td>
+<td>2026-11-07</td>
+<td>built</td>
+</tr>
+<tr>
+<td>One forward speed limit for ego and the spine (1.0 m/s)</td>
+<td>Every driver, the RC transmitter too, respects the same number, and a test fails if the two differ. The ESP32's open-loop throttle is capped to match</td>
+<td>Arsh</td>
+<td>2026-11-07</td>
+<td>built</td>
+</tr>
+<tr>
+<td>Wheel speed on the serial link (frame version 4, receiving side)</td>
+<td>The ESP32 has no wheel sensor: with the speed sent down, the spine can enforce the limit itself, even in RC direct, and test-mode throttle can run. Off until the Motor Pi sends it</td>
+<td>Arsh</td>
+<td>2026-11-07</td>
 <td>built</td>
 </tr>
 <tr>

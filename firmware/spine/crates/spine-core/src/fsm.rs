@@ -4,21 +4,23 @@
 //! | # | Region | Question | States |
 //! |---|---|---|---|
 //! | 1 | [`Lifecycle`] | Is the spine ready to run at all? | Boot, SelfTest, Running |
-//! | 2 | [`Safety`] | May anything move? | Ok, Estop, Faulted, Latched |
+//! | 2 | [`Safety`] | May anything move? | Ok, Estop, Faulted, Degraded, Overspeed, Latched |
 //! | 3 | [`Authority`] | Whose commands count? | Idle, Rc, Drive, Test (Armed, Active) |
 //! | 4 | [`Motion`] | Which way may the car move? | StandstillHold, Forward, Reverse |
 //! | 5 | [`Confidence`] | How far do we trust the measurements? | Full, Degraded |
 //!
-//! Safety overrides everything: in `Estop` or `Faulted`, the outputs are throttle 0 and
-//! the stop brake, whoever drives. `Latched` only keeps the computer from driving until it
-//! re-arms (the RC and the test mode still work, as before this module). Authority picks
-//! whose request counts; Motion constrains that request.
+//! Safety overrides everything: in `Estop`, `Faulted` or `Degraded`, the outputs are
+//! throttle 0 and the stop brake, whoever drives. `Overspeed` cuts the throttle and brakes
+//! until the car is back under the limit ([`Overspeed`]). `Latched` only keeps the computer
+//! from driving until it re-arms (the RC and the test mode still work, as before this
+//! module). Authority picks whose request counts; Motion constrains that request.
 //! Steering angle, throttle and brake are outputs (numbers every tick), not states.
 //!
 //! Regions 1 to 3 decide. Regions 4 and 5 are observed: their rules are enforced by the
 //! speed loop (direction changes only through a stop) and by `spine-board` (the direction
 //! pin changes only with the DAC at 0), and by the configuration ([`SpeedFeedback`]).
 //! They are reported here so a test, the log and later the CAN status can see them.
+//! Speed is only ever an input: these regions decide what it means.
 //!
 //! [`SpeedFeedback`]: crate::spine::SpeedFeedback
 
@@ -63,19 +65,34 @@ pub enum Safety {
     Estop,
     /// A device that stops the car reports a fault.
     Faulted,
+    /// An input the car relies on is gone: a lost RC, or a lost wheel speed. A hard stop.
+    Degraded,
+    /// Too fast: throttle off and braking until back under the limit ([`Overspeed`]).
+    Overspeed,
     /// Safe, and waiting for a deliberate re-arm: disarm, then arm. After boot, an
-    /// e-stop, a fault, a command timeout, or leaving test mode.
+    /// e-stop, a fault, a lost input, a command timeout, an overspeed that didn't clear, or
+    /// leaving test mode.
     #[default]
     Latched,
 }
 
 impl Safety {
-    /// The state for this tick. Highest first: e-stop, fault, latch.
-    pub fn of(estop: bool, driver_fault: bool, latch: &Latch) -> Safety {
+    /// The state for this tick. Highest first: e-stop, fault, lost input, overspeed, latch.
+    pub fn of(
+        estop: bool,
+        driver_fault: bool,
+        degraded: bool,
+        overspeed: bool,
+        latch: &Latch,
+    ) -> Safety {
         if estop {
             Safety::Estop
         } else if driver_fault {
             Safety::Faulted
+        } else if degraded {
+            Safety::Degraded
+        } else if overspeed {
+            Safety::Overspeed
         } else if latch.latched {
             Safety::Latched
         } else {
@@ -94,6 +111,10 @@ pub struct Latch {
     pub timeout: bool,
     /// The latch came from a driver fault.
     pub fault: bool,
+    /// The latch came from a lost wheel speed.
+    pub speed_lost: bool,
+    /// The latch came from an overspeed that didn't clear in time.
+    pub overspeed: bool,
     /// A disarm (`armed = 0`, or a stop on the UART link) arrived since the latch.
     pub seen_disarm: bool,
 }
@@ -105,13 +126,15 @@ impl Default for Latch {
             latched: true,
             timeout: false,
             fault: false,
+            speed_lost: false,
+            overspeed: false,
             seen_disarm: false,
         }
     }
 }
 
 impl Latch {
-    /// Latch: an e-stop, a lost RC in RC via ROS, or leaving test mode.
+    /// Latch: an e-stop, a lost RC, or leaving test mode.
     pub fn trip(&mut self) {
         self.latched = true;
         self.seen_disarm = false;
@@ -129,12 +152,64 @@ impl Latch {
         self.timeout = true;
     }
 
+    /// Latch on a lost wheel speed.
+    pub fn trip_speed_lost(&mut self) {
+        self.trip();
+        self.speed_lost = true;
+    }
+
+    /// Latch on an overspeed that didn't clear in time.
+    pub fn trip_overspeed(&mut self) {
+        self.trip();
+        self.overspeed = true;
+    }
+
     /// Release on the second half of a re-arm, if nothing still stops the car.
-    pub fn try_release(&mut self, estop: bool, driver_fault: bool, armed_request: bool) {
-        if self.latched && !estop && !driver_fault && self.seen_disarm && armed_request {
+    pub fn try_release(&mut self, stopping: bool, armed_request: bool) {
+        if self.latched && !stopping && self.seen_disarm && armed_request {
             self.latched = false;
             self.timeout = false;
             self.fault = false;
+            self.speed_lost = false;
+            self.overspeed = false;
+        }
+    }
+}
+
+/// How long the car has to get back under the limit, once it trips (ms). Then a hard stop,
+/// whether it is still speeding up or only holding its speed.
+pub const OVERSPEED_WINDOW_MS: u32 = 2000;
+
+/// Inside the Safety region: is the car bringing itself back under the speed limit? This
+/// aims for the limit, not for a stop.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Overspeed {
+    #[default]
+    Clear,
+    /// Past the trip speed at `since_ms`, and not yet back under the limit.
+    Slowing { since_ms: u32 },
+}
+
+impl Overspeed {
+    /// One tick. `over_trip`: past the trip speed. `over_limit`: still over the limit.
+    pub fn next(self, over_trip: bool, over_limit: bool, now_ms: u32) -> Overspeed {
+        match self {
+            Overspeed::Clear if over_trip => Overspeed::Slowing { since_ms: now_ms },
+            Overspeed::Clear => Overspeed::Clear,
+            Overspeed::Slowing { .. } if !over_limit => Overspeed::Clear,
+            slowing => slowing,
+        }
+    }
+
+    pub fn is_slowing(self) -> bool {
+        matches!(self, Overspeed::Slowing { .. })
+    }
+
+    /// Slowing for the whole window, and still over the limit.
+    pub fn expired(self, now_ms: u32) -> bool {
+        match self {
+            Overspeed::Clear => false,
+            Overspeed::Slowing { since_ms } => now_ms.wrapping_sub(since_ms) >= OVERSPEED_WINDOW_MS,
         }
     }
 }
@@ -255,11 +330,12 @@ impl Motion {
 /// [5] How far do we trust the measurements?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Confidence {
-    /// A wheel speed: the speed loop runs closed loop, with the overspeed check.
+    /// A wheel speed, from the board or sent over the UART link: the overspeed check works.
     #[default]
     Full,
     /// No wheel speed: open loop, throttle from the speed asked for, no overspeed check.
-    /// Set by the configuration today (`SpeedFeedback::None`), not yet by a lost sensor.
+    /// A board with none whose link sends none (`SpeedFeedback::None`); or one whose link
+    /// did send it and stopped, which the Safety region also treats as a hard stop.
     Degraded,
 }
 
@@ -302,25 +378,37 @@ mod tests {
             latched: false,
             ..Latch::default()
         };
-        assert_eq!(Safety::of(true, true, &latched), Safety::Estop);
-        assert_eq!(Safety::of(false, true, &latched), Safety::Faulted);
-        assert_eq!(Safety::of(false, false, &latched), Safety::Latched);
-        assert_eq!(Safety::of(false, false, &free), Safety::Ok);
+        assert_eq!(Safety::of(true, true, true, true, &latched), Safety::Estop);
+        assert_eq!(
+            Safety::of(false, true, true, true, &latched),
+            Safety::Faulted
+        );
+        assert_eq!(
+            Safety::of(false, false, true, true, &latched),
+            Safety::Degraded
+        );
+        assert_eq!(
+            Safety::of(false, false, false, true, &latched),
+            Safety::Overspeed
+        );
+        assert_eq!(
+            Safety::of(false, false, false, false, &latched),
+            Safety::Latched
+        );
+        assert_eq!(Safety::of(false, false, false, false, &free), Safety::Ok);
     }
 
     #[test]
     fn a_latch_releases_only_on_disarm_then_arm_with_nothing_stopping_the_car() {
         let mut l = Latch::default();
-        l.try_release(false, false, true);
+        l.try_release(false, true);
         assert!(l.latched, "no disarm seen yet");
         l.seen_disarm = true;
-        l.try_release(true, false, true);
-        assert!(l.latched, "the e-stop is still active");
-        l.try_release(false, true, true);
-        assert!(l.latched, "the fault is still there");
-        l.try_release(false, false, false);
+        l.try_release(true, true);
+        assert!(l.latched, "something still stops the car");
+        l.try_release(false, false);
         assert!(l.latched, "no arm yet");
-        l.try_release(false, false, true);
+        l.try_release(false, true);
         assert!(!l.latched);
     }
 
@@ -328,15 +416,51 @@ mod tests {
     fn a_trip_forgets_the_disarm_and_records_why() {
         let mut l = Latch {
             latched: false,
-            timeout: false,
-            fault: false,
             seen_disarm: true,
+            ..Latch::default()
         };
         l.trip_timeout();
         assert!(l.latched && l.timeout && !l.fault && !l.seen_disarm);
         l.seen_disarm = true;
         l.trip_fault();
         assert!(l.fault && !l.seen_disarm);
+        l.seen_disarm = true;
+        l.trip_speed_lost();
+        assert!(l.speed_lost && !l.seen_disarm);
+        l.seen_disarm = true;
+        l.trip_overspeed();
+        assert!(l.overspeed && !l.seen_disarm);
+        l.seen_disarm = true;
+        l.try_release(false, true);
+        assert!(!l.timeout && !l.fault && !l.speed_lost && !l.overspeed);
+    }
+
+    #[test]
+    fn overspeed_starts_past_the_trip_and_ends_only_under_the_limit() {
+        let clear = Overspeed::Clear;
+        assert_eq!(clear.next(false, true, 100), Overspeed::Clear);
+        let slowing = clear.next(true, true, 100);
+        assert_eq!(slowing, Overspeed::Slowing { since_ms: 100 });
+        assert_eq!(
+            slowing.next(false, true, 200),
+            slowing,
+            "still over the limit"
+        );
+        assert_eq!(
+            slowing.next(true, true, 200),
+            slowing,
+            "the clock doesn't restart"
+        );
+        assert_eq!(slowing.next(false, false, 200), Overspeed::Clear);
+    }
+
+    #[test]
+    fn overspeed_expires_after_its_window_even_across_a_clock_wrap() {
+        let since_ms = u32::MAX - 500;
+        let slowing = Overspeed::Slowing { since_ms };
+        assert!(!slowing.expired(since_ms.wrapping_add(OVERSPEED_WINDOW_MS - 1)));
+        assert!(slowing.expired(since_ms.wrapping_add(OVERSPEED_WINDOW_MS)));
+        assert!(!Overspeed::Clear.expired(u32::MAX));
     }
 
     #[test]

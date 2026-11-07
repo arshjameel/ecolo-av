@@ -78,7 +78,7 @@ RC receiver ── iBUS, GPIO32 ────────────────
 | `legacy-uart` (default) | the Motor-Pi's frames on GPIO16: **version 2**, with the Orin's heartbeat (below) | `aav_legacy`'s bridge with `frame_version: 2` |
 | `legacy-uart` + `link-v1` | the 2025-26 13-byte frames | the fallback: a drop-in for the C++ (`frame_version: 1`), no heartbeat |
 | `can` | `firmware/can/aav.dbc` v0.2.0 on the ESP32's TWAI controller, 500 kbit/s | the KEFC plan: `spine_bridge` on the Orin. Its pins are unknown (below) |
-| `uplink` (off) | the status frame back on TX1 (GPIO17), and the RC's three-position mode switch | once the hardware lead confirms TX1's wire (H9; [the uplink](#the-uplink-the-esp32s-status-back-to-the-pi-24-oct)) |
+| `uplink` (on) | the status frame back on TX1 (GPIO17), and the RC's three-position mode switch | on by default (T3.6): TX1's wire is assumed (H9; [the uplink](#the-uplink-the-esp32s-status-back-to-the-pi-24-oct)); off with `--no-default-features --features legacy-uart` |
 | `estop-input` (off) | the e-stop's spare contact on GPIO27 | once it is wired (Q6) |
 | `qemu` (off) | stand-in devices on the I2C bus, and a busy-wait tick | Espressif's QEMU only, never the car ([the emulator](esp32-bench.md#before-the-board-the-emulator)) |
 
@@ -109,7 +109,7 @@ The same pins as the C++ (`hardware_configs.h`, `main.cpp`). The program's copy 
 | GPIO | MicroMod pad | Signal | Goes to | In the C++ |
 |---|---|---|---|---|
 | 16 | 19 | UART1 RX, 115200 | Motor-Pi TX: the frames | the same |
-| 17 | 17 | UART1 TX, 115200, with `uplink`; else not driven | Motor-Pi RX: the uplink. **Wire unconfirmed** (H9) [[needs-you]] | set up as TX, never used |
+| 17 | 17 | UART1 TX, 115200, with `uplink` (the default); else not driven | Motor-Pi RX: the uplink. **Wire assumed, unconfirmed** (H9) [[needs-you]] | set up as TX, never used |
 | 32 | 73 | UART2 RX, 115200, pull-up | FlySky iBUS | the same |
 | 21, 22 | 12, 14 | I2C SDA, SCL, 100 kHz | Jrk steer 0x05, Jrk brake 0x04, DAC 0x0C, PCA9555 0x20 | the same |
 | 2 | — | output | status LED: slow blink = computer drives, fast = it doesn't | on at boot |
@@ -222,7 +222,7 @@ can't re-arm it.
 
 | End | Default | Why |
 |---|---|---|
-| Rust firmware | version 2; `--features link-v1` for version 1 | both our ends speak it |
+| Rust firmware | version 2 (and 3 and 4); `--no-default-features --features legacy-uart,link-v1` for version 1 | both our ends speak it |
 | `legacy_uart_bridge` | `frame_version: 2` in the code | the same |
 | the car's `legacy.yaml` | **`frame_version: 1`** | the car's ESP32 still runs the C++, which reads only version 1, and its resync could misread a version 2 stream. Set 2 the day the Rust is flashed ([the bench](esp32-bench.md)) |
 
@@ -246,9 +246,9 @@ at both ends.
                                                                     ─► /drivers/rc/cmd_vel
 ```
 
-| End | The flag | Off by default because |
+| End | The flag | Why |
 |---|---|---|
-| Rust firmware | `--features uplink` | TX1 isn't driven until the wire is known |
+| Rust firmware | `uplink`, on by default (T3.6) | the wire is assumed; if it is missing, only the status goes quiet |
 | `legacy_uart_bridge` | `uplink: true` in `legacy.yaml` | nothing to read until then |
 
 Without it, both ends work as before: version 2 or version 1 frames, nothing back.

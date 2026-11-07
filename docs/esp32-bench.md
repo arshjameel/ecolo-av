@@ -154,7 +154,7 @@ over each run they agreed to 0.1 %.
 |---|---|---|
 | 1 | `pixi run -e firmware legacy-esp32` | the C++ still builds: it is the way back |
 | 2 | `vendor/cargo-tools/bin/espflash read-flash 0 0x400000 backup-esp32.bin` | a copy of what is on the board now (4 MB). Keep it off git |
-| 3 | `pixi run esp build` (version 2 frames; `-- --features link-v1` for the 13-byte ones) | `Finished`; the program is `firmware/spine/boards/esp32-umod/target/xtensa-esp32-none-elf/release/spine-esp32-umod` |
+| 3 | `pixi run esp build` (version 2 frames, with the uplink; `-- --no-default-features --features legacy-uart,link-v1` for the 13-byte ones) | `Finished`; the program is `firmware/spine/boards/esp32-umod/target/xtensa-esp32-none-elf/release/spine-esp32-umod` |
 
 ## 2. Flash
 
@@ -200,7 +200,7 @@ the ground; checks 1 to 14 passed first.
 
 | Step | Do |
 |---|---|
-| 1 | `pixi run esp flash -- --features uplink` (or `tools/esp32.sh build --features uplink`, then flash). The first log line ends `with the uplink on TX1 and the three-position mode switch` |
+| 1 | `pixi run esp flash`: the uplink is on by default. The first log line ends `with the uplink on TX1 and the three-position mode switch` |
 | 2 | `legacy.yaml`: `frame_version: 2`, **`uplink: true`**; restart the bridge |
 
 | # | Do | Expect |

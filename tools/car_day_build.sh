@@ -47,14 +47,14 @@ result() {
 }
 
 step "The Rust ESP32 firmware, version 2 frames (the default)"
-tools/esp32.sh build -q
+tools/esp32.sh build -q --no-default-features --features legacy-uart --target-dir target/no-uplink
 rc=$?
-[[ $rc == 0 ]] && cp "$BOARD/target/$ELF" "$OUT/spine-esp32-umod-v2.elf"
+[[ $rc == 0 ]] && cp "$BOARD/target/no-uplink/$ELF" "$OUT/spine-esp32-umod-v2.elf"
 result $rc
 V2=$RESULT
 
 step "The same, version 1 frames (link-v1)"
-tools/esp32.sh build -q --features link-v1 --target-dir target/v1
+tools/esp32.sh build -q --no-default-features --features legacy-uart,link-v1 --target-dir target/v1
 rc=$?
 [[ $rc == 0 ]] && cp "$BOARD/target/v1/$ELF" "$OUT/spine-esp32-umod-v1.elf"
 result $rc

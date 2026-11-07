@@ -555,7 +555,7 @@ over each run they agreed to 0.1 %.</p>
 </tr>
 <tr>
 <td>3</td>
-<td><code>pixi run esp build</code> (version 2 frames; <code>-- --features link-v1</code> for the 13-byte ones)</td>
+<td><code>pixi run esp build</code> (version 2 frames, with the uplink; <code>-- --no-default-features --features legacy-uart,link-v1</code> for the 13-byte ones)</td>
 <td><code>Finished</code>; the program is <code>firmware/spine/boards/esp32-umod/target/xtensa-esp32-none-elf/release/spine-esp32-umod</code></td>
 </tr>
 </tbody>
@@ -704,7 +704,7 @@ the ground; checks 1 to 14 passed first.</p>
 <tbody>
 <tr>
 <td>1</td>
-<td><code>pixi run esp flash -- --features uplink</code> (or <code>tools/esp32.sh build --features uplink</code>, then flash). The first log line ends <code>with the uplink on TX1 and the three-position mode switch</code></td>
+<td><code>pixi run esp flash</code>: the uplink is on by default. The first log line ends <code>with the uplink on TX1 and the three-position mode switch</code></td>
 </tr>
 <tr>
 <td>2</td>

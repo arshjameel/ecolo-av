@@ -17,7 +17,7 @@ publish = false
 #                counter, armed and e-stop flags and a CRC-8 (TODO 50). The ESP32
 #                brakes when the counter hasn't changed for 100 ms.
 #   can:         the frames of firmware/can/aav.dbc on the ESP32's TWAI (CAN) controller.
-default = ["legacy-uart"]
+default = ["legacy-uart", "uplink"]
 legacy-uart = []
 can = []
 # With legacy-uart: the 2025-26 13-byte frame instead of version 2, as the C++ read it
@@ -26,8 +26,11 @@ can = []
 link-v1 = []
 # With legacy-uart: send the uplink status frame (legacy_link::Uplink) back to the Motor-Pi
 # on TX1 (GPIO17) every 20 ms, and read the RC's mode switch with three positions
-# (computer, RC via ROS, RC direct: ibus::RcMap::THREE_POSITION). Off until the hardware
-# lead confirms the wire from GPIO17 to the Motor-Pi's RX (TODO 50, 48).
+# (computer, RC via ROS, RC direct: ibus::RcMap::THREE_POSITION). On by default (T3.6, Arsh,
+# 6 Nov: the status at 50 Hz needs it, and the wire from GPIO17 to the Motor-Pi's RX is
+# assumed; if it is missing, only the status goes quiet). A two-position RC switch never
+# reads the middle, so it works the same. Build without it: --no-default-features
+# --features legacy-uart. link-v1 needs that too.
 uplink = []
 # Run in Espressif's QEMU (tools/esp32.sh qemu-check), never on the car: stand-in devices on
 # the I2C bus, and a busy-wait tick instead of interrupts (src/main.rs says why).
