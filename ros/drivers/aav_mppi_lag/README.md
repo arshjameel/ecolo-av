@@ -28,7 +28,7 @@ What it adds to Nav2's MPPI:
 | Language | C++ plugin | Rust |
 
 ```sh
-pixi run sim world:=test_lot reversing:=false tracker:=mppi_lag
+pixi run sim world:=test_lot tracker:=mppi_lag
 pixi run measure controllers --trackers mppi_lag --controllers mppi --tours lot
 ```
 
@@ -68,7 +68,8 @@ From `navigation.launch.py` (`vehicle.mppi_lag_params`; nothing copied):
 
 | Name | From |
 |---|---|
-| `time_steps`, `model_dt`, `batch_size`, `iteration_count`, `temperature`, `gamma`, `vx_std`, `vx_max`, `critics`, `<Critic>.*` | nav2.yaml's `MPPI` block (`vx_max`: `max_speed:=` if given) |
+| `time_steps`, `model_dt`, `batch_size`, `iteration_count`, `temperature`, `gamma`, `vx_std`, `vx_max`, `critics`, `<Critic>.*`, `inversion_xy_tolerance`, `inversion_yaw_tolerance` | nav2.yaml's `MPPI` block (`vx_max`: `max_speed:=` if given) |
+| `vx_min`, `enforce_path_inversion`, `PathAngleCritic.mode`, no `PreferForwardCritic` | the launch's `reversing`, as `nav2_tuned` sets Nav2's MPPI: 0, false, 0 and kept forward only; -`max_reverse_speed`, true, 2 and dropped with `reversing:=true` |
 | `prune_distance` | MPPI's, stretched to fit 2.8 s at `vx_max` (as `nav2_tuned`) |
 | `rate_hz`, `odom_topic`, goal and progress checks | controller_server's |
 | `footprint`, `footprint_padding`, `inflation_radius`, `cost_scaling_factor` | vehicle.yaml's body; the local costmap's |
@@ -95,7 +96,9 @@ From `config/mppi_lag.yaml`: `model` (lag or ideal), `steer_std`, `noise_correla
 
 ## Invariants
 
-- Forward only: `navigation.launch.py` refuses a tracker with `reversing:=true`.
+- Reverses only with `reversing:=true` (Ben, 14 Nov: "The car can reverse"), as Nav2's
+  MPPI: down to `-max_reverse_speed`, stopping at each cusp before it backs up. The gear
+  changes only at a stop, in the model as on the spine.
 - Never both followers: with it, controller_server's action is `follow_path_unused`.
 - Nothing in the safety path changes: the smoother, collision_monitor, twist_mux's slot,
   the locks and e-stops all sit after `cmd_vel_nav`.
@@ -121,9 +124,9 @@ cargo run --release -p mppi-lag --example timing                         # ms a 
 
 | Test | Covers |
 |---|---|
-| `lag.rs`, `ego.rs`, `ideal.rs` | each stage of the model: lags, rate, deadbands, dead times, offset, never reversing |
-| `critics.rs` | each critic on hand-made samples |
+| `lag.rs`, `ego.rs`, `ideal.rs` | each stage of the model: lags, rate, deadbands, dead times, offset; reversing, the gear changing only at a stop |
+| `critics.rs`, `path.rs` | each critic on hand-made samples, PathAngle's modes on a reversing path; the cusps |
 | `optimizer.rs`, `smoothing.rs` | the limits, the filter, a straight path, a turn, the same seed the same plan |
-| `tests/closed_loop.rs` | a pretend car (ego + the lag model at 100 Hz): the model predicts it; circle and S-curve at vehicle.yaml's lags; a corner and an S on very slow actuators: the lag-aware one closer on the corner, the only one to keep the S |
+| `tests/closed_loop.rs` | a pretend car (ego + the lag model at 100 Hz): the model predicts it; circle and S-curve at vehicle.yaml's lags; a corner and an S on very slow actuators: the lag-aware one closer on the corner, the only one to keep the S; 8 m straight back; 6 m ahead, a stop at the cusp, a quarter circle (r 5 m) back |
 
 `colcon test --packages-select aav_mppi_lag` runs the same; `pixi run test` everything.

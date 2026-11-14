@@ -1,8 +1,9 @@
 //! Ego between the driver and the car: its ramps, as a stage in front of any car model.
 //!
 //! A driver's command doesn't reach the actuators as sent: ego (aav_ego `ackermann.py`)
-//! slews the speed at max_acceleration / max_deceleration, turns the steering at most
-//! max_steering_rate, and holds the steering while the commanded speed is under
+//! slews the speed at max_acceleration / max_deceleration (speeding up or slowing down,
+//! forwards or backwards; a change of direction passes through a stop), turns the
+//! steering at most max_steering_rate, and holds the steering while the commanded speed is under
 //! min_speed_for_steering. [`Driven`] puts that in front of a [`CarModel`], so MPPI's
 //! samples carry ego's state as well as the car's.
 //!
@@ -43,11 +44,30 @@ impl Default for Ego {
     }
 }
 
+/// Move `current` toward `target` (m/s) by at most `up` x `dt` while speeding up and
+/// `down` x `dt` while slowing down, either way (ego's `slew_speed`). A change of
+/// direction goes through a stop: the target is 0 until the speed gets there.
+pub fn slew_speed(current: f64, target: f64, up: f64, down: f64, dt: f64) -> f64 {
+    let crossing = current != 0.0 && target != 0.0 && (current > 0.0) != (target > 0.0);
+    let target = if crossing { 0.0 } else { target };
+    let rate = if target.abs() > current.abs() {
+        up
+    } else {
+        down
+    };
+    current + (target - current).clamp(-rate * dt, rate * dt)
+}
+
 impl Ego {
     /// Move ego's output `out` on by `dt` toward the driver's `command`.
     pub fn step(&self, out: &mut Command, command: Command, dt: f64) {
-        out.speed += (command.speed - out.speed)
-            .clamp(-self.max_deceleration * dt, self.max_acceleration * dt);
+        out.speed = slew_speed(
+            out.speed,
+            command.speed,
+            self.max_acceleration,
+            self.max_deceleration,
+            dt,
+        );
         if command.speed.abs() >= self.min_speed_for_steering {
             let full = self.max_steering_angle;
             let most = self.max_steering_rate * dt;
@@ -141,6 +161,29 @@ mod tests {
             (out.steer - 0.06).abs() < 1e-12,
             "holds while the command is a stop"
         );
+    }
+
+    #[test]
+    fn ego_ramps_backwards_and_changes_direction_through_a_stop() {
+        let ego = Ego::default();
+        let mut out = Command::default();
+        ego.step(&mut out, Command::new(-0.5, 0.0), 0.1);
+        assert!(
+            (out.speed + 0.1).abs() < 1e-12,
+            "speeds up backwards at 1 m/s²"
+        );
+        // Asked forward while reversing: slows at 2 m/s², stops at 0, then speeds up.
+        out.speed = -0.3;
+        ego.step(&mut out, Command::new(1.0, 0.0), 0.1);
+        assert!((out.speed + 0.1).abs() < 1e-12, "{}", out.speed);
+        ego.step(&mut out, Command::new(1.0, 0.0), 0.1);
+        assert_eq!(out.speed, 0.0, "the stop, not past it");
+        ego.step(&mut out, Command::new(1.0, 0.0), 0.1);
+        assert!((out.speed - 0.1).abs() < 1e-12);
+        // Reversing, steering follows as it does forwards.
+        let mut back = Command::new(-0.3, 0.0);
+        ego.step(&mut back, Command::new(-0.3, 0.4), 0.1);
+        assert!((back.steer - 0.06).abs() < 1e-12);
     }
 
     #[test]

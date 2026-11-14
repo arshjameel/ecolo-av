@@ -2565,8 +2565,8 @@ def main():
                 print(f'{flag_name} takes {", ".join(choices)}', file=sys.stderr)
                 return 2
             EVERY_RUN.append(f'{flag_name[2:]}:={args[at + 1]}')
-            if flag_name == '--tracker' and args[at + 1] != 'none':
-                EVERY_RUN.append('reversing:=false')     # the trial trackers: forward only
+            if flag_name == '--tracker' and args[at + 1] in vehicle.FORWARD_ONLY_TRACKERS:
+                EVERY_RUN.append('reversing:=false')     # aav_track's: forward only
             if flag_name == '--costmap':
                 COSTMAP = args[at + 1]
             if flag_name == '--navigator':

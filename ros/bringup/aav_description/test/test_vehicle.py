@@ -474,6 +474,9 @@ def test_trackers_sit_beside_the_controllers_and_none_is_the_default():
         vehicle.check_tracker('mppi')
     with pytest.raises(ValueError, match='reversing:=false'):
         vehicle.check_tracker('stanley', reversing=True)
+    # mppi_lag reverses (Ben, 14 Nov); aav_track's trackers drive forwards only.
+    assert vehicle.check_tracker('mppi_lag', reversing=True) == 'mppi_lag'
+    assert set(vehicle.FORWARD_ONLY_TRACKERS) == set(vehicle.TRACKERS) - {'none', 'mppi_lag'}
 
 
 def test_track_params_are_nav2s_own_checks_and_speeds():
@@ -546,6 +549,20 @@ def test_mppi_lag_params_are_nav2s_mppi_and_the_cars_lag():
     fast = vehicle.mppi_lag_params(nav2, cfg, ego, max_speed=3.0)
     assert fast['vx_max'] == 3.0
     assert fast['prune_distance'] >= 3.0 * 2.8
+    # Forward only by default: no cusps to stop at, PathAngle's own mode.
+    assert p['enforce_path_inversion'] is False and 'PathAngleCritic.mode' not in p
+    # Reversing, as nav2_tuned sets Nav2's MPPI up.
+    back = vehicle.mppi_lag_params(nav2, cfg, ego, reversing=True)
+    tuned = vehicle.nav2_tuned(nav2, cfg['vehicle'], reversing=True, controller='mppi')
+    follow = tuned['controller_server']['ros__parameters']['FollowPath']
+    assert back['vx_min'] == pytest.approx(-cfg['vehicle']['max_reverse_speed'])
+    assert back['vx_min'] == pytest.approx(follow['vx_min'])
+    assert back['enforce_path_inversion'] is follow['enforce_path_inversion'] is True
+    assert back['critics'] == follow['critics'] and 'PreferForwardCritic' not in back['critics']
+    assert back['PathAngleCritic.mode'] == follow['PathAngleCritic']['mode'] == 2
+    assert isinstance(back['PathAngleCritic.mode'], int)
+    assert back['inversion_xy_tolerance'] == mppi['inversion_xy_tolerance']
+    assert back['inversion_yaw_tolerance'] == mppi['inversion_yaw_tolerance']
 
 
 def test_costmap_params_read_nav2s_costmaps_as_nav2_does():

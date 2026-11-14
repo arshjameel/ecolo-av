@@ -11,11 +11,12 @@
 //! | `GoalAngleCritic` | the mean heading error to the goal's, within `threshold` (ours 2.5 m) | 3.0 |
 //! | `PathAlignCritic` | the mean distance (and heading, ours) from the path at the same distance along | 10.0, offset 20, step 4 |
 //! | `PathFollowCritic` | the end's distance to a path point 6 past the furthest reached | 5.0 |
-//! | `PathAngleCritic` | the end's heading error to a path point 4 past the furthest, when over 45 degrees | 2.2 |
+//! | `PathAngleCritic` | the end's heading error to a path point 4 past the furthest, when over 45 degrees; nose first (mode 0), either end (1), or the way the path faces, tail first on a reversing stretch (2) | 2.2 |
 //! | `PreferForwardCritic` | time spent reversing | 5.0 |
 //!
 //! Where ours differs: the speeds and yaw rates are the model's (with lag), not the
-//! commands'; `PathAngleCritic` has only its forward mode (ours never reverses).
+//! commands'. Reversing: as Nav2's, the path ends at its next change of direction
+//! ([`crate::path`]), so `PathAlignCritic` never matches across a cusp.
 
 use crate::costmap::{Costmap, INSCRIBED, LETHAL, NO_INFORMATION};
 use crate::model::{wrap, Command, Pose};
@@ -477,8 +478,44 @@ impl PathFollowCritic {
     }
 }
 
-/// `PathAngleCritic` (forward preference): when the path point ahead is over
-/// `max_angle_to_furthest` off the car's nose, end facing it.
+/// How `PathAngleCritic` judges the angle to the path point ahead (Nav2's `mode`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PathAngleMode {
+    /// 0: the point should be ahead of the nose (forward only).
+    #[default]
+    ForwardPreference,
+    /// 1: ahead of the nose or of the tail, whichever is nearer.
+    NoDirectionalPreference,
+    /// 2: the way the path's own heading says: ahead of the nose on a forward stretch,
+    /// of the tail on a reversing one (the planner's poses face the car's way).
+    ConsiderFeasiblePathOrientations,
+}
+
+impl PathAngleMode {
+    /// Nav2's number for the mode; `None` for one it doesn't have.
+    pub fn from_number(n: i64) -> Option<Self> {
+        match n {
+            0 => Some(Self::ForwardPreference),
+            1 => Some(Self::NoDirectionalPreference),
+            2 => Some(Self::ConsiderFeasiblePathOrientations),
+            _ => None,
+        }
+    }
+}
+
+/// The angle (rad, 0..pi) from `yaw` to the bearing `bearing`, or to the bearing turned
+/// round where that is nearer (`flip`).
+fn off_by(yaw: f64, bearing: f64, flip: bool) -> f64 {
+    let ahead = wrap(bearing - yaw).abs();
+    if flip {
+        ahead.min(wrap(bearing + std::f64::consts::PI - yaw).abs())
+    } else {
+        ahead
+    }
+}
+
+/// `PathAngleCritic`: when the path point ahead is over `max_angle_to_furthest` off the
+/// car's nose (or tail, by `mode`), end facing it that way.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PathAngleCritic {
     /// cost_weight.
@@ -491,6 +528,8 @@ pub struct PathAngleCritic {
     pub offset_from_furthest: usize,
     /// rad: on only when the point is further off the nose than this.
     pub max_angle_to_furthest: f64,
+    /// Which way the car should face the point.
+    pub mode: PathAngleMode,
 }
 
 impl Default for PathAngleCritic {
@@ -501,25 +540,57 @@ impl Default for PathAngleCritic {
             threshold: 0.5,
             offset_from_furthest: 4,
             max_angle_to_furthest: std::f64::consts::FRAC_PI_4,
+            mode: PathAngleMode::ForwardPreference,
         }
     }
 }
 
 impl PathAngleCritic {
+    /// The mode it runs in: no directional preference only if the car may reverse (as
+    /// Nav2, which falls back to forward preference with `vx_min` 0).
+    fn mode(&self, d: &CriticData) -> PathAngleMode {
+        if self.mode == PathAngleMode::NoDirectionalPreference && d.vx_min >= 0.0 {
+            PathAngleMode::ForwardPreference
+        } else {
+            self.mode
+        }
+    }
+
+    /// The angle from a car at `pose` to the point `target`, as the mode counts it.
+    fn angle(mode: PathAngleMode, pose: &Pose, target: &Pose) -> f64 {
+        let bearing = (target.y - pose.y).atan2(target.x - pose.x);
+        match mode {
+            PathAngleMode::ForwardPreference => off_by(pose.yaw, bearing, false),
+            PathAngleMode::NoDirectionalPreference => off_by(pose.yaw, bearing, true),
+            PathAngleMode::ConsiderFeasiblePathOrientations => {
+                // The way the path goes there: along its heading, or against it (reversing).
+                let forwards = wrap(bearing - target.yaw).abs() < std::f64::consts::FRAC_PI_2;
+                let way = if forwards {
+                    bearing
+                } else {
+                    wrap(bearing + std::f64::consts::PI)
+                };
+                off_by(pose.yaw, way, false)
+            }
+        }
+    }
+
     fn target(&self, d: &CriticData) -> Option<Pose> {
         if d.path.is_empty() || within(&d.pose, &d.goal, self.threshold) {
             return None;
         }
         let idx = (d.furthest + self.offset_from_furthest).min(d.path.len() - 1);
         let goal = d.path[idx];
-        let bearing = (goal.y - d.pose.y).atan2(goal.x - d.pose.x);
-        (wrap(d.pose.yaw - bearing).abs() >= self.max_angle_to_furthest).then_some(goal)
+        (Self::angle(self.mode(d), &d.pose, &goal) >= self.max_angle_to_furthest).then_some(goal)
     }
 
-    fn score(&self, target: &Pose, r: &Rollout) -> f64 {
+    fn score(&self, d: &CriticData, target: &Pose, r: &Rollout) -> f64 {
         r.poses.last().map_or(0.0, |end| {
-            let bearing = (target.y - end.y).atan2(target.x - end.x);
-            weighted(wrap(bearing - end.yaw).abs(), self.weight, self.power)
+            weighted(
+                Self::angle(self.mode(d), end, target),
+                self.weight,
+                self.power,
+            )
         })
     }
 }
@@ -680,7 +751,7 @@ impl<'a> Prepared<'a> {
                 }
                 Critic::PathAlign(_) => 0.0.into(),
                 Critic::PathFollow(c) => self.follow.map_or(0.0, |t| c.score(&t, r)).into(),
-                Critic::PathAngle(c) => self.angle.map_or(0.0, |t| c.score(&t, r)).into(),
+                Critic::PathAngle(c) => self.angle.map_or(0.0, |t| c.score(d, &t, r)).into(),
                 Critic::PreferForward(c) => c.score(d, r).into(),
             };
             total.cost += s.cost;
@@ -872,7 +943,55 @@ mod tests {
         let target = c.target(&d).expect("over 45 degrees off");
         let facing = rollout(0.0, 0.0, 0.0, 3);
         let away = rollout(0.0, 0.0, 1.2, 3);
-        assert!(c.score(&target, &facing) < c.score(&target, &away));
+        assert!(c.score(&d, &target, &facing) < c.score(&d, &target, &away));
+    }
+
+    #[test]
+    fn path_angle_follows_a_reversing_path_tail_first() {
+        // The path goes west, the car facing east along it (the planner's poses face the
+        // car's way): a reversing stretch.
+        let path: Vec<Pose> = (0..=60)
+            .map(|i| Pose::new(-f64::from(i) * 0.05, 0.0, 0.0))
+            .collect();
+        let valid = vec![true; path.len() - 1];
+        let goal = Pose::new(-30.0, 0.0, 0.0);
+        let mut d = data(&path, &valid, Pose::default(), goal);
+        d.vx_min = -0.5;
+        d.furthest = 0;
+        let forward = PathAngleCritic::default();
+        assert!(
+            forward.target(&d).is_some(),
+            "forward only: the point is behind"
+        );
+        let feasible = PathAngleCritic {
+            mode: PathAngleMode::ConsiderFeasiblePathOrientations,
+            ..PathAngleCritic::default()
+        };
+        assert!(
+            feasible.target(&d).is_none(),
+            "tail first: already lined up"
+        );
+        let either = PathAngleCritic {
+            mode: PathAngleMode::NoDirectionalPreference,
+            ..PathAngleCritic::default()
+        };
+        assert!(either.target(&d).is_none());
+        // Turned 1.2 rad: on; ending tail-first scores better than turning round.
+        let mut turned = data(&path, &valid, Pose::new(0.0, 0.0, 1.2), goal);
+        turned.vx_min = -0.5;
+        turned.furthest = 0;
+        let target = feasible.target(&turned).expect("off the tail");
+        let tail_first = rollout(-0.5, 0.0, 0.0, 3);
+        let nose_first = rollout(0.5, 0.0, std::f64::consts::PI, 3);
+        assert!(
+            feasible.score(&turned, &target, &tail_first)
+                < feasible.score(&turned, &target, &nose_first)
+        );
+        // Without reversing, no directional preference falls back to forward (as Nav2).
+        turned.vx_min = 0.0;
+        assert_eq!(either.mode(&turned), PathAngleMode::ForwardPreference);
+        assert_eq!(PathAngleMode::from_number(2), Some(feasible.mode));
+        assert_eq!(PathAngleMode::from_number(3), None);
     }
 
     #[test]

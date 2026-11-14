@@ -7,7 +7,9 @@ plugin, and we write no C++. So MPPI is **ported to Rust**, with the lag in its 
 Nav2 still plans the path; ours follows it. It is a **trial**, beside Nav2's MPPI.
 
 > **The short version**
-> - **Switch:** `tracker:=mppi_lag` (with `reversing:=false`). Package `aav_mppi_lag`.
+> - **Switch:** `tracker:=mppi_lag`. Package `aav_mppi_lag`.
+> - **Reverses** (14 Nov) as Nav2's MPPI does, with `reversing:=true`: it stops at each
+>   cusp, then backs up ([below](#reversing)).
 > - **Same MPPI:** Nav2's sampling, critics, softmax and smoothing, nav2.yaml's numbers.
 > - **New model:** ego's ramps, the spine's speed loop, the pedals' and steering's lags.
 > - **Without ROS:** it predicts the car **70 times better** (8 mm off over 2.8 s, against 0.56 m).
@@ -40,11 +42,11 @@ Each sample is rolled out through this, step by step:
 
 | Stage | What it does | From |
 |---|---|---|
-| ego | speed ramps at 1.0 up, 2.0 down m/s²; steering at 0.6 rad/s; holds the steering under 0.05 m/s | ego.yaml |
-| speed loop | the spine's PI: throttle from the speed error, brake past a coast band, a hold brake at a stop | spine-core's `default` (as Gazebo's `SpeedLoop`) |
+| ego | speed ramps at 1.0 up, 2.0 down m/s², either way; a change of direction passes through a stop; steering at 0.6 rad/s; holds the steering under 0.05 m/s | ego.yaml, `ackermann.py` |
+| speed loop | the spine's PI along the gear: throttle from the speed error, brake past a coast band, a hold brake at a stop; the gear changes only while stopped (until then it brakes) | spine-core's `default` (as Gazebo's `SpeedLoop`) |
 | dead times | each demand waits floor(t / dt + 0.5) steps | vehicle.yaml (0 until measured) |
 | throttle, brake | first-order lag, exact: level += (u - level)(1 - e^(-dt/lag)) | `throttle_lag`, `brake_lag` |
-| speed | max_accel x throttle - max_brake x brake - drag x v; never reverses | `max_accel`, `max_brake`, `drag` |
+| speed | max_accel x throttle (along the gear) - max_brake x brake - drag x v; the brake never reverses the car | `max_accel`, `max_brake`, `drag` |
 | steering | deadband (on the motor's setpoint), motor at most `steer_rate`, linkage lag, + offset, full lock | `steer_*` |
 | pose | bicycle with the new speed and steering, at the mid-step heading | `wheelbase` |
 
@@ -87,7 +89,8 @@ pub trait CarModel: Sync {
 | Samples | (vx, wz), each step clipped to ax, az | (speed, steering), clipped to the range only | ego's ramps are in the model; Nav2's clipping drifts samples slower |
 | Noise | white | **correlated**, AR(1) 0.8 | see below |
 | Sent | element 1 | element 0 | the dead times already hold what was sent |
-| Critics | the eight in nav2.yaml | the same eight, same weights | PathAngle forward mode only |
+| Critics | the eight in nav2.yaml | the same eight, same weights; PathAngle's three modes | |
+| At a cusp (reversing) | the critics' goal is the path's end | the cusp, while one lies ahead; the goal check waits for the last stretch | the car stops there as at a goal; Nav2 stops only because the path ends |
 
 ### Why the noise is correlated
 
@@ -171,6 +174,58 @@ The test lot's first leg ("a left turn", 22 m), `pixi run measure controllers --
 While it drove, `mppi_lag` stayed closer to the path (0.13 m against 0.20 m). Run it again
 on a quiet computer, the whole tour, both followers, before calling a winner.
 
+## Reversing
+
+Ben, 14 Nov: **"The car can reverse. I don't know why we keep setting it to no"**.
+
+With `reversing:=true`, `navigation.launch.py` sets it up as it sets Nav2's MPPI:
+
+| Setting | Forward only | Reversing |
+|---|---|---|
+| `vx_min` | 0 | -`max_reverse_speed` (-0.5 m/s) |
+| `enforce_path_inversion` | false | true: stop within 0.5 m and 0.6 rad of each cusp, then the next stretch |
+| `PathAngleCritic.mode` | 0: face the path nose first | 2: the way the path faces (tail first on a reversing stretch) |
+| `PreferForwardCritic` | on | off: the planner already decides when to reverse |
+
+```
+  forward stretch            cusp            reversing stretch
+ ───────────────────▶  ●  stop, gear  ◀──  ◀──  ◀──  (the car still faces ▶)
+ the window ends here ─┘  changes        the next window starts here
+```
+
+What is new in the maths (`crates/mppi-lag`):
+
+| Part | Change |
+|---|---|
+| `lag.rs` | the spine's gear: it changes only at a stop; the loop works along it |
+| `ego.rs` | `slew_speed`, as ego's: speeding up or slowing down either way; through a stop |
+| `critics.rs` | `PathAngleCritic`'s modes 1 and 2 (`PathAngleMode`) |
+| `path.rs` | `with_inversion`: the window stops at the cusp; the next stretch starts there |
+
+**Closed loop, no ROS** (ego + the lag model at 100 Hz, vehicle.yaml's lags):
+
+| Path | Result |
+|---|---|
+| 8 m straight back | reached; 1 mm mean, 3 mm worst off the path; never forward |
+| 6 m ahead, a cusp, a quarter circle (r 5 m) back | reached; forward to 1.06 m/s, a stop, back at 0.5 m/s; one change of direction |
+| the same with r 4 m | **not reached**: it fell 0.6 m outside the bend and stopped short |
+
+Why r 4 m fails: the path bends at once after the cusp, and the car starts from a stop
+with its wheels straight. The planner's radius is 3.6 m. In the stack the navigator
+replans, which may save it; not measured yet.
+
+**Our simulator, 14 Nov, all ours** (`--navigator own --planner own --costmap own
+--tracker mppi_lag`, reversing on; a busy Mac, load 25-40), one run each:
+
+| `pixi run sim-check ...` | Result |
+|---|---|
+| `--rear-obstacle` (the goal 15 m behind, a post 6 m behind) | PASS: backed up at up to 0.53 m/s, the stop zone stopped it 0.85 m from the post; post taken away, goal reached 14 m on. No `behavior_server` runs: `mppi_lag` did the reversing |
+| `--plan-around` (a box in the lane) | PASS: goal 30 m on, 2.6 m clear of the box |
+| plain (contract, sensors, a scripted drive) | PASS, every line |
+
+Not yet seen in the simulator: a path with a cusp (a three-point turn). The lot tour
+with `measure controllers --stacks own --reversing` would show it.
+
 ## lag_aware: so ego doesn't cancel the lag twice
 
 Ego's lead (0.3) cancels lag for drivers that don't know about it. It must turn off while
@@ -189,7 +244,8 @@ depth 1. This drives through Nav2's slot: `/drivers/nav/lag_aware`.
 ## Run it
 
 ```sh
-pixi run sim world:=test_lot reversing:=false tracker:=mppi_lag
+pixi run sim world:=test_lot tracker:=mppi_lag                   # reversing (the sim's default)
+pixi run sim-check --navigator own --planner own --costmap own --tracker mppi_lag --rear-obstacle
 pixi run measure controllers --trackers mppi_lag --controllers mppi --tours lot
 cd ros/drivers/aav_mppi_lag && cargo test --release -p mppi-lag
 ```
@@ -201,7 +257,8 @@ cd ros/drivers/aav_mppi_lag && cargo test --release -p mppi-lag
 | The shared car-model crate | built behind the feature `shared`; switch the node over after a quiet-machine sim-check (TODO 139) |
 | The car's real lags | tests 3.10-3.12, 4.1-4.5; then these runs again |
 | The Orin's tick | measured on the Orin |
-| Reversing | forward only, as every tracker |
+| Reversing at a tight bend | after a cusp, a bend under ~1.1 x the planner's radius ([above](#reversing)) |
+| Reversing, scored | `measure controllers --stacks own --reversing`: not yet run |
 | ego's jerk limit, sideways slow-down | not modelled (off at our speeds) |
 | The goal at speed, the CPU | passes a goal at 2.5 m/s; twice Nav2's MPPI's CPU (8 Nov; TODO 152) |
 | A gap in odometry | gives up after 1 s, as `aav_track`; Nav2's MPPI drives on: decide which is right |

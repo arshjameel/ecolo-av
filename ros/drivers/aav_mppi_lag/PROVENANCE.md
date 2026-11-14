@@ -19,8 +19,8 @@ style, not transliterated: enums for the critics, a trait for the car model, no 
 |---|---|
 | `optimizer.rs` | `Optimizer`: noise on the sequence, rollouts, critics, control cost (gamma / std²), softmax with temperature, retries on all-collide, shift |
 | `smoothing.rs` | `utils::savitskyGolayFilter`, the same 9 taps and history |
-| `critics.rs` | `ConstraintCritic`, `CostCritic`, `GoalCritic`, `GoalAngleCritic`, `PathAlignCritic`, `PathFollowCritic`, `PathAngleCritic` (forward mode), `PreferForwardCritic`; `findPathFurthestReachedPoint`, `findPathCosts`, `findClosestPathPt` |
-| `path.rs` | `PathHandler`: closest pose within `max_robot_pose_search_dist`, prune, `prune_distance` ahead, cut at the costmap's edge |
+| `critics.rs` | `ConstraintCritic`, `CostCritic`, `GoalCritic`, `GoalAngleCritic`, `PathAlignCritic`, `PathFollowCritic`, `PathAngleCritic` (its three modes), `PreferForwardCritic`; `findPathFurthestReachedPoint`, `findPathCosts`, `findClosestPathPt`; `posePointAngle` |
+| `path.rs` | `PathHandler`: closest pose within `max_robot_pose_search_dist`, prune, `prune_distance` ahead, cut at the costmap's edge; `enforce_path_inversion` (`utils::findFirstPathInversion`, `isWithinInversionTolerances`) |
 | `costmap.rs` | the costmap's cost codes; `FootprintCollisionChecker`'s edge cost; `InflationLayer::computeCost` |
 
 ## What changed, and why
@@ -33,7 +33,7 @@ style, not transliterated: enums for the critics, a trait for the car model, no 
 | Noise correlated step to step (AR(1), `noise_correlation`, 0 = Nav2's) | through a lagging steering, white noise averages away and MPPI lost the path on a slow car (`docs/mppi-lag.md`) |
 | Sends element 0 of the sequence, not 1 | the model's state already holds every command sent (the dead times) |
 | A reset starts from the last command, not zeros | taking over mid-drive shouldn't brake first |
-| `PathAngleCritic`: forward mode only; no `TwirlingCritic`, `ObstaclesCritic`, `VelocityDeadbandCritic` | nav2.yaml runs none of the others; the trackers never reverse |
+| No `TwirlingCritic`, `ObstaclesCritic`, `VelocityDeadbandCritic` | nav2.yaml runs none of them |
 | Our own random numbers (xoshiro256++) and `std::thread::scope` | no dependencies: the crate builds offline |
 | The lag model follows the shared `car-model` crate's rules (exact first-order lags, the deadband on the motor's setpoint, dead times floor(t/dt + 0.5) steps, the bicycle with the new speed and steering at the mid-step heading) | one model of the car for every 0.3 algorithm; at the merge, that crate implements `CarModel` |
 | `/drivers/nav/lag_aware`: true while a path runs with `model: lag` | ego's lead (0.3) turns off for a driver that already plans with the lag |
@@ -44,3 +44,4 @@ style, not transliterated: enums for the critics, a trait for the car model, no 
 | Change | Why |
 |---|---|
 | 14 Nov: a costmap older than `costmap_timeout` (0.8 s: controller_server's `costmap_update_timeout` 0.3 s plus the local costmap's 2 Hz publish period) publishes zero and fails the path with CONTROLLER_TIMED_OUT; a path gets that long for its first costmap (`age.rs`) | Nav2's controller waits for a current costmap, then does the same; ours went on with the last one for ever (the gap list, 14 Nov). Nav2 checks its layers in-process; we see only the published costmap, hence the publish period |
+| 14 Nov: reversing. The lag model has the spine's gear (it changes only while stopped; the speed loop works along it, as spine-core's); ego's ramp speeds up and slows down either way and changes direction through a stop (ackermann.py `slew_speed`); `PathAngleCritic`'s modes 1 and 2; the path followed one stretch at a time at its cusps (Nav2's `enforce_path_inversion`). Ours differs at a cusp: the critics' goal is the cusp while one lies ahead (Nav2's is always the path's end), and the goal check waits until the last stretch | Ben, 14 Nov: "The car can reverse. I don't know why we keep setting it to no". The cusp as the goal makes the car stop there as at a goal; Nav2 stops only because the path ends |

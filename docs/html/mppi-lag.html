@@ -7,7 +7,7 @@
 <!-- Generated from docs/mppi-lag.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>MPPI that knows the lag</h1>
-<div class="meta">11 min read · 9 sections</div></header>
+<div class="meta">15 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -113,7 +113,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-model">The model</a><a href="#what-differs-from-nav2s-mppi">What differs from Nav2&#x27;s MPPI</a><a href="#results-without-ros">Results without ROS</a><a href="#speed">Speed</a><a href="#in-gazebo">In Gazebo</a><a href="#lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn&#x27;t cancel the lag twice</a><a href="#run-it">Run it</a><a href="#what-is-missing">What is missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-model">The model</a><a href="#what-differs-from-nav2s-mppi">What differs from Nav2&#x27;s MPPI</a><a href="#results-without-ros">Results without ROS</a><a href="#speed">Speed</a><a href="#in-gazebo">In Gazebo</a><a href="#reversing">Reversing</a><a href="#lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn&#x27;t cancel the lag twice</a><a href="#run-it">Run it</a><a href="#what-is-missing">What is missing</a></nav>
 <div class="lead"><p>Ben, 7 Nov (0.3): <strong>"have the algorithms know about lag"</strong>.</p>
 <p>Nav2's MPPI plans as if the car obeys at once. It can't take our lag model without a C++
 plugin, and we write no C++. So MPPI is <strong>ported to Rust</strong>, with the lag in its model.
@@ -121,8 +121,14 @@ Nav2 still plans the path; ours follows it. It is a <strong>trial</strong>, besi
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
-<li><strong>Switch:</strong> <code>tracker:=mppi_lag</code> (with <code>reversing:=false</code>). Package <code>aav_mppi_lag</code>.</li>
-<li><strong>Same MPPI:</strong> Nav2's sampling, critics, softmax and smoothing, nav2.yaml's numbers.</li>
+<li><strong>Switch:</strong> <code>tracker:=mppi_lag</code>. Package <code>aav_mppi_lag</code>.</li>
+<li>
+<p><strong>Reverses</strong> (14 Nov) as Nav2's MPPI does, with <code>reversing:=true</code>: it stops at each
+  cusp, then backs up (<a href="#reversing">below</a>).</p>
+</li>
+<li>
+<p><strong>Same MPPI:</strong> Nav2's sampling, critics, softmax and smoothing, nav2.yaml's numbers.</p>
+</li>
 <li><strong>New model:</strong> ego's ramps, the spine's speed loop, the pedals' and steering's lags.</li>
 <li><strong>Without ROS:</strong> it predicts the car <strong>70 times better</strong> (8 mm off over 2.8 s, against 0.56 m).</li>
 <li><strong>On very slow actuators</strong> it keeps the path (0.1 m) where the lag-free MPPI <strong>loses it</strong>.</li>
@@ -164,12 +170,12 @@ Nav2 still plans the path; ours follows it. It is a <strong>trial</strong>, besi
 <tbody>
 <tr>
 <td>ego</td>
-<td>speed ramps at 1.0 up, 2.0 down m/s²; steering at 0.6 rad/s; holds the steering under 0.05 m/s</td>
-<td>ego.yaml</td>
+<td>speed ramps at 1.0 up, 2.0 down m/s², either way; a change of direction passes through a stop; steering at 0.6 rad/s; holds the steering under 0.05 m/s</td>
+<td>ego.yaml, <code>ackermann.py</code></td>
 </tr>
 <tr>
 <td>speed loop</td>
-<td>the spine's PI: throttle from the speed error, brake past a coast band, a hold brake at a stop</td>
+<td>the spine's PI along the gear: throttle from the speed error, brake past a coast band, a hold brake at a stop; the gear changes only while stopped (until then it brakes)</td>
 <td>spine-core's <code>default</code> (as Gazebo's <code>SpeedLoop</code>)</td>
 </tr>
 <tr>
@@ -184,7 +190,7 @@ Nav2 still plans the path; ours follows it. It is a <strong>trial</strong>, besi
 </tr>
 <tr>
 <td>speed</td>
-<td>max_accel x throttle - max_brake x brake - drag x v; never reverses</td>
+<td>max_accel x throttle (along the gear) - max_brake x brake - drag x v; the brake never reverses the car</td>
 <td><code>max_accel</code>, <code>max_brake</code>, <code>drag</code></td>
 </tr>
 <tr>
@@ -278,8 +284,14 @@ feature <code>shared</code> (<code>src/shared.rs</code>, tested against <code>La
 <tr>
 <td>Critics</td>
 <td>the eight in nav2.yaml</td>
-<td>the same eight, same weights</td>
-<td>PathAngle forward mode only</td>
+<td>the same eight, same weights; PathAngle's three modes</td>
+<td></td>
+</tr>
+<tr>
+<td>At a cusp (reversing)</td>
+<td>the critics' goal is the path's end</td>
+<td>the cusp, while one lies ahead; the goal check waits for the last stretch</td>
+<td>the car stops there as at a goal; Nav2 stops only because the path ends</td>
 </tr>
 </tbody>
 </table></div>
@@ -493,6 +505,123 @@ slower than an M4's, so about 10 ms on 4 threads, 40 ms on one.</p>
 <p>While it drove, <code>mppi_lag</code> stayed closer to the path (0.13 m against 0.20 m). Run it again
 on a quiet computer, the whole tour, both followers, before calling a winner.</p>
 </section>
+<section class="card"><h2 id="reversing">Reversing</h2>
+<p>Ben, 14 Nov: <strong>"The car can reverse. I don't know why we keep setting it to no"</strong>.</p>
+<p>With <code>reversing:=true</code>, <code>navigation.launch.py</code> sets it up as it sets Nav2's MPPI:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Forward only</th>
+<th>Reversing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vx_min</code></td>
+<td>0</td>
+<td>-<code>max_reverse_speed</code> (-0.5 m/s)</td>
+</tr>
+<tr>
+<td><code>enforce_path_inversion</code></td>
+<td>false</td>
+<td>true: stop within 0.5 m and 0.6 rad of each cusp, then the next stretch</td>
+</tr>
+<tr>
+<td><code>PathAngleCritic.mode</code></td>
+<td>0: face the path nose first</td>
+<td>2: the way the path faces (tail first on a reversing stretch)</td>
+</tr>
+<tr>
+<td><code>PreferForwardCritic</code></td>
+<td>on</td>
+<td>off: the planner already decides when to reverse</td>
+</tr>
+</tbody>
+</table></div>
+<pre class="highlight"><code>  forward stretch            cusp            reversing stretch
+ ───────────────────▶  ●  stop, gear  ◀──  ◀──  ◀──  (the car still faces ▶)
+ the window ends here ─┘  changes        the next window starts here</code></pre>
+<p>What is new in the maths (<code>crates/mppi-lag</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lag.rs</code></td>
+<td>the spine's gear: it changes only at a stop; the loop works along it</td>
+</tr>
+<tr>
+<td><code>ego.rs</code></td>
+<td><code>slew_speed</code>, as ego's: speeding up or slowing down either way; through a stop</td>
+</tr>
+<tr>
+<td><code>critics.rs</code></td>
+<td><code>PathAngleCritic</code>'s modes 1 and 2 (<code>PathAngleMode</code>)</td>
+</tr>
+<tr>
+<td><code>path.rs</code></td>
+<td><code>with_inversion</code>: the window stops at the cusp; the next stretch starts there</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Closed loop, no ROS</strong> (ego + the lag model at 100 Hz, vehicle.yaml's lags):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>8 m straight back</td>
+<td>reached; 1 mm mean, 3 mm worst off the path; never forward</td>
+</tr>
+<tr>
+<td>6 m ahead, a cusp, a quarter circle (r 5 m) back</td>
+<td>reached; forward to 1.06 m/s, a stop, back at 0.5 m/s; one change of direction</td>
+</tr>
+<tr>
+<td>the same with r 4 m</td>
+<td><strong>not reached</strong>: it fell 0.6 m outside the bend and stopped short</td>
+</tr>
+</tbody>
+</table></div>
+<p>Why r 4 m fails: the path bends at once after the cusp, and the car starts from a stop
+with its wheels straight. The planner's radius is 3.6 m. In the stack the navigator
+replans, which may save it; not measured yet.</p>
+<p><strong>Our simulator, 14 Nov, all ours</strong> (<code>--navigator own --planner own --costmap own
+--tracker mppi_lag</code>, reversing on; a busy Mac, load 25-40), one run each:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>pixi run sim-check ...</code></th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--rear-obstacle</code> (the goal 15 m behind, a post 6 m behind)</td>
+<td>PASS: backed up at up to 0.53 m/s, the stop zone stopped it 0.85 m from the post; post taken away, goal reached 14 m on. No <code>behavior_server</code> runs: <code>mppi_lag</code> did the reversing</td>
+</tr>
+<tr>
+<td><code>--plan-around</code> (a box in the lane)</td>
+<td>PASS: goal 30 m on, 2.6 m clear of the box</td>
+</tr>
+<tr>
+<td>plain (contract, sensors, a scripted drive)</td>
+<td>PASS, every line</td>
+</tr>
+</tbody>
+</table></div>
+<p>Not yet seen in the simulator: a path with a cusp (a three-point turn). The lot tour
+with <code>measure controllers --stacks own --reversing</code> would show it.</p>
+</section>
 <section class="card"><h2 id="lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn't cancel the lag twice</h2>
 <p>Ego's lead (0.3) cancels lag for drivers that don't know about it. It must turn off while
 a lag-aware driver drives.</p>
@@ -526,7 +655,8 @@ depth 1. This drives through Nav2's slot: <code>/drivers/nav/lag_aware</code>.</
 </table></div>
 </section>
 <section class="card"><h2 id="run-it">Run it</h2>
-<pre class="highlight"><code class="language-sh">pixi run sim world:=test_lot reversing:=false tracker:=mppi_lag
+<pre class="highlight"><code class="language-sh">pixi run sim world:=test_lot tracker:=mppi_lag                   # reversing (the sim's default)
+pixi run sim-check --navigator own --planner own --costmap own --tracker mppi_lag --rear-obstacle
 pixi run measure controllers --trackers mppi_lag --controllers mppi --tours lot
 cd ros/drivers/aav_mppi_lag &amp;&amp; cargo test --release -p mppi-lag</code></pre>
 </section>
@@ -552,8 +682,12 @@ cd ros/drivers/aav_mppi_lag &amp;&amp; cargo test --release -p mppi-lag</code></
 <td>measured on the Orin</td>
 </tr>
 <tr>
-<td>Reversing</td>
-<td>forward only, as every tracker</td>
+<td>Reversing at a tight bend</td>
+<td>after a cusp, a bend under ~1.1 x the planner's radius (<a href="#reversing">above</a>)</td>
+</tr>
+<tr>
+<td>Reversing, scored</td>
+<td><code>measure controllers --stacks own --reversing</code>: not yet run</td>
 </tr>
 <tr>
 <td>ego's jerk limit, sideways slow-down</td>

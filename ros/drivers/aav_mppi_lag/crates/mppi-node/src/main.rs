@@ -33,7 +33,8 @@
 //!             nav2.yaml, vehicle.yaml and ego.yaml): see the README.
 //!
 //! navigation.launch.py tracker:=mppi_lag starts it and renames controller_server's own
-//! action follow_path_unused. Everything after cmd_vel_nav is unchanged. The maths is the
+//! action follow_path_unused. With reversing:=true it reverses as Nav2's MPPI does (vx_min
+//! below 0, enforce_path_inversion: it stops at each cusp, then follows the next stretch). Everything after cmd_vel_nav is unchanged. The maths is the
 //! `mppi-lag` crate; this file only moves messages.
 
 use std::{
@@ -46,8 +47,8 @@ use futures::channel::oneshot;
 use mppi_lag::{
     critics::{inflation_cost, Critic},
     lag::Actuators,
-    Arrival, Costmap, Ego, Follower, FollowerSettings, GlobalPath, IdealModel, LagModel,
-    Observation, Outcome, Pose, Report, Settings, Tick,
+    Arrival, Costmap, Ego, Follower, FollowerSettings, GlobalPath, IdealModel, Inversion, LagModel,
+    Observation, Outcome, PathAngleMode, Pose, Report, Settings, Tick,
 };
 use rclrs::*;
 use ros_env::aav_interfaces::msg::ActuatorState;
@@ -858,6 +859,13 @@ impl Declarer<'_> {
                     &format!("{n}.max_angle_to_furthest"),
                     c.max_angle_to_furthest,
                 )?;
+                let mode = self.integer(&format!("{n}.mode"), 0)?;
+                c.mode = PathAngleMode::from_number(mode).with_context(|| {
+                    format!(
+                        "{n}.mode:={mode}: 0 (forward), 1 (either way) or 2 (the way the \
+                         path faces)"
+                    )
+                })?;
                 Critic::PathAngle(c)
             }
             Critic::PreferForward(mut c) => {
@@ -941,6 +949,19 @@ impl Config {
             progress_angle: d.number("progress_angle", f.progress_angle)?,
             progress_time: d.number("progress_time", f.progress_time)?,
             tracking_unknown: d.flag("track_unknown_space", f.tracking_unknown)?,
+            inversion: None,
+        };
+        // Nav2's enforce_path_inversion: stop at each cusp, then follow the next stretch.
+        let inversion = Inversion::default();
+        let tolerance = Inversion {
+            xy: d.number("inversion_xy_tolerance", inversion.xy)?,
+            yaw: d.number("inversion_yaw_tolerance", inversion.yaw)?,
+        };
+        let follower = FollowerSettings {
+            inversion: d
+                .flag("enforce_path_inversion", false)?
+                .then_some(tolerance),
+            ..follower
         };
 
         // The car's outline, padded (nav2.yaml's local costmap footprint + padding).

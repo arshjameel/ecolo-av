@@ -48,7 +48,8 @@ the U-turn. The real car takes only `hybrid` or `lattice` (it refuses `diffusion
 | `tracker:=mpc_lag` | ours: MPC that knows the car is late, and plans for it (7 Nov) | our simulator, 8 Nov: 6 of 12 (no U-turn by the building; [trials](trials.md#lag-aware-mpc-7-nov-mpc_lag)) |
 | `tracker:=mppi_lag` | ours: Nav2's MPPI in Rust, knowing the steering and pedals lag ([page](mppi-lag.md)) | our simulator, 8 Nov, 3 runs: 11 of 12 (Nav2's MPPI 8; [trials](trials.md#results-our-simulator-8-nov-the-lot-tour-3-runs-each)). It passes a goal at 2.5 m/s and uses twice Nav2's MPPI's CPU ([our navigator](own-navigator.md#the-verdict)) |
 
-Our trackers drive forward only: give them `reversing:=false` (the menu does).
+`aav_track`'s trackers drive forward only: give them `reversing:=false` (the menu does).
+`mppi_lag` reverses (14 Nov).
 In `demo --debug`, keys 1-4 swap the tracker live. More: [Controllers](controllers.md),
 [Trials](trials.md).
 
@@ -98,7 +99,7 @@ and doesn't model `lqi` yet).
 | `voxels:=true` | Nav2 sees the lidar as 0.25 m cubes, not a flat scan (a trial: [Trials](trials.md#voxels-30-oct-the-lidar-as-cubes)) |
 | `costmap:=own` | our own costmaps (Rust) beside Nav2's; `tracker:=mppi_lag` then reads ours. 8 Nov: the same grid as Nav2's, half the CPU; with its clear service, the obstacle legs 3 of 3 as Nav2's ([page](own-costmap.md)) |
 | `planner:=own` | our own planner (Rust: Nav2's lattice ported) answers the behaviour trees, Nav2's lattice beside it; with `costmap:=own` it plans on our global costmap. 8 Nov: the test lot 12 of 12 as Nav2's, about 20 % slower on the campus's long legs ([page](own-planner.md)) |
-| `navigator:=own` | our own navigator (Rust) in place of Nav2's bt_navigator and waypoint_follower; with `planner:=own costmap:=own tracker:=mppi_lag reversing:=false` no Nav2 server navigates (all ours). 8 Nov: test lot 7 of 12 legs (Nav2 8), campus 4 of 6 (Nav2 2) ([page](own-navigator.md)) |
+| `navigator:=own` | our own navigator (Rust) in place of Nav2's bt_navigator and waypoint_follower; with `planner:=own costmap:=own tracker:=mppi_lag` no Nav2 server navigates (all ours). 8 Nov: test lot 7 of 12 legs (Nav2 8), campus 4 of 6 (Nav2 2) ([page](own-navigator.md)) |
 | `smoother:=own` | our own velocity smoother (Rust) in Nav2's `velocity_smoother`'s place: Nav2's speed limits, and the turn rate from where the wheels can be (the steering's rate and full lock). 8 Nov, test lot: the same legs as Nav2's, ego clipped 0-0.1 % of the steering against 9-15 % ([page](own-smoother.md)) |
 
 | `behaviour:=true` | the behaviour planner: a speed cap on Nav2 before a stop sign, an obstacle, the fence and the goal (a trial, off by default: [page](stopping.md#2-the-behaviour-planner)) |
@@ -136,7 +137,7 @@ default (the simulator); our Rust pieces are all trials.
 | System | Sim | Bench | Car | Why this default | On trial beside it |
 |---|---|---|---|---|---|
 | Who draws the route | `lattice` | `lattice` | `lattice` (`hybrid` if it can't reverse) | every leg reversing, the fastest: 183 s a tour (3 Nov, 3 runs) | `hybrid`, `lattice32`, `smac2d`, `navfn`, `theta_star`, `diffusion` (8 Nov: 88 % from the model, still a trial), `own` (8 Nov: 12 of 12 as Nav2's; about 20 % slower on the campus) |
-| Who steers | MPPI | MPPI | MPPI | it reads the costmap, so it steers round what the lidar sees; it reverses | RPP; our pure pursuit, Stanley, LQR, MPC, `mpc_full`, `mpc_lag`, `mppi_lag` (forward only; sim only: the bench and the car have no `tracker:=`) |
+| Who steers | MPPI | MPPI | MPPI | it reads the costmap, so it steers round what the lidar sees; it reverses | RPP; our pure pursuit, Stanley, LQR, MPC, `mpc_full`, `mpc_lag` (forward only), `mppi_lag` (reverses too); sim only: the bench and the car have no `tracker:=` |
 | The costmaps | Nav2's | Nav2's | Nav2's (always) | stock; the car never takes ours | `costmap:=own` (8 Nov: the same grid, half the CPU; sim only) |
 | Who runs the goal | Nav2's `bt_navigator` | the same | the same (always) | stock | `navigator:=own` (8 Nov: lot 7 of 12 legs, Nav2 8; campus 4 of 6, Nav2 2; sim only) |
 | The velocity smoother | Nav2's | Nav2's | Nav2's (always) | stock | `smoother:=own` (8 Nov: the same legs, ego clips 0-0.1 % against 9-15 %; sim only) |

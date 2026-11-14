@@ -176,7 +176,7 @@ TOURS = {
                    'launch': ['geofence_radius:=600'],
                    'legs': [('P4 to the Fieldhouse', None, None, None)]},
 }
-# --stacks: every navigation piece Nav2's, or every one ours (forward only: mppi_lag).
+# --stacks: every navigation piece Nav2's, or every one ours (mppi_lag follows).
 STACKS = {
     'nav2': ('controller', vehicle.DEFAULT_CONTROLLER,
              ['planner:=lattice', 'costmap:=nav2', 'navigator:=nav2']),
@@ -1234,10 +1234,10 @@ def main():
     if args.stacks and (args.trackers or args.controllers or args.planners):
         parser.error('--stacks sets the follower and planner: leave out --trackers, '
                      '--controllers and --planners')
-    if args.stacks and args.reversing:
-        parser.error("--stacks drive forwards only (mppi_lag can't reverse)")
-    if args.trackers and args.reversing:
-        parser.error('--trackers drive forwards only: leave out --reversing')
+    forward_only = set(args.trackers or ()) & set(vehicle.FORWARD_ONLY_TRACKERS)
+    if forward_only and args.reversing:
+        parser.error(f'--trackers {" ".join(sorted(forward_only))} drive forwards only: '
+                     'leave out --reversing')
     if args.runs < 1:
         parser.error('--runs must be 1 or more')
     args.ndt = args.ndt or args.ndt_ekf
