@@ -2545,8 +2545,8 @@ def main():
             return 2
         EVERY_RUN.append('cameras:=false')
     checks = ([check_sensors, check_cameras] if CAMERAS else [check_radar])
-    checks += (([check_lidar, scan_check] if lidar else [])
-              + [check_drive] + ([check_kiss_ekf] if KISS_EKF else []))
+    checks += ([check_lidar, scan_check] if lidar else []) + [check_drive]
+    checks += [check_kiss_ekf] if KISS_EKF else []
     if perception:
         checks.append(check_stop_sign)
     if '--obstacle' in args:
