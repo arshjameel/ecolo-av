@@ -123,7 +123,7 @@ PAGES = [
     ('mac.md', 'Your Mac', 'Set up the Mac, join the car, drive and watch'),
     ('foxglove.md', 'Watch from a laptop',
      'Foxglove and Lichtblick: connect, the layouts, bandwidth'),
-    ('simulation.md', 'Simulation', 'Our simulator and Gazebo, replay, CARLA, and when nothing moves'),
+    ('simulation.md', 'Simulation', 'Our simulator, Gazebo, replay, CARLA; when nothing moves'),
     ('sim-and-car.md', 'Sim and the car', "What's simulated, what's real, and why"),
     ('full-simulation.md', 'Full simulation',
      'The whole car in Gazebo: the pipeline, the actuators'),
