@@ -33,12 +33,40 @@ pub fn passed_along(path: &[Pose], pose: &Pose, car: &Pose, on_path: f64) -> boo
     }
 }
 
+/// A straight line from `car` to `distance` m behind it, a pose every `spacing` m, each
+/// facing the way the car faces: a path a reversing follower backs along (BackUp, done by
+/// the follower where no behaviour server runs). The car's own pose first.
+pub fn straight_back(car: &Pose, distance: f64, spacing: f64) -> Vec<Pose> {
+    let distance = distance.abs();
+    let spacing = spacing.abs().max(0.01);
+    let steps = (distance / spacing).ceil().max(1.0) as usize;
+    let (sin, cos) = car.yaw.sin_cos();
+    (0..=steps)
+        .map(|i| {
+            let back = distance * i as f64 / steps as f64;
+            Pose::new(car.x - back * cos, car.y - back * sin, car.yaw)
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn line(n: usize) -> Vec<Pose> {
         (0..n).map(|i| Pose::new(i as f64, 0.0, 0.0)).collect()
+    }
+
+    #[test]
+    fn straight_back_runs_behind_the_car_facing_forward() {
+        let car = Pose::new(2.0, 1.0, std::f64::consts::FRAC_PI_2); // facing +y
+        let path = straight_back(&car, 1.0, 0.25);
+        assert_eq!(path.len(), 5);
+        assert_eq!(path[0], car);
+        let end = path.last().unwrap();
+        assert!((end.x - 2.0).abs() < 1e-9 && (end.y - 0.0).abs() < 1e-9);
+        assert!(path.iter().all(|p| p.yaw == car.yaw));
+        assert!((length(&path) - 1.0).abs() < 1e-9);
     }
 
     #[test]

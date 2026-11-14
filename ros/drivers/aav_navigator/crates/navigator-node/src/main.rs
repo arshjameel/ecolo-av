@@ -24,7 +24,9 @@
 //!             (planner_action, planner_through_action), the follower's FollowPath
 //!             (follow_action), the costmaps' ClearEntireCostmap (clear_local,
 //!             clear_global: comma-separated lists), and with backup_action set,
-//!             behavior_server's BackUp.
+//!             behavior_server's BackUp; without it (no behaviour server: all ours), the
+//!             BackUp recovery is the follower's FollowPath on a straight line behind the
+//!             car (the follower must reverse: mppi_lag with reversing:=true).
 //!             Every call has a time limit (settings: plan_timeout, follow_timeout: the
 //!             follower's silence, recovery_timeout): a server that dies mid-goal fails
 //!             the goal; it never hangs it.
@@ -43,6 +45,7 @@ use anyhow::{anyhow, bail, Context as _, Result};
 use futures::channel::oneshot;
 use futures::future::{self, Either};
 use map_core::earth::{Datum, LatLon, BUILT_IN_NAVSAT_YAML};
+use navigator::path::straight_back;
 use navigator::{
     Abort, BackUp as BackUpSettings, Command, FollowError, Mission, Navigator, Outcome, PlanError,
     Pose, Settings, Token, WaypointMode,
@@ -66,6 +69,9 @@ use ros_env::nav_msgs::msg::Path;
 use ros_env::std_msgs::msg::Header;
 use ros_env::tf2_msgs::msg::TFMessage;
 use serde_json::Value;
+
+/// m between the poses of the BackUp recovery's straight line (as the planners' paths).
+const BACK_UP_SPACING: f64 = 0.05;
 
 /// s: a /tf transform older than this is no car pose (robot_localization sends at 30 Hz).
 const TRANSFORM_TIMEOUT: f64 = 1.0;
@@ -968,6 +974,46 @@ impl Core {
         );
     }
 
+    /// BackUp with no behaviour server: the follower backs along a straight line behind
+    /// the car (`straight_back`), checking the costmap as it goes. No car pose: it fails,
+    /// and the next recovery is another kind.
+    fn back_up_following(&mut self, token: Token, distance: f64) {
+        let path = self
+            .car()
+            .map(|car| straight_back(&car, distance, BACK_UP_SPACING));
+        let client = self.clients.follow.clone();
+        let goal = path.map(|poses| FollowPath_Goal {
+            path: Path {
+                header: Header {
+                    stamp: self.stamp(),
+                    frame_id: self.frames.map.clone(),
+                },
+                poses: self.stamped(&poses),
+            },
+            controller_id: String::new(),
+            goal_checker_id: String::new(),
+            progress_checker_id: String::new(),
+        });
+        self.spawn(
+            async move {
+                let Some(goal) = goal else {
+                    return false;
+                };
+                if !client.server_is_available().unwrap_or(false) {
+                    return false;
+                }
+                let Some(g) = client.request_goal(goal).await else {
+                    return false;
+                };
+                g.result.await.0 == GoalStatusCode::Succeeded
+            },
+            move |c: &mut Core, ok: bool, now| {
+                let out = c.nav.recovered(token, ok, now);
+                c.carry_out(out);
+            },
+        );
+    }
+
     fn clear(&mut self, token: Token, local: bool, global: bool) {
         let mut clients: Vec<Client<ClearEntireCostmap>> = Vec::new();
         if local {
@@ -1001,6 +1047,9 @@ impl Core {
     }
 
     fn back_up(&mut self, token: Token, distance: f64, speed: f64) {
+        if self.clients.backup.is_none() {
+            return self.back_up_following(token, distance);
+        }
         let client = self.clients.backup.clone();
         let goal = BackUp_Goal {
             target: Point {

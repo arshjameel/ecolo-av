@@ -8,7 +8,8 @@ stays the default, and on the car. The page: [docs/own-navigator.md](../../../do
 goal (RViz, the map window, street_router, language_drive, the tools)
   -> navigator -> ComputePathToPose / ComputePathThroughPoses (our planner, or Nav2's)
                -> FollowPath (mppi_lag, or controller_server)
-               -> ClearEntireCostmap (ours, or Nav2's), BackUp (behavior_server, reversing)
+               -> ClearEntireCostmap (ours, or Nav2's), BackUp (behavior_server, or the follower backing
+               along a straight line where none runs; reversing)
 ```
 
 ## Overview
@@ -33,7 +34,7 @@ pixi run measure controllers --stacks nav2 own --tours lot obstacle --runs 3
 | Actions | `/drivers/nav/navigator/navigate_to_pose`, `navigate_through_poses`, `follow_waypoints`, `follow_gps_waypoints` (Nav2's types) |
 | Subscribes | `/goal_pose` (a to-pose goal); `/tf` (map -> odom -> base_link; older than 1 s: no car pose) |
 | Publishes | `/drivers/nav/navigator/status` (DiagnosticStatus, 2 Hz and at each goal's end) |
-| Calls | `planner_action`, `planner_through_action` (ComputePathToPose, ComputePathThroughPoses); `follow_action` (FollowPath); `clear_local`, `clear_global` (ClearEntireCostmap, comma-separated lists); `backup_action` (BackUp; empty: none) |
+| Calls | `planner_action`, `planner_through_action` (ComputePathToPose, ComputePathThroughPoses); `follow_action` (FollowPath); `clear_local`, `clear_global` (ClearEntireCostmap, comma-separated lists); `backup_action` (BackUp; empty: the follower's FollowPath on a straight line 1 m behind the car) |
 | Parameters | `settings`: one JSON block from `aav_description`'s `vehicle.navigator_params` (the trees' numbers); the names above; `navsat_file` (the datum); the frames |
 
 A goal sender finds the action with `vehicle.navigator_action(navigator, name)`;
@@ -45,7 +46,8 @@ A goal sender finds the action with `vehicle.navigator_action(navigator, name)`;
 - Nav2's error codes, Nav2's message types: a drop-in for every goal sender.
 - It never drives the car itself: the follower does, through the velocity smoother,
   collision_monitor, twist_mux and its locks, which never change.
-- Back up only with `reversing:=true`, through behavior_server's BackUp.
+- Back up only with `reversing:=true`: through behavior_server's BackUp, or where none runs
+  (all ours) through the follower, which must reverse (`mppi_lag`), on `path::straight_back`.
 - No ROS in `crates/navigator`; no maths in the node. `cargo fmt` and `cargo clippy` clean.
 
 ## Side Effects
