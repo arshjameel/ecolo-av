@@ -170,7 +170,7 @@ class ThingsNode(Node):
 
 
 def markers(things):
-    """A box, a speed arrow and the id for each thing; DELETEALL first."""
+    """Return a box, a speed arrow and the id for each thing; DELETEALL first."""
     array = MarkerArray(markers=[Marker(header=things.header, action=Marker.DELETEALL)])
     for th in things.things:
         grey = th.coasting

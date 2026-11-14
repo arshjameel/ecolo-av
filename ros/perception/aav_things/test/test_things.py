@@ -10,7 +10,7 @@ import pytest
 
 
 def box(x, y, length=1.0, width=1.0, height=1.0, size=0.25):
-    """The cube centres aav_voxels would send for an upright box."""
+    """Return the cube centres aav_voxels would send for an upright box."""
     xs = np.arange(x - length / 2 + size / 2, x + length / 2, size)
     ys = np.arange(y - width / 2 + size / 2, y + width / 2, size)
     zs = np.arange(0.3 + size / 2, height, size)

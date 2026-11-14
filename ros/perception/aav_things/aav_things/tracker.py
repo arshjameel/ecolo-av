@@ -58,7 +58,7 @@ class TrackerShape:
 class Track:
     """One thing, followed."""
 
-    id: int
+    id: int                           # noqa: A003 - as the Thing message names it
     x: np.ndarray                     # [x, y, vx, vy]
     p: np.ndarray                     # its 4 x 4 covariance
     length: float
