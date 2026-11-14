@@ -108,7 +108,21 @@ a lock or Nav2's goal check makes every final stop.
 | Obstacle | passed 2 of 4 runs: APPROACH, cap down to 0.3 m/s, the stop zone fired at 0.50 m/s, the bumper 0.8 m from the box |
 | Obstacle, the other 2 | the car went round the box (the lidar is on, so MPPI may steer round it): no stop to score |
 | Goal | APPROACH from 2 m out, lowest cap 0.48-0.68 m/s; reached, 0.9 m from the goal |
-| Stop sign (`-e ml ... --perception`) | the lock stopped the car 3.5 m before the sign, but the behaviour **never entered APPROACH(sign)**: still to find out why |
+| Stop sign (`-e ml ... --perception`) | the lock stopped the car 3.5 m before the sign, but the behaviour **never entered APPROACH(sign)**: cause not found (see 14 Nov) |
+
+### In Gazebo again (14 Nov, a Mac, `pixi run -e ml sim-check --simulator gazebo --behaviour-only --perception`)
+
+| Stop | Result |
+|---|---|
+| Stop sign | **passed**: APPROACH(sign) 2.0 m out, the lock fired at 0.50 m/s, the bumper 4.0 m before the sign. One run |
+| After the sign's hold | its old point came back as APPROACH(sign) at the floor, until "sign lost": **fixed**, a sign already stopped for is dropped (`test_a_sign_stopped_for_never_brings_the_approach_back`) |
+| Obstacle | the car went round the box: no stop to score |
+| Goal | passed: APPROACH, lowest cap 0.47 m/s |
+
+The 8 Nov miss didn't come back. Ruled out: the sign's camera frame (`camera_left_link`
+is in `/tf`), the lookup at the picture's stamp (220 of 220 found, parked), and the cap
+(the node keeps the sign in `odom`, so `left` keeps falling between pictures). A dropped
+picture now logs `stop sign dropped: <why>`.
 
 At 1 m/s the law's cap binds only in the last 2 m, so the slowing is short.
 

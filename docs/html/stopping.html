@@ -7,7 +7,7 @@
 <!-- Generated from docs/stopping.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>How the car stops</h1>
-<div class="meta">12 min read · 4 sections</div></header>
+<div class="meta">13 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -411,10 +411,41 @@ a lock or Nav2's goal check makes every final stop.</p>
 </tr>
 <tr>
 <td>Stop sign (<code>-e ml ... --perception</code>)</td>
-<td>the lock stopped the car 3.5 m before the sign, but the behaviour <strong>never entered APPROACH(sign)</strong>: still to find out why</td>
+<td>the lock stopped the car 3.5 m before the sign, but the behaviour <strong>never entered APPROACH(sign)</strong>: cause not found (see 14 Nov)</td>
 </tr>
 </tbody>
 </table></div>
+<h3 id="in-gazebo-again-14-nov-a-mac-pixi-run-e-ml-sim-check-simulator-gazebo-behaviour-only-perception">In Gazebo again (14 Nov, a Mac, <code>pixi run -e ml sim-check --simulator gazebo --behaviour-only --perception</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Stop</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stop sign</td>
+<td><strong>passed</strong>: APPROACH(sign) 2.0 m out, the lock fired at 0.50 m/s, the bumper 4.0 m before the sign. One run</td>
+</tr>
+<tr>
+<td>After the sign's hold</td>
+<td>its old point came back as APPROACH(sign) at the floor, until "sign lost": <strong>fixed</strong>, a sign already stopped for is dropped (<code>test_a_sign_stopped_for_never_brings_the_approach_back</code>)</td>
+</tr>
+<tr>
+<td>Obstacle</td>
+<td>the car went round the box: no stop to score</td>
+</tr>
+<tr>
+<td>Goal</td>
+<td>passed: APPROACH, lowest cap 0.47 m/s</td>
+</tr>
+</tbody>
+</table></div>
+<p>The 8 Nov miss didn't come back. Ruled out: the sign's camera frame (<code>camera_left_link</code>
+is in <code>/tf</code>), the lookup at the picture's stamp (220 of 220 found, parked), and the cap
+(the node keeps the sign in <code>odom</code>, so <code>left</code> keeps falling between pictures). A dropped
+picture now logs <code>stop sign dropped: &lt;why&gt;</code>.</p>
 <p>At 1 m/s the law's cap binds only in the last 2 m, so the slowing is short.</p>
 <h3 id="not-built-yet">Not built yet</h3>
 <div class="table-wrap"><table>
