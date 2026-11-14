@@ -21,7 +21,9 @@
 //!                                         diagnostic_msgs/DiagnosticStatus, 2 Hz and at
 //!                                         each goal's end: the goal, the step, recoveries
 //! Calls       the planner's ComputePathToPose and ComputePathThroughPoses
-//!             (planner_action, planner_through_action), the follower's FollowPath
+//!             (planner_action, planner_through_action), its IsPathValid once a second
+//!             on the final approach (is_path_valid_service: planner_server's, or ours,
+//!             aav_planner, where none runs), the follower's FollowPath
 //!             (follow_action), the costmaps' ClearEntireCostmap (clear_local,
 //!             clear_global: comma-separated lists), and with backup_action set,
 //!             behavior_server's BackUp; without it (no behaviour server: all ours), the
@@ -64,7 +66,10 @@ use ros_env::nav2_msgs::action::{
     NavigateToPose_Feedback, NavigateToPose_Result,
 };
 use ros_env::nav2_msgs::msg::MissedWaypoint;
-use ros_env::nav2_msgs::srv::{ClearEntireCostmap, ClearEntireCostmap_Response};
+use ros_env::nav2_msgs::srv::{
+    ClearEntireCostmap, ClearEntireCostmap_Response, IsPathValid, IsPathValid_Request,
+    IsPathValid_Response,
+};
 use ros_env::nav_msgs::msg::Path;
 use ros_env::std_msgs::msg::Header;
 use ros_env::tf2_msgs::msg::TFMessage;
@@ -82,6 +87,8 @@ const GOAL_TOPIC: &str = "/goal_pose";
 /// s between ticks, and between feedback and status messages.
 const TICK: f64 = 0.1;
 const REPORT_EVERY: u32 = 5;
+/// Ticks between IsPathValid calls on the final approach: once a second, as the trees.
+const CHECK_EVERY: u32 = 10;
 
 fn main() -> Result<()> {
     let context = Context::default_from_env()?;
@@ -113,6 +120,7 @@ fn main() -> Result<()> {
             "/global_costmap/clear_entirely_global_costmap",
         )?),
         backup: text_param("backup_action", "")?,
+        is_path_valid: text_param("is_path_valid_service", "/is_path_valid")?,
     };
     let navsat_file = text_param("navsat_file", "")?;
     let frames = Frames {
@@ -160,6 +168,7 @@ fn main() -> Result<()> {
         } else {
             Some(node.create_action_client::<BackUp>(names.backup.as_str())?)
         },
+        is_path_valid: node.create_client::<IsPathValid>(names.is_path_valid.as_str())?,
     };
 
     let core = Core {
@@ -177,6 +186,7 @@ fn main() -> Result<()> {
         clock: node.get_clock(),
         logger: node.logger().clone(),
         ticks: 0,
+        checking: false,
         step: "idle",
         last_end: String::new(),
         done: (0, 0),
@@ -428,6 +438,7 @@ struct Names {
     clear_local: Vec<String>,
     clear_global: Vec<String>,
     backup: String,
+    is_path_valid: String,
 }
 
 struct Frames {
@@ -443,6 +454,7 @@ struct Clients {
     clear_local: Vec<Client<ClearEntireCostmap>>,
     clear_global: Vec<Client<ClearEntireCostmap>>,
     backup: Option<ActionClient<BackUp>>,
+    is_path_valid: Client<IsPathValid>,
 }
 
 /// Where each goal's feedback goes.
@@ -487,6 +499,8 @@ struct Core {
     clock: Clock,
     logger: Logger,
     ticks: u32,
+    /// An IsPathValid call is out: no second one until it answers.
+    checking: bool,
     step: &'static str,
     last_end: String,
     /// Goals succeeded, and not.
@@ -665,6 +679,9 @@ impl Core {
         let out = self.nav.tick(now, car.as_ref());
         self.carry_out(out);
         self.ticks += 1;
+        if self.ticks.is_multiple_of(CHECK_EVERY) {
+            self.check_path(now, car.as_ref());
+        }
         if self.ticks.is_multiple_of(REPORT_EVERY) {
             self.report(now, car.as_ref());
         }
@@ -1010,6 +1027,50 @@ impl Core {
             move |c: &mut Core, ok: bool, now| {
                 let out = c.nav.recovered(token, ok, now);
                 c.carry_out(out);
+            },
+        );
+    }
+
+    /// On the final approach (where the path is kept, not replanned), ask the planner's
+    /// IsPathValid about it, as the trees do. No answer, or no server: nothing changes
+    /// (the follower's own costmap checks and collision_monitor still stop the car).
+    fn check_path(&mut self, now: f64, car: Option<&Pose>) {
+        if self.checking {
+            return;
+        }
+        let Some((made, poses)) = self.nav.path_to_check(now, car) else {
+            return;
+        };
+        let request = IsPathValid_Request {
+            path: Path {
+                header: Header {
+                    stamp: self.stamp(),
+                    frame_id: self.frames.map.clone(),
+                },
+                poses: self.stamped(poses),
+            },
+        };
+        let client = self.clients.is_path_valid.clone();
+        self.checking = true;
+        self.spawn(
+            async move {
+                if !client.service_is_ready().unwrap_or(false) {
+                    return None;
+                }
+                let promise: Promise<IsPathValid_Response> = client.call(&request).ok()?;
+                promise.await.ok().map(|r| r.is_valid)
+            },
+            move |c: &mut Core, valid: Option<bool>, _now| {
+                c.checking = false;
+                if let Some(valid) = valid {
+                    if !valid {
+                        log_warn!(
+                            &c.logger,
+                            "IsPathValid: the kept path is blocked: planning again"
+                        );
+                    }
+                    c.nav.path_checked(made, valid);
+                }
             },
         );
     }

@@ -79,6 +79,36 @@ fn final_approach_keeps_the_path() {
 }
 
 #[test]
+fn a_blocked_path_on_the_final_approach_is_planned_again() {
+    let mut nav = Navigator::new(Settings::default());
+    nav.start(1, Mission::ToPose(GOAL), 0.0);
+    let (t, _) = plan_token(&nav.tick(0.0, Some(&Pose::default())));
+    nav.planned(t, Ok(straight(&GOAL)), 0.0);
+    let far = Pose::new(5.0, 0.0, 0.0);
+    let near = Pose::new(25.0, 0.5, 0.0);
+    // Far from the goal there is nothing to ask: the replans check the way.
+    assert!(nav.path_to_check(0.5, Some(&far)).is_none());
+    nav.follower_heard(3.0);
+    let (made, poses) = nav
+        .path_to_check(3.0, Some(&near))
+        .expect("on the final approach");
+    assert_eq!(poses.len(), 11);
+    nav.path_checked(made, true);
+    assert!(
+        nav.tick(3.0, Some(&near)).is_empty(),
+        "a clear path is kept"
+    );
+    // An answer about some other path changes nothing.
+    nav.path_checked(made + 1.0, false);
+    nav.follower_heard(4.0);
+    assert!(nav.tick(4.0, Some(&near)).is_empty());
+    // Blocked: plan again at once.
+    nav.path_checked(made, false);
+    nav.follower_heard(5.0);
+    plan_token(&nav.tick(5.0, Some(&near)));
+}
+
+#[test]
 fn a_failed_replan_while_driving_keeps_going_then_recovers() {
     let mut nav = Navigator::new(Settings::default());
     nav.start(1, Mission::ToPose(GOAL), 0.0);

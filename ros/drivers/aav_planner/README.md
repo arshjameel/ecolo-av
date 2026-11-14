@@ -32,6 +32,7 @@ pixi run measure controllers --planners lattice own --reversing --tours lot
 |---|---|
 | Actions | `/drivers/nav/planner/compute_path_to_pose` (ComputePathToPose) and `/drivers/nav/planner/compute_path_through_poses` (ComputePathThroughPoses: a plan a leg, joined); `bt_navigator`'s two are remapped here, and our navigator calls both |
 | Subscribes | the global costmap (`costmap_topic`: Nav2's `/global_costmap/costmap_raw`, latched, with `_raw_updates`; or ours, `/drivers/nav/costmap/global_raw`); `/tf` (map -> odom -> base_link; older than 1 s is no pose: TF_ERROR) |
+| Serves | `is_path_valid_service` (nav2_msgs/srv/IsPathValid, as planner_server's; `/is_path_valid` where planner_server doesn't run, else none): from the pose nearest the car on, a pose on a lethal or inscribed cell makes the path invalid |
 | Publishes | `/plan` (nav_msgs/Path); `/drivers/nav/planner/status` (DiagnosticStatus, one a plan) |
 | Parameters | `settings`: one JSON block from `aav_description`'s `vehicle.planner_params` (nav2.yaml's Lattice block as tuned, the car's outline, the global inflation); `costmap_topic`, `costmap_updates_topic`, `costmap_latched`, the frames |
 

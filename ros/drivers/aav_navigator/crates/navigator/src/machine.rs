@@ -64,11 +64,13 @@ struct Following {
     heard: f64,
 }
 
-/// The path being followed, and when it was made.
+/// The path being followed, when it was made, and whether the planner's IsPathValid
+/// last said something blocks it.
 #[derive(Debug, Clone)]
 struct Held {
     poses: Vec<Pose>,
     made: f64,
+    blocked: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -312,6 +314,28 @@ impl Navigator {
         vec![Command::Plan { token, goals }]
     }
 
+    /// The path to ask IsPathValid about, while the car is on the final approach (where
+    /// the path is kept, not replanned): its `made` time (to name it in the answer) and its
+    /// poses. `None` elsewhere: the second's replan already checks the way.
+    pub fn path_to_check(&self, now: f64, car: Option<&Pose>) -> Option<(f64, &[Pose])> {
+        let a = self.active.as_ref()?;
+        if !on_final_approach(a, car, now, &self.settings) {
+            return None;
+        }
+        a.path.as_ref().map(|h| (h.made, h.poses.as_slice()))
+    }
+
+    /// IsPathValid's answer about the path made at `made`: a blocked path isn't kept, so
+    /// the next tick plans again (the trees' `IsPathValid` in the final approach's
+    /// sequence). An answer about an older path is ignored.
+    pub fn path_checked(&mut self, made: f64, valid: bool) {
+        if let Some(h) = self.active.as_mut().and_then(|a| a.path.as_mut()) {
+            if h.made == made {
+                h.blocked = !valid;
+            }
+        }
+    }
+
     /// The planner's answer to [`Command::Plan`]: a path, or Nav2's error and why.
     pub fn planned(
         &mut self,
@@ -340,6 +364,7 @@ impl Navigator {
                 a.path = Some(Held {
                     poses: poses.clone(),
                     made: now,
+                    blocked: false,
                 });
                 let token = next(&mut self.tokens);
                 // A new path for a follower already driving: it hasn't spoken yet.
@@ -611,6 +636,12 @@ fn drop_passed(a: &mut Active, car: &Pose, settings: &Settings) {
 /// The final approach: near the goal, keep a path that still ends there and is young
 /// enough, instead of replanning (TODO 17: replans there made the car circle the goal).
 fn keep_path(a: &Active, car: Option<&Pose>, now: f64, settings: &Settings) -> bool {
+    on_final_approach(a, car, now, settings) && a.path.as_ref().is_some_and(|h| !h.blocked)
+}
+
+/// The trees' final approach, but for IsPathValid: the last leg, near the goal, a path
+/// that still ends there and is young enough to keep.
+fn on_final_approach(a: &Active, car: Option<&Pose>, now: f64, settings: &Settings) -> bool {
     let (Some(car), Some(held), Some(end)) = (car, &a.path, a.end()) else {
         return false;
     };

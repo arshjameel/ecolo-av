@@ -25,7 +25,7 @@ for them, and clippy was not run. Sizes: **S** under a day, **M** 2-4 days, **L*
 | Package (Nav2 twin) | Must | Should | State |
 |---|---|---|---|
 | `aav_costmap` (costmap_2d) | say its age; stop placing scans when odometry stops; try radar, cubes, camera clouds | — | 100 % the same cells as Nav2; half the CPU |
-| `aav_planner` (Smac lattice) | Hybrid-A* (the car's forward-only planner) | costmap age; `IsPathValid`; 20 % slower on long plans | ties on the lot |
+| `aav_planner` (Smac lattice) | Hybrid-A* (the car's forward-only planner) | costmap age (done 14 Nov); `IsPathValid` (served 14 Nov); 20 % slower on long plans | ties on the lot |
 | `aav_navigator` (bt_navigator) | time limits on planner and follower calls (a crash mid-goal hangs it); lot 7 of 12 against 8 | `IsPathValid` on the final approach; BackUp still Nav2's; goals in other frames; error codes as enums; 8 `expect` in library code (`machine.rs`) | 11 mission tests |
 | `aav_smoother` (velocity_smoother) | — | a stale speed reading used for ever in closed loop; campus at 2.5 m/s not run | the closest to Nav2; better steering |
 | `aav_mppi_lag` (MPPI) | passes the goal at 2.5 m/s; twice the CPU, never timed on the Orin; costmap age | forward only; what to do on an odometry gap | the best follower (11 of 12) |

@@ -24,11 +24,18 @@
 //!                                         own goes to /drivers/nav/planner/nav2_plan)
 //!             drivers/nav/planner/status  diagnostic_msgs/DiagnosticStatus, one a plan: the
 //!                                         times, iterations, length, cusps, error
-//! Serves      nothing else; calls nothing.
+//! Serves      is_path_valid_service (empty: none; navigation.launch.py gives
+//!             /is_path_valid where planner_server doesn't run)
+//!                                         nav2_msgs/srv/IsPathValid, as planner_server's:
+//!                                         from the pose nearest the car on, a pose on a
+//!                                         lethal or inscribed cell is invalid. No costmap,
+//!                                         a stale one, or a path not in map: invalid
+//!                                         (the trees then plan again)
+//! Calls       nothing.
 //! Parameters  settings (JSON: aav_description's vehicle.planner_params, from the tuned
 //!             nav2.yaml's Lattice block, vehicle.yaml's outline and the global costmap's
 //!             inflation), costmap_topic, costmap_updates_topic (empty: none),
-//!             costmap_latched, map_frame, odom_frame, base_frame.
+//!             costmap_latched, map_frame, odom_frame, base_frame, is_path_valid_service.
 //!
 //! The maths is the `lattice-planner` crate; this file only moves messages. Each goal is
 //! planned on its own thread, on the newest costmap.
@@ -51,6 +58,7 @@ use ros_env::nav2_msgs::action::{
     ComputePathToPose_Result as Answer,
 };
 use ros_env::nav2_msgs::msg::{Costmap as CostmapMsg, CostmapUpdate};
+use ros_env::nav2_msgs::srv::{IsPathValid, IsPathValid_Request, IsPathValid_Response};
 use ros_env::nav_msgs::msg::Path;
 use ros_env::std_msgs::msg::Header;
 use ros_env::tf2_msgs::msg::TFMessage;
@@ -84,6 +92,7 @@ fn main() -> Result<()> {
     let costmap_topic = text_param("costmap_topic", "/global_costmap/costmap_raw")?;
     let updates_topic = text_param("costmap_updates_topic", "")?;
     let latched = text_param("costmap_latched", "true")? == "true";
+    let valid_service = text_param("is_path_valid_service", "")?;
     let frames = Frames {
         map: text_param("map_frame", "map")?,
         odom: text_param("odom_frame", "odom")?,
@@ -143,6 +152,12 @@ fn main() -> Result<()> {
         ),
         Box::new(worker.create_subscription("/tf", |s: &mut Core, msg: TFMessage| s.on_tf(&msg))?),
     ];
+    if !valid_service.is_empty() {
+        keep.push(Box::new(worker.create_service::<IsPathValid, _>(
+            valid_service.as_str(),
+            |s: &mut Core, req: IsPathValid_Request| s.is_path_valid(&req.path),
+        )?));
+    }
     if !updates_topic.is_empty() {
         keep.push(Box::new(
             worker.create_subscription(
@@ -527,6 +542,57 @@ impl Core {
             } else if parent == self.frames.odom && child == self.frames.base {
                 self.odom_base = Some((pose, self.now()));
             }
+        }
+    }
+
+    /// Nav2's IsPathValid: invalid from the pose nearest the car on, where a pose sits on
+    /// a lethal or inscribed cell (`Grid::blocked_along`).
+    fn is_path_valid(&self, path: &Path) -> IsPathValid_Response {
+        let invalid = |indices: Vec<i32>| IsPathValid_Response {
+            is_valid: false,
+            invalid_pose_indices: indices,
+        };
+        let frame = path.header.frame_id.trim_start_matches('/');
+        let now = self.now();
+        let grid = match &self.grid {
+            Some(g) if self.costmap_heard.fresh(now, self.costmap_timeout) => g,
+            _ => return invalid(Vec::new()),
+        };
+        if !(frame.is_empty() || frame == self.frames.map) {
+            return invalid(Vec::new());
+        }
+        let points: Vec<(f64, f64)> = path
+            .poses
+            .iter()
+            .map(|p| (p.pose.position.x, p.pose.position.y))
+            .collect();
+        let car = match (&self.map_odom, &self.odom_base) {
+            (Some((a, _)), Some((b, _))) => Some(compose(a, b)),
+            _ => None,
+        };
+        let from = car.map_or(0, |c| {
+            points
+                .iter()
+                .enumerate()
+                .min_by(|(_, p), (_, q)| {
+                    let d = |(x, y): &(f64, f64)| (x - c.x).hypot(y - c.y);
+                    d(p).total_cmp(&d(q))
+                })
+                .map_or(0, |(i, _)| i)
+        });
+        let blocked = grid.blocked_along(&points, from);
+        if blocked.is_empty() {
+            IsPathValid_Response {
+                is_valid: true,
+                invalid_pose_indices: Vec::new(),
+            }
+        } else {
+            invalid(
+                blocked
+                    .into_iter()
+                    .map(|i| i32::try_from(i).unwrap_or(i32::MAX))
+                    .collect(),
+            )
         }
     }
 

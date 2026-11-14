@@ -453,6 +453,8 @@ def nodes(context):
             parameters=[{'settings': json.dumps(settings), 'costmap_topic': topic,
                          'costmap_updates_topic': updates,
                          'costmap_latched': str(latched).lower(),
+                         # IsPathValid, as planner_server serves it, where none runs.
+                         'is_path_valid_service': '' if nav2_planner else '/is_path_valid',
                          'use_sim_time': use_sim_time}]))
     if own_navigator:
         # aav_navigator (Rust): the trees' logic and waypoint_follower's, calling whichever
