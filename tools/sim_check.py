@@ -83,6 +83,11 @@ Sim check: start Gazebo's road world headless, then test the car's whole graph i
                                             0.25 m with the adaptive brake. The empty
                                             world, one more run; --loaded-stop-only skips
                                             the road world's run. docs/stopping.md)
+    pixi run sim-check --things           (the things, things:=true, aav_things: a box
+                                            placed 12 m ahead must be listed on
+                                            /world/things within 1 m, standing; taken away,
+                                            still listed 1.5 s on, gone after 5 s. One more
+                                            run; --things-only skips the road world's run)
     pixi run sim-check --behaviour        (the behaviour trial, behaviour:=true: an
                                             obstacle in the lane and a Nav2 goal, each
                                             slowed by the speed cap, and with -e ml
@@ -165,6 +170,12 @@ this tests it against Gazebo's camera and radar stand-in, which see the road wor
    stopped by a cancel (Ctrl-C), the e-stop and a GPS fault (the driver's own timeout and
    the sensor watchdog's lock). Each drive's truth goes to /tmp/aav-sim-points/ as an
    measure atob CSV (`pixi run measure atob /tmp/aav-sim-points/1-*.csv --speed 1`).
+
+14. With --things: the road world again with things:=true (aav_things), the car standing.
+   The bench's box 12 m past the bumper must be on /world/things within 1 m of where it
+   is (relative to the car: the truth for the box, the local EKF for the thing), at under
+   0.3 m/s. Then the box goes: the same id must still be listed 1.5 s later (the memory,
+   coasting) and gone 5 s later (keep, 3 s, outside the blind zone).
 
 13. With --speed-steps: Gazebo's empty world, nothing else driving. A scripted drive
    (ramped at ego's 1 m/s^2) holds each of SPEED_STEPS for 20 s: reverse at 0.5, then 1.0
@@ -1277,6 +1288,87 @@ def set_ghost(probe, client, **values):
     sent = client.set_parameters_atomically([Parameter(k, value=v) for k, v in values.items()])
     probe.spin_for(10.0, sent.done)
     return sent.done() and sent.result().result.successful
+
+
+def check_things(probe, ahead=12.0, depth=1.0):
+    """
+    Check the things (things:=true): a box ahead, listed, remembered, forgotten.
+
+    The box must be listed where it is, standing; taken away, it is remembered a little
+    (coasting), then forgotten.
+    """
+    from aav_interfaces.msg import Things
+    body = vehicle.load()['vehicle']['body']
+    front = body['length'] - body['rear_overhang']
+    newest, odom = {}, {}
+    subs = [probe.create_subscription(Things, '/world/things',
+                                      lambda m: newest.update(things=m), 10),
+            probe.create_subscription(Odometry, '/localization/odom/local',
+                                      lambda m: odom.update(pose=m), 10)]
+    try:
+        x0, y0 = probe.xy(probe.truth)
+        h = yaw_of(probe.truth)
+        c, s = math.cos(h), math.sin(h)
+        bx = x0 + (front + ahead + depth / 2.0) * c
+        by = y0 + (front + ahead + depth / 2.0) * s
+        if not place_model(OBSTACLE, bx, by, h):
+            result('things', False, "could not place the box (the simulator's service)")
+            return
+        # Where the box is from the car: ahead and left, by the truth.
+        want = ((bx - x0) * c + (by - y0) * s, -(bx - x0) * s + (by - y0) * c)
+
+        def ahead_left(th):
+            p = odom['pose'].pose.pose
+            ox, oy, oh = p.position.x, p.position.y, yaw_of(odom['pose'])
+            dx, dy = th.x - ox, th.y - oy
+            return (dx * math.cos(oh) + dy * math.sin(oh),
+                    -dx * math.sin(oh) + dy * math.cos(oh))
+
+        def nearest():
+            if 'things' not in newest or 'pose' not in odom:
+                return None, math.inf
+            best = min(newest['things'].things, default=None,
+                       key=lambda th: math.dist(ahead_left(th), want))
+            return best, (math.dist(ahead_left(best), want) if best else math.inf)
+
+        found, miss, end = None, math.inf, probe.now() + 15.0
+        while probe.now() < end:
+            probe.spin_for(0.2)
+            found, miss = nearest()
+            if found is not None and miss < 1.0 and found.seen >= 10:
+                break
+        if found is None or miss >= 1.0:
+            listed = len(newest['things'].things) if 'things' in newest else 'no'
+            result('things', False, f'the box not listed within 1 m ({listed} things; '
+                                    f'nearest {miss:.2f} m off)')
+            remove_model()
+            return
+        speed = math.hypot(found.vx, found.vy)
+        result('things: the box', speed < 0.3,
+               f'id {found.id}, {miss:.2f} m from where it is, {speed:.2f} m/s, '
+               f'{found.length:.2f} x {found.width:.2f} x {found.height:.2f} m, seen '
+               f'{found.seen} times, {len(newest["things"].things)} things listed')
+        ident = found.id
+        remove_model()
+        gone_at = probe.now()
+
+        def listed():
+            return [th for th in newest['things'].things if th.id == ident]
+
+        while probe.now() < gone_at + 1.5:     # the simulator's seconds, as the tracker's
+            probe.spin_for(0.1)
+        kept = listed()
+        coasting = bool(kept) and kept[0].coasting
+        while probe.now() < gone_at + 5.0:
+            probe.spin_for(0.2)
+        forgotten = not listed()
+        result('things: the memory', bool(kept) and coasting and forgotten,
+               f'taken away: 1.5 s later {"still listed" if kept else "gone"}'
+               f'{" (coasting)" if coasting else ""}; 5 s later '
+               f'{"gone" if forgotten else "still listed"}')
+    finally:
+        for sub in subs:
+            probe.destroy_subscription(sub)
 
 
 def check_ghost(probe, ahead=15.0, goal=30.0):
@@ -2578,7 +2670,7 @@ def main():
     logs = [log]
     if not {'--drive-to-point-only', '--speed-steps-only', '--spine-points-only',
             '--stop-point-only', '--loaded-stop-only', '--behaviour-only', '--lane-only',
-            '--legs-only'} & set(args):
+            '--things-only', '--legs-only'} & set(args):
         # With --obstacle the planner is blind to the box, so the stop zone must stop the car.
         session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}']
                 + (['plan_around:=false'] if '--obstacle' in args else []),
@@ -2683,6 +2775,11 @@ def main():
                  f'perception:={str(perception).lower()}'],
                 [lambda probe: check_behaviour(probe, sign=perception)], logs[-1],
                 'behaviour')
+    if {'--things', '--things-only'} & set(args):
+        # Its own run: the cubes and the things on, the car standing, a box placed.
+        stem, ext = os.path.splitext(log)
+        logs.append(f'{stem}-things{ext}')
+        session(['things:=true', 'lidar:=true'], [check_things], logs[-1], 'things')
     if {'--lane', '--lane-only'} & set(args):
         # Its own run: control_interface drives whenever it sees the lane, so it would take
         # the wheel between the other checks. Nothing else drives here: no Nav2.

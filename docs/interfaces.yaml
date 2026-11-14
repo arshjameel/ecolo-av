@@ -555,8 +555,8 @@ topics:
     type: sensor_msgs/msg/PointCloud2
     drop_in: {min_hz: 9, max_hz: 12, frame: base_link, reliable: true}
     pub: [voxels]
-    sub: [local_costmap, collision_monitor, debug_hud, dev_window]
-    note: A trial (docs/designs/2026-10-30_voxels.md), only with navigation.launch.py voxels:=true (sim.launch.py and car.launch.py pass it on; needs the lidar) - the roof lidar's cloud as 0.25 m cubes (aav_voxels voxels), in base_link, the cloud's stamp, 10 Hz. Fields x, y, z (float32) - the centre of every cube holding a point between 0.3 m and the roof plus 0.5 m (vehicle.obstacle_heights) above the road, the road's plane fitted to each cloud (so a leaning car doesn't see the road as an obstacle); the car's own body left out; out to 30 m. Reliable, depth 1. Then the local costmap's lidar_layer marks with it and collision_monitor's voxels source stops for it, instead of /sensors/lidar/scan. The debug HUD draws it as red wireframes over its own cubes (key V), placed with the local EKF's pose at the cloud's stamp.
+    sub: [local_costmap, collision_monitor, debug_hud, dev_window, things]
+    note: A trial (docs/designs/2026-10-30_voxels.md), only with navigation.launch.py voxels:=true (or screen_cubes:=true, or things:=true - then only the developer window and aav_things read it) (sim.launch.py and car.launch.py pass it on; needs the lidar) - the roof lidar's cloud as 0.25 m cubes (aav_voxels voxels), in base_link, the cloud's stamp, 10 Hz. Fields x, y, z (float32) - the centre of every cube holding a point between 0.3 m and the roof plus 0.5 m (vehicle.obstacle_heights) above the road, the road's plane fitted to each cloud (so a leaning car doesn't see the road as an obstacle); the car's own body left out; out to 30 m. Reliable, depth 1. Then the local costmap's lidar_layer marks with it and collision_monitor's voxels source stops for it, instead of /sensors/lidar/scan. The debug HUD draws it as red wireframes over its own cubes (key V), placed with the local EKF's pose at the cloud's stamp.
   /perception/voxels/ground:
     type: sensor_msgs/msg/PointCloud2
     pub: [voxels]
@@ -570,7 +570,7 @@ topics:
   /perception/radar/clusters:
     type: sensor_msgs/msg/PointCloud2
     pub: [radar_clusters]
-    sub: []
+    sub: [things]
     live: [bench, road]
     note: The radar points DBSCAN grouped into objects (radar_clusters, aav_radar_clusters, Rust), coloured by cluster, with each point's cluster number in a cluster field; noise left out. The radar cloud's frame and time.
   /perception/radar/cluster_boxes:
@@ -726,7 +726,7 @@ topics:
   /localization/odom/local:
     type: nav_msgs/msg/Odometry
     pub: [ekf_local]
-    sub: [controller_server, bt_navigator, scripted_driver, language_drive, actuator_test, sensor_watchdog, debug_hud, ndt, localization_health, dev_window, behaviour, ego]
+    sub: [controller_server, bt_navigator, scripted_driver, language_drive, actuator_test, sensor_watchdog, debug_hud, ndt, localization_health, dev_window, behaviour, ego, things]
     live: [turtle, sim, car, replay, bench]
     note: odom frame. Smooth; drifts.
   /localization/odom/global:
@@ -894,6 +894,16 @@ topics:
     pub: [behaviour]
     sub: [ego]
     note: Only with behaviour:=true, 10 Hz, frame map - the road ahead (docs/designs/2026-11-14_the-whole-car.md). The behaviour planner is its only writer. The line is /plan's next 40 m from the car's foot, a point every 0.5 m; stops (sign, obstacle WAIT; fence, goal FINAL) sit on it; the end is the nearest stop or the line's last point, and the car may not pass it (a movement authority - silence means the car runs out of road and stops, never carry on). speed_limit per point is the stopping law's cap for the room left to the end (aav_description stop_law.py), never above the base speed, 0 at the end. Edges are NaN until the lane map (W5). Made from /plan, or from /drivers/point/plan while a drive to a point runs. Readers use aav_description road_ahead.py (limit_at). ego (road_ahead:=true, set by behaviour:=true) holds Nav2's and the point driver's forward speed under it (people never trimmed); Nav2's controller still reads /drivers/nav/speed_limit too.
+  /world/things:
+    type: aav_interfaces/msg/Things
+    pub: [things]
+    sub: []
+    note: Only with things:=true (navigation.launch.py, sim.launch.py; needs the lidar, and voxels runs for it), 10 Hz, frame odom - every thing near the car, one list (docs/designs/2026-11-14_the-whole-car.md, Seeing - things, not just points). aav_things groups /perception/voxels/cubes (cubes within 0.6 m make a thing; walls over 8 m left to the map), follows each with a constant-velocity Kalman filter (greedy nearest association, 2 m gate - AB3DMOT's simple baseline), and lists it once seen in 3 clouds. Each Thing - id (kept while listed), kind (unknown until camera-to-lidar calibration, Q22), x, y, vx, vy (m, m/s over the ground), length, width, height, position_sigma, confidence, last_seen, seen, radar (its speed along the radar's ray from /perception/radar/clusters too, radar:=true), coasting (not in the last cloud - moved on its speed; slower than 0.5 m/s taken as parked). Kept 3 s unseen, 30 s within 4 m of base_link (the blind zone before the bumper). Nobody reads it yet - the behaviour planner and the screens will.
+  /world/things/markers:
+    type: visualization_msgs/msg/MarkerArray
+    pub: [things]
+    sub: []
+    note: Only with things:=true, 10 Hz, frame odom - for RViz and the screens. A DELETEALL first, then per thing a box (orange; grey while coasting), an arrow for its speed and its id and speed as text (R where the radar gave it).
   /drivers/nav/behaviour/state:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [behaviour]

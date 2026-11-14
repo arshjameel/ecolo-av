@@ -1,0 +1,22 @@
+# aav_things' things node (navigation.launch.py things:=true). Units: m, s, m/s.
+things:
+  ros__parameters:
+    rate: 10.0              # Hz: /world/things
+    # Grouping (groups.py GroupShape)
+    size: 0.25              # m: aav_voxels' cube (nav2.yaml voxels.size)
+    gap: 0.6                # m: cubes this close make one thing
+    min_cubes: 2            # fewer is noise
+    max_size: 8.0           # m: longer is a wall or a building, not a thing
+    # The tracker (tracker.py TrackerShape)
+    gate: 2.0               # m: farther is another thing
+    position_noise: 0.15    # m: a group's middle, one sigma
+    accel_noise: 1.5        # m/s²: how hard a thing may change speed, one sigma
+    radar_noise: 0.3        # m/s: the radar's speed along its ray, one sigma
+    radar_gate: 2.0         # m
+    confirm: 3              # clouds seen before it is listed and remembered
+    keep: 3.0               # s unseen before a thing is forgotten
+    keep_blind: 30.0        # s, within blind_range of the car (the lidar can't see low there)
+    blind_range: 4.0        # m from base_link
+    keep_tentative: 0.3     # s, a thing seen fewer than confirm times
+    start_speed_sigma: 3.0  # m/s
+    still_speed: 0.5        # m/s: slower, an unseen thing is taken as parked
