@@ -15,10 +15,12 @@
 //! | [`smoothing`] | Nav2's Savitzky-Golay filter |
 //! | [`path`] | the path window (Nav2's PathHandler) and the cross track |
 //! | [`costmap`] | the local costmap and the car's outline on it |
+//! | [`age`] | the costmap's age: Nav2's `costmap_update_timeout` |
 //! | [`follower`] | one path: goal and progress checks, the estimate, MPPI |
 //! | [`rng`] | seedable random numbers |
 //! | `shared` (feature `shared`) | `SharedModel`: the shared `car-model` crate behind [`CarModel`] |
 
+pub mod age;
 pub mod costmap;
 pub mod critics;
 pub mod ego;
@@ -33,6 +35,7 @@ pub mod rng;
 pub mod shared;
 pub mod smoothing;
 
+pub use age::{Arrival, Stale};
 pub use costmap::Costmap;
 pub use critics::Critic;
 pub use ego::{Driven, Ego};

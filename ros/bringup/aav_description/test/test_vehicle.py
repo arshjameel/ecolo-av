@@ -540,6 +540,8 @@ def test_mppi_lag_params_are_nav2s_mppi_and_the_cars_lag():
     assert p['actuators.steer_dead_time'] == cfg['actuators'].get('steer_dead_time', 0.0)
     assert p['ego.max_steering_rate'] == ego['max_steering_rate']
     assert len(p['footprint']) == 8
+    # controller_server's 0.3 s wait for a current costmap, plus the local one's 2 Hz.
+    assert p['costmap_timeout'] == pytest.approx(0.8)
     # sim_speed:= 3: faster, and the path ahead stretched to fit 2.8 s of it.
     fast = vehicle.mppi_lag_params(nav2, cfg, ego, max_speed=3.0)
     assert fast['vx_max'] == 3.0
@@ -556,6 +558,7 @@ def test_costmap_params_read_nav2s_costmaps_as_nav2_does():
     assert (local['width'], local['resolution'], local['update_frequency']) == (20.0, 0.1, 5.0)
     assert local['footprint'] == vehicle.footprint_points(v)
     assert local['inflation'] == {'radius': 2.0, 'scaling': 3.0}
+    assert local['transform_tolerance'] == 0.3   # Nav2's default: nav2.yaml sets none
     # The radar's and the cameras' layers are off unless asked for; the lidar's is on.
     names = [layer['name'] for layer in local['layers']]
     assert names == ['lidar_layer']
@@ -674,6 +677,8 @@ def test_our_planner_reads_the_lattice_block_the_car_and_the_inflation():
             'inflation_layer']
         assert p['inflation'] == {'radius': inflation['inflation_radius'],
                                   'scaling': inflation['cost_scaling_factor']}
+        # planner_server's 1 s wait for a current costmap, plus the global one's 1 Hz.
+        assert p['costmap_timeout'] == pytest.approx(2.0)
     assert set(vehicle.GLOBAL_COSTMAP_TOPICS) == set(vehicle.COSTMAPS)
 
 

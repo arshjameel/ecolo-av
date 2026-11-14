@@ -3,7 +3,9 @@
 //! Subscribes  /map                        nav_msgs/OccupancyGrid, transient local: the
 //!                                         static layer
 //!             localization/odom/local     nav_msgs/Odometry (odom_topic): the car in odom,
-//!                                         kept 2 s to place each scan at its own stamp
+//!                                         kept 2 s to place each scan at its own stamp.
+//!                                         Older than transform_tolerance (or map -> odom,
+//!                                         for the global one): no update, no grid
 //!             /tf                         tf2_msgs/TFMessage: map -> odom
 //!             /tf_static                  tf2_msgs/TFMessage: each sensor's mount
 //!             each source's topic         sensor_msgs/LaserScan or PointCloud2, best
@@ -43,7 +45,8 @@ use std::{
 use anyhow::{anyhow, bail, Context as _, Result};
 use costmap::{
     cost::{occupancy, LETHAL},
-    footprint, Costmap, Observation, ObstacleLayer, Pose2, Settings, Source, StaticMap, Transform3,
+    footprint, Arrival, Costmap, Observation, ObstacleLayer, Pose2, PoseHistory, Settings, Source,
+    StaticMap, Transform3,
 };
 use rclrs::*;
 use ros_env::builtin_interfaces::msg::Time;
@@ -135,7 +138,9 @@ fn main() -> Result<()> {
         logger: node.logger().clone(),
         base_frame,
         raw: HashMap::new(),
-        odom: VecDeque::new(),
+        odom: PoseHistory::new(ODOM_KEPT),
+        odom_heard: Arrival::new(),
+        map_odom_heard: Arrival::new(),
         map_from_odom: None,
         mounts: HashMap::new(),
     };
@@ -229,6 +234,10 @@ struct Spec {
     inputs: Vec<Vec<Input>>,
     update_hz: f64,
     publish_hz: f64,
+    /// s: odometry (and map -> odom, for a map-frame costmap) older than this stops the
+    /// updates; a scan further than this from any odometry is left out (Nav2's
+    /// `transform_tolerance`, 0.3 s by default).
+    transform_tolerance: f64,
 }
 
 fn num(v: &Value, key: &str) -> Result<f64> {
@@ -325,6 +334,7 @@ impl Spec {
             inputs,
             update_hz: num(spec, "update_frequency")?,
             publish_hz: num(spec, "publish_frequency")?,
+            transform_tolerance: spec["transform_tolerance"].as_f64().unwrap_or(0.3),
         })
     }
 
@@ -380,10 +390,13 @@ struct Core {
     base_frame: String,
     /// Each sensor topic's newest messages, newest last.
     raw: HashMap<String, VecDeque<Raw>>,
-    /// base_link in odom, by stamp, oldest first.
-    odom: VecDeque<(f64, Pose2)>,
+    /// base_link in odom, by stamp.
+    odom: PoseHistory,
+    /// When the odometry last arrived (this node's clock).
+    odom_heard: Arrival,
     /// odom's pose in map (the map -> odom transform).
     map_from_odom: Option<Pose2>,
+    map_odom_heard: Arrival,
     /// Each fixed frame's parent and its mount in it (/tf_static).
     mounts: HashMap<String, (String, Transform3)>,
 }
@@ -438,18 +451,12 @@ impl Core {
         if !(pose.x.is_finite() && pose.y.is_finite() && pose.yaw.is_finite()) {
             return;
         }
-        // A clock that went back (a sim restarted): start again.
-        if self.odom.back().is_some_and(|(last, _)| t < *last) {
-            self.odom.clear();
-        }
-        self.odom.push_back((t, pose));
-        while self
-            .odom
-            .front()
-            .is_some_and(|(first, _)| t - first > ODOM_KEPT)
-        {
-            self.odom.pop_front();
-        }
+        self.odom.push(t, pose);
+        self.odom_heard.mark(self.now());
+    }
+
+    fn now(&self) -> f64 {
+        self.clock.now().nsec as f64 * 1e-9
     }
 
     fn on_tf(&mut self, msg: &TFMessage) {
@@ -461,6 +468,7 @@ impl Core {
                     r.translation.y,
                     yaw_of(&r.rotation),
                 ));
+                self.map_odom_heard.mark(self.now());
             }
         }
     }
@@ -494,26 +502,6 @@ impl Core {
             f = parent;
         }
         None
-    }
-
-    /// base_link in odom at time t: between the two nearest odometry poses, or the
-    /// nearest end.
-    fn pose_at(&self, t: f64) -> Option<Pose2> {
-        let (first, last) = (self.odom.front()?, self.odom.back()?);
-        if t <= first.0 {
-            return Some(first.1);
-        }
-        if t >= last.0 {
-            return Some(last.1);
-        }
-        let i = self.odom.partition_point(|(s, _)| *s <= t);
-        let (a, b) = (&self.odom[i - 1], &self.odom[i]);
-        let k = if b.0 > a.0 {
-            (t - a.0) / (b.0 - a.0)
-        } else {
-            0.0
-        };
-        Some(a.1.lerp(&b.1, k))
     }
 
     fn keep_raw(&mut self, topic: &str, raw: Raw) {
@@ -596,24 +584,31 @@ impl Core {
     fn tick(&mut self, i: usize) {
         let started = Instant::now();
         let in_map = self.maps[i].spec.frame == "map";
-        let Some(odom_pose) = self.odom.back().map(|(_, p)| *p) else {
-            self.maps[i].waiting = "odometry".to_owned();
-            return;
+        let now = self.now();
+        let tolerance = self.maps[i].spec.transform_tolerance;
+        // Stale odometry (or map -> odom): no scan placed, nothing published, so a reader
+        // checking the costmap's age stops too. The status says why.
+        let Some((_, odom_pose)) = self.odom.latest() else {
+            return self.stalled(i, "odometry".to_owned());
         };
+        if !self.odom_heard.fresh(now, tolerance) {
+            let age = self.odom_heard.age(now).unwrap_or(f64::INFINITY);
+            return self.stalled(i, format!("odometry ({age:.2} s old)"));
+        }
         let robot = if in_map {
             match self.map_from_odom {
-                Some(m) => m.then(&odom_pose),
-                None => {
-                    self.maps[i].waiting = "map -> odom".to_owned();
-                    return;
+                Some(_) if !self.map_odom_heard.fresh(now, tolerance) => {
+                    let age = self.map_odom_heard.age(now).unwrap_or(f64::INFINITY);
+                    return self.stalled(i, format!("map -> odom ({age:.2} s old)"));
                 }
+                Some(m) => m.then(&odom_pose),
+                None => return self.stalled(i, "map -> odom".to_owned()),
             }
         } else {
             odom_pose
         };
         if !self.maps[i].spec.costmap.ready() {
-            self.maps[i].waiting = "the map".to_owned();
-            return;
+            return self.stalled(i, "the map".to_owned());
         }
         // Each source's observations, in this costmap's frame.
         let mut missing = Vec::new();
@@ -627,7 +622,7 @@ impl Core {
         {
             let mut per_source = Vec::new();
             for (source, input) in layer.sources.iter().zip(inputs) {
-                let list = self.observations(input, source, in_map, &mut missing);
+                let list = self.observations(input, source, in_map, tolerance, &mut missing);
                 per_source.push(list);
             }
             owned.push(per_source);
@@ -665,12 +660,32 @@ impl Core {
         }
     }
 
+    /// Costmap i can't update: say why on its status, at its publish rate; no grid.
+    fn stalled(&mut self, i: usize, why: String) {
+        let one = &mut self.maps[i];
+        one.waiting = why;
+        let due = one.last_publish.is_none_or(|t| {
+            t.elapsed().as_secs_f64() >= 1.0 / one.spec.publish_hz.max(0.01) - 1e-3
+        });
+        if due {
+            one.last_publish = Some(Instant::now());
+            if let Err(e) = self.publish_status(i) {
+                log_warn!(
+                    self.logger.throttle(Duration::from_secs(5)),
+                    "publishing the {} costmap's status: {e}",
+                    self.maps[i].spec.name
+                );
+            }
+        }
+    }
+
     /// A source's messages within its persistence, in this costmap's frame.
     fn observations(
         &self,
         input: &Input,
         source: &Source,
         in_map: bool,
+        tolerance: f64,
         missing: &mut Vec<String>,
     ) -> Vec<Observation> {
         let Some(list) = self.raw.get(&input.topic).filter(|l| !l.is_empty()) else {
@@ -691,7 +706,9 @@ impl Core {
                 missing.push(format!("{} -> {}", self.base_frame, raw.frame));
                 continue;
             };
-            let Some(odom_pose) = self.pose_at(raw.stamp) else {
+            // tf2's rule: no odometry within the tolerance of the scan's stamp, no place.
+            let Some(odom_pose) = self.odom.at(raw.stamp, tolerance) else {
+                missing.push(format!("odometry at {}'s stamp", input.topic));
                 continue;
             };
             let base = match (in_map, self.map_from_odom) {
@@ -764,6 +781,13 @@ impl Core {
             },
             data: g.data.iter().map(|&c| occupancy(c)).collect(),
         })?;
+        self.publish_status(i)
+    }
+
+    /// Costmap i's status line: its update times, its lethal cells, what it waits for.
+    fn publish_status(&self, i: usize) -> Result<()> {
+        let one = &self.maps[i];
+        let g = one.spec.costmap.grid();
         let lethal = g.data.iter().filter(|&&c| c == LETHAL).count();
         let mut values = vec![
             kv("costmap", one.spec.name),

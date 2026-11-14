@@ -43,3 +43,4 @@ ROS. The curves come from OMPL, as Nav2 takes them.
 | The node reads one JSON block (`vehicle.planner_params`) | the launch file makes it from the same tuned nav2.yaml Nav2 gets |
 | The car's pose comes from `/tf` (map -> odom -> base_link), latest | rclrs has no tf2 yet |
 | `Planner::plan_through` (8 Nov): one plan a leg, each from the last goal, joined (the repeated join pose dropped); the failing leg is named | `PlannerServer::computePlanThroughPoses`, which does the same with any planner plugin; for `ComputePathThroughPoses` |
+| 14 Nov: a global costmap older than `costmap_timeout` (2 s: planner_server's `costmap_update_timeout` 1 s plus the global costmap's 1 Hz publish period) fails the goal at once with TIMEOUT (207; 307 through poses), `costmap::Arrival` | Nav2's `PlannerTimedOut` after waiting for a current costmap; ours planned on the last one for ever. It fails at once, not after a wait: our navigator's recovery replans |

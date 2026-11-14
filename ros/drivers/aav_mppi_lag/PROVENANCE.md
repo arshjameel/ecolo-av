@@ -41,4 +41,6 @@ style, not transliterated: enums for the critics, a trait for the car model, no 
 
 ## Changes since
 
-None yet.
+| Change | Why |
+|---|---|
+| 14 Nov: a costmap older than `costmap_timeout` (0.8 s: controller_server's `costmap_update_timeout` 0.3 s plus the local costmap's 2 Hz publish period) publishes zero and fails the path with CONTROLLER_TIMED_OUT; a path gets that long for its first costmap (`age.rs`) | Nav2's controller waits for a current costmap, then does the same; ours went on with the last one for ever (the gap list, 14 Nov). Nav2 checks its layers in-process; we see only the published costmap, hence the publish period |

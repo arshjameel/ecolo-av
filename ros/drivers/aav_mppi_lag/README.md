@@ -44,6 +44,7 @@ pixi run measure controllers --trackers mppi_lag --controllers mppi --tours lot
 | Publishes | `/cmd_vel_nav` (TwistStamped); `/drivers/nav/track/status` (DiagnosticStatus, aav_track's keys and more); `/drivers/nav/local_plan` (Path, odom: MPPI's chosen future, the screens' faint line); `/drivers/nav/lag_aware` (Bool, latched) |
 
 Results: succeeded; aborted with `FAILED_TO_MAKE_PROGRESS`, `NO_VALID_CONTROL`,
+`CONTROLLER_TIMED_OUT` (a costmap older than `costmap_timeout`, 0.8 s: zero first),
 `INVALID_PATH`, `TF_ERROR`, `UNKNOWN` (no odometry); canceled.
 
 ### `lag_aware`
@@ -89,6 +90,7 @@ From `config/mppi_lag.yaml`: `model` (lag or ideal), `steer_std`, `noise_correla
 | `optimizer.rs` | MPPI: sample, roll out (threads), score, softmax, Savitzky-Golay, shift |
 | `critics.rs` | Nav2's eight critics in nav2.yaml |
 | `path.rs`, `costmap.rs`, `smoothing.rs`, `rng.rs` | the path window, the costmap and outline, the filter, random numbers |
+| `age.rs` | the costmap's age (Nav2's `costmap_update_timeout`) |
 | `follower.rs` | one path: Nav2's goal and progress checks, the state estimate, MPPI |
 
 ## Invariants
