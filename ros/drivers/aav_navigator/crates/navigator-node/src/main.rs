@@ -23,6 +23,9 @@
 //!             (follow_action), the costmaps' ClearEntireCostmap (clear_local,
 //!             clear_global: comma-separated lists), and with backup_action set,
 //!             behavior_server's BackUp.
+//!             Every call has a time limit (settings: plan_timeout, follow_timeout: the
+//!             follower's silence, recovery_timeout): a server that dies mid-goal fails
+//!             the goal; it never hangs it.
 //! Parameters  settings (JSON: aav_description's vehicle.navigator_params), the action and
 //!             service names above, navsat_file, map_frame, odom_frame, base_frame.
 //!
@@ -36,10 +39,11 @@ use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context as _, Result};
 use futures::channel::oneshot;
+use futures::future::{self, Either};
 use map_core::earth::{Datum, LatLon, BUILT_IN_NAVSAT_YAML};
 use navigator::{
-    BackUp as BackUpSettings, Command, Mission, Navigator, Outcome, Pose, Settings, Token,
-    WaypointMode,
+    Abort, BackUp as BackUpSettings, Command, FollowError, Mission, Navigator, Outcome, PlanError,
+    Pose, Settings, Token, WaypointMode,
 };
 use rclrs::*;
 use ros_env::builtin_interfaces::msg::{Duration as DurationMsg, Time};
@@ -200,8 +204,8 @@ fn main() -> Result<()> {
                 };
                 match goal.until_cancel_requested(finished).await {
                     Ok(Ok(Outcome::Succeeded { .. })) => goal.succeeded_with(result(0, "")),
-                    Ok(Ok(Outcome::Aborted { code, message, .. })) => {
-                        goal.aborted_with(result(code, &message))
+                    Ok(Ok(Outcome::Aborted { reason, .. })) => {
+                        goal.aborted_with(result(reason.code(), &reason.to_string()))
                     }
                     Ok(_) => goal.aborted_with(result(0, "stopped")),
                     Err(_) => {
@@ -236,8 +240,8 @@ fn main() -> Result<()> {
                 };
                 match goal.until_cancel_requested(finished).await {
                     Ok(Ok(Outcome::Succeeded { .. })) => goal.succeeded_with(result(0, "")),
-                    Ok(Ok(Outcome::Aborted { code, message, .. })) => {
-                        goal.aborted_with(result(code, &message))
+                    Ok(Ok(Outcome::Aborted { reason, .. })) => {
+                        goal.aborted_with(result(reason.code(), &reason.to_string()))
                     }
                     Ok(_) => goal.aborted_with(result(0, "stopped")),
                     Err(_) => {
@@ -276,11 +280,9 @@ fn main() -> Result<()> {
                     Ok(Ok(Outcome::Succeeded { missed })) => {
                         goal.succeeded_with(result(0, "", &missed))
                     }
-                    Ok(Ok(Outcome::Aborted {
-                        code,
-                        message,
-                        missed,
-                    })) => goal.aborted_with(result(code, &message, &missed)),
+                    Ok(Ok(Outcome::Aborted { reason, missed })) => {
+                        goal.aborted_with(result(reason.code(), &reason.to_string(), &missed))
+                    }
                     Ok(_) => goal.aborted_with(result(0, "stopped", &[])),
                     Err(_) => {
                         let _ = worker.run(move |c: &mut Core| c.cancel_goal(id)).await;
@@ -320,11 +322,9 @@ fn main() -> Result<()> {
                     Ok(Ok(Outcome::Succeeded { missed })) => {
                         goal.succeeded_with(result(0, "", &missed))
                     }
-                    Ok(Ok(Outcome::Aborted {
-                        code,
-                        message,
-                        missed,
-                    })) => goal.aborted_with(result(code, &message, &missed)),
+                    Ok(Ok(Outcome::Aborted { reason, missed })) => {
+                        goal.aborted_with(result(reason.code(), &reason.to_string(), &missed))
+                    }
                     Ok(_) => goal.aborted_with(result(0, "stopped", &[])),
                     Err(_) => {
                         let _ = worker.run(move |c: &mut Core| c.cancel_goal(id)).await;
@@ -393,6 +393,9 @@ fn settings_from(spec: &Value) -> Result<Settings> {
             .as_bool()
             .unwrap_or(d.stop_on_failure),
         replan_failures: number("replan_failures", f64::from(d.replan_failures))? as u32,
+        plan_timeout: number("plan_timeout", d.plan_timeout)?,
+        follow_timeout: number("follow_timeout", d.follow_timeout)?,
+        recovery_timeout: number("recovery_timeout", d.recovery_timeout)?,
     })
 }
 
@@ -616,8 +619,10 @@ impl Core {
             self.finish(
                 id,
                 Outcome::Aborted {
-                    code: 0,
-                    message: format!("a pose is not in the {} frame", self.frames.map),
+                    reason: Abort::InvalidGoal(format!(
+                        "a pose is not in the {} frame",
+                        self.frames.map
+                    )),
                     missed: Vec::new(),
                 },
             );
@@ -745,7 +750,7 @@ impl Core {
         let text = match &outcome {
             Outcome::Succeeded { missed } if missed.is_empty() => "succeeded".to_string(),
             Outcome::Succeeded { missed } => format!("succeeded, missed {missed:?}"),
-            Outcome::Aborted { message, .. } => format!("aborted: {message}"),
+            Outcome::Aborted { reason, .. } => format!("aborted: {reason}"),
             Outcome::Cancelled => "cancelled".to_string(),
         };
         if matches!(outcome, Outcome::Succeeded { .. }) {
@@ -825,11 +830,11 @@ impl Core {
 
     fn plan(&mut self, token: Token, goals: Vec<Pose>) {
         let stamped = self.stamped(&goals);
-        let then = move |c: &mut Core, answer: Result<Vec<Pose>, (u16, String)>, now: f64| {
-            if let Err((code, why)) = &answer {
+        let then = move |c: &mut Core, answer: Result<Vec<Pose>, (PlanError, String)>, now: f64| {
+            if let Err((error, why)) = &answer {
                 log_warn!(
                     c.logger.throttle(Duration::from_secs(2)),
-                    "no path ({code}): {why}"
+                    "no path ({error:?}): {why}"
                 );
             }
             let out = c.nav.planned(token, answer, now);
@@ -846,16 +851,19 @@ impl Core {
             self.spawn(
                 async move {
                     if !client.server_is_available().unwrap_or(false) {
-                        return Err((200, "no planner serves ComputePathToPose".into()));
+                        return Err((
+                            PlanError::Unknown,
+                            "no planner serves ComputePathToPose".into(),
+                        ));
                     }
                     let Some(g) = client.request_goal(goal).await else {
-                        return Err((200, "the planner refused the goal".into()));
+                        return Err((PlanError::Unknown, "the planner refused the goal".into()));
                     };
                     let (status, result) = g.result.await;
                     if status == GoalStatusCode::Succeeded {
                         Ok(result.path.poses.iter().map(|p| pose_of(&p.pose)).collect())
                     } else {
-                        Err((result.error_code, result.error_msg))
+                        Err((PlanError::from_code(result.error_code), result.error_msg))
                     }
                 },
                 then,
@@ -871,16 +879,19 @@ impl Core {
             self.spawn(
                 async move {
                     if !client.server_is_available().unwrap_or(false) {
-                        return Err((300, "no planner serves ComputePathThroughPoses".into()));
+                        return Err((
+                            PlanError::Unknown,
+                            "no planner serves ComputePathThroughPoses".into(),
+                        ));
                     }
                     let Some(g) = client.request_goal(goal).await else {
-                        return Err((300, "the planner refused the goal".into()));
+                        return Err((PlanError::Unknown, "the planner refused the goal".into()));
                     };
                     let (status, result) = g.result.await;
                     if status == GoalStatusCode::Succeeded {
                         Ok(result.path.poses.iter().map(|p| pose_of(&p.pose)).collect())
                     } else {
-                        Err((result.error_code, result.error_msg))
+                        Err((PlanError::from_code(result.error_code), result.error_msg))
                     }
                 },
                 then,
@@ -902,21 +913,45 @@ impl Core {
             goal_checker_id: String::new(),
             progress_checker_id: String::new(),
         };
+        let me = self.me.clone();
         self.spawn(
             async move {
                 if !client.server_is_available().unwrap_or(false) {
-                    return Err((100, "no follower serves FollowPath".into()));
+                    return Err((FollowError::Unknown, "no follower serves FollowPath".into()));
                 }
                 let Some(g) = client.request_goal(goal).await else {
-                    return Err((100, "the follower refused the path".into()));
+                    return Err((FollowError::Unknown, "the follower refused the path".into()));
                 };
-                let (status, result) = g.result.await;
+                // Each feedback tells the navigator the follower is alive (follow_timeout),
+                // until the result.
+                let mut feedback = g.feedback;
+                let mut result = g.result;
+                let (status, result) = loop {
+                    match future::select(result, Box::pin(feedback.recv())).await {
+                        Either::Left((done, _)) => break done,
+                        Either::Right((heard, waiting)) => {
+                            result = waiting;
+                            if heard.is_none() {
+                                break result.await; // no more feedback: just the result
+                            }
+                            if let Some(me) = &me {
+                                drop(me.run(|c: &mut Core| {
+                                    let now = c.now();
+                                    c.nav.follower_heard(now);
+                                }));
+                            }
+                        }
+                    }
+                };
                 match status {
                     GoalStatusCode::Succeeded => Ok(()),
-                    _ => Err((result.error_code, format!("{status:?}"))),
+                    _ => Err((
+                        FollowError::from_code(result.error_code),
+                        format!("{status:?}"),
+                    )),
                 }
             },
-            move |c: &mut Core, answer: Result<(), (u16, String)>, now| {
+            move |c: &mut Core, answer: Result<(), (FollowError, String)>, now| {
                 let out = c.nav.followed(token, answer, now);
                 c.carry_out(out);
             },

@@ -238,6 +238,11 @@ order: the costmap (<a href="own-costmap.html">done</a>), the planner (<a href="
 <td>replaces the running one, on any action</td>
 <td>refused on the other navigator</td>
 </tr>
+<tr>
+<td>a server that dies mid-goal (14 Nov)</td>
+<td>time limits: no plan in 10 s is a timeout (recovered as one); a follower silent for 4 s ends the goal (107); a clear unanswered in 5 s failed</td>
+<td>the lifecycle bond (4 s) takes the stack down</td>
+</tr>
 </tbody>
 </table></div>
 <p>Each change is in <code>ros/drivers/aav_navigator/PROVENANCE.md</code>.</p>

@@ -407,13 +407,16 @@ def navigator_params(v, reversing, waypoints='pass_through'):
     0.333 Hz), the final approach (final_approach(v), TODO 17), 6 recoveries, Wait 5 s,
     BackUp 1 m at half max_reverse_speed only with reversing, RemovePassedGoals' 1 m.
     waypoints: pass_through (ours: one through-poses goal, TODO 140) or stop_at_each
-    (Nav2's waypoint_follower).
+    (Nav2's waypoint_follower). The time limits, so a server that dies mid-goal fails it:
+    plan_timeout, twice nav2.yaml's max_planning_time (5 s); follow_timeout, the
+    follower's silence, Nav2's bond_timeout (4 s); recovery_timeout, a costmap clear.
     """
     out = {'replan_period': 1.0, 'through_replan_period': 3.0,
            'final_approach': round(final_approach(v), 3), 'path_end_tolerance': 0.5,
            'path_max_age': 20.0, 'retries': 6, 'wait': 5.0, 'pass_radius': 1.0,
            'on_path': 2.0, 'waypoints': waypoints, 'stop_on_failure': False,
-           'replan_failures': 3, 'backup': None}
+           'replan_failures': 3, 'backup': None,
+           'plan_timeout': 10.0, 'follow_timeout': 4.0, 'recovery_timeout': 5.0}
     if reversing:
         out['backup'] = {'distance': 1.0, 'speed': 0.5 * float(v['max_reverse_speed'])}
     return out

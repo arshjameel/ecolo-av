@@ -1,6 +1,9 @@
 //! The navigator against a pretend planner and follower: the trees' paths through it.
 
-use navigator::{BackUp, Command, Mission, Navigator, Outcome, Pose, Settings, WaypointMode};
+use navigator::{
+    Abort, BackUp, Command, FollowError, Mission, Navigator, Outcome, PlanError, Pose, Settings,
+    WaypointMode,
+};
 
 fn straight(to: &Pose) -> Vec<Pose> {
     (0..=10)
@@ -47,7 +50,9 @@ fn plan_follow_arrive() {
     let (t2, _) = plan_token(&nav.tick(1.0, Some(&Pose::new(1.0, 0.0, 0.0))));
     let f2 = follow_token(&nav.planned(t2, Ok(straight(&GOAL)), 1.1));
     // The first follow goal's answer is late now: ignored.
-    assert!(nav.followed(f, Err((0, "replaced".into())), 1.2).is_empty());
+    assert!(nav
+        .followed(f, Err((FollowError::Unknown, "replaced".into())), 1.2)
+        .is_empty());
     let out = nav.followed(f2, Ok(()), 20.0);
     assert_eq!(
         finished(&out),
@@ -64,9 +69,12 @@ fn final_approach_keeps_the_path() {
     nav.planned(t, Ok(straight(&GOAL)), 0.0);
     // 5 m out: no replan for up to 20 s.
     let near = Pose::new(25.0, 0.5, 0.0);
-    assert!(nav.tick(3.0, Some(&near)).is_empty());
-    assert!(nav.tick(19.0, Some(&near)).is_empty());
+    for now in [3.0, 6.0, 9.0, 12.0, 15.0, 18.0, 19.0] {
+        nav.follower_heard(now); // the follower's feedback, every tick in a real run
+        assert!(nav.tick(now, Some(&near)).is_empty(), "{now}");
+    }
     // The path is too old now: plan again.
+    nav.follower_heard(21.0);
     plan_token(&nav.tick(21.0, Some(&near)));
 }
 
@@ -78,13 +86,17 @@ fn a_failed_replan_while_driving_keeps_going_then_recovers() {
     nav.planned(t, Ok(straight(&GOAL)), 0.0);
     let mut now = 1.0;
     for _ in 0..3 {
+        nav.follower_heard(now);
         let (t, _) = plan_token(&nav.tick(now, None));
-        assert!(nav.planned(t, Err((208, "no path".into())), now).is_empty());
+        assert!(nav
+            .planned(t, Err((PlanError::NoValidPath, "no path".into())), now)
+            .is_empty());
         now += 1.0;
     }
     // The fourth in a row: the planner's own recovery, the global costmap cleared.
+    nav.follower_heard(now);
     let (t, _) = plan_token(&nav.tick(now, None));
-    let out = nav.planned(t, Err((208, "no path".into())), now);
+    let out = nav.planned(t, Err((PlanError::NoValidPath, "no path".into())), now);
     assert!(matches!(
         out[..],
         [Command::Clear {
@@ -106,7 +118,11 @@ fn the_follower_failing_clears_local_then_recoveries_in_turn_then_gives_up() {
     let (t, _) = plan_token(&nav.tick(0.0, None));
     let f = follow_token(&nav.planned(t, Ok(straight(&GOAL)), 0.0));
     // No progress: clear the local costmap, follow the same path again.
-    let out = nav.followed(f, Err((105, "no progress".into())), 10.0);
+    let out = nav.followed(
+        f,
+        Err((FollowError::FailedToMakeProgress, "no progress".into())),
+        10.0,
+    );
     let Command::Clear {
         token,
         local: true,
@@ -117,7 +133,11 @@ fn the_follower_failing_clears_local_then_recoveries_in_turn_then_gives_up() {
     };
     let f = follow_token(&nav.recovered(token, true, 10.1));
     // Again: the first outer recovery, both costmaps.
-    let out = nav.followed(f, Err((105, "no progress".into())), 20.0);
+    let out = nav.followed(
+        f,
+        Err((FollowError::FailedToMakeProgress, "no progress".into())),
+        20.0,
+    );
     assert_eq!(out[0], Command::StopFollowing);
     let Command::Clear {
         token,
@@ -130,14 +150,22 @@ fn the_follower_failing_clears_local_then_recoveries_in_turn_then_gives_up() {
     // After it, a new plan at once.
     let (t, _) = plan_token(&nav.recovered(token, true, 20.5));
     let f = follow_token(&nav.planned(t, Ok(straight(&GOAL)), 20.6));
-    let out = nav.followed(f, Err((105, "no progress".into())), 30.0);
+    let out = nav.followed(
+        f,
+        Err((FollowError::FailedToMakeProgress, "no progress".into())),
+        30.0,
+    );
     let out = if matches!(out[..], [Command::Clear { .. }]) {
         // The follower's own clear comes back each attempt.
         let Command::Clear { token, .. } = out[0] else {
             unreachable!()
         };
         let f = follow_token(&nav.recovered(token, true, 30.1));
-        nav.followed(f, Err((105, "no progress".into())), 31.0)
+        nav.followed(
+            f,
+            Err((FollowError::FailedToMakeProgress, "no progress".into())),
+            31.0,
+        )
     } else {
         out
     };
@@ -146,15 +174,23 @@ fn the_follower_failing_clears_local_then_recoveries_in_turn_then_gives_up() {
     assert!(nav.tick(33.0, None).is_empty());
     let (t, _) = plan_token(&nav.tick(36.1, None));
     let f = follow_token(&nav.planned(t, Ok(straight(&GOAL)), 36.2));
-    let out = nav.followed(f, Err((105, "no progress".into())), 40.0);
+    let out = nav.followed(
+        f,
+        Err((FollowError::FailedToMakeProgress, "no progress".into())),
+        40.0,
+    );
     let Command::Clear { token, .. } = out[0] else {
         panic!("{out:?}")
     };
     let f = follow_token(&nav.recovered(token, true, 40.1));
     // Out of retries: aborted with the follower's code.
-    let out = nav.followed(f, Err((105, "no progress".into())), 41.0);
+    let out = nav.followed(
+        f,
+        Err((FollowError::FailedToMakeProgress, "no progress".into())),
+        41.0,
+    );
     match finished(&out) {
-        Some((7, Outcome::Aborted { code: 105, .. })) => {}
+        Some((7, Outcome::Aborted { reason, .. })) => assert_eq!(reason.code(), 105),
         other => panic!("{other:?}"),
     }
 }
@@ -182,13 +218,13 @@ fn back_up_is_a_recovery_only_where_the_car_may_reverse() {
         };
         let (t, _) = plan_token(&asked);
         // A goal the planner can't reach, and clearing doesn't help.
-        let out = nav.planned(t, Err((208, "no path".into())), now);
+        let out = nav.planned(t, Err((PlanError::NoValidPath, "no path".into())), now);
         let Command::Clear { token, .. } = out[0] else {
             panic!("{out:?}")
         };
         let out = nav.recovered(token, true, now);
         let (t, _) = plan_token(&out);
-        let out = nav.planned(t, Err((208, "no path".into())), now);
+        let out = nav.planned(t, Err((PlanError::NoValidPath, "no path".into())), now);
         kinds.push(match out.get(1) {
             Some(Command::Clear { .. }) => "clear",
             Some(Command::BackUp { .. }) => "backup",
@@ -211,14 +247,18 @@ fn errors_no_recovery_can_fix_end_the_goal_at_once() {
     let mut nav = Navigator::new(Settings::default());
     nav.start(3, Mission::ToPose(GOAL), 0.0);
     let (t, _) = plan_token(&nav.tick(0.0, None));
-    let out = nav.planned(t, Err((204, "the goal is off the costmap".into())), 0.0);
+    let out = nav.planned(
+        t,
+        Err((
+            PlanError::GoalOutsideMap,
+            "the goal is off the costmap".into(),
+        )),
+        0.0,
+    );
     match finished(&out) {
-        Some((
-            3,
-            Outcome::Aborted {
-                code: 204, message, ..
-            },
-        )) => {
+        Some((3, Outcome::Aborted { reason, .. })) => {
+            assert_eq!(reason.code(), 204);
+            let message = reason.to_string();
             assert!(message.contains("off the costmap"), "{message}")
         }
         other => panic!("{other:?}"),
@@ -233,7 +273,13 @@ fn a_new_goal_replaces_the_old_and_cancel_stops() {
     let out = nav.start(2, Mission::ToPose(Pose::new(5.0, 5.0, 0.0)), 0.5);
     assert!(matches!(
         finished(&out),
-        Some((1, Outcome::Aborted { code: 0, .. }))
+        Some((
+            1,
+            Outcome::Aborted {
+                reason: Abort::Replaced,
+                ..
+            }
+        ))
     ));
     // The old goal's plan comes back late: ignored.
     assert!(nav.planned(t, Ok(straight(&GOAL)), 0.6).is_empty());
@@ -280,7 +326,11 @@ fn waypoints_pass_through_by_default_or_stop_at_each() {
     let (t, goals) = plan_token(&nav.tick(10.0, None));
     assert_eq!(goals, vec![wps[1]]);
     // The second can't be planned at all: missed, and the goal ends (it was the last).
-    let out = nav.planned(t, Err((206, "goal occupied".into())), 10.0);
+    let out = nav.planned(
+        t,
+        Err((PlanError::GoalOccupied, "goal occupied".into())),
+        10.0,
+    );
     match finished(&out) {
         Some((1, Outcome::Aborted { missed, .. })) => assert_eq!(missed, vec![1]),
         other => panic!("{other:?}"),
@@ -292,7 +342,11 @@ fn a_start_marked_occupied_clears_the_global_costmap_first() {
     let mut nav = Navigator::new(Settings::default());
     nav.start(1, Mission::ToPose(GOAL), 0.0);
     let (t, _) = plan_token(&nav.tick(0.0, None));
-    let out = nav.planned(t, Err((205, "start occupied".into())), 0.0);
+    let out = nav.planned(
+        t,
+        Err((PlanError::StartOccupied, "start occupied".into())),
+        0.0,
+    );
     assert!(matches!(
         out[..],
         [Command::Clear {
@@ -309,9 +363,153 @@ fn empty_goals_are_refused() {
     let out = nav.start(4, Mission::ThroughPoses(vec![]), 0.0);
     assert!(matches!(
         finished(&out),
-        Some((4, Outcome::Aborted { code: 0, .. }))
+        Some((
+            4,
+            Outcome::Aborted {
+                reason: Abort::InvalidGoal(_),
+                ..
+            }
+        ))
     ));
     let out = nav.start(5, Mission::ToPose(Pose::new(f64::NAN, 0.0, 0.0)), 0.0);
     assert!(finished(&out).is_some());
     assert_eq!(nav.goal(), None);
+}
+
+#[test]
+fn error_codes_are_nav2s_both_ways() {
+    for code in 200..=208 {
+        assert_eq!(PlanError::from_code(code).code(false), code);
+    }
+    for code in 300..=309 {
+        assert_eq!(PlanError::from_code(code).code(true), code);
+    }
+    for code in 100..=107 {
+        assert_eq!(FollowError::from_code(code).code(), code);
+    }
+    // Numbers that aren't Nav2's (0 too: a server that failed without saying why).
+    assert_eq!(PlanError::from_code(0), PlanError::Unknown);
+    assert_eq!(PlanError::from_code(209), PlanError::Unknown);
+    assert_eq!(FollowError::from_code(0), FollowError::Unknown);
+    assert_eq!(FollowError::from_code(999), FollowError::Unknown);
+    // A failed through-poses plan reports the 300s.
+    let poses = vec![Pose::new(10.0, 0.0, 0.0), GOAL];
+    let mut nav = Navigator::new(Settings::default());
+    nav.start(1, Mission::ThroughPoses(poses), 0.0);
+    let (t, _) = plan_token(&nav.tick(0.0, None));
+    let out = nav.planned(t, Err((PlanError::GoalOutsideMap, String::new())), 0.0);
+    match finished(&out) {
+        Some((1, Outcome::Aborted { reason, .. })) => assert_eq!(reason.code(), 304),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn a_planner_that_never_answers_times_out_and_is_recovered() {
+    let mut nav = Navigator::new(Settings::default());
+    nav.start(1, Mission::ToPose(GOAL), 0.0);
+    let (t, _) = plan_token(&nav.tick(0.0, None));
+    // Nothing until plan_timeout (10 s).
+    assert!(nav.tick(9.9, None).is_empty());
+    // Then a planner timeout (207): recoverable, so the global costmap is cleared first.
+    let out = nav.tick(10.0, None);
+    assert!(
+        matches!(
+            out[..],
+            [Command::Clear {
+                local: false,
+                global: true,
+                ..
+            }]
+        ),
+        "{out:?}"
+    );
+    // Its answer, if it ever comes, is late.
+    assert!(nav.planned(t, Ok(straight(&GOAL)), 10.5).is_empty());
+}
+
+#[test]
+fn a_dead_stack_ends_the_goal_in_bounded_time() {
+    let settings = Settings::default();
+    let mut nav = Navigator::new(settings.clone());
+    nav.start(1, Mission::ToPose(GOAL), 0.0);
+    // Nobody answers anything: plans, clears and waits all run into their limits.
+    let mut now = 0.0;
+    let mut end = None;
+    while end.is_none() && now < 600.0 {
+        end = finished(&nav.tick(now, None));
+        now += 0.1;
+    }
+    let Some((1, Outcome::Aborted { reason, .. })) = end else {
+        panic!("still running after 600 s: {end:?}");
+    };
+    // The cause, not the clear that failed after it.
+    assert_eq!(reason.code(), 207, "{reason}");
+    // Each of the 7 attempts (6 recoveries): a plan, its clear, then a recovery.
+    let per_attempt = settings.plan_timeout + 2.0 * settings.recovery_timeout.max(settings.wait);
+    assert!(now <= 7.0 * per_attempt + 1.0, "{now} s");
+}
+
+#[test]
+fn a_silent_follower_fails_the_goal_with_controller_timed_out() {
+    let mut nav = Navigator::new(Settings::default());
+    nav.start(1, Mission::ToPose(GOAL), 0.0);
+    let (t, _) = plan_token(&nav.tick(0.0, None));
+    let f = follow_token(&nav.planned(t, Ok(straight(&GOAL)), 0.0));
+    // Feedback keeps it alive past follow_timeout (4 s), replans or not.
+    let mut now = 0.0;
+    while now < 10.0 {
+        now += 0.5;
+        nav.follower_heard(now);
+        for c in nav.tick(now, None) {
+            if let Command::Plan { token, .. } = c {
+                nav.planned(token, Ok(straight(&GOAL)), now);
+            }
+        }
+        assert_eq!(nav.goal(), Some(1));
+    }
+    // Then nothing: still replanning every second (new paths), but the follower never
+    // speaks again.
+    let silent_from = now;
+    let mut end = None;
+    while end.is_none() && now < 30.0 {
+        now += 0.1;
+        for c in nav.tick(now, None) {
+            match c {
+                Command::Plan { token, .. } => {
+                    nav.planned(token, Ok(straight(&GOAL)), now);
+                }
+                Command::Finished { outcome, .. } => end = Some(outcome),
+                _ => {}
+            }
+        }
+    }
+    match end {
+        Some(Outcome::Aborted { reason, .. }) => {
+            assert_eq!(reason.code(), FollowError::ControllerTimedOut.code());
+        }
+        other => panic!("{other:?}"),
+    }
+    assert!(now - silent_from <= 4.0 + 0.11, "{} s", now - silent_from);
+    // The follower's late answer changes nothing.
+    assert!(nav.followed(f, Ok(()), now).is_empty());
+}
+
+#[test]
+fn a_clear_that_never_answers_counts_as_failed() {
+    let mut nav = Navigator::new(Settings::default());
+    nav.start(1, Mission::ToPose(GOAL), 0.0);
+    let (t, _) = plan_token(&nav.tick(0.0, None));
+    let f = follow_token(&nav.planned(t, Ok(straight(&GOAL)), 0.0));
+    let out = nav.followed(
+        f,
+        Err((FollowError::FailedToMakeProgress, String::new())),
+        1.0,
+    );
+    let Command::Clear { local: true, .. } = out[0] else {
+        panic!("{out:?}")
+    };
+    assert!(nav.tick(5.9, None).is_empty());
+    // recovery_timeout (5 s) on: the follower's own clear failed, it follows again.
+    follow_token(&nav.tick(6.0, None));
 }
