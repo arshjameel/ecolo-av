@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 # /<area>/<device or node>/<thing>: the layers of the picture, as in docs/naming.md.
 AREAS = ('sensors', 'vehicle', 'can', 'localization', 'perception', 'drivers', 'control',
-         'ego', 'safety', 'hud', 'system')
+         'ego', 'safety', 'hud', 'system', 'world')
 # ROS's own global names, which every tool expects, and Nav2's, which stay for now.
 GLOBALS = {'/tf', '/tf_static', '/clock', '/robot_description', '/joint_states',
            '/diagnostics', '/rosout', '/parameter_events', '/map', '/global_costmap/costmap',

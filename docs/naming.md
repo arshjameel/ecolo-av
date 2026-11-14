@@ -29,6 +29,7 @@ match a folder under `ros/` (the `/sensors/` topics come from `ros/sources/`), p
 | `/ego/` | the command for the wheels | ego |
 | `/safety/` | e-stop, collision monitor, the sensor watchdog's lock, the output mux's state, ghost obstacles | the HUD button, collision_monitor, sensor_watchdog, output_mux, ghost_obstacle |
 | `/hud/` | what only the screen needs | the HUD |
+| `/world/` | one picture of the world that every level shares: `/world/road_ahead` (where the car may be, how fast, where it stops); later `/world/things` (14 Nov, [the whole car](designs/2026-11-14_the-whole-car.md), W2) | the behaviour planner |
 | `/system/` | what kind of run this is: `/system/source` (real, sim, bench, replay); the sensor mux's check, `/system/sensor_mux/state` | the backends, the bench, a replay (added 15 Oct, `full-simulation.md`); the sensor mux (23 Oct) |
 
 Global names stay global, because every ROS tool expects them: `/tf`, `/tf_static`,

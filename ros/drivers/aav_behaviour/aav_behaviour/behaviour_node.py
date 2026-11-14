@@ -20,6 +20,10 @@ Publishes   /drivers/nav/speed_limit   nav2_msgs/SpeedLimit, 20 Hz: absolute m/s
                                      behaviour:=true)
             /drivers/nav/behaviour/state   diagnostic_msgs/DiagnosticStatus, 5 Hz: state,
                                      reason, cap_mps, left_m, warnings
+            /world/road_ahead        aav_interfaces/RoadAhead (map), 10 Hz: the road ahead,
+                                     /plan's next 40 m from the car, its stops, its end,
+                                     the speed limit by the stopping law (road_ahead.py;
+                                     docs/designs/2026-11-14_the-whole-car.md)
 
 The maths is behaviour.py (no ROS); the stopping law is aav_description stop_law.py, from
 the car model's numbers. It isn't a driver: no cmd_vel, no twist_mux slot. It only ever
@@ -32,8 +36,11 @@ import signal
 
 from aav_behaviour.behaviour import (along_until, Behaviour, diagnostic, lane_ahead,
                                      path_left, Settings, Stop, World)
+from aav_behaviour.road_ahead import build
+from aav_behaviour.road_ahead_ros import to_msg
 from aav_description.car_model import ActuatorConfig, speed_loop_profile
 from aav_description.stop_law import from_car_model
+from aav_interfaces.msg import RoadAhead
 from aav_safety.geofence import Polygon
 from action_msgs.msg import GoalStatus, GoalStatusArray
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
@@ -70,6 +77,7 @@ class BehaviourNode(Node):
             ('stop_distance_m', 4.7), ('front', 2.0), ('half_width', 0.6),
             ('stop_gap', 1.0), ('near_depth', 2.5), ('plan_timeout', 25.0),
             ('rate_hz', 20.0), ('state_rate_hz', 5.0), ('obstacles', True),
+            ('road_rate_hz', 10.0), ('road_length', 40.0), ('road_spacing', 0.5),
             # Each navigator action's status (navigation.launch.py: Nav2's or ours,
             # navigator:=): a goal running on any of them.
             ('goal_status_topics', ['/navigate_to_pose/_action/status']))}
@@ -81,6 +89,7 @@ class BehaviourNode(Node):
             car = ActuatorConfig.from_vehicle_yaml(vehicle.config_path())
         curve = from_car_model(car, p['max_deceleration'], p['max_jerk'],
                                loop=speed_loop_profile(p['speed_loop']))
+        self.curve = curve
         self.machine = Behaviour(curve, Settings(
             base=p['base_speed'], floor=p['floor'], accel=p['accel'], fall=p['fall'],
             ask_after=p['ask_after']))
@@ -122,10 +131,12 @@ class BehaviourNode(Node):
 
         self.limit = self.create_publisher(SpeedLimit, '/drivers/nav/speed_limit', 10)
         self.state = self.create_publisher(DiagnosticStatus, '/drivers/nav/behaviour/state', 10)
+        self.road = self.create_publisher(RoadAhead, '/world/road_ahead', 10)
         self.decision = None
         self.said = set()
         self.create_timer(1.0 / p['rate_hz'], self.tick)
         self.create_timer(1.0 / p['state_rate_hz'], self.publish_state)
+        self.create_timer(1.0 / p['road_rate_hz'], self.publish_road)
 
     def now(self) -> float:
         return self.get_clock().now().nanoseconds * 1e-9
@@ -226,6 +237,18 @@ class BehaviourNode(Node):
 
     def header(self):
         return Header(stamp=self.get_clock().now().to_msg(), frame_id='base_link')
+
+    def publish_road(self):
+        """Send the road ahead: /plan from the car, cut at the nearest stop (the end)."""
+        now = self.now()
+        fresh = self.plan and now - self.plan_time < self.p['plan_timeout']
+        d = self.decision
+        strip = build(self.plan if fresh else [], self.pose, self.stops(now), self.curve,
+                      self.p['base_speed'], state=d.state if d else '',
+                      reason=d.reason if d else '', spacing=self.p['road_spacing'],
+                      length=self.p['road_length'])
+        self.road.publish(to_msg(strip, Header(stamp=self.get_clock().now().to_msg(),
+                                               frame_id='map')))
 
     def publish_state(self):
         if self.decision is None:

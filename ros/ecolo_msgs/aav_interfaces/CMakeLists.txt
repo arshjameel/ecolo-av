@@ -19,6 +19,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/SteeringCalibration.msg"
   "msg/LinkFrame.msg"
   "msg/UplinkHealth.msg"
+  "msg/StopPoint.msg"
+  "msg/RoadAhead.msg"
   "action/ScriptedDrive.action"
   "action/DriveToPoint.action"
   DEPENDENCIES std_msgs
