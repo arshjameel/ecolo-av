@@ -260,7 +260,7 @@ smoother, and collision_monitor (the command line in front of the safety locks).
 <tbody>
 <tr>
 <td>See it</td>
-<td><code>pixi run sim navigator:=own planner:=own costmap:=own tracker:=mppi_lag reversing:=false</code></td>
+<td><code>pixi run sim navigator:=own planner:=own costmap:=own tracker:=mppi_lag</code> (reversing since 14 Nov; <code>reversing:=false</code> for forward only)</td>
 </tr>
 <tr>
 <td>Score all ours against all Nav2</td>
@@ -283,8 +283,8 @@ smoother, and collision_monitor (the command line in front of the safety locks).
 </section>
 <section class="card"><h2 id="scores-8-nov-our-simulator">Scores (8 Nov, our simulator)</h2>
 <p>All ours (<code>navigator:=own planner:=own costmap:=own tracker:=mppi_lag</code>) against all Nav2
-(<code>bt_navigator</code>, the lattice, Nav2's costmaps, MPPI). Both forward only: <code>mppi_lag</code>
-can't reverse. <code>pixi run measure controllers --stacks nav2 own</code>.</p>
+(<code>bt_navigator</code>, the lattice, Nav2's costmaps, MPPI). Both forward only: on 8 Nov
+<code>mppi_lag</code> couldn't reverse (it can since 14 Nov: <a href="mppi-lag.html#reversing">MPPI that knows the lag</a>). <code>pixi run measure controllers --stacks nav2 own</code>.</p>
 <h3 id="the-test-lot-1-ms-3-runs">The test lot, 1 m/s, 3 runs</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -448,13 +448,15 @@ again. A goal a few metres past the exit would avoid it.</p>
 <ul>
 <li><strong>The goal at speed:</strong> <code>mppi_lag</code> passes the campus's first goal at 2.5 m/s.</li>
 <li>
-<p><strong>Reversing:</strong> all ours is forward only (<code>mppi_lag</code>), so a car against a wall stays.</p>
+<p><strong>Reversing:</strong> since 14 Nov all ours reverses (<code>mppi_lag</code>, <a href="mppi-lag.html#reversing">page</a>);
+  not yet scored against all Nav2 with <code>--reversing</code>.</p>
 </li>
 <li>
 <p><strong>On the car:</strong> untested; <code>car.launch.py</code> always passes <code>navigator:=nav2</code>.</p>
 </li>
 <li><strong>No <code>IsPathValid</code></strong> on the final approach: the navigator reads no costmap.</li>
-<li><strong>Back up</strong> still calls Nav2's <code>behavior_server</code> (reversing only; <code>mppi_lag</code> can't reverse).</li>
+<li><strong>Back up</strong> still calls Nav2's <code>behavior_server</code> (reversing only); all ours runs none, so
+  it has no BackUp recovery, though <code>mppi_lag</code> itself now follows reversing paths.</li>
 </ul></section>
 <nav class="prevnext"><a class="prev" href="own-planner.html"><small>Previous</small>← Our own planner</a>
 <a class="next" href="own-smoother.html"><small>Next</small>Our own velocity smoother →</a></nav>

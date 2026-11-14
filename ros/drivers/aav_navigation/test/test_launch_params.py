@@ -28,6 +28,7 @@ def test_mppi_lag_yaml_sets_nothing_the_launch_sets():
     cfg = vehicle.load(ROS / 'bringup' / 'aav_description' / 'config' / 'vehicle.yaml')
     ego = yaml.safe_load((ROS / 'ego' / 'aav_ego' / 'config' / 'ego.yaml')
                          .read_text())['ego']['ros__parameters']
-    launch = set(vehicle.mppi_lag_params(nav2, cfg, ego)) | LAUNCH_EXTRA
+    launch = (set(vehicle.mppi_lag_params(nav2, cfg, ego)) |
+              set(vehicle.mppi_lag_params(nav2, cfg, ego, reversing=True)) | LAUNCH_EXTRA)
     both = sorted(set(own) & launch)
     assert not both, f'config/mppi_lag.yaml sets what the launch sets (the file wins): {both}'

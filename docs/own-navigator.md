@@ -71,7 +71,7 @@ smoother, and collision_monitor (the command line in front of the safety locks).
 
 | To | Run |
 |---|---|
-| See it | `pixi run sim navigator:=own planner:=own costmap:=own tracker:=mppi_lag reversing:=false` |
+| See it | `pixi run sim navigator:=own planner:=own costmap:=own tracker:=mppi_lag` (reversing since 14 Nov; `reversing:=false` for forward only) |
 | Score all ours against all Nav2 | `pixi run measure controllers --stacks nav2 own --tours lot obstacle --runs 3` |
 | The campus route | `pixi run measure controllers --stacks nav2 own --tours fieldhouse --speed 2.5` |
 | The graph and a goal | `pixi run sim-check --navigator own --planner own --costmap own --tracker mppi_lag` |
@@ -80,8 +80,8 @@ smoother, and collision_monitor (the command line in front of the safety locks).
 ## Scores (8 Nov, our simulator)
 
 All ours (`navigator:=own planner:=own costmap:=own tracker:=mppi_lag`) against all Nav2
-(`bt_navigator`, the lattice, Nav2's costmaps, MPPI). Both forward only: `mppi_lag`
-can't reverse. `pixi run measure controllers --stacks nav2 own`.
+(`bt_navigator`, the lattice, Nav2's costmaps, MPPI). Both forward only: on 8 Nov
+`mppi_lag` couldn't reverse (it can since 14 Nov: [MPPI that knows the lag](mppi-lag.md#reversing)). `pixi run measure controllers --stacks nav2 own`.
 
 ### The test lot, 1 m/s, 3 runs
 
@@ -151,8 +151,10 @@ again. A goal a few metres past the exit would avoid it.
 ## What's missing
 
 - **The goal at speed:** `mppi_lag` passes the campus's first goal at 2.5 m/s.
-- **Reversing:** all ours is forward only (`mppi_lag`), so a car against a wall stays.
+- **Reversing:** since 14 Nov all ours reverses (`mppi_lag`, [page](mppi-lag.md#reversing));
+  not yet scored against all Nav2 with `--reversing`.
 
 - **On the car:** untested; `car.launch.py` always passes `navigator:=nav2`.
 - **No `IsPathValid`** on the final approach: the navigator reads no costmap.
-- **Back up** still calls Nav2's `behavior_server` (reversing only; `mppi_lag` can't reverse).
+- **Back up** still calls Nav2's `behavior_server` (reversing only); all ours runs none, so
+  it has no BackUp recovery, though `mppi_lag` itself now follows reversing paths.

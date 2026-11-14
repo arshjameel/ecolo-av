@@ -84,12 +84,13 @@ bench's argument names:
                       (docs/own-planner.md)
   tracker:=lqr        a trial path follower (aav_track: pure_pursuit, stanley, lqr or mpc)
                       in controller_server's place, on Nav2's same planner, smoother and
-                      collision_monitor. Forward only: with reversing:=false (docs/trials.md)
+                      collision_monitor. aav_track's drive forwards only: with
+                      reversing:=false (docs/trials.md); mppi_lag reverses too
   costmap:=own        our own costmaps beside Nav2's (aav_costmap, a trial); with
                       tracker:=mppi_lag, mppi_lag reads ours (docs/own-costmap.md)
   navigator:=own      our own navigator in place of bt_navigator and waypoint_follower
                       (aav_navigator, a trial); with planner:=own costmap:=own
-                      tracker:=mppi_lag reversing:=false, no Nav2 server navigates
+                      tracker:=mppi_lag, no Nav2 server navigates
                       (docs/own-navigator.md)
   behaviour:=true    the behaviour states and a speed cap on Nav2 from the stopping law
                       (aav_behaviour, a trial: docs/stopping.md); it also sends the road ahead
@@ -574,7 +575,8 @@ def generate_launch_description():
         DeclareLaunchArgument('tracker', default_value=vehicle.DEFAULT_TRACKER,
                               description="a trial path follower in controller_server's "
                                           'place: ' + ', '.join(vehicle.TRACKERS) +
-                                          ' (with reversing:=false; docs/trials.md)'),
+                                          " (aav_track's with reversing:=false; "
+                                          'docs/trials.md)'),
         DeclareLaunchArgument('amcl', default_value='false',
                               description='stock AMCL beside the EKF, scored only '
                                           '(world:=test_lot nav:=true lidar:=true)'),

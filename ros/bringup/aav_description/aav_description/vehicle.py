@@ -17,7 +17,7 @@ The launch files use this so the car's measurements live in one file:
                        controller)                              # RewrittenYaml can't write
     vehicle.ego_params(vehicle.load())          # ego: the whole file (the actuators too)
     vehicle.track_params(nav2, cfg, ego, max_speed)  # aav_track: a trial tracker (tracker:=)
-    vehicle.mppi_lag_params(nav2, cfg, ego, max_speed)  # aav_mppi_lag: MPPI with the lag
+    vehicle.mppi_lag_params(nav2, cfg, ego, max_speed, reversing)  # aav_mppi_lag's
     vehicle.centre_of_mass(v, front, rear, front_lifted, lift)   # from the scales (M7, M7b)
     vehicle.wheel_angles(v, centre)  # each front wheel's angle for a centre (bicycle) angle
     vehicle.centre_angle(v, inner, outer)       # the reverse: from M5's two measured angles
@@ -297,6 +297,9 @@ DEFAULT_CONTROLLER = 'mppi'
 # model with the actuators' lag (docs/mppi-lag.md).
 TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag')
 DEFAULT_TRACKER = 'none'
+# The trackers that drive forwards only (aav_track's): refused with reversing:=true.
+# mppi_lag reverses as Nav2's MPPI does (Ben, 14 Nov: "The car can reverse").
+FORWARD_ONLY_TRACKERS = ('pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag')
 
 
 def check_tracker(tracker, reversing=False):
@@ -304,7 +307,7 @@ def check_tracker(tracker, reversing=False):
     name = str(tracker).strip().lower()
     if name not in TRACKERS:
         raise ValueError(f'tracker:={tracker}: pick one of {", ".join(TRACKERS)}')
-    if name != 'none' and reversing:
+    if name in FORWARD_ONLY_TRACKERS and reversing:
         raise ValueError(f'tracker:={name} drives forwards only: add reversing:=false '
                          "(the planner would plan reversing it can't follow)")
     return name
@@ -627,7 +630,7 @@ def critic_value(key, value):
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return value
     return int(value) if key in ('cost_power', 'offset_from_furthest',
-                                 'trajectory_point_step') else float(value)
+                                 'trajectory_point_step', 'mode') else float(value)
 
 
 def costmap_timeout(server, costmap):
@@ -642,7 +645,7 @@ def costmap_timeout(server, costmap):
     return round(wait + 1.0 / float(costmap.get('publish_frequency', 1.0)), 3)
 
 
-def mppi_lag_params(nav2, cfg, ego=None, max_speed=None):
+def mppi_lag_params(nav2, cfg, ego=None, max_speed=None, reversing=False):
     """
     Return aav_mppi_lag's parameters: Nav2's MPPI block, its checks, and the car's lag.
 
@@ -651,7 +654,10 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None):
     controller:=mppi runs it), the goal and progress checks controller_server's, the
     outline and inflation the local costmap's, the actuators vehicle.yaml's, the ramps
     ego's. `max_speed` (sim_speed:=) sets vx_max and stretches prune_distance as
-    nav2_tuned does for Nav2's MPPI. Forward only: vx_min 0.
+    nav2_tuned does for Nav2's MPPI. `reversing` sets it up as nav2_tuned sets Nav2's
+    MPPI: vx_min -max_reverse_speed (else 0), the path followed stretch by stretch at its
+    cusps (enforce_path_inversion, nav2.yaml's tolerances), PathAngleCritic in mode 2,
+    and no PreferForwardCritic.
     """
     server = nav2['controller_server']['ros__parameters']
     mppi = server['MPPI']
@@ -662,13 +668,20 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None):
     speed = float(max_speed) if max_speed else float(mppi['vx_max'])
     ahead = float(mppi['time_steps']) * float(mppi['model_dt']) * speed
     out = {name: kind(mppi[name]) for name, kind in MPPI_LAG_SAME.items() if name in mppi}
+    critics = list(mppi['critics'])
+    if reversing:
+        # As nav2_tuned's: the planner decides when to reverse (reverse_penalty).
+        critics = [c for c in critics if c != 'PreferForwardCritic']
     out.update({
         'rate_hz': float(server['controller_frequency']),
         'odom_topic': server['odom_topic'],
         'vx_max': speed,
-        'vx_min': 0.0,
+        'vx_min': reverse_limit(v, reversing),
+        'enforce_path_inversion': bool(reversing),
+        'inversion_xy_tolerance': float(mppi.get('inversion_xy_tolerance', 0.2)),
+        'inversion_yaw_tolerance': float(mppi.get('inversion_yaw_tolerance', 0.4)),
         'prune_distance': max(float(mppi.get('prune_distance', 1.5)), ahead * 1.2),
-        'critics': list(mppi['critics']),
+        'critics': critics,
         'xy_goal_tolerance': float(goal['xy_goal_tolerance']),
         'yaw_goal_tolerance': float(goal['yaw_goal_tolerance']),
         'progress_radius': float(progress['required_movement_radius']),
@@ -692,9 +705,12 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None):
         if ego and key in ego:
             out[f'ego.{key}'] = float(ego[key])
     # Each critic's own settings, under its name, as Nav2 reads them.
-    for critic in mppi['critics']:
+    for critic in critics:
         for key, value in (mppi.get(critic) or {}).items():
             out[f'{critic}.{key}'] = critic_value(key, value)
+    if reversing and 'PathAngleCritic' in critics:
+        # Mode 2, as nav2_tuned's: follow the path the way it faces, backwards too.
+        out['PathAngleCritic.mode'] = 2
     return out
 
 

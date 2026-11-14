@@ -76,8 +76,10 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           FollowPath) and publishes cmd_vel_nav; controller_server keeps
                           running (its costmaps, the trees' clear calls) with its own action
                           renamed follow_path_unused. The same planner, smoother,
-                          collision_monitor and twist_mux slot. Forward only: refused with
-                          reversing:=true. tracker:=none (the default): controller_server
+                          collision_monitor and twist_mux slot. aav_track's trackers
+                          drive forwards only: refused with reversing:=true; mppi_lag
+                          reverses as Nav2's MPPI does.
+                          tracker:=none (the default): controller_server
   costmap:=own            aav_costmap's costmap node (Rust, a trial): our own local and
                           global costmaps from the same nav2.yaml blocks, on
                           /drivers/nav/costmap/local and /global (and *_raw). Nav2's own
@@ -502,7 +504,8 @@ def nodes(context):
             actions.append(Node(
                 package='aav_mppi_lag', executable='mppi_lag', name='mppi_lag',
                 output='screen',
-                parameters=[own, vehicle.mppi_lag_params(nav2, cfg, ego, max_speed),
+                parameters=[own, vehicle.mppi_lag_params(nav2, cfg, ego, max_speed,
+                                                         reversing),
                             {'use_sim_time': use_sim_time,
                              'costmap_topic': vehicle.COSTMAP_RAW_TOPICS[costmap]}]))
         else:

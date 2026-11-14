@@ -7,7 +7,7 @@
 <!-- Generated from docs/switches.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Switches: what you can swap in the simulated car</h1>
-<div class="meta">14 min read · 6 sections</div></header>
+<div class="meta">15 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -231,7 +231,8 @@ the U-turn. The real car takes only <code>hybrid</code> or <code>lattice</code> 
 </tr>
 </tbody>
 </table></div>
-<p>Our trackers drive forward only: give them <code>reversing:=false</code> (the menu does).
+<p><code>aav_track</code>'s trackers drive forward only: give them <code>reversing:=false</code> (the menu does).
+<code>mppi_lag</code> reverses (14 Nov).
 In <code>demo --debug</code>, keys 1-4 swap the tracker live. More: <a href="controllers.html">Controllers</a>,
 <a href="trials.html">Trials</a>.</p>
 </section>
@@ -363,7 +364,7 @@ and doesn't model <code>lqi</code> yet).</p>
 </tr>
 <tr>
 <td><code>navigator:=own</code></td>
-<td>our own navigator (Rust) in place of Nav2's bt_navigator and waypoint_follower; with <code>planner:=own costmap:=own tracker:=mppi_lag reversing:=false</code> no Nav2 server navigates (all ours). 8 Nov: test lot 7 of 12 legs (Nav2 8), campus 4 of 6 (Nav2 2) (<a href="own-navigator.html">page</a>)</td>
+<td>our own navigator (Rust) in place of Nav2's bt_navigator and waypoint_follower; with <code>planner:=own costmap:=own tracker:=mppi_lag</code> no Nav2 server navigates (all ours). 8 Nov: test lot 7 of 12 legs (Nav2 8), campus 4 of 6 (Nav2 2) (<a href="own-navigator.html">page</a>)</td>
 </tr>
 <tr>
 <td><code>smoother:=own</code></td>
@@ -468,7 +469,7 @@ default (the simulator); our Rust pieces are all trials.</p>
 <td>MPPI</td>
 <td>MPPI</td>
 <td>it reads the costmap, so it steers round what the lidar sees; it reverses</td>
-<td>RPP; our pure pursuit, Stanley, LQR, MPC, <code>mpc_full</code>, <code>mpc_lag</code>, <code>mppi_lag</code> (forward only; sim only: the bench and the car have no <code>tracker:=</code>)</td>
+<td>RPP; our pure pursuit, Stanley, LQR, MPC, <code>mpc_full</code>, <code>mpc_lag</code> (forward only), <code>mppi_lag</code> (reverses too); sim only: the bench and the car have no <code>tracker:=</code></td>
 </tr>
 <tr>
 <td>The costmaps</td>
