@@ -72,6 +72,21 @@ def test_stops_locks_and_people():
     assert 'lock: stop_sign' in sc.table(card)
 
 
+def test_the_wiggle_is_scored():
+    # 20 s along x at 2 m/s, swinging 0.3 m side to side every 2 s; the steering with it.
+    times = [i / 20.0 for i in range(401)]
+    poses = [(t, 2.0 * t, 0.3 * math.sin(math.pi * t)) for t in times]
+    steering = [(t, 0.1 * math.cos(math.pi * t)) for t in times]
+    card = sc.score(sc.Drive(poses=poses, speeds=[(t, 2.0) for t in times],
+                             steering=steering, turns={'asked': steering}))
+    assert math.isclose(card['wiggle']['swing_m'], 0.3 / math.sqrt(2.0), rel_tol=0.1)
+    assert math.isclose(card['wiggle']['flips_hz_steering'], 1.0, rel_tol=0.1)
+    assert 'flips_hz_asked' in card['wiggle']
+    assert 'wiggle: steering changed side' in sc.table(card)
+    calm = sc.score(sc.Drive(poses=[(t, 2.0 * t, 0.0) for t in times]))
+    assert calm['wiggle']['swing_m'] < 1e-6
+
+
 def test_an_empty_drive_still_makes_a_table():
     card = sc.score(sc.Drive())
     text = sc.table(card)

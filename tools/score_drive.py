@@ -6,7 +6,9 @@ Score a recorded drive: the same scorecard for the sim and the car.
 Reads a bag made by tools/record.sh (rosbag2_py and our messages: through tools/ros.sh) and
 prints tools/scorecard.py's table: time, distance, top speed, time over the road ahead's
 limit and passes beyond its end, metres off the plan, every hold and lock, and how long a
-person drove. The sums are scorecard.py (no ROS, tested); this file only reads.
+person drove, and the wiggle: metres side to side, and how often ego's steering and the
+follower's turn rate (before and after the smoother) changed side. The sums are
+scorecard.py (no ROS, tested); this file only reads.
 """
 
 import argparse
@@ -25,6 +27,9 @@ LOCKS = {'/safety/estop': 'estop', '/perception/stop_sign': 'stop_sign',
          '/safety/stop_hold/lock': 'stop_zone', '/safety/geofence/lock': 'geofence',
          '/safety/sensor_watchdog/lock': 'sensors'}
 PEOPLE = ('/drivers/joy/cmd_vel', '/drivers/keyboard/cmd_vel', '/drivers/rc/cmd_vel')
+# The wiggle's commands: ego's angle; the follower's turn before and after the smoother.
+STEERING = '/ego/actuator_cmd'
+TURNS = {'/cmd_vel_nav': 'asked', '/drivers/nav/cmd_vel': 'smoothed'}
 
 
 def read_bag(path):
@@ -39,7 +44,8 @@ def read_bag(path):
                 rosbag2_py.ConverterOptions('', ''))
     types = {t.name: t.type for t in reader.get_all_topics_and_types()}
     pose_topic = TRUTH if TRUTH in types else EKF
-    wanted = {pose_topic, WHEEL, ROAD, PLAN, POINT_PLAN, BEHAVIOUR, *LOCKS, *PEOPLE}
+    wanted = {pose_topic, WHEEL, ROAD, PLAN, POINT_PLAN, BEHAVIOUR, *LOCKS, *PEOPLE,
+              STEERING, *TURNS}
     wanted &= set(types)
     reader.set_filter(rosbag2_py.StorageFilter(topics=sorted(wanted)))
     classes = {t: get_message(types[t]) for t in wanted}
@@ -71,6 +77,10 @@ def read_bag(path):
             drive.locks.setdefault(LOCKS[topic], []).append((t, bool(msg.data)))
         elif topic in PEOPLE:
             drive.people.append((t, msg.twist.linear.x, msg.twist.angular.z))
+        elif topic == STEERING:
+            drive.steering.append((t, msg.drive.steering_angle))
+        elif topic in TURNS:
+            drive.turns.setdefault(TURNS[topic], []).append((t, msg.twist.angular.z))
     drive.people.sort(key=lambda s: s[0])
     return drive, pose_topic
 

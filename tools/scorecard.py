@@ -15,6 +15,10 @@ A drive is what tools/record.sh keeps, on the recording's clock (s):
   states    [(t, state, reason)]    the behaviour planner's (DRIVE, APPROACH, ...)
   locks     {name: [(t, on)]}       each lock and the e-stop
   people    [(t, v, w)]             a person's commands (joystick, keyboard, RC)
+  steering  [(t, angle)]            ego's steering angle, rad (/ego/actuator_cmd)
+  turns     {name: [(t, w)]}        turn rates, rad/s: 'asked', the follower's before the
+                                    smoother (/cmd_vel_nav); 'smoothed', after it
+                                    (/drivers/nav/cmd_vel)
 
 | Number | Means |
 |---|---|
@@ -25,6 +29,8 @@ A drive is what tools/record.sh keeps, on the recording's clock (s):
 | stops | each STOPPED or WAIT, with why |
 | locks | each lock: how often it came on, and for how long |
 | a person drove | seconds a person's command was moving the car |
+| wiggle | metres side to side about its own smoothed track (RMS, worst); how often the |
+|        | steering and each turn rate changed side, a second, while moving (`wiggle`) |
 """
 
 from __future__ import annotations
@@ -61,6 +67,8 @@ class Drive:
     states: List[Tuple[float, str, str]] = field(default_factory=list)
     locks: Dict[str, List[Tuple[float, bool]]] = field(default_factory=dict)
     people: List[Tuple[float, float, float]] = field(default_factory=list)
+    steering: List[Tuple[float, float]] = field(default_factory=list)
+    turns: Dict[str, List[Tuple[float, float]]] = field(default_factory=dict)
 
 
 class Series:
@@ -179,6 +187,8 @@ def score(drive: Drive) -> Dict[str, object]:
                   for name, samples in sorted(drive.locks.items())},
         'person_s': person_seconds(drive.people, end),
         'had_road_ahead': bool(drive.roads),
+        'wiggle': dm.wiggle(drive.poses, {**({'steering': drive.steering}
+                                             if drive.steering else {}), **drive.turns}),
     }
 
 
@@ -200,7 +210,13 @@ def table(card: Dict[str, object]) -> str:
          f"{num(card['off_plan_mean_m'], 'm')} / {num(card['off_plan_worst_m'], 'm')}"),
         ('held', '; '.join(card['stops']) or 'never'),
         ('a person drove', num(card['person_s'], 's', 1)),
+        ('wiggle: side to side, RMS / worst',
+         f"{num(card['wiggle']['swing_m'], 'm', 3)} / "
+         f"{num(card['wiggle']['swing_max_m'], 'm')}"),
     ]
+    for key, value in card['wiggle'].items():
+        if key.startswith('flips_hz_'):
+            rows.append((f"wiggle: {key[len('flips_hz_'):]} changed side", num(value, '/s')))
     for name, (count, seconds) in card['locks'].items():
         rows.append((f'lock: {name}', f'on {count} times, {seconds:.1f} s'))
     width = max(len(r[0]) for r in rows)

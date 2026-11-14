@@ -328,6 +328,42 @@ def test_turn_sign_flips_skip_the_deadband():
     assert m.sign_flips([]) == 0
 
 
+def wiggly_track(amplitude, period, heading=0.3, speed=2.5, seconds=40.0, rate=50.0):
+    """Return a car driving straight at `heading`, swinging `amplitude` m side to side."""
+    c, s = math.cos(heading), math.sin(heading)
+    out = []
+    for i in range(int(seconds * rate) + 1):
+        t = i / rate
+        along, side = speed * t, amplitude * math.sin(2.0 * math.pi * t / period)
+        out.append((t, 10.0 + along * c - side * s, -5.0 + along * s + side * c))
+    return out
+
+
+def test_swing_is_the_side_to_side_metres_about_the_track():
+    assert m.swing(wiggly_track(0.0, 2.0))[0] == pytest.approx(0.0, abs=1e-6)
+    rms_m, worst = m.swing(wiggly_track(0.2, 2.0))
+    assert rms_m == pytest.approx(0.2 / math.sqrt(2.0), rel=0.1)
+    assert worst == pytest.approx(0.2, rel=0.1)
+    # A wide, slow bend counts (almost) nothing: radius 30 m at 2.5 m/s.
+    bend = [(t, 30.0 * math.sin(2.5 * t / 30.0), 30.0 * (1.0 - math.cos(2.5 * t / 30.0)))
+            for t in (i / 50.0 for i in range(2001))]
+    assert m.swing(bend)[0] < 0.01
+    assert math.isnan(m.swing(wiggly_track(0.2, 2.0, seconds=3.0))[0])
+
+
+def test_flips_a_second_count_only_while_moving():
+    steer = [(i / 50.0, 0.1 * math.sin(2.0 * math.pi * i / 50.0)) for i in range(1001)]
+    assert m.flips_per_second(steer) == pytest.approx(2.0, rel=0.05)
+    assert m.flips_per_second(steer, (0.0, 10.0)) == pytest.approx(2.0, rel=0.1)
+    assert math.isnan(m.flips_per_second([]))
+    # Parked for the first 10 s, then 10 s driving: only the drive's 10 s count.
+    track = [(t / 10.0, 0.0 if t < 100 else (t - 100) / 10.0, 0.0) for t in range(201)]
+    assert m.moving_window(track) == pytest.approx((10.1, 20.0))
+    numbers = m.wiggle(track, {'steering': steer})
+    assert numbers['flips_hz_steering'] == pytest.approx(2.0, rel=0.1)
+    assert m.moving_window(track[:50]) is None
+
+
 def test_stop_go_counts_each_stop_that_let_go():
     STOP, GO = 0, 1
     assert m.stop_go([STOP, GO], STOP) == 1

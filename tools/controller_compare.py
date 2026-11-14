@@ -168,6 +168,12 @@ TOURS = {
         ('along the road', 165.0, -111.0, -40.0),
         ('round the bend', 139.0, -190.0, -100.0),
     ]},
+    # TODO 149: the wiggle's road, in one goal from lot P4: out of the lot, then about 120 m
+    # of gently bending road (the campus tour's second leg, without its stop in between,
+    # which left the car on a cell the costmap called occupied: "Start occupied").
+    'wiggle': {'obstacle': False, 'world': worlds.CAMPUS, 'legs': [
+        ('P4 along the road', 165.0, -111.0, -40.0),
+    ]},
     # TODO 140: directions on the campus, P4 to the Fieldhouse, as GPS waypoints (route:
     # from, to, by the campus graph). The leg's goal is the last waypoint, put on the map
     # by /fromLL when the run starts (None until then).
@@ -190,6 +196,8 @@ SETTLE = 5.0            # s after that, before the first goal
 READY_TIME = 30.0       # s for the sensor watchdog to let Nav2 drive, before each leg
 LEG_TIME = 60.0         # s for each leg, plus 4 s for every metre at the top speed
 TRACK_EVERY = 0.5       # s between the saved track's points
+SERIES_EVERY = 0.05     # s between --series' saved samples
+REFUSED_TIME = 60.0     # s (wall) to keep asking a navigator that refuses the first goal
 # The test lot's drawing (tools/make_map.py made the map from it): the picture's background.
 MAP_SPEC = os.path.join(ROOT, 'ros', 'drivers', 'aav_navigation', 'maps',
                         'example_lot.spec.yaml')
@@ -263,6 +271,8 @@ class Recorder(Node):
         self.watchdog = True            # False: watchdog:=false, nothing publishes its lock
         self.truth, self.plans, self.steering, self.asked = [], [], [], []
         self.wanted = []     # the steering angle ego was asked for (drive_metrics.clipped)
+        # The wiggle: the follower's turn rate before the smoother, and after it.
+        self.asked_turn, self.smoothed_turn = [], []
         self.wheelbase = float(vehicle.load()['vehicle']['wheelbase'])
         self.belief, self.amcl, self.loops = [], [], []
         self.ndt, self.ndt_status, self.ndt_fits = [], [], []
@@ -297,6 +307,7 @@ class Recorder(Node):
                                  10)
         self.create_subscription(TwistStamped, '/cmd_vel_nav', self.on_asked, 10)
         self.create_subscription(TwistStamped, '/control/cmd_vel', self.on_wanted, 10)
+        self.create_subscription(TwistStamped, '/drivers/nav/cmd_vel', self.on_smoothed, 10)
         self.create_subscription(Bool, '/safety/sensor_watchdog/lock', self.on_lock, 10)
         self.create_subscription(String, '/safety/sensor_watchdog/state', self.on_state, 10)
         self.create_subscription(CollisionMonitorState, '/safety/collision_monitor/state',
@@ -314,7 +325,7 @@ class Recorder(Node):
 
     def start(self):
         self.truth, self.plans, self.steering, self.asked = [], [], [], []
-        self.wanted = []
+        self.wanted, self.asked_turn, self.smoothed_turn = [], [], []
         self.belief, self.amcl, self.loops = [], [], []
         self.ndt, self.ndt_status, self.ndt_fits = [], [], []
         self.voxels = []
@@ -415,6 +426,11 @@ class Recorder(Node):
     def on_asked(self, msg):
         if self.recording:
             self.asked.append((self.now(), msg.twist.linear.x))
+            self.asked_turn.append((self.now(), msg.twist.angular.z))
+
+    def on_smoothed(self, msg):
+        if self.recording:
+            self.smoothed_turn.append((self.now(), msg.twist.angular.z))
 
     def on_wanted(self, msg):
         v, w = msg.twist.linear.x, msg.twist.angular.z
@@ -482,8 +498,17 @@ class Recorder(Node):
         goal.pose.pose.position.x, goal.pose.pose.position.y = x, y
         goal.pose.pose.orientation.z = math.sin(yaw / 2.0)
         goal.pose.pose.orientation.w = math.cos(yaw / 2.0)
-        handle = self.wait(self.nav.send_goal_async(goal), 10.0)
-        return handle if handle is not None and handle.accepted else None
+        # The action server answers before the lifecycle manager has activated
+        # bt_navigator, and an inactive one refuses (14 Nov, the campus: "Action server is
+        # inactive"). Ask again for up to REFUSED_TIME.
+        end = time.monotonic() + REFUSED_TIME
+        while True:
+            handle = self.wait(self.nav.send_goal_async(goal), 10.0)
+            if handle is not None and handle.accepted:
+                return handle
+            if time.monotonic() > end:
+                return None
+            self.spin_for(2.0)
 
 
 def plan_alone(rec, goal, lock_radius, client=None, name='/compute_path_to_pose'):
@@ -617,7 +642,9 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server
                      f'{sum(cubes) / len(cubes):.0f} cubes a cloud, {len(ms)} clouds')
     leg = {'truth': rec.truth, 'belief': rec.belief, 'plans': rec.plans,
            'steering': rec.steering, 'wanted': rec.wanted,
-           'asked': rec.asked, 'start': start, 'end': end, 'goal': goal, 'reached': reached,
+           'asked': rec.asked, 'asked_turn': rec.asked_turn,
+           'smoothed_turn': rec.smoothed_turn, 'start': start, 'end': end, 'goal': goal,
+           'reached': reached,
            'cpu': (100.0 * (cpu1 - cpu0) / (wall1 - wall0)
                    if None not in (cpu0, cpu1) and wall1 > wall0 else None),
            'obstacle': obstacle, 'body': body}
@@ -955,6 +982,13 @@ def session(tour, follower, args, out_dir, body, used, run=1):
                     drawn['plans'] = [[round(t, 2), [[round(x, 2), round(y, 2)]
                                                      for x, y in pts[::4] + pts[-1:]]]
                                       for t, pts in leg['plans']]
+                if args.series:
+                    # The wiggle's raw series, every 0.05 s: to look at it again offline.
+                    drawn['series'] = {
+                        key: [[round(v, 4) for v in s]
+                              for s in drive_metrics.thin(leg[key], SERIES_EVERY)]
+                        for key in ('truth', 'belief', 'steering', 'asked_turn',
+                                    'smoothed_turn')}
                 if leg.get('planned', {}).get('path'):
                     # The planner's own path, from where the car stood (--planners): every
                     # point, so its turns and cusps can be scored again from the file.
@@ -1215,6 +1249,10 @@ def main():
                         help="only each tour's first N legs (each starts where the last ended)")
     parser.add_argument('--plans', action='store_true',
                         help='save every plan of each leg in results.json, not just its first')
+    parser.add_argument('--series', action='store_true',
+                        help="save each leg's truth, EKF, steering and turn rates (before "
+                             'and after the smoother) every 0.05 s in results.json: the '
+                             "wiggle's raw data")
     parser.add_argument('--diffusion-model', default=None,
                         help='with --planners diffusion: this model (.onnx) instead of '
                              'models/diffusion/planner.onnx')
