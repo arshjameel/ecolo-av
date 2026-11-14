@@ -42,10 +42,10 @@ Ours matches Gazebo's lidar, GPS and radar stand-in, and passes every `sim-check
 | # | Gap | Evidence | Rank | Size |
 |---|---|---|---|---|
 | M1 | Our cameras need a GPU. Try Bevy on Mesa's software Vulkan; **not sure it works** | `own-simulator.md` | must | M |
-| M2 | A `cameras:=false` switch for ours, then a CI job with ours | `worlds.py:83-86`; CI runs only Gazebo (`test.yml:297-308`) | must | S |
+| M2 | A `cameras:=false` switch for ours, then a CI job with ours | `worlds.py:83-86`; CI runs only Gazebo (`test.yml:297-308`) | must | S; **switch done 14 Nov**: `cameras:=false`, `sim-check --no-cameras`; the CI job next |
 | M3 | Our stop sign is drawn 52 px against Gazebo's 68; an early `--perception` failure is unexplained | `own-simulator-cameras.md` | must | M |
 | M4 | Ours still runs Gazebo's Python helpers and world files (`gazebo_adapter`, `gazebo_imu`, `gazebo_gps`, `worlds/`, `models/`); `/gazebo/*` topic names | `aav_gazebo` | must | L |
-| M5 | No service to place the car (`tools/sim_frames.py` needs Gazebo's) | `sim_frames.py:66` | must | S |
+| M5 | No service to place the car (`tools/sim_frames.py` needs Gazebo's) | `sim_frames.py:66` | must | S; **done 14 Nov**: `vehicle/sim/set_entity_state` (simulation_interfaces/SetEntityState) places the car; `sim_frames.py --simulator own` |
 | S1 | Runs aren't repeatable: wall-clock pace, unseeded Python noise, lidar noise depends on `threads` | `main.rs:277-307`, `lidar.rs:115-118` | should | M |
 | S2 | The node drives a plain bicycle model; the shared car model (`SharedCar`) isn't wired in; no slopes | `car.rs:116-166` | should | M |
 | S3 | IMU: only the z turn rate; `gazebo_imu` throws away our slope-correct acceleration | `sim.rs:565`, `gazebo_imu.py:58-59` | should | S |

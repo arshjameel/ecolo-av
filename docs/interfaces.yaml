@@ -1045,6 +1045,10 @@ services:
     type: simulation_interfaces/srv/DeleteEntity
     server: simulator
     note: Take a model placed with /vehicle/sim/spawn_entity (or the launch's obstacle:=true) away again. Sim only.
+  /vehicle/sim/set_entity_state:
+    type: simulation_interfaces/srv/SetEntityState
+    server: simulator
+    note: Our own simulator - put the car (entity aav) at state.pose in the map frame (x, y and yaw), standing still, as Gazebo's set_pose service does; a non-zero twist is refused. The truth and wheel odometry jump with it. tools/sim_frames.py --simulator own uses it. Sim only.
   /track/set_parameters:
     type: rcl_interfaces/srv/SetParameters
     server: track

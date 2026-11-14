@@ -32,6 +32,10 @@
 //!                                     file, or model://name) in the world, at initial_pose
 //!                                     (map frame; x, y and yaw), as Gazebo's create service
 //!             vehicle/sim/delete_entity  simulation_interfaces/DeleteEntity: take it away
+//!             vehicle/sim/set_entity_state  simulation_interfaces/SetEntityState: entity
+//!                                     `aav`, the car, put at state.pose (map frame; x, y,
+//!                                     yaw), standing still, as Gazebo's set_pose (a twist
+//!                                     is refused). A placed model: delete and spawn it
 //!
 //! Parameters  world (an SDF file), models (folders for model://, ':'-separated),
 //!             start_x, start_y, start_yaw, wheelbase, track, wheel_radius, max_steering,
@@ -70,7 +74,8 @@ use ros_env::sensor_msgs::msg::{
 };
 use ros_env::simulation_interfaces::msg::Result as SimResult;
 use ros_env::simulation_interfaces::srv::{
-    DeleteEntity, DeleteEntity_Request, DeleteEntity_Response, SpawnEntity, SpawnEntity_Request,
+    DeleteEntity, DeleteEntity_Request, DeleteEntity_Response, SetEntityState,
+    SetEntityState_Request, SetEntityState_Response, SpawnEntity, SpawnEntity_Request,
     SpawnEntity_Response,
 };
 use ros_env::std_msgs::msg::Header;
@@ -229,6 +234,11 @@ fn main() -> Result<()> {
         "vehicle/sim/spawn_entity",
         move |request: SpawnEntity_Request| spawn(&spawning, &search, &request),
     )?;
+    let placing = Arc::clone(&shared);
+    let _set_state = node.create_service::<SetEntityState, _>(
+        "vehicle/sim/set_entity_state",
+        move |request: SetEntityState_Request| set_state(&placing, &request),
+    )?;
     let deleting = Arc::clone(&shared);
     let _delete = node.create_service::<DeleteEntity, _>(
         "vehicle/sim/delete_entity",
@@ -285,6 +295,7 @@ fn run(
             let scene = &mut sim.world_mut().scene;
             match change {
                 Change::Place { name, mesh, pose } => scene.place(&name, &mesh, &pose),
+                Change::PlaceCar(x, y, yaw) => sim.place_car(x, y, yaw),
                 Change::Remove(name) => {
                     scene.remove(&name);
                 }
@@ -373,6 +384,8 @@ impl Shared {
 
 /// An object to put in the world, or take away, before the next step.
 enum Change {
+    /// The car, moved: x, y (m), yaw (rad), in the map.
+    PlaceCar(f64, f64, f64),
     Place {
         name: String,
         mesh: Mesh,
@@ -457,6 +470,67 @@ fn spawn(
     SpawnEntity_Response {
         result: sim_result(SimResult::RESULT_OK, ""),
         entity_name: name,
+    }
+}
+
+/// The car's name, as Gazebo's spawn gives it (`-name aav`).
+const CAR: &str = "aav";
+
+/// SetEntityState: put the car at a pose next step, standing still (Gazebo's set_pose).
+fn set_state(shared: &Mutex<Shared>, request: &SetEntityState_Request) -> SetEntityState_Response {
+    let answer = |code: u8, why: String| SetEntityState_Response {
+        result: sim_result(code, why),
+    };
+    if request.entity != CAR {
+        return answer(
+            SimResult::RESULT_NOT_FOUND,
+            format!("only the car, {CAR}, moves this way: delete and spawn a model instead"),
+        );
+    }
+    let frame = request.state.header.frame_id.trim_start_matches('/');
+    if !matches!(frame, "" | "world" | "map") {
+        return answer(
+            SimResult::RESULT_OPERATION_FAILED,
+            format!("the pose must be in the map (the world), not {frame}"),
+        );
+    }
+    let t = &request.state.twist;
+    let moving = [
+        t.linear.x,
+        t.linear.y,
+        t.linear.z,
+        t.angular.x,
+        t.angular.y,
+        t.angular.z,
+    ]
+    .iter()
+    .any(|v| *v != 0.0);
+    if moving {
+        return answer(
+            SimResult::RESULT_OPERATION_FAILED,
+            "the car is placed standing still: give a zero twist".into(),
+        );
+    }
+    let p = &request.state.pose;
+    let q = &p.orientation;
+    let yaw = (2.0 * (q.w * q.z + q.x * q.y)).atan2(1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+    let norm = (q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z).sqrt();
+    if !(p.position.x.is_finite() && p.position.y.is_finite() && (norm - 1.0).abs() < 0.01) {
+        return answer(
+            SetEntityState_Response::INVALID_POSE,
+            "the position must be finite and the quaternion a unit one".into(),
+        );
+    }
+    match shared.lock() {
+        Ok(mut s) => {
+            s.changes
+                .push(Change::PlaceCar(p.position.x, p.position.y, yaw));
+            answer(SimResult::RESULT_OK, String::new())
+        }
+        Err(_) => answer(
+            SimResult::RESULT_OPERATION_FAILED,
+            "the simulator's lock is poisoned".into(),
+        ),
     }
 }
 

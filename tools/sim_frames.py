@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-Save the front camera's pictures of Gazebo's stop sign, from several distances.
+Save the front camera's pictures of the simulated stop sign, from several distances.
 
     pixi run python3 tools/sim_frames.py --out ~/aav-models/frames   (about 1 minute)
+    pixi run python3 tools/sim_frames.py --simulator own             (ours: needs a GPU)
 
 For tools/compare_detectors.py: every detector gets the same pictures. Starts the road
 world headless (no Nav2, lidar, radar or watchdog), on its own ROS domain and Gazebo
 partition, on this computer only; puts the car on the lane's centre line so that the front
-left camera is each DISTANCES metres from the sign (Gazebo's set_pose service); and saves
+left camera is each DISTANCES metres from the sign (Gazebo's set_pose service, or ours,
+vehicle/sim/set_entity_state: simulation_interfaces/SetEntityState); and saves
 /sensors/camera/front_left/image_raw as road_sign_<m>m.png. Stops the launch by its
 process group.
 """
@@ -39,10 +41,30 @@ def set_pose_request(x: float, y: float = 0.0, z: float = 0.05) -> str:
             'orientation: {w: 1.0}')
 
 
+def place_own(node, client, x: float):
+    """Put the car at x on our simulator (SetEntityState); return (ok, why)."""
+    import rclpy
+    from simulation_interfaces.msg import Result
+    from simulation_interfaces.srv import SetEntityState
+    if not client.wait_for_service(timeout_sec=3.0):
+        return False, 'no vehicle/sim/set_entity_state'
+    request = SetEntityState.Request(entity='aav')
+    request.state.pose.position.x = x
+    request.state.pose.orientation.w = 1.0
+    future = client.call_async(request)
+    rclpy.spin_until_future_complete(node, future, timeout_sec=3.0)
+    answer = future.result()
+    if answer is None:
+        return False, 'no answer in 3 s'
+    return answer.result.result == Result.RESULT_OK, answer.result.error_message
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split('\n')[1])
     p.add_argument('--out', type=Path, default=Path.home() / 'aav-models' / 'frames')
     p.add_argument('--log', default='/tmp/aav-sim-frames.log')
+    p.add_argument('--simulator', choices=('gazebo', 'own'), default='gazebo',
+                   help="Gazebo's (the default: the detectors were compared on it) or ours")
     args = p.parse_args(argv)
     out = args.out.expanduser()
     out.mkdir(parents=True, exist_ok=True)
@@ -59,17 +81,21 @@ def main(argv=None) -> int:
     import cv2
     from cv_bridge import CvBridge
 
-    print(f"Starting Gazebo's road world on ROS domain {os.environ['ROS_DOMAIN_ID']}, "
+    print(f"Starting {args.simulator}'s road world on ROS domain {os.environ['ROS_DOMAIN_ID']}, "
           f"partition {os.environ['GZ_PARTITION']} (log {args.log})", flush=True)
     log = open(args.log, 'w')
     launch = subprocess.Popen(
-        # Gazebo's: the car is moved with its set_pose service.
-        ['ros2', 'launch', 'aav_bringup', 'sim.launch.py', 'world:=road', 'simulator:=gazebo',
+        ['ros2', 'launch', 'aav_bringup', 'sim.launch.py', 'world:=road',
+         f'simulator:={args.simulator}',
          'gui:=false',
          'rviz:=false', 'nav:=false', 'lidar:=false', 'radar:=false', 'watchdog:=false'],
         cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     rclpy.init()
     node = rclpy.create_node('sim_frames')
+    place = None
+    if args.simulator == 'own':
+        from simulation_interfaces.srv import SetEntityState
+        place = node.create_client(SetEntityState, '/vehicle/sim/set_entity_state')
     latest = {}
     node.create_subscription(Image, '/sensors/camera/front_left/image_raw',
                              lambda m: latest.update(msg=m, at=time.monotonic()),
@@ -87,16 +113,18 @@ def main(argv=None) -> int:
             x = car_x(distance)
             ok = False
             for _ in range(3):      # a busy computer may drop the first call
-                r = subprocess.run(
-                    ['gz', 'service', '-s', '/world/aav/set_pose', '--reqtype', 'gz.msgs.Pose',
-                     '--reptype', 'gz.msgs.Boolean', '--timeout', '3000',
-                     '--req', set_pose_request(x)], capture_output=True, text=True)
-                if 'data: true' in r.stdout:
-                    ok = True
+                if place is not None:
+                    ok, why = place_own(node, place, x)
+                else:
+                    r = subprocess.run(
+                        ['gz', 'service', '-s', '/world/aav/set_pose', '--reqtype',
+                         'gz.msgs.Pose', '--reptype', 'gz.msgs.Boolean', '--timeout', '3000',
+                         '--req', set_pose_request(x)], capture_output=True, text=True)
+                    ok, why = 'data: true' in r.stdout, f'{r.stdout.strip()} {r.stderr[:200]}'
+                if ok:
                     break
             if not ok:
-                print(f'  {distance:g} m: set_pose failed ({r.stdout.strip()} '
-                      f'{r.stderr.strip()[:200]})', flush=True)
+                print(f'  {distance:g} m: placing the car failed ({why.strip()})', flush=True)
                 continue
             moved = time.monotonic()
             while time.monotonic() < moved + 2.0 or latest['at'] < moved + 1.5:
