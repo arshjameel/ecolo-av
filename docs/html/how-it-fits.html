@@ -7,7 +7,7 @@
 <!-- Generated from docs/how-it-fits.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>How it fits together</h1>
-<div class="meta">10 min read · 9 sections</div></header>
+<div class="meta">14 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -181,6 +181,9 @@ it without changing anything downstream.</p>
 top of <code>ekf_local</code>'s <code>odom → base_link</code>. Chained together, they give the car's true
 position, and the local estimate stays smooth.</p>
 </div>
+<p>Three more localizers run <strong>beside</strong> the EKFs as trials, off by default (<a href="trials.html">Trials</a>):
+NDT on a saved lidar map (<code>aav_ndt</code>, <code>ndt:=true</code>; into <code>ekf_global</code> with <code>ndt_ekf:=true</code>),
+KISS-ICP lidar odometry (<code>kiss_icp:=true</code>) and AMCL (<code>amcl:=true</code>).</p>
 </section>
 <section class="card"><h2 id="3-drivers-propose-the-mux-picks">3. Drivers propose, the mux picks</h2>
 <p>Every driver publishes a <code>TwistStamped</code> (speed in m/s, turn rate in rad/s) on its own
@@ -200,7 +203,7 @@ topic. None of them knows what kind of vehicle it's driving.</p>
 <td>100</td>
 </tr>
 <tr>
-<td>RC transmitter, on "RC via ROS" (proposed, TODO 48)</td>
+<td>RC transmitter, on "RC via ROS" (<code>aav_rc</code>, built 24 Oct; off until the hardware lead answers H9 and H10)</td>
 <td><code>/drivers/rc/cmd_vel</code></td>
 <td>95</td>
 </tr>
@@ -218,6 +221,11 @@ topic. None of them knows what kind of vehicle it's driving.</p>
 <td>Scripted: speed up, hold, slow down</td>
 <td><code>/drivers/scripted/cmd_vel</code></td>
 <td>50</td>
+</tr>
+<tr>
+<td>The hardware panel's buttons, while Space is held</td>
+<td><code>/drivers/buttons/cmd_vel</code></td>
+<td>45</td>
 </tr>
 <tr>
 <td>Replay of a recorded drive</td>
@@ -244,8 +252,63 @@ topic. None of them knows what kind of vehicle it's driving.</p>
 <p><code>twist_mux</code> passes on the highest priority that has spoken in the last 0.5 s, as
 <code>/control/cmd_vel</code>. Publishing <code>true</code> on <code>/safety/estop</code> blocks every driver until someone publishes
 <code>false</code>.</p>
+<p>Locks hold every driver below their priority: the e-stop (255), the no-timeout lock (60),
+the geofence (51), the stop sign and the sensor watchdog (30), the stop hold (21). See
+<a href="#7-safety-layers">section 7</a>.</p>
 <p>Teleop is just another driver. The keyboard's commands take the same path as Nav2's:
 mux, ego, then the turtle or the car.</p>
+<h3 id="inside-the-nav2-driver">Inside the Nav2 driver</h3>
+<p><code>/drivers/nav/cmd_vel</code> is the end of a chain. Stock Nav2 is the default for each step, and
+the only choice on the car; ours run beside it in the simulator until they win
+(<a href="switches.html">Switches</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Default</th>
+<th>Beside it (a switch)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Which roads</td>
+<td>none: a goal on the map</td>
+<td>street routes (Valhalla) or the campus's road graph, <code>aav_routes</code></td>
+</tr>
+<tr>
+<td>The rules: slow, stop, wait</td>
+<td>none</td>
+<td>the behaviour planner, <code>aav_behaviour</code> (<code>behaviour:=true</code>): a speed cap on Nav2 (<a href="stopping.html">Stopping</a>)</td>
+</tr>
+<tr>
+<td>Plan, follow, replan, recover</td>
+<td>Nav2's bt_navigator</td>
+<td><code>aav_navigator</code> (<code>navigator:=own</code>)</td>
+</tr>
+<tr>
+<td>Where may I go</td>
+<td>Nav2's costmaps</td>
+<td><code>aav_costmap</code> (<code>costmap:=own</code>)</td>
+</tr>
+<tr>
+<td>The path</td>
+<td>Nav2's State Lattice (since 1 Nov)</td>
+<td>Hybrid-A* (forward only), <code>aav_planner</code> (<code>planner:=own</code>), the diffusion planner (<code>planner:=diffusion</code>)</td>
+</tr>
+<tr>
+<td>Steer along it</td>
+<td>Nav2's MPPI</td>
+<td>Pure Pursuit (<code>controller:=rpp</code>); ours: <code>aav_track</code> and <code>aav_mppi_lag</code> (<code>tracker:=</code>)</td>
+</tr>
+<tr>
+<td>Smooth the command</td>
+<td>Nav2's velocity smoother</td>
+<td><code>aav_smoother</code> (<code>smoother:=own</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>How these become nine levels with one switch each is a design, <strong>proposed, not built</strong>:
+<a href="../designs/2026-11-13_one-shape.md">one shape</a>, <a href="../designs/2026-11-14_the-whole-car.md">the whole car</a>.</p>
 </section>
 <section class="card"><h2 id="4-ego-the-virtual-car">4. ego: the virtual car</h2>
 <p>ego is the only node that knows the car is a car. Fifty times a second it turns <code>/control/cmd_vel</code>
@@ -271,6 +334,10 @@ into <code>/ego/actuator_cmd</code>: an <code>AckermannDriveStamped</code> with 
 <td>Timeout</td>
 <td>no command for 0.3 s: brake to a stop</td>
 </tr>
+<tr>
+<td>The car's lag (7 Nov)</td>
+<td>in a simulator, asks a little early for the actuators' lag (<code>lag_lead</code>); publishes where the car will be for the next 2 s (<code>/ego/trace</code>) and where it would stop (<code>/ego/stop_point</code>) (<a href="car-model.html">Car model</a>)</td>
+</tr>
 </tbody>
 </table></div>
 </section>
@@ -295,7 +362,7 @@ files hand them to every part that needs them.</p>
 </tr>
 <tr>
 <td>Nav2</td>
-<td>the footprint, and the tightest turn: wheelbase ÷ tan(max steer) = 2.87 m</td>
+<td>the footprint, and the tightest turn: wheelbase ÷ tan(max steer) = 2.86 m</td>
 </tr>
 <tr>
 <td><code>turtlesim_adapter</code>, <code>gazebo_adapter</code></td>
@@ -305,9 +372,13 @@ files hand them to every part that needs them.</p>
 <td><code>aav_spine</code>, <code>aav_legacy</code></td>
 <td>the wheelbase, track and wheel size</td>
 </tr>
+<tr>
+<td>The car model (<code>car_model.py</code>, and its Rust twin)</td>
+<td>the actuators' lags and dead times, the mass: shared by ego, the simulators and the lag-aware followers</td>
+</tr>
 </tbody>
 </table></div>
-<p>Most of the numbers are still guesses: see <a href="car_measurements.html">Car numbers</a>.
+<p>The wheelbase and track are measured (1 Nov); most other numbers are still guesses: see <a href="car_measurements.html">Car numbers</a>.
 The same numbers make the car's linear model (transfer functions, state space, the
 margins with the delays): <a href="vehicle-model.html">The car as a linear model</a>.</p>
 </section>
@@ -337,9 +408,14 @@ margins with the delays): <a href="vehicle-model.html">The car as a linear model
 <td>the stock turtlesim, steered with the bicycle model</td>
 </tr>
 <tr>
-<td>Gazebo</td>
+<td>Our own simulator (<code>pixi run sim</code>, the default since 8 Nov)</td>
+<td><code>aav_simulator</code>, <code>aav_sim_cameras</code></td>
+<td>Rust: the worlds, the car, lidar, radar, IMU, GPS, wheels and cameras, on the real car's topics (<a href="own-simulator.html">page</a>)</td>
+</tr>
+<tr>
+<td>Gazebo (<code>simulator:=gazebo</code>)</td>
 <td><code>aav_gazebo</code></td>
-<td>a simulated car with an IMU and GPS, on the real car's topics</td>
+<td>the same car and sensors; for computers with no GPU</td>
 </tr>
 <tr>
 <td>CARLA</td>
@@ -431,11 +507,22 @@ the data comes from. See <a href="sources-and-targets.html">Sources and targets<
 <td>radar or lidar points in the stop zone just ahead; or the radar or lidar goes quiet for 1 s</td>
 </tr>
 <tr>
+<td>The stop-sign lock (<code>aav_detector</code>'s watcher)</td>
+<td>a stop sign is close: a 4 s stop, then time to drive past</td>
+</tr>
+<tr>
+<td>The stop hold (<code>aav_safety</code>)</td>
+<td>collision_monitor stopped the car: held until the zone stays clear for 1 s</td>
+</tr>
+<tr>
 <td>The sensor watchdog (<code>aav_safety</code>)</td>
 <td>the wheels, the IMU, the GPS or an EKF go quiet, send NaN or freeze; the GPS jumps; the wheels disagree with the IMU or the GPS; the HUD's screen freezes or dies (its <a href="hud.html#the-heartbeat">heartbeat</a>, on the car); a front camera's stream goes quiet (its detections, on the car); the watchdog itself goes quiet (fail-safe: twist_mux's lock times out). A twist_mux lock, shown on the HUD and the map window (<a href="simulation.html#sensor-failures-on-purpose">simulation</a>)</td>
 </tr>
 </tbody>
 </table></div>
+<p>The <strong>geofence</strong> (<code>aav_safety</code>, 29 Oct) holds every program, not only Nav2: before the
+car's stopping distance reaches the fence, or when the position can't be trusted. People
+still drive (<a href="geofence.html">Geofence</a>).</p>
 <div class="admonition warning">
 <p class="admonition-title">Today's car has no layer 5</p>
 <p>The 2025-26 ESP32 firmware has no timeout. If the bridge dies, the last throttle stays
@@ -447,7 +534,7 @@ tests drive.</p>
 </section>
 <section class="card"><h2 id="8-the-real-graph-three-ways">8. The real graph, three ways</h2>
 <p>The same layers, as they really run: <code>pixi run tools/ros.sh python3 tools/graph_picture.py</code> saved each one from a live
-profile on Ben's Mac (saved 20 Oct, before the output mux). Read them left to right. The middle stays the same in all
+profile on Ben's Mac (saved 20 Oct: before the output mux, the trials and our own simulator, so today's graphs have more nodes). Read them left to right. The middle stays the same in all
 three; only the left edge (where the data comes from) and the right edge (who plays the
 car) change.</p>
 <div class="table-wrap"><table>
@@ -470,7 +557,7 @@ car) change.</p>
 <td>the stand-ins on the left (<code>mock_*</code>, <code>spine_sim</code>); <code>/vehicle/bench/truth</code> feeding every mock; <code>spine_bridge</code> and <code>spine_sim</code> talking over <code>/can/tx</code>, <code>/can/rx</code></td>
 </tr>
 <tr>
-<td><code>pixi run sim</code> (empty world)</td>
+<td><code>pixi run sim simulator:=gazebo</code> (empty world)</td>
 <td>19, 38</td>
 <td>no mocks: <code>gz_bridge</code> brings in <code>/gazebo/imu</code> and <code>/gazebo/navsat</code>, and <code>gazebo_imu</code> and <code>gazebo_gps</code> turn them into <code>/sensors/...</code></td>
 </tr>

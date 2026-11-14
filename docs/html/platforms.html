@@ -7,7 +7,7 @@
 <!-- Generated from docs/platforms.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Platforms: Ubuntu, the car&#x27;s computers, networking</h1>
-<div class="meta">10 min read · 7 sections</div></header>
+<div class="meta">11 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -114,8 +114,11 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#which-computer-gets-jazzy-how">Which computer gets Jazzy how</a><a href="#ubuntu-2404-install-jazzy">Ubuntu 24.04: install Jazzy</a><a href="#ubuntu-build-this-workspace">Ubuntu: build this workspace</a><a href="#networking-many-computers-one-ros-graph">Networking: many computers, one ROS graph</a><a href="#on-the-car-what-runs-where">On the car: what runs where</a><a href="#try-jazzy-on-the-car-before-the-reflash">Try Jazzy on the car before the reflash</a><a href="#moving-the-orin-to-jetpack-72">Moving the Orin to JetPack 7.2</a></nav>
-<div class="lead"><p>Every computer runs ROS 2 Jazzy. On the car's computers that means Ubuntu 24.04 with the
-official packages. On a Mac or any other Linux, use Pixi: see <a href="run.html">Run it</a>.</p></div>
+<div class="lead"><p>Every computer runs ROS 2 Jazzy. On the car's computers the target is Ubuntu 24.04 with
+the official packages. On a Mac or any other Linux, use Pixi: see <a href="run.html">Run it</a>.</p>
+<p><strong>Today (13 Nov):</strong> the car's computers are still on Ubuntu 22.04 (the Orin: JetPack 6)
+with the 2025-26 Humble software (21 Oct and 6 Nov audits). Our Jazzy goes on beside it
+from the car kit, one computer at a time: <a href="rollout.html">Rolling out</a>.</p></div>
 <section class="card"><h2 id="which-computer-gets-jazzy-how">Which computer gets Jazzy how</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -128,12 +131,12 @@ official packages. On a Mac or any other Linux, use Pixi: see <a href="run.html"
 <tbody>
 <tr>
 <td>Jetson AGX Orin</td>
-<td>JetPack 7.2 (Ubuntu 24.04)</td>
-<td>apt. JetPack 6 is Ubuntu 22.04, so reflash first, after a backup. To try it before then: Pixi, below.</td>
+<td>JetPack 7.2 (Ubuntu 24.04): the target. Today JetPack 6</td>
+<td>apt. JetPack 6 is Ubuntu 22.04, so reflash first, after a backup (not yet done). Before then: Pixi, below.</td>
 </tr>
 <tr>
 <td>Raspberry Pi 4 or 5</td>
-<td>Ubuntu 24.04 Server (arm64)</td>
+<td>Ubuntu 24.04 Server (arm64): the target. Today Ubuntu 22.04; the camera Pis stay on Pi OS, with no ROS</td>
 <td>apt; or Pixi on today's OS, below</td>
 </tr>
 <tr>
@@ -247,11 +250,19 @@ the ESP32, and the CAN bus goes to the Orin with the wheel sensors on it
 <tbody>
 <tr>
 <td><code>orin.yaml</code></td>
-<td>description, mux, ego, scripted, drive_to_point, the IMU and GPS drivers, the roof lidar (Velodyne), localization, Nav2, Foxglove; the two front camera streams (<code>camera_stream</code>, RF-DETR inside each) and the stop-sign watcher; the CAN bus (<code>spine_bridge role:=sensors</code>: the wheels)</td>
+<td>description, mux, ego, scripted, drive_to_point, the roof lidar (Velodyne), localization, Nav2, Foxglove; the two front camera streams (<code>camera_stream</code>, RF-DETR inside each) and the stop-sign watcher; the CAN bus (<code>spine_bridge role:=sensors</code>: the wheels)</td>
 </tr>
 <tr>
 <td><code>motor_pi.yaml</code></td>
 <td><code>legacy_uart_bridge</code>: the ESP32 is wired to it. The 2025-26 UDP encoder (<code>encoder_udp</code>) is off: the wheels are on CAN now</td>
+</tr>
+<tr>
+<td><code>motor_pi_alone.yaml</code></td>
+<td>the Motor Pi without the Orin, for the stands: mux, ego, the stop-sign watcher, the joystick, <code>legacy_uart_bridge</code>. Never beside the Orin's stack (<a href="rollout.html">Rolling out</a>)</td>
+</tr>
+<tr>
+<td><code>localization.yaml</code></td>
+<td>the IMU and GPS drivers only, on the localization Pi they are plugged into; the Orin does the maths</td>
 </tr>
 <tr>
 <td><code>laptop.yaml</code></td>
@@ -328,6 +339,10 @@ hardware: the cameras (Q22), the radar, or which USB port a device is on.</p>
 <td>the radar's clustering</td>
 </tr>
 <tr>
+<td><code>lane</code></td>
+<td>lane keeping with the camera; off in every car machine file</td>
+</tr>
+<tr>
 <td><code>camera_obstacles</code></td>
 <td>the detectors' boxes as points on the road, for Nav2's costmap (<a href="costmaps.html">Costmaps</a>)</td>
 </tr>
@@ -387,8 +402,11 @@ skipped with a warning, and the rest starts.</p>
 </section>
 <section class="card"><h2 id="try-jazzy-on-the-car-before-the-reflash">Try Jazzy on the car before the reflash</h2>
 <p>Pixi also runs on the car's ARM computers, on the Ubuntu 22.04 they have now. So the
-team can try this stack on the car first, and reflash later. It resolves, but is
-untested on the car.</p>
+team can try this stack on the car first, and reflash later. CI installs the kit offline
+on Ubuntu 22.04 ARM (the job <code>car-kit-22.04</code>). On the car: on 13 Nov the car drove with
+only the localization update installed; the full suite isn't on it yet
+(<a href="../history/messages-2026-11-13.md">Ben's messages</a>). Which steps ran isn't written down;
+on the Orin and the Motor Pi it is untested.</p>
 <div class="admonition note">
 <p class="admonition-title">No internet on the car? Use the USB kit</p>
 <p><code>pixi run car-kit</code> on a Mac makes a 1.8 GB folder that installs all of this offline,

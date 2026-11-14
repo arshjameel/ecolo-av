@@ -128,8 +128,8 @@ is the procedure, ready for the car day. It uses ROS's stock calibrator,
 </ol>
 </div></div>
 <section class="card"><h2 id="the-picture">The picture</h2>
-<pre class="highlight"><code class="language-text"> camera Pi                     your Mac (or the Orin with its screen)
- ─────────                     ──────────────────────────────────────
+<pre class="highlight"><code class="language-text"> camera Pi                     your Mac (not the Orin: no graphics there)
+ ─────────                     ──────────────────────────────────────────
  MediaMTX ──RTSP H.264──►  camera_stream (no detector, no undistortion)
  :8554/front_left                │ /sensors/camera/front_left/image_raw
                                  ▼   (a private ROS domain: this computer only)

@@ -7,7 +7,7 @@
 <!-- Generated from docs/status.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Status: what works and what doesn&#x27;t yet</h1>
-<div class="meta">20 min read · 4 sections</div></header>
+<div class="meta">32 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -113,13 +113,70 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#each-box-in-the-picture">Each box in the picture</a><a href="#builds-and-tests">Builds and tests</a><a href="#is-it-all-on-jazzy">Is it all on Jazzy?</a><a href="#next">Next</a></nav>
-<div class="lead"><p>Where things stand on 25 October 2026. "Works" means it ran under ROS 2
-Jazzy through Pixi: on oirp-spss (Linux), and since 10 October on Ben's Mac too. "On the
-bench" means <a href="bench.html">Bench mode</a>: the car's own software, with stand-ins for the
-hardware. "Untested" means the
-code and its config exist, but it hasn't run yet. The plan and the work left are in
-<a href="work.html">Work</a>.</p></div>
+<nav class="toc"><span>On this page:</span><a href="#on-the-car">On the car</a><a href="#each-box-in-the-picture">Each box in the picture</a><a href="#added-since-25-october">Added since 25 October</a><a href="#builds-and-tests">Builds and tests</a><a href="#is-it-all-on-jazzy">Is it all on Jazzy?</a><a href="#next">Next</a></nav>
+<div class="lead"><p>Where things stand on 13 November 2026. Each row carries the date of its last run: a
+row dated October hasn't been run again unless it says so.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Word</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"Works"</td>
+<td>it ran under ROS 2 Jazzy through Pixi: on oirp-spss (Linux), and since 10 October on Ben's Mac too</td>
+</tr>
+<tr>
+<td>"On the bench"</td>
+<td><a href="bench.html">Bench mode</a>: the car's own software, with stand-ins for the hardware</td>
+</tr>
+<tr>
+<td>"In our simulator"</td>
+<td><code>pixi run sim</code>, the default since 8 Nov (<a href="own-simulator.html">Our own simulator</a>)</td>
+</tr>
+<tr>
+<td>"In Gazebo"</td>
+<td>every <code>sim</code> run before 8 Nov; since then <code>simulator:=gazebo</code></td>
+</tr>
+<tr>
+<td>"Untested"</td>
+<td>the code and its config exist, but it hasn't run yet</td>
+</tr>
+</tbody>
+</table></div>
+<p>The work left is in <code>TODO.md</code> and <a href="plan.html">The plan</a>.</p></div>
+<section class="card"><h2 id="on-the-car">On the car</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>When</th>
+<th>What happened</th>
+<th>Record</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>16, 21 Oct</td>
+<td>two read-only audits: every computer, port and connection</td>
+<td><code>docs/history/audit-2026-10-16-car.md</code>, <code>audit-2026-10-21-car.md</code></td>
+</tr>
+<tr>
+<td>6 Nov</td>
+<td>"drive as is", nothing of ours flashed or installed: the car didn't move (a fuse and a circuit board, Ben), then moved forward</td>
+<td><code>docs/history/audit-2026-11-06-car.md</code></td>
+</tr>
+<tr>
+<td>13 Nov</td>
+<td>the car drove "and stopped well" (Ben), with <strong>only the localization update installed</strong>. The full suite isn't on the car yet</td>
+<td><code>docs/history/messages-2026-11-13.md</code>: no recording, numbers or audit page in the repo yet</td>
+</tr>
+</tbody>
+</table></div>
+<p>So every row below is <span class="badge b-untested">untested</span> on the car unless it says otherwise. What goes on the
+car, in what order: <a href="rollout.html">Rolling out</a>.</p>
+</section>
 <section class="card"><h2 id="each-box-in-the-picture">Each box in the picture</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -158,7 +215,7 @@ code and its config exist, but it hasn't run yet. The plan and the work left are
 <tr>
 <td>Car model</td>
 <td><code>aav_description</code></td>
-<td><span class="badge b-works">works</span> numbers are guesses</td>
+<td><span class="badge b-works">works</span> the wheelbase (1.561 m) and the track are measured (Betsi, 1 Nov); the steering limit, the mass and the actuators are still guesses (<a href="car_measurements.html">Car numbers</a>)</td>
 </tr>
 <tr>
 <td><code>ekf_local</code></td>
@@ -198,7 +255,7 @@ code and its config exist, but it hasn't run yet. The plan and the work left are
 <tr>
 <td>Nav2</td>
 <td><code>aav_navigation</code></td>
-<td><span class="badge b-works">works</span> in Gazebo: goals of 8 m and 9.5 m reached; on the bench, 40 m past a stop sign. Reversing (<code>reversing:=true</code>): on in Gazebo and on the bench; on the car only with <code>reversing:=true</code> (off by default since 26 Oct: the wheels can't tell direction yet, H5), where the lidar watches behind it, with a stop zone behind the rear bumper (<span class="badge b-works">works</span> in Gazebo: <code>sim-check --rear-obstacle</code> stopped 0.75 m short of a post); its settings are tested; <span class="badge b-works">works</span> in Gazebo, 15 Oct: a goal 5 m behind the car succeeded twice, backing straight up, ego's command never past -0.5 m/s</td>
+<td><span class="badge b-works">works</span> in Gazebo: goals of 8 m and 9.5 m reached; on the bench, 40 m past a stop sign. Reversing (<code>reversing:=true</code>): on in the simulators and on the bench; on the car by default again since 1 Nov (Ben; off 26 Oct-1 Nov; until the wheels tell direction, H5, the speed's sign is the last command's), where the lidar watches behind it, with a stop zone behind the rear bumper (<span class="badge b-works">works</span> in Gazebo: <code>sim-check --rear-obstacle</code> stopped 0.75 m short of a post); its settings are tested; <span class="badge b-works">works</span> in Gazebo, 15 Oct: a goal 5 m behind the car succeeded twice, backing straight up, ego's command never past -0.5 m/s</td>
 </tr>
 <tr>
 <td>Path followers (22 Oct)</td>
@@ -238,7 +295,7 @@ code and its config exist, but it hasn't run yet. The plan and the work left are
 <tr>
 <td>Gazebo</td>
 <td><code>aav_gazebo</code></td>
-<td><span class="badge b-works">works</span> headless on Linux and a Mac; its window on a Mac, with the car driving (10 Oct)</td>
+<td><span class="badge b-works">works</span> headless on Linux and a Mac; its window on a Mac, with the car driving (10 Oct). Since 8 Nov not the default: <code>simulator:=gazebo</code>, for computers with no GPU and the nightly CI job</td>
 </tr>
 <tr>
 <td>Gazebo's road world</td>
@@ -283,7 +340,7 @@ code and its config exist, but it hasn't run yet. The plan and the work left are
 <tr>
 <td>Spine firmware logic</td>
 <td><code>firmware/spine/crates/spine-core</code></td>
-<td><span class="badge b-works">works</span> 84 tests, on the bench, and in Gazebo (<code>spine:=true</code>)</td>
+<td><span class="badge b-works">works</span> 143 tests (counted 13 Nov; 84 on 25 Oct), on the bench, and in Gazebo (<code>spine:=true</code>). Since 27 Oct with Arsh's state machine, boot self-test and hardware test mode; since 7 Nov his stop rules (T3.6)</td>
 </tr>
 <tr>
 <td>Wheel node logic (15 Oct)</td>
@@ -293,12 +350,12 @@ code and its config exist, but it hasn't run yet. The plan and the work left are
 <tr>
 <td>Spine device drivers and glue</td>
 <td><code>jrk-g2</code>, <code>ad5311</code>, <code>pca9555</code>, <code>ibus</code>, <code>mcp2515</code>, <code>legacy-link</code>, <code>spine-board</code></td>
-<td><span class="badge b-works">works</span> about 240 tests (<code>spine-board</code> 79), against mocks; <code>legacy-link</code> also against the 2025-26 C++ itself</td>
+<td><span class="badge b-works">works</span> about 240 tests on 25 Oct (<code>spine-board</code> 119 on 13 Nov, was 79), against mocks; <code>legacy-link</code> also against the 2025-26 C++ itself</td>
 </tr>
 <tr>
 <td>ESP32 board program (Rust)</td>
 <td><code>firmware/spine/boards/esp32-umod</code></td>
-<td><span class="badge b-untested">untested</span> builds with Espressif's Rust (<code>pixi run esp tools</code>), both links; never flashed. Merged 15 Oct; the C++ stays on the car until it is proven. In QEMU (24 Oct): brakes 111-120 ms after the Motor Pi's frames stop, and latches (<code>pixi run esp qemu-check</code>). <a href="esp32-bench.html">First flash on the bench</a></td>
+<td><span class="badge b-untested">untested</span> builds with Espressif's Rust (<code>pixi run esp tools</code>), both links; never flashed. Merged 15 Oct; the C++ stays on the car until it is proven. In QEMU (24 Oct): brakes 111-120 ms after the Motor Pi's frames stop, and latches (<code>pixi run esp qemu-check</code>); again 3 Nov: 112-119 ms, 6 of 6 cycles. Since 7 Nov: status lines, <code>esp first-check</code> and <code>esp walk</code> for the first flash (built, <span class="badge b-untested">untested</span> on a board). <a href="esp32-bench.html">First flash on the bench</a></td>
 </tr>
 <tr>
 <td>Spine board program</td>
@@ -418,6 +475,216 @@ code and its config exist, but it hasn't run yet. The plan and the work left are
 </tbody>
 </table></div>
 </section>
+<section class="card"><h2 id="added-since-25-october">Added since 25 October</h2>
+<p>One row per package or feature; the numbers and how they were measured are on the linked
+page. All of these are trials or sim-only unless the row says "default".</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Box</th>
+<th>Implemented by</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Localization</strong></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>NDT on a saved lidar map (29 Oct)</td>
+<td><code>aav_ndt</code> (Rust), <code>ndt:=true</code>; into the global EKF with <code>ndt_ekf:=true</code></td>
+<td><span class="badge b-works">works</span> in Gazebo: 1-3 cm off on the lot tour (29 Oct); the EKF 17 → 1.6 cm with it (30 Oct). Off: it needs the lot's map (<code>pixi run ndt-map drive</code>, not in git). <span class="badge b-untested">untested</span> on a real lot (<a href="trials.html">Trials</a>)</td>
+</tr>
+<tr>
+<td>AMCL (29 Oct)</td>
+<td>stock <code>nav2_amcl</code>, <code>amcl:=true</code></td>
+<td><span class="badge b-works">works</span> in Gazebo, 29 Oct: 6-11 cm off once tuned. Scored only, never steers</td>
+</tr>
+<tr>
+<td>KISS-ICP lidar odometry (30 Oct)</td>
+<td><code>aav_kiss_icp</code> (stock, MIT), <code>kiss_icp:=true</code>, <code>kiss_ekf:=true</code></td>
+<td><span class="badge b-works">works</span> in Gazebo, 30 Oct, one run: 0.04 m drift per 100 m. Into <code>ekf_local</code> (1 Nov): no clear win yet. Off</td>
+</tr>
+<tr>
+<td>Localization health checks (1 Nov, Betsi)</td>
+<td><code>aav_localization_health</code></td>
+<td><span class="badge b-works">works</span> in its tests; <code>pixi run check</code> prints its line. It only warns. Thresholds tuned in Gazebo only</td>
+</tr>
+<tr>
+<td><strong>Perception</strong></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>The lidar as cubes (30 Oct)</td>
+<td><code>aav_voxels</code>, <code>voxels:=true</code></td>
+<td><span class="badge b-works">works</span> in Gazebo, 30 Oct: stopped 0.44 m before the post. <strong>Open:</strong> 3 Nov, 1 of 3 runs drove 1.30 m into it (TODO 93). Off</td>
+</tr>
+<tr>
+<td>Lane drives, scored (8 Nov)</td>
+<td><code>pixi run measure lane</code></td>
+<td><span class="badge b-works">works</span> in our simulator: Library Road, 171 m at 1.4 m/s, mean error 4 cm. In Gazebo on the campus the lane was lost in 68 % of pictures (not diagnosed) (<a href="perception.html#in-the-simulators-8-nov">Perception</a>)</td>
+</tr>
+<tr>
+<td><strong>Navigation</strong></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>The State Lattice planner: the default (1 Nov)</td>
+<td>Nav2, <code>planner:=lattice</code>; <code>hybrid</code> forward only; <code>smac2d</code>, <code>navfn</code>, <code>theta_star</code> in sim only</td>
+<td><span class="badge b-works">works</span> in Gazebo, 30 Oct, reversing, 3-4 runs: every leg, 184 s a tour (Hybrid-A* 213 s) (<a href="switches.html">Switches</a>)</td>
+</tr>
+<tr>
+<td>Trial path followers (29 Oct)</td>
+<td><code>aav_track</code>, <code>tracker:=pure_pursuit</code>, <code>stanley</code>, <code>lqr</code>, <code>mpc</code>, <code>mpc_full</code>, <code>mpc_lag</code></td>
+<td><span class="badge b-works">works</span> in Gazebo, 29 Oct: pure pursuit, Stanley and MPC 12 of 12 legs. <code>mpc_lag</code> in our simulator, 8 Nov: 6 of 12. Forward only; none reads the costmap</td>
+</tr>
+<tr>
+<td>MPPI that knows the lag (7 Nov)</td>
+<td><code>aav_mppi_lag</code> (Rust), <code>tracker:=mppi_lag</code></td>
+<td><span class="badge b-works">works</span> in our simulator, 8 Nov, 3 runs: 11 of 12 legs (Nav2's MPPI 8). <strong>Open:</strong> overshoots the campus's first goal at 2.5 m/s; twice Nav2's CPU. <span class="badge b-untested">untested</span> on the Orin (<a href="mppi-lag.html">page</a>)</td>
+</tr>
+<tr>
+<td>Our own costmap (8 Nov)</td>
+<td><code>aav_costmap</code> (Rust), <code>costmap:=own</code></td>
+<td><span class="badge b-works">works</span> in our simulator: 100 % of 40,000 cells as Nav2's; the lidar obstacle 3 of 3 (<a href="own-costmap.html">page</a>)</td>
+</tr>
+<tr>
+<td>Our own planner (8 Nov)</td>
+<td><code>aav_planner</code> (Rust), <code>planner:=own</code></td>
+<td><span class="badge b-works">works</span> in our simulator: test lot 12 of 12 legs, as Nav2's lattice. On long campus plans slower: 168-195 ms against 138-151 (TODO 152) (<a href="own-planner.html">page</a>)</td>
+</tr>
+<tr>
+<td>Our own navigator (8 Nov)</td>
+<td><code>aav_navigator</code> (Rust), <code>navigator:=own</code></td>
+<td><span class="badge b-works">works</span> in our simulator, forward only: test lot 7 of 12 legs (Nav2 8); campus 4 of 6 (Nav2 2); <code>sim-check</code> all ours 13 of 13 (<a href="own-navigator.html">page</a>)</td>
+</tr>
+<tr>
+<td>Our own velocity smoother (8 Nov)</td>
+<td><code>aav_smoother</code> (Rust), <code>smoother:=own</code></td>
+<td><span class="badge b-works">works</span> in our simulator, 3 runs: 10 of 12 legs both; ego clipped 0-0.1 % of the steering (Nav2's: 9-15 %) (<a href="own-smoother.html">page</a>)</td>
+</tr>
+<tr>
+<td>Diffusion planner (2 Nov; 0.3: 7-8 Nov)</td>
+<td><code>aav_diffusion_planner</code>, <code>planner:=diffusion</code>; on the car only with <code>diffusion_trial:=true</code>, 0.5 m/s</td>
+<td><span class="badge b-works">works</span> in our simulator, 8 Nov, 3 runs: every leg, 88 % of plans from the model. <span class="badge b-untested">untested</span> on the Orin (TensorRT) and the car</td>
+</tr>
+<tr>
+<td>The behaviour planner (7 Nov)</td>
+<td><code>aav_behaviour</code>, <code>behaviour:=true</code></td>
+<td><span class="badge b-works">works</span> in its tests (every transition). Gazebo, 8 Nov: the obstacle stop 2 of 4 (the other 2 went round); the goal reached. <strong>Open:</strong> it never entered APPROACH for the stop sign (<a href="stopping.html#2-the-behaviour-planner">Stopping</a>)</td>
+</tr>
+<tr>
+<td>Directions on the campus (7 Nov)</td>
+<td><code>aav_routes</code> <code>router:=campus</code>, <code>pixi run campus-route</code></td>
+<td><span class="badge b-works">works</span> without ROS. P4 to the Fieldhouse (453 m), 8 Nov: Nav2's waypoint follower 0 of 2, our navigator 1 of 2 (<a href="routes.html#on-the-campus">Routes</a>)</td>
+</tr>
+<tr>
+<td><strong>Control and safety</strong></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>One car model, ego's lag lead and trace (7 Nov)</td>
+<td><code>aav_description</code> <code>car_model.py</code> and the Rust <code>car-model</code>; <code>aav_ego</code> <code>lag_lead.py</code>, <code>/ego/trace</code>, <code>/ego/stop_point</code></td>
+<td><span class="badge b-works">works</span> in its tests: Python and Rust match the same vectors. The lead is on in simulators only. The lags are guesses until the actuator tests (<a href="car-model.html">Car model</a>)</td>
+</tr>
+<tr>
+<td>One stopping law, and the stop-point check (7 Nov)</td>
+<td><code>aav_description</code> <code>stop_law.py</code>; <code>sim-check --stop-point</code></td>
+<td><span class="badge b-works">works</span> in Gazebo, 8 Nov: stops within 0.25 m of <code>/ego/stop_point</code> at 0.5, 0.75 and 1 m/s (<a href="stopping.html">Stopping</a>)</td>
+</tr>
+<tr>
+<td>The adaptive brake (8 Nov)</td>
+<td><code>aav_description</code> <code>adaptive_brake.py</code>, <code>adaptive_brake:=true</code></td>
+<td><span class="badge b-works">works</span> in our simulator, 5 of 5: with 150 kg aboard, 0.87 m past the empty car's stop without it, 0.21 m with it. Refused with today's ESP32; the brake's limits are placeholders (car day A7)</td>
+</tr>
+<tr>
+<td>Geofence (29 Oct)</td>
+<td><code>aav_safety</code> <code>geofence</code>, a twist_mux lock (51)</td>
+<td><span class="badge b-works">works</span> on the bench, 29 Oct: a scripted drive at 1 m/s stopped 1.06 m after the lock closed, inside a 12 m fence. Not yet run in a simulator with a fence you can reach (<a href="geofence.html">Geofence</a>)</td>
+</tr>
+<tr>
+<td>Stop hold (29 Oct); the no-timeout lock (26 Oct)</td>
+<td><code>aav_safety</code> <code>stop_hold</code> (21); <code>legacy_uart_bridge</code>'s lock (60)</td>
+<td><span class="badge b-works">works</span> in their tests; <code>bench-check --zone-edge</code></td>
+</tr>
+<tr>
+<td>The joystick-alive check (2 Nov)</td>
+<td><code>aav_safety</code> <code>joy_alive</code></td>
+<td><span class="badge b-works">works</span> on the bench, 2 Nov: <code>bench-check</code> 11 of 11. <span class="badge b-untested">untested</span> with the real pad</td>
+</tr>
+<tr>
+<td>The speed loop in the UART bridge (29 Oct)</td>
+<td><code>legacy_uart_bridge</code> <code>speed_loop.mode: pi</code>; <code>sim esp32:=true</code></td>
+<td><span class="badge b-works">works</span> in Gazebo through the 2025-26 firmware's model. Never <code>pi</code> on the car before a driven-wheel speed exists (TODO 101)</td>
+</tr>
+<tr>
+<td><strong>Simulation</strong></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Our own simulator: <strong>the default</strong> since 8 Nov</td>
+<td><code>aav_simulator</code> (Rust) and its cameras, <code>aav_sim_cameras</code> (Bevy; a crate, not a ROS package)</td>
+<td><span class="badge b-works">works</span> on a Mac, 8 Nov: every <code>sim-check</code> leg; <code>--perception</code>, <code>--faults</code> and <code>--drive-to-point-only</code> 3 of 3. Its cameras need a GPU. <strong>Open:</strong> one stop-sign miss in 8 (<a href="own-simulator.html">page</a>)</td>
+</tr>
+<tr>
+<td>The campus world (5-8 Nov)</td>
+<td><code>pixi run campus</code>, <code>world:=campus</code></td>
+<td><span class="badge b-works">works</span> in Gazebo and ours. Not checked against the real campus (<a href="campus.html">Campus</a>)</td>
+</tr>
+<tr>
+<td>Drop-in check (5 Nov)</td>
+<td><code>pixi run drop-in</code></td>
+<td><span class="badge b-works">works</span> in our simulator, 8 Nov: every stream passes, each camera at 10 Hz. Against real sensors: not yet</td>
+</tr>
+<tr>
+<td><strong>Screens and tools</strong></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Hardware panel, with its steering-calibration and graphs pages (29 Oct - 7 Nov)</td>
+<td><code>aav_hud</code> <code>hw_panel</code>, <code>pixi run hw-panel</code></td>
+<td><span class="badge b-works">works</span> beside Gazebo and the bench, and with <code>--demo</code>. <span class="badge b-untested">untested</span> on the car (<a href="hud.html#the-hardware-panel">HUD</a>)</td>
+</tr>
+<tr>
+<td>Debug screen (29 Oct)</td>
+<td><code>aav_hud</code> <code>debug_hud</code>, <code>pixi run demo --debug</code></td>
+<td><span class="badge b-works">works</span> with <code>--demo</code>; the cubes and health panels <span class="badge b-untested">untested</span> live (1 Nov)</td>
+</tr>
+<tr>
+<td>Developer window (5 Nov)</td>
+<td><code>ros/hud/aav_dev_window</code> (Bevy; a crate, not a ROS package), <code>pixi run dev-window</code></td>
+<td><span class="badge b-works">works</span> live on Gazebo, with goals through its gates (5 Nov). Left: the algorithm list, SWAP</td>
+</tr>
+<tr>
+<td>The Drive screen's algorithms table (3 Nov)</td>
+<td><code>aav_run_info</code> -&gt; <code>/system/algorithms</code>; the Lichtblick cockpit</td>
+<td><span class="badge b-works">works</span> live in Gazebo's test lot, 3 Nov. The bench doesn't start it</td>
+</tr>
+<tr>
+<td>Switch picker (29 Oct)</td>
+<td><code>pixi run pick</code></td>
+<td><span class="badge b-works">works</span> 3 Nov: 23 of 23 switches each drove a leg in Gazebo</td>
+</tr>
+<tr>
+<td>Car setup, the rollout, "Know the car" (1-8 Nov)</td>
+<td><code>tools/car_setup.sh &lt;role&gt;</code>, <a href="rollout.html">Rolling out</a>, <a href="know-the-car.html">Know the car</a></td>
+<td><span class="badge b-untested">untested</span> on a car computer</td>
+</tr>
+<tr>
+<td>Radar and battery drivers (ported 9 Oct)</td>
+<td><code>aav_radar_ti</code>, <code>aav_battery_victron</code></td>
+<td><span class="badge b-untested">untested</span> need the devices</td>
+</tr>
+</tbody>
+</table></div>
+</section>
 <section class="card"><h2 id="builds-and-tests">Builds and tests</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -428,12 +695,12 @@ code and its config exist, but it hasn't run yet. The plan and the work left are
 </thead>
 <tbody>
 <tr>
-<td><code>colcon build</code>, all 37 packages, Jazzy</td>
-<td><span class="badge b-works">works</span> on Linux and the Mac (25 Oct)</td>
+<td><code>colcon build</code>, Jazzy</td>
+<td><span class="badge b-works">works</span> on Linux and the Mac: 37 packages on 25 Oct. Today 51 packages (30 Python, 21 CMake, 12 of those Rust), plus two Bevy crates outside colcon</td>
 </tr>
 <tr>
 <td><code>pixi run test</code>: build, tests, lint, <code>colcon test</code></td>
-<td><span class="badge b-works">works</span> 25 Oct: 1110 tests, 0 failures, 4 skipped, 37 packages (after the Flutter HUD's back end went to the archive). CI runs it on Linux (x86_64 and 64-bit ARM) for every push</td>
+<td><span class="badge b-works">works</span> 25 Oct: 1110 tests, 0 failures, 4 skipped, 37 packages. 3 Nov (0.2): 1575 tests, 0 failures. 0.3 has no count written down. CI runs it on Linux (x86_64 and 64-bit ARM) for every pull request and every push to <code>main</code></td>
 </tr>
 <tr>
 <td>Live graph vs <code>docs/interfaces.yaml</code>: turtle, sim, road, replay and bench</td>
@@ -485,13 +752,55 @@ small: clean shutdowns, Nav2 on simulated time, and the simulated GPS noise. The
 are in <code>docs/history/audit-2026-10-10-*.md</code>.</p>
 </section>
 <section class="card"><h2 id="next">Next</h2>
-<ol>
-<li>Join the car's network from the Mac (<code>pixi run doctor</code>), once the car runs Jazzy.</li>
-<li>Pick the team's <code>ROS_DOMAIN_ID</code> and the GPS driver.</li>
-<li>Drive the turtle with the joystick.</li>
-<li>Measure the car, and replace the guesses in <code>vehicle.yaml</code>.</li>
-<li>Work through the car-day sessions in order (<a href="car-day.html">Car day</a>; TODO.md "Ready for the car").</li>
-</ol></section>
+<p>From the top of <code>TODO.md</code> (14 Nov). Two designs are <strong>proposed</strong>, nothing of them built:
+<a href="../designs/2026-11-13_one-shape.md">one shape</a> and
+<a href="../designs/2026-11-14_the-whole-car.md">the whole car</a>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Next</th>
+<th>TODO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Ben's decisions on the two designs (D1-D7, W1-W7)</td>
+<td>147, 153</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Write down the 13 Nov drive: what was installed, a recording, what it showed</td>
+<td>157</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The car's blockers, with the hardware lead: the firmware timeout, a driven-wheel speed, the steering's centre, the brake's limits</td>
+<td>158</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The rest of the suite onto the car, in <a href="rollout.html">Rolling out</a>'s order: the ESP32 and the Motor Pi first</td>
+<td><a href="car-day.html">Car day</a></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Measure the car: the "Know the car" tests replace the guesses in <code>vehicle.yaml</code></td>
+<td>60, 61</td>
+</tr>
+<tr>
+<td>6</td>
+<td>The wiggle under Nav2 in the simulator, tested alone</td>
+<td>149</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Our planner faster; MPPI with lag's overshoot and CPU</td>
+<td>152</td>
+</tr>
+</tbody>
+</table></div></section>
 <nav class="prevnext"><a class="prev" href="learn-can.html"><small>Previous</small>← Learn: CAN</a>
 <a class="next" href="howto-driver.html"><small>Next</small>Build a driver →</a></nav>
 </main>

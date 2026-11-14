@@ -273,7 +273,7 @@ for the GPS A-to-B demo (tests.md 5.2). Use <strong>2</strong> where there are o
 <tbody>
 <tr>
 <td>Speed</td>
-<td>speed up gently (0.5 m/s²), hold the cruise speed, then slow down <strong>by the distance left</strong>: v = √(2·a·d), with a = <strong>half of <code>max_brake</code></strong></td>
+<td>speed up gently (0.5 m/s²), hold the cruise speed, then slow down <strong>by the distance left</strong>: v = √(2·a·(d − lead·v)), with a = <strong>half of <code>max_brake</code></strong>. <code>stop_law:=hybrid</code> picks the stopping law instead (a trial: <a href="stopping.html">How the car stops</a>)</td>
 <td><code>approach.py</code></td>
 </tr>
 <tr>
@@ -380,7 +380,7 @@ wherever it is, so the stop doesn't land on B. <code>approach.py</code> explains
 </tbody>
 </table></div>
 <h3 id="run-it">Run it</h3>
-<pre class="highlight"><code class="language-bash">pixi run sim                                               # Gazebo, in one terminal
+<pre class="highlight"><code class="language-bash">pixi run sim                                               # the simulator, in one terminal
 pixi run drive-to-point --sim --ahead 20                   # 20 m ahead of the car
 pixi run drive-to-point --sim --ahead 30 --left 10         # ... and 10 m to its left
 pixi run drive-to-point --sim --x 30 --y 5                 # a map point (x east, y north, metres)

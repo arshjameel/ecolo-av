@@ -7,7 +7,7 @@
 <!-- Generated from docs/routes.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Street routes (PLAN S8)</h1>
-<div class="meta">13 min read · 8 sections</div></header>
+<div class="meta">14 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -416,7 +416,7 @@ end. Gazebo's map lets Nav2 go either way on a one-way road; the route doesn't.<
 </tr>
 <tr>
 <td>Gazebo, <code>world:=campus</code>, headless: P4 to <strong>Fieldhouse</strong> (route 453 m, 18 waypoints)</td>
-<td><strong>did not arrive</strong> (below)</td>
+<td><strong>did not arrive</strong> (below). With our navigator, 8 Nov: 1 of 2</td>
 </tr>
 </tbody>
 </table></div>
@@ -462,7 +462,7 @@ stop on the corner already turned. Our car can't turn that tightly there.</p>
 </tr>
 <tr>
 <td>or send one goal through all the points (Nav2's <code>navigate_through_poses</code>)</td>
-<td>no stop at each waypoint at all</td>
+<td>no stop at each waypoint at all. <strong>Our navigator does this</strong> (<code>navigator:=own</code>, a trial): 8 Nov, our simulator, 2 runs: it arrived 1 of 2 (263 s), Nav2 0 of 2 (<a href="own-navigator.html#the-campus-25-ms-2-runs">scores</a>)</td>
 </tr>
 <tr>
 <td><code>stop:</code> points for the places, measured on the day</td>

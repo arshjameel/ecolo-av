@@ -7,7 +7,7 @@
 <!-- Generated from docs/glossary.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Glossary</h1>
-<div class="meta">14 min read · 7 sections</div></header>
+<div class="meta">17 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -192,6 +192,11 @@
 <td>TF</td>
 </tr>
 <tr>
+<td>behaviour planner</td>
+<td>a trial (<code>behaviour:=true</code>, off by default): decides DRIVE, APPROACH, STOPPED, WAIT, GO or ASK, and caps Nav2's speed for a stop sign, an obstacle, the fence and the goal</td>
+<td><code>ros/drivers/aav_behaviour</code>, <a href="stopping.html">How the car stops</a></td>
+</tr>
+<tr>
 <td>bench mode</td>
 <td>the car's real software on one computer, with pretend boards and sensors</td>
 <td><code>pixi run bench</code>, <a href="bench.html">Bench mode</a></td>
@@ -280,6 +285,11 @@
 </thead>
 <tbody>
 <tr>
+<td>cubes</td>
+<td>our word for voxels: see voxel</td>
+<td><code>voxels:=true</code></td>
+</tr>
+<tr>
 <td>D* Lite</td>
 <td>a path planner that repairs its plan as the map changes</td>
 <td>the 2025-26 planner, now replaced</td>
@@ -308,6 +318,11 @@
 <td>deadman</td>
 <td>a button you must hold to drive; let go and the car stops</td>
 <td>the joystick's trigger</td>
+</tr>
+<tr>
+<td>diffusion planner</td>
+<td>a trial planner (<code>planner:=diffusion</code>): a small model draws paths, a guard checks them, and the lattice's path is used when none passes</td>
+<td><code>ros/drivers/aav_diffusion_planner</code>, <a href="trials.html">Trials</a></td>
 </tr>
 <tr>
 <td>DIN rail</td>
@@ -396,8 +411,8 @@
 </tr>
 <tr>
 <td>Gazebo</td>
-<td>a 3D physics simulator</td>
-<td><code>pixi run sim</code></td>
+<td>a 3D physics simulator. Ours until 8 Nov; since then <code>pixi run sim</code> starts our own simulator, and Gazebo is <code>simulator:=gazebo</code></td>
+<td><code>pixi run sim simulator:=gazebo</code></td>
 </tr>
 <tr>
 <td>GNSS</td>
@@ -488,9 +503,19 @@
 <td><a href="can-plan.html">CAN plan</a></td>
 </tr>
 <tr>
+<td>KISS-ICP</td>
+<td>lidar odometry: how far the car moved, from matching each lidar cloud to the last ones. Open source (MIT); a trial here (<code>kiss_icp:=true</code>)</td>
+<td><code>ros/localization/aav_kiss_icp</code>, <a href="trials.html">Trials</a></td>
+</tr>
+<tr>
 <td>KTC-100</td>
 <td>a linear position sensor (a potentiometer)</td>
 <td>the steering, new (KEFC)</td>
+</tr>
+<tr>
+<td>lattice (State Lattice)</td>
+<td>Nav2's planner that joins short pre-computed curves the car can drive, reversing too. Our default planner since 1 Nov (<code>planner:=lattice</code>); Hybrid-A* if the car may not reverse</td>
+<td><code>nav2.yaml</code>, <a href="controllers.html#planners">Controllers</a></td>
 </tr>
 <tr>
 <td>launch file</td>
@@ -548,8 +573,13 @@
 <td>the 2025-26 path</td>
 </tr>
 <tr>
+<td>MPC</td>
+<td>model-predictive control: each tick, solve for the best next few seconds of steering and speed on a model of the car, then use only the first step. Trials here (<code>tracker:=mpc</code>, <code>mpc_lag</code>)</td>
+<td><code>ros/drivers/aav_track</code>, <a href="trials.html">Trials</a></td>
+</tr>
+<tr>
 <td>MPPI</td>
-<td>Model-predictive path integral: Nav2's controller on our car (since 22 Oct). It tries thousands of futures through a model of the car. <code>controller:=rpp</code> for Regulated Pure Pursuit instead</td>
+<td>Model-predictive path integral: Nav2's controller on our car (since 22 Oct). It tries thousands of futures through a model of the car. <code>controller:=rpp</code> for Regulated Pure Pursuit instead. Our own Rust port that knows the actuators' lag is a trial (<code>tracker:=mppi_lag</code>, <a href="mppi-lag.html">its page</a>)</td>
 <td><a href="path-followers.html">path followers</a></td>
 </tr>
 <tr>
@@ -566,6 +596,11 @@
 <td><code>navsat_transform</code></td>
 <td>turns GPS fixes into map x and y, and back</td>
 <td><code>/localization/gps/odom</code></td>
+</tr>
+<tr>
+<td>NDT</td>
+<td>Normal Distributions Transform: finds where the car is by matching the lidar's cloud to a saved lidar map. Our own, in Rust; a trial (<code>ndt:=true</code>), never TF</td>
+<td><code>ros/localization/aav_ndt</code>, <a href="../designs/2026-10-29_ndt.md">the design</a></td>
 </tr>
 <tr>
 <td>NMEA</td>
@@ -604,6 +639,11 @@
 <td>open loop</td>
 <td>sending a command with no measurement back</td>
 <td>today's throttle</td>
+</tr>
+<tr>
+<td>our simulator</td>
+<td>our own simulator in Rust, in Gazebo's place: the same worlds and topics; the default since 8 Nov. Its cameras need a GPU</td>
+<td><code>ros/sim/aav_simulator</code>, <a href="own-simulator.html">its page</a></td>
 </tr>
 <tr>
 <td>OSM</td>
@@ -721,8 +761,8 @@
 <td><code>/spine/arm</code>, <code>/fromLL</code></td>
 </tr>
 <tr>
-<td>SmacPlannerHybrid</td>
-<td>Nav2's planner that only plans turns a car can make</td>
+<td>SmacPlannerHybrid (Hybrid-A*)</td>
+<td>Nav2's planner that only plans turns a car can make. The default until 1 Nov; now only for a car that may not reverse (<code>planner:=hybrid</code>): see lattice</td>
 <td><code>nav2.yaml</code></td>
 </tr>
 <tr>
@@ -822,6 +862,11 @@
 <td><code>vehicle.yaml</code></td>
 <td>the only file with the car's measurements</td>
 <td><code>ros/bringup/aav_description/config</code></td>
+</tr>
+<tr>
+<td>voxel</td>
+<td>a small cube of space. The lidar's cloud as 0.25 m cubes for Nav2 is a trial (<code>voxels:=true</code>) beside the flat scan</td>
+<td><code>ros/perception/aav_voxels</code>, <a href="../designs/2026-10-30_voxels.md">the design</a></td>
 </tr>
 <tr>
 <td>W5500</td>

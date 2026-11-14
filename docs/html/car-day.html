@@ -7,7 +7,7 @@
 <!-- Generated from docs/car-day.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Car day: the runbook</h1>
-<div class="meta">76 min read · 32 sections</div></header>
+<div class="meta">79 min read · 33 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -113,7 +113,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-people">The people</a><a href="#logins">Logins</a><a href="#the-machines">The machines</a><a href="#the-order">The order</a><a href="#ready-for-car-day-the-02-checklist">Ready for car day (the 0.2 checklist)</a><a href="#what-to-bring">What to bring</a><a href="#session-0-before-leaving-at-home">A0 · Session 0: before leaving (at home)</a><a href="#day-a-nothing-destroyed">Day A: nothing destroyed</a><a href="#session-1-safety-first">A1 · Session 1: safety first</a><a href="#a2-back-up-every-machine">A2 · Back up every machine</a><a href="#session-2-measure-and-weigh">A3 · Session 2: measure and weigh</a><a href="#session-3-questions-for-the-hardware-lead">A4 · Session 3: questions for the hardware lead</a><a href="#session-4-the-orin-and-the-motor-pi">A5 · Session 4: our stack, on the Orin and the Motor Pi</a><a href="#a6-the-steering-actuators-ends-way-a">A6 · The steering actuator&#x27;s ends, Way A</a><a href="#a7-the-brake-on-stands">A7 · The brake, on stands</a><a href="#a7b-the-motor-pis-uart-ready">A7b · The Motor Pi&#x27;s UART, ready</a><a href="#session-6-the-esp32">A8 · Session 6: the Rust ESP32, on stands</a><a href="#session-9-the-first-drive-on-stands">A9 · Session 9: the keyboard, on stands</a><a href="#a9b-the-joystick-on-stands">A9b · The joystick, on stands</a><a href="#a10-the-ground-at-walking-pace">A10 · The ground, at walking pace</a><a href="#a12-the-diffusion-planners-trial">A12 · The diffusion planner&#x27;s trial (0.3)</a><a href="#any-time-on-day-a-after-a5">Any time on Day A, after A5</a><a href="#session-5-the-camera-pi">Session 5: the camera Pi</a><a href="#session-7-can-read-only">Session 7: CAN, read-only</a><a href="#session-8-foxglove-from-a-laptop">Session 8: Foxglove from a laptop</a><a href="#session-10-what-to-record">Session 10: what to record</a><a href="#day-b-upgrades-and-the-reflash">Day B: upgrades and the reflash</a><a href="#b3-the-orin-its-image-then-the-reflash">B3 · The Orin: its image, then the reflash</a><a href="#b4-the-lab-desktop-stays-frozen">B4 · The lab desktop stays frozen</a><a href="#session-11-the-labs-ubuntu-desktop">Session 11: the lab&#x27;s Ubuntu desktop</a><a href="#before-you-leave-the-car">Before you leave the car</a><a href="#afterwards-at-home">Afterwards, at home</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-people">The people</a><a href="#logins">Logins</a><a href="#the-machines">The machines</a><a href="#the-order">The order</a><a href="#ready-for-car-day-the-02-checklist">Ready for car day (the 0.2 checklist)</a><a href="#what-to-bring">What to bring</a><a href="#session-0-before-leaving-at-home">A0 · Session 0: before leaving (at home)</a><a href="#the-clocks">The clocks, before any recording</a><a href="#day-a-nothing-destroyed">Day A: nothing destroyed</a><a href="#session-1-safety-first">A1 · Session 1: safety first</a><a href="#a2-back-up-every-machine">A2 · Back up every machine</a><a href="#session-2-measure-and-weigh">A3 · Session 2: measure and weigh</a><a href="#session-3-questions-for-the-hardware-lead">A4 · Session 3: questions for the hardware lead</a><a href="#session-4-the-orin-and-the-motor-pi">A5 · Session 4: our stack, on the Orin and the Motor Pi</a><a href="#a6-the-steering-actuators-ends-way-a">A6 · The steering actuator&#x27;s ends, Way A</a><a href="#a7-the-brake-on-stands">A7 · The brake, on stands</a><a href="#a7b-the-motor-pis-uart-ready">A7b · The Motor Pi&#x27;s UART, ready</a><a href="#session-6-the-esp32">A8 · Session 6: the Rust ESP32, on stands</a><a href="#session-9-the-first-drive-on-stands">A9 · Session 9: the keyboard, on stands</a><a href="#a9b-the-joystick-on-stands">A9b · The joystick, on stands</a><a href="#a10-the-ground-at-walking-pace">A10 · The ground, at walking pace</a><a href="#a12-the-diffusion-planners-trial">A12 · The diffusion planner&#x27;s trial (0.3)</a><a href="#any-time-on-day-a-after-a5">Any time on Day A, after A5</a><a href="#session-5-the-camera-pi">Session 5: the camera Pi</a><a href="#session-7-can-read-only">Session 7: CAN, read-only</a><a href="#session-8-foxglove-from-a-laptop">Session 8: Foxglove from a laptop</a><a href="#session-10-what-to-record">Session 10: what to record</a><a href="#day-b-upgrades-and-the-reflash">Day B: upgrades and the reflash</a><a href="#b3-the-orin-its-image-then-the-reflash">B3 · The Orin: its image, then the reflash</a><a href="#b4-the-lab-desktop-stays-frozen">B4 · The lab desktop stays frozen</a><a href="#session-11-the-labs-ubuntu-desktop">Session 11: the lab&#x27;s Ubuntu desktop</a><a href="#before-you-leave-the-car">Before you leave the car</a><a href="#afterwards-at-home">Afterwards, at home</a></nav>
 <div class="lead"><p>Written 24 October 2026, for the team; split into two days on 1 November (Ben: "Split
 it"). This page <strong>owns the order</strong>: <a href="car-setup.html">Car setup</a> only says how to set up
 one computer.</p>
@@ -128,7 +128,53 @@ one computer.</p>
 <li>🔒 = waits on the hardware lead's answer (session 3). Skip it, and go on.</li>
 <li><strong>Secrets:</strong> logins come from the team's password vault. Type them; never paste them into a file, a chat or the repo.</li>
 </ul>
-</blockquote></div>
+</blockquote>
+<div class="admonition note">
+<p class="admonition-title">Where this stands (checked 14 Nov)</p>
+<p>This runbook has <strong>not been run end to end</strong>, and no step here carries a signature.
+What the records say was done on the car:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>When</th>
+<th>What</th>
+<th>Record</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>16, 21 Oct</td>
+<td>read-only audits</td>
+<td><a href="../history/audit-2026-10-16-car.md">16 Oct</a>, <a href="../history/audit-2026-10-21-car.md">21 Oct</a></td>
+</tr>
+<tr>
+<td>6 Nov</td>
+<td>drove the 2025-26 stack as is; nothing flashed (<a href="car-evening.html">Car evening</a>)</td>
+<td><a href="../history/audit-2026-11-06-car.md">6 Nov</a></td>
+</tr>
+<tr>
+<td>9 Nov</td>
+<td>a car day was planned (<a href="rollout.html">Rolling out</a>)</td>
+<td><strong>none in the repo</strong></td>
+</tr>
+<tr>
+<td>by 11 Nov</td>
+<td>our kit on the localization Pi; its first install broke on <code>aav_hud</code> (PR #28)</td>
+<td><a href="../history/audit-2026-11-14-review.md">14 Nov review</a>, section 5</td>
+</tr>
+<tr>
+<td>13 Nov</td>
+<td>the car drove "with only the localization update installed"; the full suite isn't on it</td>
+<td><code>history/messages-2026-11-13.md</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>So A2's backups, A7b, A8 (the Rust ESP32) and Day B are still to do, by the records.
+<strong>Which page when:</strong> this one for a whole day at the car, in order;
+<a href="rollout.html">Rolling out</a> for the short version and for a newer version later;
+<a href="car-setup.html">Car setup</a> for one computer; <a href="car-install.html">Car install</a> for what the
+kit is and how to undo it.</p>
+</div></div>
 <section class="card"><h2 id="the-people">The people</h2>
 <p>Fill this in before the day. Nobody does two jobs at once.</p>
 <div class="table-wrap"><table>
@@ -210,7 +256,8 @@ password:</p>
 </table></div>
 </section>
 <section class="card"><h2 id="the-machines">The machines</h2>
-<p>As the 21 Oct audit found them (<a href="../history/audit-2026-10-21-car.md">audit</a>). Every address
+<p>As the 21 Oct audit found them (<a href="../history/audit-2026-10-21-car.md">audit</a>), with what the
+<a href="../history/audit-2026-11-06-car.md">6 Nov audit</a> added. Every address
 is <code>192.168.1.x</code>. <strong>Role</strong> is the name <code>car_setup.sh</code> uses. Usernames: none are in the
 repo yet: fill them in from the vault.</p>
 <div class="table-wrap"><table>
@@ -232,7 +279,7 @@ repo yet: fill them in from the vault.</p>
 <td><code>orin</code></td>
 <td>☐</td>
 <td><code>aav-jetson</code></td>
-<td>the Velodyne driver (UDP 2368), lidar SLAM, <code>foxglove-bridge</code> (8765). JetPack 6 (R36.4.7, 22.04)</td>
+<td>the Velodyne driver (UDP 2368), lidar SLAM, <code>foxglove-bridge</code> (8765). JetPack 6 (R36.4.7, 22.04). 6 Nov: <code>can0</code> and <code>can1</code> down</td>
 <td>JetPack 7.2 (24.04): a reflash</td>
 </tr>
 <tr>
@@ -241,7 +288,7 @@ repo yet: fill them in from the vault.</p>
 <td><code>motor_pi</code></td>
 <td>☐</td>
 <td><code>aav-cortex</code></td>
-<td><code>aav_serial_bridge</code> on <code>/dev/ttyAMA0</code> (to the ESP32), joystick teleop. Ubuntu 22.04</td>
+<td><code>aav_serial_bridge</code> on <code>/dev/ttyAMA0</code> (to the ESP32), joystick teleop. Ubuntu 22.04. 6 Nov: it does the Motor Pi's job today; the hardware lead still confirms H1</td>
 <td>24.04, only after the Rust ESP32</td>
 </tr>
 <tr>
@@ -250,8 +297,8 @@ repo yet: fill them in from the vault.</p>
 <td><code>localization</code></td>
 <td>☐</td>
 <td><code>aav-localization</code></td>
-<td>the IMU (200 Hz) and GPS (10 Hz) drivers. Ubuntu 22.04</td>
-<td>24.04, only once a machine file runs its IMU and GPS</td>
+<td>the IMU (200 Hz) and GPS (10 Hz) drivers. Ubuntu 22.04. Our kit is on it too (by 11 Nov)</td>
+<td>24.04: its machine file exists now (<code>machines/localization.yaml</code>); not upgraded, by the records</td>
 </tr>
 <tr>
 <td>aav-desktop, <strong>the dash</strong>, Pi 4</td>
@@ -295,7 +342,7 @@ repo yet: fill them in from the vault.</p>
 <td>none</td>
 <td>none</td>
 <td>none</td>
-<td>the 2025-26 C++ firmware: <strong>no command timeout</strong></td>
+<td>the 2025-26 C++ firmware (seen 6 Nov; no record of a flash since): <strong>no command timeout</strong></td>
 <td>the Rust firmware (Day A, A8)</td>
 </tr>
 <tr>
@@ -775,6 +822,35 @@ entry exists (on a laptop without them, the vault holds them).</p>
                         -&gt; session 3
 
 14 OK, 3 missing, 6 to tick by hand.</code></pre>
+</section>
+<section class="card"><h2 id="the-clocks">The clocks, before any recording</h2>
+<p>Bags from two computers only line up if their clocks agree. <code>car_setup.sh</code>'s <code>services</code>
+step installs chrony (the Orin keeps the car's time, the others ask it); until that has
+run on a computer, check by hand.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do, on each computer that records</th>
+<th>You should see</th>
+<th>If not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>date -u</code>, at the same moment as the laptop's</td>
+<td>the same time, to the second</td>
+<td>write the difference on the sheet, with the computer's name</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>chronyc tracking</code> (only where <code>services</code> has run)</td>
+<td><code>Reference ID</code> is the Orin; <code>System time</code> under 0.01 s</td>
+<td><code>car_setup.sh &lt;role&gt; check</code>, its <code>time</code> line; without chrony, step 1's note is the record</td>
+</tr>
+</tbody>
+</table></div>
 </section>
 <section class="card"><h2 id="day-a-nothing-destroyed">Day A: nothing destroyed</h2>
 <p>Every change on Day A undoes from a checked backup: our code goes in <code>~/aav-jazzy</code>, beside
@@ -2777,9 +2853,9 @@ ends the 2025-26 software on that computer, and the backup is the only way back.
 </tr>
 <tr>
 <td>B2d</td>
-<td>LOCALIZATION: <strong>not yet</strong>. <code>car_setup.sh</code> refuses until a machine file runs its IMU and GPS</td>
-<td>that machine file (TODO 75)</td>
-<td></td>
+<td>LOCALIZATION: <code>upgrade</code> (<a href="car-setup.html#step-2-the-ubuntu-2204-pis-to-2404">step 2</a>). Its machine file exists since 8 Nov (<code>machines/localization.yaml</code>), so <code>car_setup.sh</code> no longer refuses</td>
+<td>its card image GOOD; our IMU and GPS drivers seen running from the kit</td>
+<td><code>✍ ________ at __:__</code></td>
 </tr>
 <tr>
 <td>B3</td>

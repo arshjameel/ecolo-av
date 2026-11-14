@@ -7,7 +7,7 @@
 <!-- Generated from docs/sources-and-targets.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Sources and targets: the sensor mux and the output mux</h1>
-<div class="meta">11 min read · 9 sections</div></header>
+<div class="meta">12 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -122,7 +122,8 @@ everything is real. Package <code>aav_io_mux</code>, built 23 Oct.</p>
 <p class="admonition-title">The short version</p>
 <ul>
 <li><strong>Source:</strong> where the sensor data comes from: <code>real</code>, <code>sim</code>, <code>bench</code> or <code>replay</code>.</li>
-<li><strong>Target:</strong> who plays the car: <code>car</code>, <code>gazebo</code>, <code>bench</code>, <code>turtle</code> or <code>carla</code>.</li>
+<li><strong>Target:</strong> who plays the car: <code>car</code>, <code>sim</code> (any simulator: ours or Gazebo), <code>bench</code>,
+  <code>turtle</code> or <code>carla</code>. (<code>stack.launch.py</code> still spells the sim profile <code>target:=gazebo</code>.)</li>
 <li>Every backend reads only its own target's topic, <code>/control/&lt;target&gt;/actuator_cmd</code>.
   Nothing reads <code>/ego/actuator_cmd</code> directly any more.</li>
 <li>The real car's topic carries commands only while <strong>every</strong> source is REAL. One SIM
@@ -266,7 +267,7 @@ gate is shut (Ben, 24 Oct), and says why.</p>
 <td>refused: no word, or quiet for so long</td>
 </tr>
 <tr>
-<td>says <code>OPEN</code> for another target (<code>gazebo</code>, on the car)</td>
+<td>says <code>OPEN</code> for another target (<code>sim</code>, on the car)</td>
 <td>refused: not this bridge's gate</td>
 </tr>
 <tr>
@@ -295,8 +296,8 @@ gate is shut (Ben, 24 Oct), and says why.</p>
 <td><code>OPEN - bench: ...</code></td>
 </tr>
 <tr>
-<td><code>sim</code> (Gazebo, <code>spine:=true</code>)</td>
-<td><code>gazebo</code></td>
+<td><code>sim</code> (the simulator, <code>spine:=true</code>)</td>
+<td><code>sim</code></td>
 <td><code>OPEN - sim: ...</code></td>
 </tr>
 </tbody>
@@ -334,7 +335,7 @@ after 0.2 s. The clear service refuses while anything is still wrong, and says w
 </tr>
 <tr>
 <td><code>gazebo</code></td>
-<td><code>sim.launch.py</code></td>
+<td><code>sim.launch.py</code> (our simulator by default; the mux's target is <code>sim</code>)</td>
 <td>sim</td>
 </tr>
 <tr>

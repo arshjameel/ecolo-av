@@ -7,7 +7,7 @@
 <!-- Generated from docs/tests.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Every test we&#x27;ve talked about</h1>
-<div class="meta">25 min read · 8 sections</div></header>
+<div class="meta">26 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -114,7 +114,7 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#stage-1-the-simulator-gazebo-and-the-turtle">Stage 1: the simulator (Gazebo and the turtle)</a><a href="#stage-2-the-bench">Stage 2: the bench</a><a href="#stage-3-the-car-on-stands-wheels-off-the-ground">Stage 3: the car on stands (wheels off the ground)</a><a href="#stage-4-the-car-in-an-empty-lot">Stage 4: the car in an empty lot</a><a href="#stage-5-the-whole-drive">Stage 5: the whole drive</a><a href="#checks-at-the-car-not-driving">Checks at the car (not driving)</a><a href="#what-the-tests-give-back">What the tests give back</a><a href="#still-to-build-for-these-tests">Still to build for these tests</a></nav>
-<div class="lead"><p>Written 15 October 2026, checked 25 October, for the team: every test from our talks, in one place,
+<div class="lead"><p>Written 15 October 2026, checked 25 October (commands and flags checked again 14 November), for the team: every test from our talks, in one place,
 in the order to run them. Each one says what it proves, how to run it, and when it passes.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
@@ -132,6 +132,12 @@ in the order to run them. Each one says what it proves, how to run it, and when 
   turtle)         real CAN)     ground)              safety driver)</code></pre></div>
 <section class="card"><h2 id="stage-1-the-simulator-gazebo-and-the-turtle">Stage 1: the simulator (Gazebo and the turtle)</h2>
 <p>Nothing real moves. Run these on any laptop.</p>
+<p>Since 8 Nov <code>pixi run sim</code> and <code>pixi run sim-check</code> run <strong>our own simulator</strong> by default
+(<a href="own-simulator.html">its page</a>); add <code>--simulator gazebo</code> (or <code>simulator:=gazebo</code>) for Gazebo,
+and on a computer with no GPU. The results dated before 8 Nov below were in Gazebo. The
+0.3 checks (<code>sim-check --stop-point</code>, <code>--behaviour</code>, <code>--loaded-stop</code>, <code>measure lane</code>) have
+no rows here yet: their results are on <a href="stopping.html">How the car stops</a> and
+<a href="perception.html#in-the-simulators-8-nov">Perception</a>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>

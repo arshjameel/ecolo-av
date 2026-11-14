@@ -7,7 +7,7 @@
 <!-- Generated from docs/car_measurements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Car measurements and the URDF</h1>
-<div class="meta">9 min read · 6 sections</div></header>
+<div class="meta">10 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -113,7 +113,7 @@
 <a class="here" href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#every-value-is-still-a-guess">Every value is still a guess</a><a href="#the-frames">The frames</a><a href="#how-to-measure">How to measure</a><a href="#weight-and-balance">Weight and balance</a><a href="#look-at-it">Look at it</a><a href="#in-gazebo">In Gazebo</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#what-is-measured-and-what-is-still-a-guess">What is measured, and what is still a guess</a><a href="#the-frames">The frames</a><a href="#how-to-measure">How to measure</a><a href="#weight-and-balance">Weight and balance</a><a href="#look-at-it">Look at it</a><a href="#in-gazebo">In Gazebo</a></nav>
 <div class="lead"><p>The car's measurements live in one file, <code>ros/bringup/aav_description/config/vehicle.yaml</code>. Every
 other part reads them from there, so a number only ever changes in one place.</p>
 <div class="table-wrap"><table>
@@ -161,11 +161,81 @@ other part reads them from there, so a number only ever changes in one place.</p
 <p><code>aav_description/aav_description/vehicle.py</code> does the derived maths: turning radius =
 wheelbase / tan(max steering angle), and the footprint polygon from the body. Its tests
 (<code>ros/bringup/aav_description/test/test_vehicle.py</code>) run without ROS.</p></div>
-<section class="card"><h2 id="every-value-is-still-a-guess">Every value is still a guess</h2>
-<p>Each <code>TODO</code> in <code>vehicle.yaml</code> came from the previous teams' code, with the file and line
-cited next to it, or is a guess. Two examples: the wheelbase (1.57 m) comes from a MATLAB
-script, and the old code's steering limit varies from 0.45 to 0.55 rad. Measure the car,
-replace the number and delete the <code>TODO</code>.</p>
+<section class="card"><h2 id="what-is-measured-and-what-is-still-a-guess">What is measured, and what is still a guess</h2>
+<p>Checked against <code>vehicle.yaml</code> on 14 Nov. The tape measurements are Betsi's (PR #18,
+1 Nov); the file calls them PROVISIONAL until the mounts are frozen and checked in RViz.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Value</th>
+<th>In the file</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>wheelbase</code></td>
+<td>1.561 m</td>
+<td><strong>measured</strong> (1 Nov)</td>
+</tr>
+<tr>
+<td><code>track</code></td>
+<td>0.75 m</td>
+<td>the average of the <strong>measured</strong> front 0.650 m and rear 0.850 m</td>
+</tr>
+<tr>
+<td><code>wheel_diameter</code></td>
+<td>0.36 m</td>
+<td>tape-measured, provisional: loaded it read 0.42 m. The rolling test settles it (TODO 60)</td>
+</tr>
+<tr>
+<td><code>imu_link</code> xyz</td>
+<td>0.49, 0.00, 1.44 m</td>
+<td><strong>measured</strong>, provisional</td>
+</tr>
+<tr>
+<td><code>lidar_link</code> xyz</td>
+<td>0.49, 0.00, 1.52 m</td>
+<td><strong>measured</strong>, provisional</td>
+</tr>
+<tr>
+<td><code>gps_link</code> xyz</td>
+<td>0.00, 0.00, 1.40 m</td>
+<td>z <strong>measured</strong>; over the rear axle (Ben, 23 Oct, confirmed 31 Oct)</td>
+</tr>
+<tr>
+<td>ground clearance</td>
+<td>0.220 m, a comment only</td>
+<td><strong>measured</strong>; nothing reads it</td>
+</tr>
+<tr>
+<td><code>wheel_width</code>, <code>max_steering_angle</code> (0.50 rad), <code>body</code> (2.00 x 1.00 x 1.50 m, overhang 0.20 m)</td>
+<td></td>
+<td>guesses, or the previous teams' code (the old steering limit varies from 0.45 to 0.55 rad)</td>
+</tr>
+<tr>
+<td><code>mass</code> 181 kg, <code>centre_of_mass</code>, <code>tyre_grip</code></td>
+<td></td>
+<td>Ben's estimate and guesses: the car has not been weighed (TODO 14)</td>
+</tr>
+<tr>
+<td>every number under <code>actuators:</code></td>
+<td></td>
+<td>guesses: tests 3.10-3.12 and 4.1-4.5, none run on the car</td>
+</tr>
+<tr>
+<td>every number under <code>brake:</code></td>
+<td></td>
+<td>placeholders: car day A7, rows 6-8</td>
+</tr>
+<tr>
+<td>radar and the three cameras, every <code>rpy</code></td>
+<td></td>
+<td>guesses (the left camera has one candidate x, 0.810 m, not used)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Measure the car, replace the number and delete the <code>TODO</code>.</p>
 </section>
 <section class="card"><h2 id="the-frames">The frames</h2>
 <p>REP-103 and REP-105 conventions:</p>
@@ -299,7 +369,7 @@ replace the number and delete the <code>TODO</code>.</p>
   <code>max_accel × mass ÷ (mass + payload)</code>.</li>
 <li><strong>Turns:</strong> ego slows the car so the sideways acceleration stays under 2 m/s², or under
   half of what slides or tips the car if that is lower. It keeps the turn the driver asked
-  for and lowers the speed, so the car stays on its path. At full lock (2.87 m) that is
+  for and lowers the speed, so the car stays on its path. At full lock (2.86 m) that is
   2.4 m/s: it only matters above the car's 1 m/s, so today in the simulator. Checked in
   Gazebo (22 Oct, <code>sim_speed:=3</code>): asked 3 m/s at full lock, ego allowed 2.40 m/s and the
   car held 2.37-2.43 m/s, 1.9-2.0 m/s² sideways.</li>
@@ -308,9 +378,9 @@ replace the number and delete the <code>TODO</code>.</p>
 <li><strong>Payload</strong> is a parameter (ego.yaml, 0 kg): <code>ros2 param set /ego payload 80</code> when
   someone gets in.</li>
 </ul>
-<p>Tipping matters on this car: a 77 cm track is narrow for a 1.5 m tall car. The car tips
+<p>Tipping matters on this car: a 75 cm track (the average; 65 cm at the front) is narrow for a 1.5 m tall car. The car tips
 when the sideways acceleration reaches g × (track ÷ 2) ÷ (height of the centre of mass):
-6.9 m/s² at 0.55 m high, but 3.8 m/s² at 1 m. Ego keeps to half of that.</p>
+6.7 m/s² at 0.55 m high, but 3.7 m/s² at 1 m. Ego keeps to half of that.</p>
 <p>From M7 and M7b (any unit, as long as all four are the same):</p>
 <pre class="highlight"><code class="language-python">from aav_description import vehicle
 v = vehicle.load()['vehicle']

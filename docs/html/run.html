@@ -7,7 +7,7 @@
 <!-- Generated from docs/run.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Run it on a Mac or Linux</h1>
-<div class="meta">4 min read · 8 sections</div></header>
+<div class="meta">5 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -180,7 +180,7 @@ pixi run build     # compiles our packages, in about 15 s</code></pre>
 <tbody>
 <tr>
 <td><code>pixi run turtle</code></td>
-<td><code>pixi run keyboard</code></td>
+<td><code>pixi run keyboard --local</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -233,7 +233,7 @@ model, so like the car, it can't turn on the spot.</p>
 </tr>
 <tr>
 <td><code>pixi run check</code></td>
-<td>compares the running graph with our contract (<code>pixi run check sim</code> for Gazebo)</td>
+<td>compares the running graph with our contract (<code>pixi run check sim</code> for the simulated car)</td>
 </tr>
 <tr>
 <td><code>pixi run view</code></td>
@@ -241,7 +241,7 @@ model, so like the car, it can't turn on the spot.</p>
 </tr>
 <tr>
 <td><code>pixi run sim</code></td>
-<td>Gazebo instead of the turtle (<a href="simulation.html">Simulation</a>)</td>
+<td>a simulated car instead of the turtle: our own simulator (the default since 8 Nov, <a href="own-simulator.html">its page</a>); <code>pixi run sim simulator:=gazebo</code> for Gazebo (<a href="simulation.html">Simulation</a>)</td>
 </tr>
 <tr>
 <td><code>pixi run bench</code></td>

@@ -115,7 +115,10 @@
 <main>
 <nav class="toc"><span>On this page:</span><a href="#what-each-one-does">What each one does</a><a href="#switch-between-them">Switch between them</a><a href="#compare-them">Compare them</a><a href="#circling-a-goal-found-and-fixed-29-october-todo-17">Circling a goal: found and fixed, 29 October (TODO 17)</a><a href="#after-the-fixes-night-of-22-october">After the fixes, night of 22 October</a><a href="#with-reversing-three-point-turns-22-october-0435">With reversing: three-point turns, 22 October, 04:35</a><a href="#results-22-october-first-runs">Results, 22 October, first runs</a><a href="#making-mppi-drive">Making MPPI drive</a><a href="#found-on-the-way">Found on the way</a><a href="#limits-of-this-comparison">Limits of this comparison</a></nav>
 <div class="lead"><p>Nav2's planner draws a path; a <strong>controller</strong> turns it into a speed and a turn, 20 times a
-second. We have two, and a script that compares them on the same drives in Gazebo.</p>
+second. Nav2 has two, and a script that compares them on the same drives in the simulator.
+Our own followers are trials beside them: the trackers (<a href="trials.html">Trials</a>) and the Rust
+MPPI with the actuators' lag (<a href="mppi-lag.html">page</a>). The newest scores are there (8 Nov);
+this page is the 22-29 Oct record, all in Gazebo.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
@@ -185,10 +188,11 @@ turning radius, its reverse speed and its top speed from <code>vehicle.yaml</cod
 pixi run measure controllers --tours obstacle   # only the box in the lane
 pixi run measure controllers --controllers mppi --speed 2
 pixi run measure controllers --trackers lqr mpc --runs 3   # the trial trackers (docs/trials.md)</code></pre>
-<p>For each tour and controller the script starts Gazebo's test lot with no windows, on a ROS
+<p>For each tour and controller the script starts the test lot with no windows (our
+simulator since 8 Nov; Gazebo before, and with <code>--lag-scale</code>), on a ROS
 domain of its own (this computer only), sends the same goals, and records where the car
-really was (Gazebo's ground truth). Forward only by default; <code>--reversing</code> lets Nav2 back
-up, as it may on the car since 22 Oct. The results go to
+really was (the simulator's ground truth). Forward only by default; <code>--reversing</code> lets Nav2 back
+up, as it does by default in the sim and on the car. The results go to
 <code>log/controller-compare/&lt;time&gt;/</code>:</p>
 <div class="table-wrap"><table>
 <thead>
@@ -616,8 +620,9 @@ failed for both again, as in run j: each swung wide and stopped facing the east 
 only, a U-turn in a 14 m lane is still about a coin toss; backing up makes it reliable.</p>
 <p><img alt="Run s, forward only, after the EKF fix: both make the U-turn as a loop; MPPI's is wider. In run t MPPI's loop met the north wall" src="../img/controllers-lot-forward-ekf.svg" /></p>
 <p>Still to do: MPPI drives on east a few metres before it backs up, where the plan backs
-up at once. The car may reverse since 22 Oct (Ben), where the lidar watches behind it; off by
-default on the car since 26 Oct, until the wheels tell direction (H5).</p>
+up at once. The car may reverse since 22 Oct (Ben), where the lidar watches behind it. It was
+off by default on the car from 26 Oct; on again since 1 Nov (<code>car.launch.py</code>
+<code>reversing:=true</code>), with the lattice as the planner.</p>
 </section>
 <section class="card"><h2 id="results-22-october-first-runs">Results, 22 October, first runs</h2>
 <p>Gazebo's test lot on Ben's Mac (M4 Max), headless, 1 m/s, forward only, with MPPI's

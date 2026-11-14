@@ -117,7 +117,8 @@
 <div class="lead"><p>Ben, 7 Nov: "merge in everything from gazebo so its standalone in rust". This page is the
 simulator's <strong>core</strong>: the world, the car, the lidar, the radar, the IMU, the GPS, the wheels
 and the clock. The cameras are their own program (<a href="own-simulator-cameras.html">its page</a>),
-started beside it. The plan: <a href="../designs/2026-11-05_own-simulator.md">the design</a>.</p>
+started beside it. The plan: <a href="../designs/2026-11-05_own-simulator.md">the design</a>.
+Every argument, the worlds and <code>sim-check</code>: <a href="simulation.html">Simulation</a>.</p>
 <pre class="highlight"><code class="language-sh">pixi run sim world:=test_lot gui:=false rviz:=false     # ours: the default since 8 Nov
 pixi run sim-check                                     # the road world's checks, on ours
 pixi run sim simulator:=gazebo world:=test_lot         # Gazebo, as before</code></pre>

@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Python, C++ and Rust · AAV 2026–27</title>
+<title>Python and Rust (and the C++ we don&#x27;t write) · AAV 2026–27</title>
 <link rel="stylesheet" href="style.css">
 </head><body>
 <!-- Generated from docs/languages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
-<h1>Python, C++ and Rust</h1>
+<h1>Python and Rust (and the C++ we don&#x27;t write)</h1>
 <div class="meta">6 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
@@ -165,7 +165,7 @@ programs only meet through messages.</p></div>
 <tr>
 <td>The CAN bridge, <code>aav_spine_bridge</code></td>
 <td>Rust (<code>rclrs</code>)</td>
-<td>A port of <code>aav_spine</code>'s Python node (T1.8), on the firmware's own CAN code. The default since 23 Oct; the Python one stays until the Rust one has run on the car</td>
+<td>A port of <code>aav_spine</code>'s Python node (T1.8), on the firmware's own CAN code. The default since 23 Oct; the Python one stays until the Rust one has run on the car (no record of that yet)</td>
 </tr>
 <tr>
 <td>The spine firmware, <code>firmware/spine</code></td>
@@ -173,9 +173,19 @@ programs only meet through messages.</p></div>
 <td>Memory-safe, and its logic is tested on a laptop</td>
 </tr>
 <tr>
-<td>The in-car HUD and the map window (raylib), in <code>ros/hud</code></td>
+<td>The in-car HUD and the map window, <code>aav_hud</code></td>
 <td>Rust (<code>rclrs</code>, raylib)</td>
-<td>One program that is also its ROS node (Ben, 11 Oct)</td>
+<td>One program that is also its ROS node (Ben, 11 Oct). They stay raylib, on the Pi (Ben, 5 Nov)</td>
+</tr>
+<tr>
+<td>Screens on a laptop or desktop: the developer window (<code>aav_dev_window</code>), our simulator's cameras</td>
+<td>Rust (Bevy)</td>
+<td>Bevy only off the car: the Orin runs no graphics and no simulator (Ben, 5 Nov)</td>
+</tr>
+<tr>
+<td>Our trials beside Nav2 (costmap, planner, navigator, smoother, MPPI with lag) and our simulator</td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Where Rust pays off; stock stays the default until ours wins</td>
 </tr>
 <tr>
 <td>Bench mode's spine, <code>aav_spine_sim</code></td>
@@ -185,7 +195,7 @@ programs only meet through messages.</p></div>
 <tr>
 <td>Today's ESP32 firmware</td>
 <td>C++ (Arduino, PlatformIO)</td>
-<td>Inherited. Its Rust version (<code>boards/esp32-umod</code>) replaces it once flashed and proven</td>
+<td>Inherited. Its Rust version (<code>boards/esp32-umod</code>) replaces it once flashed and proven: <a href="firmware.html">Firmware</a> says where that stands</td>
 </tr>
 <tr>
 <td>The wheel sensors' Arduino</td>
@@ -248,7 +258,7 @@ programs only meet through messages.</p></div>
 </tr>
 </tbody>
 </table></div>
-<p>Where Rust stands in October 2026:</p>
+<p>Where Rust stands (written October 2026):</p>
 <ul>
 <li><strong>Message crates ship with Jazzy.</strong> Our Pixi install already has them, for example
   <code>share/sensor_msgs/rust/</code>.</li>
@@ -298,15 +308,15 @@ programs only meet through messages.</p></div>
 <tbody>
 <tr>
 <td>Now</td>
-<td>Python for ROS nodes; Rust for the firmware (<code>spine-core</code>: 84 tests) and a few nodes</td>
+<td>Python for ROS nodes; Rust for the firmware (<code>spine-core</code>, tested on a laptop) and the nodes where it pays off</td>
 </tr>
 <tr>
 <td>Done</td>
-<td>four <code>rclrs</code> nodes: the IMU, the radar clustering, the CAN bridge, the HUD</td>
+<td>the first <code>rclrs</code> nodes: the IMU, the radar clustering, the CAN bridge, the HUD; since 5 Nov our own trials beside Nav2 and our simulator</td>
 </tr>
 <tr>
 <td>Later</td>
-<td>port a node where Rust pays off, such as ego, once the car drives</td>
+<td>port a node where Rust pays off, such as ego</td>
 </tr>
 </tbody>
 </table></div></section>

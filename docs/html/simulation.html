@@ -7,7 +7,7 @@
 <!-- Generated from docs/simulation.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Simulation: Gazebo, replay, and when nothing moves</h1>
-<div class="meta">49 min read · 8 sections</div></header>
+<div class="meta">50 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -117,6 +117,34 @@
 <div class="lead"><p>Every backend takes the same ego command (through the output mux), so the drivers, mux, ego and
 localization run unchanged whether the "car" is a turtle, Gazebo, or the real thing. Climb
 the ladder one rung at a time.</p>
+<p><strong>This page:</strong> how to run the simulated car, its arguments, the road world, <code>sim-check</code>,
+sensor failures on purpose, replay. The other simulation pages:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Page</th>
+<th>Covers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="sim-and-car.html">Sim and the car</a></td>
+<td>what is simulated, what is real, which nodes swap</td>
+</tr>
+<tr>
+<td><a href="full-simulation.html">Full simulation</a></td>
+<td>the 15 Oct plan (options A-C) and what was built from it</td>
+</tr>
+<tr>
+<td><a href="own-simulator.html">Our own simulator</a>, <a href="own-simulator-cameras.html">its cameras</a></td>
+<td>the default since 8 Nov, in Rust and Bevy</td>
+</tr>
+<tr>
+<td><a href="bench.html">Bench mode</a>, <a href="carla.html">CARLA</a></td>
+<td>the car's own graph on stand-ins; photo-real towns</td>
+</tr>
+</tbody>
+</table></div>
 <p><code>pixi run sim</code> and <code>pixi run turtle</code> stay on this computer: other terminals here see them,
 other computers don't. So a simulated car never meets the real one. To share one on
 purpose: <code>AAV_DISCOVERY=SUBNET pixi run sim</code>.</p></div>
@@ -201,7 +229,7 @@ page says Gazebo: both play the same part.</p>
 <tr>
 <td><code>world</code></td>
 <td><code>empty</code></td>
-<td><code>empty</code>, <code>test_lot</code> or <code>road</code> (<a href="#the-road-world-the-cars-whole-graph">the road world</a>)</td>
+<td><code>empty</code>, <code>test_lot</code>, <code>road</code> (<a href="#the-road-world-the-cars-whole-graph">the road world</a>) or <code>campus</code> (Carleton: <code>pixi run campus</code> makes it first)</td>
 </tr>
 <tr>
 <td><code>nav</code></td>
@@ -216,12 +244,12 @@ page says Gazebo: both play the same part.</p>
 <tr>
 <td><code>gui</code></td>
 <td><code>true</code></td>
-<td>show the Gazebo window (on a Mac, as a second program)</td>
+<td>show the Gazebo window (on a Mac, as a second program). <code>simulator:=gazebo</code> only: our simulator has no window</td>
 </tr>
 <tr>
 <td><code>follow</code></td>
 <td><code>true</code></td>
-<td>point the window's camera at the car</td>
+<td>point the window's camera at the car (<code>simulator:=gazebo</code> only)</td>
 </tr>
 <tr>
 <td><code>rviz</code></td>
@@ -260,7 +288,9 @@ releases we run. <code>vendor/README.md</code> says which library does each job:
 sensors, the physics, the ROS bridge.</p>
 <h3 id="what-gazebo-simulates">What Gazebo simulates</h3>
 <p>Rates measured on Ben's Mac, 15 Oct, on simulated time (<code>ros2 topic hz -s</code>), with the
-real-time factor at 0.98-0.99.</p>
+real-time factor at 0.98-0.99. "road" in the last column was written on 15 Oct: the
+cameras, radar and truth are now in every world that renders sensors (road, test_lot,
+campus), in either simulator.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -597,9 +627,9 @@ simulated time.
 </ul>
 <div class="admonition tip">
 <p class="admonition-title">No GPU, or in a virtual machine?</p>
-<p>Start it with <code>gui:=false</code>, and watch in RViz or Foxglove instead. The empty and
-test_lot worlds render nothing, so they run anywhere. The road world renders the cameras
-and the lidar: on Linux with no GPU, start it through <code>tools/software_gl.sh</code>, as
+<p>Start it with <code>gui:=false</code>, and watch in RViz or Foxglove instead. The empty world
+renders nothing, so it runs anywhere. The road, test_lot and campus worlds render the
+cameras and the lidar: on Linux with no GPU, start it through <code>tools/software_gl.sh</code>, as
 <code>tools/software_gl.sh pixi run sim simulator:=gazebo gui:=false</code> (Mesa's software OpenGL). Without it,
 Gazebo crashes as the world loads (<code>Unable to load Ogre Plugin</code>), and the car never
 appears. <span class="badge b-works">works</span> on oirp-spss, 23 Oct.</p>
@@ -929,7 +959,7 @@ angles small depth errors become large range errors.</p>
 </thead>
 <tbody>
 <tr>
-<td>(always, in the road world)</td>
+<td>(always, where the world renders sensors)</td>
 <td></td>
 <td><code>radar_clusters</code>, and Nav2's obstacle layer and <code>collision_monitor</code>; <code>lidar_scan</code> and the lidar layer; the sensor watchdog</td>
 </tr>
@@ -975,8 +1005,9 @@ pixi run sim world:=road obstacle:=true                      # the radar stops N
 pixi run sim world:=road lane:=true nav:=false start_y:=0.3  # lane keeping alone</code></pre>
 <ul>
 <li>Every node runs on Gazebo's clock.</li>
-<li>The camera's parts need the road world: in another world, the launch stops and says so.</li>
-<li>The empty and test_lot worlds render nothing, and start what they always have.</li>
+<li>The camera's parts need a world that renders cameras (road, test_lot or campus): in
+  the empty world, the launch stops and says so.</li>
+<li>The empty world renders nothing, and starts what it always has.</li>
 </ul>
 <h3 id="what-you-see">What you see</h3>
 <div class="table-wrap"><table>
@@ -1575,7 +1606,7 @@ as <code>replay</code> (priority 40). It's open loop, so the car drifts from the
   doesn't need CARLA's ROS 2 link, which stalls on Jazzy
   (<a href="https://github.com/carla-simulator/carla/issues/9551">issue 9551</a>).
   <code>pixi run carla-car host:=&lt;the CARLA computer&gt;</code>.</li>
-<li><strong>Not yet run:</strong> CARLA has no Mac version. It needs the team's NVIDIA Linux computer
+<li><strong>Not yet run</strong> (13 Nov): CARLA has no Mac version. It needs the team's NVIDIA Linux computer
   (16 GB of video memory for the Unreal Engine 5 version) or a cloud GPU.</li>
 </ul>
 </section>

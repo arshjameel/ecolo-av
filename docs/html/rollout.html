@@ -7,7 +7,7 @@
 <!-- Generated from docs/rollout.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Rolling out on the car</h1>
-<div class="meta">8 min read · 9 sections</div></header>
+<div class="meta">9 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -116,7 +116,14 @@
 <nav class="toc"><span>On this page:</span><a href="#the-names">The names</a><a href="#what-runs-where">What runs where</a><a href="#the-order">The order</a><a href="#what-03-changes-on-the-car">What 0.3 changes on the car</a><a href="#the-esp32-a-usb-cable-from-a-laptop-with-the-repo">The ESP32 (a USB cable, from a laptop with the repo)</a><a href="#a-pi-with-ubuntu-motor_pi-localization-dash">A Pi with Ubuntu (motor_pi, localization, dash)</a><a href="#a-pi-with-pi-os-the-camera-pis-they-stay-on-pi-os">A Pi with Pi OS (the camera Pis: they stay on Pi OS)</a><a href="#the-orin">The Orin</a><a href="#upgrading-later-a-newer-version-on-every-computer">Upgrading later: a newer version on every computer</a></nav>
 <div class="lead"><p>How our code goes onto the car: the names, the order, and each computer's steps.
 The full steps, with sign-offs: <a href="car-day.html">Car day</a>, <a href="car-setup.html">Car setup</a> and
-<a href="esp32-bench.html">The ESP32 on the bench</a>. <strong>Back up first, every time.</strong></p></div>
+<a href="esp32-bench.html">The ESP32 on the bench</a>. <strong>Back up first, every time.</strong></p>
+<div class="admonition note">
+<p class="admonition-title">Where the car is (checked 14 Nov)</p>
+<p>Written 8 Nov, for Monday 9 Nov. <strong>The repo has no record of that day.</strong> By the
+records, only the <strong>localization Pi</strong> has our kit (by 11 Nov), and the car drove on
+13 Nov with only that update. The ESP32 (the C++, seen 6 Nov), the Motor Pi and the
+Orin still run the 2025-26 software: steps 1-5 below are still to do.</p>
+</div></div>
 <section class="card"><h2 id="the-names">The names</h2>
 <p>One name per computer: its <strong>role</strong> (what <code>car_setup.sh</code> and the docs call it) is also its
 planned <strong>hostname</strong>, with <code>aav-</code> in front. <code>car_setup.sh</code> accepts the old hostname and
@@ -245,7 +252,7 @@ name in <code>/etc/hosts</code>, reboot. Then update the Keychain entry's name a
 </ul>
 </section>
 <section class="card"><h2 id="the-order">The order</h2>
-<p>Monday: <strong>the ESP32 and the Motor Pi first.</strong> One step at a time; each has a way back.</p>
+<p>The plan for Monday 9 Nov, still the order: <strong>the ESP32 and the Motor Pi first.</strong> One step at a time; each has a way back.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -371,7 +378,7 @@ pixi run esp walk                        # talks you through: the flash, the fir
 <pre class="highlight"><code class="language-sh"># an image of the SD card first; the kit copied over: scp -r car-kit &lt;user&gt;@&lt;address&gt;:~/
 bash ~/car-kit/car_setup.sh &lt;role&gt;                 # a dry run: read what it will do
 bash ~/car-kit/car_setup.sh &lt;role&gt; --apply         # do it: backup, upgrade, install, services, check</code></pre>
-<p><strong>The Motor Pi on Monday</strong> takes only three steps:
+<p><strong>The Motor Pi, the first time,</strong> takes only three steps:
 <code>bash ~/car-kit/car_setup.sh motor_pi backup install check --apply</code>.</p>
 <ul>
 <li>No <code>upgrade</code>: it keeps Ubuntu 22.04 until the Rust ESP32 has passed car day's session 6

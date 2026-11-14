@@ -7,7 +7,7 @@
 <!-- Generated from docs/car-screens.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The car&#x27;s two screens</h1>
-<div class="meta">8 min read · 8 sections</div></header>
+<div class="meta">9 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -154,7 +154,8 @@ are still to read with <code>--list</code>.</p>
 <p>Both are in <code>ros/hud/aav_hud</code> (<a href="hud.html">HUD</a>).</p></div>
 <section class="card"><h2 id="the-screens-outside-the-car">The screens outside the car</h2>
 <p>The HUD and the map stay in the car. Two more screens are for the lab or a laptop, one
-per job (Ben, 3 Nov: "Just the stuff we control"):</p>
+per job (Ben, 3 Nov: "Just the stuff we control"). Since 5 Nov: raylib only for the two
+in the car, on the dash Pi; laptop screens can be Bevy; the Orin runs no graphics:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -166,8 +167,13 @@ per job (Ben, 3 Nov: "Just the stuff we control"):</p>
 <tbody>
 <tr>
 <td><strong>Drive</strong>: the <a href="foxglove.html#cockpit">cockpit</a> (Lichtblick)</td>
-<td>Gazebo's view, Nav2's goal, the cubes, the localizers, which algorithms run</td>
-<td>0.3: absorbs the debug screen</td>
+<td>the chase camera's view, Nav2's goal, the cubes, the localizers, which algorithms run</td>
+<td>stays, as a layout</td>
+</tr>
+<tr>
+<td><strong>Developer window</strong> (Bevy, <code>pixi run dev-window</code>; Ben, 5 Nov)</td>
+<td>the scene, what the lidar sees with NDT, a map you click, a console: live on the simulators</td>
+<td>absorbs the debug screen (<a href="../designs/2026-11-05_one-window.md">design</a>); not the cockpit, as planned on 3 Nov</td>
 </tr>
 <tr>
 <td><strong>Hardware</strong>: the <a href="hud.html#the-hardware-panel">hardware panel</a></td>

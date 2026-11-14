@@ -7,7 +7,7 @@
 <!-- Generated from docs/foxglove.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Watch from a laptop: Foxglove and Lichtblick</h1>
-<div class="meta">12 min read · 8 sections</div></header>
+<div class="meta">13 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -322,19 +322,22 @@ NDT's own map (a PCD file) and KISS-ICP's cloud have <strong>no topic</strong>: 
 screen shows them, as it reads the file itself.</p>
 </div>
 <h3 id="where-this-is-heading">Where this is heading</h3>
+<p>Written for 0.2 (3 Nov). <strong>Changed 5 Nov (Ben):</strong> the debug screen goes into the Bevy
+developer window (<code>pixi run dev-window</code>, <a href="../designs/2026-11-05_one-window.md">design</a>), not
+into this cockpit. 0.3 merged on 9 Nov with the cockpit as it was.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Screen</th>
-<th>0.2 (now)</th>
-<th>0.3</th>
+<th>0.2</th>
+<th>The 3 Nov plan for 0.3</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><strong>Drive</strong> (this cockpit)</td>
 <td>Gazebo's view, Nav2's goal, the cubes, the localizers, which algorithms run</td>
-<td>absorbs the debug screen: NDT's map and match, the kept cubes</td>
+<td>absorbs the debug screen: NDT's map and match, the kept cubes (dropped 5 Nov: above)</td>
 </tr>
 <tr>
 <td><strong>Hardware</strong> (the <a href="hud.html#the-hardware-panel">hardware panel</a>)</td>
@@ -378,8 +381,9 @@ only: the click does nothing there.</p>
 <p><code>none</code> (Nav2's own MPPI) is a launch switch: with it, there is no <code>/track</code> to call. The
 car refuses a swap (<code>live_swap</code> is on only in <code>sim.launch.py</code>).</p>
 <h3 id="the-chase-camera">The chase camera</h3>
-<p>A camera fixed 7 m behind the car and 3.5 m up, looking down at the road ahead. Gazebo's
-only, in the worlds that render sensors (road, test_lot): <code>chase_camera:=false</code> drops it.</p>
+<p>A camera fixed 7 m behind the car and 3.5 m up, looking down at the road ahead. Simulators
+only (Gazebo's, and <code>aav_sim_cameras</code> for our own simulator), in the worlds that render
+sensors (road, test_lot, campus): <code>chase_camera:=false</code> drops it. The numbers below are Gazebo's.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -525,7 +529,7 @@ pixi run python3 tools/layout_check.py ws://192.168.1.140:8765 --data   # the ca
 </tr>
 <tr>
 <td>The layouts in the Lichtblick app</td>
-<td>the setting names were checked against Lichtblick 1.29's own code; not yet opened in the app by a person</td>
+<td>the setting names were checked against Lichtblick 1.29's own code; not yet opened in the app by a person (24 Oct; the cockpit was opened live on 3 Nov, <a href="#cockpit">above</a>)</td>
 </tr>
 <tr>
 <td>The cockpit, 1 Nov, road world, <code>foxglove:=true tracker:=pure_pursuit voxels:=true</code></td>

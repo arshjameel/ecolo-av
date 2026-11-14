@@ -113,7 +113,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does-layer-by-layer">What it does, layer by layer</a><a href="#try-it">Try it</a><a href="#the-scores-8-nov">The scores (8 Nov)</a><a href="#without-ros">Without ROS</a><a href="#whats-missing-for-the-planner-step">What&#x27;s missing for the planner step</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does-layer-by-layer">What it does, layer by layer</a><a href="#try-it">Try it</a><a href="#the-scores-8-nov">The scores (8 Nov)</a><a href="#without-ros">Without ROS</a><a href="#whats-missing">What&#x27;s missing</a></nav>
 <div class="lead"><p>Ben, 8 Nov: move off Nav2 to <strong>our own versions, one piece at a time</strong>, each beside Nav2
 until it wins. The order: the costmap, then a path planner in Rust, then the navigator.
 This page is the first piece. Nav2 stays the default, and stays on the car.</p>
@@ -177,7 +177,7 @@ odometry, /tf ────┤
 <tr>
 <td><code>/drivers/nav/costmap/global</code>, <code>global_raw</code></td>
 <td>the same, the whole map</td>
-<td>the planner, next</td>
+<td>our planner (<code>planner:=own</code>)</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/costmap/status</code></td>
@@ -194,7 +194,8 @@ odometry, /tf ────┤
 <p><strong>The recovery clears ours too.</strong> When stuck, Nav2's behaviour trees call
 <code>local_costmap/clear_entirely_local_costmap</code>. With <code>costmap:=own</code> and
 <code>tracker:=mppi_lag</code>, the launch file points that call at our local costmap, the one MPPI
-reads. The global clear stays Nav2's: the planner still reads Nav2's global costmap.</p>
+reads. The global clear stays Nav2's under Nav2's navigator; our navigator
+(<code>navigator:=own</code>) clears ours (<a href="own-navigator.html">page</a>).</p>
 </section>
 <section class="card"><h2 id="what-it-does-layer-by-layer">What it does, layer by layer</h2>
 <div class="table-wrap"><table>
@@ -462,15 +463,15 @@ Nav2's in every cell each time. Three runs can't prove run 2's stall is gone for
 </tbody>
 </table></div>
 </section>
-<section class="card"><h2 id="whats-missing-for-the-planner-step">What's missing for the planner step</h2>
+<section class="card"><h2 id="whats-missing">What's missing</h2>
 <ul>
 <li><strong>The planner</strong> reads Nav2's global costmap (<code>planner_server</code>). Our planner
   (<a href="own-planner.html">page</a>, <code>planner:=own</code>) reads <code>/drivers/nav/costmap/global_raw</code> when
   <code>costmap:=own</code> is on too.</li>
 <li><strong>The global costmap's size:</strong> the campus map is large; ours rebuilds it all each second
   (27 ms for 500 m × 500 m without ROS). Fine now; only the changed part if it grows.</li>
-<li><strong>The global clear:</strong> ours serves it, but the trees still clear Nav2's global costmap
-  (the planner's). Our planner and navigator should call ours.</li>
+<li><strong>The global clear:</strong> ours serves it. Our navigator calls it (8 Nov); Nav2's trees
+  still clear Nav2's global costmap.</li>
 <li><strong>Radar, cubes and cameras</strong> (point clouds, placed by <code>/tf_static</code>'s mounts): built,
   but untested; the sim's runs had the lidar's scan alone.</li>
 <li><strong>On the car:</strong> untested. Nav2 stays there.</li>

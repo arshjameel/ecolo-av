@@ -7,7 +7,7 @@
 <!-- Generated from docs/mppi-lag.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>MPPI that knows the lag</h1>
-<div class="meta">10 min read · 9 sections</div></header>
+<div class="meta">11 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -128,8 +128,20 @@ Nav2 still plans the path; ours follows it. It is a <strong>trial</strong>, besi
 <li><strong>On very slow actuators</strong> it keeps the path (0.1 m) where the lag-free MPPI <strong>loses it</strong>.</li>
 <li><strong>At vehicle.yaml's guesses</strong> both stay within a few cm: the lag is small there.</li>
 <li><strong>Fast:</strong> 1.7 ms a tick on an M4 Max (2000 samples x 56 steps); about 10 ms on the Orin.</li>
-<li><strong>Gazebo:</strong> not a fair test yet: on a loaded computer the odometry stalled and it gave up
-  (<a href="#in-gazebo">below</a>); while driving it was closer to the path (0.13 m against 0.20 m).</li>
+<li>
+<p><strong>Gazebo, 7 Nov:</strong> not a fair test: on a loaded computer the odometry stalled and it gave up
+  (<a href="#in-gazebo">below</a>); while driving it was closer to the path (0.13 m against 0.20 m).</p>
+</li>
+<li>
+<p><strong>Our simulator, 8 Nov</strong> (newer; the numbers live on other pages): the lot tour, 3 runs,
+  <strong>11 of 12 legs</strong> (Nav2's MPPI 8: <a href="trials.html#results-our-simulator-8-nov-the-lot-tour-3-runs-each">trials</a>).
+  In an all-ours stack it passes the campus's first goal at 2.5 m/s and uses twice
+  Nav2's MPPI's CPU (33-39 % against 17-18 %: <a href="own-navigator.html#the-verdict">our navigator</a>).
+  Open: TODO 152 (slow earlier near the goal, fewer futures, time it on the Orin).</p>
+</li>
+<li>
+<p><strong>Costmap:</strong> Nav2's local costmap, or ours with <code>costmap:=own</code> (<a href="own-costmap.html">page</a>).</p>
+</li>
 </ul>
 </blockquote></div>
 <section class="card"><h2 id="how-it-fits">How it fits</h2>
@@ -191,9 +203,11 @@ Nav2 still plans the path; ours follows it. It is a <strong>trial</strong>, besi
 steering, throttle and brake (while fresh), and <strong>the commands already sent that are
 still in their dead time</strong>. Nav2's starts from the pose and speed alone.</p>
 <h3 id="the-trait-where-the-shared-car-model-plugs-in">The trait: where the shared car model plugs in</h3>
-<p>Another 0.3 job builds a shared crate, <code>car-model</code> (<code>ros/bringup/aav_description/car-model</code>).
-<code>LagModel</code> already follows its rules (the four rows above). Until it merges, the model sits
-behind a trait (<code>crates/mppi-lag/src/model.rs</code>); at the merge, that crate implements it.</p>
+<p>The shared crate, <code>car-model</code> (<code>ros/bringup/aav_description/car-model</code>), is merged (0.3).
+<code>LagModel</code> follows its rules (the four rows above) and sits behind a trait
+(<code>crates/mppi-lag/src/model.rs</code>). The shared crate implements the trait behind the cargo
+feature <code>shared</code> (<code>src/shared.rs</code>, tested against <code>LagModel</code>); the node still runs
+<code>LagModel</code> (TODO 139).</p>
 <pre class="highlight"><code class="language-rust">pub trait CarModel: Sync {
     type State: Clone + Send + Sync + Debug;
     fn at_rest(&amp;self, pose: Pose, speed: f64) -&gt; Self::State;
@@ -527,7 +541,7 @@ cd ros/drivers/aav_mppi_lag &amp;&amp; cargo test --release -p mppi-lag</code></
 <tbody>
 <tr>
 <td>The shared car-model crate</td>
-<td>implement <code>CarModel</code> with it at merge</td>
+<td>built behind the feature <code>shared</code>; switch the node over after a quiet-machine sim-check (TODO 139)</td>
 </tr>
 <tr>
 <td>The car's real lags</td>
@@ -546,8 +560,8 @@ cd ros/drivers/aav_mppi_lag &amp;&amp; cargo test --release -p mppi-lag</code></
 <td>not modelled (off at our speeds)</td>
 </tr>
 <tr>
-<td>A fair Gazebo run</td>
-<td>the whole lot tour on a quiet computer, both followers</td>
+<td>The goal at speed, the CPU</td>
+<td>passes a goal at 2.5 m/s; twice Nav2's MPPI's CPU (8 Nov; TODO 152)</td>
 </tr>
 <tr>
 <td>A gap in odometry</td>

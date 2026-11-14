@@ -7,7 +7,7 @@
 <!-- Generated from docs/car-install.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our stack on the car, from a USB stick</h1>
-<div class="meta">8 min read · 10 sections</div></header>
+<div class="meta">9 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -120,10 +120,13 @@ sudo</strong>, and <strong>without touching</strong> the 2025-26 Humble software
 <div class="admonition warning">
 <p class="admonition-title">Not on the car yet</p>
 <p>The kit is made and checked on a Mac, and installed offline on 64-bit ARM Linux by CI
-on every push (GitHub's ARM runner, Ubuntu 24.04). On the Orin and the Pis it is
-<span class="badge b-untested">untested</span>: car day is its first run there (<a href="car-day.html">Car day</a>, session 4). Back
-up first, then install.</p>
-</div></div>
+on every push (GitHub's ARM runner, Ubuntu 24.04). <strong>Only the localization Pi has it</strong>
+(by 11 Nov; the car drove with it on 13 Nov). On the Orin and the Motor Pi it is
+<span class="badge b-untested">untested</span> (<a href="car-day.html">Car day</a>, session 4). Back up first, then install.</p>
+</div>
+<p>This page says <strong>what the kit is, how it installs and how to undo it</strong>. The steps for one
+computer, with services at boot: <a href="car-setup.html">Car setup</a>. The order on the car:
+<a href="rollout.html">Rolling out</a> (short) and <a href="car-day.html">Car day</a> (full).</p></div>
 <section class="card"><h2 id="the-plan-in-one-picture">The plan in one picture</h2>
 <pre class="highlight"><code class="language-text">  Mac (internet)                    USB stick                 car computer (no internet)
   pixi run car-kit   ──────────►   car-kit/  (1.8 GB)  ──►   car_install.sh  ──►  ~/aav-jazzy/
@@ -446,8 +449,12 @@ GitHub, so <code>git pull</code> in <code>~/aav-jazzy/aav</code> works once the 
 <td><span class="badge b-works">works</span> 24 Oct, CI's job <code>car-kit</code> (every push): GitHub's ARM runner, Ubuntu 24.04; the kit 1 min, the install and the build of every package, the HUD too, 4.5 min</td>
 </tr>
 <tr>
-<td>the install on the Orin or a Pi</td>
-<td><span class="badge b-untested">untested</span>: car day</td>
+<td>the install on the localization Pi</td>
+<td>by 11 Nov: the first try failed building <code>aav_bringup</code> (it depended on the skipped <code>aav_hud</code>; PR #28, with a test). 13 Nov: the car drove with this update installed (Ben). No audit or bag records it</td>
+</tr>
+<tr>
+<td>the install on the Orin or the Motor Pi</td>
+<td><span class="badge b-untested">untested</span></td>
 </tr>
 </tbody>
 </table></div></section>

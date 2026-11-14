@@ -7,7 +7,7 @@
 <!-- Generated from docs/measure-the-car.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Measuring the car: the sheet for the team</h1>
-<div class="meta">15 min read · 9 sections</div></header>
+<div class="meta">16 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -117,7 +117,10 @@
 <div class="lead"><p>Written 15 October 2026. <strong>Hand this to whoever measures the car.</strong> Fill in the
 "Measured" column, photograph the filled sheet, and send it back. The numbers go into
 <code>ros/bringup/aav_description/config/vehicle.yaml</code>, the one place the software reads them from.
-Every number there today is a guess.</p>
+Some are measured since 1 Nov (Betsi: the wheelbase, both tracks, the IMU, the lidar, the
+GPS's height); the rest are still guesses. Which is which:
+<a href="car_measurements.html#what-is-measured-and-what-is-still-a-guess">Car measurements</a>.
+This page is the <strong>tape-measure sheet</strong>; the driving tests are <a href="know-the-car.html">Know the car</a>.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
@@ -542,28 +545,28 @@ rear axle's line.</p>
 <td>M1</td>
 <td><strong>Wheelbase</strong></td>
 <td>rear hub centre → front hub centre, same side. Do both sides</td>
-<td>157</td>
+<td>156.1, measured 1 Nov: check</td>
 <td>L: <strong><em>_ R: </em></strong>_</td>
 </tr>
 <tr>
 <td>M2</td>
 <td><strong>Track, rear</strong></td>
 <td>left rear tyre centre → right rear tyre centre</td>
-<td>77</td>
+<td>85, measured 1 Nov: check</td>
 <td></td>
 </tr>
 <tr>
 <td>M2b</td>
 <td><strong>Track, front</strong></td>
 <td>the same, at the front</td>
-<td>77</td>
+<td>65, measured 1 Nov: check</td>
 <td></td>
 </tr>
 <tr>
 <td>M3</td>
 <td><strong>Wheel diameter</strong></td>
 <td>the floor → the top of the tyre, with the car's weight on it</td>
-<td>30</td>
+<td>36 (tape, 1 Nov); 42 loaded</td>
 <td></td>
 </tr>
 <tr>
@@ -605,7 +608,7 @@ rear axle's line.</p>
 <td>M4e</td>
 <td>Ground clearance</td>
 <td>the floor → the lowest point under the car</td>
-<td>(none)</td>
+<td>22, measured 1 Nov</td>
 <td></td>
 </tr>
 </tbody>
@@ -685,7 +688,7 @@ of its window</strong> (the band that spins or glows).</p>
 <td>S1</td>
 <td><strong>GPS antenna</strong></td>
 <td>puck centre</td>
-<td>0 / 0 / 150</td>
+<td>0 / 0 / 140 (z measured 1 Nov)</td>
 <td></td>
 <td></td>
 <td></td>
@@ -695,7 +698,7 @@ of its window</strong> (the band that spins or glows).</p>
 <td>S2</td>
 <td><strong>IMU</strong></td>
 <td>board centre</td>
-<td>50 / 0 / 40</td>
+<td>49 / 0 / 144 (measured 1 Nov)</td>
 <td></td>
 <td></td>
 <td></td>
@@ -745,7 +748,7 @@ of its window</strong> (the band that spins or glows).</p>
 <td>S7</td>
 <td><strong>Lidar</strong> (roof tripod)</td>
 <td>the middle of its window</td>
-<td>90 / 0 / 180</td>
+<td>49 / 0 / 152 (measured 1 Nov)</td>
 <td></td>
 <td></td>
 <td></td>
@@ -828,7 +831,7 @@ Y). Write which way each points:</p>
 <p>Ben's estimate is about 400 lb (181 kg). The four corners show where the weight sits
 along the car (the <strong>centre of mass</strong>); M7b shows how high it sits. Ego uses both: a
 heavy load slows speeding up and braking, and a high centre of mass on the car's narrow
-track (77 cm) lowers the speed at which it could tip in a turn. The maths:
+track (75 cm in the file: 65 front, 85 rear) lowers the speed at which it could tip in a turn. The maths:
 <code>vehicle.centre_of_mass()</code> in <code>aav_description/vehicle.py</code> (docs/car_measurements.md).</p>
 </section>
 <section class="card"><h2 id="7-tips">7. Tips</h2>

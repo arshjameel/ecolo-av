@@ -7,7 +7,7 @@
 <!-- Generated from docs/packages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>What each package does</h1>
-<div class="meta">17 min read · 10 sections</div></header>
+<div class="meta">21 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -115,8 +115,11 @@
 <main>
 <nav class="toc"><span>On this page:</span><a href="#at-a-glance">At a glance</a><a href="#sensors">Sensors</a><a href="#description-and-localization">Description and localization</a><a href="#drivers-the-mux-and-ego">Drivers, the mux and ego</a><a href="#perception">Perception</a><a href="#backends">Backends</a><a href="#bench-mode">Bench mode</a><a href="#interfaces-and-bringup">Interfaces and bringup</a><a href="#firmware">Firmware</a><a href="#the-hud">The HUD</a></nav>
 <div class="lead"><p>Every ROS package in <code>ros/</code>, area by area (<code>ros/&lt;area&gt;/&lt;package&gt;</code>), with what it reads
-and writes. Then the firmware, the HUD and the examples. 37 packages build today (the
-Flask HUD went to the archive on 25 Oct), and none is parked.</p></div>
+and writes. Then the firmware, the HUD and the examples. 51 packages build with colcon
+today (counted 14 Nov; the Flask HUD went to the archive on 25 Oct), and none is parked.
+Two more folders are plain Rust programs, built with cargo: <code>aav_dev_window</code> and
+<code>aav_sim_cameras</code>. The newest packages (30 Oct to 8 Nov) are in the first table only:
+each one's README has its topics.</p></div>
 <section class="card"><h2 id="at-a-glance">At a glance</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -186,6 +189,27 @@ Flask HUD went to the archive on 25 Oct), and none is parked.</p></div>
 <td>new</td>
 </tr>
 <tr>
+<td><code>aav_localization_health</code></td>
+<td>localization</td>
+<td>warn-only checks on what the EKFs read and say, on <code>/localization/health</code> and <code>/diagnostics</code></td>
+<td>built 1 Nov</td>
+<td>new (Betsi)</td>
+</tr>
+<tr>
+<td><code>aav_ndt</code></td>
+<td>localization</td>
+<td>NDT in Rust, a trial (<code>ndt:=true</code>): where the car is on a saved lidar map; never TF</td>
+<td>built 29 Oct; a trial, off by default (<a href="trials.html">Trials</a>)</td>
+<td>new</td>
+</tr>
+<tr>
+<td><code>aav_kiss_icp</code></td>
+<td>localization</td>
+<td>KISS-ICP lidar odometry, a trial (<code>kiss_icp:=true</code>): how far the car moved, from the lidar alone</td>
+<td>built 30 Oct; a trial, off by default (<a href="trials.html">Trials</a>)</td>
+<td>new, around stock KISS-ICP (MIT)</td>
+</tr>
+<tr>
 <td><code>aav_teleop</code></td>
 <td>drivers</td>
 <td>joystick → <code>/drivers/joy/cmd_vel</code>, plus an e-stop button</td>
@@ -237,8 +261,64 @@ Flask HUD went to the archive on 25 Oct), and none is parked.</p></div>
 <tr>
 <td><code>aav_routes</code></td>
 <td>drivers</td>
-<td>street routes (Valhalla) as GPS waypoints for Nav2</td>
+<td>street routes (Valhalla) as GPS waypoints for Nav2; directions on the campus (<code>router:=campus</code>)</td>
 <td><span class="badge b-works">works</span> in Gazebo</td>
+<td>new</td>
+</tr>
+<tr>
+<td><code>aav_track</code></td>
+<td>drivers</td>
+<td>trial path followers in <code>controller_server</code>'s place (<code>tracker:=</code> pure_pursuit, stanley, lqr, mpc, mpc_full, mpc_lag)</td>
+<td>built 29 Oct; trials, off by default (<a href="trials.html">Trials</a>)</td>
+<td>new</td>
+</tr>
+<tr>
+<td><code>aav_mppi_lag</code></td>
+<td>drivers</td>
+<td>Nav2's MPPI in Rust, on a car model that knows the actuators' lag (<code>tracker:=mppi_lag</code>)</td>
+<td>built 7 Nov; a trial (<a href="mppi-lag.html">its page</a>)</td>
+<td>new: a port of Nav2's MPPI (<code>PROVENANCE.md</code>)</td>
+</tr>
+<tr>
+<td><code>aav_costmap</code></td>
+<td>drivers</td>
+<td>our own costmap in Rust (<code>costmap:=own</code>), beside Nav2's</td>
+<td>built 8 Nov; a trial (<a href="own-costmap.html">its page</a>)</td>
+<td>new: a port of Nav2's <code>costmap_2d</code> layers</td>
+</tr>
+<tr>
+<td><code>aav_planner</code></td>
+<td>drivers</td>
+<td>our own path planner in Rust (<code>planner:=own</code>): Nav2's Smac State Lattice ported</td>
+<td>built 8 Nov; a trial (<a href="own-planner.html">its page</a>)</td>
+<td>new: a port of Nav2's planner</td>
+</tr>
+<tr>
+<td><code>aav_navigator</code></td>
+<td>drivers</td>
+<td>our own navigator in Rust (<code>navigator:=own</code>): what <code>bt_navigator</code> and <code>waypoint_follower</code> do</td>
+<td>built 8 Nov; a trial (<a href="own-navigator.html">its page</a>)</td>
+<td>new</td>
+</tr>
+<tr>
+<td><code>aav_smoother</code></td>
+<td>drivers</td>
+<td>our own velocity smoother in Rust (<code>smoother:=own</code>): the turn rate from where the wheels can be</td>
+<td>built 8 Nov; a trial (<a href="own-smoother.html">its page</a>)</td>
+<td>new</td>
+</tr>
+<tr>
+<td><code>aav_diffusion_planner</code></td>
+<td>drivers</td>
+<td>a trial planner (<code>planner:=diffusion</code>): a model draws paths, a guard checks them, the lattice's path otherwise</td>
+<td>built 2 Nov; a trial, off by default (<a href="trials.html">Trials</a>)</td>
+<td>new</td>
+</tr>
+<tr>
+<td><code>aav_behaviour</code></td>
+<td>drivers</td>
+<td>the behaviour planner, a trial (<code>behaviour:=true</code>): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK, and a speed cap on Nav2</td>
+<td>built 7 Nov; off by default (<a href="stopping.html">How the car stops</a>)</td>
 <td>new</td>
 </tr>
 <tr>
@@ -293,8 +373,22 @@ Flask HUD went to the archive on 25 Oct), and none is parked.</p></div>
 <tr>
 <td><code>aav_gazebo</code></td>
 <td>sim</td>
-<td>Gazebo's car behind the real car's topics</td>
+<td>Gazebo's car behind the real car's topics; its adapters run with our simulator too</td>
 <td><span class="badge b-works">works</span> headless</td>
+<td>new</td>
+</tr>
+<tr>
+<td><code>aav_simulator</code></td>
+<td>sim</td>
+<td>our own simulator in Rust, in <code>gz sim</code>'s place: the default since 8 Nov (<code>simulator:=gazebo</code> for Gazebo)</td>
+<td>passed every <code>sim-check</code> leg Gazebo passes, 8 Nov (<a href="own-simulator.html">its page</a>)</td>
+<td>new</td>
+</tr>
+<tr>
+<td><code>aav_sim_cameras</code></td>
+<td>sim</td>
+<td>our simulator's cameras (Bevy, offscreen; needs a GPU). A cargo program, not a colcon package</td>
+<td>built 7-8 Nov (<a href="own-simulator-cameras.html">its page</a>)</td>
 <td>new</td>
 </tr>
 <tr>
@@ -335,7 +429,7 @@ Flask HUD went to the archive on 25 Oct), and none is parked.</p></div>
 <tr>
 <td><code>aav_interfaces</code></td>
 <td>ecolo_msgs</td>
-<td>our 9 messages (such as <code>VehicleStatus</code>, <code>DataSource</code>, <code>Heartbeat</code>) and 2 actions (<code>ScriptedDrive</code>, <code>DriveToPoint</code>)</td>
+<td>our 13 messages (such as <code>VehicleStatus</code>, <code>DataSource</code>, <code>Heartbeat</code>) and 2 actions (<code>ScriptedDrive</code>, <code>DriveToPoint</code>)</td>
 <td><span class="badge b-works">works</span> builds</td>
 <td>new</td>
 </tr>
@@ -344,6 +438,13 @@ Flask HUD went to the archive on 25 Oct), and none is parked.</p></div>
 <td>bringup</td>
 <td>the six profiles, <code>stack.launch.py</code>, Foxglove, the machine files, the RViz layouts</td>
 <td><span class="badge b-works">works</span> turtle, sim, replay, bench</td>
+<td>new</td>
+</tr>
+<tr>
+<td><code>aav_run_info</code></td>
+<td>bringup</td>
+<td><code>run_info</code>: which algorithms this run uses, on <code>/system/algorithms</code>, for the screens</td>
+<td>built 3 Nov</td>
 <td>new</td>
 </tr>
 <tr>
@@ -368,6 +469,13 @@ Flask HUD went to the archive on 25 Oct), and none is parked.</p></div>
 <td>new</td>
 </tr>
 <tr>
+<td><code>aav_voxels</code></td>
+<td>perception</td>
+<td>a trial beside <code>aav_lidar</code> (<code>voxels:=true</code>): the lidar's cloud as 0.25 m cubes for Nav2</td>
+<td>built 30 Oct; a trial, off by default</td>
+<td>new</td>
+</tr>
+<tr>
 <td><code>aav_lane_finder</code></td>
 <td>perception</td>
 <td>the lane lines in the camera's pictures, as <code>/perception/lane/geometry</code> (OpenCV)</td>
@@ -386,6 +494,13 @@ Flask HUD went to the archive on 25 Oct), and none is parked.</p></div>
 <td>hud</td>
 <td>the in-car screens in Rust (raylib): the HUD (node <code>hud</code>) and the map window (node <code>map</code>)</td>
 <td><span class="badge b-works">works</span> on a Mac: <code>--demo</code>, fed topics, bench mode. <span class="badge b-untested">untested</span> on a Pi and on the car</td>
+<td>new</td>
+</tr>
+<tr>
+<td><code>aav_dev_window</code></td>
+<td>hud</td>
+<td>the developer window (Bevy), for a laptop: <code>pixi run dev-window</code>. A cargo program, not a colcon package</td>
+<td>built 5 Nov</td>
 <td>new</td>
 </tr>
 </tbody>
@@ -560,7 +675,7 @@ Flask HUD went to the archive on 25 Oct), and none is parked.</p></div>
 <td><code>aav_navigation</code></td>
 <td><code>/localization/odom/local</code>, <code>/map</code>, <code>/goal_pose</code></td>
 <td><code>/drivers/nav/cmd_vel</code>, <code>/plan</code></td>
-<td>SmacPlannerHybrid and MPPI (or Regulated Pure Pursuit); GPS waypoints through <code>/follow_gps_waypoints</code></td>
+<td>Smac State Lattice (Hybrid-A* if forward only) and MPPI (or Regulated Pure Pursuit); GPS waypoints through <code>/follow_gps_waypoints</code></td>
 </tr>
 <tr>
 <td><code>aav_command_mux</code> (twist_mux)</td>
@@ -703,11 +818,11 @@ Only one runs at a time.</p>
 <tbody>
 <tr>
 <td><code>aav_interfaces</code></td>
-<td>9 messages: <code>VehicleStatus</code> (mode, armed, e-stop, speed, steering, throttle, brake, fault bits), <code>ActuatorState</code>, <code>DataSource</code>, <code>SensorSource</code>, <code>SourceCheck</code>, <code>Heartbeat</code>, <code>RcSticks</code>, <code>SpineOutputs</code>, <code>WheelSpeeds</code>; 2 actions: <code>ScriptedDrive</code>, <code>DriveToPoint</code></td>
+<td>13 messages: <code>VehicleStatus</code> (mode, armed, e-stop, speed, steering, throttle, brake, fault bits), <code>ActuatorState</code>, <code>ActuatorRaw</code>, <code>DataSource</code>, <code>SensorSource</code>, <code>SourceCheck</code>, <code>Heartbeat</code>, <code>LinkFrame</code>, <code>RcSticks</code>, <code>SpineOutputs</code>, <code>SteeringCalibration</code>, <code>UplinkHealth</code>, <code>WheelSpeeds</code>; 2 actions: <code>ScriptedDrive</code>, <code>DriveToPoint</code></td>
 </tr>
 <tr>
 <td><code>aav_bringup</code></td>
-<td>the profiles <code>turtle</code>, <code>sim</code>, <code>bench</code>, <code>car</code>, <code>carla</code>, <code>replay</code>; <code>stack.launch.py target:=</code>; <code>foxglove.launch.py</code>; the machine files <code>orin</code>, <code>motor_pi</code>, <code>laptop</code>, <code>all</code>, which pick the car's parts, perception too; the RViz layouts</td>
+<td>the profiles <code>turtle</code>, <code>sim</code>, <code>bench</code>, <code>car</code>, <code>carla</code>, <code>replay</code>; <code>stack.launch.py target:=</code>; <code>foxglove.launch.py</code>; the machine files <code>orin</code>, <code>motor_pi</code>, <code>motor_pi_alone</code>, <code>localization</code>, <code>laptop</code>, <code>all</code>, which pick the car's parts, perception too; the RViz layouts</td>
 </tr>
 </tbody>
 </table></div>

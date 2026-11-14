@@ -138,7 +138,7 @@ Our own costmap, in Rust, runs beside Nav2's as a trial: <a href="own-costmap.ht
 <tr>
 <td>Used by</td>
 <td>the controller (MPPI), each step</td>
-<td>the planner (SmacPlannerHybrid), once per path</td>
+<td>the planner (the State Lattice; Hybrid-A* forward only), once per path</td>
 </tr>
 <tr>
 <td>Frame</td>
@@ -205,7 +205,7 @@ by <code>navigation.launch.py</code>.</p>
 <tr>
 <td><code>obstacle_layer</code></td>
 <td><code>/sensors/radar/points</code> (in <code>radar_link</code>)</td>
-<td><code>radar:=true</code>: the bench always; the car where the machine file that runs <code>navigation</code> also runs <code>radar</code>; never Gazebo (its car has no radar)</td>
+<td><code>radar:=true</code>: the bench always; the car where the machine file that runs <code>navigation</code> also runs <code>radar</code>; in the sim where the world has the radar stand-in (<code>road</code>, <code>test_lot</code>, <code>campus</code>; <code>radar:=false</code> drops it)</td>
 <td>each point 0.3-8.4 m from the radar, -0.5 to 2 m high</td>
 <td>the cells between the radar and each point</td>
 </tr>
@@ -494,8 +494,8 @@ pixi run build
 ```
 </code></pre>
 <p>It says <code>wrote example_lot.pgm/.yaml: 320 x 240 px, 80 x 60 m</code>.
-3. Start Gazebo with the test lot: <code>pixi run sim world:=test_lot</code>. On a Mac, add
- <code>gui:=false</code>, then run <code>pixi run tools/ros.sh tools/gz_window.sh</code> and <code>pixi run rviz</code> in two more terminals.
+3. Start the simulator with the test lot: <code>pixi run sim world:=test_lot</code>. With
+ <code>simulator:=gazebo</code> on a Mac, add <code>gui:=false</code>, then run <code>pixi run tools/ros.sh tools/gz_window.sh</code> and <code>pixi run rviz</code> in two more terminals.
 4. In RViz, send a <strong>2D Goal Pose</strong> at about (30, 0): 30 m straight ahead, past the box.</p>
 </li>
 </ol>

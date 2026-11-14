@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">62 min read · 14 sections</div></header>
+<div class="meta">63 min read · 14 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -165,6 +165,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
+<td>IMU noise from measurements (<code>aav_sensors</code> <code>imu.yaml</code>: the gyro's and accelerometer's standard deviations)</td>
+<td>The EKFs weigh the IMU by its noise, so measured numbers replace the guesses</td>
+<td>Senura (senuradissa)</td>
+<td>2026-11-07</td>
+<td>built</td>
+</tr>
+<tr>
 <td>GPS driver: stock <code>ublox_gps</code>, with <code>nmea</code> or <code>ublox_dgnss</code> as options</td>
 <td>A stock driver that installs with Pixi on every computer, while the receiver model is still open (Q18)</td>
 <td>Ben</td>
@@ -241,6 +248,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Betsi</td>
 <td>2026-11-01</td>
 <td>sim</td>
+</tr>
+<tr>
+<td>IMU and GPS on the localization Pi (<code>car.launch.py machine:=localization</code>, <code>machines/localization.yaml</code>, TODO 75)</td>
+<td>Both plug into that Pi's USB, so their drivers run there; the Orin keeps the EKFs and reads the topics over the network</td>
+<td>Senura (senuradissa)</td>
+<td>2026-11-08</td>
+<td>built</td>
 </tr>
 <tr>
 <td>GPS outlier gate in <code>ekf_global</code></td>
@@ -542,7 +556,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tr>
 <td><a href="own-smoother.html">Our own velocity smoother</a> (<code>aav_smoother</code>, <code>smoother:=own</code>)</td>
 <td>Ben, 8 Nov: Nav2's velocity smoother limits <code>v</code> and <code>w</code> as for a robot that turns on the spot. Ours keeps its speed limits, timeout, deadband and feedback, and gives the turn rate from where the wheels can be: the steering actuator's rate and full lock (vehicle.yaml through the car model), the bend kept while the speed ramps. Test lot, all ours, 3 runs each: 10 of 12 legs both; ego clipped 0-0.1 % of the steering against 9-15 %; off the path 0.12 m against 0.15 m. Nav2 stays the default and on the car</td>
-<td>Ben Woodhead</td>
+<td>Ben</td>
 <td>2026-11-08</td>
 <td>sim</td>
 </tr>
@@ -676,7 +690,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tr>
 <td><a href="stopping.html#4-a-heavier-car-the-adaptive-brake">The adaptive brake</a> (<code>aav_description</code> <code>adaptive_brake.py</code>, <code>adaptive_brake:=true</code>, a sim trial): after the speed loop, it compares the slowing measured with the empty car model's, and brakes harder when the car stops too slowly, never above the brake's safe max, rising at a set rate, high force only for a set time; the brake's limits in <code>vehicle.yaml</code> <code>brake:</code> (placeholders until car day A7); the car model's <code>payload</code> (kg aboard: <code>payload:=</code>); <code>sim-check --loaded-stop</code></td>
 <td>Ben, 8 Nov: "if we brake without a person vs with a person ... we are going to need to dynamically realize that we aren't braking as fast as we expect and start applying more force. We don't want to overwhelm the brakes though". The same brake stops a heavier car later; this keeps the stop where the plan said, inside the brake's own limits, below every safety lock</td>
-<td>Ben Woodhead</td>
+<td>Ben</td>
 <td>2026-11-08</td>
 <td>sim</td>
 </tr>
@@ -978,6 +992,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
+<td><a href="esp32-safety.html">The ESP32's safety rules on one page</a>, each checked against the code</td>
+<td>So the bench knows what makes the board brake before its first flash</td>
+<td>Ben</td>
+<td>2026-11-07</td>
+<td>built</td>
+</tr>
+<tr>
 <td>ESP32 actuator firmware in C++ (<code>aav_umod_esp32</code>)</td>
 <td>It drives today's car, so it stays until its Rust version is proven</td>
 <td>the 2025-26 team</td>
@@ -1063,7 +1084,14 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="own-simulator.html">Our own simulator in Rust</a> (<code>aav_simulator</code>, <code>sim simulator:=own</code>)</td>
+<td>Longer lags than the car was told (<code>sim lag_scale:=2</code>, Gazebo's adapter only)</td>
+<td>How a path follower copes with a car slower than <code>vehicle.yaml</code> says</td>
+<td>Ben</td>
+<td>2026-11-07</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="own-simulator.html">Our own simulator in Rust</a> (<code>aav_simulator</code>; the default, <code>simulator:=gazebo</code> for Gazebo)</td>
 <td>Ben, 7 Nov: "merge in everything from gazebo so its standalone in rust". Gazebo's worlds, car, lidar, radar stand-in, IMU, GPS, wheels and clock on Gazebo's own topics, so the stack runs unchanged; no GPU, a seed repeats every sensor, and the car stops at what it hits. Its cameras are <code>aav_sim_cameras</code>, started beside it. Since 8 Nov each wheel finds the ground: slopes tilt the car, a 0.3 m kerb stops it. <strong>The default since 8 Nov</strong> (<code>simulator:=gazebo</code> for Gazebo): every <code>sim-check</code> leg passes, <code>--perception</code>, <code>--faults</code> and <code>--drive-to-point</code> three times each</td>
 <td>Ben</td>
 <td>2026-11-08</td>
@@ -1190,7 +1218,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="../designs/2026-11-05_own-simulator.md">Developer window</a> (<code>pixi run dev-window</code>, Bevy): Ben's layout: the scene, console, what the lidar sees from the car with NDT's cells going dark to light purple, one map you click, and the keys. Pretend data or live ROS, as drop-ins</td>
+<td><a href="../designs/2026-11-05_own-simulator.md">Developer window</a> (<code>aav_dev_window</code>, <code>pixi run dev-window</code>, Bevy): Ben's layout: the scene, console, what the lidar sees from the car with NDT's cells going dark to light purple, one map you click, and the keys. Pretend data or live ROS, as drop-ins</td>
 <td>One screen for developers instead of many windows, with widgets a raylib screen would have to draw by hand. It is also the first step to our own simulator</td>
 <td>Ben</td>
 <td>2026-11-05</td>
@@ -1282,7 +1310,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="../../README.md#every-command">Every command</a>: about 45 <code>pixi run</code> tasks, families as one word and a choice (<code>get models</code>, <code>clear estop</code>, <code>pico spine flash</code>, <code>hud --demo</code>)</td>
+<td><a href="../../README.md#every-command">Every command</a>: about 50 <code>pixi run</code> tasks, families as one word and a choice (<code>get models</code>, <code>clear estop</code>, <code>pico spine flash</code>, <code>hud --demo</code>)</td>
 <td>Ben, 1 Nov: "Less is more. Everything should be easy and obvious": 89 tasks were too many to find the right one</td>
 <td>Ben</td>
 <td>2026-11-01</td>
@@ -1363,6 +1391,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben, 1 Nov: "a car test that will allow people to do the test so I don't have to. Maybe even install everything like the update and upgrade": each computer backed up, upgraded, installed and started at boot by a student alone; a dry run unless the role is typed. After the review: a pending reboot, a wrong hostname and an upgrade too early (the localization Pi, the Motor Pi before the Rust ESP32) are STOPs</td>
 <td>Ben</td>
 <td>2026-11-01</td>
+<td>built</td>
+</tr>
+<tr>
+<td><a href="rollout.html">Rolling out on the car</a>: one name per computer, the order (ESP32 and Motor Pi first), each one's steps, and what 0.3 changes on the car</td>
+<td>So each computer can be upgraded to a newer version in a known order, with the car's defaults kept</td>
+<td>Ben</td>
+<td>2026-11-08</td>
 <td>built</td>
 </tr>
 <tr>

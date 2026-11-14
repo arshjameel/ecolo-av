@@ -116,7 +116,9 @@
 <nav class="toc"><span>On this page:</span><a href="#in-one-line">In one line</a><a href="#the-cameras">The cameras</a><a href="#run-it">Run it</a><a href="#how-the-core-plugs-it-in">How the core plugs it in</a><a href="#tests">Tests</a><a href="#measured-7-nov-bens-m4-max">Measured (7 Nov, Ben&#x27;s M4 Max)</a><a href="#what-it-is-not-yet">What it is not, yet</a></nav>
 <div class="lead"><p>Ben, 7 Nov: replace Gazebo with our own Rust simulator, every sensor. This page is the
 <strong>cameras</strong> part: <code>ros/sim/aav_sim_cameras</code>. The rest of the simulator (world, car, lidar,
-IMU, GPS, wheels, clock) is built beside it. The plan:
+IMU, GPS, wheels, clock) is <a href="own-simulator.html">its own page</a>; together they are the
+default <code>simulator:=own</code> since 8 Nov (<a href="simulation.html">Simulation</a>). They need a GPU: with
+none, use <code>simulator:=gazebo</code>. The plan:
 <a href="../designs/2026-11-05_own-simulator.md">our own simulator</a>.</p>
 <p><img alt="The front left camera, 7 m from the stop sign" src="../img/own-sim-cameras-front.png" /></p></div>
 <section class="card"><h2 id="in-one-line">In one line</h2>

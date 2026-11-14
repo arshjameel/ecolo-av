@@ -7,7 +7,7 @@
 <!-- Generated from docs/decisions.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Decisions and open questions</h1>
-<div class="meta">42 min read · 14 sections</div></header>
+<div class="meta">49 min read · 16 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -113,7 +113,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-to-read-the-labels">How to read the labels</a><a href="#decided">Decided</a><a href="#tentative">Tentative</a><a href="#proposed-for-the-next-team-meeting">Proposed: for the next team meeting</a><a href="#ground-rules">Ground rules</a><a href="#decided-on-10-october-on-the-mac">Decided on 10 October, on the Mac</a><a href="#decided-on-11-october">Decided on 11 October</a><a href="#decided-on-15-october">Decided on 15 October</a><a href="#decided-on-22-and-23-october">Decided on 22 and 23 October</a><a href="#decided-on-24-october">Decided on 24 October</a><a href="#decided-on-25-october">Decided on 25 October</a><a href="#decided-on-29-october">Decided on 29 October</a><a href="#open-questions">Open questions</a><a href="#also-waiting-on-the-team">Also waiting on the team</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-to-read-the-labels">How to read the labels</a><a href="#decided">Decided</a><a href="#tentative">Tentative</a><a href="#proposed-for-the-next-team-meeting">Proposed: for the next team meeting</a><a href="#ground-rules">Ground rules</a><a href="#decided-on-10-october-on-the-mac">Decided on 10 October, on the Mac</a><a href="#decided-on-11-october">Decided on 11 October</a><a href="#decided-on-15-october">Decided on 15 October</a><a href="#decided-on-22-and-23-october">Decided on 22 and 23 October</a><a href="#decided-on-24-october">Decided on 24 October</a><a href="#decided-on-25-october">Decided on 25 October</a><a href="#decided-on-29-october">Decided on 29 October</a><a href="#decided-from-26-october-to-14-november">Decided from 26 October to 14 November</a><a href="#proposed-in-november-bens-to-decide">Proposed in November: Ben&#x27;s to decide</a><a href="#open-questions">Open questions</a><a href="#also-waiting-on-the-team">Also waiting on the team</a></nav>
 <div class="lead"><p>What the team has decided, what's still open, and the 34 numbered questions. The source
 is the team design doc, <em>AAV 2026–27 Autonomy Stack — Architecture &amp; Plan</em> (a Claude Doc,
 revision 61 on 10 October 2026). This page is a short copy, so you don't have to hunt.
@@ -223,7 +223,7 @@ answer.</p>
 </tr>
 <tr>
 <td>GPS gives the global position; the model is unknown</td>
-<td>Whether it uses RTK corrections decides how precise GPS A→B can be</td>
+<td>Whether it uses RTK corrections decides how precise GPS A→B can be. Ben, 5 Nov: no RTK; NDT against a map of the lot is to replace the GPS's offset (a trial, not on the car)</td>
 <td>Q18, Q19</td>
 </tr>
 <tr>
@@ -279,7 +279,7 @@ answer.</p>
 </tr>
 <tr>
 <td>A car-safe Nav2: SmacPlannerHybrid with Regulated Pure Pursuit (or MPPI's Ackermann model), and no Spin in the behaviour tree</td>
-<td>A car can't turn on the spot. The config already does this. (MPPI is the default since 22 Oct: see below)</td>
+<td>A car can't turn on the spot. The config already does this. (MPPI is the default follower since 22 Oct, the State Lattice the default planner since 1 Nov: see below)</td>
 </tr>
 <tr>
 <td>The RC transmitter stays the top-priority override, in hardware</td>
@@ -360,7 +360,11 @@ answer.</p>
 </tr>
 <tr>
 <td>Simulators</td>
-<td>Gazebo and bench mode every day; CARLA for the cameras, once the NVIDIA computer runs it (Q31, reopened 15 Oct)</td>
+<td>our own simulator (the default since 8 Nov) and bench mode every day; Gazebo with <code>simulator:=gazebo</code>; CARLA for the cameras, once the NVIDIA computer runs it (Q31, reopened 15 Oct)</td>
+</tr>
+<tr>
+<td>Trials</td>
+<td>a new idea is its own package beside the default, chosen by a switch, scored on the same routes; it becomes the default only once it wins (Ben, 29 Oct, 5 Nov)</td>
 </tr>
 </tbody>
 </table></div>
@@ -540,7 +544,7 @@ answer.</p>
 <tr>
 <td><em>Tentative, until the hardware lead confirms:</em> <strong>today's car is driven through the Motor Pi's UART</strong>, and <strong>the Orin reads its CAN bus for sensors only</strong> (<code>car.launch.py actuators:=uart</code>, the default; <code>spine_bridge role:=sensors</code>). The CAN spine stays one argument away (<code>actuators:=can</code>)</td>
 <td>Ben's picture of the wiring: the actuators on the ESP32, with the Motor Pi as its network interface; the CAN bus straight to the Orin, with the wheel sensors. A <code>role</code> on <code>spine_bridge</code>, not a new node: the wheel decoding is already there and tested, and the sensors role has no way to send (<a href="can-plan.html#todays-wiring-23-october">Today's wiring</a>)</td>
-<td>Ben, 23 Oct: "the motor controllers are on the esp32 with a pi as its network interface"</td>
+<td>Ben, 23 Oct: "the motor controllers are on the esp32 with a pi as its network interface". Seen on 6 Nov: the Motor Pi's bridge holds the ESP32's UART (<code>history/audit-2026-11-06-car.md</code>); the wire itself isn't checked</td>
 </tr>
 <tr>
 <td><strong>The cameras stream to the Orin with MediaMTX, compressed (H.264) on the Pi</strong>; the Orin unpacks them with NVIDIA's video hardware, then OpenCV and the object detector (RF-DETR Nano, in TensorRT) run on them, in one program per camera</td>
@@ -699,6 +703,164 @@ answer.</p>
 </tbody>
 </table></div>
 </section>
+<section class="card"><h2 id="decided-from-26-october-to-14-november">Decided from 26 October to 14 November</h2>
+<p>Short; the words are in <code>docs/history/messages-*.md</code>, the work in <code>TODO.md</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>When</th>
+<th>Decision</th>
+<th>By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>26 Oct</td>
+<td><code>aav_goto</code> becomes <code>aav_drive_to_point</code> (action <code>/drive_to_point</code>, slot <code>point</code>): the name says the job</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>29 Oct</td>
+<td><strong>Trials beside defaults:</strong> new nodes or plugins run beside the main ones and replace them only if they win (<a href="trials.html">Trials</a>)</td>
+<td>Ben: "test and then replace the main ones if they work"</td>
+</tr>
+<tr>
+<td>1 Nov</td>
+<td><strong>The State Lattice is the default planner</strong> where the car may reverse, the car too; Hybrid-A<em> forward only. </em><em>Reversing and the U-turn are on, on the car</em>* (TODO 59, 62)</td>
+<td>Ben: "reverse and uturn should be in"</td>
+</tr>
+<tr>
+<td>1 Nov</td>
+<td><strong>0.2 = sim-complete, car-ready; 0.3 = it drove.</strong> Car day is split: Day A destroys nothing, Day B upgrades; every idea is kept for later</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>1 Nov</td>
+<td>Fewer <code>pixi run</code> commands (89 → 45), families with one word after, no aliases</td>
+<td>Ben: "Less is more"</td>
+</tr>
+<tr>
+<td>2 Nov</td>
+<td>Initial D red and black on all four screens; the diffusion planner in 0.2 as a trial, off by default, behind its guard</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>3 Nov</td>
+<td><strong>No default switched for 0.2:</strong> NDT-EKF was closer (0.018 m against 0.174 m) but needs the lot's map; the cubes were slower and once drove into a post (<a href="switches.html">Switches</a>)</td>
+<td>from the Gazebo runs</td>
+</tr>
+<tr>
+<td>3 Nov</td>
+<td>One screen per concept: <strong>Drive</strong> and <strong>Hardware</strong> ("just the stuff we control"); the HUD and the map stay in the car</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>4 Nov</td>
+<td>Picked from the <a href="../designs/2026-11-04_weak-links.md">weak links</a>: the clocks, the fence and the site file (TODO 100); the brake follows a wish (101); a behaviour state machine (102); research A, the car identifies itself (104). The tracker (103) paused 5 Nov; shadow mode (108) not picked</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>5 Nov</td>
+<td><strong>Our own algorithms:</strong> for each area a new best hybrid from papers, known algorithms and current code, how the car stops first. Stock stays the default until ours wins; every algorithm stays. "One car" is for down the road</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>5 Nov</td>
+<td><strong>Everything is a drop-in:</strong> Gazebo, our simulator and the real sensors give the same topics; <code>pixi run drop-in</code> checks</td>
+<td>Ben: "just swap out and test"</td>
+</tr>
+<tr>
+<td>5 Nov</td>
+<td><strong>Screens by computer:</strong> the HUD and the street map stay raylib, on the Pi; laptop screens can be Bevy; the Orin runs no graphics and no simulator</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>5 Nov</td>
+<td>A drive only suggests map changes; a person accepts them. No RTK (above)</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>7 Nov</td>
+<td><strong>0.3:</strong> one car model shared by ego, the simulators and the Rust drivers; algorithms that know the lag (MPPI in Rust, the lag-aware MPC); the behaviour planner and the stop-point check; directions on the campus</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>7 Nov</td>
+<td><strong>Gazebo merged into Rust:</strong> our own simulator, every sensor, beside Gazebo until it wins</td>
+<td>Ben: "merge in everything from gazebo so its standalone in rust"</td>
+</tr>
+<tr>
+<td>7 Nov</td>
+<td><strong>Diffusion on the car only as a trial:</strong> <code>diffusion_trial:=true</code>, 0.5 m/s at most, the guard and every lock as always</td>
+<td>Ben: "We want diffusion"</td>
+</tr>
+<tr>
+<td>7 Nov</td>
+<td><strong>The Rust ESP32 keeps every C++ behaviour at a minimum</strong> (<a href="esp32-cpp-parity.html">parity</a>); its WiFi pages as JSON, read only, off by default</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>7 Nov</td>
+<td><strong>One forward speed limit, 1.0 m/s, for ego and the spine</strong>, with a test that fails if they differ; the spine's stop rules: every lost input is a hard stop (T3.6)</td>
+<td>Arsh</td>
+</tr>
+<tr>
+<td>8 Nov</td>
+<td><strong>Our own simulator is the default</strong> (<code>simulator:=own</code>); <code>simulator:=gazebo</code> for computers with no GPU</td>
+<td>Ben, after the head-to-head runs</td>
+</tr>
+<tr>
+<td>8 Nov</td>
+<td><strong>Off Nav2 one piece at a time</strong> (costmap, planner, navigator, smoother), each beside Nav2 until it wins; <strong>Nav2 stays the default and on the car</strong></td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>8 Nov</td>
+<td><strong>On the car, 0.3 keeps the defaults:</strong> the new pieces are off or simulator-only (<a href="rollout.html">Rolling out</a>)</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>8 Nov</td>
+<td>The adaptive brake, a sim trial: brake harder when the car slows too little, never past the brake's safe maximum</td>
+<td>Ben</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="proposed-in-november-bens-to-decide">Proposed in November: Ben's to decide</h2>
+<p>Designs, <strong>nothing of them built</strong>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Design</th>
+<th>What it proposes</th>
+<th>Waits on</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../designs/2026-11-13_one-shape.md">One shape</a> (13 Nov; reviewed: go, with changes)</td>
+<td>nine levels, one world model, one boss (the behaviour planner), the league (<code>stack:=</code>), 36 switches down to 8, lane lines as soft costs</td>
+<td>D1-D7 (TODO 147-152)</td>
+</tr>
+<tr>
+<td><a href="../designs/2026-11-14_the-whole-car.md">The whole car</a> (14 Nov)</td>
+<td>every design merged: one picture of the world, one car model, one scorecard, and what's missing</td>
+<td>W1-W7 (TODO 153-160)</td>
+</tr>
+<tr>
+<td><a href="../designs/2026-11-07_esp32-debug-link_brief.md">The hardware debug plan</a> (7 Nov)</td>
+<td>debug one part of the car at a time; the order chosen by Ben</td>
+<td>the hardware people: a USB cable, the current limits, the return wire (TODO 126)</td>
+</tr>
+<tr>
+<td>Where the CBF safety filter goes (K1), a live shadow lock (S1), reversing on long drives (TODO 122)</td>
+<td>see each design</td>
+<td>Ben</td>
+</tr>
+</tbody>
+</table></div>
+</section>
 <section class="card"><h2 id="open-questions">Open questions</h2>
 <p>The design doc numbers 34 questions, and doesn't rank them. <strong>Bold</strong> marks the ones that
 look like they block phase 0 or the first drives: a suggestion, for the team to change.
@@ -716,7 +878,7 @@ The design doc's next steps take Q1–Q9, Q18, Q20 and Q22 to the car with a tap
 <tr>
 <td><strong>Q1</strong></td>
 <td>Dimensions</td>
-<td>Wheelbase, track, overall size, steering limit, top speed? The old code disagrees: 1.3–1.57 m wheelbase</td>
+<td>Wheelbase, track, overall size, steering limit, top speed? The old code disagrees: 1.3–1.57 m wheelbase. <strong>Partly answered</strong> (Betsi, 1 Nov): wheelbase 1.561 m, track 0.65 m front and 0.85 m rear, the lidar's and GPS's heights. The steering limit, the weight and the wheel diameter are still open</td>
 </tr>
 <tr>
 <td><strong>Q2</strong></td>
@@ -803,12 +965,12 @@ The design doc's next steps take Q1–Q9, Q18, Q20 and Q22 to the car with a tap
 <tr>
 <td>Q16</td>
 <td>Watchdog</td>
-<td>How long without a command before it acts, how hard it brakes, and what the steering does</td>
+<td>How long without a command before it acts, how hard it brakes, and what the steering does. <strong>Built as:</strong> 100 ms, full brake, latched (CAN v0.2.0, 15 Oct; the Rust ESP32's heartbeat, 24 Oct). The steering's part is still open (below)</td>
 </tr>
 <tr>
 <td>Q17</td>
 <td>Wireless updates</td>
-<td>Keep them? If so, how are they authenticated?</td>
+<td>Keep them? If so, how are they authenticated? <strong>Built, off by default</strong> (7 Nov): only while parked, with a password, a checked image; never in the car-day build</td>
 </tr>
 </tbody>
 </table></div>
@@ -950,7 +1112,7 @@ The design doc's next steps take Q1–Q9, Q18, Q20 and Q22 to the car with a tap
 </tr>
 <tr>
 <td>Nav2's lookahead (N7)</td>
-<td>its turn command flips sign about once a second in the sim</td>
+<td>its turn command flips sign about once a second in the sim. Still open: "the wiggle" (TODO 124, 149); the single-goal tree's replanning at 1 Hz is the suspect</td>
 </tr>
 <tr>
 <td>Package renames</td>
@@ -958,7 +1120,7 @@ The design doc's next steps take Q1–Q9, Q18, Q20 and Q22 to the car with a tap
 </tr>
 <tr>
 <td>A <code>vendor/</code> folder</td>
-<td>keep downloaded source out of git, with a list to fetch it again</td>
+<td>done: downloaded source stays out of git, <code>pixi run get vendor</code> fetches it again</td>
 </tr>
 <tr>
 <td>Stop signs as a twist_mux lock</td>

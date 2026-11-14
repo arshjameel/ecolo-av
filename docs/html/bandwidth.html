@@ -7,7 +7,7 @@
 <!-- Generated from docs/bandwidth.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Bandwidth: how much data each sensor sends (23 October)</h1>
-<div class="meta">16 min read · 7 sections</div></header>
+<div class="meta">17 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -122,6 +122,15 @@ crosses, and whether that wire has room.</p>
 <p><strong>The cameras are the only danger.</strong> One raw 1080p camera (93 MB/s) fills most of a
 gigabit cable; two don't fit. Everything else together is under 2 MB/s. Send
 pictures <strong>compressed</strong> over the network, and keep the lidar's points on the Orin.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Since this page (checked 13 Nov)</p>
+<p>The camera question was answered the day it was asked (Ben, 23 Oct): the camera Pi
+sends each front camera as <strong>H.264, 1280x720, 15 fps, 2 Mbit/s</strong> (MediaMTX), and the
+Orin decodes it and runs the detector in one process, so raw pictures never cross
+the network: <a href="camera-pipeline.html">Camera pipeline</a>. The raw and JPEG camera rows
+below are what that avoids, and still hold for a USB camera (<code>usb_cam</code>).
+<span class="badge b-untested">untested</span> on the car. The measurements below are Gazebo's, 23-24 Oct.</p>
 </div>
 <p>How sure each number is:</p>
 <div class="table-wrap"><table>

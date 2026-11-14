@@ -114,17 +114,17 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#1-the-layers-bottom-to-top">1. The layers, bottom to top</a><a href="#2-each-part-of-the-car-from-the-device-up">2. Each part of the car, from the device up</a><a href="#3-what-happens-when-the-car-starts-and-joins-the-network">3. What happens when the car starts and joins the network</a><a href="#4-how-to-test-each-layer-cheapest-first">4. How to test each layer, cheapest first</a><a href="#5-the-gaps-in-one-list">5. The gaps, in one list</a></nav>
-<div class="lead"><p>Written 15 October 2026, checked 25 October. Read <a href="sim-and-car.html">Sim and the car</a>
+<div class="lead"><p>Written 15 October 2026, checked 25 October; the machine files, the simulator and the car's state brought up to date 14 November. Read <a href="sim-and-car.html">Sim and the car</a>
 and <a href="maps-and-position.html">Maps and position</a> first, or after: they go
 deeper on two parts of this page.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
 <li>The car is <strong>layers</strong>. Each one only talks to the layer above and the one below.</li>
-<li>Every layer can be tested on its own: the <strong>turtle</strong>, the <strong>bench</strong>, <strong>Gazebo</strong>, then the <strong>car</strong>.</li>
+<li>Every layer can be tested on its own: the <strong>turtle</strong>, the <strong>bench</strong>, the <strong>simulator</strong> (ours, or Gazebo), then the <strong>car</strong>.</li>
 <li>At start-up, each computer runs <strong>one command</strong>. Its machine file says which parts run there. They find each other on the network by themselves.</li>
 <li>Nothing moves until a <strong>driver</strong> asks, the <strong>mux</strong> allows it, and the <strong>backend</strong> is <strong>armed</strong>.</li>
-<li><strong>None of this has run on the real car yet.</strong> The start-up below is the design, tested in simulation and on the bench.</li>
+<li><strong>The whole start-up has not run on the real car yet.</strong> The car drove on 13 Nov with only the localization update installed; the full suite is not on it. The start-up below is the design, tested in simulation and on the bench.</li>
 </ul>
 </blockquote></div>
 <section class="card"><h2 id="1-the-layers-bottom-to-top">1. The layers, bottom to top</h2>
@@ -298,10 +298,11 @@ deeper on two parts of this page.</p>
 board. The board runs the speed loop; each Jrk G2 runs a position loop.</p>
 </section>
 <section class="card"><h2 id="3-what-happens-when-the-car-starts-and-joins-the-network">3. What happens when the car starts and joins the network</h2>
-<p>This is the design. It runs this way on the bench and in Gazebo, but never on the car yet.</p>
+<p>This is the design. It runs this way on the bench and in the simulators, but not yet, as a whole, on the car.</p>
 <h3 id="each-computer-runs-one-command">Each computer runs one command</h3>
 <pre class="highlight"><code class="language-bash">pixi run car orin        # on Orin #1
 pixi run car motor_pi    # on the Motor-Pi (today's drive path)
+pixi run car localization   # on the localization Pi: the IMU and GPS drivers (8 Nov)
 pixi run -e ml car laptop   # on a laptop at the car: joystick, RF-DETR on its GPU</code></pre>
 <p>Its <strong>machine file</strong> (<code>ros/bringup/aav_bringup/config/machines/&lt;name&gt;.yaml</code>) lists the parts that run there:</p>
 <div class="table-wrap"><table>
@@ -314,11 +315,19 @@ pixi run -e ml car laptop   # on a laptop at the car: joystick, RF-DETR on its G
 <tbody>
 <tr>
 <td><code>orin</code></td>
-<td>car model, mux, ego, scripted, drive to point, IMU, GPS, lidar, the two camera streams (RF-DETR inside), stop-sign watcher, localization, Nav2, the CAN bus (wheels), Foxglove</td>
+<td>car model, mux, ego, scripted, drive to point, lidar, the two camera streams (RF-DETR inside), stop-sign watcher, localization, Nav2, the CAN bus (wheels), Foxglove</td>
 </tr>
 <tr>
 <td><code>motor_pi</code></td>
 <td>the legacy backend: UART to the ESP32</td>
+</tr>
+<tr>
+<td><code>motor_pi_alone</code></td>
+<td>the Motor Pi by itself, for first moves: mux, ego, joystick, stop-sign watcher, the legacy backend (1 Nov)</td>
+</tr>
+<tr>
+<td><code>localization</code></td>
+<td>the IMU and GPS drivers, on the localization Pi's USB (8 Nov); the EKFs stay on the Orin</td>
 </tr>
 <tr>
 <td><code>laptop</code></td>
@@ -503,9 +512,9 @@ pixi run -e ml car laptop   # on a laptop at the car: joystick, RF-DETR on its G
 <td>the car's software path, e-stops, Nav2, stop sign</td>
 </tr>
 <tr>
-<td>4. Gazebo</td>
-<td><code>pixi run sim world:=road</code> (or <code>world:=test_lot</code>), every sensor on</td>
-<td>3D physics, every sensor</td>
+<td>4. Simulator</td>
+<td><code>pixi run sim world:=road</code> (or <code>world:=test_lot</code>), every sensor on: our own simulator since 8 Nov, <code>simulator:=gazebo</code> for Gazebo</td>
+<td>a 3D world, every sensor</td>
 <td>localization, Nav2, perception, A to B</td>
 </tr>
 <tr>
@@ -585,9 +594,9 @@ pixi run -e ml car laptop   # on a laptop at the car: joystick, RF-DETR on its G
 </thead>
 <tbody>
 <tr>
-<td>Our code has never run on the car</td>
-<td>everything on the car</td>
-<td>the audits were 16 and 21 Oct; next, Jazzy or Pixi on the Orin (Q24; <a href="car-day.html">car day</a>)</td>
+<td>Only the localization update is on the car (it drove with it on 13 Nov)</td>
+<td>everything else on the car</td>
+<td><a href="rollout.html">Rolling out</a>, one computer at a time; <a href="car-day.html">car day</a></td>
 </tr>
 <tr>
 <td>The camera streams and the lidar driver are untested on the car</td>

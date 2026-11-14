@@ -7,7 +7,7 @@
 <!-- Generated from docs/perception.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Perception: cameras, RF-DETR and YOLO, stop signs, lanes and radar</h1>
-<div class="meta">31 min read · 11 sections</div></header>
+<div class="meta">35 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -114,13 +114,138 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#the-chain">The chain</a><a href="#the-packages">The packages</a><a href="#stop-signs">Stop signs</a><a href="#models">Models</a><a href="#better-models-to-try">Better models to try</a><a href="#where-it-runs">Where it runs</a><a href="#lane-keeping">Lane keeping</a><a href="#radar-clustering">Radar clustering</a><a href="#the-roof-lidar">The roof lidar</a><a href="#on-the-car">On the car</a><a href="#still-to-do">Still to do</a></nav>
-<div class="lead"><p>What the car sees, and what it does about it. All of it runs on the bench today. On the
-car, it waits for the cameras' calibration and the Orin's move to JetPack 7.2 (Q24).</p></div>
+<div class="lead"><p>What the car sees, and what it does about it: what each node does, how to run it, and
+what was measured. All of it runs on the bench and in both simulators. On the car, it
+waits for the cameras' calibration and the Orin's move to JetPack 7.2 (Q24).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>For</th>
+<th>Read</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The choices behind it: which detector, what else was tried</td>
+<td><a href="perception-and-hud-map.html">Perception options</a>, <a href="model-comparison.html">Model comparison</a></td>
+</tr>
+<tr>
+<td>The front cameras' path from the camera Pi</td>
+<td><a href="camera-pipeline.html">Camera pipeline</a></td>
+</tr>
+<tr>
+<td>What Nav2 does with the points</td>
+<td><a href="costmaps.html">Costmaps</a></td>
+</tr>
+</tbody>
+</table></div></div>
 <section class="card"><h2 id="the-chain">The chain</h2>
 <pre class="highlight"><code>camera ─► object_detector ─► /perception/detections ─► stop_sign_watcher ─► /perception/stop_sign
                                                                     (a lock on twist_mux)
 lane_finder ─────────► /perception/lane/geometry ─► control_interface ─► /drivers/ai/cmd_vel ─► twist_mux
 radar ─► /sensors/radar/points ─► radar_clusters ─► /perception/radar/clusters, /perception/radar/cluster_boxes</code></pre>
+<h3 id="who-reads-what-today-13-nov">Who reads what, today (13 Nov)</h3>
+<p>Checked against the code and <code>docs/interfaces.yaml</code>. "Nobody" means no node acts on it:
+a person can still look at it in RViz or Lichtblick.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Sensor</th>
+<th>Node</th>
+<th>Topic</th>
+<th>Read by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Roof lidar</td>
+<td><code>lidar_scan</code> (<code>aav_lidar</code>)</td>
+<td><code>/sensors/lidar/scan</code></td>
+<td>the local costmap's <code>lidar_layer</code>; <code>collision_monitor</code>; AMCL (<code>amcl:=true</code>); <code>behaviour</code> (<code>behaviour:=true</code>)</td>
+</tr>
+<tr>
+<td>Roof lidar</td>
+<td><code>voxels</code> (<code>aav_voxels</code>), only with <code>voxels:=true</code></td>
+<td><code>/perception/voxels/cubes</code>, <code>/ground</code></td>
+<td>then the <code>lidar_layer</code> and <code>collision_monitor</code>, instead of the scan; the debug HUD and the developer window draw them</td>
+</tr>
+<tr>
+<td>Radar</td>
+<td>the driver, or a stand-in</td>
+<td><code>/sensors/radar/points</code></td>
+<td>the local costmap's <code>obstacle_layer</code>; <code>collision_monitor</code>; the sensor watchdog (all with <code>radar:=true</code>: the bench and the simulators. Off on the car: no radar part yet)</td>
+</tr>
+<tr>
+<td>Radar</td>
+<td><code>radar_clusters</code></td>
+<td><code>/perception/radar/clusters</code>, <code>/cluster_boxes</code></td>
+<td><strong>nobody</strong>: for RViz only</td>
+</tr>
+<tr>
+<td>Front cameras</td>
+<td><code>object_detector</code>, or <code>camera_stream_&lt;camera&gt;</code> on the car</td>
+<td><code>/perception/detections</code></td>
+<td><code>stop_sign_watcher</code>; <code>camera_obstacles</code> (off by default); the sensor watchdog (streamed cameras)</td>
+</tr>
+<tr>
+<td></td>
+<td><code>object_detector</code></td>
+<td><code>/perception/detections/image</code></td>
+<td><strong>nobody</strong>: for RViz or Lichtblick</td>
+</tr>
+<tr>
+<td></td>
+<td><code>stop_sign_watcher</code></td>
+<td><code>/perception/stop_sign</code></td>
+<td>twist_mux's lock (priority 30); the HUD; <code>behaviour</code></td>
+</tr>
+<tr>
+<td></td>
+<td><code>stop_sign_watcher</code></td>
+<td><code>/perception/stop_sign/distance</code></td>
+<td><code>behaviour</code> only (<code>behaviour:=true</code>, a trial): else <strong>nobody</strong></td>
+</tr>
+<tr>
+<td></td>
+<td><code>camera_obstacles</code> (off until Q22)</td>
+<td><code>/perception/camera_obstacles</code>, <code>/perception/camera_view</code></td>
+<td>the local costmap's <code>camera_layer</code>; <code>collision_monitor</code> with <code>camera_guard</code></td>
+</tr>
+<tr>
+<td>Front left camera</td>
+<td><code>lane_finder</code> (<code>lane:=true</code>)</td>
+<td><code>/perception/lane/geometry</code></td>
+<td><code>control_interface</code> only, the AI slot's driver. Nav2, the planner and the costmaps <strong>don't</strong> read lanes</td>
+</tr>
+<tr>
+<td></td>
+<td><code>lane_finder</code></td>
+<td><code>/perception/lane/image</code></td>
+<td><strong>nobody</strong>: for RViz</td>
+</tr>
+<tr>
+<td>Front left camera</td>
+<td>the camera itself</td>
+<td><code>/sensors/camera/front_left/image_raw</code></td>
+<td>the detector, <code>lane_finder</code>, the HUD's picture, the sensor watchdog</td>
+</tr>
+<tr>
+<td>Front right, rear cameras</td>
+<td>the simulators</td>
+<td>their <code>image_raw</code></td>
+<td><strong>nobody</strong> (on the car the front right one's detector runs inside its <code>camera_stream</code> node)</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Labels:</strong> only "stop sign" does anything by default. People, cars and the rest reach
+  Nav2 only through <code>camera_obstacles</code>, which is off everywhere until the cameras are
+  calibrated (Q22).</li>
+<li><strong>Objects with an ID and a speed</strong> (a tracker for radar clusters and cubes) are not
+  built: TODO 103, paused. <code>aav_track</code> is something else: trial path followers.</li>
+<li><strong>Lanes as costs for the planner</strong> are a proposal only
+  (<a href="../designs/2026-11-13_one-shape.md">one shape</a>).</li>
+</ul>
 <p><img alt="What the bench camera shows YOLO, about 5 m from the stop sign" src="../img/bench-stop-sign.png" /></p>
 <div class="table-wrap"><table>
 <thead>
@@ -191,6 +316,12 @@ radar ─► /sensors/radar/points ─► radar_clusters ─► /perception/rada
 <td>ours</td>
 <td>the roof lidar's points into a scan for Nav2 (<a href="#the-roof-lidar">below</a>)</td>
 <td><span class="badge b-works">works</span> against a fake lidar</td>
+</tr>
+<tr>
+<td><code>aav_voxels</code></td>
+<td>ours</td>
+<td>a trial (<code>voxels:=true</code>): the lidar's cloud as 0.25 m cubes over the fitted road, for Nav2 instead of the scan (<a href="../designs/2026-10-30_voxels.md">design</a>)</td>
+<td>a trial, off by default</td>
 </tr>
 <tr>
 <td><code>aav_sensors</code> <code>cameras.launch.py</code></td>
@@ -911,8 +1042,11 @@ the speed. On a campus road the lane runs from the yellow centre line to the whi
   distance, noise is left out, old boxes are cleared. Its <code>PROVENANCE.md</code> lists them.</li>
 <li>The C++ package's other programs (filters, ICP, an OctoMap) were demos, never launched:
   they went with it.</li>
-<li><span class="badge b-later">later</span> Next: the radar's points into the local costmap (the ObstacleLayer, written and
-  switched off) and <code>collision_monitor</code>.</li>
+<li><strong>Nothing reads the clusters.</strong> Nav2 takes the radar's raw points, not the clusters:
+  the local costmap's obstacle layer and <code>collision_monitor</code> read <code>/sensors/radar/points</code>
+  wherever <code>radar:=true</code> (the bench and the simulators). On the car the radar part is
+  still off.</li>
+<li><span class="badge b-later">later</span> Next: a tracker on the clusters (TODO 103, paused until the radar is on the car).</li>
 </ul>
 </section>
 <section class="card"><h2 id="the-roof-lidar">The roof lidar</h2>
@@ -1168,8 +1302,8 @@ read the same way.</p>
 <td>the reflash (Q24)</td>
 </tr>
 <tr>
-<td>The radar into the costmap</td>
-<td>the ObstacleLayer settings</td>
+<td>The radar on the car: its part is off in every machine file</td>
+<td>the radar's wiring</td>
 </tr>
 </tbody>
 </table></div></section>

@@ -7,7 +7,7 @@
 <!-- Generated from docs/full-simulation.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The full simulation: the whole car in Gazebo</h1>
-<div class="meta">19 min read · 10 sections</div></header>
+<div class="meta">20 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -117,6 +117,11 @@
 <div class="lead"><p>Written 15 October 2026, checked 25 October. The goal (Ben, 15 Oct): "fully simulate the car inside
 Gazebo with all the sensors, and build the full pipeline." This page says what we have,
 what's missing, and how the car's measurements feed in.</p>
+<p><strong>This page is the 15 Oct plan and its record.</strong> How to run the simulation today:
+<a href="simulation.html">Simulation</a>. What swaps between sim, bench and car: <a href="sim-and-car.html">Sim and the car</a>.
+Since 8 Nov <code>pixi run sim</code> starts <a href="own-simulator.html">our own simulator</a>, which plays
+Gazebo's part on the same topics; every command below runs on either, and
+<code>simulator:=gazebo</code> picks Gazebo. The results below were measured on Gazebo.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
@@ -179,7 +184,7 @@ what's missing, and how the car's measurements feed in.</p>
 <tr>
 <td>8-10</td>
 <td>the real numbers, the test lot, forces</td>
-<td>not started</td>
+<td>not started. Beside them, since: a Carleton world from OpenStreetMap (<code>pixi run campus</code>, <code>world:=campus</code>), not a survey of the test lot; and our own simulator, whose car rides slopes and stops at kerbs (8 Nov), still with no forces</td>
 </tr>
 </tbody>
 </table></div>
@@ -340,7 +345,7 @@ what's missing, and how the car's measurements feed in.</p>
 </tr>
 <tr>
 <td>The world</td>
-<td>a test road, an empty lot</td>
+<td>a test road, an empty lot, a walled test lot, Carleton from OpenStreetMap (<code>world:=campus</code>)</td>
 <td><strong>a copy of the real test lot</strong></td>
 </tr>
 <tr>

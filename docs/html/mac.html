@@ -7,7 +7,7 @@
 <!-- Generated from docs/mac.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Your Mac: run it, and drive the car</h1>
-<div class="meta">18 min read · 12 sections</div></header>
+<div class="meta">19 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -128,7 +128,7 @@ drive. Lichtblick only watches, but needs no setup. Ubuntu in a VM is the fallba
 <tbody>
 <tr>
 <td>1. ROS on the Mac, with Pixi</td>
-<td>everything: keyboard driving, e-stop, RViz, rqt, the turtle, Gazebo</td>
+<td>everything: keyboard driving, e-stop, RViz, rqt, the turtle, the simulators</td>
 <td>about 30 minutes and 7 GB, once</td>
 </tr>
 <tr>
@@ -167,9 +167,10 @@ Hold <code>i</code> to drive.</p>
 <section class="card"><h2 id="join-the-cars-network">Join the car's network</h2>
 <div class="admonition warning">
 <p class="admonition-title">The car must run Jazzy too</p>
-<p>Today's car runs the 2025-26 software on ROS 2 Humble, and Humble and Jazzy don't
-mix. Put this stack on the car first: <a href="platforms.html">Platforms</a> shows how, with or
-without a reflash.</p>
+<p>Today's car still runs the 2025-26 software on ROS 2 Humble, and Humble and Jazzy
+don't mix. On 13 Nov only the localization update of ours was on it, not the full
+suite. Put this stack on the car first: <a href="rollout.html">Rolling out</a>, and
+<a href="platforms.html">Platforms</a> for with or without a reflash.</p>
 </div>
 <div class="table-wrap"><table>
 <thead>
@@ -227,7 +228,8 @@ pixi run bash tools/net_map.sh --listen 30 --out ~/net-map.md</code></pre>
 <li>On a Mac, programs started by Python see an empty ARP table (Local Network privacy),
   so <code>bash tools/net_map.sh</code> reads it from bash. If the MAC column is empty, check step 4b.</li>
 <li>Tried on Ben's home network, 15 Oct: 13 machines in 25 s, and a test talker on domain
-  77 heard. <strong>Not yet tried on the car.</strong></li>
+  77 heard. At the car: the 21 Oct audit's network map
+  (<a href="../history/audit-2026-10-21-car.md">audit</a>).</li>
 </ul>
 <h3 id="the-cars-own-topics">The car's own topics</h3>
 <p><code>pixi run tools/ros.sh ros2 topic list</code> should then list the car's topics. If they don't
@@ -367,13 +369,15 @@ default) or MISSING.</p>
 </table></div>
 </section>
 <section class="card"><h2 id="gazebo-on-a-mac">Gazebo on a Mac</h2>
-<p>On macOS, Gazebo's window has to run as a separate program from the simulator.
-<code>pixi run sim</code> starts both, and points the window's camera at the car:</p>
-<pre class="highlight"><code class="language-bash">pixi run sim               # the simulator, its window, and RViz
+<p>Since 8 Nov <code>pixi run sim</code> starts our own simulator (<a href="own-simulator.html">Our simulator</a>);
+Gazebo needs <code>simulator:=gazebo</code>. On macOS, Gazebo's window has to run as a separate
+program from the simulator. <code>pixi run sim simulator:=gazebo</code> starts both, and points the
+window's camera at the car:</p>
+<pre class="highlight"><code class="language-bash">pixi run sim simulator:=gazebo               # the simulator, its window, and RViz
 pixi run tools/ros.sh tools/gz_window.sh         # opens the window again, if you closed it
-pixi run sim follow:=false # a free camera instead of one that follows the car</code></pre>
+pixi run sim simulator:=gazebo follow:=false # a free camera instead of one that follows the car</code></pre>
 <p>Cameras and lidars inside Gazebo can crash it on some Macs. Ours don't: in the road world
-(<code>pixi run sim world:=road</code>), the cameras, the radar stand-in and the roof
+(<code>pixi run sim simulator:=gazebo world:=road</code>), the cameras, the radar stand-in and the roof
 lidar render with no window, on Metal, at their full rates (Ben's Mac, 15 Oct). The lidar
 was off by default for a while: with YOLO too it failed, but those runs shared the Mac with a stray simulator. On a quiet Mac (15 Oct afternoon) everything together passed twice, so it's on by default
 (<a href="simulation.html#the-lidar-gazebo-only">Simulation</a>). If Gazebo crashes, use the empty
@@ -612,7 +616,7 @@ discovery stays on it, and the whole Gazebo graph starts more. On Linux the 33rd
 </tr>
 <tr>
 <td>Gazebo's window on a Mac</td>
-<td><span class="badge b-works">works</span> 10 Oct: <code>pixi run sim</code> opens it; the car drives in it (pictures in <a href="first-day.html">Your first day</a>)</td>
+<td><span class="badge b-works">works</span> 10 Oct: <code>pixi run sim</code> opened it (now <code>simulator:=gazebo</code>); the car drives in it (pictures in <a href="first-day.html">Your first day</a>)</td>
 </tr>
 <tr>
 <td>Gazebo's cameras and lidar on a Mac</td>
@@ -632,7 +636,7 @@ discovery stays on it, and the whole Gazebo graph starts more. On Linux the 33rd
 </tr>
 <tr>
 <td>The Mac on the car's network</td>
-<td><span class="badge b-untested">untested</span> the car still runs Humble</td>
+<td><span class="badge b-untested">untested</span> as a ROS peer: the car still runs Humble. <code>pixi run doctor</code> ran on the car's switch on 21 Oct; on 6 Nov the Mac's <code>ros2</code> checks (Cyclone) may have upset the car's Fast DDS nodes (the audits)</td>
 </tr>
 <tr>
 <td><code>pixi run doctor</code></td>

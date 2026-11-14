@@ -7,7 +7,7 @@
 <!-- Generated from docs/perception-and-hud-map.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Perception models, the lidar, and a map on the HUD</h1>
-<div class="meta">13 min read · 7 sections</div></header>
+<div class="meta">14 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -115,7 +115,12 @@
 <main>
 <nav class="toc"><span>On this page:</span><a href="#1-camera-perception-which-tool-for-which-job">1. Camera perception: which tool for which job</a><a href="#2-the-cameras-on-the-car-one-thing-to-fix-first">2. The cameras on the car: one thing to fix first</a><a href="#3-the-lidar-three-steps">3. The lidar: three steps</a><a href="#4-a-map-on-the-hud">4. A map on the HUD</a><a href="#5-better-open-source-options-including-nvidias-per-pixel-models">5. Better open-source options, including NVIDIA&#x27;s per-pixel models</a><a href="#6-what-to-do-in-order">6. What to do, in order</a><a href="#sources-15-oct">Sources (15 Oct)</a></nav>
 <div class="lead"><blockquote>
-<p><strong>A snapshot from 15 October 2026.</strong> What's true now: <a href="status.html">Status</a>, <a href="perception.html">Perception</a>, <a href="camera-pipeline.html">Camera pipeline</a> and <a href="hud.html#the-map-window-big-screen">the HUD's map window</a>.</p>
+<p><strong>A snapshot from 15 October 2026: the options we weighed, and why.</strong> It is not how
+things run now. What runs today, and who reads each topic: <a href="perception.html">Perception</a>.
+Also <a href="status.html">Status</a>, <a href="camera-pipeline.html">Camera pipeline</a> and
+<a href="hud.html#the-map-window-big-screen">the HUD's map window</a>.</p>
+<p>Still open from this page (13 Nov): lidar clusters, a 3D detector, camera + lidar
+together, a per-pixel road mask (<code>segmenter</code>), and the recorded-drive model test.</p>
 </blockquote>
 <p>Written 15 October 2026. <strong>Since then:</strong> the detector is RF-DETR Nano, not YOLO
 (Ben, 23 Oct), as TensorRT on the Orin and Core ML on a Mac: see

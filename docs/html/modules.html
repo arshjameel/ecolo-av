@@ -7,7 +7,7 @@
 <!-- Generated from docs/modules.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Every module, explained</h1>
-<div class="meta">37 min read · 16 sections</div></header>
+<div class="meta">41 min read · 16 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -117,8 +117,10 @@
 <div class="lead"><p>One card for every ROS package in <code>ros/</code> and every crate and board in <code>firmware/</code>. Each
 card answers the same nine questions. <a href="packages.html">Packages</a> is the short version, in
 tables; this page goes deeper. Written 15 October 2026, checked 25 October, with the
-topic names by area (<a href="naming.html">Topic areas</a>). 37 packages build; seven of the newest have a
-one-line entry, pointing at their own README (<a href="#more-packages-see-their-readmes">below</a>).</p>
+topic names by area (<a href="naming.html">Topic areas</a>). 51 packages build with colcon (counted
+14 Nov), and two more are plain cargo programs; 24 of the newest have a
+one-line entry, pointing at their own README (<a href="#more-packages-see-their-readmes">below</a>).
+The cards themselves were not checked again after 25 Oct, apart from the lines changed on 14 Nov.</p>
 <p><img alt="How the stack fits together" src="../img/architecture.svg" /></p></div>
 <section class="card"><h2 id="how-to-read-a-card">How to read a card</h2>
 <div class="table-wrap"><table>
@@ -184,11 +186,11 @@ one-line entry, pointing at their own README (<a href="#more-packages-see-their-
 </tr>
 <tr>
 <td><a href="#description-and-localization">bringup, localization</a></td>
-<td><code>aav_description</code>, <code>aav_localization</code>, <code>aav_gps_heading</code></td>
+<td><code>aav_description</code>, <code>aav_localization</code>, <code>aav_gps_heading</code>; <code>aav_localization_health</code>, <code>aav_ndt</code>, <code>aav_kiss_icp</code>, <code>aav_run_info</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
 </tr>
 <tr>
 <td><a href="#drivers">drivers</a></td>
-<td><code>aav_teleop</code>, <code>aav_actuator_tests</code>, <code>aav_scripted</code>, <code>aav_drive_to_point</code>, <code>aav_language</code>, <code>aav_navigation</code>; <code>aav_rc</code>, <code>aav_routes</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
+<td><code>aav_teleop</code>, <code>aav_actuator_tests</code>, <code>aav_scripted</code>, <code>aav_drive_to_point</code>, <code>aav_language</code>, <code>aav_navigation</code>; <code>aav_rc</code>, <code>aav_routes</code>, <code>aav_track</code>, <code>aav_mppi_lag</code>, <code>aav_costmap</code>, <code>aav_planner</code>, <code>aav_navigator</code>, <code>aav_smoother</code>, <code>aav_diffusion_planner</code>, <code>aav_behaviour</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
 </tr>
 <tr>
 <td><a href="#mux-and-ego">command_mux, io_mux, ego</a></td>
@@ -196,15 +198,15 @@ one-line entry, pointing at their own README (<a href="#more-packages-see-their-
 </tr>
 <tr>
 <td><a href="#backends">can_bridge, sim</a></td>
-<td><code>aav_spine</code>, <code>aav_legacy</code>, <code>aav_turtlesim</code>, <code>aav_gazebo</code>, <code>aav_carla</code>; <code>aav_spine_bridge</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
+<td><code>aav_spine</code>, <code>aav_legacy</code>, <code>aav_turtlesim</code>, <code>aav_gazebo</code>, <code>aav_carla</code>; <code>aav_spine_bridge</code>, <code>aav_simulator</code>, <code>aav_sim_cameras</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
 </tr>
 <tr>
 <td><a href="#perception">perception</a></td>
-<td><code>aav_detector</code>, <code>aav_radar_clusters</code>, <code>aav_lane_finder</code>, <code>aav_lane_geometry</code>; <code>aav_lidar</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
+<td><code>aav_detector</code>, <code>aav_radar_clusters</code>, <code>aav_lane_finder</code>, <code>aav_lane_geometry</code>; <code>aav_lidar</code>, <code>aav_voxels</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
 </tr>
 <tr>
 <td><a href="#hud">hud</a></td>
-<td><code>aav_hud</code></td>
+<td><code>aav_hud</code>; <code>aav_dev_window</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
 </tr>
 <tr>
 <td><a href="#bench">sim: bench mode</a></td>
@@ -253,7 +255,7 @@ one-line entry, pointing at their own README (<a href="#more-packages-see-their-
 </tr>
 <tr>
 <td><strong>Runs on</strong></td>
-<td>whichever computer the sensor is plugged into: the Orin's file turns on IMU and GPS (both still TODO: which USB?) and the lidar</td>
+<td>whichever computer the sensor is plugged into: the localization Pi's file (<code>localization.yaml</code>, 8 Nov) turns on the IMU and GPS; the Orin's, the lidar</td>
 </tr>
 <tr>
 <td><strong>In → out</strong></td>
@@ -300,7 +302,7 @@ one-line entry, pointing at their own README (<a href="#more-packages-see-their-
 </tr>
 <tr>
 <td><strong>Runs on</strong></td>
-<td>the computer the IMU is plugged into (Orin, guess)</td>
+<td>the localization Pi (<code>localization.yaml</code>, 8 Nov): the IMU is on its USB</td>
 </tr>
 <tr>
 <td><strong>In → out</strong></td>
@@ -813,7 +815,7 @@ one-line entry, pointing at their own README (<a href="#more-packages-see-their-
 <tbody>
 <tr>
 <td><strong>Does</strong></td>
-<td>Nav2 set up for a car: SmacPlannerHybrid, MPPI (or Regulated Pure Pursuit), costmaps, the collision monitor, and the maps</td>
+<td>Nav2 set up for a car: the Smac State Lattice planner (the default since 1 Nov; Hybrid-A* if forward only), MPPI (or Regulated Pure Pursuit), costmaps, the collision monitor, and the maps</td>
 </tr>
 <tr>
 <td><strong>Why</strong></td>
@@ -1586,7 +1588,7 @@ one-line entry, pointing at their own README (<a href="#more-packages-see-their-
 <tbody>
 <tr>
 <td><strong>Does</strong></td>
-<td>our own 9 messages (such as <code>VehicleStatus</code>, <code>DataSource</code>, <code>Heartbeat</code>, <code>WheelSpeeds</code>) and 2 actions (<code>ScriptedDrive</code>, <code>DriveToPoint</code>)</td>
+<td>our own 13 messages (such as <code>VehicleStatus</code>, <code>DataSource</code>, <code>Heartbeat</code>, <code>WheelSpeeds</code>) and 2 actions (<code>ScriptedDrive</code>, <code>DriveToPoint</code>)</td>
 </tr>
 <tr>
 <td><strong>Why</strong></td>
@@ -1715,6 +1717,86 @@ one-line entry, pointing at their own README (<a href="#more-packages-see-their-
 <td><code>aav_ghost</code></td>
 <td>ghost obstacles: a pretend person only Nav2 sees</td>
 <td><code>ros/safety/aav_ghost/README.md</code>, then <a href="ghost-obstacles.html">Ghost obstacles</a></td>
+</tr>
+<tr>
+<td><code>aav_run_info</code></td>
+<td><code>run_info</code>: which algorithms this run uses, on <code>/system/algorithms</code>, for the screens</td>
+<td><code>ros/bringup/aav_run_info/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_localization_health</code></td>
+<td>warn-only checks on what the EKFs read and say (<code>/localization/health</code>, <code>/diagnostics</code>)</td>
+<td><code>ros/localization/aav_localization_health/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_ndt</code></td>
+<td>NDT in Rust, a trial (<code>ndt:=true</code>): where the car is on a saved lidar map; never TF</td>
+<td><code>ros/localization/aav_ndt/README.md</code>, then <a href="../designs/2026-10-29_ndt.md">the design</a></td>
+</tr>
+<tr>
+<td><code>aav_kiss_icp</code></td>
+<td>KISS-ICP lidar odometry, a trial (<code>kiss_icp:=true</code>)</td>
+<td><code>ros/localization/aav_kiss_icp/README.md</code>, then <a href="../designs/2026-10-30_kiss-icp.md">the design</a></td>
+</tr>
+<tr>
+<td><code>aav_voxels</code></td>
+<td>a trial beside <code>aav_lidar</code> (<code>voxels:=true</code>): the lidar's cloud as 0.25 m cubes for Nav2</td>
+<td><code>ros/perception/aav_voxels/README.md</code>, then <a href="../designs/2026-10-30_voxels.md">the design</a></td>
+</tr>
+<tr>
+<td><code>aav_track</code></td>
+<td>trial path followers in <code>controller_server</code>'s place (<code>tracker:=</code> pure_pursuit, stanley, lqr, mpc, mpc_full, mpc_lag)</td>
+<td><code>ros/drivers/aav_track/README.md</code>, then <a href="trials.html">Trials</a></td>
+</tr>
+<tr>
+<td><code>aav_mppi_lag</code></td>
+<td>Nav2's MPPI in Rust, on a car model that knows the actuators' lag (<code>tracker:=mppi_lag</code>)</td>
+<td><code>ros/drivers/aav_mppi_lag/README.md</code>, then <a href="mppi-lag.html">MPPI with lag</a></td>
+</tr>
+<tr>
+<td><code>aav_costmap</code></td>
+<td>our own costmap in Rust, a trial beside Nav2's (<code>costmap:=own</code>)</td>
+<td><code>ros/drivers/aav_costmap/README.md</code>, then <a href="own-costmap.html">Our costmap</a></td>
+</tr>
+<tr>
+<td><code>aav_planner</code></td>
+<td>our own path planner in Rust, a trial (<code>planner:=own</code>): Nav2's Smac State Lattice ported</td>
+<td><code>ros/drivers/aav_planner/README.md</code>, then <a href="own-planner.html">Our planner</a></td>
+</tr>
+<tr>
+<td><code>aav_navigator</code></td>
+<td>our own navigator in Rust, a trial (<code>navigator:=own</code>), in <code>bt_navigator</code>'s place</td>
+<td><code>ros/drivers/aav_navigator/README.md</code>, then <a href="own-navigator.html">Our navigator</a></td>
+</tr>
+<tr>
+<td><code>aav_smoother</code></td>
+<td>our own velocity smoother in Rust, a trial (<code>smoother:=own</code>)</td>
+<td><code>ros/drivers/aav_smoother/README.md</code>, then <a href="own-smoother.html">Our smoother</a></td>
+</tr>
+<tr>
+<td><code>aav_diffusion_planner</code></td>
+<td>a trial planner (<code>planner:=diffusion</code>): a model draws paths, a guard checks them, the lattice's path otherwise</td>
+<td><code>ros/drivers/aav_diffusion_planner/README.md</code>, then <a href="../designs/2026-11-02_diffusion-planner.md">the design</a></td>
+</tr>
+<tr>
+<td><code>aav_behaviour</code></td>
+<td>the behaviour planner, a trial (<code>behaviour:=true</code>): six states and a speed cap on Nav2</td>
+<td><code>ros/drivers/aav_behaviour/README.md</code>, then <a href="stopping.html">How the car stops</a></td>
+</tr>
+<tr>
+<td><code>aav_simulator</code></td>
+<td>our own simulator in Rust, in <code>gz sim</code>'s place: the default since 8 Nov (<code>simulator:=gazebo</code> for Gazebo)</td>
+<td><code>ros/sim/aav_simulator/README.md</code>, then <a href="own-simulator.html">Our simulator</a></td>
+</tr>
+<tr>
+<td><code>aav_sim_cameras</code></td>
+<td>our simulator's cameras (Bevy, offscreen; needs a GPU); a cargo program, not a colcon package</td>
+<td><code>ros/sim/aav_sim_cameras/README.md</code>, then <a href="own-simulator-cameras.html">its page</a></td>
+</tr>
+<tr>
+<td><code>aav_dev_window</code></td>
+<td>the developer window (Bevy), for a laptop: <code>pixi run dev-window</code>; a cargo program, not a colcon package</td>
+<td><code>ros/hud/aav_dev_window/README.md</code></td>
 </tr>
 </tbody>
 </table></div>

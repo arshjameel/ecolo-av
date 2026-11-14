@@ -7,7 +7,7 @@
 <!-- Generated from docs/can-plan.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The CAN bus: today&#x27;s wiring, and the KEFC plan</h1>
-<div class="meta">7 min read · 6 sections</div></header>
+<div class="meta">8 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -135,6 +135,11 @@ Orin ─────────────────────────
    wheel sensors     other sensors?
    (an Arduino:      (not known yet)
     0x200, 0x201)</code></pre>
+<p>Seen on the car, 6 Nov (<a href="../history/audit-2026-11-06-car.md">audit</a>): the Pi called CORTEX holds
+the ESP32's UART (<code>/dev/ttyAMA0</code>), so it does the Motor Pi's job; the wire itself wasn't
+checked. <strong>The Orin's <code>can0</code> and <code>can1</code> were down</strong>, so nothing read the wheel sensors
+that evening. Whether <code>can0</code> should be up, and at what speed, is a question for the
+hardware people.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>

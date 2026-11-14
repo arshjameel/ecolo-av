@@ -140,17 +140,23 @@
 <tr>
 <td><a href="#the-debug-hud">The debug HUD</a> (the seeing screen)</td>
 <td><code>debug_hud</code></td>
-<td>a laptop, or the Orin's screen</td>
+<td>a laptop</td>
 <td>the lidar's cubes in 3D, NDT's map and match from above, where each localizer puts the car; key L: every sensor</td>
 </tr>
 <tr>
 <td><a href="#the-hardware-panel">The hardware panel</a></td>
 <td><code>hw_panel</code></td>
-<td>the Orin's screen, or a wired laptop</td>
+<td>a wired laptop</td>
 <td>every sensor's number, and simple buttons for the actuators (Gazebo and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path</td>
 </tr>
 </tbody>
 </table></div>
+<p><strong>Where each runs (Ben, 5 Nov):</strong> the HUD and the map stay raylib, on the dash Pi. The
+Orin runs no graphics, so the other two run on a laptop. Laptop screens can be Bevy: the
+<strong>developer window</strong> (<code>ros/hud/aav_dev_window</code>, <code>pixi run dev-window</code>; not a ROS package)
+is one, live on the simulators since 5 Nov, and <code>debug_hud</code> retires once it covers the
+same ground (<a href="../designs/2026-11-05_one-window.md">design</a>). It has no section on this page
+yet: its README is the reference.</p>
 <p>An easter egg hides in three of them: <a href="#the-little-robot-easter-egg">the little robot</a>.</p>
 <p><strong>Two screens for testing (Ben, 29 Oct evening):</strong> "one screen just to test all the
 sensors and operate all the actuators and another screen to show off the voxels". The
@@ -804,7 +810,7 @@ Nav2.</p>
 <h3 id="run-it_1">Run it</h3>
 <pre class="highlight"><code class="language-bash">pixi run map --demo                          # pretend data: no ROS, no car
 pixi run build &amp;&amp; pixi run map             # the real node (ros2 launch aav_hud map.launch.py)
-pixi run sim world:=test_lot map:=true     # Gazebo, Nav2 and the map window together
+pixi run sim world:=test_lot map:=true     # the simulator, Nav2 and the map window together
 pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor</code></pre>
 <h3 id="how-its-built_1">How it's built</h3>
 <div class="table-wrap"><table>
@@ -1912,7 +1918,7 @@ another tracker, in the simulator only (the design's D3: never an actuator).</p>
 </tbody>
 </table></div>
 <h3 id="run-it_2">Run it</h3>
-<pre class="highlight"><code class="language-bash">pixi run demo --debug               # Gazebo, RViz, the HUD, the map window and the debug HUD
+<pre class="highlight"><code class="language-bash">pixi run demo --debug               # the simulated car, RViz, the HUD, the map window and the debug HUD
 pixi run debug-hud --demo          # pretend data: no ROS (a walled lot, a ray-cast lidar)
 pixi run build &amp;&amp; pixi run debug-hud    # the node alone, beside a running sim</code></pre>
 <p><code>demo --debug</code> is <code>demo</code> with <code>amcl:=true tracker:=pure_pursuit reversing:=false</code>, so AMCL
@@ -1951,8 +1957,8 @@ from a terminal: <code>ros2 param set /track tracker lqr</code> (sim only, both 
 </tr>
 </tbody>
 </table></div>
-<p>On the car: not yet from a Mac over WiFi (about 9 MB/s of reliable lidar); on the Orin's
-own screen.</p>
+<p>On the car: not yet from a Mac over WiFi (about 9 MB/s of reliable lidar): a laptop on
+the car's cable. Not the Orin's own screen: it runs no graphics (Ben, 5 Nov).</p>
 <h3 id="tested-29-october-a-mac">Tested (29 October, a Mac)</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -2139,10 +2145,10 @@ relies on <code>speed_wheels</code> and the no-timeout lock (both refuse today's
 </table></div>
 <h3 id="run-it_3">Run it</h3>
 <pre class="highlight"><code class="language-bash">pixi run hw-panel --demo                 # a pretend car: no ROS, any laptop
-pixi run sim world:=test_lot           # Gazebo (or: pixi run demo --debug) ...
+pixi run sim world:=test_lot           # the simulator (or: pixi run demo --debug) ...
 pixi run hw-panel                      # ... and the panel beside it, localhost-only
 pixi run hw-panel stands:=true         # on the car's stands (speed stays off until 49b)</code></pre>
-<p>Run it from the Orin's own screen or a wired laptop, not a Mac over WiFi. For checks,
+<p>Run it from a wired laptop, not a Mac over WiFi (and not the Orin: it runs no graphics, Ben, 5 Nov). For checks,
 <code>hw_panel --self-test 0.3:8</code> presses Speed + to 0.3 m/s and holds GO for 8 s, through the
 same buttons and rules, and prints what was asked and seen.</p>
 <h3 id="the-steering-calibration-page">The steering calibration page</h3>
