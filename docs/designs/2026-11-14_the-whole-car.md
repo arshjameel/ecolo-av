@@ -121,6 +121,7 @@ was one shape's step 1b; this page makes it step 1.
 
 | The point driver (R5) | it sends its line A -> B (`/drivers/point/plan`); the behaviour planner makes the strip from it while it runs; ego watches `point` too | road world, `behaviour:=true`, 20 m ahead: stopped 0.22 m from B in 24.7 s; states DRIVE > APPROACH(goal) > DRIVE |
 
+| One scorecard | `tools/score_drive.py` (sums in `tools/scorecard.py`): any bag from `record.sh`, sim or car, gets the same table | a 25 m point drive: 0.13 m mean off the plan, never past the end; found the sim car 14 % over its command (TODO 163) |
 | The screens | the developer window draws it, 3D and map: coloured by the speed limit, a red bar at the end, each stop and why | seen live beside the road world, 14 Nov |
 
 Still to do in step 4: the HUD in the car (raylib) drawing it; the lane-centre line (needs the lane map, W5); `mppi_lag` reading its edges once they exist.

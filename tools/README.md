@@ -74,7 +74,8 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `clear.sh` | a person clears the e-stop or a safety latch | `clear <estop, gate, geofence, watchdog>` |
 | `drive_to_point.sh` | drive to one point and stop (`--sim`) | `drive-to-point` |
 | `keyboard.sh` | teleop_twist_keyboard into `/drivers/keyboard/cmd_vel` (`--sim`, `--local`) | `keyboard` |
-| `record.sh` | records a drive into `bags/` (MCAP), with what the Motor Pi wrote for `link_check.py` | - |
+| `record.sh` | records a drive into `bags/` (MCAP): inputs, commands, and what the stack saw and decided (the front camera as JPEG, the locks, the road ahead); what the Motor Pi wrote for `link_check.py`. Run it through pixi (`pixi run tools/record.sh`): pixi sets Cyclone's participant limit | - |
+| `score_drive.py` | one scorecard for any recorded drive, sim or car: time, distance, top speed, time over the road ahead's limit, passes beyond its end, metres off the plan, holds, locks, a person driving (`--json`) | - (ros.sh) |
 | `replay_commands.sh` | plays a bag's commands into `/drivers/replay/cmd_vel` (no flags, never local) | - |
 | `build_engine.py` | the Orin's TensorRT model, on the Orin (JetPack's Python) | - |
 | `calibrate_camera.py` | calibrate a streamed camera; print the board | `calibrate-camera` |
@@ -154,6 +155,7 @@ Each lands outside git, checksum pinned where the script says.
 | `topic_load.py` | the numbers behind `measure bandwidth` (no ROS) | - |
 | `stalls.py` | the numbers behind `measure timing` (no ROS) | - |
 | `drive_metrics.py` | the numbers behind `measure controllers` (no ROS) | - |
+| `scorecard.py` | the numbers behind `score_drive.py` (no ROS) | - |
 | `measure.sh` | picks one of the five measurements below and runs it (Gazebo ones `--local`) | `measure <controllers, timing, stream, atob, bandwidth>` |
 | `link_check.py` | did the Motor Pi's frames reach the ESP32? A bag (or the live topics) against the ESP32's status lines: PASS, FAIL, NOT TESTED (its maths without ROS) | `link-check` |
 | `atob_score.py` | scores A-to-B runs (bag or CSV): speed up, hold, stop on B; EKF vs truth or tape | `measure atob` |
@@ -188,7 +190,7 @@ Each lands outside git, checksum pinned where the script says.
   type a word first. `actuator_test` caps its own speed (1 m/s; 0.3 m/s on `--stands`);
   `drive_to_point.sh` has no cap of its own and relies on ego's `max_speed` (1 m/s by default).
 - **Portable for Macs**: bash 3.2, no GNU-only flags, no Linux-only serial speeds.
-- **Logic without ROS** (`topic_load.py`, `stalls.py`, `drive_metrics.py`, `mcp_parts.py`)
+- **Logic without ROS** (`topic_load.py`, `stalls.py`, `drive_metrics.py`, `scorecard.py`, `mcp_parts.py`)
   has its own tests in `tools/tests/`.
 - **`mcp_server.py` only reads**: no call that writes to ROS, no file outside git
   (`tests/test_mcp_parts.py`).
