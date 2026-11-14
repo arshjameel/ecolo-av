@@ -87,6 +87,9 @@ Files:
 - Forward only unless `reversing:=true`: nothing senses behind the car. Gazebo and the
   bench turn it on, and the car where the lidar watches behind.
 - No spin behaviour: a car can't turn on the spot.
+- Our own nodes (costmap, planner, navigator, smoother, the followers, behaviour) aren't
+  lifecycle nodes, so each respawns 1 s after it dies (`test_respawn.py`). While one is
+  down the car stops: the costmap's and odometry's age checks, twist_mux's timeout.
 - Each tree and its reversing twin differ only by BackUp, and BackUp stays inside
   `max_reverse_speed`.
 - collision_monitor stops the car for 3 or more points in its stop zone, and when a

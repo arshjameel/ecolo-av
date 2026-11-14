@@ -14,7 +14,7 @@ for them, and clippy was not run. Sizes: **S** under a day, **M** 2-4 days, **L*
 | Gap | Evidence | Rank | Size |
 |---|---|---|---|
 | Nobody notices when `/tf` stops: costmap, planner and navigator keep the last pose | `aav_navigator` navigator-node `main.rs:533`, `aav_planner` planner-node `main.rs:492`, `aav_costmap` costmap-node `main.rs:455` | must | M; **done 14 Nov**: the costmap stops on stale odometry or map -> odom; the planner fails a goal (TF_ERROR) and the navigator has no car pose when map -> odom -> base_link is over 1 s old |
-| No lifecycle, bond or respawn: a dead node goes unnoticed | `navigation.launch.py:425-520` | must | M |
+| No lifecycle, bond or respawn: a dead node goes unnoticed | `navigation.launch.py:425-520` | must | M; **respawn done 14 Nov** (each of ours, 1 s; `test_respawn.py`). Its status on a watchdog still to do |
 | No costmap age check anywhere (Nav2 waits 0.3 s in the controller, 1 s in the planner) | `nav2.yaml:71, 407`; `mppi-node main.rs:343` | must | S |
 | None has run on the car | each page's "What's missing" | must | L |
 | No node binary has a test; only the maths crates | `tools/test.sh:53-62` | should | M |
