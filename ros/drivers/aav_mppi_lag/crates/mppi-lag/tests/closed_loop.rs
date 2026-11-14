@@ -515,7 +515,7 @@ fn the_goal_at_top_speed_stops_near_it() {
     const GOAL_X: f64 = 80.0;
     let poses = path_through(|u| (GOAL_X * u, 0.0), GOAL_X);
     let truth = LagModel::default();
-    let run = drive(truth.clone(), truth, &poses, 2.5);
+    let run = drive(truth, truth, &poses, 2.5);
     let past = run.rest.x - GOAL_X;
     let top = run.speeds.iter().copied().fold(0.0, f64::max);
     let at_done = run.speeds.last().copied().unwrap_or(0.0);
