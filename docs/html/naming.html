@@ -184,6 +184,11 @@ match a folder under <code>ros/</code> (the <code>/sensors/</code> topics come f
 <td>the HUD</td>
 </tr>
 <tr>
+<td><code>/world/</code></td>
+<td>one picture of the world that every level shares: <code>/world/road_ahead</code> (where the car may be, how fast, where it stops); later <code>/world/things</code> (14 Nov, <a href="../designs/2026-11-14_the-whole-car.md">the whole car</a>, W2)</td>
+<td>the behaviour planner</td>
+</tr>
+<tr>
 <td><code>/system/</code></td>
 <td>what kind of run this is: <code>/system/source</code> (real, sim, bench, replay); the sensor mux's check, <code>/system/sensor_mux/state</code></td>
 <td>the backends, the bench, a replay (added 15 Oct, <code>full-simulation.md</code>); the sensor mux (23 Oct)</td>

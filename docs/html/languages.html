@@ -7,7 +7,7 @@
 <!-- Generated from docs/languages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Python and Rust (and the C++ we don&#x27;t write)</h1>
-<div class="meta">6 min read · 6 sections</div></header>
+<div class="meta">7 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -268,6 +268,13 @@ programs only meet through messages.</p></div>
   example, <code>examples/rust-listener</code>, showed it in October; it was removed on 26 Oct,
   once these real nodes showed the same.</li>
 </ul>
+<p><strong>After adding a message type: <code>library not found for -l&lt;package&gt;__rosidl_typesupport_c</code>.</strong>
+Seen 14 Nov, when <code>RoadAhead</code> was added. rclrs's build script finds the libraries' folders
+once and keeps them until <code>ROS_DISTRO</code> changes; <code>ros-env</code> looks again whenever the messages
+change. So an old build folder links a message package without its folder. A fresh build
+(CI) never sees it. On your laptop, clear rclrs's kept answer and build again:</p>
+<pre class="highlight"><code class="language-sh">rm -rf build/*/target/release/build/rclrs-* build/*/target/release/.fingerprint/rclrs-*
+pixi run build</code></pre>
 </section>
 <section class="card"><h2 id="rust-on-the-pi-and-the-esp32">Rust on the Pi and the ESP32</h2>
 <div class="table-wrap"><table>
