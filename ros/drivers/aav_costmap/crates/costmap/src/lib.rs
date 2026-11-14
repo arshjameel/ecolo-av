@@ -9,11 +9,13 @@
 //! | [`obstacle`] | `ObstacleLayer`: marks the sensors' points, clears along each ray |
 //! | [`inflation`] | `InflationLayer`: the cost falling away from each lethal cell |
 //! | [`layered`] | `LayeredCostmap`: the layers in order, into one grid |
+//! | [`age`] | `isCurrent` and `transform_tolerance`: how old an input is, poses by stamp |
 //!
 //! The node (`costmap-node`) only moves messages in and out of a [`Costmap`].
 
 #![forbid(unsafe_code)]
 
+pub mod age;
 pub mod cost;
 pub mod footprint;
 pub mod grid;
@@ -23,6 +25,7 @@ pub mod obstacle;
 pub mod static_layer;
 pub mod transform;
 
+pub use age::{Arrival, PoseHistory, Stale};
 pub use grid::Grid;
 pub use inflation::Inflation;
 pub use layered::{Costmap, Settings};

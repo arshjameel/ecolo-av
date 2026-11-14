@@ -210,7 +210,7 @@ impl<'a> ImageCheck<'a> {
                 if self.filled == 8 {
                     let len =
                         u32::from_le_bytes([self.buf[4], self.buf[5], self.buf[6], self.buf[7]]);
-                    if len % 4 != 0 || len >= self.expect.slot_len {
+                    if !len.is_multiple_of(4) || len >= self.expect.slot_len {
                         return Err(ImageError::BadSegment);
                     }
                     if self.segment == 0 && (len as usize) < DESC_LEN {
@@ -372,7 +372,7 @@ mod tests {
             out.extend_from_slice(seg);
             xor = seg.iter().fold(xor, |x, &b| x ^ b);
         }
-        while (out.len() + 1) % 16 != 0 {
+        while !(out.len() + 1).is_multiple_of(16) {
             out.push(0);
         }
         out.push(xor);

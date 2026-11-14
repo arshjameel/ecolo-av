@@ -407,13 +407,16 @@ def navigator_params(v, reversing, waypoints='pass_through'):
     0.333 Hz), the final approach (final_approach(v), TODO 17), 6 recoveries, Wait 5 s,
     BackUp 1 m at half max_reverse_speed only with reversing, RemovePassedGoals' 1 m.
     waypoints: pass_through (ours: one through-poses goal, TODO 140) or stop_at_each
-    (Nav2's waypoint_follower).
+    (Nav2's waypoint_follower). The time limits, so a server that dies mid-goal fails it:
+    plan_timeout, twice nav2.yaml's max_planning_time (5 s); follow_timeout, the
+    follower's silence, Nav2's bond_timeout (4 s); recovery_timeout, a costmap clear.
     """
     out = {'replan_period': 1.0, 'through_replan_period': 3.0,
            'final_approach': round(final_approach(v), 3), 'path_end_tolerance': 0.5,
            'path_max_age': 20.0, 'retries': 6, 'wait': 5.0, 'pass_radius': 1.0,
            'on_path': 2.0, 'waypoints': waypoints, 'stop_on_failure': False,
-           'replan_failures': 3, 'backup': None}
+           'replan_failures': 3, 'backup': None,
+           'plan_timeout': 10.0, 'follow_timeout': 4.0, 'recovery_timeout': 5.0}
     if reversing:
         out['backup'] = {'distance': 1.0, 'speed': 0.5 * float(v['max_reverse_speed'])}
     return out
@@ -627,6 +630,18 @@ def critic_value(key, value):
                                  'trajectory_point_step') else float(value)
 
 
+def costmap_timeout(server, costmap):
+    """
+    Return the s after which a costmap is too old to act on, for a node outside Nav2.
+
+    server: planner_server's or controller_server's ros__parameters (their
+    costmap_update_timeout, Nav2's defaults 1.0 and 0.3 s); costmap: its costmap's
+    (publish_frequency): the reader sees a new costmap only once a publish period.
+    """
+    wait = float(server.get('costmap_update_timeout', 0.3))
+    return round(wait + 1.0 / float(costmap.get('publish_frequency', 1.0)), 3)
+
+
 def mppi_lag_params(nav2, cfg, ego=None, max_speed=None):
     """
     Return aav_mppi_lag's parameters: Nav2's MPPI block, its checks, and the car's lag.
@@ -666,6 +681,10 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None):
         'inflation_radius': float(local['inflation_layer']['inflation_radius']),
         'cost_scaling_factor': float(local['inflation_layer']['cost_scaling_factor']),
         'track_unknown_space': bool(local.get('track_unknown_space', False)),
+        # s: a costmap older than this stops the car and fails the path. Nav2's
+        # controller waits costmap_update_timeout for a current one; ours sees the
+        # costmap only when it is published, so one publish period more.
+        'costmap_timeout': costmap_timeout(server, local),
     })
     for key in MPPI_LAG_ACTUATORS:
         out[f'actuators.{key}'] = float(act.get(key, 0.0))
@@ -715,6 +734,7 @@ def planner_params(tuned, v, costmap='nav2'):
     gc = tuned['global_costmap']['global_costmap']['ros__parameters']
     out['footprint'] = footprint_points(v)
     out['footprint_padding'] = float(gc.get('footprint_padding', 0.01))
+    out['costmap_timeout'] = costmap_timeout(tuned['planner_server']['ros__parameters'], gc)
     out['inflation'] = None
     for plugin in gc['plugins']:
         layer = gc.get(plugin, {})
@@ -757,6 +777,7 @@ def costmap_params(tuned, v, radar=False, camera=False):
             'track_unknown': bool(block.get('track_unknown_space', False)),
             'update_frequency': float(block.get('update_frequency', 5.0)),
             'publish_frequency': float(block.get('publish_frequency', 1.0)),
+            'transform_tolerance': float(block.get('transform_tolerance', 0.3)),
             'footprint': footprint_points(v),
             'footprint_padding': float(block.get('footprint_padding', 0.01)),
             'static_layer': False, 'inflation': None, 'layers': [],

@@ -66,6 +66,34 @@ if command -v cargo >/dev/null; then
   # Only the logic: the pictures need Bevy and a GPU (cargo test --release there).
   echo "== ros/sim/aav_sim_cameras: the simulator's cameras: lenses, camera_info, mounts, rates"
   (cd ros/sim/aav_sim_cameras && cargo test -q --locked -p camera-core)
+  # The Rust API Guidelines' tools: rustfmt on every crate (the ROS nodes too: it needs no
+  # build), clippy with warnings as errors on the crates above. The rclrs node crates need
+  # ROS's generated messages, so clippy can't build them here.
+  echo "== Rust style: cargo fmt --check everywhere, cargo clippy -D warnings on the logic"
+  rust_style() {
+    local dir=$1; shift
+    (cd "$dir" && cargo fmt --all --check \
+       && cargo clippy -q --locked --all-targets "$@" -- -D warnings) \
+      || { echo "Rust style failed in $dir (cargo fmt --all; cargo clippy $*)"; return 1; }
+  }
+  rust_style firmware/spine
+  rust_style ros/sources/aav_imu_yahboom -p yahboom-protocol
+  rust_style ros/perception/aav_radar_clusters -p radar-clustering
+  rust_style ros/can_bridge/aav_spine_bridge -p spine-bridge
+  rust_style ros/bringup/aav_description/car-model
+  rust_style ros/localization/aav_ndt -p ndt-core
+  rust_style ros/sim/aav_simulator -p sim-core --features shared
+  rust_style ros/drivers/aav_mppi_lag -p mppi-lag --features shared
+  rust_style ros/drivers/aav_costmap -p costmap
+  rust_style ros/drivers/aav_planner -p lattice-planner
+  rust_style ros/drivers/aav_navigator -p navigator
+  rust_style ros/drivers/aav_smoother -p car-smoother
+  rust_style ros/hud/aav_hud -p hud-core -p map-core -p debug-core -p panel-core
+  rust_style ros/sim/aav_sim_cameras -p camera-core
+  for board in firmware/spine/boards/*/; do
+    (cd "$board" && cargo fmt --all --check) || { echo "cargo fmt --check failed in $board"; exit 1; }
+  done
+  echo "clean"
   # Every firmware crate must build without the standard library, for the Pico 2's chip.
   if [[ -d "$(rustc --print target-libdir --target thumbv8m.main-none-eabihf 2>/dev/null)" ]]; then
     echo "== firmware/spine, no_std, for the Pico 2 (thumbv8m.main-none-eabihf)"

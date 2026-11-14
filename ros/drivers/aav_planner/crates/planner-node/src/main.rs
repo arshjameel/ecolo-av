@@ -14,7 +14,8 @@
 //!                                         made on: Nav2's /global_costmap/costmap_raw
 //!                                         (latched, with costmap_updates_topic's
 //!                                         nav2_msgs/CostmapUpdate patches), or ours,
-//!                                         /drivers/nav/costmap/global_raw (costmap:=own)
+//!                                         /drivers/nav/costmap/global_raw (costmap:=own).
+//!                                         Older than costmap_timeout: goals fail, TIMEOUT
 //!             /tf                         tf2_msgs/TFMessage: map -> odom -> base_link, the
 //!                                         car's pose in map (when use_start is false)
 //! Publishes   /plan                       nav_msgs/Path: each path found (planner_server's
@@ -36,7 +37,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context as _, Result};
-use costmap::{footprint, Grid, Inflation};
+use costmap::{footprint, Arrival, Grid, Inflation};
 use futures::channel::oneshot;
 use lattice_planner::{cusps, length, Lattice, Plan, PlanError, Planner, Pose, Settings};
 use rclrs::*;
@@ -88,6 +89,14 @@ fn main() -> Result<()> {
     }
     let spec: Value = serde_json::from_str(&settings_json).context("settings: JSON")?;
     let planner = Arc::new(build(&spec)?);
+    // s: a costmap older than this is not planned on (planner_server's
+    // costmap_update_timeout, plus the global costmap's publish period).
+    let costmap_timeout = match &spec["costmap_timeout"] {
+        Value::Null => 2.0,
+        v => v
+            .as_f64()
+            .ok_or_else(|| anyhow!("costmap_timeout: a number is needed"))?,
+    };
     let planner_through = Arc::clone(&planner);
     log_info!(
         node.logger(),
@@ -102,6 +111,8 @@ fn main() -> Result<()> {
     let core = Core {
         frames,
         grid: None,
+        costmap_heard: Arrival::new(),
+        costmap_timeout,
         map_odom: None,
         odom_base: None,
         plan_pub: node.create_publisher(PLAN_TOPIC)?,
@@ -414,6 +425,10 @@ struct Core {
     frames: Frames,
     /// The newest costmap, shared with the planning threads.
     grid: Option<Arc<Grid>>,
+    /// When the costmap (or a patch to it) last arrived.
+    costmap_heard: Arrival,
+    /// s: older than this, a goal fails with TIMEOUT (Nav2's PlannerTimedOut).
+    costmap_timeout: f64,
     map_odom: Option<Pose>,
     odom_base: Option<Pose>,
     plan_pub: Publisher<Path>,
@@ -469,6 +484,11 @@ impl Core {
         );
         grid.data.clone_from(&msg.data);
         self.grid = Some(Arc::new(grid));
+        self.costmap_heard.mark(self.now());
+    }
+
+    fn now(&self) -> f64 {
+        self.clock.now().nsec as f64 * 1e-9
     }
 
     /// Nav2's partial update: a rectangle of new costs.
@@ -487,6 +507,7 @@ impl Core {
             let at = (y0 + row) * grid.width + x0;
             grid.data[at..at + w].copy_from_slice(&msg.data[row * w..(row + 1) * w]);
         }
+        self.costmap_heard.mark(self.now());
     }
 
     fn on_tf(&mut self, msg: &TFMessage) {
@@ -514,6 +535,19 @@ impl Core {
             .grid
             .clone()
             .ok_or((Answer::UNKNOWN, "no costmap yet".to_string()))?;
+        // Nav2's planner waits costmap_update_timeout for a current costmap, then fails
+        // with TIMEOUT (207; 307 through poses). Ours doesn't plan on a stale one.
+        let now = self.now();
+        if !self.costmap_heard.fresh(now, self.costmap_timeout) {
+            let age = self.costmap_heard.age(now).unwrap_or(f64::INFINITY);
+            return Err((
+                Answer::TIMEOUT,
+                format!(
+                    "the costmap is {age:.1} s old (limit {:.1} s)",
+                    self.costmap_timeout
+                ),
+            ));
+        }
         let frame_ok = |f: &str| {
             let f = f.trim_start_matches('/');
             f.is_empty() || f == self.frames.map

@@ -42,3 +42,6 @@ rewritten as one plain state machine in Rust's own style (enums, no plugins, no 
 | "Start occupied" (205, 305) counts as a failure a recovery can fix | campus, 8 Nov: lidar marks beside a lot exit made the car's own spot occupied, and Nav2 gave the goal up at once; clearing the global costmap forgets the stale marks |
 | No `IsPathValid` on the final approach | the navigator reads no costmap; the follower's own checks and collision_monitor still stop the car |
 | Spin, DriveOnHeading, `GoalUpdated` within a recovery | not used by our trees, or covered by "a new goal replaces" |
+| Time limits on every call (14 Nov): a plan unanswered in `plan_timeout` (10 s) fails as TIMEOUT (207/307); a follower silent for `follow_timeout` (4 s: no feedback, no result) as CONTROLLER_TIMED_OUT (107), which ends the goal; a clear unanswered in `recovery_timeout` (5 s) as failed | the gap list (14 Nov): a planner or follower that died mid-goal hung it for ever. Nav2 gets the same from its lifecycle bond (4 s) and the trees' server timeouts |
+| A planner-recovery clear that fails ends the attempt with the plan's own error code, not 200 | Nav2's `RecoveryNode` leaves the plan's code on the blackboard |
+| Error codes are enums (`PlanError`, `FollowError`, `Abort`), Nav2's numbers only at the edge | the Rust API Guidelines |

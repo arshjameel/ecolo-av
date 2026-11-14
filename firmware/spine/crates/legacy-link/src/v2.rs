@@ -67,8 +67,8 @@ impl FrameV2 {
         bytes[0] = SYNC;
         bytes[1] = VERSION;
         let values = [self.values.steering, self.values.speed, self.values.accel];
-        for (chunk, value) in bytes[2..14].chunks_exact_mut(4).zip(values) {
-            chunk.copy_from_slice(&value.to_le_bytes());
+        for (chunk, value) in bytes[2..14].as_chunks_mut::<4>().0.iter_mut().zip(values) {
+            *chunk = value.to_le_bytes();
         }
         bytes[14] = self.counter;
         bytes[15] = self.flags.to_byte();

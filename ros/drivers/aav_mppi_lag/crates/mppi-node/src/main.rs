@@ -11,7 +11,8 @@
 //!                                         aav_interfaces/ActuatorState: the measured levels,
 //!                                         while fresh (measured_timeout); else the model's own
 //!             local_costmap/costmap_raw   nav2_msgs/Costmap (costmap_topic): for CostCritic
-//!                                         and the path's clear points (use_costmap)
+//!                                         and the path's clear points (use_costmap); older
+//!                                         than costmap_timeout: zero, and the path fails
 //! Publishes   cmd_vel_nav                 geometry_msgs/TwistStamped, at rate_hz while a path
 //!                                         runs: (v, v tan(steer) / wheelbase), to Nav2's
 //!                                         velocity smoother, collision_monitor, then
@@ -45,8 +46,8 @@ use futures::channel::oneshot;
 use mppi_lag::{
     critics::{inflation_cost, Critic},
     lag::Actuators,
-    Costmap, Ego, Follower, FollowerSettings, GlobalPath, IdealModel, LagModel, Observation,
-    Outcome, Pose, Report, Settings, Tick,
+    Arrival, Costmap, Ego, Follower, FollowerSettings, GlobalPath, IdealModel, LagModel,
+    Observation, Outcome, Pose, Report, Settings, Tick,
 };
 use rclrs::*;
 use ros_env::aav_interfaces::msg::ActuatorState;
@@ -101,6 +102,7 @@ fn main() -> Result<()> {
         brake: None,
         map_to_odom: None,
         costmap: None,
+        costmap_heard: Arrival::new(),
         job: None,
         next_id: 0,
         last_tick: None,
@@ -264,6 +266,8 @@ struct Core {
     /// map -> odom: odom's pose in map, and when.
     map_to_odom: Option<(Pose, f64)>,
     costmap: Option<Costmap>,
+    /// When the costmap last arrived (this node's clock).
+    costmap_heard: Arrival,
     job: Option<Job>,
     next_id: u64,
     last_tick: Option<f64>,
@@ -358,6 +362,9 @@ impl Core {
             m.size_y as usize,
             msg.data.clone(),
         );
+        if self.costmap.is_some() {
+            self.costmap_heard.mark(self.now());
+        }
     }
 
     /// A new FollowPath goal: its path into odom, then follow it. Returns the job's id.
@@ -497,6 +504,20 @@ impl Core {
             }
             let why = format!("no odometry on {}", self.config.odom_topic);
             return self.finish(Finish::Aborted(FollowPath_Result::UNKNOWN), &why);
+        }
+        // Nav2's controller: no current costmap within costmap_update_timeout, a zero
+        // command and CONTROLLER_TIMED_OUT. A path gets the limit for its first one.
+        if self.config.use_costmap {
+            let checked = self
+                .costmap_heard
+                .check(now, job.started, self.config.costmap_timeout);
+            if let Err(stale) = checked {
+                let why = format!("the costmap on {}: {stale}", self.config.costmap_topic);
+                return self.finish(
+                    Finish::Aborted(FollowPath_Result::CONTROLLER_TIMED_OUT),
+                    &why,
+                );
+            }
         }
         let costmap = if self.config.use_costmap {
             self.costmap.as_ref()
@@ -651,6 +672,9 @@ struct Config {
     lag_aware_topic: String,
     costmap_topic: String,
     use_costmap: bool,
+    /// s: a costmap older than this stops the car and fails the path (Nav2's
+    /// costmap_update_timeout, plus the local costmap's publish period).
+    costmap_timeout: f64,
     wheelbase: f64,
     max_steering_angle: f64,
     actuators: Actuators,
@@ -991,6 +1015,7 @@ impl Config {
             lag_aware_topic: d.text("lag_aware_topic", "/drivers/nav/lag_aware")?,
             costmap_topic: d.text("costmap_topic", "/local_costmap/costmap_raw")?,
             use_costmap: d.flag("use_costmap", true)?,
+            costmap_timeout: d.number("costmap_timeout", 0.8)?,
             wheelbase,
             max_steering_angle,
             actuators,

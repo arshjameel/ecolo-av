@@ -500,7 +500,9 @@ mod tests {
                 ..CarState::default()
             };
             while s.v > 0.0 {
-                s = cfg.step(&s, Command::pedals(0.0, 1.0, 0.0), 0.01, None).unwrap();
+                s = cfg
+                    .step(&s, Command::pedals(0.0, 1.0, 0.0), 0.01, None)
+                    .unwrap();
             }
             s.x
         };

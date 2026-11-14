@@ -60,6 +60,7 @@ goal ─▶ plan ─▶ follow ─▶ plan again every second
 | recoveries | clear, wait, back up, in turn, 6 at most | the same |
 | lat/lon to the map | navsat_transform's datum (the same UTM steps) | calls `/fromLL` |
 | a new goal | replaces the running one, on any action | refused on the other navigator |
+| a server that dies mid-goal (14 Nov) | time limits: no plan in 10 s is a timeout (recovered as one); a follower silent for 4 s ends the goal (107); a clear unanswered in 5 s failed | the lifecycle bond (4 s) takes the stack down |
 
 Each change is in `ros/drivers/aav_navigator/PROVENANCE.md`.
 
