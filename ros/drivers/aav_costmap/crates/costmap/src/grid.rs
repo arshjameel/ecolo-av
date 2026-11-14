@@ -1,5 +1,7 @@
 //! A grid of costs on the ground: Nav2's `Costmap2D`.
 
+use crate::cost::{INSCRIBED, LETHAL};
+
 /// A grid of costs, row by row from the origin corner (x fastest), as Nav2 and
 /// `nav_msgs/OccupancyGrid` store them.
 #[derive(Debug, Clone, PartialEq)]
@@ -79,6 +81,22 @@ impl Grid {
     /// The cost at (x, y); `outside` off the grid.
     pub fn cost_at(&self, x: f64, y: f64, outside: u8) -> u8 {
         self.cell(x, y).map_or(outside, |(cx, cy)| self.get(cx, cy))
+    }
+
+    /// Nav2's IsPathValid (planner_server, `consider_footprint` false): the indices, from
+    /// `from` on, of the points whose cell is lethal or inside the car's inscribed circle.
+    /// A point off the grid can't be judged and is skipped, as Nav2's.
+    pub fn blocked_along(&self, points: &[(f64, f64)], from: usize) -> Vec<usize> {
+        points
+            .iter()
+            .enumerate()
+            .skip(from)
+            .filter(|(_, &(x, y))| {
+                self.cell(x, y)
+                    .is_some_and(|(cx, cy)| matches!(self.get(cx, cy), INSCRIBED | LETHAL))
+            })
+            .map(|(i, _)| i)
+            .collect()
     }
 
     /// The far corner, m.
@@ -214,6 +232,19 @@ fn bresenham(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn blocked_along_finds_lethal_and_inscribed_ahead_only() {
+        let mut g = Grid::new((0.0, 0.0), 1.0, 10, 1, 0);
+        g.set(2, 0, LETHAL);
+        g.set(5, 0, INSCRIBED);
+        g.set(7, 0, 252); // inflated, outside the inscribed circle: still free to drive
+        g.set(8, 0, crate::cost::NO_INFORMATION);
+        let line: Vec<(f64, f64)> = (0..12).map(|i| (i as f64 + 0.5, 0.5)).collect();
+        assert_eq!(g.blocked_along(&line, 0), vec![2, 5]);
+        assert_eq!(g.blocked_along(&line, 3), vec![5]);
+        assert!(g.blocked_along(&line, 6).is_empty());
+    }
 
     #[test]
     fn cells_and_centres() {

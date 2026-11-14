@@ -71,6 +71,7 @@ HUD and on the developer window.
 | STOPS IN | how far a full brake now takes the car | `/ego/ahead` stop_m |
 | ON PLAN / OFF PLAN / FAR OFF | how far the bold line strays from the grey one: "have we turned enough, slowed enough?" | gap_m |
 | GOAL: SHORT / PAST, OBSTACLE, HITS | room left between the stop and the goal (along the plan), or the obstacle; HITS in red when a full brake now still reaches it | goal_m, room_m |
+| ROAD 0.6 m/s, SIGN IN 12 m | with `behaviour:=true`: the road ahead's speed here and its end (the nearest stop: sign, obstacle, fence, goal). It takes the third line, unless an obstacle is within 1 m of the stop point; `ROAD: STOP` in amber at the end | road_mps, road_m, road_why |
 
 While braking for the goal, the bold line shrinks to the bar and goes green:
 

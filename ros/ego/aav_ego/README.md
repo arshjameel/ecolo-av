@@ -28,7 +28,7 @@ speed, reverse speed, acceleration, jerk, steering angle and rate, and a body mo
 | Publishes | `/ego/actuator_cmd` (`ackermann_msgs/AckermannDriveStamped`) at `rate_hz`: speed (m/s), steering_angle (rad, + left), acceleration (m/s²: the limit used; while speeding up with `max_jerk` > 0, the eased acceleration now), steering_angle_velocity (`max_steering_rate`) |
 | | `/ego/trace` (`nav_msgs/Path`, frame `base_link`) at `trace_rate_hz`: where the car goes over `trace_horizon` s |
 | | `/ego/stop_point` (`geometry_msgs/PoseStamped`, frame `base_link`, with each trace): where a full brake now stops the car |
-| Node `look_ahead` | started by `ego.launch.py` (`look_ahead:=true`, the default): the squiggly line's numbers for the screens. Subscribes `/ego/trace`, `/ego/stop_point`, `/drivers/nav/local_plan`, `/plan`, `/local_costmap/costmap`, TF; publishes `/ego/plan_ahead` (Path, base_link) and `/ego/ahead` (DiagnosticStatus: gap_m, plan, stop_m, goal_m, obstacle_m, room_m, front_m, rear_m, half_width_m). Parameters in its docstring (`look_ahead_node.py`) |
+| Node `look_ahead` | started by `ego.launch.py` (`look_ahead:=true`, the default): the squiggly line's numbers for the screens. Subscribes `/ego/trace`, `/ego/stop_point`, `/drivers/nav/local_plan`, `/plan`, `/local_costmap/costmap`, `/world/road_ahead`, TF; publishes `/ego/plan_ahead` (Path, base_link) and `/ego/ahead` (DiagnosticStatus: gap_m, plan, stop_m, goal_m, obstacle_m, room_m, front_m, rear_m, half_width_m, road_mps, road_m, road_why). Parameters in its docstring (`look_ahead_node.py`) |
 
 Launch arguments:
 

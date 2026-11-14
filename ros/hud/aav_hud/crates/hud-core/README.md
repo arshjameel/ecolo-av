@@ -10,7 +10,7 @@ keeps. `map-core` shares its health, origin, watchdog and formatting code.
 
 | Module | Holds |
 |---|---|
-| `ahead` | the squiggly line: `Ahead` (trace, plan, stop, `Summary` from `/ego/ahead`), `Body`, `lines` (the words and their `Tone`), `View` (base_link onto a panel), `point_along`, `pretend` (a 12 s loop) |
+| `ahead` | the squiggly line: `Ahead` (trace, plan, stop, `Summary` from `/ego/ahead`), `Body`, `Road` (the road ahead where the car is), `lines`, `road_line` (the words and their `Tone`), `View` (base_link onto a panel), `point_along`, `pretend` (a 12 s loop) |
 | `config` | `HudConfig` from `config/hud.yaml` (`BUILT_IN_YAML`, built in); `Topic`, `NODE_NAME` = `hud` |
 | `units` | speed in m/s and km/h, angles |
 | `vehicle` | `/vehicle/status`: mode (`Mode`: MANUAL 0, RC 1, COMPUTER 2, TEST 3; any other number shows as `MODE n?`), gear letter, fault names |

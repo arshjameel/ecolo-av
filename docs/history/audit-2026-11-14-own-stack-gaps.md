@@ -13,8 +13,8 @@ for them, and clippy was not run. Sizes: **S** under a day, **M** 2-4 days, **L*
 
 | Gap | Evidence | Rank | Size |
 |---|---|---|---|
-| Nobody notices when `/tf` stops: costmap, planner and navigator keep the last pose | `aav_navigator` navigator-node `main.rs:533`, `aav_planner` planner-node `main.rs:492`, `aav_costmap` costmap-node `main.rs:455` | must | M |
-| No lifecycle, bond or respawn: a dead node goes unnoticed | `navigation.launch.py:425-520` | must | M |
+| Nobody notices when `/tf` stops: costmap, planner and navigator keep the last pose | `aav_navigator` navigator-node `main.rs:533`, `aav_planner` planner-node `main.rs:492`, `aav_costmap` costmap-node `main.rs:455` | must | M; **done 14 Nov**: the costmap stops on stale odometry or map -> odom; the planner fails a goal (TF_ERROR) and the navigator has no car pose when map -> odom -> base_link is over 1 s old |
+| No lifecycle, bond or respawn: a dead node goes unnoticed | `navigation.launch.py:425-520` | must | M; **respawn done 14 Nov** (each of ours, 1 s; `test_respawn.py`). Its status on a watchdog still to do |
 | No costmap age check anywhere (Nav2 waits 0.3 s in the controller, 1 s in the planner) | `nav2.yaml:71, 407`; `mppi-node main.rs:343` | must | S |
 | None has run on the car | each page's "What's missing" | must | L |
 | No node binary has a test; only the maths crates | `tools/test.sh:53-62` | should | M |
@@ -25,7 +25,7 @@ for them, and clippy was not run. Sizes: **S** under a day, **M** 2-4 days, **L*
 | Package (Nav2 twin) | Must | Should | State |
 |---|---|---|---|
 | `aav_costmap` (costmap_2d) | say its age; stop placing scans when odometry stops; try radar, cubes, camera clouds | — | 100 % the same cells as Nav2; half the CPU |
-| `aav_planner` (Smac lattice) | Hybrid-A* (the car's forward-only planner) | costmap age; `IsPathValid`; 20 % slower on long plans | ties on the lot |
+| `aav_planner` (Smac lattice) | Hybrid-A* (the car's forward-only planner) | costmap age (done 14 Nov); `IsPathValid` (served 14 Nov); 20 % slower on long plans | ties on the lot |
 | `aav_navigator` (bt_navigator) | time limits on planner and follower calls (a crash mid-goal hangs it); lot 7 of 12 against 8 | `IsPathValid` on the final approach; BackUp still Nav2's; goals in other frames; error codes as enums; 8 `expect` in library code (`machine.rs`) | 11 mission tests |
 | `aav_smoother` (velocity_smoother) | — | a stale speed reading used for ever in closed loop; campus at 2.5 m/s not run | the closest to Nav2; better steering |
 | `aav_mppi_lag` (MPPI) | passes the goal at 2.5 m/s; twice the CPU, never timed on the Orin; costmap age | forward only; what to do on an odometry gap | the best follower (11 of 12) |
@@ -42,10 +42,10 @@ Ours matches Gazebo's lidar, GPS and radar stand-in, and passes every `sim-check
 | # | Gap | Evidence | Rank | Size |
 |---|---|---|---|---|
 | M1 | Our cameras need a GPU. Try Bevy on Mesa's software Vulkan; **not sure it works** | `own-simulator.md` | must | M |
-| M2 | A `cameras:=false` switch for ours, then a CI job with ours | `worlds.py:83-86`; CI runs only Gazebo (`test.yml:297-308`) | must | S |
+| M2 | A `cameras:=false` switch for ours, then a CI job with ours | `worlds.py:83-86`; CI runs only Gazebo (`test.yml:297-308`) | must | S; **switch done 14 Nov**: `cameras:=false`, `sim-check --no-cameras`; the CI job next |
 | M3 | Our stop sign is drawn 52 px against Gazebo's 68; an early `--perception` failure is unexplained | `own-simulator-cameras.md` | must | M |
 | M4 | Ours still runs Gazebo's Python helpers and world files (`gazebo_adapter`, `gazebo_imu`, `gazebo_gps`, `worlds/`, `models/`); `/gazebo/*` topic names | `aav_gazebo` | must | L |
-| M5 | No service to place the car (`tools/sim_frames.py` needs Gazebo's) | `sim_frames.py:66` | must | S |
+| M5 | No service to place the car (`tools/sim_frames.py` needs Gazebo's) | `sim_frames.py:66` | must | S; **done 14 Nov**: `vehicle/sim/set_entity_state` (simulation_interfaces/SetEntityState) places the car; `sim_frames.py --simulator own` |
 | S1 | Runs aren't repeatable: wall-clock pace, unseeded Python noise, lidar noise depends on `threads` | `main.rs:277-307`, `lidar.rs:115-118` | should | M |
 | S2 | The node drives a plain bicycle model; the shared car model (`SharedCar`) isn't wired in; no slopes | `car.rs:116-166` | should | M |
 | S3 | IMU: only the z turn rate; `gazebo_imu` throws away our slope-correct acceleration | `sim.rs:565`, `gazebo_imu.py:58-59` | should | S |

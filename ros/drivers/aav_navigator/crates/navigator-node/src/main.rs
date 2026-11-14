@@ -14,15 +14,21 @@
 //!                                         (navsat.yaml), then as follow_waypoints
 //! Subscribes  /goal_pose                  geometry_msgs/PoseStamped (map): a to-pose goal
 //!                                         from RViz, the map window, the dev window
-//!             /tf                         tf2_msgs/TFMessage: map -> odom -> base_link
+//!             /tf                         tf2_msgs/TFMessage: map -> odom -> base_link;
+//!                                         older than TRANSFORM_TIMEOUT: no car pose (no
+//!                                         waypoint passed, no plan kept, no progress)
 //! Publishes   drivers/nav/navigator/status
 //!                                         diagnostic_msgs/DiagnosticStatus, 2 Hz and at
 //!                                         each goal's end: the goal, the step, recoveries
 //! Calls       the planner's ComputePathToPose and ComputePathThroughPoses
-//!             (planner_action, planner_through_action), the follower's FollowPath
+//!             (planner_action, planner_through_action), its IsPathValid once a second
+//!             on the final approach (is_path_valid_service: planner_server's, or ours,
+//!             aav_planner, where none runs), the follower's FollowPath
 //!             (follow_action), the costmaps' ClearEntireCostmap (clear_local,
 //!             clear_global: comma-separated lists), and with backup_action set,
-//!             behavior_server's BackUp.
+//!             behavior_server's BackUp; without it (no behaviour server: all ours), the
+//!             BackUp recovery is the follower's FollowPath on a straight line behind the
+//!             car (the follower must reverse: mppi_lag with reversing:=true).
 //!             Every call has a time limit (settings: plan_timeout, follow_timeout: the
 //!             follower's silence, recovery_timeout): a server that dies mid-goal fails
 //!             the goal; it never hangs it.
@@ -41,6 +47,7 @@ use anyhow::{anyhow, bail, Context as _, Result};
 use futures::channel::oneshot;
 use futures::future::{self, Either};
 use map_core::earth::{Datum, LatLon, BUILT_IN_NAVSAT_YAML};
+use navigator::path::straight_back;
 use navigator::{
     Abort, BackUp as BackUpSettings, Command, FollowError, Mission, Navigator, Outcome, PlanError,
     Pose, Settings, Token, WaypointMode,
@@ -59,11 +66,20 @@ use ros_env::nav2_msgs::action::{
     NavigateToPose_Feedback, NavigateToPose_Result,
 };
 use ros_env::nav2_msgs::msg::MissedWaypoint;
-use ros_env::nav2_msgs::srv::{ClearEntireCostmap, ClearEntireCostmap_Response};
+use ros_env::nav2_msgs::srv::{
+    ClearEntireCostmap, ClearEntireCostmap_Response, IsPathValid, IsPathValid_Request,
+    IsPathValid_Response,
+};
 use ros_env::nav_msgs::msg::Path;
 use ros_env::std_msgs::msg::Header;
 use ros_env::tf2_msgs::msg::TFMessage;
 use serde_json::Value;
+
+/// m between the poses of the BackUp recovery's straight line (as the planners' paths).
+const BACK_UP_SPACING: f64 = 0.05;
+
+/// s: a /tf transform older than this is no car pose (robot_localization sends at 30 Hz).
+const TRANSFORM_TIMEOUT: f64 = 1.0;
 
 const PREFIX: &str = "/drivers/nav/navigator/";
 const STATUS_TOPIC: &str = "/drivers/nav/navigator/status";
@@ -71,6 +87,8 @@ const GOAL_TOPIC: &str = "/goal_pose";
 /// s between ticks, and between feedback and status messages.
 const TICK: f64 = 0.1;
 const REPORT_EVERY: u32 = 5;
+/// Ticks between IsPathValid calls on the final approach: once a second, as the trees.
+const CHECK_EVERY: u32 = 10;
 
 fn main() -> Result<()> {
     let context = Context::default_from_env()?;
@@ -102,6 +120,7 @@ fn main() -> Result<()> {
             "/global_costmap/clear_entirely_global_costmap",
         )?),
         backup: text_param("backup_action", "")?,
+        is_path_valid: text_param("is_path_valid_service", "/is_path_valid")?,
     };
     let navsat_file = text_param("navsat_file", "")?;
     let frames = Frames {
@@ -149,6 +168,7 @@ fn main() -> Result<()> {
         } else {
             Some(node.create_action_client::<BackUp>(names.backup.as_str())?)
         },
+        is_path_valid: node.create_client::<IsPathValid>(names.is_path_valid.as_str())?,
     };
 
     let core = Core {
@@ -166,6 +186,7 @@ fn main() -> Result<()> {
         clock: node.get_clock(),
         logger: node.logger().clone(),
         ticks: 0,
+        checking: false,
         step: "idle",
         last_end: String::new(),
         done: (0, 0),
@@ -417,6 +438,7 @@ struct Names {
     clear_local: Vec<String>,
     clear_global: Vec<String>,
     backup: String,
+    is_path_valid: String,
 }
 
 struct Frames {
@@ -432,6 +454,7 @@ struct Clients {
     clear_local: Vec<Client<ClearEntireCostmap>>,
     clear_global: Vec<Client<ClearEntireCostmap>>,
     backup: Option<ActionClient<BackUp>>,
+    is_path_valid: Client<IsPathValid>,
 }
 
 /// Where each goal's feedback goes.
@@ -463,8 +486,9 @@ struct Core {
     nav: Navigator,
     frames: Frames,
     datum: Datum,
-    map_odom: Option<Pose>,
-    odom_base: Option<Pose>,
+    /// map -> odom and odom -> base_link, each with when it arrived (s).
+    map_odom: Option<(Pose, f64)>,
+    odom_base: Option<(Pose, f64)>,
     goals: HashMap<u64, Waiting>,
     next_id: u64,
     clients: Clients,
@@ -475,6 +499,8 @@ struct Core {
     clock: Clock,
     logger: Logger,
     ticks: u32,
+    /// An IsPathValid call is out: no second one until it answers.
+    checking: bool,
     step: &'static str,
     last_end: String,
     /// Goals succeeded, and not.
@@ -529,8 +555,12 @@ impl Core {
         self.clock.now().to_ros_msg().unwrap_or_default()
     }
 
+    /// The car in map, from /tf; `None` while either transform is missing or stale.
     fn car(&self) -> Option<Pose> {
-        Some(compose(self.map_odom.as_ref()?, self.odom_base.as_ref()?))
+        let (a, a_at) = self.map_odom.as_ref()?;
+        let (b, b_at) = self.odom_base.as_ref()?;
+        let fresh = self.now() - a_at.min(*b_at) <= TRANSFORM_TIMEOUT;
+        fresh.then(|| compose(a, b))
     }
 
     fn on_tf(&mut self, msg: &TFMessage) {
@@ -540,9 +570,9 @@ impl Core {
             let r = &t.transform;
             let pose = Pose::new(r.translation.x, r.translation.y, yaw_of(&r.rotation));
             if parent == self.frames.map && child == self.frames.odom {
-                self.map_odom = Some(pose);
+                self.map_odom = Some((pose, self.now()));
             } else if parent == self.frames.odom && child == self.frames.base {
-                self.odom_base = Some(pose);
+                self.odom_base = Some((pose, self.now()));
             }
         }
     }
@@ -649,6 +679,9 @@ impl Core {
         let out = self.nav.tick(now, car.as_ref());
         self.carry_out(out);
         self.ticks += 1;
+        if self.ticks.is_multiple_of(CHECK_EVERY) {
+            self.check_path(now, car.as_ref());
+        }
         if self.ticks.is_multiple_of(REPORT_EVERY) {
             self.report(now, car.as_ref());
         }
@@ -958,6 +991,90 @@ impl Core {
         );
     }
 
+    /// BackUp with no behaviour server: the follower backs along a straight line behind
+    /// the car (`straight_back`), checking the costmap as it goes. No car pose: it fails,
+    /// and the next recovery is another kind.
+    fn back_up_following(&mut self, token: Token, distance: f64) {
+        let path = self
+            .car()
+            .map(|car| straight_back(&car, distance, BACK_UP_SPACING));
+        let client = self.clients.follow.clone();
+        let goal = path.map(|poses| FollowPath_Goal {
+            path: Path {
+                header: Header {
+                    stamp: self.stamp(),
+                    frame_id: self.frames.map.clone(),
+                },
+                poses: self.stamped(&poses),
+            },
+            controller_id: String::new(),
+            goal_checker_id: String::new(),
+            progress_checker_id: String::new(),
+        });
+        self.spawn(
+            async move {
+                let Some(goal) = goal else {
+                    return false;
+                };
+                if !client.server_is_available().unwrap_or(false) {
+                    return false;
+                }
+                let Some(g) = client.request_goal(goal).await else {
+                    return false;
+                };
+                g.result.await.0 == GoalStatusCode::Succeeded
+            },
+            move |c: &mut Core, ok: bool, now| {
+                let out = c.nav.recovered(token, ok, now);
+                c.carry_out(out);
+            },
+        );
+    }
+
+    /// On the final approach (where the path is kept, not replanned), ask the planner's
+    /// IsPathValid about it, as the trees do. No answer, or no server: nothing changes
+    /// (the follower's own costmap checks and collision_monitor still stop the car).
+    fn check_path(&mut self, now: f64, car: Option<&Pose>) {
+        if self.checking {
+            return;
+        }
+        let Some((made, poses)) = self.nav.path_to_check(now, car) else {
+            return;
+        };
+        let request = IsPathValid_Request {
+            path: Path {
+                header: Header {
+                    stamp: self.stamp(),
+                    frame_id: self.frames.map.clone(),
+                },
+                poses: self.stamped(poses),
+            },
+        };
+        let client = self.clients.is_path_valid.clone();
+        self.checking = true;
+        self.spawn(
+            async move {
+                if !client.service_is_ready().unwrap_or(false) {
+                    return None;
+                }
+                let promise: Promise<IsPathValid_Response> = client.call(&request).ok()?;
+                promise.await.ok().map(|r| r.is_valid)
+            },
+            move |c: &mut Core, valid: Option<bool>, _now| {
+                c.checking = false;
+                if let Some(valid) = valid {
+                    if !valid {
+                        log_warn!(
+                            &c.logger,
+                            "IsPathValid: the kept path is blocked: planning again"
+                        );
+                    }
+                    c.nav.path_checked(made, valid);
+                }
+            },
+        );
+    }
+
     fn clear(&mut self, token: Token, local: bool, global: bool) {
         let mut clients: Vec<Client<ClearEntireCostmap>> = Vec::new();
         if local {
@@ -991,6 +1108,9 @@ impl Core {
     }
 
     fn back_up(&mut self, token: Token, distance: f64, speed: f64) {
+        if self.clients.backup.is_none() {
+            return self.back_up_following(token, distance);
+        }
         let client = self.clients.backup.clone();
         let goal = BackUp_Goal {
             target: Point {

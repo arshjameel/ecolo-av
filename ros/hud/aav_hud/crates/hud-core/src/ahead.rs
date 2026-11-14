@@ -90,6 +90,19 @@ pub struct Summary {
     /// The body from base_link (vehicle.yaml, through look_ahead): the front bumper ahead
     /// (m), the rear one (m, below 0), half the width (m).
     pub body: Option<Body>,
+    /// The road ahead (`/world/road_ahead`) where the car is: `None` without one.
+    pub road: Option<Road>,
+}
+
+/// What the road ahead allows where the car is, as look_ahead sends it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Road {
+    /// m/s: the speed the road ahead allows here (0: none).
+    pub limit: f64,
+    /// m to its end (the nearest stop, or as far as it reaches).
+    pub room: f64,
+    /// Why it ends there: `sign`, `obstacle`, `fence`, `goal`; empty: just its length.
+    pub why: String,
 }
 
 /// The car's outline from base_link, as look_ahead sends it.
@@ -113,6 +126,7 @@ impl Summary {
             ..Self::default()
         };
         let (mut front, mut rear, mut half_width) = (None, None, None);
+        let (mut road_limit, mut road_room, mut why) = (None, None, String::new());
         for (key, value) in values {
             let number = value.parse::<f64>().ok().filter(|v| v.is_finite());
             match key {
@@ -125,6 +139,9 @@ impl Summary {
                 "front_m" => front = number,
                 "rear_m" => rear = number,
                 "half_width_m" => half_width = number,
+                "road_mps" => road_limit = number,
+                "road_m" => road_room = number,
+                "road_why" => why = value.to_owned(),
                 _ => {}
             }
         }
@@ -134,6 +151,9 @@ impl Summary {
                 rear,
                 half_width,
             });
+        }
+        if let (Some(limit), Some(room)) = (road_limit, road_room) {
+            s.road = Some(Road { limit, room, why });
         }
         s
     }
@@ -269,33 +289,61 @@ pub fn lines(summary: Option<&Summary>) -> [Line; 3] {
             tone: s.grade.into(),
         },
     };
-    let room = match (s.room, s.goal) {
-        (Some(r), _) if r < 0.0 => Line {
-            text: format!("HITS: {} SHORT", metres(r)),
-            tone: Tone::Bad,
-        },
-        (Some(r), _) if r < 1.0 => Line {
-            text: format!("OBSTACLE +{}", metres(r)),
-            tone: Tone::Warn,
-        },
-        (_, Some(g)) if g < 0.0 => Line {
-            text: format!("GOAL: {} PAST", metres(g)),
-            tone: Tone::Warn,
-        },
-        (_, Some(g)) => Line {
-            text: format!("GOAL: {} SHORT", metres(g)),
-            tone: Tone::Plain,
-        },
-        (Some(r), None) => Line {
-            text: format!("OBSTACLE +{}", metres(r)),
-            tone: Tone::Plain,
-        },
-        (None, None) => Line {
-            text: "NOTHING AHEAD".into(),
-            tone: Tone::Dim,
-        },
-    };
+    // An obstacle within a metre of the stop point comes first, then the road ahead.
+    let near = s.room.is_some_and(|r| r < 1.0);
+    let road = s.road.as_ref().filter(|_| !near);
+    let room = road
+        .map(road_line)
+        .unwrap_or_else(|| match (s.room, s.goal) {
+            (Some(r), _) if r < 0.0 => Line {
+                text: format!("HITS: {} SHORT", metres(r)),
+                tone: Tone::Bad,
+            },
+            (Some(r), _) if r < 1.0 => Line {
+                text: format!("OBSTACLE +{}", metres(r)),
+                tone: Tone::Warn,
+            },
+            (_, Some(g)) if g < 0.0 => Line {
+                text: format!("GOAL: {} PAST", metres(g)),
+                tone: Tone::Warn,
+            },
+            (_, Some(g)) => Line {
+                text: format!("GOAL: {} SHORT", metres(g)),
+                tone: Tone::Plain,
+            },
+            (Some(r), None) => Line {
+                text: format!("OBSTACLE +{}", metres(r)),
+                tone: Tone::Plain,
+            },
+            (None, None) => Line {
+                text: "NOTHING AHEAD".into(),
+                tone: Tone::Dim,
+            },
+        });
     [stop, plan, room]
+}
+
+/// The road ahead in words: "ROAD 0.6 m/s, SIGN IN 12 m" (`stop at` its end: 0 m/s).
+pub fn road_line(road: &Road) -> Line {
+    let end = if road.why.is_empty() {
+        "END".to_owned()
+    } else {
+        road.why.to_uppercase()
+    };
+    if road.limit <= 0.0 {
+        return Line {
+            text: format!("ROAD: STOP ({end})"),
+            tone: Tone::Warn,
+        };
+    }
+    Line {
+        text: format!(
+            "ROAD {:.1} m/s, {end} IN {}",
+            road.limit,
+            metres(road.room.max(0.0))
+        ),
+        tone: Tone::Plain,
+    }
 }
 
 /// base_link to a panel: forward is up, the car's rear axle near the bottom, centred.
@@ -432,6 +480,12 @@ pub fn pretend(t: Duration) -> Ahead {
             rear: -0.3,
             half_width: 0.5,
         }),
+        // The road ahead ends at the goal: its limit falls as the room does.
+        road: Some(Road {
+            limit: (0.5 * (goal + stop_s).max(0.0)).sqrt().min(1.0),
+            room: goal + stop_s,
+            why: "goal".into(),
+        }),
     };
     Ahead {
         trace,
@@ -531,6 +585,43 @@ mod tests {
         };
         assert_eq!(lines(Some(&past))[2].text, "GOAL: 0.50 m PAST");
         assert_eq!(lines(None)[0].tone, Tone::Dim);
+    }
+
+    #[test]
+    fn the_road_ahead_takes_the_third_line_unless_an_obstacle_is_near() {
+        let values = [
+            ("plan", "global"),
+            ("gap_m", "0.10"),
+            ("stop_m", "1.20"),
+            ("room_m", "nan"),
+            ("road_mps", "0.62"),
+            ("road_m", "12.30"),
+            ("road_why", "sign"),
+        ];
+        let s = Summary::from_status(0, "", values);
+        assert_eq!(
+            s.road,
+            Some(Road {
+                limit: 0.62,
+                room: 12.3,
+                why: "sign".into()
+            })
+        );
+        assert_eq!(lines(Some(&s))[2].text, "ROAD 0.6 m/s, SIGN IN 12 m");
+        let near = Summary {
+            room: Some(0.4),
+            ..s.clone()
+        };
+        assert_eq!(lines(Some(&near))[2].tone, Tone::Warn);
+        assert!(lines(Some(&near))[2].text.starts_with("OBSTACLE"));
+        let stop = Road {
+            limit: 0.0,
+            room: 0.0,
+            why: String::new(),
+        };
+        assert_eq!(road_line(&stop).text, "ROAD: STOP (END)");
+        let none = Summary::from_status(0, "", [("road_mps", "nan"), ("road_m", "nan")]);
+        assert_eq!(none.road, None);
     }
 
     #[test]

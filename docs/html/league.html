@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The league · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/league.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>The league</h1>
+<div class="meta">2 min read · 3 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<span class="sep">Learn:</span>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<span class="sep">Reference:</span>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a class="here" href="league.html">The league</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#the-stacks">The stacks</a><a href="#how-a-challenger-wins">How a challenger wins</a><a href="#where-things-are">Where things are</a></nav>
+<div class="lead"><p>One file says <strong>what the car is</strong>: each level's champion, and the challengers
+waiting to beat it.</p>
+<pre class="highlight"><code class="language-text">  config/stacks.yaml (aav_description)
+  ┌────────────┬───────────┬──────────────────────────────┐
+  │ Level      │ Champion  │ Challengers                  │
+  ├────────────┼───────────┼──────────────────────────────┤
+  │ pose       │ ekf       │ ndt_ekf, kiss_ekf            │
+  │ costmap    │ nav2      │ ours                         │
+  │ navigator  │ nav2      │ ours                         │
+  │ path       │ lattice   │ lattice_rs, hybrid, diffusion│
+  │ steer      │ mppi      │ mppi_lag, mpc_lag, rpp       │
+  │ smoother   │ nav2      │ ours                         │
+  │ behaviour  │ off       │ on (the road ahead)          │
+  └────────────┴───────────┴──────────────────────────────┘
+          │
+          ▼
+  pixi run sim stack:=ours      one word sets every level</code></pre></div>
+<section class="card"><h2 id="the-stacks">The stacks</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>stack:=</code></th>
+<th>What it runs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(empty)</td>
+<td>every switch as you give it: the same as before</td>
+</tr>
+<tr>
+<td><code>best</code></td>
+<td>every level's champion</td>
+</tr>
+<tr>
+<td><code>car</code></td>
+<td>the champions approved for the car (<code>car.launch.py</code> runs these today)</td>
+</tr>
+<tr>
+<td><code>stock</code></td>
+<td>every level stock: Nav2 and robot_localization</td>
+</tr>
+<tr>
+<td><code>ours</code></td>
+<td>every level we built: our costmap, navigator, planner (<code>lattice_rs</code>), <code>mppi_lag</code>, and the road ahead (<code>behaviour:=true</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>A switch you give by hand <strong>still wins</strong>:</p>
+<pre class="highlight"><code class="language-sh">pixi run sim world:=campus stack:=ours                     # all ours
+pixi run sim world:=campus stack:=ours tracker:=mpc_lag    # all ours, but MPC follows</code></pre>
+<p>The launch prints what it picked, such as
+<code>stack:=ours - pose ekf, costmap ours, navigator ours, path lattice_rs, steer mppi_lag, ...</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">A hand-set switch</p>
+<p>"Given by hand" means "not its default". <code>stack:=ours planner:=lattice</code> keeps
+<code>lattice_rs</code>, because <code>lattice</code> is the default. To keep a default, leave the stack out.</p>
+</div>
+</section>
+<section class="card"><h2 id="how-a-challenger-wins">How a challenger wins</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>It wins by a margin, on 3 or more runs of the same routes</td>
+<td>7 of 12 against 8 is a tie</td>
+</tr>
+<tr>
+<td>Scored by one scorecard: <code>tools/score_drive.py</code> on a recording</td>
+<td>every challenger is judged the same way</td>
+</tr>
+<tr>
+<td>A person approves each swap</td>
+<td>a number alone doesn't change the car</td>
+</tr>
+<tr>
+<td>The car needs its own win, on the Orin</td>
+<td>a sim win isn't a car win</td>
+</tr>
+<tr>
+<td>Nothing is deleted</td>
+<td>the loser stays a challenger (Ben, 5 Nov)</td>
+</tr>
+</tbody>
+</table></div>
+<p>To swap a champion: change its <code>champion:</code> in <code>stacks.yaml</code>, and write the score's date and
+recording in its <code>score:</code>.</p>
+</section>
+<section class="card"><h2 id="where-things-are">Where things are</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The file</td>
+<td><code>ros/bringup/aav_description/config/stacks.yaml</code></td>
+</tr>
+<tr>
+<td>The code (no ROS)</td>
+<td><code>aav_description.stacks</code>: <code>load</code>, <code>switches</code>, <code>resolve</code>, <code>describe</code></td>
+</tr>
+<tr>
+<td>Its tests</td>
+<td><code>ros/bringup/aav_description/test/test_stacks.py</code>: every switch real, <code>ours</code> reverses, a hand-set switch wins</td>
+</tr>
+<tr>
+<td>The launch</td>
+<td><code>sim.launch.py stack:=</code></td>
+</tr>
+<tr>
+<td>The design</td>
+<td><a href="../designs/2026-11-13_one-shape.md">one shape</a>, "The league"; <a href="../designs/2026-11-14_the-whole-car.md">the whole car</a>, step 7</td>
+</tr>
+</tbody>
+</table></div>
+<p>Not yet: <code>stack:=</code> on <code>car.launch.py</code>, and <code>pixi run measure league</code> (re-score every
+challenger and propose a swap). <code>pixi run measure controllers --stacks nav2 own</code> scores
+<code>stock</code> against <code>ours</code> today.</p></section>
+<nav class="prevnext"><a class="prev" href="trials.html"><small>Previous</small>← Trials</a>
+<a class="next" href="mppi-lag.html"><small>Next</small>MPPI with lag →</a></nav>
+</main>
+<footer>Source: <code>docs/league.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

@@ -234,6 +234,10 @@ def lattice_for(share, v, map_yaml, headings=vehicle.LATTICE_HEADINGS[0]):
 
 
 DIFFUSION_WAIT_MS = 15000   # bt_navigator's wait for diffusion_planner's action (ms)
+# s before one of our own nodes (not lifecycle: no bond) starts again after it dies, as
+# Nav2's servers do with use_respawn. While it is down the car stops: the costmap's and
+# odometry's age checks, twist_mux's timeout on /drivers/nav/cmd_vel.
+RESPAWN_DELAY = 1.0
 
 
 def diffusion_params(nav2, v, reversing):
@@ -451,6 +455,7 @@ def nodes(context):
             blocks = vehicle.costmap_params(yaml.safe_load(f), v, radar, camera)
         actions.append(Node(
             package='aav_costmap', executable='costmap', name='costmap', output='screen',
+            respawn=True, respawn_delay=RESPAWN_DELAY,
             parameters=[{'local': json.dumps(blocks['local']),
                          'global': json.dumps(blocks['global']),
                          'use_sim_time': use_sim_time}]))
@@ -462,9 +467,12 @@ def nodes(context):
         topic, updates, latched = vehicle.GLOBAL_COSTMAP_TOPICS[costmap]
         actions.append(Node(
             package='aav_planner', executable='planner', name='planner', output='screen',
+            respawn=True, respawn_delay=RESPAWN_DELAY,
             parameters=[{'settings': json.dumps(settings), 'costmap_topic': topic,
                          'costmap_updates_topic': updates,
                          'costmap_latched': str(latched).lower(),
+                         # IsPathValid, as planner_server serves it, where none runs.
+                         'is_path_valid_service': '' if nav2_planner else '/is_path_valid',
                          'use_sim_time': use_sim_time}]))
     if own_navigator:
         # aav_navigator (Rust): the trees' logic and waypoint_follower's, calling whichever
@@ -481,7 +489,7 @@ def nodes(context):
                   '/config/navsat.yaml')
         actions.append(Node(
             package='aav_navigator', executable='navigator', name='navigator',
-            output='screen',
+            output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
             parameters=[{
                 'settings': json.dumps(vehicle.navigator_params(v, reversing)),
                 'planner_action': (vehicle.OWN_PLANNER_ACTION if own_planner
@@ -502,7 +510,7 @@ def nodes(context):
             ego = yaml.safe_load(f)['ego']['ros__parameters']
         actions.append(Node(
             package='aav_smoother', executable='car_smoother', name='velocity_smoother',
-            output='screen',
+            output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
             parameters=[params, vehicle.smoother_params(cfg, ego, vehicle.config_path()),
                         {'use_sim_time': use_sim_time}],
             remappings=[('cmd_vel', 'cmd_vel_nav'), ('cmd_vel_smoothed', smoothed)]))
@@ -521,7 +529,7 @@ def nodes(context):
             own = FindPackageShare('aav_mppi_lag').perform(context) + '/config/mppi_lag.yaml'
             actions.append(Node(
                 package='aav_mppi_lag', executable='mppi_lag', name='mppi_lag',
-                output='screen',
+                output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
                 parameters=[own, vehicle.mppi_lag_params(nav2, cfg, ego, max_speed,
                                                          reversing),
                             {'use_sim_time': use_sim_time,
@@ -530,6 +538,7 @@ def nodes(context):
             own = FindPackageShare('aav_track').perform(context) + '/config/track.yaml'
             actions.append(Node(
                 package='aav_track', executable='track', name='track', output='screen',
+                respawn=True, respawn_delay=RESPAWN_DELAY,
                 parameters=[own, vehicle.track_params(nav2, cfg, ego, max_speed),
                             {'tracker': tracker, 'use_sim_time': use_sim_time,
                              'live_swap': IfCondition(

@@ -383,10 +383,17 @@ impl Simulator {
         })
     }
 
-    /// The first outputs, at time 0: the clock and where the car stands.
-    pub fn start(&mut self) -> Vec<Output> {
+    /// Put the car at (x, y, yaw), standing still, its actuators at rest (Gazebo's
+    /// `set_pose`; the node's SetEntityState). The truth and wheel odometry jump with it,
+    /// as in Gazebo; on a ground with steps the wheels settle again.
+    pub fn place_car(&mut self, x: f64, y: f64, yaw: f64) {
+        self.car.reset(x, y, yaw);
+        self.settle();
+    }
+
+    /// The wheels' heights where the car stands, found from a little up.
+    fn settle(&mut self) {
         if let Some(g) = self.ground() {
-            // Find the ground from a little up: the car may start on a raised lot.
             let s = self.car.state();
             let anywhere = Ground {
                 max_step: f64::INFINITY,
@@ -396,6 +403,12 @@ impl Simulator {
                 self.wheel_heights = h;
             }
         }
+    }
+
+    /// The first outputs, at time 0: the clock and where the car stands.
+    pub fn start(&mut self) -> Vec<Output> {
+        // Find the ground from a little up: the car may start on a raised lot.
+        self.settle();
         let mut out = vec![Output::Clock];
         self.speak(&mut out, true);
         out
@@ -670,6 +683,32 @@ mod tests {
         assert!(body.touches(&scene, &Pose::IDENTITY));
         let back = Pose::new(Vec3::new(-0.2, 0.0, 0.0), Rot3::IDENTITY);
         assert!(!body.touches(&scene, &back));
+    }
+
+    #[test]
+    fn the_car_can_be_placed_anywhere_and_stands_still_there() {
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut sim = Simulator::new(settings(), World::flat(400.0), car, (0.0, 0.0, 0.0));
+        let go = Command::Twist {
+            speed: 1.0,
+            yaw_rate: 0.0,
+        };
+        for _ in 0..1000 {
+            sim.step(&go);
+        }
+        assert!(sim.car().speed > 0.5);
+        sim.place_car(10.0, -4.0, 1.0);
+        let s = sim.car();
+        assert_eq!((s.x, s.y, s.yaw), (10.0, -4.0, 1.0));
+        assert_eq!(s.speed, 0.0);
+        let stop = Command::Twist {
+            speed: 0.0,
+            yaw_rate: 0.0,
+        };
+        for _ in 0..100 {
+            sim.step(&stop);
+        }
+        assert!((sim.car().x - 10.0).abs() < 1e-6);
     }
 
     #[test]

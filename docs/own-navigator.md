@@ -155,6 +155,10 @@ again. A goal a few metres past the exit would avoid it.
   not yet scored against all Nav2 with `--reversing`.
 
 - **On the car:** untested; `car.launch.py` always passes `navigator:=nav2`.
-- **No `IsPathValid`** on the final approach: the navigator reads no costmap.
-- **Back up** still calls Nav2's `behavior_server` (reversing only); all ours runs none, so
-  it has no BackUp recovery, though `mppi_lag` itself now follows reversing paths.
+- **`IsPathValid`** on the final approach (14 Nov): once a second it asks the planner
+  (planner_server's, or ours, `aav_planner`, where none runs); a blocked path is planned
+  again. Not yet seen in a sim run.
+- **Back up** calls Nav2's `behavior_server` where it runs (reversing only). All ours runs
+  none: since 14 Nov the navigator then backs up through the follower, `mppi_lag`, on a
+  straight line 1 m behind the car (it checks the costmap as it goes). Not yet seen in a
+  sim run.

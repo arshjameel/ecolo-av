@@ -256,7 +256,8 @@ def launch_setup(context):
     own = simulator == 'own'
     sensors = worlds.has_sensors(world)
     # Cameras where the world renders sensors: Gazebo's, or ours (aav_sim_cameras, Bevy).
-    cameras = worlds.has_cameras(world, simulator)
+    # cameras:=false: none at all, so a computer with no GPU runs our simulator (M2).
+    cameras = worlds.has_cameras(world, simulator) and flag(context, 'cameras')
     # The lidar only where the world renders it: elsewhere it would publish nothing.
     lidar = sensors and flag(context, 'lidar')
     chase = cameras and flag(context, 'chase_camera')
@@ -397,6 +398,9 @@ def generate_launch_description():
         DeclareLaunchArgument('lidar', default_value='true',
                               description='a simulated 16-beam roof lidar, on '
                                           '/sensors/lidar/points (world:=road)'),
+        DeclareLaunchArgument('cameras', default_value='true',
+                              description='false: no cameras (no picture, no chase camera), '
+                              'so our simulator runs without a GPU; the lidar and radar stay'),
         DeclareLaunchArgument('chase_camera', default_value='true',
                               description='a camera behind and above the car, for '
                                           "Lichtblick's cockpit layout, as "

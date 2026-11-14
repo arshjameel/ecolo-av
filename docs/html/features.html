@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">65 min read · 14 sections</div></header>
+<div class="meta">66 min read · 14 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -58,6 +58,7 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -90,6 +91,7 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
@@ -477,6 +479,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </thead>
 <tbody>
 <tr>
+<td><a href="league.html">The league</a> (<code>stack:=</code>, <code>aav_description</code> <code>config/stacks.yaml</code>, <code>stacks.py</code>)</td>
+<td>Ben, 13 Nov: "Thats to many switches" and "picking the best algorithms in each location". One file names each level's champion and challengers; <code>stack:=best</code>, <code>car</code>, <code>stock</code> or <code>ours</code> sets every level at once in <code>sim.launch.py</code>, and a switch given by hand still wins. Nothing is deleted: a loser stays a challenger</td>
+<td>Ben</td>
+<td>2026-11-14</td>
+<td>built</td>
+</tr>
+<tr>
 <td>Nav2 set up for a car (<code>aav_navigation</code>)</td>
 <td>A car can't turn on the spot: SmacPlannerHybrid plans paths it can drive, with no Spin</td>
 <td>Ben</td>
@@ -597,7 +606,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="../designs/2026-11-14_the-whole-car.md#the-road-ahead">The road ahead</a> (<code>/world/road_ahead</code>, <code>aav_interfaces/RoadAhead</code>; <code>aav_behaviour</code> <code>road_ahead.py</code>)</td>
-<td>Ben, 13-14 Nov: merge everything into one stack. Five designs each drew their own line round the car; now one message says where the car may be, how fast, and where it stops, and every driver will read it. It always ends in a stop (a railway's movement authority): if its writer dies the car runs out of road and stops. The behaviour planner sends it, 10 Hz, from /plan and its stops; ego holds Nav2's and the point driver's commands to its speed limit (R1's first form; people never trimmed), on with <code>behaviour:=true</code>; a drive to a point makes it from its line A -&gt; B (R5). Seen alone, 14 Nov: Nav2 asking 0.8 m/s 0.5 m from the end got 0.31 m/s, the joystick 0.8</td>
+<td>Ben, 13-14 Nov: merge everything into one stack. Five designs each drew their own line round the car; now one message says where the car may be, how fast, and where it stops, and every driver will read it. It always ends in a stop (a railway's movement authority): if its writer dies the car runs out of road and stops. The behaviour planner sends it, 10 Hz, from /plan and its stops; ego holds Nav2's and the point driver's commands to its speed limit (R1's first form; people never trimmed), on with <code>behaviour:=true</code>; a drive to a point makes it from its line A -&gt; B (R5). Seen alone, 14 Nov: Nav2 asking 0.8 m/s 0.5 m from the end got 0.31 m/s, the joystick 0.8. The screens show it: the dev window's map and 3D, and the in-car HUD's AHEAD panel ("ROAD 0.6 m/s, SIGN IN 12 m", through look_ahead's /ego/ahead)</td>
 <td>Ben</td>
 <td>2026-11-14</td>
 <td>sim</td>
