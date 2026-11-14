@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # Record a drive. Raw inputs (to re-run localization: aav_bringup replay.launch.py),
 # commands (to replay the drive: tools/replay_commands.sh), and what the stack
-# decided (to see why it did what it did). No camera images: they are huge.
+# decided (to see why it did what it did). The whole-car design's "record everything, score
+# something" (TODO 157): what the stack saw (the front camera as JPEG, about 0.3 MB/s; the
+# detector's boxes, the sign, the lanes, the radar, the cubes) and decided (the locks, the
+# road ahead, the behaviour state, ego's trace, the follower's plan, NDT), so a drive can
+# be replayed and scored later. Raw pictures and the big costmap grids stay out: huge.
 # The actuators' own reports and the go-to driver's feedback (hidden: its action topic)
 # let tools/atob_score.py score an A-to-B run from the bag; Gazebo's truth when in sim.
 # What the Motor Pi wrote to the ESP32 and how its uplink arrives let tools/link_check.py
@@ -31,4 +35,15 @@ exec tools/ros.sh ros2 bag record -o "$out" --include-hidden-topics --topics \
   /drivers/point/cmd_vel /drivers/rc/cmd_vel /drivers/tests/cmd_vel /drive_to_point/_action/feedback /drive_to_point/_action/status \
   /ego/actuator_cmd /can/tx /can/rx /control/car/link_frame /vehicle/esp32/uplink_health \
   /localization/odom/local /localization/odom/global /localization/gps/odom /localization/gps/fix /localization/gps/heading \
-  /tf /tf_static /robot_description /plan /goal_pose /clock ${lidar[@]+"${lidar[@]}"}
+  /tf /tf_static /robot_description /plan /goal_pose /clock \
+  /sensors/camera/front_left/image_raw/compressed /sensors/camera/front_left/camera_info \
+  /sensors/camera/front_right/camera_info /sensors/camera/rear/camera_info /sensors/radar/points \
+  /perception/detections /perception/stop_sign /perception/stop_sign/distance /perception/camera_obstacles \
+  /perception/lane/geometry /perception/radar/clusters /perception/voxels/cubes /perception/voxels/status \
+  /safety/sensor_watchdog/lock /safety/sensor_watchdog/state /safety/collision_monitor/state \
+  /safety/stop_hold/lock /safety/geofence/lock /safety/geofence/state /safety/output_mux/state \
+  /world/road_ahead /drivers/nav/behaviour/state /drivers/nav/speed_limit /drivers/nav/local_plan \
+  /drivers/point/plan /drivers/nav/track/status /drivers/nav/navigator/status /drivers/nav/planner/status \
+  /drivers/nav/costmap/status /drivers/nav/route/path /drivers/nav/route/status \
+  /ego/trace /ego/stop_point /ego/ahead /localization/ndt/pose /localization/ndt/status \
+  /localization/health /system/algorithms /system/sensor_mux/state ${lidar[@]+"${lidar[@]}"}
