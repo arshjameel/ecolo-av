@@ -13,7 +13,7 @@ The whole stack in Gazebo: same nodes and configs as the car, simulated hardware
       [amcl:=false] [voxels:=false]
       [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
       [kiss_ekf:=false]
-      [plan_around:=true] [behaviour:=false]
+      [plan_around:=true] [behaviour:=false] [things:=false]
       [watchdog:=true] [geofence:=true] [geofence_radius:=200.0]
       [watch_hud:=false] [faults:=false] [spine:=false] [arm:=true]
       [esp32:=false] [esp32_loop:=pi]
@@ -101,6 +101,9 @@ bench's argument names:
   behaviour:=true    the behaviour states and a speed cap on Nav2 from the stopping law
                       (aav_behaviour, a trial: docs/stopping.md); it also sends the road ahead
                       (/world/road_ahead), and ego holds Nav2 to it (ego road_ahead:=true)
+  things:=true        the lidar's cubes as things with an id, a speed and a memory, on
+                      /world/things (aav_things; voxels runs for it): only with nav:=true
+                      and the lidar. Nothing reads the list yet
   amcl:=true          stock AMCL beside the global EKF, scored only (docs/trials.md): only
                       in world:=test_lot with nav:=true and the lidar, from the start pose
   voxels:=true        Nav2's local costmap and collision_monitor read the lidar as 0.25 m
@@ -238,7 +241,7 @@ def launch_setup(context):
             for n in ('nav', 'teleop', 'rviz', 'perception', 'camera_obstacles', 'hud',
                       'map', 'foxglove', 'reversing', 'watchdog', 'faults',
                       'ghost', 'plan_around', 'watch_hud', 'geofence', 'voxels',
-                      'screen_cubes', 'behaviour')}
+                      'screen_cubes', 'behaviour', 'things')}
     lane = arg('lane').lower()
     if lane not in ('false', 'true', 'fake'):
         raise ValueError(f'lane:={lane}: use true (the lane finder), fake or false')
@@ -271,6 +274,9 @@ def launch_setup(context):
     if amcl and not (world == 'test_lot' and flag['nav'] and lidar):
         raise ValueError('amcl:=true needs world:=test_lot nav:=true lidar:=true: the only '
                          'world with a real map, and AMCL reads the lidar')
+    if flag['things'] and not (lidar and flag['nav']):
+        raise ValueError('things:=true needs the lidar and nav:=true (navigation.launch.py '
+                         'starts it, with voxels)')
     if (flag['voxels'] or flag['screen_cubes']) and not lidar:
         raise ValueError('voxels:=true needs the lidar (lidar:=true, world:=road or test_lot): '
                          'the cubes come from it')
@@ -376,7 +382,8 @@ def launch_setup(context):
                                                       'example_lot_amcl.yaml')
                                          if amcl else ''),
                                plan_around=str(flag['plan_around']).lower(),
-                               behaviour=str(flag['behaviour']).lower()))
+                               behaviour=str(flag['behaviour']).lower(),
+                               things=str(flag['things']).lower()))
     if ndt:
         # Scored only (measure controllers --ndt), unless ndt_ekf:=true: then ekf_global
         # reads its pose (measure controllers --ndt-ekf scores the difference).
@@ -556,6 +563,9 @@ def generate_launch_description():
         DeclareLaunchArgument('screen_cubes', default_value='false',
                               description='true: the cubes for the developer window, while '
                                           'Nav2 stays on the flat scan'),
+        DeclareLaunchArgument('things', default_value='false',
+                              description='true: the cubes as tracked things on /world/things '
+                                          '(aav_things; with nav and the lidar)'),
         DeclareLaunchArgument('voxels', default_value='false',
                               description='true: Nav2 reads the lidar as 0.25 m cubes '
                                           '(aav_voxels, a trial) instead of the flat scan'),

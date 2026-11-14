@@ -7,7 +7,7 @@ Nav2 as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out to tw
       [reversing:=false] [max_speed:=] [controller:=mppi] [planner:=lattice]
       [diffusion_model:=] [diffusion_provider:=CPUExecutionProvider] [diffusion_record:=]
       [diffusion_python:=] [diffusion_smoothing:=gear]
-      [plan_around:=true] [behaviour:=false]
+      [plan_around:=true] [behaviour:=false] [things:=false]
       [tracker:=none] [costmap:=nav2] [navigator:=nav2] [smoother:=nav2] [live_swap:=false]
       [amcl:=false]
       [amcl_x:=0.0] [amcl_y:=0.0] [amcl_yaw:=0.0] [amcl_map:=]
@@ -114,6 +114,11 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           a stop sign, an obstacle in the lane, the fence and the goal.
                           controller_server reads /drivers/nav/speed_limit; the locks still
                           make every stop. false (the default): the stock path, no cap
+  things:=true            (with lidar:=true) aav_things' things node: voxels' cubes grouped
+                          into things, each followed by a Kalman filter and remembered a few
+                          seconds unseen, on /world/things (and /world/things/markers); the
+                          radar's speed too with radar:=true. voxels runs for it. Nothing
+                          reads the list yet (docs/designs/2026-11-14_the-whole-car.md)
   amcl_map:=<yaml>        AMCL's own map (finer, obstacles as outlines: maps/README.md),
                           from amcl_map_server on /localization/amcl/map; empty: Nav2's /map
 
@@ -259,8 +264,10 @@ def nodes(context):
     amcl = flag(context, 'amcl')
     voxels = flag(context, 'voxels')
     screen_cubes = flag(context, 'screen_cubes')
-    if (voxels or screen_cubes) and not lidar:
-        raise ValueError('voxels:=true needs lidar:=true: the cubes come from the lidar')
+    things = flag(context, 'things')
+    if (voxels or screen_cubes or things) and not lidar:
+        raise ValueError('voxels:=true (and things:=true) needs lidar:=true: the cubes come '
+                         'from the lidar')
     if amcl and not lidar:
         raise ValueError('amcl:=true needs lidar:=true: AMCL reads /sensors/lidar/scan')
 
@@ -416,13 +423,21 @@ def nodes(context):
         actions.append(Node(package='aav_lidar', executable='lidar_scan', name='lidar_scan',
                             output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time}]))
-    if voxels or screen_cubes:
+    if voxels or screen_cubes or things:
         # The cubes, for the costmap and collision_monitor (voxels:=true), or only for the
-        # developer window (screen_cubes:=true: Nav2 stays on the flat scan). Not a
-        # lifecycle node.
+        # developer window (screen_cubes:=true) or the things (things:=true): Nav2 then
+        # stays on the flat scan. Not a lifecycle node.
         actions.append(Node(package='aav_voxels', executable='voxels', name='voxels',
                             output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time}]))
+    if things:
+        # The cubes as things, on /world/things (aav_things). Not a lifecycle node; reads
+        # nothing of Nav2's, and nothing of Nav2's reads it yet.
+        config = FindPackageShare('aav_things').perform(context) + '/config/things.yaml'
+        actions.append(Node(package='aav_things', executable='things', name='things',
+                            output='screen',
+                            parameters=[config, {'radar': radar,
+                                                 'use_sim_time': use_sim_time}]))
     if ghost:
         # Not a lifecycle node either. Its own file, then use_sim_time: the file doesn't
         # set it, so the dict adds it rather than losing to the file.
@@ -670,6 +685,9 @@ def generate_launch_description():
         DeclareLaunchArgument('behaviour', default_value='false',
                               description='true: aav_behaviour, the behaviour states and a '
                                           'speed cap on Nav2 (a trial, docs/stopping.md)'),
+        DeclareLaunchArgument('things', default_value='false',
+                              description='true (with lidar:=true): aav_things, the cubes as '
+                                          'tracked things on /world/things (voxels runs too)'),
         DeclareLaunchArgument('costmap', default_value=vehicle.DEFAULT_COSTMAP,
                               description='nav2 (the default) or own: aav_costmap, our own '
                                           "costmaps beside Nav2's, on /drivers/nav/costmap/"
