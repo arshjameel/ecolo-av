@@ -16,7 +16,9 @@ mppi_lag:
                                 # rest of the stack its cores (0: one per core)
     seed: 42
     use_costmap: true           # CostCritic and the path's clear points read the local costmap
-    costmap_topic: /local_costmap/costmap_raw
+    # No costmap_topic here: navigation.launch.py picks Nav2's or ours (costmap:=), and an
+    # entry under this node's name would beat it (as ego.launch.py found). Until 14 Nov it
+    # was here, so with costmap:=own this node read Nav2's topic, which nobody published.
     measured_timeout: 0.5       # s: a measured steering, throttle or brake older than this is
                                 # dropped; the model keeps its own
     odom_timeout: 1.0           # s without odometry: give up the path

@@ -40,7 +40,7 @@ pixi run measure controllers --trackers mppi_lag --controllers mppi --tours lot
 | Item | What |
 |---|---|
 | Action server | `/follow_path` (`nav2_msgs/action/FollowPath`): the newest path replaces the last without a stop |
-| Subscribes | `/localization/odom/local` (Odometry); `/tf` (map -> odom, once per path); `/vehicle/steering`, `/vehicle/throttle`, `/vehicle/brake` (ActuatorState, measured, while fresh); `/local_costmap/costmap_raw` (nav2_msgs/Costmap) |
+| Subscribes | `/localization/odom/local` (Odometry); `/tf` (map -> odom, once per path); `/vehicle/steering`, `/vehicle/throttle`, `/vehicle/brake` (ActuatorState, measured, while fresh); `/local_costmap/costmap_raw`, or ours `/drivers/nav/costmap/local_raw` with `costmap:=own` (nav2_msgs/Costmap; the launch file chooses: `config/mppi_lag.yaml` must not, `aav_navigation` `test_launch_params.py`) |
 | Publishes | `/cmd_vel_nav` (TwistStamped); `/drivers/nav/track/status` (DiagnosticStatus, aav_track's keys and more); `/drivers/nav/local_plan` (Path, odom: MPPI's chosen future, the screens' faint line); `/drivers/nav/lag_aware` (Bool, latched) |
 
 Results: succeeded; aborted with `FAILED_TO_MAKE_PROGRESS`, `NO_VALID_CONTROL`,
