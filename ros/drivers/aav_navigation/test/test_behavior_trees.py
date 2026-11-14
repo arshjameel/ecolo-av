@@ -77,8 +77,26 @@ TO_POSE = ['navigate_to_pose_car.xml', 'navigate_to_pose_car_reversing.xml']
 
 def final_approach_guard(name):
     (guard,) = [f for r in tree(name).iter('RateController') for f in r
-                if f.tag == 'Fallback' and f.get('name') == 'PlanUnlessOnTheFinalApproach']
+                if f.tag == 'Fallback' and f.get('name') == 'PlanOnlyWhenNeeded']
     return guard
+
+
+@pytest.mark.parametrize('name', TO_POSE)
+def test_a_valid_path_is_kept_away_from_the_goal_too(name):
+    # TODO 149: planning every second gave the follower a new path each time (the wiggle,
+    # and loops near the end). Away from the goal the tree keeps a path that still ends at
+    # this goal, isn't blocked and is younger than the final approach's.
+    _, keep, plan = list(final_approach_guard(name))
+    assert keep.tag == 'ReactiveSequence' and keep.get('name') == 'KeepAValidPath'
+    assert not list(keep.iter('GetCurrentPose'))     # anywhere, not only near the goal
+    assert list(keep.iter('IsPathValid'))
+    near = {n.get('ref_pose'): n for n in keep.iter('ArePosesNear')}
+    assert set(near) == {'{path_end}'}
+    assert float(near['{path_end}'].get('tolerance')) < 1.0
+    (timer,) = keep.iter('PathExpiringTimer')
+    (final,) = final_approach_guard(name)[0].iter('PathExpiringTimer')
+    assert 0.0 < float(timer.get('seconds')) <= float(final.get('seconds'))
+    assert list(plan.iter('ComputePathToPose'))
 
 
 @pytest.mark.parametrize('name', TO_POSE)
@@ -89,7 +107,7 @@ def test_no_replanning_on_the_final_approach(name):
     # inside it, the Fallback would restart it, and it would plan on every tick.
     guard = final_approach_guard(name)
     assert not list(guard.iter('RateController'))
-    keep, plan = list(guard)
+    keep, _, plan = list(guard)
     assert keep.tag == 'ReactiveSequence'
     assert list(keep.iter('IsPathValid'))          # a blocked path is planned again
     assert list(keep.iter('PathExpiringTimer'))    # and an old one

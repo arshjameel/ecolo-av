@@ -430,7 +430,8 @@ def navigator_params(v, reversing, waypoints='pass_through'):
     """
     Return aav_navigator's settings (navigator:=own) as a dict, for its JSON parameter.
 
-    The trees' numbers (behavior_trees/*_car*.xml): replanning at 1 Hz (through-poses
+    The trees' numbers (behavior_trees/*_car*.xml) until 14 Nov: replanning at 1 Hz (the
+    to-pose trees now keep a valid path up to 10 s, TODO 149; not yet here) (through-poses
     0.333 Hz), the final approach (final_approach(v), TODO 17), 6 recoveries, Wait 5 s,
     BackUp 1 m at half max_reverse_speed only with reversing, RemovePassedGoals' 1 m.
     waypoints: pass_through (ours: one through-poses goal, TODO 140) or stop_at_each

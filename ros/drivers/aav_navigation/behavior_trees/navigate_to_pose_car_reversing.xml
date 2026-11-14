@@ -7,7 +7,8 @@
     checks the local costmap before it reverses, but behind the car that is only what the
     radar saw on the way in.
   navigate_to_pose_car.xml is the same tree without BackUp; test_behavior_trees.py checks
-  that they stay the same otherwise. Replans at 1 Hz, except on the final approach (below).
+  that they stay the same otherwise. Plans again only when the path is blocked, old (10 s)
+  or for another goal (below).
 -->
 <root BTCPP_format="4" main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
@@ -15,17 +16,22 @@
       <PipelineSequence name="NavigateWithReplanning">
         <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
         <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
-        <!-- Plans again once a second, as Nav2's own tree, except on the final approach:
-             within 8 m of the goal (vehicle.final_approach: 2 planned turning radii) it keeps
-             the path it has, as long as that still ends at this goal, nothing blocks it
-             (IsPathValid) and it is under 20 s old. Replanning there made the car circle
-             goals (TODO 17): from a few metres out, a little off the line or behind on the
-             last bend, the only path to the goal's heading at the planner's radius is a
-             loop (Smac planned 21-25 m loops 1-4 m out in 10 of 12 Gazebo runs), and each
-             new path resets controller_server's goal checker. The RateController stays
-             outside the Fallback: inside it, the Fallback would restart it every tick. -->
+        <!-- Plans again only when it must (TODO 149, the wiggle), as Nav2's own
+             nav_to_pose_with_consistent_replanning_and_if_path_becomes_invalid.xml: it keeps
+             the path it has while that still ends at this goal, nothing blocks it
+             (IsPathValid) and it is under 10 s old. Planning every second gave the follower
+             a slightly different path each time: Pure Pursuit's swing was 0.12-0.13 m with
+             it, 0.08 m with one plan a goal, and each new path near the end could be a loop
+             (9-25 new routes and 40-200 m more driven on the campus road, 14 Nov).
+             The final approach keeps its path longer: within 8 m of the goal
+             (vehicle.final_approach: 2 planned turning radii) up to 20 s. Replanning there
+             made the car circle goals (TODO 17): from a few metres out, a little off the line
+             or behind on the last bend, the only path to the goal's heading at the planner's
+             radius is a loop (Smac planned 21-25 m loops 1-4 m out in 10 of 12 Gazebo runs),
+             and each new path resets controller_server's goal checker. The RateController
+             stays outside the Fallback: inside it, the Fallback would restart it every tick. -->
         <RateController hz="1.0">
-          <Fallback name="PlanUnlessOnTheFinalApproach">
+          <Fallback name="PlanOnlyWhenNeeded">
             <ReactiveSequence name="OnTheFinalApproach">
               <GetCurrentPose current_pose="{current_pose}"/>
               <ArePosesNear ref_pose="{current_pose}" target_pose="{goal}" tolerance="8.0"/>
@@ -33,6 +39,14 @@
               <ArePosesNear ref_pose="{path_end}" target_pose="{goal}" tolerance="0.5"/>
               <Inverter>
                 <PathExpiringTimer seconds="20.0" path="{path}"/>
+              </Inverter>
+              <IsPathValid path="{path}"/>
+            </ReactiveSequence>
+            <ReactiveSequence name="KeepAValidPath">
+              <GetPoseFromPath path="{path}" index="-1" pose="{path_end}"/>
+              <ArePosesNear ref_pose="{path_end}" target_pose="{goal}" tolerance="0.5"/>
+              <Inverter>
+                <PathExpiringTimer seconds="10.0" path="{path}"/>
               </Inverter>
               <IsPathValid path="{path}"/>
             </ReactiveSequence>
