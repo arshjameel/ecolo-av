@@ -7,7 +7,7 @@
 <!-- Generated from docs/hud.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The HUD (in-car screen)</h1>
-<div class="meta">74 min read · 8 sections</div></header>
+<div class="meta">75 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -278,6 +278,11 @@ HUD and on the developer window.</p>
 <td>GOAL: SHORT / PAST, OBSTACLE, HITS</td>
 <td>room left between the stop and the goal (along the plan), or the obstacle; HITS in red when a full brake now still reaches it</td>
 <td>goal_m, room_m</td>
+</tr>
+<tr>
+<td>ROAD 0.6 m/s, SIGN IN 12 m</td>
+<td>with <code>behaviour:=true</code>: the road ahead's speed here and its end (the nearest stop: sign, obstacle, fence, goal). It takes the third line, unless an obstacle is within 1 m of the stop point; <code>ROAD: STOP</code> in amber at the end</td>
+<td>road_mps, road_m, road_why</td>
 </tr>
 </tbody>
 </table></div>

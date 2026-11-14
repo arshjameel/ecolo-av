@@ -1,5 +1,6 @@
 """The squiggly line's maths: the plan cropped ahead, the gap, the goal, the obstacle."""
 
+from collections import namedtuple
 import math
 
 from aav_ego import look_ahead as la
@@ -104,3 +105,16 @@ def test_describe():
     assert '3.0 m before an obstacle' in line
     assert 'HITS' in la.describe(None, la.OK, 1.4, -0.5, -0.2)
     assert la.describe(None, la.OK, None, None, None).startswith('NO PLAN - stop point unknown')
+
+
+def test_road_says_the_limit_the_room_and_why():
+    from aav_description import road_ahead as ra
+    from aav_description.stop_law import from_car_model
+    stop = namedtuple('Stop', 'reason left')
+    strip = ra.build([(0.0, 0.0), (30.0, 0.0)], (0.0, 0.0), [stop('sign', 20.0)],
+                     from_car_model(), 1.0, state='APPROACH', reason='sign')
+    at = la.road(strip, 5.0, 0.1)
+    assert at.room == pytest.approx(strip.end - 5.0, abs=0.01)
+    assert at.why == 'sign'
+    assert at.limit == pytest.approx(ra.limit_at(strip, 5.0, 0.1))
+    assert la.road(None, 0.0, 0.0) is None
