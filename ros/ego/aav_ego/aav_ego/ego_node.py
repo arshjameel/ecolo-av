@@ -155,7 +155,7 @@ class Ego(Node):
         """Declare the road ahead's limit on the automatic drivers (road_limit.py)."""
         p = self.declare_parameter
         self.road_on = bool(p('road_ahead', False).value)
-        self.road_drivers = list(p('road_ahead_drivers', ['nav']).value)
+        self.road_drivers = list(p('road_ahead_drivers', ['nav', 'point']).value)
         self.road_pose_timeout = float(p('road_pose_timeout', 1.0).value)
         self.road, self.road_pose, self.road_pose_time = None, None, None
         self.road_trimming = False

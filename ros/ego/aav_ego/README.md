@@ -56,7 +56,7 @@ Parameters. From `config/ego.yaml`:
 | `lag_lead` | `auto` | live. The lag lead: `auto` in a simulator only (off on the car, SAFE); `on` the car too, once tests 3.10-4.5 measured the lags; `off` never. Never while a lag-aware driver drives |
 | `lag_lead_filter`, `lag_lead_max_speed`, `lag_lead_max_steer` | 0.1 s, 0.3 m/s, 0.1 rad | the request's filter; the most the lead adds or takes |
 | `lag_aware_drivers` | scripted, point, nav, ai | whose `/drivers/<d>/lag_aware` ego watches |
-| `road_ahead`, `road_ahead_drivers`, `road_pose_timeout` | false, nav, 1.0 s | the road ahead's limit (`road_limit.py`): on or off, whose commands (each also in `lag_aware_drivers`), how old the pose may be |
+| `road_ahead`, `road_ahead_drivers`, `road_pose_timeout` | false, nav and point, 1.0 s | the road ahead's limit (`road_limit.py`): on or off, whose commands (each also in `lag_aware_drivers`), how old the pose may be |
 | `trace_horizon`, `trace_rate_hz`, `trace_speed_loop` | 2.0 s, 10 Hz, `default` | the trace; 0 Hz: none |
 | `vehicle_yaml` | `''` | the car model's numbers (`''`: `aav_description`'s) |
 

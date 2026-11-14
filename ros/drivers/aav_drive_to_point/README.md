@@ -33,6 +33,7 @@ pixi run drive-to-point --lat 45.38630 --lon -75.69580  # the real car: asks you
 | Action server | `/drive_to_point` (`aav_interfaces/action/DriveToPoint`): lat/lon or x/y, `cruise_speed`, `acceleration`, `deceleration` (0 = default), `confirmed` |
 | Subscribes | `/localization/odom/global` (`nav_msgs/Odometry`), `/sensors/gps/fix` (`sensor_msgs/NavSatFix`, best effort), `/safety/estop` (`std_msgs/Bool`), `/safety/sensor_watchdog/lock` (`std_msgs/Bool`), `/safety/geofence/fence` (`geometry_msgs/PolygonStamped`, latched: refuse a B outside it), `/system/source` (`aav_interfaces/DataSource`, latched), `/control/cmd_vel` (`geometry_msgs/TwistStamped`) |
 | Publishes | `/drivers/point/cmd_vel` (`geometry_msgs/TwistStamped`) at `rate_hz` while a goal runs |
+| | `/drivers/point/plan` (`nav_msgs/Path`, map, latched): the line A -> B while a drive runs, empty after. With `behaviour:=true` the road ahead is made from it, so the obstacle check, the sign and ego's limit hold this driver too |
 | Calls | `/fromLL` (`robot_localization/srv/FromLL`), for a lat/lon goal; `/ego/get_parameters`, for ego's caps |
 
 Feedback: phase (turn, accelerate, hold, decelerate, stopping), distance left, cross

@@ -256,6 +256,21 @@ class Behaviour:
                 APPROACH, stop.reason, w.now)
 
 
+def active_plan(point: Sequence[Tuple[float, float]], nav: Sequence[Tuple[float, float]],
+                nav_fresh: bool) -> Tuple[Sequence[Tuple[float, float]], str]:
+    """
+    Return (the plan the car is driving, whose: 'point', 'nav' or '').
+
+    A drive to a point outranks Nav2 in twist_mux (25 against 20), so its line A -> B wins
+    while it runs (a non-empty `point`); else Nav2's /plan if fresh; else nothing.
+    """
+    if len(point) >= 2:
+        return point, 'point'
+    if nav and nav_fresh:
+        return nav, 'nav'
+    return [], ''
+
+
 def path_left(points: Sequence[Tuple[float, float]], x: float, y: float) -> Tuple[float, float]:
     """
     Return (metres along the path from the car's foot to its end, the car's distance off it).

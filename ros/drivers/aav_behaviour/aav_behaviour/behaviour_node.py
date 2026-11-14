@@ -8,6 +8,8 @@ Subscribes  /perception/stop_sign/distance  geometry_msgs/PointStamped: a sign, 
             /safety/geofence/state   std_msgs/String: NEAR and why
             /safety/geofence/fence   geometry_msgs/PolygonStamped (map, transient local)
             /plan                    nav_msgs/Path (map): the goal's and the fence's distance
+            /drivers/point/plan      nav_msgs/Path (map, latched): a drive to a point's line
+                                     A -> B; while it runs it is the plan (active_plan)
             /localization/odom/local   nav_msgs/Odometry: the speed, and its age
             /localization/odom/global  nav_msgs/Odometry: where the car is on /plan
             /sensors/lidar/scan      sensor_msgs/LaserScan (base_link, best effort): the lane
@@ -34,7 +36,7 @@ navigation.launch.py behaviour:=true starts it (default false: the stock path).
 import math
 import signal
 
-from aav_behaviour.behaviour import (along_until, Behaviour, diagnostic, lane_ahead,
+from aav_behaviour.behaviour import (active_plan, along_until, Behaviour, diagnostic, lane_ahead,
                                      path_left, Settings, Stop, World)
 from aav_description.car_model import ActuatorConfig, speed_loop_profile
 from aav_description.road_ahead import build
@@ -112,6 +114,12 @@ class BehaviourNode(Node):
         self.create_subscription(PolygonStamped, '/safety/geofence/fence', self.on_fence, latched)
         self.plan, self.plan_time = [], -math.inf
         self.create_subscription(Path, '/plan', self.on_plan, 10)
+        self.point_plan = []
+        self.create_subscription(
+            Path, '/drivers/point/plan',
+            lambda m: setattr(self, 'point_plan',
+                              [(s.pose.position.x, s.pose.position.y) for s in m.poses]),
+            latched)
         self.speed, self.odom_time = None, -math.inf
         self.create_subscription(Odometry, '/localization/odom/local', self.on_local, 10)
         self.pose = None
@@ -197,6 +205,11 @@ class BehaviourNode(Node):
         rng = math.hypot(sx - t.transform.translation.x, sy - t.transform.translation.y)
         return rng - self.p['stop_distance_m']
 
+    def driving(self, now):
+        """Return (the plan the car drives, whose): the point driver's line, or /plan."""
+        return active_plan(self.point_plan, self.plan,
+                           bool(self.plan) and now - self.plan_time < self.p['plan_timeout'])
+
     def stops(self, now):
         found = []
         left = self.sign_left()
@@ -204,14 +217,14 @@ class BehaviourNode(Node):
             found.append(Stop('sign', left))
         if math.isfinite(self.ahead):
             found.append(Stop('obstacle', self.ahead - self.p['front'] - self.p['stop_gap']))
-        fresh = self.plan and now - self.plan_time < self.p['plan_timeout']
-        if fresh and self.pose is not None:
+        plan, whose = self.driving(now)
+        if plan and self.pose is not None:
             gx, gy = self.pose
-            if self.goal_active:
-                found.append(Stop('goal', path_left(self.plan, gx, gy)[0]))
+            if self.goal_active or whose == 'point':
+                found.append(Stop('goal', path_left(plan, gx, gy)[0]))
             if self.fence is not None:
                 depth = self.p['near_depth']
-                fence = along_until(self.plan, gx, gy,
+                fence = along_until(plan, gx, gy,
                                     lambda x, y: self.fence.depth(x, y) < depth)
                 if math.isfinite(fence):
                     found.append(Stop('fence', fence))
@@ -221,7 +234,9 @@ class BehaviourNode(Node):
         now = self.now()
         world = World(now=now, speed=self.speed, odom_age=now - self.odom_time,
                       locks=dict(self.locks), near=self.near, stops=self.stops(now),
-                      sign_age=now - self.sign_time, goal_active=self.goal_active,
+                      sign_age=now - self.sign_time,
+                      # A drive to a point is a goal too: its line is there while it runs.
+                      goal_active=self.goal_active or len(self.point_plan) >= 2,
                       goal_aborted=self.aborted)
         self.aborted = False
         d = self.machine.step(world)
@@ -243,9 +258,9 @@ class BehaviourNode(Node):
     def publish_road(self):
         """Send the road ahead: /plan from the car, cut at the nearest stop (the end)."""
         now = self.now()
-        fresh = self.plan and now - self.plan_time < self.p['plan_timeout']
+        plan, _ = self.driving(now)
         d = self.decision
-        strip = build(self.plan if fresh else [], self.pose, self.stops(now), self.curve,
+        strip = build(plan, self.pose, self.stops(now), self.curve,
                       self.p['base_speed'], state=d.state if d else '',
                       reason=d.reason if d else '', spacing=self.p['road_spacing'],
                       length=self.p['road_length'])

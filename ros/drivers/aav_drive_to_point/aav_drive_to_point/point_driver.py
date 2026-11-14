@@ -17,6 +17,11 @@ Publishes   drivers/point/cmd_vel       geometry_msgs/TwistStamped, at rate_hz w
                                        runs (twist_mux priority 25: below every person,
                                        test and script, above Nav2; the stop-sign and
                                        sensor locks, at 30, hold it)
+            drivers/point/plan          nav_msgs/Path (map), latched: the line A -> B while a
+                                       drive runs, empty when it ends. The behaviour planner
+                                       makes the road ahead from it, so the obstacle check,
+                                       the sign and ego's limit hold this driver too (the
+                                       whole-car design, R5)
 Calls       /fromLL                    robot_localization/srv/FromLL (navsat_transform):
                                        lat/lon to the map frame, as the EKF sees it
             /ego/get_parameters        rcl_interfaces/GetParameters: ego's caps
@@ -51,8 +56,8 @@ from aav_interfaces.action import DriveToPoint
 from aav_interfaces.msg import DataSource
 from aav_safety.geofence import Polygon
 from geographic_msgs.msg import GeoPoint
-from geometry_msgs.msg import PolygonStamped, TwistStamped
-from nav_msgs.msg import Odometry
+from geometry_msgs.msg import PolygonStamped, PoseStamped, TwistStamped
+from nav_msgs.msg import Odometry, Path
 import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.executors import ExternalShutdownException
@@ -117,6 +122,8 @@ class PointDriver(Node):
         latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                              durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.pub = self.create_publisher(TwistStamped, 'drivers/point/cmd_vel', 10)
+        self.line_pub = self.create_publisher(Path, 'drivers/point/plan', latched)
+        self.publish_line([])
         self.create_subscription(Odometry, 'localization/odom/global', self.on_pose, 10)
         self.create_subscription(NavSatFix, 'sensors/gps/fix', self.on_fix,
                                  qos_profile_sensor_data)
@@ -194,6 +201,19 @@ class PointDriver(Node):
         msg.twist.angular.z = float(v * curvature)
         self.pub.publish(msg)
         self.ours.append((msg.twist.linear.x, msg.twist.angular.z))
+
+    def publish_line(self, points):
+        """Send the drive's line A -> B (map), or an empty path: no drive."""
+        msg = Path()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = 'map'
+        for x, y in points:
+            pose = PoseStamped()
+            pose.header = msg.header
+            pose.pose.position.x, pose.pose.position.y = float(x), float(y)
+            pose.pose.orientation.w = 1.0
+            msg.poses.append(pose)
+        self.line_pub.publish(msg)
 
     async def within(self, future, seconds):
         """Wait for a future, at most `seconds` of wall-clock time; its result, or None."""
@@ -385,12 +405,14 @@ class PointDriver(Node):
                 handle.publish_feedback(feedback)
             st['tick'] += 1
 
+        self.publish_line([(start.x, start.y), target])
         timer = self.create_timer(1.0 / p['rate_hz'], tick)
         try:
             await finished
         finally:
             self.destroy_timer(timer)
             self.publish(0.0, 0.0)
+            self.publish_line([])
 
         pose, _ = self.pose
         left = math.hypot(target[0] - pose.x, target[1] - pose.y)

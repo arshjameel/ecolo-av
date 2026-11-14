@@ -41,6 +41,7 @@ That also sets controller_server's `speed_limit_topic` to `/drivers/nav/speed_li
 | in | `/perception/stop_sign`, `/safety/stop_hold/lock`, `/safety/geofence/lock`, `/safety/sensor_watchdog/lock`, `/safety/estop` | `std_msgs/Bool`: the locks |
 | in | `/safety/geofence/state`, `/safety/geofence/fence` | `std_msgs/String` (NEAR), `geometry_msgs/PolygonStamped` |
 | in | `/plan`, `/localization/odom/local`, `/localization/odom/global` | `nav_msgs/Path`, `nav_msgs/Odometry` |
+| in | `/drivers/point/plan` | `nav_msgs/Path` (latched): a drive to a point's line; while it runs it is the plan (`active_plan`) |
 | in | `/sensors/lidar/scan` | `sensor_msgs/LaserScan` (not with `voxels:=true`) |
 | in | `/navigate_to_pose/_action/status` | `action_msgs/GoalStatusArray` |
 | out | `/drivers/nav/speed_limit` | `nav2_msgs/SpeedLimit`, 20 Hz, absolute m/s |
@@ -61,7 +62,7 @@ Parameters (from `vehicle.behaviour_params`: nav2.yaml, vehicle.yaml, ego.yaml):
 
 | Module | No ROS? | Holds |
 |---|---|---|
-| `behaviour.py` | yes | `Behaviour.step(World) -> Decision`, `Settings`, `Stop`; `path_left`, `along_until`, `lane_ahead`, `diagnostic` |
+| `behaviour.py` | yes | `Behaviour.step(World) -> Decision`, `Settings`, `Stop`; `active_plan`, `path_left`, `along_until`, `lane_ahead`, `diagnostic` |
 | `behaviour_node.py` | no | the node; the road ahead's maths is `aav_description`'s `road_ahead.py` |
 
 ## Invariants

@@ -238,3 +238,12 @@ def test_the_state_topics_values():
     b = Behaviour(CURVE)
     values = diagnostic(b.step(world(0.0)))
     assert values['state'] == DRIVE and values['cap_mps'] == '0.000'
+
+
+def test_the_point_drivers_line_outranks_nav2s_plan():
+    from aav_behaviour.behaviour import active_plan
+    line, plan = [(0.0, 0.0), (20.0, 0.0)], [(0.0, 0.0), (5.0, 5.0)]
+    assert active_plan(line, plan, True) == (line, 'point')
+    assert active_plan([], plan, True) == (plan, 'nav')
+    assert active_plan([], plan, False) == ([], '')
+    assert active_plan([(1.0, 1.0)], [], True) == ([], '')      # one point is no line
