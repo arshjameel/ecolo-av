@@ -37,13 +37,13 @@ pub mod smoothing;
 
 pub use age::{Arrival, Stale};
 pub use costmap::Costmap;
-pub use critics::Critic;
+pub use critics::{Critic, PathAngleMode};
 pub use ego::{Driven, Ego};
 pub use follower::{Follower, FollowerSettings, Outcome, Report, Tick};
 pub use ideal::IdealModel;
-pub use lag::{Actuators, LagModel, SpeedLoop};
+pub use lag::{Actuators, Gear, LagModel, SpeedLoop};
 pub use model::{CarModel, Command, Observation, Pose};
 pub use optimizer::{Optimizer, Plan, Scene, Settings};
-pub use path::GlobalPath;
+pub use path::{GlobalPath, Inversion};
 #[cfg(feature = "shared")]
 pub use shared::{SharedModel, SharedState};

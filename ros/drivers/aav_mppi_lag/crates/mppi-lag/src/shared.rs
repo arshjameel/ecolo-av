@@ -39,12 +39,27 @@ pub struct SharedState {
     pub speed_loop: SpeedLoop,
 }
 
+impl SharedModel {
+    /// Put the loop in the gear a car moving at `speed` is in (none while stopped). The
+    /// loop's gear is its own: it changes only on a call that finds the car stopped with
+    /// a target the other way, so ask once as if stopped, for no time (nothing integrates
+    /// over 0 s).
+    fn in_gear(&self, speed_loop: &mut SpeedLoop, speed: f64) {
+        if speed.abs() >= f64::from(self.profile.config().stopped_speed) {
+            let way = if speed < 0.0 { -1.0 } else { 1.0 };
+            speed_loop.update(way, 0.0, 0.0);
+        }
+    }
+}
+
 impl CarModel for SharedModel {
     type State = SharedState;
 
     fn at_rest(&self, pose: Pose, speed: f64) -> SharedState {
         // Steering straight: the linkage holds minus the offset, as the lag model's does.
         let straight = -self.car.steer_offset;
+        let mut speed_loop = SpeedLoop::new(self.profile.config());
+        self.in_gear(&mut speed_loop, speed);
         SharedState {
             car: CarState {
                 x: pose.x,
@@ -57,7 +72,7 @@ impl CarModel for SharedModel {
                 steer_linkage: straight,
                 ..CarState::default()
             },
-            speed_loop: SpeedLoop::new(self.profile.config()),
+            speed_loop,
         }
     }
 
@@ -67,8 +82,8 @@ impl CarModel for SharedModel {
         }
         let n = (dt / self.max_step.max(1e-4)).ceil().max(1.0);
         let h = dt / n;
-        // Forward only: a negative speed is a stop (the trackers never reverse).
-        let asked = car_model::Command::speed(command.speed.max(0.0), command.steer);
+        // A negative speed reverses: the spine's loop changes gear only while stopped.
+        let asked = car_model::Command::speed(command.speed, command.steer);
         for _ in 0..n as usize {
             match self
                 .car
@@ -85,6 +100,7 @@ impl CarModel for SharedModel {
         state.car.y = seen.pose.y;
         state.car.yaw = seen.pose.yaw;
         state.car.v = seen.speed;
+        self.in_gear(&mut state.speed_loop, seen.speed);
         if let Some(angle) = seen.steering.filter(|a| a.is_finite()) {
             state.car.steer = angle;
             state.car.steer_linkage = angle - self.car.steer_offset;
@@ -162,11 +178,14 @@ mod tests {
     fn it_drives_as_the_lag_model_does() {
         // Speed up, turn, slow, stop: the shared model (the spine's f32 loop) and the lag
         // model (its f64 copy of the default profile) agree to a centimetre.
-        let commands: Vec<Command> = (0..200)
+        let commands: Vec<Command> = (0..320)
             .map(|i| match i {
                 0..=59 => Command::new(1.0, 0.0),
                 60..=119 => Command::new(1.5, 0.3),
                 120..=159 => Command::new(0.5, -0.2),
+                160..=199 => Command::new(0.0, 0.0),
+                // Then backwards, turning, and a stop again.
+                200..=279 => Command::new(-0.5, 0.25),
                 _ => Command::new(0.0, 0.0),
             })
             .collect();

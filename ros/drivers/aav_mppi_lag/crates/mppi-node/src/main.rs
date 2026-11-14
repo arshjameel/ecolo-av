@@ -941,6 +941,7 @@ impl Config {
             progress_angle: d.number("progress_angle", f.progress_angle)?,
             progress_time: d.number("progress_time", f.progress_time)?,
             tracking_unknown: d.flag("track_unknown_space", f.tracking_unknown)?,
+            inversion: None,
         };
 
         // The car's outline, padded (nav2.yaml's local costmap footprint + padding).

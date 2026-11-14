@@ -1,4 +1,5 @@
-//! Closed loop, no ROS: MPPI drives a pretend car around a circle and an S-curve.
+//! Closed loop, no ROS: MPPI drives a pretend car around a circle and an S-curve, and
+//! backwards: a straight reverse, and a path with a cusp (forward, stop, reverse).
 //!
 //! The pretend car is ego plus the lag model, stepped every 0.01 s (the truth). MPPI ticks
 //! at 20 Hz, sees the car's pose, speed and measured actuators (as Gazebo gives them), and
@@ -8,7 +9,7 @@
 use mppi_lag::lag::Actuators;
 use mppi_lag::{
     CarModel, Command, Critic, Driven, Ego, Follower, FollowerSettings, GlobalPath, IdealModel,
-    LagModel, Observation, Pose, Settings, Tick,
+    Inversion, LagModel, Observation, PathAngleMode, Pose, Settings, Tick,
 };
 
 const PERIOD: f64 = 0.05;
@@ -113,25 +114,69 @@ struct Run {
     time: f64,
     mean_cross: f64,
     max_cross: f64,
+    /// The car's speed every tick (m/s, - reversing).
+    speeds: Vec<f64>,
+    /// Where it was every tick.
+    poses: Vec<Pose>,
 }
 
+/// How a run may drive: forward only (nav2.yaml as it is), or reversing as
+/// `navigation.launch.py reversing:=true` sets MPPI up: vx_min -max_reverse_speed,
+/// PathAngleCritic mode 2, no PreferForwardCritic, and the path followed stretch by stretch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Way {
+    Forward,
+    Reversing,
+}
+
+const MAX_REVERSE_SPEED: f64 = 0.5;
+
 fn drive<M: CarModel + Clone>(controller: M, truth: LagModel, poses: &[Pose], speed: f64) -> Run {
+    drive_way(controller, truth, poses, speed, Way::Forward)
+}
+
+fn drive_way<M: CarModel + Clone>(
+    controller: M,
+    truth: LagModel,
+    poses: &[Pose],
+    speed: f64,
+    way: Way,
+) -> Run {
     let ego = Ego::default();
     let plant = Driven { ego, car: truth };
-    let mut follower = Follower::new(
-        controller,
-        ego,
-        settings(speed),
-        critics(),
-        FollowerSettings::default(),
-        Vec::new(),
-    );
+    let (mppi, critics, follow) = match way {
+        Way::Forward => (settings(speed), critics(), FollowerSettings::default()),
+        Way::Reversing => (
+            Settings {
+                vx_min: -MAX_REVERSE_SPEED,
+                ..settings(speed)
+            },
+            critics()
+                .into_iter()
+                .filter(|c| c.name() != "PreferForwardCritic")
+                .map(|c| match c {
+                    Critic::PathAngle(mut a) => {
+                        a.mode = PathAngleMode::ConsiderFeasiblePathOrientations;
+                        Critic::PathAngle(a)
+                    }
+                    other => other,
+                })
+                .collect(),
+            FollowerSettings {
+                inversion: Some(Inversion::default()),
+                ..FollowerSettings::default()
+            },
+        ),
+    };
+    let mut follower = Follower::new(controller, ego, mppi, critics, follow, Vec::new());
     let start = poses[0];
     let mut car = plant.at_rest(start, 0.0);
     let path = GlobalPath::new(poses.to_vec()).expect("a path");
     let judge = path.clone();
     let mut command = Command::default();
     let mut crosses = Vec::new();
+    let mut speeds = Vec::new();
+    let mut trace = Vec::new();
     let mut t = 0.0;
     let mut first = true;
     while t < 120.0 {
@@ -149,7 +194,13 @@ fn drive<M: CarModel + Clone>(controller: M, truth: LagModel, poses: &[Pose], sp
         match follower.tick(t, None) {
             Some(Tick::Drive(report)) => command = report.command,
             Some(Tick::Done(outcome)) => {
-                return finish(outcome == mppi_lag::Outcome::Succeeded, t, &crosses);
+                return finish(
+                    outcome == mppi_lag::Outcome::Succeeded,
+                    t,
+                    &crosses,
+                    speeds,
+                    trace,
+                );
             }
             None => {}
         }
@@ -157,21 +208,51 @@ fn drive<M: CarModel + Clone>(controller: M, truth: LagModel, poses: &[Pose], sp
             plant.step(&mut car, command, PHYSICS);
         }
         t += PERIOD;
+        speeds.push(plant.speed(&car));
+        trace.push(plant.pose(&car));
         if t > 2.0 {
             crosses.push(judge.foot(&plant.pose(&car)).cross_track.abs());
         }
     }
-    finish(false, t, &crosses)
+    finish(false, t, &crosses, speeds, trace)
 }
 
-fn finish(reached: bool, time: f64, crosses: &[f64]) -> Run {
+fn finish(reached: bool, time: f64, crosses: &[f64], speeds: Vec<f64>, poses: Vec<Pose>) -> Run {
     let n = crosses.len().max(1) as f64;
     Run {
         reached,
         time,
         mean_cross: crosses.iter().sum::<f64>() / n,
         max_cross: crosses.iter().copied().fold(0.0, f64::max),
+        speeds,
+        poses,
     }
+}
+
+/// `length` m straight back from (0, 0), the car facing east all the way (the planner's
+/// poses face the car's way: on a reversing stretch they point back along the path).
+fn straight_back(length: f64) -> Vec<Pose> {
+    let n = (length / 0.05) as usize;
+    (0..=n)
+        .map(|i| Pose::new(-(i as f64) * 0.05, 0.0, 0.0))
+        .collect()
+}
+
+/// A three-point turn's first two legs: `ahead` m east, a cusp, then backwards round a
+/// quarter circle of radius `r`, steering left, to end facing south (the car backs up
+/// to the north-west).
+fn forward_then_back(ahead: f64, r: f64) -> Vec<Pose> {
+    let n = (ahead / 0.05) as usize;
+    let mut poses: Vec<Pose> = (0..=n)
+        .map(|i| Pose::new(i as f64 * 0.05 * ahead / (n as f64 * 0.05), 0.0, 0.0))
+        .collect();
+    let arc = std::f64::consts::FRAC_PI_2 * r;
+    let m = (arc / 0.05) as usize;
+    poses.extend((1..=m).map(|i| {
+        let phi = std::f64::consts::FRAC_PI_2 * i as f64 / m as f64;
+        Pose::new(ahead - r * phi.sin(), r - r * phi.cos(), -phi)
+    }));
+    poses
 }
 
 fn ideal_of(truth: &LagModel) -> IdealModel {
@@ -344,5 +425,69 @@ fn very_slow_actuators_s_curve_only_lag_aware_holds_the_path() {
     assert!(
         aware.mean_cross < 0.2 * free.mean_cross,
         "{aware:?} vs {free:?}"
+    );
+}
+
+#[test]
+fn straight_reverse() {
+    let truth = LagModel::default();
+    let run = drive_way(truth, truth, &straight_back(8.0), 1.0, Way::Reversing);
+    let slowest = run.speeds.iter().copied().fold(0.0, f64::min);
+    println!(
+        "straight back 8 m: {:.3} m mean, {:.3} m worst, {:.1} s, reached {}, fastest back {slowest:.2} m/s",
+        run.mean_cross, run.max_cross, run.time, run.reached
+    );
+    assert!(run.reached, "{:?}", run.poses.last());
+    assert!(run.speeds.iter().all(|&v| v < 0.05), "never forward");
+    assert!(
+        slowest < -0.3 && slowest > -0.55,
+        "backs up within max_reverse_speed: {slowest}"
+    );
+    assert!(
+        run.mean_cross < 0.05 && run.max_cross < 0.15,
+        "{:.3} {:.3}",
+        run.mean_cross,
+        run.max_cross
+    );
+}
+
+#[test]
+fn forward_stop_reverse_through_a_cusp() {
+    let truth = LagModel::default();
+    let run = drive_way(
+        truth,
+        truth,
+        &forward_then_back(6.0, 5.0),
+        1.0,
+        Way::Reversing,
+    );
+    let fastest = run.speeds.iter().copied().fold(0.0, f64::max);
+    let slowest = run.speeds.iter().copied().fold(0.0, f64::min);
+    println!(
+        "6 m ahead, cusp, quarter circle r 5 back: {:.3} m mean, {:.3} m worst, {:.1} s,          reached {}, speeds {slowest:.2} .. {fastest:.2} m/s",
+        run.mean_cross, run.max_cross, run.time, run.reached
+    );
+    assert!(run.reached, "{:?}", run.poses.last());
+    assert!(fastest > 0.5, "went forward first: {fastest}");
+    assert!(slowest < -0.3, "then backwards: {slowest}");
+    // Forward first, then backwards: the speed changes sign once, through a stop.
+    let first_back = run
+        .speeds
+        .iter()
+        .position(|&v| v < -0.05)
+        .expect("reversed");
+    assert!(run.speeds[..first_back].iter().all(|&v| v > -0.05));
+    assert!(
+        run.speeds[first_back..].iter().all(|&v| v < 0.05),
+        "no going forward again"
+    );
+    // Looser than going forward: the path bends at once after the cusp, and the car
+    // starts from a stop with its wheels straight (at r 4, under ~1.1 x the planner's
+    // 3.6 m, it fell 0.6 m outside the bend and stopped short: docs/mppi-lag.md).
+    assert!(
+        run.mean_cross < 0.15 && run.max_cross < 0.4,
+        "{:.3} {:.3}",
+        run.mean_cross,
+        run.max_cross
     );
 }

@@ -5,6 +5,7 @@
 //! "MPPI without lag" (`model:=ideal`), so a test or a Gazebo run can show what the lag
 //! model buys.
 
+use crate::ego::slew_speed;
 use crate::model::{bicycle, CarModel, Command, Observation, Pose};
 
 /// A car with no actuator lag.
@@ -57,7 +58,7 @@ impl CarModel for IdealModel {
         if dt <= 0.0 {
             return;
         }
-        s.speed += (command.speed - s.speed).clamp(-self.decel * dt, self.accel * dt);
+        s.speed = slew_speed(s.speed, command.speed, self.accel, self.decel, dt);
         let full = self.max_steering_angle;
         s.steering = command.steer.clamp(-full, full);
         bicycle(&mut s.pose, s.speed, s.steering, self.wheelbase, dt);

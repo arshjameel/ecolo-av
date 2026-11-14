@@ -20,7 +20,7 @@ use crate::critics::Critic;
 use crate::ego::{Driven, DrivenState, Ego};
 use crate::model::{wrap, CarModel, Command, Observation, Pose};
 use crate::optimizer::{NoValidControl, Optimizer, Plan, Scene, Settings};
-use crate::path::{Foot, GlobalPath};
+use crate::path::{Foot, GlobalPath, Inversion};
 
 /// Nav2's SimpleGoalChecker, stateful: once within xy, only the heading is left.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -160,6 +160,9 @@ pub struct FollowerSettings {
     pub progress_time: f64,
     /// Unknown costmap cells are drivable.
     pub tracking_unknown: bool,
+    /// Follow a path that changes direction one stretch at a time, stopping at each cusp
+    /// (Nav2's `enforce_path_inversion`; on when the car may reverse). `None`: one stretch.
+    pub inversion: Option<Inversion>,
 }
 
 impl Default for FollowerSettings {
@@ -174,6 +177,7 @@ impl Default for FollowerSettings {
             progress_angle: 0.5,
             progress_time: 10.0,
             tracking_unknown: false,
+            inversion: None,
         }
     }
 }
@@ -250,7 +254,10 @@ impl<M: CarModel + Clone> Follower<M> {
             self.progress.reset();
             self.optimizer.reset(self.last);
         }
-        self.path = Some(path);
+        self.path = Some(match self.settings.inversion {
+            Some(tolerance) => path.with_inversion(tolerance),
+            None => path,
+        });
     }
 
     /// Stop following (the path ended or was cancelled). The next command is a stop.
@@ -290,14 +297,18 @@ impl<M: CarModel + Clone> Follower<M> {
             return None;
         };
         let pose = model.pose(&state);
-        let goal = path.goal();
-        if self.goal.done(&pose, &goal) {
+        // Not while a cusp lies ahead: a three-point turn may pass near its own goal.
+        if !path.cusp_ahead() && self.goal.done(&pose, &path.goal()) {
             return Some(Tick::Done(Outcome::Succeeded));
         }
         if self.progress.stuck(&pose, now) {
             return Some(Tick::Done(Outcome::Stuck));
         }
         let s = self.settings;
+        // The goal the critics see: the next cusp while one lies ahead, so the car stops
+        // there as it would at the goal (Nav2's critics see only the final goal, and stop
+        // at a cusp only because the path ends there).
+        let goal = path.stretch_end();
         let window = path
             .window(&pose, s.max_search, s.prune_distance, costmap)
             .to_vec();
