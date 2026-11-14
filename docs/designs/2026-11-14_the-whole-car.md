@@ -212,7 +212,7 @@ level, and the real car has so far driven with only the localization update inst
 | 4 | **No ground truth on the car** | no RTK (28 Oct); TODO 96 | every score from the car |
 | 5 | **Calibration**: camera to lidar, steering centre, wheel size (17 % off loaded) | Q22; TODO 60, 67 | the things; lane correction; odometry |
 | 6 | **The near blind zone** has no sensor of its own, and the radar is off on the car (`orin.yaml`: "later") | tracks-and-memory: 2.5 m for a 0.5 m box | the hardware lead's call |
-| 7 | **Clocks** never checked at the car; `car-day.md` has no step | checked 14 Nov: no "chrony" in the page | fusing anything across computers |
+| 7 | **Clocks** never checked at the car | `car_setup.sh` installs chrony; `car-day.md` had no step for it until this audit added one (14 Nov) | fusing anything across computers |
 | 8 | **No safety case**: one page per hazard, what stops it, the number, who measured it | weak links 4.7 | the report; taking a passenger |
 | 9 | **The Orin's load** is unmeasured for our Python nodes | TODO 76 | every "works on a Mac" |
 | 10 | **Winter.** Gate 4 is in February, in Ottawa. Nothing in `ros/` or `tools/` knows about snow | research idea 2 | Gate 4's day |
