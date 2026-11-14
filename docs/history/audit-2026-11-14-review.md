@@ -172,3 +172,24 @@ Found on the way:
 | The output mux's target is `sim`; `stack.launch.py` still spells `target:=gazebo` | `sources-and-targets.md` |
 | `trials.md` (1,197 lines) could split by subject: trackers, localizers, planners, diffusion, voxels, with the page as the index | proposed |
 | `path-followers.md` is now a 22-29 Oct record: merge into trials, or mark as history | proposed |
+
+## 9. Perception: what is published and read by nobody
+
+The full chain, with file and line, is now in [Perception](../perception.md), "Who reads what, today".
+
+| Output | Read by |
+|---|---|
+| The radar's clusters and boxes (`/perception/radar/clusters`) | nobody (RViz only) |
+| Every camera label except "stop sign" | nobody: `camera_obstacles` is off everywhere until the cameras are calibrated (Q22) |
+| The lane lines (`/perception/lane/geometry`) | only the lane driver on the AI slot; Nav2, the planner and the costmaps don't |
+| The stop sign's distance | only the behaviour planner, a trial, off by default |
+| The front right and rear cameras' pictures, in the simulators | nobody |
+| Tracks | none exist |
+
+On the car (`orin.yaml`): the lidar, the camera streams and the stop-sign watcher are on;
+the radar, its clusters, the camera obstacles and the lane finder are off. All untested there.
+
+Proposed for the pages: the four simulation pages become two (a how-to and a "what is
+simulated" reference; `full-simulation.md` is a finished 15 Oct plan); `hud.md` (1,151 lines)
+splits by its own sections, and the developer window gets a page; `perception-and-hud-map.md`
+moves to history.

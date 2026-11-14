@@ -1,6 +1,12 @@
 # Perception models, the lidar, and a map on the HUD
 
-> **A snapshot from 15 October 2026.** What's true now: [Status](status.md), [Perception](perception.md), [Camera pipeline](camera-pipeline.md) and [the HUD's map window](hud.md#the-map-window-big-screen).
+> **A snapshot from 15 October 2026: the options we weighed, and why.** It is not how
+> things run now. What runs today, and who reads each topic: [Perception](perception.md).
+> Also [Status](status.md), [Camera pipeline](camera-pipeline.md) and
+> [the HUD's map window](hud.md#the-map-window-big-screen).
+>
+> Still open from this page (13 Nov): lidar clusters, a 3D detector, camera + lidar
+> together, a per-pixel road mask (`segmenter`), and the recorded-drive model test.
 
 Written 15 October 2026. **Since then:** the detector is RF-DETR Nano, not YOLO
 (Ben, 23 Oct), as TensorRT on the Orin and Core ML on a Mac: see

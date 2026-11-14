@@ -1,7 +1,14 @@
 # Perception: cameras, RF-DETR and YOLO, stop signs, lanes and radar
 
-What the car sees, and what it does about it. All of it runs on the bench today. On the
-car, it waits for the cameras' calibration and the Orin's move to JetPack 7.2 (Q24).
+What the car sees, and what it does about it: what each node does, how to run it, and
+what was measured. All of it runs on the bench and in both simulators. On the car, it
+waits for the cameras' calibration and the Orin's move to JetPack 7.2 (Q24).
+
+| For | Read |
+|---|---|
+| The choices behind it: which detector, what else was tried | [Perception options](perception-and-hud-map.md), [Model comparison](model-comparison.md) |
+| The front cameras' path from the camera Pi | [Camera pipeline](camera-pipeline.md) |
+| What Nav2 does with the points | [Costmaps](costmaps.md) |
 
 ## The chain
 
@@ -11,6 +18,35 @@ camera ─► object_detector ─► /perception/detections ─► stop_sign_wat
 lane_finder ─────────► /perception/lane/geometry ─► control_interface ─► /drivers/ai/cmd_vel ─► twist_mux
 radar ─► /sensors/radar/points ─► radar_clusters ─► /perception/radar/clusters, /perception/radar/cluster_boxes
 ```
+
+### Who reads what, today (13 Nov)
+
+Checked against the code and `docs/interfaces.yaml`. "Nobody" means no node acts on it:
+a person can still look at it in RViz or Lichtblick.
+
+| Sensor | Node | Topic | Read by |
+|---|---|---|---|
+| Roof lidar | `lidar_scan` (`aav_lidar`) | `/sensors/lidar/scan` | the local costmap's `lidar_layer`; `collision_monitor`; AMCL (`amcl:=true`); `behaviour` (`behaviour:=true`) |
+| Roof lidar | `voxels` (`aav_voxels`), only with `voxels:=true` | `/perception/voxels/cubes`, `/ground` | then the `lidar_layer` and `collision_monitor`, instead of the scan; the debug HUD and the developer window draw them |
+| Radar | the driver, or a stand-in | `/sensors/radar/points` | the local costmap's `obstacle_layer`; `collision_monitor`; the sensor watchdog (all with `radar:=true`: the bench and the simulators. Off on the car: no radar part yet) |
+| Radar | `radar_clusters` | `/perception/radar/clusters`, `/cluster_boxes` | **nobody**: for RViz only |
+| Front cameras | `object_detector`, or `camera_stream_<camera>` on the car | `/perception/detections` | `stop_sign_watcher`; `camera_obstacles` (off by default); the sensor watchdog (streamed cameras) |
+| | `object_detector` | `/perception/detections/image` | **nobody**: for RViz or Lichtblick |
+| | `stop_sign_watcher` | `/perception/stop_sign` | twist_mux's lock (priority 30); the HUD; `behaviour` |
+| | `stop_sign_watcher` | `/perception/stop_sign/distance` | `behaviour` only (`behaviour:=true`, a trial): else **nobody** |
+| | `camera_obstacles` (off until Q22) | `/perception/camera_obstacles`, `/perception/camera_view` | the local costmap's `camera_layer`; `collision_monitor` with `camera_guard` |
+| Front left camera | `lane_finder` (`lane:=true`) | `/perception/lane/geometry` | `control_interface` only, the AI slot's driver. Nav2, the planner and the costmaps **don't** read lanes |
+| | `lane_finder` | `/perception/lane/image` | **nobody**: for RViz |
+| Front left camera | the camera itself | `/sensors/camera/front_left/image_raw` | the detector, `lane_finder`, the HUD's picture, the sensor watchdog |
+| Front right, rear cameras | the simulators | their `image_raw` | **nobody** (on the car the front right one's detector runs inside its `camera_stream` node) |
+
+- **Labels:** only "stop sign" does anything by default. People, cars and the rest reach
+  Nav2 only through `camera_obstacles`, which is off everywhere until the cameras are
+  calibrated (Q22).
+- **Objects with an ID and a speed** (a tracker for radar clusters and cubes) are not
+  built: TODO 103, paused. `aav_track` is something else: trial path followers.
+- **Lanes as costs for the planner** are a proposal only
+  ([one shape](designs/2026-11-13_one-shape.md)).
 
 ![What the bench camera shows YOLO, about 5 m from the stop sign](img/bench-stop-sign.png)
 
@@ -30,6 +66,7 @@ radar ─► /sensors/radar/points ─► radar_clusters ─► /perception/rada
 | `aav_lane_finder` | ours | lane keeping's seeing half: finds the lane lines (below) | [[works]] on the bench |
 | `aav_lane_geometry` | 2025-26 `Lane_Detection_ROS2` | lane keeping's steering half, as a driver on `/drivers/ai/cmd_vel` | [[works]] on the bench |
 | `aav_lidar` | ours | the roof lidar's points into a scan for Nav2 ([below](#the-roof-lidar)) | [[works]] against a fake lidar |
+| `aav_voxels` | ours | a trial (`voxels:=true`): the lidar's cloud as 0.25 m cubes over the fitted road, for Nav2 instead of the scan ([design](designs/2026-10-30_voxels.md)) | a trial, off by default |
 | `aav_sensors` `cameras.launch.py` | 2024-25 `cameras` (the calibrations) | `usb_cam` with `left.ini` and `right.ini`: for a USB camera only, not the front ribbon cameras | [[untested]] Linux only |
 
 ## Stop signs
@@ -392,8 +429,11 @@ the speed. On a campus road the lane runs from the yellow centre line to the whi
   distance, noise is left out, old boxes are cleared. Its `PROVENANCE.md` lists them.
 - The C++ package's other programs (filters, ICP, an OctoMap) were demos, never launched:
   they went with it.
-- [[later]] Next: the radar's points into the local costmap (the ObstacleLayer, written and
-  switched off) and `collision_monitor`.
+- **Nothing reads the clusters.** Nav2 takes the radar's raw points, not the clusters:
+  the local costmap's obstacle layer and `collision_monitor` read `/sensors/radar/points`
+  wherever `radar:=true` (the bench and the simulators). On the car the radar part is
+  still off.
+- [[later]] Next: a tracker on the clusters (TODO 103, paused until the radar is on the car).
 
 ## The roof lidar
 
@@ -514,4 +554,4 @@ turns them on where they run ([Platforms](platforms.md#on-the-car-what-runs-wher
 | Back up the Orin: the 2025-26 detector lives only there | before any reflash |
 | Calibrate the ribbon cameras, so the stop-sign distance uses their lens: `pixi run calibrate-camera` ([how](camera-calibration.md)) | the car |
 | RF-DETR's TensorRT engine on the Orin: `python3 tools/build_engine.py`, then time it | the reflash (Q24) |
-| The radar into the costmap | the ObstacleLayer settings |
+| The radar on the car: its part is off in every machine file | the radar's wiring |

@@ -4,6 +4,12 @@ Written 15 October 2026, checked 25 October. The goal (Ben, 15 Oct): "fully simu
 Gazebo with all the sensors, and build the full pipeline." This page says what we have,
 what's missing, and how the car's measurements feed in.
 
+**This page is the 15 Oct plan and its record.** How to run the simulation today:
+[Simulation](simulation.md). What swaps between sim, bench and car: [Sim and the car](sim-and-car.md).
+Since 8 Nov `pixi run sim` starts [our own simulator](own-simulator.md), which plays
+Gazebo's part on the same topics; every command below runs on either, and
+`simulator:=gazebo` picks Gazebo. The results below were measured on Gazebo.
+
 > **The short version**
 > - **Most of it exists.** Gazebo already plays the car: IMU, GPS, wheel speed, three cameras, the radar, the lidar. The same EKFs, Nav2, perception and HUD run on it.
 > - **The big gap is the actuators.** Gazebo's car sets its speed directly, with made-up limits. It ignores the weight, the motor and the brakes. So it doesn't yet speed up, brake or steer like the real car.
@@ -22,7 +28,7 @@ what's missing, and how the car's measurements feed in.
 | 5 | The lidar into Nav2 | ✅ 15 Oct: `lidar_scan` (`aav_lidar`) flattens the roof lidar into a 2D scan; the local costmap's `lidar_layer` and `collision_monitor` read it. `lidar:=true` in Gazebo, and on the car (the stock `velodyne` driver, since 20 Oct). With the radar off, the lidar alone stopped the car 0.16-0.55 m before a post |
 | 6 | Sensor failures on purpose | ✅ 15 Oct: `pixi run sim-fault <sensor> <fault>`, and the sensor watchdog (`aav_safety`): it stops Nav2 and the AI slot, and says why on the HUD and the map window. All 13 faults stopped the car on 15 Oct, the watchdog's own death and frozen wheels too; on 24 Oct, with the HUD's heartbeat added, all 25 checks passed three times ([the table](simulation.md#what-the-car-does-before-and-after)) |
 | 7 | The actuator test script (`tests.md` 1.10) | ✅ 15 Oct: `pixi run actuator-test <test> --sim`, all 9 tests in Gazebo; they give back the model's numbers ([docs/actuator-tests.md](actuator-tests.md)). It found Gazebo's IMU blind to the car's acceleration: fixed in `gazebo_adapter` |
-| 8-10 | the real numbers, the test lot, forces | not started |
+| 8-10 | the real numbers, the test lot, forces | not started. Beside them, since: a Carleton world from OpenStreetMap (`pixi run campus`, `world:=campus`), not a survey of the test lot; and our own simulator, whose car rides slopes and stops at kerbs (8 Nov), still with no forces |
 
 Tested (15 Oct, Ben's Mac):
 
@@ -81,7 +87,7 @@ What's where:
 | The firmware's safety logic | ✅ 15 Oct, with `spine:=true`: the CAN frames, the spine's timeout, both e-stops, arming ([step 4](#the-spine-in-the-loop-step-4)). Off by default | the real CAN bus and boards: that's the car |
 | What's real and what's fake | ✅ 15 Oct: `/system/source`, and the HUD's orange SIMULATED banner | - |
 | Per-actuator readings | ✅ 15 Oct: `/vehicle/steering`, `/vehicle/throttle`, `/vehicle/brake`, `/vehicle/wheels` (and still `/vehicle/status`) | the real measured values from the car |
-| The world | a test road, an empty lot | **a copy of the real test lot** |
+| The world | a test road, an empty lot, a walled test lot, Carleton from OpenStreetMap (`world:=campus`) | **a copy of the real test lot** |
 | Sensor failures | ✅ 15 Oct: `pixi run sim-fault`, and the sensor watchdog stops Nav2 (step 6) | the same on the car, on stands: pull a cable |
 
 !!! note "Why the weight hardly matters in Gazebo today"

@@ -19,7 +19,7 @@ The whole stack in Gazebo: same nodes and configs as the car, simulated hardware
       [bridge:=rust|python]
       [ghost:=false] [simulator:=gazebo|own]
   pixi run sim world:=road                         the road: the car's camera and radar
-  pixi run -e ml sim world:=road perception:=true  adds YOLO and the stop-sign watcher
+  pixi run -e ml sim world:=road perception:=true  adds the detector and the stop-sign watcher
   pixi run sim world:=test_lot sim_speed:=3 hud:=true   Gazebo, RViz, Nav2 and the HUD window
   pixi run sim world:=test_lot map:=true           ... and the big screen's map window
 
@@ -37,7 +37,7 @@ bench's argument names:
   the radar           where the world renders it (radar:=false drops it, to test the
                       lidar alone): radar_clusters, and Nav2's obstacle layer and
                       collision_monitor (navigation.launch.py radar:=true)
-  perception:=true    YOLO (the ml environment) and stop_sign_watcher: twist_mux's
+  perception:=true    the detector (RF-DETR; the ml environment) and stop_sign_watcher: twist_mux's
                       stop-sign lock
   lane:=true          lane keeping: lane_finder and control_interface, on /drivers/ai/cmd_vel.
                       lane:=fake: control_interface on a pretend lane, in any world

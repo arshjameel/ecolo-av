@@ -4,6 +4,16 @@ Every backend takes the same ego command (through the output mux), so the driver
 localization run unchanged whether the "car" is a turtle, Gazebo, or the real thing. Climb
 the ladder one rung at a time.
 
+**This page:** how to run the simulated car, its arguments, the road world, `sim-check`,
+sensor failures on purpose, replay. The other simulation pages:
+
+| Page | Covers |
+|---|---|
+| [Sim and the car](sim-and-car.md) | what is simulated, what is real, which nodes swap |
+| [Full simulation](full-simulation.md) | the 15 Oct plan (options A-C) and what was built from it |
+| [Our own simulator](own-simulator.md), [its cameras](own-simulator-cameras.md) | the default since 8 Nov, in Rust and Bevy |
+| [Bench mode](bench.md), [CARLA](carla.md) | the car's own graph on stand-ins; photo-real towns |
+
 `pixi run sim` and `pixi run turtle` stay on this computer: other terminals here see them,
 other computers don't. So a simulated car never meets the real one. To share one on
 purpose: `AAV_DISCOVERY=SUBNET pixi run sim`.
@@ -55,11 +65,11 @@ page says Gazebo: both play the same part.
 
 | Argument | Default | Means |
 |---|---|---|
-| `world` | `empty` | `empty`, `test_lot` or `road` ([the road world](#the-road-world-the-cars-whole-graph)) |
+| `world` | `empty` | `empty`, `test_lot`, `road` ([the road world](#the-road-world-the-cars-whole-graph)) or `campus` (Carleton: `pixi run campus` makes it first) |
 | `nav` | `true` | start Nav2 |
 | `teleop` | `false` | `true` with a joystick plugged in |
-| `gui` | `true` | show the Gazebo window (on a Mac, as a second program) |
-| `follow` | `true` | point the window's camera at the car |
+| `gui` | `true` | show the Gazebo window (on a Mac, as a second program). `simulator:=gazebo` only: our simulator has no window |
+| `follow` | `true` | point the window's camera at the car (`simulator:=gazebo` only) |
 | `rviz` | `true` | open RViz |
 | `lidar` | `true` | the simulated roof lidar, in the road and test_lot worlds, read by Nav2 ([below](#the-lidar-gazebo-only)); `false` drops it |
 | `radar` | `true` | the radar stand-in, in the road and test_lot worlds; `false`: the lidar alone guards Nav2 |
@@ -74,7 +84,9 @@ sensors, the physics, the ROS bridge.
 ### What Gazebo simulates
 
 Rates measured on Ben's Mac, 15 Oct, on simulated time (`ros2 topic hz -s`), with the
-real-time factor at 0.98-0.99.
+real-time factor at 0.98-0.99. "road" in the last column was written on 15 Oct: the
+cameras, radar and truth are now in every world that renders sensors (road, test_lot,
+campus), in either simulator.
 
 | Sensor | Gazebo topic | ROS topic | Rate | Noise | Worlds |
 |---|---|---|---|---|---|
@@ -199,9 +211,9 @@ To drive it:
   human input overrides Nav2.
 
 !!! tip "No GPU, or in a virtual machine?"
-  Start it with `gui:=false`, and watch in RViz or Foxglove instead. The empty and
-  test_lot worlds render nothing, so they run anywhere. The road world renders the cameras
-  and the lidar: on Linux with no GPU, start it through `tools/software_gl.sh`, as
+  Start it with `gui:=false`, and watch in RViz or Foxglove instead. The empty world
+  renders nothing, so it runs anywhere. The road, test_lot and campus worlds render the
+  cameras and the lidar: on Linux with no GPU, start it through `tools/software_gl.sh`, as
   `tools/software_gl.sh pixi run sim simulator:=gazebo gui:=false` (Mesa's software OpenGL). Without it,
   Gazebo crashes as the world loads (`Unable to load Ogre Plugin`), and the car never
   appears. [[works]] on oirp-spss, 23 Oct.
@@ -376,7 +388,7 @@ angles small depth errors become large range errors.
 
 | Argument | Default | Starts |
 |---|---|---|
-| (always, in the road world) | | `radar_clusters`, and Nav2's obstacle layer and `collision_monitor`; `lidar_scan` and the lidar layer; the sensor watchdog |
+| (always, where the world renders sensors) | | `radar_clusters`, and Nav2's obstacle layer and `collision_monitor`; `lidar_scan` and the lidar layer; the sensor watchdog |
 | `perception` | `false` | the object detector (RF-DETR Nano; YOLO with `detector:=yolo`) and `stop_sign_watcher`: twist_mux's stop-sign lock. Needs `pixi run -e ml` |
 | `lane` | `false` | `true`: lane keeping (`lane_finder`, and `control_interface` on `/drivers/ai/cmd_vel`). Add `nav:=false`: Nav2 outranks it. `fake`: on a pretend lane, in any world |
 | `camera_obstacles` | `false` | the detectors' boxes into Nav2's local costmap |
@@ -392,8 +404,9 @@ pixi run sim world:=road lane:=true nav:=false start_y:=0.3  # lane keeping alon
 ```
 
 - Every node runs on Gazebo's clock.
-- The camera's parts need the road world: in another world, the launch stops and says so.
-- The empty and test_lot worlds render nothing, and start what they always have.
+- The camera's parts need a world that renders cameras (road, test_lot or campus): in
+  the empty world, the launch stops and says so.
+- The empty world renders nothing, and starts what it always has.
 
 ### What you see
 
@@ -678,7 +691,7 @@ as `replay` (priority 40). It's open loop, so the car drifts from the original p
   doesn't need CARLA's ROS 2 link, which stalls on Jazzy
   ([issue 9551](https://github.com/carla-simulator/carla/issues/9551)).
   `pixi run carla-car host:=<the CARLA computer>`.
-- **Not yet run:** CARLA has no Mac version. It needs the team's NVIDIA Linux computer
+- **Not yet run** (13 Nov): CARLA has no Mac version. It needs the team's NVIDIA Linux computer
   (16 GB of video memory for the Unreal Engine 5 version) or a cloud GPU.
 
 ## When nothing moves

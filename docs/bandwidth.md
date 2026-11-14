@@ -9,6 +9,14 @@ crosses, and whether that wire has room.
     gigabit cable; two don't fit. Everything else together is under 2 MB/s. Send
     pictures **compressed** over the network, and keep the lidar's points on the Orin.
 
+!!! note "Since this page (checked 13 Nov)"
+    The camera question was answered the day it was asked (Ben, 23 Oct): the camera Pi
+    sends each front camera as **H.264, 1280x720, 15 fps, 2 Mbit/s** (MediaMTX), and the
+    Orin decodes it and runs the detector in one process, so raw pictures never cross
+    the network: [Camera pipeline](camera-pipeline.md). The raw and JPEG camera rows
+    below are what that avoids, and still hold for a USB camera (`usb_cam`).
+    [[untested]] on the car. The measurements below are Gazebo's, 23-24 Oct.
+
 How sure each number is:
 
 | Mark | Means |

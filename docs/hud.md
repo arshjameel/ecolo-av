@@ -6,8 +6,15 @@ Four raylib programs in one package, `ros/hud/aav_hud`, each also its own ROS no
 |---|---|---|---|
 | [The HUD](#the-hud-in-rust-raylib) | `hud` | the small ~7" touchscreen | speed, GO / STOP, the e-stop button, the camera, the topics |
 | [The map window](#the-map-window-big-screen) | `map` | the big ~15" monitor | Nav2's map over Ottawa's streets, the plan, place search |
-| [The debug HUD](#the-debug-hud) (the seeing screen) | `debug_hud` | a laptop, or the Orin's screen | the lidar's cubes in 3D, NDT's map and match from above, where each localizer puts the car; key L: every sensor |
-| [The hardware panel](#the-hardware-panel) | `hw_panel` | the Orin's screen, or a wired laptop | every sensor's number, and simple buttons for the actuators (Gazebo and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path |
+| [The debug HUD](#the-debug-hud) (the seeing screen) | `debug_hud` | a laptop | the lidar's cubes in 3D, NDT's map and match from above, where each localizer puts the car; key L: every sensor |
+| [The hardware panel](#the-hardware-panel) | `hw_panel` | a wired laptop | every sensor's number, and simple buttons for the actuators (Gazebo and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path |
+
+**Where each runs (Ben, 5 Nov):** the HUD and the map stay raylib, on the dash Pi. The
+Orin runs no graphics, so the other two run on a laptop. Laptop screens can be Bevy: the
+**developer window** (`ros/hud/aav_dev_window`, `pixi run dev-window`; not a ROS package)
+is one, live on the simulators since 5 Nov, and `debug_hud` retires once it covers the
+same ground ([design](designs/2026-11-05_one-window.md)). It has no section on this page
+yet: its README is the reference.
 
 An easter egg hides in three of them: [the little robot](#the-little-robot-easter-egg).
 
@@ -310,7 +317,7 @@ Nav2.
 ```bash
 pixi run map --demo                          # pretend data: no ROS, no car
 pixi run build && pixi run map             # the real node (ros2 launch aav_hud map.launch.py)
-pixi run sim world:=test_lot map:=true     # Gazebo, Nav2 and the map window together
+pixi run sim world:=test_lot map:=true     # the simulator, Nav2 and the map window together
 pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor
 ```
 
@@ -759,7 +766,7 @@ cloud (stamp t) --/tf_static--> base_link --EKF local's pose AT t--> odom --> 20
 ### Run it
 
 ```bash
-pixi run demo --debug               # Gazebo, RViz, the HUD, the map window and the debug HUD
+pixi run demo --debug               # the simulated car, RViz, the HUD, the map window and the debug HUD
 pixi run debug-hud --demo          # pretend data: no ROS (a walled lot, a ray-cast lidar)
 pixi run build && pixi run debug-hud    # the node alone, beside a running sim
 ```
@@ -780,8 +787,8 @@ from a terminal: `ros2 param set /track tracker lqr` (sim only, both ways).
 | Nav2's cubes | their own newest-only slots and thread (`nav2_cubes`), as the lidar's; `debug-core`'s `voxels` moves each centre into odom (no second snap) |
 | PointCloud2 reader | `aav_radar_clusters`' own (`radar-clustering`), shared |
 
-On the car: not yet from a Mac over WiFi (about 9 MB/s of reliable lidar); on the Orin's
-own screen.
+On the car: not yet from a Mac over WiFi (about 9 MB/s of reliable lidar): a laptop on
+the car's cable. Not the Orin's own screen: it runs no graphics (Ben, 5 Nov).
 
 ### Tested (29 October, a Mac)
 
@@ -868,12 +875,12 @@ press --> panel-core (cap, hold-to-drive) --> /drivers/buttons/cmd_vel --> twist
 
 ```bash
 pixi run hw-panel --demo                 # a pretend car: no ROS, any laptop
-pixi run sim world:=test_lot           # Gazebo (or: pixi run demo --debug) ...
+pixi run sim world:=test_lot           # the simulator (or: pixi run demo --debug) ...
 pixi run hw-panel                      # ... and the panel beside it, localhost-only
 pixi run hw-panel stands:=true         # on the car's stands (speed stays off until 49b)
 ```
 
-Run it from the Orin's own screen or a wired laptop, not a Mac over WiFi. For checks,
+Run it from a wired laptop, not a Mac over WiFi (and not the Orin: it runs no graphics, Ben, 5 Nov). For checks,
 `hw_panel --self-test 0.3:8` presses Speed + to 0.3 m/s and holds GO for 8 s, through the
 same buttons and rules, and prints what was asked and seen.
 

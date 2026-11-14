@@ -2,7 +2,9 @@
 
 Ben, 7 Nov: replace Gazebo with our own Rust simulator, every sensor. This page is the
 **cameras** part: `ros/sim/aav_sim_cameras`. The rest of the simulator (world, car, lidar,
-IMU, GPS, wheels, clock) is built beside it. The plan:
+IMU, GPS, wheels, clock) is [its own page](own-simulator.md); together they are the
+default `simulator:=own` since 8 Nov ([Simulation](simulation.md)). They need a GPU: with
+none, use `simulator:=gazebo`. The plan:
 [our own simulator](designs/2026-11-05_own-simulator.md).
 
 ![The front left camera, 7 m from the stop sign](img/own-sim-cameras-front.png)

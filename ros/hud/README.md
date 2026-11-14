@@ -11,7 +11,7 @@ Q29). The 2025-26 Flutter app and its Flask back end were archived on 25 Oct
 | Package | What it is |
 |---|---|
 | [aav_hud](./aav_hud/README.md) | four raylib screens: `hud` (status, e-stop, GO/STOP), `map` (Nav2 map, place search, `/goal_pose`), `debug_hud` (the seeing screen: the lidar's cubes, NDT's map and match, the localizers; key L every sensor; listens only) and `hw_panel` (every sensor's number, simple buttons through twist_mux's slot 45). Logic crates: [hud-core](./aav_hud/crates/hud-core/README.md), [map-core](./aav_hud/crates/map-core/README.md), [debug-core](./aav_hud/crates/debug-core/README.md), [panel-core](./aav_hud/crates/panel-core/README.md) |
-| [aav_dev_window](./aav_dev_window/README.md) | the developer window in Bevy, for laptops only: a test with pretend data so far. Outside colcon, so the car never builds it |
+| [aav_dev_window](./aav_dev_window/README.md) | the developer window in Bevy, for laptops only: live on the simulator's topics, or with pretend data (`pixi run dev-window`). Outside colcon, so the car never builds it |
 
 ## Invariants
 

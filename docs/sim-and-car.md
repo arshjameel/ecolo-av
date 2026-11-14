@@ -1,6 +1,11 @@
 # Simulation and the real car: how far we've got
 
-Written 15 October 2026, checked 25 October. It answers three questions:
+Written 15 October 2026, checked 25 October and 13 November. **This page:** what is
+simulated, what is real, and which layer swaps. How to run it: [Simulation](simulation.md);
+the plan behind it: [Full simulation](full-simulation.md); the default simulator since
+8 Nov: [Our own simulator](own-simulator.md). Where it says Gazebo, read either simulator:
+`pixi run sim` now starts ours, and `simulator:=gazebo` starts Gazebo. It answers three
+questions:
 
 1. How far did we get with Gazebo?
 2. Does it really produce sensor data?
@@ -10,7 +15,7 @@ Written 15 October 2026, checked 25 October. It answers three questions:
 > - **Gazebo works**, and it **does produce sensor data**: an IMU, a GPS, wheel speed, a camera, a radar and a lidar, all on `main`.
 > - The three cameras, the radar and the lidar are in the **road world** and the **parking lot**: `pixi run sim world:=road` or `world:=test_lot` (all on by default since 15 Oct; `lidar:=false` drops the lidar).
 > - **The car's lidar** is a roof Velodyne VLP-16: the stock `velodyne` driver, on by default on the car, untested with the real lidar.
-> - **None of our code has run on the real car yet.** Everything "works" in simulation or on the bench only.
+> - **Almost none of our code has run on the real car.** On 13 Nov the car drove with only the localization update installed ([Status](status.md)): no recording or numbers in the repo yet. Everything else "works" in simulation or on the bench only.
 > - The point of simulation: the **same nodes** run in all three places. Only the bottom layer changes.
 
 ## 1. The big idea: swap the bottom layer
@@ -38,7 +43,7 @@ Most of the software doesn't know whether it's driving a real car or a pretend o
 | | Gazebo | The bench | The real car |
 |---|---|---|---|
 | What it is | a 3D physics simulator | stand-in programs: no physics, no 3D | the car |
-| Command | `pixi run sim` | `pixi run bench` | not ready yet |
+| Command | `pixi run sim simulator:=gazebo` (`pixi run sim` alone: our own simulator, the same topics) | `pixi run bench` | `pixi run car <machine>`: [[untested]] as a whole |
 | Who plays the car | Gazebo's Ackermann car model | `aav_spine_sim`: the spine's own firmware logic, on a model car | the boards and motors |
 | Sensors come from | Gazebo's sensor models | small "mock" nodes that pretend | the real devices |
 | CAN frames | no | **yes**: the same frames the real spine will send | yes, after the KEFC work |
@@ -139,7 +144,7 @@ Merged from the branch `wt/sim-full` on 15 Oct. Rates measured on Ben's Mac, on 
 
 | You want to | Run |
 |---|---|
-| See Gazebo with the car | `pixi run sim` |
+| See the simulated car | `pixi run sim` (our simulator, no window: watch in RViz); Gazebo's window: `pixi run sim simulator:=gazebo` |
 | See its sensor data | in another terminal: `pixi run tools/ros.sh ros2 topic hz /sensors/gps/fix` |
 | Look at one GPS message | `pixi run tools/ros.sh ros2 topic echo --once /sensors/gps/fix` |
 | Drive it | `pixi run keyboard --sim` |

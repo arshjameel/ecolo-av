@@ -96,9 +96,13 @@ ndt:=true kiss_icp:=true amcl:=true`, driving to a goal 18 m ahead.*
 
 ### Where this is heading
 
-| Screen | 0.2 (now) | 0.3 |
+Written for 0.2 (3 Nov). **Changed 5 Nov (Ben):** the debug screen goes into the Bevy
+developer window (`pixi run dev-window`, [design](designs/2026-11-05_one-window.md)), not
+into this cockpit. 0.3 merged on 9 Nov with the cockpit as it was.
+
+| Screen | 0.2 | The 3 Nov plan for 0.3 |
 |---|---|---|
-| **Drive** (this cockpit) | Gazebo's view, Nav2's goal, the cubes, the localizers, which algorithms run | absorbs the debug screen: NDT's map and match, the kept cubes |
+| **Drive** (this cockpit) | Gazebo's view, Nav2's goal, the cubes, the localizers, which algorithms run | absorbs the debug screen: NDT's map and match, the kept cubes (dropped 5 Nov: above) |
 | **Hardware** (the [hardware panel](hud.md#the-hardware-panel)) | every sensor, simple buttons, the steering's ends | stays separate: the lowest level, wired |
 | **HUD** and **map** | in the car | stay in the car ([The car's screens](car-screens.md)) |
 
@@ -121,8 +125,9 @@ car refuses a swap (`live_swap` is on only in `sim.launch.py`).
 
 ### The chase camera
 
-A camera fixed 7 m behind the car and 3.5 m up, looking down at the road ahead. Gazebo's
-only, in the worlds that render sensors (road, test_lot): `chase_camera:=false` drops it.
+A camera fixed 7 m behind the car and 3.5 m up, looking down at the road ahead. Simulators
+only (Gazebo's, and `aav_sim_cameras` for our own simulator), in the worlds that render
+sensors (road, test_lot, campus): `chase_camera:=false` drops it. The numbers below are Gazebo's.
 
 | | Without | With |
 |---|---|---|
@@ -186,7 +191,7 @@ pixi run python3 tools/layout_check.py ws://192.168.1.140:8765 --data   # the ca
 | A goal sent through the bridge (as Lichtblick's 3D panel does) | Nav2 planned and the car drove 20 m |
 | `pixi run bench foxglove:=true` | 22 of 26 served; the bench has no lidar unless `lidar:=true` |
 | A watch-only bridge (the car's settings) | publishing refused: "Server does not support clientPublish" |
-| The layouts in the Lichtblick app | the setting names were checked against Lichtblick 1.29's own code; not yet opened in the app by a person |
+| The layouts in the Lichtblick app | the setting names were checked against Lichtblick 1.29's own code; not yet opened in the app by a person (24 Oct; the cockpit was opened live on 3 Nov, [above](#cockpit)) |
 | The cockpit, 1 Nov, road world, `foxglove:=true tracker:=pure_pursuit voxels:=true` | `python3 tools/layout_check.py`: every topic served but the GPS route and the scan (`voxels:=true` replaces it) and `/localization/gps/fix` (early); `/track/set_parameters` advertised; the chase camera 10 Hz, 200 kB/s. Opened in Lichtblick, but the Mac was locked: **no screenshot**, and the tracker panel and the switch list are **untested in the app** |
 | The Drive cockpit, 3 Nov, test lot, `voxels:=true ndt:=true kiss_icp:=true amcl:=true` (two runs) | `python3 tools/layout_check.py`: every topic served (only the street route, the ghost and the tracker service off, as asked); `/system/algorithms` right for the run. Seen live in Lichtblick: the Algorithms table, KISS-ICP's speed against the wheels', the lights **NDT: OK** and **KISS-ICP: OK**, NDT TRACKING. **Not seen**: the EKFs' arrows and NDT's scan (the two layout scripts; Lichtblick shows 6 alerts, not yet read: a person needs to open Alerts), and the frame labels still show (`transforms.showLabel` ignored) |
 | The car | **untested** |

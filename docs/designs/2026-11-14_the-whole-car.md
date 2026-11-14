@@ -125,7 +125,9 @@ The three wiggle tests (TODO 149) still come first: they say which of the first 
 
 ### Seeing: things, not just points
 
-Today nothing near the car has a name, a speed or a memory. The parts exist; they aren't joined.
+Today nothing near the car has a name, a speed or a memory. The parts exist; they aren't joined:
+the radar's clusters, the lane lines (beyond the lane driver) and every label but "stop sign"
+are read by nobody ([Perception: who reads what](../perception.md)).
 
 ```text
  lidar cubes ─► groups ─────────┐
@@ -209,7 +211,7 @@ level, and the real car has so far driven with only the localization update inst
 | 3 | **No recording has ever been scored**; `record.sh` saves no pictures, cubes, radar or locks | `tools/record.sh:4`; weak links 4.8 | the league; any learning; shadow mode |
 | 4 | **No ground truth on the car** | no RTK (28 Oct); TODO 96 | every score from the car |
 | 5 | **Calibration**: camera to lidar, steering centre, wheel size (17 % off loaded) | Q22; TODO 60, 67 | the things; lane correction; odometry |
-| 6 | **The near blind zone** has no sensor of its own | tracks-and-memory: 2.5 m for a 0.5 m box | the hardware lead's call |
+| 6 | **The near blind zone** has no sensor of its own, and the radar is off on the car (`orin.yaml`: "later") | tracks-and-memory: 2.5 m for a 0.5 m box | the hardware lead's call |
 | 7 | **Clocks** never checked at the car; `car-day.md` has no step | checked 14 Nov: no "chrony" in the page | fusing anything across computers |
 | 8 | **No safety case**: one page per hazard, what stops it, the number, who measured it | weak links 4.7 | the report; taking a passenger |
 | 9 | **The Orin's load** is unmeasured for our Python nodes | TODO 76 | every "works on a Mac" |

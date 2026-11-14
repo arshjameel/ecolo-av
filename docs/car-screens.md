@@ -21,11 +21,13 @@ Both are in `ros/hud/aav_hud` ([HUD](hud.md)).
 ## The screens outside the car
 
 The HUD and the map stay in the car. Two more screens are for the lab or a laptop, one
-per job (Ben, 3 Nov: "Just the stuff we control"):
+per job (Ben, 3 Nov: "Just the stuff we control"). Since 5 Nov: raylib only for the two
+in the car, on the dash Pi; laptop screens can be Bevy; the Orin runs no graphics:
 
 | Screen | For | Where it's going |
 |---|---|---|
-| **Drive**: the [cockpit](foxglove.md#cockpit) (Lichtblick) | Gazebo's view, Nav2's goal, the cubes, the localizers, which algorithms run | 0.3: absorbs the debug screen |
+| **Drive**: the [cockpit](foxglove.md#cockpit) (Lichtblick) | the chase camera's view, Nav2's goal, the cubes, the localizers, which algorithms run | stays, as a layout |
+| **Developer window** (Bevy, `pixi run dev-window`; Ben, 5 Nov) | the scene, what the lidar sees with NDT, a map you click, a console: live on the simulators | absorbs the debug screen ([design](designs/2026-11-05_one-window.md)); not the cockpit, as planned on 3 Nov |
 | **Hardware**: the [hardware panel](hud.md#the-hardware-panel) | every sensor, simple buttons, the steering's ends | stays separate |
 
 ## How it starts

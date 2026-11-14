@@ -4,6 +4,7 @@ Ben, 7 Nov: "merge in everything from gazebo so its standalone in rust". This pa
 simulator's **core**: the world, the car, the lidar, the radar, the IMU, the GPS, the wheels
 and the clock. The cameras are their own program ([its page](own-simulator-cameras.md)),
 started beside it. The plan: [the design](designs/2026-11-05_own-simulator.md).
+Every argument, the worlds and `sim-check`: [Simulation](simulation.md).
 
 ```sh
 pixi run sim world:=test_lot gui:=false rviz:=false     # ours: the default since 8 Nov
