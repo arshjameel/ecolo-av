@@ -306,6 +306,16 @@ jobs:
         run: |
           mkdir -p sim-logs
           tools/software_gl.sh pixi run --locked sim-check --simulator gazebo --obstacle 2>&1 | tee sim-logs/sim.log
+      # Ours, with no cameras (cameras:=false: no GPU here): the whole graph but the
+      # pictures, a drive and the box (the audit's M2, 14 Nov). Its own logs.
+      - name: pixi run sim-check --simulator own --no-cameras --obstacle
+        if: always()
+        env:
+          AAV_SIM_LOG: ${{ github.workspace }}/sim-logs/aav-sim-check-own.log
+          ROS_LOG_DIR: ${{ github.workspace }}/sim-logs/ros-own
+        run: |
+          mkdir -p sim-logs
+          pixi run --locked sim-check --simulator own --no-cameras --obstacle 2>&1 | tee sim-logs/sim-own.log
       # Readable without signing in: sim-check's FAIL lines and the launch log's last errors.
       - name: Failures as annotations (readable without signing in)
         if: failure() && hashFiles('sim-logs/sim.log') != ''
