@@ -117,3 +117,19 @@ def test_the_map_window_waits_longer_than_nav2_keeps_a_path(name):
     params = yaml.safe_load(window.read_text())['map']['ros__parameters']
     assert params['plan_kept_for'] > float(timer.get('seconds'))
     assert params['final_approach'] == float(zone.get('tolerance'))
+
+
+@pytest.mark.parametrize('name', TO_POSE)
+def test_replanning_rate_can_be_changed(name):
+    # replan_hz:= (the wiggle's test, TODO 149): one RateController, Nav2's 1 Hz, to change.
+    text = (TREES / name).read_text()
+    assert vehicle.replan_tree(text, vehicle.REPLAN_HZ) == text
+    once = ET.fromstring(vehicle.replan_tree(text, 0))
+    (rate,) = once.iter('RateController')
+    assert float(rate.get('hz')) == vehicle.REPLAN_ONCE_HZ
+    (rate,) = ET.fromstring(vehicle.replan_tree(text, 0.2)).iter('RateController')
+    assert float(rate.get('hz')) == 0.2
+    with pytest.raises(ValueError):
+        vehicle.replan_tree(text, -1)
+    with pytest.raises(ValueError):
+        vehicle.replan_tree('<root/>', 0)

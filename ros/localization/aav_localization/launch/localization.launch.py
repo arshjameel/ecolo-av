@@ -17,6 +17,10 @@ map -> odom, worked out on top of ekf_local's odom -> base_link.
       ──> /localization/gps/heading: the heading from the receiver's velocity, while the
       car moves (TODO 13). gps_heading:=false leaves it out
 
+global_ekf:=false (a test, sim only: sim.launch.py truth_pose:=true): no ekf_global;
+aav_gazebo's truth_localizer publishes /localization/odom/global and map -> odom from the
+simulator's truth instead.
+
 ndt_ekf:=true (a trial, docs/trials.md): ekf_global also takes NDT's pose,
 /localization/ndt/pose (x, y, yaw), with config/ekf_global_ndt.yaml on top of
 ekf_global.yaml. NDT itself is aav_ndt's: sim.launch.py ndt_ekf:=true starts both.
@@ -84,7 +88,9 @@ def global_ekf(context):
                              'use_sim_time': LaunchConfiguration('use_sim_time')}],
         remappings=([('odometry/filtered', '/localization/odom/global')]
                     + ekf_services('ekf_global')),
-        condition=IfCondition(LaunchConfiguration('gps')),
+        condition=IfCondition(PythonExpression([
+            "'", LaunchConfiguration('gps'), "' == 'true' and '",
+            LaunchConfiguration('global_ekf'), "' == 'true'"])),
     )]
 
 
@@ -99,6 +105,9 @@ def generate_launch_description():
                               description="ekf_global also takes NDT's pose (a trial)"),
         DeclareLaunchArgument('kiss_ekf', default_value='false',
                               description="ekf_local also takes KISS-ICP's twist (a trial)"),
+        DeclareLaunchArgument('global_ekf', default_value='true',
+                              description='false: no ekf_global; something else gives '
+                                          'map -> odom (the sim, truth_pose:=true)'),
         DeclareLaunchArgument('start_x', default_value='0.0'),
         DeclareLaunchArgument('start_y', default_value='0.0'),
         DeclareLaunchArgument('start_yaw', default_value='0.0'),
