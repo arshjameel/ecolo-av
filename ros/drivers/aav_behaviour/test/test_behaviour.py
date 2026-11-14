@@ -127,6 +127,25 @@ def test_wait_to_go_when_every_lock_is_off_then_drive_at_the_base():
     assert caps[0] < caps[5] and b.state == DRIVE and caps[-1] == 0.0
 
 
+def test_a_sign_stopped_for_never_brings_the_approach_back():
+    # Gazebo, 14 Nov: after the sign's hold, its last point (0.5 m behind the stop) came
+    # back as APPROACH(sign) at the floor, until "sign lost" 5 s after that point.
+    b = Behaviour(CURVE, Settings(base=1.0, accel=0.5))
+    at_sign(b, left=1.5)
+    b.step(world(1.0, speed=0.0, locks={'stop_sign': True}, stops=[Stop('sign', -0.5)],
+                 sign_age=0.0))
+    b.step(world(1.1, speed=0.0, locks={'stop_sign': True}, stops=[Stop('sign', -0.5)],
+                 sign_age=0.1))
+    assert b.state == WAIT
+    # The lock goes off, the old point still fresh: GO, then DRIVE, never APPROACH(sign).
+    states = [b.step(world(4.0 + 0.1 * i, speed=0.3, stops=[Stop('sign', -0.5)],
+                           sign_age=3.0 + 0.1 * i)).state for i in range(30)]
+    assert APPROACH not in states and states[0] == GO and states[-1] == DRIVE
+    # A point newer than the stop is a new sign.
+    d = b.step(world(8.0, stops=[Stop('sign', 1.0)], sign_age=0.0))
+    assert (d.state, d.reason) == (APPROACH, 'sign')
+
+
 def test_a_long_hold_that_isnt_the_signs_asks_a_person():
     b = Behaviour(CURVE, Settings(ask_after=30.0))
     b.step(world(0.0, speed=0.0, locks={'stop_zone': True}))

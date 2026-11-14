@@ -155,8 +155,10 @@ class BehaviourNode(Node):
         try:
             t = self.tf.lookup_transform('odom', msg.header.frame_id,
                                          Time.from_msg(msg.header.stamp), Duration(seconds=0.1))
-        except tf2_ros.TransformException:
-            return     # no TF at the picture's stamp: drop the picture
+        except tf2_ros.TransformException as e:
+            # No TF at the picture's stamp: drop the picture, and say why.
+            self.get_logger().warning(f'stop sign dropped: {e}', throttle_duration_sec=5.0)
+            return
         point = do_transform_point(msg, t).point
         self.sign = (point.x, point.y, msg.header.frame_id)
         self.sign_time = self.now()

@@ -29,7 +29,7 @@ the stopping law's v_cap(left) (aav_description stop_law.py). The lowest one bin
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import math
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -105,6 +105,8 @@ class Behaviour:
         self.since = -math.inf      # when the current state began
         self.cap = 0.0              # the last cap sent (0.0: no limit)
         self.last = None            # the last tick's time
+        self.sign_lock = False      # the stop_sign lock, last tick
+        self.served = -math.inf     # when the stop_sign lock last went off
 
     # --- the pieces ------------------------------------------------------------------
 
@@ -145,6 +147,7 @@ class Behaviour:
         self.last = w.now
         warnings: List[str] = []
         locks = {name: bool(on) for name, on in w.locks.items() if on}
+        w = self._unserved(w, 'stop_sign' in locks)
         still = w.speed is not None and abs(w.speed) < s.still
         stop = self.binding(w.stops)
         left = stop.left if stop is not None else math.inf
@@ -210,6 +213,22 @@ class Behaviour:
             cap = s.floor
         self.cap = cap
         return Decision(self.state, self.reason, cap, left, tuple(warnings))
+
+    def _unserved(self, w: World, sign_lock: bool) -> World:
+        """
+        Return the world without a sign already stopped for.
+
+        Once the sign's lock goes off, its last point (from before the stop) is behind the
+        car's stop: it would bring APPROACH(sign) back at the floor until it went stale. Only
+        a point newer than the lock's end is a new sign (the watcher sends none while it
+        ignores signs, after a stop).
+        """
+        if self.sign_lock and not sign_lock:
+            self.served = w.now
+        self.sign_lock = sign_lock
+        if math.isfinite(self.served) and w.now - w.sign_age <= self.served:
+            return replace(w, stops=[x for x in w.stops if x.reason != 'sign'])
+        return w
 
     def _approach(self, w: World, locks: Dict[str, bool], still: bool, stop: Optional[Stop],
                   warnings: List[str]) -> None:
