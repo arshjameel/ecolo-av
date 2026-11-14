@@ -226,6 +226,8 @@ pub struct WorldNews {
     ndt_pose: Option<Pose>,
     pub picture_size: Option<[u32; 2]>,
     pub plan: Vec<Point>,
+    /// The road ahead, on the map (drawn with the plan, key P).
+    pub road_ahead: feed::RoadAhead,
     /// The squiggly line, in base_link, and when its trace and numbers were last heard.
     pub ahead: Ahead,
     trace_heard: Option<Instant>,
@@ -288,6 +290,7 @@ impl WorldNews {
             Update::Ndt(status) => self.ndt_status = Some(status),
             Update::NdtPose(pose) => self.ndt_pose = Some(pose),
             Update::Plan(points) => self.plan = points,
+            Update::RoadAhead(road) => self.road_ahead = road,
             Update::Map(grid) => self.map.set(grid),
             Update::Costmap(grid) => self.costmap.set(grid),
             Update::Origin(announcement) => self.origins.apply(announcement),
@@ -1098,6 +1101,32 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
             egui::Stroke::new(2.5, egui::Color32::from_rgb(90, 200, 255)),
         ));
     }
+    if layers.plan && world.road_ahead.line.len() >= 2 {
+        let top = world.road_ahead.top_speed();
+        for pair in world.road_ahead.line.windows(2) {
+            let (a, v) = pair[0];
+            let (b, _) = pair[1];
+            painter.line_segment([to(a), to(b)], egui::Stroke::new(5.0, road_colour(v, top)));
+        }
+        if let Some((end, heading)) = world.road_ahead.end {
+            let (sin, cos) = heading.sin_cos();
+            let side = |s: f64| to(Point::new(end.x - 1.5 * s * sin, end.y + 1.5 * s * cos));
+            painter.line_segment(
+                [side(1.0), side(-1.0)],
+                egui::Stroke::new(4.0, egui::Color32::from_rgb(235, 40, 40)),
+            );
+        }
+        for (stop, why) in &world.road_ahead.stops {
+            painter.circle_stroke(to(*stop), 6.0, egui::Stroke::new(2.0, egui::Color32::WHITE));
+            painter.text(
+                to(*stop),
+                egui::Align2::LEFT_BOTTOM,
+                format!("  {why}"),
+                egui::FontId::proportional(13.0),
+                egui::Color32::WHITE,
+            );
+        }
+    }
     if layers.ahead {
         if let Some(squiggle) = world.ahead_now(Instant::now()) {
             let place = |p: (f64, f64)| to(feed::from_base(car, p));
@@ -1260,4 +1289,14 @@ fn algorithms_tab(ui: &mut egui::Ui, state: &mut UiState) {
         }
     });
     ui.add_enabled(false, egui::Button::new("SWAP (not built yet)"));
+}
+
+/// The road ahead's colour for a speed limit: green at the strip's top speed, red at a stop.
+fn road_colour(limit: f64, top: f64) -> egui::Color32 {
+    let share = feed::speed_share(limit, top);
+    egui::Color32::from_rgb(
+        (235.0 * (1.0 - share) + 40.0 * share) as u8,
+        (40.0 * (1.0 - share) + 210.0 * share) as u8,
+        60,
+    )
 }

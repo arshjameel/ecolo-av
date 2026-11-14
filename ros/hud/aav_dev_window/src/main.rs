@@ -583,6 +583,32 @@ fn draw_wireframes(state: Res<panels::UiState>, mut gizmos: Gizmos) {
         });
         gizmos.linestrip(line, Color::srgb(1.0, 0.85, 0.2));
     }
+    if state.layers.plan && world.road_ahead.line.len() >= 2 {
+        // The road ahead, in the scene (odom): green where it allows the top speed, red at
+        // a stop; a red bar across its end.
+        let top = world.road_ahead.top_speed();
+        let lift = |p: Point, z: f32| {
+            let odom = feed::odom_to_map([p.x as f32, p.y as f32], world.car_map, car);
+            Vec3::new(odom.x as f32, odom.y as f32, z)
+        };
+        gizmos.linestrip_gradient(world.road_ahead.line.iter().map(|&(p, v)| {
+            let share = feed::speed_share(v, top);
+            (
+                lift(p, 0.15),
+                Color::srgb(0.92 - 0.76 * share, 0.16 + 0.66 * share, 0.24),
+            )
+        }));
+        if let Some((end, heading)) = world.road_ahead.end {
+            let (sin, cos) = heading.sin_cos();
+            let side = |s: f64| {
+                lift(
+                    Point::new(end.x - 1.5 * s * sin, end.y + 1.5 * s * cos),
+                    0.15,
+                )
+            };
+            gizmos.line(side(1.0), side(-1.0), Color::srgb(0.92, 0.16, 0.16));
+        }
+    }
     if state.layers.nav2_cubes {
         for cube in world.cubes.cubes.iter().take(MAX_OUTLINES) {
             gizmos.cube(

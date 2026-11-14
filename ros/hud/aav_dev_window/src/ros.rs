@@ -7,7 +7,8 @@
 //! `/map`, the costmap, `/system/source`, `/vehicle/status`, the output gate, the
 //! watchdog, and the squiggly line's four, all base_link: `/ego/trace` (Path),
 //! `/ego/plan_ahead` (Path), `/ego/stop_point` (PoseStamped), `/ego/ahead`
-//! (DiagnosticStatus) (`config/dev_window.yaml`).
+//! (DiagnosticStatus); the road ahead, map (`aav_interfaces/RoadAhead`)
+//! (`config/dev_window.yaml`).
 //! Publishes, only with `--developer`: `/goal_pose`, `/safety/estop` (only ever true).
 //! Serves and calls nothing.
 
@@ -44,7 +45,9 @@ use map_core::{
     grid::{Grid, GridInfo},
 };
 use rclrs::*;
-use ros_env::aav_interfaces::msg::{DataSource, VehicleStatus as VehicleStatusMsg};
+use ros_env::aav_interfaces::msg::{
+    DataSource, RoadAhead as RoadAheadMsg, VehicleStatus as VehicleStatusMsg,
+};
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::diagnostic_msgs::msg::DiagnosticStatus;
 use ros_env::geometry_msgs::msg::{Pose as PoseMsg, PoseStamped, PoseWithCovarianceStamped};
@@ -54,7 +57,7 @@ use ros_env::sensor_msgs::msg::{Image, PointCloud2};
 use ros_env::std_msgs::msg::{Bool, String as StringMsg, UInt64};
 use serde::Deserialize;
 
-use crate::feed::{Feed, Level, Update};
+use crate::feed::{Feed, Level, RoadAhead, Update};
 
 const NODE_NAME: &str = "dev_window";
 /// The frame the cubes are made in.
@@ -93,6 +96,7 @@ struct Topics {
     plan_ahead: String,
     stop_point: String,
     ahead: String,
+    road_ahead: String,
 }
 
 /// A Path's points, as they are (base_link for the squiggly line's two).
@@ -471,6 +475,33 @@ fn spin(
                 .map(|p| Point::new(p.pose.position.x, p.pose.position.y))
                 .collect();
             send(&tx, Update::Plan(points));
+        }
+    })?;
+    let _road_ahead = node.create_subscription(topics.road_ahead.as_str().qos(newest), {
+        let tx = tx.clone();
+        move |m: RoadAheadMsg| {
+            let points: Vec<_> =
+                m.x.iter()
+                    .zip(&m.y)
+                    .zip(&m.heading)
+                    .zip(&m.speed_limit)
+                    .map(|(((&x, &y), &heading), &limit)| {
+                        (
+                            f64::from(x),
+                            f64::from(y),
+                            f64::from(heading),
+                            f64::from(limit),
+                        )
+                    })
+                    .collect();
+            let stops: Vec<_> = m
+                .stops
+                .iter()
+                .map(|s| (f64::from(s.along), s.reason.clone()))
+                .collect();
+            let road =
+                RoadAhead::from_parts(&points, f64::from(m.spacing), f64::from(m.end), &stops);
+            send(&tx, Update::RoadAhead(road));
         }
     })?;
     let _map = node.create_subscription(topics.map.as_str().qos(latched), {

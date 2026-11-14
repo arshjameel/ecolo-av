@@ -64,6 +64,11 @@ Like a Tesla's line in front of the car, in the 3D scene and on the map (`docs/h
 | a close-up from above | the same, 8 m ahead, a line every 2 m: right of the scene | all four |
 
 All four are base_link, placed with the car's newest pose (odom in 3D, map on the map).
+
+**The road ahead** (`/world/road_ahead`, map; with the plan, key P): the strip the car
+drives by, coloured by its speed limit, green at the strip's top speed to red at a stop; a
+red bar across its end, which the car may not pass; on the map, a white ring and the reason
+at each stop ([the whole car](../../../docs/designs/2026-11-14_the-whole-car.md#the-road-ahead)).
 Silent for 2 s: not drawn. The maths is `hud_core::ahead` and `aav_ego look_ahead`.
 Pretend data plays `hud_core::ahead::pretend`'s 12 s loop.
 
