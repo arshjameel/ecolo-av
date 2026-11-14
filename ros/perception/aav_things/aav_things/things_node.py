@@ -62,7 +62,7 @@ def stamp_of(t):
     return TimeMsg(sec=int(sec), nanosec=int((t - sec) * 1e9))
 
 
-class Things(Node):
+class ThingsNode(Node):
 
     def __init__(self):
         super().__init__('things')
@@ -201,7 +201,7 @@ def markers(things):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = Things()
+    node = ThingsNode()
     try:
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):
