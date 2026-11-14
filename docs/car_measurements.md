@@ -18,12 +18,27 @@ other part reads them from there, so a number only ever changes in one place.
 wheelbase / tan(max steering angle), and the footprint polygon from the body. Its tests
 (`ros/bringup/aav_description/test/test_vehicle.py`) run without ROS.
 
-## Every value is still a guess
+## What is measured, and what is still a guess
 
-Each `TODO` in `vehicle.yaml` came from the previous teams' code, with the file and line
-cited next to it, or is a guess. Two examples: the wheelbase (1.57 m) comes from a MATLAB
-script, and the old code's steering limit varies from 0.45 to 0.55 rad. Measure the car,
-replace the number and delete the `TODO`.
+Checked against `vehicle.yaml` on 14 Nov. The tape measurements are Betsi's (PR #18,
+1 Nov); the file calls them PROVISIONAL until the mounts are frozen and checked in RViz.
+
+| Value | In the file | State |
+|---|---|---|
+| `wheelbase` | 1.561 m | **measured** (1 Nov) |
+| `track` | 0.75 m | the average of the **measured** front 0.650 m and rear 0.850 m |
+| `wheel_diameter` | 0.36 m | tape-measured, provisional: loaded it read 0.42 m. The rolling test settles it (TODO 60) |
+| `imu_link` xyz | 0.49, 0.00, 1.44 m | **measured**, provisional |
+| `lidar_link` xyz | 0.49, 0.00, 1.52 m | **measured**, provisional |
+| `gps_link` xyz | 0.00, 0.00, 1.40 m | z **measured**; over the rear axle (Ben, 23 Oct, confirmed 31 Oct) |
+| ground clearance | 0.220 m, a comment only | **measured**; nothing reads it |
+| `wheel_width`, `max_steering_angle` (0.50 rad), `body` (2.00 x 1.00 x 1.50 m, overhang 0.20 m) | | guesses, or the previous teams' code (the old steering limit varies from 0.45 to 0.55 rad) |
+| `mass` 181 kg, `centre_of_mass`, `tyre_grip` | | Ben's estimate and guesses: the car has not been weighed (TODO 14) |
+| every number under `actuators:` | | guesses: tests 3.10-3.12 and 4.1-4.5, none run on the car |
+| every number under `brake:` | | placeholders: car day A7, rows 6-8 |
+| radar and the three cameras, every `rpy` | | guesses (the left camera has one candidate x, 0.810 m, not used) |
+
+Measure the car, replace the number and delete the `TODO`.
 
 ## The frames
 
@@ -92,7 +107,7 @@ What ego does with them:
   `max_accel × mass ÷ (mass + payload)`.
 - **Turns:** ego slows the car so the sideways acceleration stays under 2 m/s², or under
   half of what slides or tips the car if that is lower. It keeps the turn the driver asked
-  for and lowers the speed, so the car stays on its path. At full lock (2.87 m) that is
+  for and lowers the speed, so the car stays on its path. At full lock (2.86 m) that is
   2.4 m/s: it only matters above the car's 1 m/s, so today in the simulator. Checked in
   Gazebo (22 Oct, `sim_speed:=3`): asked 3 m/s at full lock, ego allowed 2.40 m/s and the
   car held 2.37-2.43 m/s, 1.9-2.0 m/s² sideways.
@@ -101,9 +116,9 @@ What ego does with them:
 - **Payload** is a parameter (ego.yaml, 0 kg): `ros2 param set /ego payload 80` when
   someone gets in.
 
-Tipping matters on this car: a 77 cm track is narrow for a 1.5 m tall car. The car tips
+Tipping matters on this car: a 75 cm track (the average; 65 cm at the front) is narrow for a 1.5 m tall car. The car tips
 when the sideways acceleration reaches g × (track ÷ 2) ÷ (height of the centre of mass):
-6.9 m/s² at 0.55 m high, but 3.8 m/s² at 1 m. Ego keeps to half of that.
+6.7 m/s² at 0.55 m high, but 3.7 m/s² at 1 m. Ego keeps to half of that.
 
 From M7 and M7b (any unit, as long as all four are the same):
 

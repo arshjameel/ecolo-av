@@ -1,5 +1,10 @@
 # Tonight: drive as is, and record everything
 
+!!! note "A record: this was the plan for 6 November"
+    What happened that evening: [the 6 Nov audit](history/audit-2026-11-06-car.md) (a fuse
+    and a circuit board, then the car moved; no bag was recorded). Use this page again
+    only to drive the 2025-26 stack as is. To put our software on: [Rolling out](rollout.md).
+
 Ben, 6 Nov: we drive the car with nothing flashed. The ESP32 keeps the 2025-26 C++ and the car
 runs the 2025-26 stack (Humble, domain 0). Our software drives nothing tonight. **Every minute of
 driving is data we don't have yet.**

@@ -1,4 +1,4 @@
-# Python, C++ and Rust
+# Python and Rust (and the C++ we don't write)
 
 Our ROS nodes are Python, and the firmware and hardware drivers are Rust. The C++ we
 inherited is now Rust (Ben, 10 and 15 Oct): none of our ROS code is C++. Only today's
@@ -23,11 +23,13 @@ programs only meet through messages.
 | Stock packages: Nav2, the EKFs, twist_mux | C++ | Not ours: we only configure them |
 | The IMU driver, `aav_imu_yahboom` | Rust (`rclrs`) | Ben's rewrite of the 2025-26 C++ driver, which it replaced on 11 Oct |
 | The radar clustering, `aav_radar_clusters` | Rust (`rclrs`) | A rewrite of the 2025-26 C++ node, which it replaced on 15 Oct |
-| The CAN bridge, `aav_spine_bridge` | Rust (`rclrs`) | A port of `aav_spine`'s Python node (T1.8), on the firmware's own CAN code. The default since 23 Oct; the Python one stays until the Rust one has run on the car |
+| The CAN bridge, `aav_spine_bridge` | Rust (`rclrs`) | A port of `aav_spine`'s Python node (T1.8), on the firmware's own CAN code. The default since 23 Oct; the Python one stays until the Rust one has run on the car (no record of that yet) |
 | The spine firmware, `firmware/spine` | Rust, `no_std` | Memory-safe, and its logic is tested on a laptop |
-| The in-car HUD and the map window (raylib), in `ros/hud` | Rust (`rclrs`, raylib) | One program that is also its ROS node (Ben, 11 Oct) |
+| The in-car HUD and the map window, `aav_hud` | Rust (`rclrs`, raylib) | One program that is also its ROS node (Ben, 11 Oct). They stay raylib, on the Pi (Ben, 5 Nov) |
+| Screens on a laptop or desktop: the developer window (`aav_dev_window`), our simulator's cameras | Rust (Bevy) | Bevy only off the car: the Orin runs no graphics and no simulator (Ben, 5 Nov) |
+| Our trials beside Nav2 (costmap, planner, navigator, smoother, MPPI with lag) and our simulator | Rust (`rclrs`) | Where Rust pays off; stock stays the default until ours wins |
 | Bench mode's spine, `aav_spine_sim` | Rust (`rclrs`) | Runs `spine-core` itself on the CAN frames |
-| Today's ESP32 firmware | C++ (Arduino, PlatformIO) | Inherited. Its Rust version (`boards/esp32-umod`) replaces it once flashed and proven |
+| Today's ESP32 firmware | C++ (Arduino, PlatformIO) | Inherited. Its Rust version (`boards/esp32-umod`) replaces it once flashed and proven: [Firmware](firmware.md) says where that stands |
 | The wheel sensors' Arduino | C++ (Arduino) | The hardware lead's board: it sends CAN 0x200/0x201 (the exception in CLAUDE.md) |
 | The wheel encoder and status display Pico 2s | Rust, Embassy | Rewrites of the 2025-26 C++, 15 Oct; not yet flashed |
 
@@ -54,7 +56,7 @@ Memory bugs and crashes are a fair worry with C++. In this stack:
 | | Launch files: they stay Python |
 | | An easy hand-over: the 2027-28 team has to know Rust |
 
-Where Rust stands in October 2026:
+Where Rust stands (written October 2026):
 - **Message crates ship with Jazzy.** Our Pixi install already has them, for example
   `share/sensor_msgs/rust/`.
 - **`rclrs`**, the library for writing nodes, comes from crates.io and is still 0.x.
@@ -75,6 +77,6 @@ Where Rust stands in October 2026:
 
 | When | What |
 |---|---|
-| Now | Python for ROS nodes; Rust for the firmware (`spine-core`: 84 tests) and a few nodes |
-| Done | four `rclrs` nodes: the IMU, the radar clustering, the CAN bridge, the HUD |
-| Later | port a node where Rust pays off, such as ego, once the car drives |
+| Now | Python for ROS nodes; Rust for the firmware (`spine-core`, tested on a laptop) and the nodes where it pays off |
+| Done | the first `rclrs` nodes: the IMU, the radar clustering, the CAN bridge, the HUD; since 5 Nov our own trials beside Nav2 and our simulator |
+| Later | port a node where Rust pays off, such as ego |

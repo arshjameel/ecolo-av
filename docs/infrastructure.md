@@ -10,7 +10,7 @@ tests, and how a change goes from an idea to the car.
 | Piece | What it is | Where |
 |---|---|---|
 | The car's software | ROS 2 Jazzy packages, one folder per area | `ros/` |
-| The car's firmware | the CAN contract, the Rust spine logic and its Pico 2 program, the 2025-26 boards' code | `firmware/` |
+| The car's firmware | the CAN contract, the Rust spine logic and its board programs (the ESP32, the Pico 2s), the 2025-26 boards' code | `firmware/` |
 | The environment | ROS, Gazebo, compilers, Python and Rust, all from Pixi | `pixi.toml`, `pixi.lock` |
 | The tools | tests, the graph check, the network doctor, recording, docs, the mailer, the MCP server | `tools/` |
 | The docs | short markdown pages, built into web pages and one PDF | `docs/` |
@@ -30,21 +30,25 @@ ecolo-av/
                         and aav_description (the URDF and vehicle.yaml, the car's measurements)
     ecolo_msgs/         aav_interfaces: our own messages and actions
     sources/            drivers that turn devices into standard messages: IMU, GPS, lidar, cameras, radar
-    localization/       the two EKFs and navsat_transform, and the GPS heading
-    perception/         the detector (RF-DETR, YOLO), radar clustering, lanes, the lidar
+    localization/       the two EKFs and navsat_transform, the GPS heading, NDT and KISS-ICP
+    perception/         the detector (RF-DETR, YOLO), radar clustering, lanes, the lidar, voxels
     drivers/            everything that proposes a command: teleop, RC, actuator tests, scripted,
-                        drive to point, plain English, Nav2, street routes
+                        drive to point, plain English, Nav2, street routes, and our own
+                        trials beside Nav2 (costmap, planner, navigator, smoother, MPPI)
     command_mux/        twist_mux: picks one command
     io_mux/             the sensor mux and the output mux: real or simulated, never mixed
     ego/                the virtual car: one command into speed and steering
     can_bridge/         the real car: the spine bridge (CAN) and today's ESP32 link
-    sim/                whatever plays the car instead: Gazebo, turtlesim, CARLA, bench mode
+    sim/                whatever plays the car instead: our simulator, Gazebo, turtlesim, CARLA,
+                        bench mode
     safety/             the sensor watchdog and the ghost obstacles
-    hud/                the in-car screens: the raylib HUD and the map window
+    hud/                the in-car screens: the raylib HUD and the map window; the developer
+                        window (Bevy, for laptops)
   firmware/           microcontroller code (colcon ignores it)
     can/                aav.dbc, the CAN contract, and its test vectors
     spine/              Rust: spine-core (the spine's logic), aav-inputs, the device drivers,
-                        and boards/pico2, the spine's board program
+                        and boards/: esp32-umod (today's ESP32 board), pico2 (the spine),
+                        the wheel encoder and the status display
     legacy/             the 2025-26 ESP32 and Pico code that runs the car today
   models/             trained model files, not in git: pixi run get models
   tools/              scripts: see the table below
@@ -89,11 +93,12 @@ because `pixi.lock` pins them all.
 | `ml` | the default, plus PyTorch, RF-DETR, Ultralytics (YOLO) and, on Macs, Core ML tools | whoever runs the detector: `pixi run detect`, `pixi run -e ml bench perception:=true`. Linux PCs and Macs only |
 | `docs` | Markdown and WeasyPrint | `pixi run docs` |
 | `mcp` | the default, plus the MCP Python SDK | an AI app, through `.mcp.json`: [AI apps (MCP)](mcp.md) |
-| `firmware` | Python and PlatformIO, no ROS | today's C++ boards: `pixi run -e firmware legacy-esp32` |
+| `firmware` | Python and PlatformIO, no ROS | the 2025-26 C++ ESP32 firmware: `pixi run -e firmware legacy-esp32` |
 | `llm` | `mcp`, plus MLX (Macs with Apple silicon) | plain-English driving: `pixi run -e llm talk` ([Plain English](plain-english.md)) |
 | `routes` | Valhalla, no ROS | the street router: `pixi run -e routes router` ([Routes](routes.md)) |
 | `gst` | GStreamer, no ROS | the camera stream's fast decoder ([camera pipeline](camera-pipeline.md)) |
 | `calib` | ROS's camera_calibration | `pixi run calibrate-camera` ([camera calibration](camera-calibration.md)) |
+| `kiss`, `learn` | the KISS-ICP and diffusion-planner trials' own packages, no ROS | see `pixi.toml` |
 
 !!! note "Macs only: GNU coreutils"
   On a Mac, macOS's System Integrity Protection deletes `DYLD_LIBRARY_PATH` whenever
@@ -146,7 +151,7 @@ changes.
 | Profile | Start it with | The car is | Runs |
 |---|---|---|---|
 | `turtle` | `pixi run turtle` | the turtlesim turtle | mux, ego, scripted driver, the car's model, `ekf_local` |
-| `sim` | `pixi run sim` | Gazebo | the whole stack: both EKFs, `navsat_transform`, Nav2 |
+| `sim` | `pixi run sim` | our own simulator (the default since 8 Nov; it needs a GPU), or Gazebo with `simulator:=gazebo` | the whole stack: both EKFs, `navsat_transform`, Nav2 |
 | `car` | `pixi run car <machine>` | the real car | the parts its machine file switches on |
 | `carla` | `pixi run carla-car host:=<the CARLA computer>` | a CARLA car (untested against a server) | the same as `sim` ([CARLA](carla.md)) |
 | `replay` | `ros2 launch aav_bringup replay.launch.py`, with a bag playing | a recorded drive | localization (and Nav2) on real sensor data |
@@ -159,18 +164,19 @@ The car runs one ROS graph across several computers. Each one starts `pixi run c
 
 | Machine | Runs | Today |
 |---|---|---|
-| `orin` (Jetson AGX Orin) | the car's model, mux, ego, scripted and point drivers, IMU, GPS, the roof lidar, the two camera streams (RF-DETR inside), the stop-sign watcher, localization, Nav2, the CAN bus (wheels), Foxglove | Ubuntu 22.04 and Humble: it must move to Jazzy first (Q24) |
-| `motor_pi` | the legacy bridge to today's ESP32 (UART); the 2025-26 UDP encoder is off since 23 Oct | Humble |
+| `orin` (Jetson AGX Orin) | the car's model, mux, ego, scripted and point drivers, the roof lidar, the two camera streams (RF-DETR inside), the stop-sign watcher, localization, Nav2, the CAN bus (wheels), Foxglove | JetPack 6 (Ubuntu 22.04) and the 2025-26 Humble software. Ours goes on beside it from the car kit; not yet run on the real Orin ([Rolling out](rollout.md)) |
+| `motor_pi` | the legacy bridge to today's ESP32 (UART); the 2025-26 UDP encoder is off since 23 Oct. `motor_pi_alone`: the same Pi without the Orin, for the stands | Ubuntu 22.04; the 2025-26 Humble bridge was running it on 6 Nov (the audit) |
+| `localization` | the IMU and GPS drivers, on the Pi they are plugged into | 13 Nov: the car drove with only the localization update installed ([Ben's messages](history/messages-2026-11-13.md)) |
 | `laptop` | the safety driver's joystick, and its own detector (`-e ml`) | any laptop with Pixi |
 | `all` | everything on one computer: for a bench test | |
-| the spine | a microcontroller on CAN: throttle, brake, steering, watchdog | a Pico 2 program builds, never flashed; the car's chip is Q10–Q17 |
+| the spine | a microcontroller on CAN: throttle, brake, steering, watchdog | a Pico 2 program builds; no record of a flash. The car's chip is Q10–Q17. Today's ESP32: [Firmware](firmware.md) |
 
 The development computers:
 
 | Computer | Use |
 |---|---|
 | oirp-spss | Ben's AlmaLinux workstation: builds and tests headless (no screen) |
-| Ben's Mac | development, rqt_graph, Gazebo, RViz; one day, driving and watching the car |
+| Ben's Mac | development, rqt_graph, the simulators, RViz; reading the car's computers at the car (the audits) |
 | team laptops | the same, with Pixi: [Your first day](first-day.md) |
 
 ## How a change goes from an idea to the car
@@ -181,7 +187,7 @@ The development computers:
 | 2 | Write the logic in a plain module, with tests | `ros/<area>/<package>/` |
 | 3 | Keep the node thin, with a docstring of what it reads and writes | the same package |
 | 4 | Register it: a launch profile, the mux (drivers), `tools/test.sh` (tests) | [Build a driver](howto-driver.md) |
-| 5 | `pixi run test`, then the turtle, then `pixi run check sim` in Gazebo | [Simulation](simulation.md) |
+| 5 | `pixi run test`, then the turtle, then `pixi run check sim` in the simulator | [Simulation](simulation.md) |
 | 6 | Update the docs page, then `pixi run docs` | `docs/` |
 | 7 | Commit small, each commit passing the tests; inherited code gets a `PROVENANCE.md` line | `git` |
 | 8 | On the car: stands first, then the ground at walking pace, with a safety driver | the test ladder |
@@ -197,7 +203,7 @@ Changes reach `main` only through a pull request from your own fork and the merg
 | Get it, take newer work, share yours | fork, clone, branch, pull request: [Contributing](../CONTRIBUTING.md) |
 | Hand it to a laptop with no GitHub access | `git bundle create ../aav.bundle HEAD main` (keep `HEAD`, or a clone checks out nothing), then `git clone aav.bundle aav` there |
 
-CI (`.github/workflows/test.yml`) runs `pixi run test` on Linux for every push to `main`,
+CI (`.github/workflows/test.yml`) runs `pixi run test` on Linux (x86_64 and 64-bit ARM) for every push to `main`,
 every pull request and every merge-queue entry, and on a Mac every night. The results are
 on the repo's Actions tab.
 
@@ -212,13 +218,13 @@ request. The nightly `mac` and `sim` runs stay in the team's repo.
 | `arm` | Ubuntu 24.04, **64-bit ARM**, like the Orin and the Pis | the same | 12 min: `pixi run test`; the HUD and the map window built as ARM programs, and each drawn once on a virtual screen (picture: the artifact `arm-screens`) |
 | `mac` | macOS 15, Apple Silicon | every night (team's repo) | `pixi run test`, the MCP server |
 | `car-kit` | Ubuntu 24.04, 64-bit ARM | the same as `linux` | `pixi run car-kit`, then `car_install.sh --all` with **no network** (its own network namespace), as on the car ([car install](car-install.md)): 6 min |
-| `car-kit-22.04` | Ubuntu **22.04**, 64-bit ARM: the car's own OS (JetPack 6) | the same | the same kit, installed offline on the car's Ubuntu. New 26 Oct: allowed to fail until it has passed a few times |
-| `sim` | Ubuntu 24.04, x86_64 | every night (team's repo) | `sim-check --obstacle` in Gazebo, below |
+| `car-kit-22.04` | Ubuntu **22.04**, 64-bit ARM: the car's own OS (JetPack 6) | the same | the same kit, installed offline on the car's Ubuntu. New 26 Oct: still allowed to fail (`continue-on-error`) |
+| `sim` | Ubuntu 24.04, x86_64 | every night (team's repo) | `sim-check --simulator gazebo --obstacle`, below |
 
 Every job also runs from the Actions tab (Run workflow).
 
-Every night it also runs `sim-check --obstacle` (Gazebo, headless) on Linux: the job
-`sim`. New on 22 Oct and still on trial: GitHub's computers have no GPU, so the cameras
+Every night it also runs `sim-check --simulator gazebo --obstacle` (headless) on Linux:
+the job `sim`. Gazebo, because our own simulator's cameras need a GPU. New on 22 Oct and still on trial: GitHub's computers have no GPU, so the cameras
 render in software (Mesa's llvmpipe, through `tools/software_gl.sh`), and a failure there
 doesn't fail the night yet (`continue-on-error`).
 
@@ -259,5 +265,6 @@ needs a sign-in: on the run's page, or `gh run download <run id> -n sim-logs`.
 | Why something is the way it is | `docs/history/conversation.md`: the Q&A record, by topic, with its open threads |
 | Ben's requests, word for word | `docs/history/messages-*.md` |
 | The audits of the inherited code, the firmware and the live system | `docs/history/audit-2026-10-10-*.md` |
+| The audits at the car (16 Oct, 21 Oct, 6 Nov) | `docs/history/audit-*-car.md` |
 | What's next | `TODO.md` and [Work](work.md) |
 | What changed, and why | `git log` |

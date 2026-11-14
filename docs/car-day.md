@@ -13,6 +13,24 @@ one computer.
 > - 🔒 = waits on the hardware lead's answer (session 3). Skip it, and go on.
 > - **Secrets:** logins come from the team's password vault. Type them; never paste them into a file, a chat or the repo.
 
+!!! note "Where this stands (checked 14 Nov)"
+    This runbook has **not been run end to end**, and no step here carries a signature.
+    What the records say was done on the car:
+
+    | When | What | Record |
+    |---|---|---|
+    | 16, 21 Oct | read-only audits | [16 Oct](history/audit-2026-10-16-car.md), [21 Oct](history/audit-2026-10-21-car.md) |
+    | 6 Nov | drove the 2025-26 stack as is; nothing flashed ([Car evening](car-evening.md)) | [6 Nov](history/audit-2026-11-06-car.md) |
+    | 9 Nov | a car day was planned ([Rolling out](rollout.md)) | **none in the repo** |
+    | by 11 Nov | our kit on the localization Pi; its first install broke on `aav_hud` (PR #28) | [14 Nov review](history/audit-2026-11-14-review.md), section 5 |
+    | 13 Nov | the car drove "with only the localization update installed"; the full suite isn't on it | `history/messages-2026-11-13.md` |
+
+    So A2's backups, A7b, A8 (the Rust ESP32) and Day B are still to do, by the records.
+    **Which page when:** this one for a whole day at the car, in order;
+    [Rolling out](rollout.md) for the short version and for a newer version later;
+    [Car setup](car-setup.md) for one computer; [Car install](car-install.md) for what the
+    kit is and how to undo it.
+
 ## The people
 
 Fill this in before the day. Nobody does two jobs at once.
@@ -45,20 +63,21 @@ password:
 
 ## The machines
 
-As the 21 Oct audit found them ([audit](history/audit-2026-10-21-car.md)). Every address
+As the 21 Oct audit found them ([audit](history/audit-2026-10-21-car.md)), with what the
+[6 Nov audit](history/audit-2026-11-06-car.md) added. Every address
 is `192.168.1.x`. **Role** is the name `car_setup.sh` uses. Usernames: none are in the
 repo yet: fill them in from the vault.
 
 | Machine | Address | Role | Username | Vault entry | Runs today (2025-26, Humble, domain 0) | Day B: should be |
 |---|---|---|---|---|---|---|
-| JETSON, **the Orin** (AGX Orin) | .140 | `orin` | ☐ | `aav-jetson` | the Velodyne driver (UDP 2368), lidar SLAM, `foxglove-bridge` (8765). JetPack 6 (R36.4.7, 22.04) | JetPack 7.2 (24.04): a reflash |
-| CORTEX, **the Motor Pi?** (H1), Pi 4 | .120 | `motor_pi` | ☐ | `aav-cortex` | `aav_serial_bridge` on `/dev/ttyAMA0` (to the ESP32), joystick teleop. Ubuntu 22.04 | 24.04, only after the Rust ESP32 |
-| LOCALIZATION, Pi 4 | .113 | `localization` | ☐ | `aav-localization` | the IMU (200 Hz) and GPS (10 Hz) drivers. Ubuntu 22.04 | 24.04, only once a machine file runs its IMU and GPS |
+| JETSON, **the Orin** (AGX Orin) | .140 | `orin` | ☐ | `aav-jetson` | the Velodyne driver (UDP 2368), lidar SLAM, `foxglove-bridge` (8765). JetPack 6 (R36.4.7, 22.04). 6 Nov: `can0` and `can1` down | JetPack 7.2 (24.04): a reflash |
+| CORTEX, **the Motor Pi?** (H1), Pi 4 | .120 | `motor_pi` | ☐ | `aav-cortex` | `aav_serial_bridge` on `/dev/ttyAMA0` (to the ESP32), joystick teleop. Ubuntu 22.04. 6 Nov: it does the Motor Pi's job today; the hardware lead still confirms H1 | 24.04, only after the Rust ESP32 |
+| LOCALIZATION, Pi 4 | .113 | `localization` | ☐ | `aav-localization` | the IMU (200 Hz) and GPS (10 Hz) drivers. Ubuntu 22.04. Our kit is on it too (by 11 Nov) | 24.04: its machine file exists now (`machines/localization.yaml`); not upgraded, by the records |
 | aav-desktop, **the dash**, Pi 4 | .196 | `dash` | ☐ | `aav-desktop` | the two screens. Ubuntu 22.04 Desktop | 24.04 Desktop |
 | CAM1-PI, **the front cameras**, Pi 5 | .108 (also seen at .102: C1) | `camera_pi` | ☐ | `aav-cam1` | MediaMTX, RTSP on 8554. Pi OS | Pi OS, updated |
 | CAM2-PI, Pi 5 | .118 | `camera_pi` | ☐ | `aav-cam2` | MediaMTX with a USB camera. Pi OS | Pi OS, updated |
 | `.211`, a Pi | .211 | none | ☐ | ☐ | unknown (Ubuntu 22.04) | ask the hardware lead first |
-| the ESP32 | .132 (WiFi) | none | none | none | the 2025-26 C++ firmware: **no command timeout** | the Rust firmware (Day A, A8) |
+| the ESP32 | .132 (WiFi) | none | none | none | the 2025-26 C++ firmware (seen 6 Nov; no record of a flash since): **no command timeout** | the Rust firmware (Day A, A8) |
 | the Velodyne | .201 | none | none | none | sends to the Orin | |
 | **the lab's Ubuntu desktop** (x86, NVIDIA; stays in the lab) | ☐ | `lab_desktop` | ☐ | ☐ | CARLA (☐ which version) | **frozen** until the Orin's reflash is done (Day B) |
 
@@ -241,6 +260,17 @@ Car day: is /Users/ben/Code/ecolo-av ready? (car-day.md)
 
 14 OK, 3 missing, 6 to tick by hand.
 ```
+
+## The clocks, before any recording {#the-clocks}
+
+Bags from two computers only line up if their clocks agree. `car_setup.sh`'s `services`
+step installs chrony (the Orin keeps the car's time, the others ask it); until that has
+run on a computer, check by hand.
+
+| # | Do, on each computer that records | You should see | If not |
+|---|---|---|---|
+| 1 | `date -u`, at the same moment as the laptop's | the same time, to the second | write the difference on the sheet, with the computer's name |
+| 2 | `chronyc tracking` (only where `services` has run) | `Reference ID` is the Orin; `System time` under 0.01 s | `car_setup.sh <role> check`, its `time` line; without chrony, step 1's note is the record |
 
 ## Day A: nothing destroyed
 
@@ -983,7 +1013,7 @@ ends the 2025-26 software on that computer, and the backup is the only way back.
 | B2a | The dash: `upgrade` ([Car setup, step 2](car-setup.md#step-2-the-ubuntu-2204-pis-to-2404)) | its card image GOOD (A2) | `✍ ________ at __:__` |
 | B2b | The camera Pis: `apt full-upgrade` only ([step 3](car-setup.md#step-3-the-pis-on-raspberry-pi-os)) | their card images GOOD | `✍ ________ at __:__` |
 | B2c | The Motor Pi: `upgrade --after-esp32` | the Rust ESP32 passed session 6; its card image GOOD | `✍ ________ at __:__` |
-| B2d | LOCALIZATION: **not yet**. `car_setup.sh` refuses until a machine file runs its IMU and GPS | that machine file (TODO 75) | |
+| B2d | LOCALIZATION: `upgrade` ([step 2](car-setup.md#step-2-the-ubuntu-2204-pis-to-2404)). Its machine file exists since 8 Nov (`machines/localization.yaml`), so `car_setup.sh` no longer refuses | its card image GOOD; our IMU and GPS drivers seen running from the kit | `✍ ________ at __:__` |
 | B3 | The Orin: its full image, then the reflash | the box below | `✍ ________ at __:__` |
 | B4 | The lab desktop: its update | B3 done | `✍ ________ at __:__` |
 

@@ -3,7 +3,8 @@
 Written 1 November 2026, for a student on their own. Ben, 1 Nov: "we are going to login
 to each node, upgrade the os, and install our code. Make sure we setup the boot process".
 This page sets up **one computer**. **Which one, and when:** [Car day](car-day.md) owns the
-order; the upgrades are its [Day B](car-day.md#day-b-upgrades-and-the-reflash).
+order; the upgrades are its [Day B](car-day.md#day-b-upgrades-and-the-reflash). The short
+version, and how to put a newer version on later: [Rolling out](rollout.md).
 
 > **The short version**
 > - **One script per computer:** `bash car_setup.sh <role>`. With no `--apply` it only prints what it would do.
@@ -67,7 +68,7 @@ On the computer itself, a second copy of what only it has:
 
 ## Step 2: the Ubuntu 22.04 Pis, to 24.04
 
-`dash`; `motor_pi` with `--after-esp32`; `localization` once its machine file exists.
+`dash`; `motor_pi` with `--after-esp32`; `localization` (its machine file exists since 8 Nov).
 An upgrade in place: no new card. Car day's [Day B](car-day.md#day-b-upgrades-and-the-reflash) says when.
 
 | # | Do | You should see | If not |
@@ -190,7 +191,7 @@ script refuses). Everything on the Orin is wiped. **Day B, after the hardware le
 | Part | Status |
 |---|---|
 | `car_setup.sh`'s dry run, every role, and its STOPs | [[works]] on a Mac (`tools/tests/test_car_setup.py`); on Linux: CI runs the same tests, not yet seen there |
-| `car_setup.sh --apply` on a car computer | [[untested]]: this day is its first run |
+| `car_setup.sh --apply` on a car computer | No written result. Our kit went on the localization Pi by 11 Nov (its first install broke on `aav_hud`, fixed in PR #28), and the car drove on 13 Nov with that update; which steps ran there isn't recorded. Every other computer: [[untested]] |
 | `aav-car.service` at boot | [[untested]] |
 | `machine:=motor_pi_alone` | [[untested]] on the car; its launch is checked like every machine file |
 | `do-release-upgrade` on these Pis | [[untested]] |

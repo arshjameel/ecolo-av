@@ -28,6 +28,12 @@ Orin ─────────────────────────
     0x200, 0x201)
 ```
 
+Seen on the car, 6 Nov ([audit](history/audit-2026-11-06-car.md)): the Pi called CORTEX holds
+the ESP32's UART (`/dev/ttyAMA0`), so it does the Motor Pi's job; the wire itself wasn't
+checked. **The Orin's `can0` and `can1` were down**, so nothing read the wheel sensors
+that evening. Whether `can0` should be up, and at what speed, is a question for the
+hardware people.
+
 | | Today's wiring | The KEFC plan (below) |
 |---|---|---|
 | Who drives the actuators | the ESP32, reached through the **Motor Pi** (probably serial) | the ESP32, on **CAN** |

@@ -118,7 +118,7 @@ PAGES = [
     ('team-todo.md', 'Team tasks', 'The work list from before the audit, by area (A-E)'),
     ('older-code.md', 'Older code', "The previous teams' repos: what we have, what's missing"),
     ('ros2.md', 'ROS 2', 'Nodes, topics and tools; stock packages vs our code'),
-    ('languages.md', 'Languages', 'Python, C++ and Rust: what goes where, and why'),
+    ('languages.md', 'Languages', "Python and Rust: what goes where, and the C++ we don't write"),
     ('run.md', 'Run it', 'Mac or Linux: install, build, every command'),
     ('mac.md', 'Your Mac', 'Set up the Mac, join the car, drive and watch'),
     ('foxglove.md', 'Watch from a laptop',

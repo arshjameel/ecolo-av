@@ -7,7 +7,7 @@ drive. Lichtblick only watches, but needs no setup. Ubuntu in a VM is the fallba
 
 | Way | Gives you | Setup |
 |---|---|---|
-| 1. ROS on the Mac, with Pixi | everything: keyboard driving, e-stop, RViz, rqt, the turtle, Gazebo | about 30 minutes and 7 GB, once |
+| 1. ROS on the Mac, with Pixi | everything: keyboard driving, e-stop, RViz, rqt, the turtle, the simulators | about 30 minutes and 7 GB, once |
 | 2. Lichtblick or Foxglove, no ROS on the Mac | watching: 3D view, plots, topics, logs | install an app |
 | 3. Ubuntu in a VM (UTM) | the same setup as the car's computers | about an hour; the 3D view is slower |
 
@@ -53,9 +53,10 @@ Hold `i` to drive.
 ## Join the car's network
 
 !!! warning "The car must run Jazzy too"
-  Today's car runs the 2025-26 software on ROS 2 Humble, and Humble and Jazzy don't
-  mix. Put this stack on the car first: [Platforms](platforms.md) shows how, with or
-  without a reflash.
+  Today's car still runs the 2025-26 software on ROS 2 Humble, and Humble and Jazzy
+  don't mix. On 13 Nov only the localization update of ours was on it, not the full
+  suite. Put this stack on the car first: [Rolling out](rollout.md), and
+  [Platforms](platforms.md) for with or without a reflash.
 
 | # | Do this | Why |
 |---|---|---|
@@ -85,7 +86,8 @@ pixi run bash tools/net_map.sh --listen 30 --out ~/net-map.md
 - On a Mac, programs started by Python see an empty ARP table (Local Network privacy),
   so `bash tools/net_map.sh` reads it from bash. If the MAC column is empty, check step 4b.
 - Tried on Ben's home network, 15 Oct: 13 machines in 25 s, and a test talker on domain
-  77 heard. **Not yet tried on the car.**
+  77 heard. At the car: the 21 Oct audit's network map
+  ([audit](history/audit-2026-10-21-car.md)).
 
 ### The car's own topics
 
@@ -171,17 +173,19 @@ default) or MISSING.
 
 ## Gazebo on a Mac
 
-On macOS, Gazebo's window has to run as a separate program from the simulator.
-`pixi run sim` starts both, and points the window's camera at the car:
+Since 8 Nov `pixi run sim` starts our own simulator ([Our simulator](own-simulator.md));
+Gazebo needs `simulator:=gazebo`. On macOS, Gazebo's window has to run as a separate
+program from the simulator. `pixi run sim simulator:=gazebo` starts both, and points the
+window's camera at the car:
 
 ```bash
-pixi run sim               # the simulator, its window, and RViz
+pixi run sim simulator:=gazebo               # the simulator, its window, and RViz
 pixi run tools/ros.sh tools/gz_window.sh         # opens the window again, if you closed it
-pixi run sim follow:=false # a free camera instead of one that follows the car
+pixi run sim simulator:=gazebo follow:=false # a free camera instead of one that follows the car
 ```
 
 Cameras and lidars inside Gazebo can crash it on some Macs. Ours don't: in the road world
-(`pixi run sim world:=road`), the cameras, the radar stand-in and the roof
+(`pixi run sim simulator:=gazebo world:=road`), the cameras, the radar stand-in and the roof
 lidar render with no window, on Metal, at their full rates (Ben's Mac, 15 Oct). The lidar
 was off by default for a while: with YOLO too it failed, but those runs shared the Mac with a stray simulator. On a quiet Mac (15 Oct afternoon) everything together passed twice, so it's on by default
 ([Simulation](simulation.md#the-lidar-gazebo-only)). If Gazebo crashes, use the empty
@@ -289,10 +293,10 @@ Paste these into Claude (or a team chat), and it can usually say what to fix:
 | `pixi run test` on a Mac | [[works]] all green, after the `coreutils` fix above |
 | The turtle, driving it the keyboard's way, the scripted drive, the e-stop | [[works]] on Linux and the Mac. The real keyboard keys are [[untested]] on a Mac |
 | Gazebo without its window, and a Nav2 goal | [[works]] on the Mac, without `GZ_IP` |
-| Gazebo's window on a Mac | [[works]] 10 Oct: `pixi run sim` opens it; the car drives in it (pictures in [Your first day](first-day.md)) |
+| Gazebo's window on a Mac | [[works]] 10 Oct: `pixi run sim` opened it (now `simulator:=gazebo`); the car drives in it (pictures in [Your first day](first-day.md)) |
 | Gazebo's cameras and lidar on a Mac | [[works]] 15 Oct: headless, about 10 Hz each; with YOLO too, `-e ml sim-check --perception` passed 2 of 2 on a quiet Mac, so the lidar is on by default |
 | RViz and rqt_graph on a Mac | [[untested]] they open without errors (RViz logs one shader warning); nobody has looked at them yet |
 | Recording a drive (`tools/record.sh`) | [[works]] on the Mac, after the `tools/ros.sh` fix above |
 | Joystick on a Mac | [[untested]] An old macOS joystick bug is fixed in the version we use. |
-| The Mac on the car's network | [[untested]] the car still runs Humble |
+| The Mac on the car's network | [[untested]] as a ROS peer: the car still runs Humble. `pixi run doctor` ran on the car's switch on 21 Oct; on 6 Nov the Mac's `ros2` checks (Cyclone) may have upset the car's Fast DDS nodes (the audits) |
 | `pixi run doctor` | [[works]] on Linux and the Mac |

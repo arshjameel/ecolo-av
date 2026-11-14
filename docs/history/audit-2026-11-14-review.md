@@ -193,3 +193,27 @@ Proposed for the pages: the four simulation pages become two (a how-to and a "wh
 simulated" reference; `full-simulation.md` is a finished 15 Oct plan); `hud.md` (1,151 lines)
 splits by its own sections, and the developer window gets a page; `perception-and-hud-map.md`
 moves to history.
+
+## 10. The car today, computer by computer
+
+By the records. Every row rests on the 6 Nov audit, apart from the localization Pi.
+
+| Computer or board | Software on it | Seen on the car | Ours, only on the bench or in the sim |
+|---|---|---|---|
+| ESP32 control board | the 2025-26 C++ | 6 Nov: the remote reached the throttle; the car moved | the Rust firmware: builds, QEMU only, no record of a flash |
+| Motor Pi (CORTEX) | Ubuntu 22.04, Humble, the 2025-26 serial bridge | 6 Nov: holds the serial port | our `legacy_uart_bridge`: never run there |
+| Localization Pi | Humble's IMU and GPS nodes, plus our kit by 11 Nov | 6 Nov: IMU 200 Hz, GPS 10 Hz. 13 Nov: the car drove with "only the localization update" | which setup steps ran, and whether it starts at boot: not recorded |
+| Orin | JetPack 6, Humble: the lidar driver, a lidar odometry node, Foxglove's bridge | 6 Nov: lidar 9.9 Hz; both CAN ports down | everything of ours: ego, Nav2, NDT, perception, all of 0.3 |
+| Dash Pi | Docker, no ROS | nothing | the HUD and the map |
+| Camera Pis | MediaMTX | nothing by us | our camera stream and detector |
+| Wheel sensors' Arduino | the hardware lead's | not read: CAN down | `spine_bridge role:=sensors` |
+| Steering and brake actuators | settings unknown | no ends or limits measured | calibration, the adaptive brake |
+| Radar | plugged into the localization Pi; nothing reads it | nothing | the stand-in |
+
+Open, found on the way: `vehicle.yaml`'s `track: 0.75` is the average of the front (0.65)
+and the rear (0.85), and the speed wheels are the front ones: front, rear or average is a
+decision. TODO 112 (duplicate keys in `vehicle.yaml`) looks fixed, and isn't ticked.
+
+Proposed for the car pages: `rollout.md`, `car-setup.md` and `car-install.md` become one
+page; `car-day.md` keeps only the day's order; `car-evening.md` moves to history;
+`measure-the-car.md` and `car_measurements.md` become one.

@@ -6,9 +6,13 @@ sudo**, and **without touching** the 2025-26 Humble software. It all goes in one
 
 !!! warning "Not on the car yet"
     The kit is made and checked on a Mac, and installed offline on 64-bit ARM Linux by CI
-    on every push (GitHub's ARM runner, Ubuntu 24.04). On the Orin and the Pis it is
-    [[untested]]: car day is its first run there ([Car day](car-day.md), session 4). Back
-    up first, then install.
+    on every push (GitHub's ARM runner, Ubuntu 24.04). **Only the localization Pi has it**
+    (by 11 Nov; the car drove with it on 13 Nov). On the Orin and the Motor Pi it is
+    [[untested]] ([Car day](car-day.md), session 4). Back up first, then install.
+
+This page says **what the kit is, how it installs and how to undo it**. The steps for one
+computer, with services at boot: [Car setup](car-setup.md). The order on the car:
+[Rolling out](rollout.md) (short) and [Car day](car-day.md) (full).
 
 ## The plan in one picture
 
@@ -167,4 +171,5 @@ GitHub, so `git pull` in `~/aav-jazzy/aav` works once the computer has a GitHub 
 | the same installer on a Mac, with a Mac pack, the network blocked | [[works]] 15 Oct: unpack 44 s, build all 25 packages 43 s (the Rust ones from the kit's crates), run again 16 s; `aav.sh` cleared a Humble `PYTHONPATH` and set domain 42 |
 | `car_listen.sh` | [[works]] on a Mac (bash 3.2); its Linux parts (sysfs, /proc, `ss`) are [[untested]] |
 | `car-kit`, then `car_install.sh --all` on 64-bit ARM Linux, no network | [[works]] 24 Oct, CI's job `car-kit` (every push): GitHub's ARM runner, Ubuntu 24.04; the kit 1 min, the install and the build of every package, the HUD too, 4.5 min |
-| the install on the Orin or a Pi | [[untested]]: car day |
+| the install on the localization Pi | by 11 Nov: the first try failed building `aav_bringup` (it depended on the skipped `aav_hud`; PR #28, with a test). 13 Nov: the car drove with this update installed (Ben). No audit or bag records it |
+| the install on the Orin or the Motor Pi | [[untested]] |

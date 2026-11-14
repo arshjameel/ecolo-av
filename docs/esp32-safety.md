@@ -8,7 +8,7 @@ against the code; the proofs are in the last table.
     - **The car runs the 2025-26 C++ today** (`legacy.yaml`: `frame_version: 1`). It has
       none of the timeouts below. What it does instead: [section 8](#8-the-2025-26-c-and-open-questions).
     - Sections 2 to 7 are the **Rust firmware** (`firmware/spine/boards/esp32-umod`).
-      [[untested]] on the car: **never flashed yet**. Proven in `cargo test` and in the
+      [[untested]] on the car: **no record of a flash** (the board ran the C++ on 6 Nov). Proven in `cargo test` and in the
       emulator (QEMU) only.
 
 ## 1. The chain
