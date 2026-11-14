@@ -1,7 +1,8 @@
 """
 The whole stack in Gazebo: same nodes and configs as the car, simulated hardware.
 
-  ros2 launch aav_bringup sim.launch.py [world:=empty|test_lot|road|campus] [nav:=true]
+  ros2 launch aav_bringup sim.launch.py [stack:=|best|car|stock|ours]
+      [world:=empty|test_lot|road|campus] [nav:=true]
       [teleop:=false] [gui:=true] [rviz:=true]
       [perception:=false] [lane:=false|true|fake] [camera_obstacles:=false] [hud:=false]
       [map:=false] [foxglove:=false] [chase_camera:=true]
@@ -19,6 +20,8 @@ The whole stack in Gazebo: same nodes and configs as the car, simulated hardware
       [bridge:=rust|python]
       [ghost:=false] [simulator:=gazebo|own]
   pixi run sim world:=road                         the road: the car's camera and radar
+  pixi run sim world:=campus stack:=ours           every level ours (aav_description's
+                                                   config/stacks.yaml, docs/league.md)
   pixi run -e ml sim world:=road perception:=true  adds the detector and the stop-sign watcher
   pixi run sim world:=test_lot sim_speed:=3 hud:=true   Gazebo, RViz, Nav2 and the HUD window
   pixi run sim world:=test_lot map:=true           ... and the big screen's map window
@@ -166,7 +169,7 @@ camera's parts need world:=road. Every node runs on simulated time.
 
 import os
 
-from aav_description import vehicle
+from aav_description import stacks, vehicle
 from aav_gazebo import worlds
 from aav_spine import bridges
 from launch import LaunchDescription
@@ -192,9 +195,26 @@ def include(context, package, launch_file, **args):
                           for k, v in args.items()}.items())
 
 
+# The switches a stack (stack:=, config/stacks.yaml) may set, and their declared defaults.
+STACK_DEFAULTS = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.DEFAULT_TRACKER,
+                  'planner': vehicle.DEFAULT_PLANNER, 'costmap': vehicle.DEFAULT_COSTMAP,
+                  'navigator': vehicle.DEFAULT_NAVIGATOR, 'smoother': vehicle.DEFAULT_SMOOTHER,
+                  'behaviour': 'false', 'ndt_ekf': 'false', 'kiss_ekf': 'false'}
+
+
 def launch_setup(context):
-    def arg(name):
+    def raw(name):
         return LaunchConfiguration(name).perform(context)
+
+    # stack:= sets the switches in STACK_DEFAULTS at once; one given by hand still wins.
+    stack = raw('stack').strip().lower()
+    league = stacks.load()
+    picked = stacks.resolve(league, stack, {n: raw(n) for n in STACK_DEFAULTS},
+                            STACK_DEFAULTS)
+    print(f'[sim.launch.py] {stacks.describe(league, stack)}', flush=True)
+
+    def arg(name):
+        return picked[name] if name in picked else raw(name)
 
     world = arg('world')
     if world not in MAPS:
@@ -427,6 +447,11 @@ def launch_setup(context):
 
 def generate_launch_description():
     return LaunchDescription([
+        DeclareLaunchArgument('stack', default_value=stacks.NONE,
+                              description='the league (config/stacks.yaml): best, car, '
+                              'stock or ours sets the planner, path follower, costmap, '
+                              'navigator, smoother, behaviour and pose at once; a switch '
+                              'given by hand still wins. Empty: every switch as given'),
         DeclareLaunchArgument('world', default_value='empty',
                               description='empty, test_lot or road'),
         DeclareLaunchArgument('nav', default_value='true'),

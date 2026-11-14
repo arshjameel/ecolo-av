@@ -74,6 +74,7 @@ Add a row in the same commit as the feature (`CLAUDE.md`).
 
 | Feature | Why | Who | Date | Status |
 |---|---|---|---|---|
+| [The league](league.md) (`stack:=`, `aav_description` `config/stacks.yaml`, `stacks.py`) | Ben, 13 Nov: "Thats to many switches" and "picking the best algorithms in each location". One file names each level's champion and challengers; `stack:=best`, `car`, `stock` or `ours` sets every level at once in `sim.launch.py`, and a switch given by hand still wins. Nothing is deleted: a loser stays a challenger | Ben | 2026-11-14 | built |
 | Nav2 set up for a car (`aav_navigation`) | A car can't turn on the spot: SmacPlannerHybrid plans paths it can drive, with no Spin | Ben | 2026-10-09 | sim |
 | [MPPI path follower](path-followers.md), Pure Pursuit as an option | MPPI reached the first goal cleanly in 4 of 4 Gazebo runs; Pure Pursuit looped in 2 of 3 | Ben | 2026-10-22 | sim |
 | Reversing, with a stop zone behind the car | Backing up allows a three-point turn, instead of getting stuck facing a wall. On the car too since 1 Nov (Ben: "reverse and uturn should be in"; off 26 Oct-1 Nov): until the wheels tell direction (H5), the speed's sign is the last command's, tested on stands (3.2b) and on the ground (4.23-4.25) | Ben | 2026-10-22 | sim |

@@ -1,0 +1,94 @@
+# The league: each level's champion and its challengers, and the named stacks.
+#
+# One file answers "what is the car?" (docs/league.md; the design:
+# docs/designs/2026-11-13_one-shape.md, "The league"). A launch reads it through
+# aav_description.stacks: `pixi run sim stack:=ours` sets every switch below at once, and
+# a switch given on the command line still wins over the stack.
+#
+# Rules (one shape):
+#   - a challenger wins by a margin, on 3 or more runs of the same routes (tools/scorecard.py);
+#   - a person approves each swap, and the car needs its own win, on the Orin;
+#   - nothing is deleted: the loser stays a challenger (Ben, 5 Nov).
+#
+# A level's options each set one or more of sim.launch.py's switches, as text.
+
+levels:
+  pose:
+    what: where the car is (robot_localization's EKFs; what steers, not what is scored beside)
+    champion: ekf
+    options:
+      ekf: {ndt_ekf: 'false', kiss_ekf: 'false'}
+      ndt_ekf: {ndt_ekf: 'true', kiss_ekf: 'false'}
+      kiss_ekf: {ndt_ekf: 'false', kiss_ekf: 'true'}
+    score: ''
+  costmap:
+    what: what is in the way (Nav2's layers, or aav_costmap)
+    champion: nav2
+    options:
+      nav2: {costmap: nav2}
+      ours: {costmap: own}
+    score: ''
+  navigator:
+    what: plan, follow, replan, recover (bt_navigator, or aav_navigator)
+    champion: nav2
+    options:
+      nav2: {navigator: nav2}
+      ours: {navigator: own}
+    score: ''
+  path:
+    what: the path to the goal (keeps to the turning radius on the car)
+    champion: lattice
+    options:
+      lattice: {planner: lattice}
+      lattice_rs: {planner: own}
+      hybrid: {planner: hybrid}
+      diffusion: {planner: diffusion}
+    score: ''
+  steer:
+    what: follow the path and avoid (the path follower)
+    champion: mppi
+    options:
+      mppi: {controller: mppi, tracker: none}
+      mppi_lag: {controller: mppi, tracker: mppi_lag}
+      mpc_lag: {controller: mppi, tracker: mpc_lag}
+      rpp: {controller: rpp, tracker: none}
+    score: ''
+  smoother:
+    what: the velocity smoother after the follower
+    champion: nav2
+    options:
+      nav2: {smoother: nav2}
+      ours: {smoother: own}
+    score: ''
+  behaviour:
+    what: the behaviour planner and the road ahead (stop sign, obstacle, fence, goal)
+    champion: 'off'
+    options:
+      'off': {behaviour: 'false'}
+      'on': {behaviour: 'true'}
+    score: ''
+
+# Each stack names an option per level; a level left out takes its champion.
+stacks:
+  best:
+    what: every level's champion
+  car:
+    what: the champions approved for the car (car.launch.py runs these today)
+  stock:
+    what: every level stock (Nav2, robot_localization), as `measure controllers --stacks nav2`
+    pose: ekf
+    costmap: nav2
+    navigator: nav2
+    path: lattice
+    steer: mppi
+    smoother: nav2
+    behaviour: 'off'
+  ours:
+    what: every level ours that has one, as `measure controllers --stacks own`, plus the road ahead
+    pose: ekf
+    costmap: ours
+    navigator: ours
+    path: lattice_rs
+    steer: mppi_lag
+    smoother: nav2
+    behaviour: 'on'

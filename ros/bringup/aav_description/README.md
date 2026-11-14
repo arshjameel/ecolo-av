@@ -108,6 +108,18 @@ The strip every level shares (`/world/road_ahead`; [the whole car](../../../docs
 | `Strip`, `StopOnLine`, `resample`; `WAIT`, `FINAL` | the strip; a stop on it; the plan cut into points |
 | `road_ahead_ros.py`: `to_msg`, `from_msg` | `Strip` and `aav_interfaces/RoadAhead` (this one imports ROS messages) |
 
+### `aav_description.stacks` (no ROS): the league
+
+`config/stacks.yaml`: each level's champion and challengers, and the stacks `best`, `car`,
+`stock`, `ours` (`docs/league.md`). `sim.launch.py stack:=` reads it.
+
+| Item | What |
+|---|---|
+| `load(path=None)`, `check(league)` | the file, checked: every champion and every stack's pick is a level's option |
+| `choices(league, stack)`, `switches(league, stack)` | each level's option; the launch switches they set |
+| `resolve(league, stack, given, defaults)` | the switches to use: the stack's, except one set by hand (not its default) |
+| `describe(league, stack)` | one line for the log |
+
 ### `aav_description.adaptive_brake` (no ROS): a heavier car
 
 After the speed loop, before the brake: more brake when the car slows less than the empty

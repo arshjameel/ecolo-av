@@ -95,6 +95,7 @@ PAGES = [
     ('path-followers.md', 'Path followers', 'Regulated Pure Pursuit and MPPI, side by side'),
     ('switches.md', 'Switches', 'Every part you can swap, and pixi run pick'),
     ('trials.md', 'Trials', 'New path followers and AMCL, beside the main ones'),
+    ('league.md', 'The league', 'Each level\'s champion and challengers; stack:='),
     ('mppi-lag.md', 'MPPI with lag', "Nav2's MPPI in Rust, planning with the actuators' lag"),
     ('own-costmap.md', 'Our own costmap', "Nav2's costmap layers in Rust, beside Nav2's"),
     ('own-planner.md', 'Our own planner', "Nav2's State Lattice planner in Rust, beside Nav2's"),
