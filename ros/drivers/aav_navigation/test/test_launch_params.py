@@ -10,12 +10,11 @@ costmap topic, which nobody published, and drove blind to it. No ROS needed.
 from pathlib import Path
 import sys
 
-import yaml
-
 PACKAGE = Path(__file__).resolve().parents[1]
 ROS = PACKAGE.parents[1]
 sys.path.insert(0, str(ROS / 'bringup' / 'aav_description'))
 from aav_description import vehicle  # noqa: E402
+import yaml  # noqa: E402
 
 # What the launch file adds beside vehicle.mppi_lag_params (navigation.launch.py).
 LAUNCH_EXTRA = {'use_sim_time', 'costmap_topic'}
