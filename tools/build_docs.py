@@ -142,6 +142,8 @@ PAGES = [
     ('vehicle-model.md', 'The car as a linear model',
      'Transfer functions, state space, poles and margins (SYSC 3600)'),
     ('car-model.md', 'One car model', "The lags, ego's lead and its trace, in Python and Rust"),
+    ('safety-case.md', 'The safety case',
+     'Each hazard: what stops it, the number, who measured it; sim or car'),
     ('ghost-obstacles.md', 'Ghost obstacles', 'A pretend person only Nav2 sees: test stopping'),
     ('geofence.md', 'The geofence', "An area the computer's drivers may not leave, without Nav2"),
     ('sources-and-targets.md', 'Sources and targets',
