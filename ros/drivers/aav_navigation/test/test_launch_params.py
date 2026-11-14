@@ -15,7 +15,7 @@ import yaml
 PACKAGE = Path(__file__).resolve().parents[1]
 ROS = PACKAGE.parents[1]
 sys.path.insert(0, str(ROS / 'bringup' / 'aav_description'))
-from aav_description import vehicle  # noqa: E402
+from aav_description import vehicle  # noqa: E402, I100 - from the source tree, above
 
 # What the launch file adds beside vehicle.mppi_lag_params (navigation.launch.py).
 LAUNCH_EXTRA = {'use_sim_time', 'costmap_topic'}
