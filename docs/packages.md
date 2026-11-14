@@ -1,8 +1,11 @@
 # What each package does
 
 Every ROS package in `ros/`, area by area (`ros/<area>/<package>`), with what it reads
-and writes. Then the firmware, the HUD and the examples. 37 packages build today (the
-Flask HUD went to the archive on 25 Oct), and none is parked.
+and writes. Then the firmware, the HUD and the examples. 51 packages build with colcon
+today (counted 14 Nov; the Flask HUD went to the archive on 25 Oct), and none is parked.
+Two more folders are plain Rust programs, built with cargo: `aav_dev_window` and
+`aav_sim_cameras`. The newest packages (30 Oct to 8 Nov) are in the first table only:
+each one's README has its topics.
 
 ## At a glance
 
@@ -16,6 +19,9 @@ Flask HUD went to the archive on 25 Oct), and none is parked.
 | `aav_description` | bringup | the car's model (URDF) and `vehicle.yaml` | [[works]] the numbers are guesses | new |
 | `aav_localization` | localization | the two EKFs and `navsat_transform`: configuration only | [[works]] turtle, Gazebo and the bench | new |
 | `aav_gps_heading` | localization | `gps_heading`: the heading from the GPS receiver's velocity, for `ekf_global` | [[works]] Gazebo | new |
+| `aav_localization_health` | localization | warn-only checks on what the EKFs read and say, on `/localization/health` and `/diagnostics` | built 1 Nov | new (Betsi) |
+| `aav_ndt` | localization | NDT in Rust, a trial (`ndt:=true`): where the car is on a saved lidar map; never TF | built 29 Oct; a trial, off by default ([Trials](trials.md)) | new |
+| `aav_kiss_icp` | localization | KISS-ICP lidar odometry, a trial (`kiss_icp:=true`): how far the car moved, from the lidar alone | built 30 Oct; a trial, off by default ([Trials](trials.md)) | new, around stock KISS-ICP (MIT) |
 | `aav_teleop` | drivers | joystick → `/drivers/joy/cmd_vel`, plus an e-stop button | [[untested]] | new; the button map from 2025-26 `joy_teleop_ackerman` |
 | `aav_rc` | drivers | the RC transmitter, on "RC via ROS", as a driver (priority 95, proposed) | built 24 Oct; off until the hardware lead confirms the wire (H9) | new |
 | `aav_actuator_tests` | drivers | the stage 3-4 tests, as a driver (priority 60) | [[works]] Gazebo; [[untested]] on the car | new |
@@ -23,7 +29,15 @@ Flask HUD went to the archive on 25 Oct), and none is parked.
 | `aav_drive_to_point` | drivers | drive to one GPS or map point B, and stop there smoothly | [[works]] in Gazebo (15 Oct); [[untested]] on the car | new |
 | `aav_language` | drivers | plain English: a local model plans drive tools, you say yes | [[works]] Gazebo and the turtle | new |
 | `aav_navigation` | drivers | Nav2, set up for a car, and the maps | [[works]] goals reached in Gazebo | new |
-| `aav_routes` | drivers | street routes (Valhalla) as GPS waypoints for Nav2 | [[works]] in Gazebo | new |
+| `aav_routes` | drivers | street routes (Valhalla) as GPS waypoints for Nav2; directions on the campus (`router:=campus`) | [[works]] in Gazebo | new |
+| `aav_track` | drivers | trial path followers in `controller_server`'s place (`tracker:=` pure_pursuit, stanley, lqr, mpc, mpc_full, mpc_lag) | built 29 Oct; trials, off by default ([Trials](trials.md)) | new |
+| `aav_mppi_lag` | drivers | Nav2's MPPI in Rust, on a car model that knows the actuators' lag (`tracker:=mppi_lag`) | built 7 Nov; a trial ([its page](mppi-lag.md)) | new: a port of Nav2's MPPI (`PROVENANCE.md`) |
+| `aav_costmap` | drivers | our own costmap in Rust (`costmap:=own`), beside Nav2's | built 8 Nov; a trial ([its page](own-costmap.md)) | new: a port of Nav2's `costmap_2d` layers |
+| `aav_planner` | drivers | our own path planner in Rust (`planner:=own`): Nav2's Smac State Lattice ported | built 8 Nov; a trial ([its page](own-planner.md)) | new: a port of Nav2's planner |
+| `aav_navigator` | drivers | our own navigator in Rust (`navigator:=own`): what `bt_navigator` and `waypoint_follower` do | built 8 Nov; a trial ([its page](own-navigator.md)) | new |
+| `aav_smoother` | drivers | our own velocity smoother in Rust (`smoother:=own`): the turn rate from where the wheels can be | built 8 Nov; a trial ([its page](own-smoother.md)) | new |
+| `aav_diffusion_planner` | drivers | a trial planner (`planner:=diffusion`): a model draws paths, a guard checks them, the lattice's path otherwise | built 2 Nov; a trial, off by default ([Trials](trials.md)) | new |
+| `aav_behaviour` | drivers | the behaviour planner, a trial (`behaviour:=true`): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK, and a speed cap on Nav2 | built 7 Nov; off by default ([How the car stops](stopping.md)) | new |
 | `aav_command_mux` | command_mux | twist_mux: the priorities, the e-stop lock and the other locks | [[works]] | new |
 | `aav_io_mux` | io_mux | the sensor mux and the output mux: simulated data never drives the real car | [[works]] turtle, Gazebo and the bench; [[untested]] on the car | new |
 | `aav_ego` | ego | one command → speed and steering the car can do | [[works]] | new |
@@ -31,20 +45,25 @@ Flask HUD went to the archive on 25 Oct), and none is parked.
 | `aav_spine_bridge` | can_bridge | the same `spine_bridge` in Rust, on the firmware's own CAN code (`spine-core`); the default since 23 Oct (`bridge:=python` for the other) | [[works]] on the bench, against `spine_sim`; no spine board yet | new: a port of `aav_spine`'s node (T1.8) |
 | `aav_legacy` | can_bridge | today's car: the 2025-26 ESP32 over UART, through the Motor Pi | [[untested]] on the car | new, for the 2025-26 protocols |
 | `aav_turtlesim` | sim | turtlesim, steered like the car | [[works]] | new |
-| `aav_gazebo` | sim | Gazebo's car behind the real car's topics | [[works]] headless | new |
+| `aav_gazebo` | sim | Gazebo's car behind the real car's topics; its adapters run with our simulator too | [[works]] headless | new |
+| `aav_simulator` | sim | our own simulator in Rust, in `gz sim`'s place: the default since 8 Nov (`simulator:=gazebo` for Gazebo) | passed every `sim-check` leg Gazebo passes, 8 Nov ([its page](own-simulator.md)) | new |
+| `aav_sim_cameras` | sim | our simulator's cameras (Bevy, offscreen; needs a GPU). A cargo program, not a colcon package | built 7-8 Nov ([its page](own-simulator-cameras.md)) | new |
 | `aav_carla` | sim | a CARLA adapter (CARLA's Python client) | [[untested]] never run against a server | new |
 | `aav_spine_sim` | sim | the spine on a laptop: the firmware's logic on a model car (Rust) | [[works]] | new |
 | `aav_bench` | sim | pretend sensors: IMU, GPS, battery, camera, radar, lidar | [[works]] | new |
 | `aav_safety` | safety | the sensor watchdog: a twist_mux lock (30) when a sensor is stale, NaN, frozen or jumps | [[works]] Gazebo and the bench | new |
 | `aav_ghost` | safety | ghost obstacles: a pretend person only Nav2 sees | [[works]] in Gazebo | new |
-| `aav_interfaces` | ecolo_msgs | our 9 messages (such as `VehicleStatus`, `DataSource`, `Heartbeat`) and 2 actions (`ScriptedDrive`, `DriveToPoint`) | [[works]] builds | new |
+| `aav_interfaces` | ecolo_msgs | our 13 messages (such as `VehicleStatus`, `DataSource`, `Heartbeat`) and 2 actions (`ScriptedDrive`, `DriveToPoint`) | [[works]] builds | new |
 | `aav_bringup` | bringup | the six profiles, `stack.launch.py`, Foxglove, the machine files, the RViz layouts | [[works]] turtle, sim, replay, bench | new |
+| `aav_run_info` | bringup | `run_info`: which algorithms this run uses, on `/system/algorithms`, for the screens | built 3 Nov | new |
 | `aav_detector` | perception | RF-DETR (the default) or YOLO on the camera's images, and the stop-sign watcher | [[works]] on the bench | 2024-25 `camera_ros2_ws` |
 | `aav_radar_clusters` | perception | radar clustering (DBSCAN), with a box round each object (Rust) | [[works]] on the bench and in Gazebo | new: a rewrite of the 2025-26 `Nav_Radar` C++ node |
 | `aav_lidar` | perception | `lidar_scan`: the roof lidar's cloud as a 2D scan for Nav2 | [[works]] in Gazebo and the bench | new |
+| `aav_voxels` | perception | a trial beside `aav_lidar` (`voxels:=true`): the lidar's cloud as 0.25 m cubes for Nav2 | built 30 Oct; a trial, off by default | new |
 | `aav_lane_finder` | perception | the lane lines in the camera's pictures, as `/perception/lane/geometry` (OpenCV) | [[works]] on the bench | new |
 | `aav_lane_geometry` | perception | lane keeping: a driver on `/drivers/ai/cmd_vel` | [[works]] on the bench, with `aav_lane_finder` | 2025-26 `Lane_Detection_ROS2` |
 | `aav_hud` | hud | the in-car screens in Rust (raylib): the HUD (node `hud`) and the map window (node `map`) | [[works]] on a Mac: `--demo`, fed topics, bench mode. [[untested]] on a Pi and on the car | new |
+| `aav_dev_window` | hud | the developer window (Bevy), for a laptop: `pixi run dev-window`. A cargo program, not a colcon package | built 5 Nov | new |
 
 ## Sensors
 
@@ -81,7 +100,7 @@ Flask HUD went to the archive on 25 Oct), and none is parked.
 | `aav_scripted` | `/localization/odom/local` | `/drivers/scripted/cmd_vel` | the action `/scripted_drive` |
 | `aav_drive_to_point` | `/localization/odom/global`, `/sensors/gps/fix`, `/safety/estop`, the watchdog's lock, `/system/source`, `/control/cmd_vel` | `/drivers/point/cmd_vel` | the action `/drive_to_point`; calls `/fromLL` for a lat/lon B. `pixi run drive-to-point` ([A to B](a-to-b.md)) |
 | `aav_language` | your words; odometry, GPS, `/diagnostics`, `/vehicle/status` | `/safety/estop` (true only) | calls `/scripted_drive` and `/follow_gps_waypoints`; never publishes a velocity |
-| `aav_navigation` | `/localization/odom/local`, `/map`, `/goal_pose` | `/drivers/nav/cmd_vel`, `/plan` | SmacPlannerHybrid and MPPI (or Regulated Pure Pursuit); GPS waypoints through `/follow_gps_waypoints` |
+| `aav_navigation` | `/localization/odom/local`, `/map`, `/goal_pose` | `/drivers/nav/cmd_vel`, `/plan` | Smac State Lattice (Hybrid-A* if forward only) and MPPI (or Regulated Pure Pursuit); GPS waypoints through `/follow_gps_waypoints` |
 | `aav_command_mux` (twist_mux) | every `/drivers/<driver>/cmd_vel`, `/safety/estop` | `/control/cmd_vel` | priorities: [Build a driver](howto-driver.md) |
 | `aav_ego` | `/control/cmd_vel` | `/ego/actuator_cmd`, 50 times a second | 1.0 m/s top speed, ±0.5 rad, brakes after 0.3 s without a command |
 | `aav_io_mux` | `/ego/actuator_cmd`, `/system/source`, who publishes each sensor | `/control/<target>/actuator_cmd`, `/system/sensor_mux/state`, `/safety/output_mux/state` | the real car's commands only while every source is REAL: [Sources and targets](sources-and-targets.md) |
@@ -124,8 +143,8 @@ Only one runs at a time.
 
 | Package | Holds |
 |---|---|
-| `aav_interfaces` | 9 messages: `VehicleStatus` (mode, armed, e-stop, speed, steering, throttle, brake, fault bits), `ActuatorState`, `DataSource`, `SensorSource`, `SourceCheck`, `Heartbeat`, `RcSticks`, `SpineOutputs`, `WheelSpeeds`; 2 actions: `ScriptedDrive`, `DriveToPoint` |
-| `aav_bringup` | the profiles `turtle`, `sim`, `bench`, `car`, `carla`, `replay`; `stack.launch.py target:=`; `foxglove.launch.py`; the machine files `orin`, `motor_pi`, `laptop`, `all`, which pick the car's parts, perception too; the RViz layouts |
+| `aav_interfaces` | 13 messages: `VehicleStatus` (mode, armed, e-stop, speed, steering, throttle, brake, fault bits), `ActuatorState`, `ActuatorRaw`, `DataSource`, `SensorSource`, `SourceCheck`, `Heartbeat`, `LinkFrame`, `RcSticks`, `SpineOutputs`, `SteeringCalibration`, `UplinkHealth`, `WheelSpeeds`; 2 actions: `ScriptedDrive`, `DriveToPoint` |
+| `aav_bringup` | the profiles `turtle`, `sim`, `bench`, `car`, `carla`, `replay`; `stack.launch.py target:=`; `foxglove.launch.py`; the machine files `orin`, `motor_pi`, `motor_pi_alone`, `localization`, `laptop`, `all`, which pick the car's parts, perception too; the RViz layouts |
 
 ## Firmware
 

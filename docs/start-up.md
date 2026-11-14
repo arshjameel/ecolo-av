@@ -1,15 +1,15 @@
 # How it all fits: bottom-up, and what happens at start-up
 
-Written 15 October 2026, checked 25 October. Read [Sim and the car](sim-and-car.md)
+Written 15 October 2026, checked 25 October; the machine files, the simulator and the car's state brought up to date 14 November. Read [Sim and the car](sim-and-car.md)
 and [Maps and position](maps-and-position.md) first, or after: they go
 deeper on two parts of this page.
 
 > **The short version**
 > - The car is **layers**. Each one only talks to the layer above and the one below.
-> - Every layer can be tested on its own: the **turtle**, the **bench**, **Gazebo**, then the **car**.
+> - Every layer can be tested on its own: the **turtle**, the **bench**, the **simulator** (ours, or Gazebo), then the **car**.
 > - At start-up, each computer runs **one command**. Its machine file says which parts run there. They find each other on the network by themselves.
 > - Nothing moves until a **driver** asks, the **mux** allows it, and the **backend** is **armed**.
-> - **None of this has run on the real car yet.** The start-up below is the design, tested in simulation and on the bench.
+> - **The whole start-up has not run on the real car yet.** The car drove on 13 Nov with only the localization update installed; the full suite is not on it. The start-up below is the design, tested in simulation and on the bench.
 
 ## 1. The layers, bottom to top
 
@@ -55,13 +55,14 @@ board. The board runs the speed loop; each Jrk G2 runs a position loop.
 
 ## 3. What happens when the car starts and joins the network
 
-This is the design. It runs this way on the bench and in Gazebo, but never on the car yet.
+This is the design. It runs this way on the bench and in the simulators, but not yet, as a whole, on the car.
 
 ### Each computer runs one command
 
 ```bash
 pixi run car orin        # on Orin #1
 pixi run car motor_pi    # on the Motor-Pi (today's drive path)
+pixi run car localization   # on the localization Pi: the IMU and GPS drivers (8 Nov)
 pixi run -e ml car laptop   # on a laptop at the car: joystick, RF-DETR on its GPU
 ```
 
@@ -69,8 +70,10 @@ Its **machine file** (`ros/bringup/aav_bringup/config/machines/<name>.yaml`) lis
 
 | Machine | Parts that run there |
 |---|---|
-| `orin` | car model, mux, ego, scripted, drive to point, IMU, GPS, lidar, the two camera streams (RF-DETR inside), stop-sign watcher, localization, Nav2, the CAN bus (wheels), Foxglove |
+| `orin` | car model, mux, ego, scripted, drive to point, lidar, the two camera streams (RF-DETR inside), stop-sign watcher, localization, Nav2, the CAN bus (wheels), Foxglove |
 | `motor_pi` | the legacy backend: UART to the ESP32 |
+| `motor_pi_alone` | the Motor Pi by itself, for first moves: mux, ego, joystick, stop-sign watcher, the legacy backend (1 Nov) |
+| `localization` | the IMU and GPS drivers, on the localization Pi's USB (8 Nov); the EKFs stay on the Orin |
 | `laptop` | joystick, RF-DETR on the laptop's GPU, compressed camera pictures |
 | `all` | everything on one computer (the bench) |
 
@@ -119,7 +122,7 @@ A part that can't run there (no device, no model file, no PyTorch) is **skipped 
 | 1. Unit tests | `tools/test.sh` (`pixi run test` adds the ROS tests) | no ROS | maths, CAN frames, firmware logic |
 | 2. Turtle | `pixi run turtle` | a 2D turtle as the car | drivers, mux, ego, scripted drive |
 | 3. Bench | `pixi run bench`, `pixi run bench-check` | pretend sensors, the real CAN frames, the spine's own logic | the car's software path, e-stops, Nav2, stop sign |
-| 4. Gazebo | `pixi run sim world:=road` (or `world:=test_lot`), every sensor on | 3D physics, every sensor | localization, Nav2, perception, A to B |
+| 4. Simulator | `pixi run sim world:=road` (or `world:=test_lot`), every sensor on: our own simulator since 8 Nov, `simulator:=gazebo` for Gazebo | a 3D world, every sensor | localization, Nav2, perception, A to B |
 | 5. Replay | `ros2 bag play` | a recorded drive | tuning the EKFs against real data |
 | 6. CARLA | adapter ready, untested | photoreal towns, Carleton's streets | needs the NVIDIA computer (Q31; docs/carla.md) |
 | 7. Car on stands | `pixi run car orin` + `motor_pi` | the real boards, wheels in the air | signs, limits, the drive path |
@@ -141,7 +144,7 @@ A part that can't run there (no device, no model file, no PyTorch) is **skipped 
 
 | Gap | Blocks | Next step |
 |---|---|---|
-| Our code has never run on the car | everything on the car | the audits were 16 and 21 Oct; next, Jazzy or Pixi on the Orin (Q24; [car day](car-day.md)) |
+| Only the localization update is on the car (it drove with it on 13 Nov) | everything else on the car | [Rolling out](rollout.md), one computer at a time; [car day](car-day.md) |
 | The camera streams and the lidar driver are untested on the car | cameras and lidar on the car | the car day; RF-DETR on the Orin waits for the reflash (Q24) |
 | No steering sensor | closed-loop steering | the KTC-100 (KEFC) |
 | Wheel speed: the Arduino's CAN frames never seen yet | good odometry | the car day: `candump can0` on the Orin |

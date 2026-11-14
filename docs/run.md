@@ -44,7 +44,7 @@ pixi run build     # compiles our packages, in about 15 s
 
 | Terminal 1 | Terminal 2 |
 |---|---|
-| `pixi run turtle` | `pixi run keyboard` |
+| `pixi run turtle` | `pixi run keyboard --local` |
 
 | Key | Does |
 |---|---|
@@ -65,9 +65,9 @@ keyboard → `/drivers/keyboard/cmd_vel` → twist_mux → ego → `/ego/actuato
 | Command | Does |
 |---|---|
 | `pixi run graph` | rqt_graph: the nodes and topics, live |
-| `pixi run check` | compares the running graph with our contract (`pixi run check sim` for Gazebo) |
+| `pixi run check` | compares the running graph with our contract (`pixi run check sim` for the simulated car) |
 | `pixi run view` | the car model in RViz |
-| `pixi run sim` | Gazebo instead of the turtle ([Simulation](simulation.md)) |
+| `pixi run sim` | a simulated car instead of the turtle: our own simulator (the default since 8 Nov, [its page](own-simulator.md)); `pixi run sim simulator:=gazebo` for Gazebo ([Simulation](simulation.md)) |
 | `pixi run bench` | the real car's software, with stand-ins for the hardware ([Bench mode](bench.md)) |
 | `pixi run bench-check` | starts the bench and tests the whole graph: about 2 minutes |
 | `pixi run get models`, then `pixi run detect picture:=ros/perception/aav_detector/test/stop_sign.jpg` | RF-DETR Nano finds a stop sign in a picture (`detector:=yolo` for YOLO; [Perception](perception.md)) |

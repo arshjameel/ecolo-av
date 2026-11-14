@@ -2,6 +2,9 @@
 
 <p class="release-line">The AAV 2026–27 autonomy stack · 3 November 2026</p>
 
+> **A snapshot from 3 November 2026.** Release 0.3 merged on 9 November:
+> [what landed](#release-03-what-landed-9-november). What's true now: [Status](status.md) and [Features](features.md).
+
 <div class="pitch"><p><b>Sim-complete, car-ready.</b> Four screens of our own, a cockpit
 in Lichtblick, a joystick that stops when the pad dies, a Rust ESP32 that brakes in
 0.1 s, new ways to know where the car is and to plan its path, and a car-day runbook
@@ -426,6 +429,28 @@ The full list: [TODO.md](../TODO.md).
 - **Open source:** ROS 2 Jazzy, Nav2, robot_localization, Gazebo, RoboStack and Pixi,
   rclrs, raylib, Lichtblick, KISS-ICP, Roboflow's RF-DETR, Catppuccin, embedded-hal and
   Embassy.
+
+## Release 0.3: what landed (9 November)
+
+> **A snapshot from 9 November 2026**, when pull request #27 merged. Short on purpose:
+> the numbers are on each page, and in [TODO.md](../TODO.md)'s 0.3 sections.
+
+**The car's defaults are kept.** Everything new is a trial beside the default, off or
+simulator-only: [Rolling out](rollout.md) says what changes on the car. "It drives", the
+first line of "Coming in 0.3" above, is not in this release.
+
+| New in 0.3 | Switch | State on 8 Nov | Page |
+|---|---|---|---|
+| Our own simulator, in Rust, with its cameras | the default; `simulator:=gazebo` for Gazebo | passed every `sim-check` leg Gazebo passes; needs a GPU for its cameras | [Our simulator](own-simulator.md), [its cameras](own-simulator-cameras.md) |
+| Our own costmap, planner, navigator and velocity smoother, in Rust | `costmap:=own`, `planner:=own`, `navigator:=own`, `smoother:=own` | trials, scored beside Nav2's in our simulator; Nav2's stay the default | [costmap](own-costmap.md), [planner](own-planner.md), [navigator](own-navigator.md), [smoother](own-smoother.md) |
+| MPPI and MPC that know the actuators' lag | `tracker:=mppi_lag`, `tracker:=mpc_lag` | trials | [MPPI with lag](mppi-lag.md), [Trials](trials.md#lag-aware-mpc-7-nov-mpc_lag) |
+| One car model, ego's lag lead and trace, the squiggly line | `lag_lead:` (simulator only) | built; the lead waits for the car's measured numbers | [One car model](car-model.md), [HUD](hud.md#the-squiggly-line-ahead) |
+| One stopping law, the behaviour planner, the stop-point check | `behaviour:=true`; `sim-check --stop-point` | a trial, off by default | [How the car stops](stopping.md) |
+| The adaptive brake, for a heavier car | `adaptive_brake:=true` (simulator) | a simulator trial; the brake's real limits wait for the car | [A heavier car](stopping.md#4-a-heavier-car-the-adaptive-brake) |
+| The diffusion planner, behind its guard | `planner:=diffusion`; on the car only with `diffusion_trial:=true`, 0.5 m/s at most | 88 % of plans from the model in the simulator; the car trial not run | [Trials](trials.md#diffusion-7-8-nov-the-u-turn-the-orin-the-car) |
+| The campus world, directions on it, lane drives scored | `world:=campus` (after `pixi run campus`), `router:=campus`, `measure lane` | simulator; P4 to the Fieldhouse reached 1 of 2 with our navigator | [The campus](campus.md), [Routes](routes.md#on-the-campus) |
+| The hardware debug plan: ESP32 status lines, the link check, the graphs page | `pixi run link-check`, `pixi run esp first-check`, `esp walk` | built | [Hardware debug](hardware-debug.md) |
+| IMU and GPS on the localization Pi (Senura) | `pixi run car localization` | built | [Rolling out](rollout.md) |
 
 ## Release 0.1: the first pass (11 October)
 

@@ -1,6 +1,6 @@
 # Every test we've talked about
 
-Written 15 October 2026, checked 25 October, for the team: every test from our talks, in one place,
+Written 15 October 2026, checked 25 October (commands and flags checked again 14 November), for the team: every test from our talks, in one place,
 in the order to run them. Each one says what it proves, how to run it, and when it passes.
 
 > **The short version**
@@ -20,6 +20,13 @@ in the order to run them. Each one says what it proves, how to run it, and when 
 ## Stage 1: the simulator (Gazebo and the turtle)
 
 Nothing real moves. Run these on any laptop.
+
+Since 8 Nov `pixi run sim` and `pixi run sim-check` run **our own simulator** by default
+([its page](own-simulator.md)); add `--simulator gazebo` (or `simulator:=gazebo`) for Gazebo,
+and on a computer with no GPU. The results dated before 8 Nov below were in Gazebo. The
+0.3 checks (`sim-check --stop-point`, `--behaviour`, `--loaded-stop`, `measure lane`) have
+no rows here yet: their results are on [How the car stops](stopping.md) and
+[Perception](perception.md#in-the-simulators-8-nov).
 
 | # | Test | Run | Passes when | Status |
 |---|---|---|---|---|

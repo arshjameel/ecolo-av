@@ -2,7 +2,7 @@
 
 New to the team? Start here. In about an hour you'll have ROS on your laptop, drive a
 turtle that steers like the car, see every node and topic in rqt_graph, drive the
-simulated car in Gazebo, and watch Nav2 plan a path through a costmap. Each step says what
+simulated car, and watch Nav2 plan a path through a costmap. Each step says what
 you should see.
 
 ## What you need
@@ -90,16 +90,20 @@ topic, its type, and who publishes and reads it.
 Stop the turtle first (Ctrl-C in each terminal).
 
 ```bash
-pixi run sim      # the same on Linux and on a Mac
+pixi run sim simulator:=gazebo      # the same on Linux and on a Mac
 ```
 
 **You should see:**
 - **Gazebo:** the car, red and white, on a grey ground plane. The camera follows it.
 - **RViz:** the car model, the map, and the costmaps around the car.
 
+Plain `pixi run sim` runs our own simulator instead (the default since 8 Nov,
+[its page](own-simulator.md)). It has no window of its own: you get RViz only, and the
+rest of this page works the same.
+
 ![The car in Gazebo, driving a left curve](img/gazebo-car.png)
 
-On a Mac, Gazebo's window runs as a separate program, and `pixi run sim` starts it for you.
+On a Mac, Gazebo's window runs as a separate program, and `simulator:=gazebo` starts it for you.
 If you close it, `pixi run tools/ros.sh tools/gz_window.sh` opens it again.
 
 Drive it with `pixi run keyboard --sim` in another terminal. Then run
@@ -119,7 +123,7 @@ The costmaps are the grids that Nav2 plans through:
 - **global**: the whole map.
 
 For walls to plan around, start Gazebo with the test lot instead:
-`pixi run sim world:=test_lot`. [Costmaps](costmaps.md) explains how to draw your own.
+`pixi run sim world:=test_lot` (add `simulator:=gazebo` for Gazebo's window). [Costmaps](costmaps.md) explains how to draw your own.
 
 !!! note "The same goal from a terminal"
   `pixi run tools/ros.sh ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose "{pose: {header: {frame_id: map}, pose: {position: {x: 8.0, y: 0.0}, orientation: {w: 1.0}}}}"`

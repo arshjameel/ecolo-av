@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Start the whole simulated car on this computer, in one go:
-#   Gazebo (the car, in the walled test lot), the nav screen (RViz), the HUD, and the
+#   the simulator (ours by default; the car, in the walled test lot), the nav screen (RViz), the HUD, and the
 #   street-map window.
 #
 # Everything runs localhost-only (tools/ros.sh --local), so it shares one ROS graph on
@@ -79,7 +79,7 @@ for f in maps/streets/ottawa.pmtiles:street-map maps/places/ottawa.db:places; do
   [ -f "${f%%:*}" ] || echo "note: no ${f%%:*}, so the map window misses it: run pixi run get ${f##*:} once"
 done
 
-echo "1/$steps  Gazebo (the car, in the test lot) — give it ~20s to spawn..."
+echo "1/$steps  the simulator (the car, in the test lot) — give it ~20s to spawn..."
 # shellcheck disable=SC2086  # sim_args is several words on purpose
 start tools/ros.sh --local ros2 launch aav_bringup sim.launch.py $sim_args
 sleep 20
