@@ -2,7 +2,7 @@
 
 * **Author:** Ben (the ask), written up 14 Nov 2026 from Fable's review of every design
 * **Date:** 2026-11-14
-* **Status:** Proposed. Nothing new is built. TODO 153-160. Decisions W1-W7 are Ben's.
+* **Status:** Proposed. Nothing new is built. TODO 153-160. Decisions W1-W7 and rulings R1-R6 are Ben's.
 * **Builds on:** [one shape](2026-11-13_one-shape.md) (the nine levels, the league, the
   switches: all kept). This page changes how its lane layer works, and adds what it left out.
 
@@ -88,6 +88,7 @@ of what it was last given. No timeout to tune, and silence can never mean "carry
 | 5 Behaviour (the boss) | a speed cap only Nav2's controller reads | **writes the road ahead**; the only writer |
 | 6 Path (lattice, diffusion) | plans on the costmap | plans inside the edges; used to go round things and in lots |
 | 7 Follow (MPPI, MPC, RPP) | follows the path; some read costs | follows the line, inside the edges, under the speed limit |
+| The point driver (Gate 4's driver) | plans its own stop; the stop zone doesn't guard it | reads the same strip: a straight line to B, the same stop points. One shape left it out |
 | 8 Ego | limits | adds: never faster than the strip allows (the filter's first form) |
 | 9 Geofence, stop sign, stop zone | each its own sum | unchanged, and underneath: they still stop the car alone |
 | Screens | several pictures | draw the one strip: the same picture the car drives by |
@@ -169,6 +170,33 @@ MPPI gets one new critic: the things' places over the next 3 s, not only where t
 | The filter's first form is one line in ego: speed never above what the strip allows | no solver; a person on the joystick is never trimmed |
 | The locks keep their own margins | Simplex (Sha 2001): the simple layer never depends on the clever one |
 
+## Where the designs disagree
+
+Found by reading all 35 designs. Nothing in the repo says which side wins. Each needs one word from Ben.
+
+| # | Question | One side | The other | Proposed |
+|---|---|---|---|---|
+| R1 | Where does the stopping filter go? | "in ego" (TODO 104) | before twist_mux (how the car stops, knows itself; K1) | its first form in ego, speed only, and only for the automatic drivers' commands; the full filter before twist_mux |
+| R2 | What does the boss's silence mean? | "no crossing, slow down" (one shape) | today a cap of 0.0 means no limit, and a dead boss removes the cap | the strip ends: stop |
+| R3 | Which follower is "the choice"? | MPC (the control plan, 27 Oct) | MPPI (one car, one shape) | MPPI is the champion; MPC a challenger; the league decides |
+| R4 | Gate 4: 1 m, or 2 m without RTK? | README, one car | `docs/tests.md` 5.2 | ask the team (G1); score against a tape mark |
+| R5 | "Safety is last, for every driver" | one shape's picture | the stop zone holds only Nav2 and the AI slot, not Gate 4's point driver | the point driver reads the road ahead, so one rule covers it |
+| R6 | The developer window | raylib (TODO 107) | Bevy (one window; Ben, 5 Nov) | Bevy: fix the TODO row |
+
+Also still waiting on the team, by the code's own comment: `IDLE_BRAKE` is 0.0 in
+`spine-core` ("Proposed ... Change only with the team"), so the brake lets go once the
+e-stop clears. The 2025-26 firmware held it full on. The first review raised it on 25 Oct.
+
+## Cheap things never tried
+
+| Thing | Cost | Proposed in |
+|---|---|---|
+| `observation_persistence` above 0 on the lidar layers: the stock blind-zone memory | one line in `nav2.yaml`, then the low-box test | tracks and memory; the EGM review |
+| Keep the last plan unless the new one is clearly better | a behaviour-tree edit | weak links 4.5; bears on the wiggle |
+| Shadow mode's stage 1: more topics in `record.sh`, and a score script | about a week | shadow mode |
+| A stop sign seen stays on the map | small, once the things exist | weak links 4.3 |
+| The chain stamped end to end: "it appears" to "the brake moves" | a measurement | weak links 4.3, 4.6 |
+
 ## What is missing
 
 Not ideas. The stack is **wide and thin**: about 60 packages, a challenger at nearly every
@@ -198,7 +226,7 @@ on the car, recorded, and scored**. Every idea above is worth more after that.
 |---|---|---|
 | 1 | **The car's seven blockers** (weak links, section 1), with the hardware lead | nothing else counts until programs may drive |
 | 2 | **Record everything, score something**: pictures, cubes, radar and locks in `record.sh`; one drive scored | every later step needs recordings |
-| 3 | **The wiggle's three tests** (TODO 149) | cheap; picks the localization fix |
+| 3 | **The wiggle's three tests** (TODO 149), and the cheap things above | cheap; picks the localization fix |
 | 4 | **The road ahead, in the sim**: the message; the boss writes it; the lane-centre line; Nav2's followers and ours read it | the merge itself |
 | 5 | **The lane finder as a pose sensor** | the best new idea for the money: all its parts exist |
 | 6 | **The things**: calibration, groups, the tracker, names | passing and waiting need it |

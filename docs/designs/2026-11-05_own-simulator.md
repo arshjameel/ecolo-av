@@ -6,6 +6,7 @@
   The window runs on pretend data and on live Gazebo. **7 Nov: the core is built**
   (`aav_simulator`, `simulator:=own`; [our own simulator](../own-simulator.md)): Gazebo's worlds,
   the car, the lidar, radar, IMU, GPS and clock, without cameras. TODO 114, 115, 134.
+  **Built (0.3, PR #27; checked 13 Nov):** the cameras too (`aav_sim_cameras`, TODO 135, 141), and `simulator:=own` is the default since 8 Nov. Left: a no-GPU camera path (TODO 151), the window's algorithm list and SWAP.
 
 Ben, 5 Nov: "we want to replace gazebo with our own contorl too. We want to create all the
 sensor data and stuff like gazebo does but in rust and with bevy."

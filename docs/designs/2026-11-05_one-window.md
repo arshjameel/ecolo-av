@@ -3,7 +3,7 @@
 * **Author:** Ben (the ask), written up 5 Nov 2026
 * **Date:** 2026-11-05
 * **Status:** the scope is Ben's. Everything marked "proposed" is **proposed; awaiting Ben**.
-  Revised after the EGM review. Nothing here has been built or run. TODO 107.
+  Revised after the EGM review. Partly built (checked 13 Nov), in Bevy and not raylib as this page first proposed: `ros/hud/aav_dev_window` (TODO 114), live on the simulators, with click-to-go. Not built: the algorithm list, SWAP, cancel a goal. TODO 107.
   Replaces TODO 73's "merge the cockpit and the debug HUD".
 
 ## Changed by Ben, the evening of 5 Nov

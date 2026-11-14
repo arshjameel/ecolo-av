@@ -2,8 +2,7 @@
 
 * **Author:** Ben
 * **Date:** 2026-10-26
-* **Status:** options only. Nothing here is decided. The choice is for the team and the
-  hardware lead.
+* **Status:** options only. The choice is still the team's and the hardware lead's. Checked 13 Nov: a closed loop in the bridge is written (`aav_legacy` `speed_control.py`, mode `pi`) but not selected, the car runs `open` (TODO 101); `aav.dbc`'s DRIVE_CMD still has no brake or signed-deceleration field (option 2 not taken).
 * **Part of:** `concepts_brief.md`, decision 2 ("How a deceleration reaches the brake").
 
 ## In one line

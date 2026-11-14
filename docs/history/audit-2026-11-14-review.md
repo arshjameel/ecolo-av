@@ -115,3 +115,34 @@ What blocks the full suite, by the records:
 | Open | Q2-Q4, Q7, Q8, Q10, Q12, Q15, Q17, Q24, Q27, Q28, Q30, Q33, Q34 |
 
 `conversation.md`'s "Open threads" list was brought up to date in the same commit.
+
+## 7. The 35 designs
+
+Seven read in full, 28 skimmed. "Built" was checked by the package or file being there, and `TODO.md`.
+
+| State | Designs |
+|---|---|
+| **Built** | geofence, NDT, KISS-ICP, voxels (a trial; TODO 93 open), trials, preflight (refused on the car, 49b), debug HUD, two screens (steps 1-3), diffusion (sim), our own simulator, behaviour and speed (a sim trial) |
+| **Partly** | how the car stops (the law, not the filter); one window (no algorithm list, SWAP or cancel); control plan (steps 1 and 5, in the sim); brake path (nothing chosen); research picks (1-3, not 4); the ESP32 debug brief (it says "nothing is built"; `wifi.rs` and `status-lines` exist) |
+| **Not built** | one shape; knows itself; shadow mode; tracks and memory; the twelve research ideas |
+| **History** | road to 0.2; the 0.2 brief; bench link (superseded by the ESP32 brief) |
+| **Reviews and reports** | the drift report, the design review, naming and cleanup, the Lyrical note, the EGM review, the ESP32 second review, Fable's review of one shape |
+
+Eleven `Status:` lines were wrong and were fixed in this commit.
+
+**Proposed, to move to `docs/history/`:** the drift report, the design review, naming and
+cleanup, the Lyrical note, the concepts brief, road to 0.2, the 0.2 brief, bench link, the
+EGM review, the ESP32 second review. **A "superseded" banner:** debug HUD, one car, weak
+links, research picks.
+
+**Review findings never acted on:**
+
+| Review | Finding | Today |
+|---|---|---|
+| Drift report, 25 Oct | `IDLE_BRAKE` 0.0 | unchanged; the code says it waits for the team |
+| Design review, 26 Oct | `aav.dbc` DRIVE_CMD has no brake field; reversing on by default | both unchanged |
+| Naming, 26 Oct | lane keeping lives under `ros/perception/`; `aav_legacy`, `aav_io_mux`, `ecolo_msgs`, `can_bridge` names | unchanged |
+| EGM review, 5 Nov | cut the long designs down (TODO 109) | not cut |
+| ESP32 brief, 7 Nov | rotate the WiFi password; close the C++ `/update` page | open (Q34) |
+
+Where the designs disagree with each other: [the whole car](../designs/2026-11-14_the-whole-car.md#where-the-designs-disagree), R1-R6.

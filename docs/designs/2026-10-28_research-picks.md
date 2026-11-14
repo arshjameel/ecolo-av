@@ -2,8 +2,8 @@
 
 * **Author:** Ben
 * **Date:** 2026-10-28
-* **Status:** research list, nothing decided. No RTK on this car (Ben, 28 Oct). Ben likes
-  1, 2 (NDT) and 3; 4 maybe (28 Oct)
+* **Status:** research list. No RTK on this car (Ben, 28 Oct). Ben likes
+  1, 2 (NDT) and 3; 4 maybe (28 Oct). Checked 13 Nov: picks 1-3 built in part, in the simulators (`aav_ndt`, `aav_kiss_icp`, `aav_track`'s MPC, `aav_voxels`, the geofence's RSS stopping path); pick 4 (camera-to-lidar calibration, IPM, an AprilTag at B) not built. Each idea's verdict: [research ideas](2026-11-04_research-ideas.md), Part 1
 
 Ben's picture of localization, which is how cars do it:
 

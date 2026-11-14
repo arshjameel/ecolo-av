@@ -2,8 +2,7 @@
 
 * **Author:** Ben (the pick), written up 5 Nov 2026
 * **Date:** 2026-11-05
-* **Status:** Proposed. Revised after the EGM review. TODO 102. Gazebo first. Nothing here
-  has been built or run. Numbers from Nav2 come from reading its source.
+* **Status:** Built as a trial (0.3, 7 Nov; checked 13 Nov): `ros/drivers/aav_behaviour`, `behaviour:=true`, sim only (TODO 102, 137). Not built: the `patient` progress checker, ASK's reply, the trackers reading the cap, people, the car. Its place in the whole: [one shape](2026-11-13_one-shape.md), level 5. Numbers from Nav2 come from reading its source.
 
 Ben, 4 Nov: "we also considered state machines for speeding up and slowing down and
 steering to make the car more spesent". His pick that day: "The behaviour state manche +
