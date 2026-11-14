@@ -3,6 +3,21 @@
 The current work list, newest first. Tick items off as they land; each tick = a commit.
 Ben's messages, word for word: `docs/history/messages-*.md`.
 
+## The whole car: every design merged (14 Nov)
+
+Ben, 13-14 Nov: "a review of everything with the plan of merging everything into the best version possible ... what am I missing". The page: [the whole car](docs/designs/2026-11-14_the-whole-car.md). His words: `docs/history/messages-2026-11-14.md`.
+
+| # | Task | Status |
+|---|---|---|
+| 153 | **The whole car** ([design](docs/designs/2026-11-14_the-whole-car.md)): one picture of the world (the grid, the things, the road ahead), one car model, one scorecard; what is missing; the order | ✅ 14 Nov proposed. ⬜ Ben: W1-W7 |
+| 154 | **The road ahead** (`/world/road_ahead`): the line to follow (the right lane's centre), hard and soft edges, the speed limit and stop points from `stop_law.py`, and an end the car may not pass; the boss (`aav_behaviour`) is its only writer; Nav2's followers and ours read it; in the sim first | ⬜ after W1-W3 |
+| 155 | **The lane finder as a pose sensor**: its offset in the lane, against the lane map, into the EKF as a sideways correction; the lane driver stays as a challenger | ⬜ after W4, and the wiggle's tests (149) |
+| 156 | **The things** (`/world/things`): camera-to-lidar calibration; the cubes grouped; a small tracker (a stock one first, licence checked); names from the camera's boxes; the radar's speed per cluster; the list remembers what the lidar saw on the way in (TODO 93 and 103's Part B) | ⬜ |
+| 157 | **Record everything, score something**: `tools/record.sh` gains pictures (compressed), cubes, radar and the locks; one car drive scored; shadow mode's stage 1 (TODO 108) | ⬜ |
+| 158 | **The car's seven blockers** in one place (weak links, section 1): the firmware timeout (45), the brake follows a wish, wheel speed seen (60), clocks checked (a `car-day.md` step), the steering's centre (67), a truth for "1 m" | ⬜ with the hardware lead |
+| 159 | **A safety case**: one page per hazard: what stops it, the number, who measured it; actuator faults on purpose in the sim | ⬜ |
+| 160 | **Shrink the docs and this file**: pages merged or moved to `docs/history/`; TODO's finished sections moved out; a short "what is next" at the top | 🔧 14 Nov: the audit of every page is under way on branch `review-13nov` |
+
 ## One shape, and lanes as soft costs (13 Nov)
 
 Ben, 13 Nov: "How can we make all of this fit together better", and lane lines "it can cross but only if it needs to and to stay on the right side". The page: [one shape](docs/designs/2026-11-13_one-shape.md).
