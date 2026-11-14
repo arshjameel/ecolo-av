@@ -16,6 +16,7 @@
   <exec_depend>diagnostic_msgs</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>aav_description</exec_depend>
+  <exec_depend>aav_interfaces</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 

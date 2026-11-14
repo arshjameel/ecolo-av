@@ -6,6 +6,12 @@ Subscribes  control/cmd_vel   geometry_msgs/TwistStamped (or Twist, use_stamped:
             drivers/<d>/lag_aware  std_msgs/Bool, latched (transient local), and
             drivers/<d>/cmd_vel    geometry_msgs/TwistStamped, for each d in
                                    lag_aware_drivers: is a lag-aware driver driving?
+            world/road_ahead  aav_interfaces/RoadAhead (map), and
+            localization/odom/global  nav_msgs/Odometry (map): only with road_ahead true.
+                              An automatic driver's forward speed (road_ahead_drivers) is
+                              never above what the road ahead allows where the car is
+                              (road_limit.py); no road, or a pose older than
+                              road_pose_timeout s, allows 0. People are never trimmed
 Publishes   ego/actuator_cmd  ackermann_msgs/AckermannDriveStamped, at rate_hz
             ego/trace         nav_msgs/Path, frame base_link, at trace_rate_hz: where the
                               car goes over trace_horizon s (trace_ahead.py)
@@ -18,8 +24,11 @@ Parameters  the limits (ackermann.Limits) and the body (dynamics.Body: mass, pay
             accelerations, the sideways limit), read at start-up. Only max_steering_rate,
             payload and lag_lead may change while running (ackermann.LIVE_LIMITS)
             lag_lead (auto|on|off), lag_lead_filter, lag_lead_max_speed, lag_lead_max_steer,
-            lag_aware_drivers: the lead (lag_lead.py); trace_horizon, trace_rate_hz,
-            trace_speed_loop: the trace (trace_ahead.py; its twin takes each measured speed);
+            lag_aware_drivers: the lead (lag_lead.py); road_ahead, road_ahead_drivers
+            (each one of lag_aware_drivers), road_pose_timeout: the road ahead's limit
+            (road_limit.py; docs/designs/2026-11-14_the-whole-car.md); trace_horizon,
+            trace_rate_hz, trace_speed_loop: the trace (trace_ahead.py; its twin takes each
+            measured speed);
             vehicle_yaml: the car model's numbers ('' = aav_description's vehicle.yaml)
 
 Every backend (the CAN spine, the legacy serial bridge, turtlesim, Gazebo,
@@ -37,13 +46,17 @@ import signal
 
 from aav_description import vehicle
 from aav_description.car_model import ActuatorConfig, speed_loop_profile
+from aav_description.road_ahead_ros import from_msg
+from aav_description.stop_law import from_car_model
 from aav_ego import dynamics
 from aav_ego.ackermann import EgoModel, Limits, live_change, LIVE_LIMITS
 from aav_ego.dynamics import Body
 from aav_ego.lag_lead import (check_mode, command_key, LagAwareWatch, LagLead, lead_wanted,
                               LeadLimits, LeadTimes, START_ONLY)
+from aav_ego.road_limit import allowed, cap
 from aav_ego.stop_ahead import stop_point
 from aav_ego.trace_ahead import trace, Twin
+from aav_interfaces.msg import RoadAhead
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import PoseStamped, Twist, TwistStamped
 from nav_msgs.msg import Odometry, Path
@@ -97,6 +110,7 @@ class Ego(Node):
             self.create_subscription(
                 TwistStamped, f'drivers/{driver}/cmd_vel',
                 lambda msg, d=driver: self.watch.sent(d, self.key(msg)), 10)
+        self.declare_road_ahead()
         self.create_timer(1.0 / rate, self.tick)
         if self.trace_rate > 0.0:
             self.create_timer(1.0 / self.trace_rate, self.publish_trace)
@@ -126,7 +140,8 @@ class Ego(Node):
         times = LeadTimes.from_config(cfg)
         self.lead = LagLead(times, limits)
         self.watch = LagAwareWatch(drivers)
-        self.twin = Twin(cfg, speed_loop_profile(profile))
+        self.twin_loop = speed_loop_profile(profile)
+        self.twin = Twin(cfg, self.twin_loop)
         self.trace_dt = 1.0 / rate
         self.trace_every = max(1, round(rate / self.trace_rate)) if self.trace_rate > 0 else 1
         self.lead_on = False         # did the lead run on the last tick
@@ -135,6 +150,52 @@ class Ego(Node):
             f' leads {times.speed_up:.2f} s speeding up, {times.slow_down:.2f} s slowing, '
             f'{times.steer:.2f} s steering, all guesses until tests 3.10-4.5; lag-aware '
             f'drivers watched: {", ".join(drivers) or "none"}')
+
+    def declare_road_ahead(self):
+        """Declare the road ahead's limit on the automatic drivers (road_limit.py)."""
+        p = self.declare_parameter
+        self.road_on = bool(p('road_ahead', False).value)
+        self.road_drivers = list(p('road_ahead_drivers', ['nav']).value)
+        self.road_pose_timeout = float(p('road_pose_timeout', 1.0).value)
+        self.road, self.road_pose, self.road_pose_time = None, None, None
+        self.road_trimming = False
+        if not self.road_on:
+            return
+        unwatched = [d for d in self.road_drivers if d not in self.watch.aware]
+        if unwatched:
+            raise ValueError(f'road_ahead_drivers {unwatched} must also be in '
+                             f'lag_aware_drivers: ego only knows whose command it is for those')
+        jerk = self.limits.max_jerk if self.limits.max_jerk > 0.0 else 1e6
+        self.road_curve = from_car_model(self.twin.cfg, self.limits.max_deceleration, jerk,
+                                         loop=self.twin_loop)
+        self.create_subscription(RoadAhead, 'world/road_ahead',
+                                 lambda m: setattr(self, 'road', from_msg(m)), 10)
+        self.create_subscription(Odometry, 'localization/odom/global', self.on_global, 10)
+        self.get_logger().info(
+            f'the road ahead limits {", ".join(self.road_drivers)}: '
+            f'{self.road_curve.describe()}')
+
+    def on_global(self, msg: Odometry):
+        self.road_pose = (msg.pose.pose.position.x, msg.pose.pose.position.y)
+        self.road_pose_time = self.get_clock().now()
+
+    def road_limit(self, cmd, now):
+        """Return cmd, its forward speed trimmed to the road ahead if an automatic driver's."""
+        if not self.road_on or cmd is None or self.watch.whose(self.cmd_key) not in \
+                self.road_drivers:
+            return cmd
+        age = (math.inf if self.road_pose_time is None
+               else (now - self.road_pose_time).nanoseconds * 1e-9)
+        limit = allowed(self.road, self.road_pose, age, self.road_pose_timeout,
+                        self.road_curve, self.limits.max_speed)
+        out = cap(cmd, limit)
+        trimming = out != cmd
+        if trimming != self.road_trimming:
+            self.get_logger().info(
+                f'the road ahead {"now trims" if trimming else "no longer trims"} the '
+                f'automatic driver' + (f' to {limit:.2f} m/s' if trimming else ''))
+        self.road_trimming = trimming
+        return out
 
     def sim(self):
         return bool(self.get_parameter('use_sim_time').value)
@@ -248,7 +309,7 @@ class Ego(Node):
         now = self.get_clock().now()
         dt = 0.0 if self.last_tick is None else (now - self.last_tick).nanoseconds * 1e-9
         self.last_tick = now
-        cmd = self.fresh_cmd(now)
+        cmd = self.road_limit(self.fresh_cmd(now), now)
         aware = self.watch.driving(self.cmd_key) if cmd is not None else None
         lead_on = cmd is not None and lead_wanted(self.lag_lead, self.sim(), aware is not None)
         if lead_on != self.lead_on and cmd is not None:   # a stop needs no log line

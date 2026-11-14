@@ -2,6 +2,10 @@
 ego: /control/cmd_vel (TwistStamped from twist_mux) -> /ego/actuator_cmd (AckermannDriveStamped).
 
   ros2 launch aav_ego ego.launch.py [use_sim_time:=false] [max_speed:=0.3] [look_ahead:=true]
+                                [road_ahead:=false]
+
+road_ahead (false): true holds Nav2's commands to /world/road_ahead's speed limit
+(ego_node.py, road_limit.py); sim.launch.py sets it with behaviour:=true, its writer.
 
 look_ahead (true) also starts look_ahead: the squiggly line's numbers for the screens
 (/ego/plan_ahead, /ego/ahead; look_ahead_node.py). It only listens and publishes those two.
@@ -57,6 +61,8 @@ def ego_node(context):
             raise ValueError(f'sim_max_speed:={sim} must be above 0 and at most '
                              f'{SIM_MAX_SPEED} m/s')
         params.append({'max_speed': limit})
+    if context.launch_configurations.get('road_ahead', 'false').strip().lower() == 'true':
+        params.append({'road_ahead': True})
     nodes = [Node(package='aav_ego', executable='ego', name='ego', parameters=params)]
     if context.launch_configurations.get('look_ahead', 'true').strip().lower() == 'true':
         nodes.append(Node(package='aav_ego', executable='look_ahead', name='look_ahead',
@@ -72,6 +78,9 @@ def generate_launch_description():
         DeclareLaunchArgument('sim_max_speed', default_value='',
                               description='m/s: a higher cap, in a simulator only '
                                           '(sim.launch.py sim_speed:=)'),
+        DeclareLaunchArgument('road_ahead', default_value='false',
+                              description='true: Nav2 never faster than /world/road_ahead '
+                                          'allows (needs the behaviour planner)'),
         DeclareLaunchArgument('look_ahead', default_value='true',
                               description='also start look_ahead (the squiggly line)'),
         OpaqueFunction(function=ego_node),

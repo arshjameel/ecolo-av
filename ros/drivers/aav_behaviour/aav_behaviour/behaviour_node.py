@@ -36,9 +36,9 @@ import signal
 
 from aav_behaviour.behaviour import (along_until, Behaviour, diagnostic, lane_ahead,
                                      path_left, Settings, Stop, World)
-from aav_behaviour.road_ahead import build
-from aav_behaviour.road_ahead_ros import to_msg
 from aav_description.car_model import ActuatorConfig, speed_loop_profile
+from aav_description.road_ahead import build
+from aav_description.road_ahead_ros import to_msg
 from aav_description.stop_law import from_car_model
 from aav_interfaces.msg import RoadAhead
 from aav_safety.geofence import Polygon

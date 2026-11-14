@@ -92,7 +92,8 @@ bench's argument names:
                       tracker:=mppi_lag reversing:=false, no Nav2 server navigates
                       (docs/own-navigator.md)
   behaviour:=true    the behaviour states and a speed cap on Nav2 from the stopping law
-                      (aav_behaviour, a trial: docs/stopping.md)
+                      (aav_behaviour, a trial: docs/stopping.md); it also sends the road ahead
+                      (/world/road_ahead), and ego holds Nav2 to it (ego road_ahead:=true)
   amcl:=true          stock AMCL beside the global EKF, scored only (docs/trials.md): only
                       in world:=test_lot with nav:=true and the lidar, from the start pose
   voxels:=true        Nav2's local costmap and collision_monitor read the lidar as 0.25 m
@@ -278,8 +279,9 @@ def launch_setup(context):
                 esp32=arg('esp32'), esp32_loop=arg('esp32_loop'), simulator=simulator),
         include(context, 'aav_command_mux', 'mux.launch.py', use_sim_time='true',
                 sensor_lock=flag['watchdog'], geofence_lock=flag['geofence']),
+        # behaviour:=true: the road ahead's writer runs, so ego holds Nav2 to it.
         include(context, 'aav_ego', 'ego.launch.py', use_sim_time='true',
-                sim_max_speed=sim_speed),
+                sim_max_speed=sim_speed, road_ahead=str(flag['behaviour']).lower()),
         # ego's commands go to Gazebo (gazebo_adapter, or spine_bridge with spine:=true)
         # only while every source is SIM (aav_io_mux).
         include(context, 'aav_io_mux', 'io_mux.launch.py', target='sim', source='sim',

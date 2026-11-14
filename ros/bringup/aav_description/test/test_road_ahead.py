@@ -1,16 +1,18 @@
 """The road ahead: the strip's line, its stops, its end, and what a reader is allowed."""
 
+from collections import namedtuple
 import math
 
-from aav_behaviour.behaviour import Stop
-from aav_behaviour.road_ahead import (along_of, build, FINAL, limit_at, resample, room_at,
-                                      WAIT)
+from aav_description.road_ahead import (along_of, build, FINAL, limit_at, resample, room_at,
+                                        WAIT)
 from aav_description.stop_law import from_car_model
 import pytest
 
 CURVE = from_car_model()
 BASE = 1.0
 STRAIGHT = [(0.0, 0.0), (100.0, 0.0)]      # 100 m along x
+# The writer's stops: aav_behaviour's Stop has the same two fields.
+Stop = namedtuple('Stop', 'reason left')
 
 
 def test_resample_starts_at_the_foot_and_stops_at_length():

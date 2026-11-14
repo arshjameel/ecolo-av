@@ -62,9 +62,7 @@ Parameters (from `vehicle.behaviour_params`: nav2.yaml, vehicle.yaml, ego.yaml):
 | Module | No ROS? | Holds |
 |---|---|---|
 | `behaviour.py` | yes | `Behaviour.step(World) -> Decision`, `Settings`, `Stop`; `path_left`, `along_until`, `lane_ahead`, `diagnostic` |
-| `road_ahead.py` | yes | the road ahead: `build` (the writer), `limit_at`, `room_at`, `along_of` (the readers); `resample`, `Strip`, `StopOnLine` |
-| `road_ahead_ros.py` | no | `to_msg`, `from_msg`: `Strip` and `aav_interfaces/RoadAhead` |
-| `behaviour_node.py` | no | the node |
+| `behaviour_node.py` | no | the node; the road ahead's maths is `aav_description`'s `road_ahead.py` |
 
 ## Invariants
 

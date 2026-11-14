@@ -65,6 +65,17 @@ Where Rust stands (written October 2026):
   example, `examples/rust-listener`, showed it in October; it was removed on 26 Oct,
   once these real nodes showed the same.
 
+**After adding a message type: `library not found for -l<package>__rosidl_typesupport_c`.**
+Seen 14 Nov, when `RoadAhead` was added. rclrs's build script finds the libraries' folders
+once and keeps them until `ROS_DISTRO` changes; `ros-env` looks again whenever the messages
+change. So an old build folder links a message package without its folder. A fresh build
+(CI) never sees it. On your laptop, clear rclrs's kept answer and build again:
+
+```sh
+rm -rf build/*/target/release/build/rclrs-* build/*/target/release/.fingerprint/rclrs-*
+pixi run build
+```
+
 ## Rust on the Pi and the ESP32
 
 | Target | Rust there | A ROS node? |

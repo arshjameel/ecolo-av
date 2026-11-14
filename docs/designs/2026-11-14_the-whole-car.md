@@ -2,7 +2,9 @@
 
 * **Author:** Ben (the ask), written up 14 Nov 2026 from Fable's review of every design
 * **Date:** 2026-11-14
-* **Status:** Proposed. Nothing new is built. TODO 153-160. Decisions W1-W7 and rulings R1-R6 are Ben's.
+* **Status:** Building (Ben, 14 Nov: "build the unified stack ... I would like to keep our code
+  too"; nothing is cut). Built: the road ahead's message, its writer (the behaviour planner)
+  and its first reader (ego holds Nav2 to it, R1's first form). TODO 153-160. W1-W7, R1-R6 open.
 * **Builds on:** [one shape](2026-11-13_one-shape.md) (the nine levels, the league, the
   switches: all kept). This page changes how its lane layer works, and adds what it left out.
 
@@ -107,6 +109,19 @@ of what it was last given. No timeout to tune, and silence can never mean "carry
 The cost ramp stays as a challenger (`path:=lattice` with the mask). The lane-centre line
 was one shape's step 1b; this page makes it step 1.
 
+### Built so far (14 Nov)
+
+| Part | Where | Seen |
+|---|---|---|
+| The message | `aav_interfaces/RoadAhead`, `StopPoint`; topic `/world/road_ahead` | — |
+| The maths, one copy | `aav_description` `road_ahead.py` (beside the stopping law): `build` for the writer, `limit_at` for readers | 14 tests |
+| The writer | `aav_behaviour`: `/plan`'s next 40 m, its stops, 10 Hz | alone: 10 Hz, the end at the plan's end |
+| The first reader | ego (`road_ahead:=true`, set by `behaviour:=true`): Nav2's forward speed never above the strip's; people never trimmed; no strip or a stale pose allows 0 | alone: Nav2 asking 0.8 m/s, 0.5 m from the end, got 0.31; the joystick 0.8 |
+
+Still to do in step 4: the lane-centre line (needs the lane map, W5); the point driver's
+strip (R5); the trial trackers and `mppi_lag` reading it; the screens drawing it; a full
+sim run with `behaviour:=true`.
+
 ## Better ideas, area by area
 
 Each row merges parts we already have with a known method. All proposed.
@@ -202,7 +217,8 @@ e-stop clears. The 2025-26 firmware held it full on. The first review raised it 
 ## What is missing
 
 Not ideas. The stack is **wide and thin**: about 60 packages, a challenger at nearly every
-level, and the real car has so far driven with only the localization update installed (13 Nov).
+level, and the real car has so far driven with only the localization update installed (13 Nov;
+Ben, 14 Nov: "Localization run on the car without issue").
 
 | # | Missing | Evidence | It blocks |
 |---|---|---|---|
@@ -229,7 +245,7 @@ on the car, recorded, and scored**. Every idea above is worth more after that.
 | 1 | **The car's seven blockers** (weak links, section 1), with the hardware lead | nothing else counts until programs may drive |
 | 2 | **Record everything, score something**: pictures, cubes, radar and locks in `record.sh`; one drive scored | every later step needs recordings |
 | 3 | **The wiggle's three tests** (TODO 149), and the cheap things above | cheap; picks the localization fix |
-| 4 | **The road ahead, in the sim**: the message; the boss writes it; the lane-centre line; Nav2's followers and ours read it | the merge itself |
+| 4 | **The road ahead, in the sim**: the message; the boss writes it; the lane-centre line; Nav2's followers and ours read it | the merge itself. **Started 14 Nov**: the message, the writer, ego's limit on Nav2 (below) |
 | 5 | **The lane finder as a pose sensor** | the best new idea for the money: all its parts exist |
 | 6 | **The things**: calibration, groups, the tracker, names | passing and waiting need it |
 | 7 | **The league** (`stacks.yaml`, `stack:=`) | one answer to "what is the car?" |

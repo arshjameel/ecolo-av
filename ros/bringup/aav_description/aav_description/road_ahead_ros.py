@@ -7,7 +7,7 @@ The maths is road_ahead.py (no ROS). A reader does:
     v = limit_at(strip, x, y, curve, base)     # x, y in msg.header.frame_id (map)
 """
 
-from aav_behaviour.road_ahead import StopOnLine, Strip
+from aav_description.road_ahead import StopOnLine, Strip
 from aav_interfaces.msg import RoadAhead, StopPoint
 
 

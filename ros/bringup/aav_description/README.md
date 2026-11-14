@@ -97,6 +97,17 @@ One stopping law for every planned stop (`docs/stopping.md`), from this car mode
 | `stop_point(cfg, speed, ramp, loop)` | where the car model stops when its set speed falls at `ramp`: (metres, seconds) |
 | `stop_following(cfg, speed, commands, loop)` | the same for recorded set speeds `(t, v)` (`sim-check --loaded-stop`) |
 
+### `aav_description.road_ahead` (no ROS): the road ahead
+
+The strip every level shares (`/world/road_ahead`; [the whole car](../../../docs/designs/2026-11-14_the-whole-car.md#the-road-ahead)): here beside the stopping law, so its writer and every reader use one copy.
+
+| Item | What |
+|---|---|
+| `build(plan, car, stops, curve, base)` | the writer's (`aav_behaviour`): the plan's next 40 m from the car, a point every 0.5 m; its stops; its end (the nearest stop); the speed limit by the stopping law, 0 at the end |
+| `limit_at(strip, x, y, curve, base)`, `room_at`, `along_of` | the readers' (ego): the speed allowed here, the metres left to the end; no strip allows 0 |
+| `Strip`, `StopOnLine`, `resample`; `WAIT`, `FINAL` | the strip; a stop on it; the plan cut into points |
+| `road_ahead_ros.py`: `to_msg`, `from_msg` | `Strip` and `aav_interfaces/RoadAhead` (this one imports ROS messages) |
+
 ### `aav_description.adaptive_brake` (no ROS): a heavier car
 
 After the speed loop, before the brake: more brake when the car slows less than the empty

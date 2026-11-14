@@ -49,7 +49,8 @@ MODES = ('auto', 'on', 'off')
 # Read only at start-up (ego refuses to change them while running); lag_lead is live.
 START_ONLY = frozenset({'lag_lead_filter', 'lag_lead_max_speed', 'lag_lead_max_steer',
                         'lag_aware_drivers', 'trace_horizon', 'trace_rate_hz',
-                        'trace_speed_loop', 'vehicle_yaml'})
+                        'trace_speed_loop', 'vehicle_yaml', 'road_ahead',
+                        'road_ahead_drivers', 'road_pose_timeout'})
 
 
 def check_mode(mode) -> Optional[str]:
@@ -166,6 +167,15 @@ class LagAwareWatch:
 
     def sent(self, driver: str, key: Hashable) -> None:
         self.recent[driver].append(key)
+
+    def whose(self, key: Optional[Hashable]) -> Optional[str]:
+        """Return the watched driver whose command this is, lag-aware or not, or None."""
+        if key is None:
+            return None
+        for driver, recent in self.recent.items():
+            if key in recent:
+                return driver
+        return None
 
     def driving(self, key: Optional[Hashable]) -> Optional[str]:
         """Return the lag-aware driver whose command this is, or None."""
