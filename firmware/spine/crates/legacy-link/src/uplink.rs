@@ -189,8 +189,8 @@ impl Uplink {
             self.sticks.throttle,
             self.sticks.steering,
         ];
-        for (chunk, value) in b[10..34].chunks_exact_mut(4).zip(values) {
-            chunk.copy_from_slice(&value.to_le_bytes());
+        for (chunk, value) in b[10..34].as_chunks_mut::<4>().0.iter_mut().zip(values) {
+            *chunk = value.to_le_bytes();
         }
         b[34..36].copy_from_slice(&self.counts.steering.unwrap_or(0).to_le_bytes());
         b[36..38].copy_from_slice(&self.counts.brake.unwrap_or(0).to_le_bytes());

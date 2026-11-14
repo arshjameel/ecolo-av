@@ -7,7 +7,7 @@
 <!-- Generated from docs/conventions.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Names and code style</h1>
-<div class="meta">6 min read · 5 sections</div></header>
+<div class="meta">7 min read · 5 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -371,7 +371,7 @@ twist_mux's sensors lock at its 1 s timeout, so Nav2 never drove.</p>
 <tr>
 <td>Rust</td>
 <td>rustfmt and clippy</td>
-<td><code>cargo fmt</code>, <code>cargo clippy</code></td>
+<td><code>tools/test.sh</code>: <code>cargo fmt --check</code> on every crate, <code>cargo clippy -D warnings</code> on every crate without ROS (a lint wrong for us: a targeted <code>#[allow]</code> with its reason)</td>
 </tr>
 <tr>
 <td>Markdown docs</td>

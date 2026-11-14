@@ -55,6 +55,8 @@ pub struct Line<'a> {
 }
 
 /// What a line says.
+// no_std, no heap: a line lives on the stack for one print, so a Box would cost more.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Body<'a> {
     Heartbeat(Heartbeat<'a>),
