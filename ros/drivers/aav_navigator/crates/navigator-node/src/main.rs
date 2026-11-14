@@ -14,7 +14,9 @@
 //!                                         (navsat.yaml), then as follow_waypoints
 //! Subscribes  /goal_pose                  geometry_msgs/PoseStamped (map): a to-pose goal
 //!                                         from RViz, the map window, the dev window
-//!             /tf                         tf2_msgs/TFMessage: map -> odom -> base_link
+//!             /tf                         tf2_msgs/TFMessage: map -> odom -> base_link;
+//!                                         older than TRANSFORM_TIMEOUT: no car pose (no
+//!                                         waypoint passed, no plan kept, no progress)
 //! Publishes   drivers/nav/navigator/status
 //!                                         diagnostic_msgs/DiagnosticStatus, 2 Hz and at
 //!                                         each goal's end: the goal, the step, recoveries
@@ -64,6 +66,9 @@ use ros_env::nav_msgs::msg::Path;
 use ros_env::std_msgs::msg::Header;
 use ros_env::tf2_msgs::msg::TFMessage;
 use serde_json::Value;
+
+/// s: a /tf transform older than this is no car pose (robot_localization sends at 30 Hz).
+const TRANSFORM_TIMEOUT: f64 = 1.0;
 
 const PREFIX: &str = "/drivers/nav/navigator/";
 const STATUS_TOPIC: &str = "/drivers/nav/navigator/status";
@@ -463,8 +468,9 @@ struct Core {
     nav: Navigator,
     frames: Frames,
     datum: Datum,
-    map_odom: Option<Pose>,
-    odom_base: Option<Pose>,
+    /// map -> odom and odom -> base_link, each with when it arrived (s).
+    map_odom: Option<(Pose, f64)>,
+    odom_base: Option<(Pose, f64)>,
     goals: HashMap<u64, Waiting>,
     next_id: u64,
     clients: Clients,
@@ -529,8 +535,12 @@ impl Core {
         self.clock.now().to_ros_msg().unwrap_or_default()
     }
 
+    /// The car in map, from /tf; `None` while either transform is missing or stale.
     fn car(&self) -> Option<Pose> {
-        Some(compose(self.map_odom.as_ref()?, self.odom_base.as_ref()?))
+        let (a, a_at) = self.map_odom.as_ref()?;
+        let (b, b_at) = self.odom_base.as_ref()?;
+        let fresh = self.now() - a_at.min(*b_at) <= TRANSFORM_TIMEOUT;
+        fresh.then(|| compose(a, b))
     }
 
     fn on_tf(&mut self, msg: &TFMessage) {
@@ -540,9 +550,9 @@ impl Core {
             let r = &t.transform;
             let pose = Pose::new(r.translation.x, r.translation.y, yaw_of(&r.rotation));
             if parent == self.frames.map && child == self.frames.odom {
-                self.map_odom = Some(pose);
+                self.map_odom = Some((pose, self.now()));
             } else if parent == self.frames.odom && child == self.frames.base {
-                self.odom_base = Some(pose);
+                self.odom_base = Some((pose, self.now()));
             }
         }
     }

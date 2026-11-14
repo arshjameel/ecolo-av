@@ -36,6 +36,8 @@ Sim check: start Gazebo's road world headless, then test the car's whole graph i
                                            (only the extra runs named, not the road
                                             world's first run: the costmap's scoring)
     pixi run sim-check --no-lidar         (without the simulated roof lidar: lidar:=false)
+    pixi run sim-check --no-cameras       (no cameras drawn, cameras:=false: our simulator
+                                           on a computer with no GPU; the radar checked alone)
     pixi run sim-check --voxels            (every run with the lidar takes voxels:=true: Nav2
                                             reads the lidar as cubes, aav_voxels, instead of
                                             the flat scan; with --lidar-obstacle, the trial's
@@ -781,6 +783,19 @@ def check_sensors(probe):
            f'{BENCH["focal_px"]:.0f}); radar stand-in in {cloud.header.frame_id} at '
            f'{radar_hz:.1f} Hz, fields {",".join(fields)}, '
            f'{cloud.width * cloud.height} points with nothing within 8.4 m')
+
+
+def check_radar(probe):
+    """Check the radar stand-in alone (--no-cameras): the TI's fields, 10 Hz, nothing near."""
+    probe.spin_for(5.0)
+    cloud = probe.cloud
+    fields = [f.name for f in cloud.fields]
+    radar_hz = rate(probe.cloud_stamps)
+    ok = (cloud.header.frame_id == 'radar_link' and fields == RADAR_FIELDS
+          and cloud.width * cloud.height == 0 and abs(radar_hz - 10.0) < 1.5)
+    result('sensors (no cameras)', ok,
+           f'radar stand-in in {cloud.header.frame_id} at {radar_hz:.1f} Hz, fields '
+           f'{",".join(fields)}, {cloud.width * cloud.height} points within 8.4 m')
 
 
 def check_cameras(probe):
@@ -2108,6 +2123,13 @@ def check_speed_steps(probe, profile):
 
 LIDAR_TOPICS = ('/sensors/lidar/points', '/sensors/lidar/scan')
 WATCHDOG_TOPICS = ('/safety/sensor_watchdog/lock', '/safety/sensor_watchdog/state')
+# --no-cameras (cameras:=false): what only a drawn picture makes.
+CAMERA_TOPICS = tuple(f'/sensors/camera/{c}/{t}' for c in ('front_left', 'front_right', 'rear')
+                      for t in ('image_raw', 'image_raw/compressed', 'camera_info')) + (
+    '/perception/camera/front_left/preview/compressed', '/perception/camera/front_left/preview',
+    '/perception/camera/front_right/preview/compressed',
+    '/vehicle/sim/chase_camera/image_raw', '/vehicle/sim/chase_camera/compressed')
+CAMERAS = True        # --no-cameras: none drawn (our simulator on a computer with no GPU)
 
 
 EVERY_RUN = []   # launch arguments every session adds: --speed-loop's, --simulator's
@@ -2405,7 +2427,7 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
     """
     road = world == 'road'
     radar = radar and road
-    cameras = road
+    cameras = road and CAMERAS
     watchdog = 'watchdog:=false' not in launch_args
     tag = f' ({label})' if label else ''
     # What a run leaves out on purpose isn't missing from the graph.
@@ -2418,7 +2440,8 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
     if ALL_OURS:
         ignore = tuple(ignore) + ('/global_costmap/costmap', '/local_costmap/costmap')
     ignore = (tuple(ignore) + (LIDAR_TOPICS if 'lidar:=false' in launch_args else ())
-              + (WATCHDOG_TOPICS if 'watchdog:=false' in launch_args else ()))
+              + (WATCHDOG_TOPICS if 'watchdog:=false' in launch_args else ())
+              + (() if CAMERAS else CAMERA_TOPICS))
     env = dict(os.environ)
     print(f"Starting {SIMULATOR_NAMES[SIMULATOR]}'s {world} world{tag} on ROS domain "
           f"{env['ROS_DOMAIN_ID']}, Gazebo partition {env['GZ_PARTITION']} (this computer "
@@ -2513,7 +2536,16 @@ def main():
     VOXELS = lidar and '--voxels' in args
     KISS_EKF = lidar and '--kiss-ekf' in args
     scan_check = check_voxels if VOXELS else check_lidar_scan
-    checks = ([check_sensors, check_cameras] + ([check_lidar, scan_check] if lidar else [])
+    global CAMERAS
+    CAMERAS = '--no-cameras' not in args
+    if not CAMERAS:
+        if perception or '--lane' in args:
+            print('--no-cameras leaves nothing for --perception or --lane to see',
+                  file=sys.stderr)
+            return 2
+        EVERY_RUN.append('cameras:=false')
+    checks = ([check_sensors, check_cameras] if CAMERAS else [check_radar])
+    checks += (([check_lidar, scan_check] if lidar else [])
               + [check_drive] + ([check_kiss_ekf] if KISS_EKF else []))
     if perception:
         checks.append(check_stop_sign)

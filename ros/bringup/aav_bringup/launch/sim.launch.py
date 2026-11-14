@@ -5,7 +5,7 @@ The whole stack in Gazebo: same nodes and configs as the car, simulated hardware
       [world:=empty|test_lot|road|campus] [nav:=true]
       [teleop:=false] [gui:=true] [rviz:=true]
       [perception:=false] [lane:=false|true|fake] [camera_obstacles:=false] [hud:=false]
-      [map:=false] [foxglove:=false] [chase_camera:=true]
+      [map:=false] [foxglove:=false] [chase_camera:=true] [cameras:=true]
       [obstacle:=false] [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true] [radar:=true]
       [actuator_model:=true] [speed_loop:=default|smooth|lqi] [sim_speed:=]
       [payload:=0] [adaptive_brake:=false]
@@ -55,6 +55,9 @@ bench's argument names:
   chase_camera:=false no chase camera: by default a camera behind and above the car
                       (aav_gazebo), for Lichtblick's cockpit layout (tools/foxglove/
                       cockpit.json): /vehicle/sim/chase_camera/compressed
+  cameras:=false      no cameras at all (no picture, no chase camera): our simulator then
+                      runs on a computer with no GPU, as CI's runners; perception, lane
+                      and camera_obstacles are refused
   run_info            always: which algorithms the run uses, from these arguments, on
                       /system/algorithms (aav_run_info), for the cockpit's Algorithms table
   obstacle:=true      the bench's 1 m box in the lane, 15 m ahead (aav_gazebo)
@@ -260,7 +263,7 @@ def launch_setup(context):
     world_path = worlds.world_file(gazebo_share, world)
     # The lidar and radar where the world has them; the cameras only where they're drawn.
     sensors = worlds.has_sensors(world_path)
-    cameras = worlds.has_cameras(world_path, simulator)
+    cameras = worlds.has_cameras(world_path, simulator) and arg('cameras').lower() == 'true'
     # Each only where the world renders it, as gazebo.launch.py decides.
     radar = sensors and arg('radar').lower() == 'true'
     lidar = sensors and arg('lidar').lower() == 'true'
@@ -284,7 +287,8 @@ def launch_setup(context):
                          '(world:=test_lot or road, lidar:=true)')
     if wanted and not cameras:
         raise ValueError(f'{", ".join(wanted)}: world:={world} has no camera with '
-                         f'simulator:={simulator}. Use world:=road, test_lot or campus')
+                         f'simulator:={simulator} cameras:={arg("cameras")}. Use '
+                         'world:=road, test_lot or campus, and cameras:=true')
     nav_share = FindPackageShare('aav_navigation').perform(context)
     actions = [
         # Every node on simulated time, those in the included files too.
@@ -292,6 +296,7 @@ def launch_setup(context):
         include(context, 'aav_gazebo', 'gazebo.launch.py', world=world, gui=arg('gui'),
                 obstacle=arg('obstacle'), start_x=start_x, start_y=start_y, start_yaw=start_yaw,
                 lidar=arg('lidar'), radar=arg('radar'), chase_camera=arg('chase_camera'),
+                cameras=str(cameras).lower(),
                 actuator_model=arg('actuator_model'), speed_loop=arg('speed_loop'),
                 payload=arg('payload'), adaptive_brake=arg('adaptive_brake'),
                 lag_scale=arg('lag_scale'),
@@ -489,6 +494,9 @@ def generate_launch_description():
                               description='a camera behind and above the car, for '
                                           "Lichtblick's cockpit layout (world:=road or "
                                           'test_lot)'),
+        DeclareLaunchArgument('cameras', default_value='true',
+                              description='false: no cameras, so our simulator runs on a '
+                              'computer with no GPU (the parts that read them are refused)'),
         DeclareLaunchArgument('lidar', default_value='true',
                               description='a simulated 16-beam roof lidar, on '
                                           '/sensors/lidar/points, read by Nav2 '

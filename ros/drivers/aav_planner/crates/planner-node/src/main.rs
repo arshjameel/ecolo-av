@@ -17,7 +17,9 @@
 //!                                         /drivers/nav/costmap/global_raw (costmap:=own).
 //!                                         Older than costmap_timeout: goals fail, TIMEOUT
 //!             /tf                         tf2_msgs/TFMessage: map -> odom -> base_link, the
-//!                                         car's pose in map (when use_start is false)
+//!                                         car's pose in map (when use_start is false).
+//!                                         Either older than TRANSFORM_TIMEOUT: goals
+//!                                         fail, TF_ERROR (the EKFs send at 30 Hz)
 //! Publishes   /plan                       nav_msgs/Path: each path found (planner_server's
 //!                                         own goes to /drivers/nav/planner/nav2_plan)
 //!             drivers/nav/planner/status  diagnostic_msgs/DiagnosticStatus, one a plan: the
@@ -53,6 +55,9 @@ use ros_env::nav_msgs::msg::Path;
 use ros_env::std_msgs::msg::Header;
 use ros_env::tf2_msgs::msg::TFMessage;
 use serde_json::Value;
+
+/// s: a /tf transform older than this is no pose (robot_localization sends at 30 Hz).
+const TRANSFORM_TIMEOUT: f64 = 1.0;
 
 const ACTION: &str = "/drivers/nav/planner/compute_path_to_pose";
 const THROUGH_ACTION: &str = "/drivers/nav/planner/compute_path_through_poses";
@@ -429,8 +434,9 @@ struct Core {
     costmap_heard: Arrival,
     /// s: older than this, a goal fails with TIMEOUT (Nav2's PlannerTimedOut).
     costmap_timeout: f64,
-    map_odom: Option<Pose>,
-    odom_base: Option<Pose>,
+    /// map -> odom and odom -> base_link, each with when it arrived (s).
+    map_odom: Option<(Pose, f64)>,
+    odom_base: Option<(Pose, f64)>,
     plan_pub: Publisher<Path>,
     status: Publisher<DiagnosticStatus>,
     clock: Clock,
@@ -517,9 +523,9 @@ impl Core {
             let r = &t.transform;
             let pose = Pose::new(r.translation.x, r.translation.y, yaw_of(&r.rotation));
             if parent == self.frames.map && child == self.frames.odom {
-                self.map_odom = Some(pose);
+                self.map_odom = Some((pose, self.now()));
             } else if parent == self.frames.odom && child == self.frames.base {
-                self.odom_base = Some(pose);
+                self.odom_base = Some((pose, self.now()));
             }
         }
     }
@@ -568,7 +574,19 @@ impl Core {
             pose_of(&start.pose)
         } else {
             match (&self.map_odom, &self.odom_base) {
-                (Some(a), Some(b)) => compose(a, b),
+                (Some((a, a_at)), Some((b, b_at))) => {
+                    let age = now - a_at.min(*b_at);
+                    if age > TRANSFORM_TIMEOUT {
+                        return Err((
+                            Answer::TF_ERROR,
+                            format!(
+                                "map -> odom -> base_link is {age:.1} s old \
+                                 (limit {TRANSFORM_TIMEOUT:.1} s)"
+                            ),
+                        ));
+                    }
+                    compose(a, b)
+                }
                 _ => {
                     return Err((
                         Answer::TF_ERROR,
