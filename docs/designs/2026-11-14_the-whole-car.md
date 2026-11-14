@@ -116,7 +116,8 @@ was one shape's step 1b; this page makes it step 1.
 | The message | `aav_interfaces/RoadAhead`, `StopPoint`; topic `/world/road_ahead` | — |
 | The maths, one copy | `aav_description` `road_ahead.py` (beside the stopping law): `build` for the writer, `limit_at` for readers | 14 tests |
 | The writer | `aav_behaviour`: `/plan`'s next 40 m, its stops, 10 Hz | alone: 10 Hz, the end at the plan's end |
-| The first reader | ego (`road_ahead:=true`, set by `behaviour:=true`): Nav2's forward speed never above the strip's; people never trimmed; no strip or a stale pose allows 0 | alone: Nav2 asking 0.8 m/s, 0.5 m from the end, got 0.31; the joystick 0.8 |
+| The first reader | ego (`road_ahead:=true`, set by `behaviour:=true`): Nav2's forward speed never above the strip's; people never trimmed; no strip or a stale pose allows 0. Our own followers (`mppi_lag`, the trial trackers) go through Nav2's slot, so it holds them too: the "mute boss under all ours" finding is closed for speed | alone: Nav2 asking 0.8 m/s, 0.5 m from the end, got 0.31; the joystick 0.8 |
+| A whole drive | `pixi run -e ml sim-check --behaviour --perception`, our simulator, 14 Nov | contract 0 failures; sign PASS (APPROACH, stood 4.3 m before it); goal PASS; ego trimmed Nav2 9 times (0.43-0.97 m/s). The obstacle leg FAILED as on 8 Nov: the car steered round the box (TODO 162) |
 
 Still to do in step 4: the lane-centre line (needs the lane map, W5); the point driver's
 strip (R5); the trial trackers and `mppi_lag` reading it; the screens drawing it; a full
