@@ -1,6 +1,8 @@
 # Work: what's done, and what needs doing
 
-> **A snapshot from 10 October 2026.** What's true now: [Status](status.md), [The plan](plan.md) and `TODO.md`.
+> **A snapshot from 10 October 2026**, kept as a record. What's true now: [Status](status.md), [The plan](plan.md) and `TODO.md`.
+>
+> Since then: releases 0.2 (3 Nov) and 0.3 (9 Nov: our own simulator, and our own costmap, planner, navigator and smoother beside Nav2); the car drove on 13 Nov with only the localization update installed. What's next is at the top of `TODO.md`; two designs are proposed, not built: [one shape](designs/2026-11-13_one-shape.md) and [the whole car](designs/2026-11-14_the-whole-car.md).
 
 Where the project stands on 10 October 2026: the plan in five phases, the next twelve
 steps, what's done, and the work left in each area. Who owns each area is Q33: see

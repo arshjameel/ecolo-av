@@ -35,7 +35,7 @@ answer.
 | Decision | Why | Waits on |
 |---|---|---|
 | No QNX | `twist_mux` takes over QNX's job of picking which command wins. Hard real-time safety moves into the spine firmware and the hardware e-stop | Q23 |
-| GPS gives the global position; the model is unknown | Whether it uses RTK corrections decides how precise GPS A→B can be | Q18, Q19 |
+| GPS gives the global position; the model is unknown | Whether it uses RTK corrections decides how precise GPS A→B can be. Ben, 5 Nov: no RTK; NDT against a map of the lot is to replace the GPS's offset (a trial, not on the car) | Q18, Q19 |
 | Bare metal waits: only the spine firmware runs without an operating system | Ben, 9 Oct: "Maybe we will wait on this." | |
 | The spine runs on an ARM chip, a Pico 2 or an STM32, not the ESP32 | Ben, 10 Oct: yes. It keeps the whole toolchain in Pixi. An STM32 has CAN built in; a Pico 2 needs an add-on CAN chip. A Pico 2 program exists since 11 Oct (`boards/pico2`). (The chip is the hardware lead's choice: Q10-Q13) | Q10–Q13 |
 | The GPS driver: the stock `ublox_gps` by default; `nmea` and `ublox_dgnss` stay as `gps_driver:=` options | It's in Pixi on every computer. `ublox_dgnss`, the 2024-25 choice, is apt-only, so it runs on the car only | Q18 |
@@ -49,7 +49,7 @@ answer.
 | Proposal | Why |
 |---|---|
 | `TwistStamped` on every command topic (`/drivers/*/cmd_vel`, `/control/cmd_vel`) | `twist_mux` expects it, and the timestamp lets ego drop stale commands. The code already does this |
-| A car-safe Nav2: SmacPlannerHybrid with Regulated Pure Pursuit (or MPPI's Ackermann model), and no Spin in the behaviour tree | A car can't turn on the spot. The config already does this. (MPPI is the default since 22 Oct: see below) |
+| A car-safe Nav2: SmacPlannerHybrid with Regulated Pure Pursuit (or MPPI's Ackermann model), and no Spin in the behaviour tree | A car can't turn on the spot. The config already does this. (MPPI is the default follower since 22 Oct, the State Lattice the default planner since 1 Nov: see below) |
 | The RC transmitter stays the top-priority override, in hardware | It works today, and doesn't depend on any computer |
 | The spine boots latched, and arms only on a 0 → 1 edge; a driver fault stops the car | A reboot or a glitch never restarts the car by itself. It's in `spine-core` since 10 Oct |
 | **The RC mode switch, three positions (TODO 48, 24 Oct):** CH6 (index 5, the 2025-26 `RC_EN_CH`) **low = computer, middle = RC via ROS, high = RC direct**; thresholds below 1301, 1301-1700, above 1700 (`ibus::RcMap::THREE_POSITION`). Needs a three-position switch on CH6 (the transmitter's aux-channel menu); a two-position switch still gives computer and RC direct. The team and the hardware lead decide; CH6's switch type and a free channel: question H10 ([audit questions](audit-questions.md)) | One switch, in the order of "how much the computer does". RC direct stays the fallback that needs no computer. Moving the switch from low to high passes RC via ROS, which drives only through ego's limits. Today's firmware builds keep the 2025-26 reading (>1500 = RC); only `--features uplink` reads three positions. Losing the RC in either RC position brakes (fault 256) |
@@ -73,7 +73,8 @@ Rules for people and Claude sessions alike. They live in `CLAUDE.md`.
 | Git | `main` lives on GitHub, in `AAV-2025-2026/ecolo-av` (public), and CI tests every push; small commits, each passing the tests, with messages that give the intention |
 | Docs | short pages, sections, tables and pictures; Ben is dyslexic |
 | Port first | move everything to Jazzy as it is, then consider rewriting parts in Rust |
-| Simulators | Gazebo and bench mode every day; CARLA for the cameras, once the NVIDIA computer runs it (Q31, reopened 15 Oct) |
+| Simulators | our own simulator (the default since 8 Nov) and bench mode every day; Gazebo with `simulator:=gazebo`; CARLA for the cameras, once the NVIDIA computer runs it (Q31, reopened 15 Oct) |
+| Trials | a new idea is its own package beside the default, chosen by a switch, scored on the same routes; it becomes the default only once it wins (Ben, 29 Oct, 5 Nov) |
 
 ## Decided on 10 October, on the Mac
 
@@ -126,7 +127,7 @@ What we changed, and why.
 | **The car may back up** (0.5 m/s at most), where the lidar watches behind it (the rear camera later); collision_monitor then guards a box behind the rear bumper. **On the car by default again since 1 Nov** (Ben: "reverse and uturn should be in"; off 26 Oct-1 Nov): until the wheels tell direction (H5), the speed's sign is the last command's; the car's planner is then the lattice | Driving forward only, a U-turn in a narrow lane works about half the time and can leave the car facing a wall. Allowed to reverse, it makes a three-point turn and reaches every goal | Ben, 22 Oct: "Yes the car can reverse" |
 | **The GPS antenna is over the rear axle** (`vehicle.yaml`: x = 0) | It's already there on the car. That is the best spot: our position software corrects for the antenna's offset using the car's heading, so with no offset a heading error can't move the GPS position. In Gazebo, reversing's heading error halved ([Learn: GPS](learn-gps.md#mount-the-antenna-over-the-rear-axle)) | Ben, 23 Oct: "its already there" |
 | **The wheel sensors are read by an Arduino**, which sends CAN frames; the Orin reads the bus and publishes them in ROS | The hardware side's plan. The frames are in `aav.dbc` already (0x200, 0x201), and the Orin's side decodes them, so the Arduino only has to send them. An exception to "Rust for all firmware": it's the hardware lead's board | the hardware lead (passed on by Ben, 23 Oct) |
-| *Tentative, until the hardware lead confirms:* **today's car is driven through the Motor Pi's UART**, and **the Orin reads its CAN bus for sensors only** (`car.launch.py actuators:=uart`, the default; `spine_bridge role:=sensors`). The CAN spine stays one argument away (`actuators:=can`) | Ben's picture of the wiring: the actuators on the ESP32, with the Motor Pi as its network interface; the CAN bus straight to the Orin, with the wheel sensors. A `role` on `spine_bridge`, not a new node: the wheel decoding is already there and tested, and the sensors role has no way to send ([Today's wiring](can-plan.md#todays-wiring-23-october)) | Ben, 23 Oct: "the motor controllers are on the esp32 with a pi as its network interface" |
+| *Tentative, until the hardware lead confirms:* **today's car is driven through the Motor Pi's UART**, and **the Orin reads its CAN bus for sensors only** (`car.launch.py actuators:=uart`, the default; `spine_bridge role:=sensors`). The CAN spine stays one argument away (`actuators:=can`) | Ben's picture of the wiring: the actuators on the ESP32, with the Motor Pi as its network interface; the CAN bus straight to the Orin, with the wheel sensors. A `role` on `spine_bridge`, not a new node: the wheel decoding is already there and tested, and the sensors role has no way to send ([Today's wiring](can-plan.md#todays-wiring-23-october)) | Ben, 23 Oct: "the motor controllers are on the esp32 with a pi as its network interface". Seen on 6 Nov: the Motor Pi's bridge holds the ESP32's UART (`history/audit-2026-11-06-car.md`); the wire itself isn't checked |
 | **The cameras stream to the Orin with MediaMTX, compressed (H.264) on the Pi**; the Orin unpacks them with NVIDIA's video hardware, then OpenCV and the object detector (RF-DETR Nano, in TensorRT) run on them, in one program per camera | The camera Pi already runs MediaMTX with no ROS, and stays as it is. H.264 is about 10 times smaller than JPEG; raw pictures (83 MB/s each) never cross the network. People can watch the same stream in a browser. The cost, a little more delay (5-10 cm at 1 m/s), is to measure. `camera_ros` (ROS on the Pi) stays the fallback ([TODO 37b](../TODO.md)) | Ben, 23 Oct: "mediamtx on the pi to the orin seems like the best choice" |
 | **TensorRT runs the detector on the Orin; OpenCV is whatever JetPack ships** (4.x if that's it) | TensorRT is NVIDIA's own and the fastest on the Orin. OpenCV only undistorts and finds lanes, so its version matters little, and JetPack's needs no build of our own | Ben, 23 Oct: "tensorrt is definately the best choice. if htat is opencv 4 then thats what we use" |
 | **The detector is RF-DETR Nano**, not YOLO | In our comparison it saw the stop sign from 20 m (YOLO11n: 10 m) and found more people, with no false finds. Its licence is Apache-2.0; YOLO's is AGPL-3.0. Its cost: bigger weights, not yet timed on the Orin ([newer models](model-comparison.md)) | Ben, 23 Oct: "I thought we were skipping yolo and using the other one" |
@@ -166,6 +167,46 @@ What we changed, and why.
 |---|---|---|
 | **Nav2 keeps its path for the last 8 m to a goal** (`navigate_to_pose_car*.xml`): it replans every second elsewhere, but near the goal only if the path is blocked, for another goal, or 20 s old. 8 m = `vehicle.final_approach`, 2 of the planner's turning radii | Replanning there made the car circle goals: a new path from a little behind on the last bend is a 21-25 m loop for a car, and each new path resets Nav2's goal checker. Gazebo, first leg, 12 runs each way: loop plans in 10 before, none after; 3 loops driven before, none after ([Path followers](path-followers.md#circling-a-goal-found-and-fixed-29-october-todo-17)) | TODO 17, from the Gazebo runs |
 
+## Decided from 26 October to 14 November
+
+Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
+
+| When | Decision | By |
+|---|---|---|
+| 26 Oct | `aav_goto` becomes `aav_drive_to_point` (action `/drive_to_point`, slot `point`): the name says the job | Ben |
+| 29 Oct | **Trials beside defaults:** new nodes or plugins run beside the main ones and replace them only if they win ([Trials](trials.md)) | Ben: "test and then replace the main ones if they work" |
+| 1 Nov | **The State Lattice is the default planner** where the car may reverse, the car too; Hybrid-A* forward only. **Reversing and the U-turn are on, on the car** (TODO 59, 62) | Ben: "reverse and uturn should be in" |
+| 1 Nov | **0.2 = sim-complete, car-ready; 0.3 = it drove.** Car day is split: Day A destroys nothing, Day B upgrades; every idea is kept for later | Ben |
+| 1 Nov | Fewer `pixi run` commands (89 → 45), families with one word after, no aliases | Ben: "Less is more" |
+| 2 Nov | Initial D red and black on all four screens; the diffusion planner in 0.2 as a trial, off by default, behind its guard | Ben |
+| 3 Nov | **No default switched for 0.2:** NDT-EKF was closer (0.018 m against 0.174 m) but needs the lot's map; the cubes were slower and once drove into a post ([Switches](switches.md)) | from the Gazebo runs |
+| 3 Nov | One screen per concept: **Drive** and **Hardware** ("just the stuff we control"); the HUD and the map stay in the car | Ben |
+| 4 Nov | Picked from the [weak links](designs/2026-11-04_weak-links.md): the clocks, the fence and the site file (TODO 100); the brake follows a wish (101); a behaviour state machine (102); research A, the car identifies itself (104). The tracker (103) paused 5 Nov; shadow mode (108) not picked | Ben |
+| 5 Nov | **Our own algorithms:** for each area a new best hybrid from papers, known algorithms and current code, how the car stops first. Stock stays the default until ours wins; every algorithm stays. "One car" is for down the road | Ben |
+| 5 Nov | **Everything is a drop-in:** Gazebo, our simulator and the real sensors give the same topics; `pixi run drop-in` checks | Ben: "just swap out and test" |
+| 5 Nov | **Screens by computer:** the HUD and the street map stay raylib, on the Pi; laptop screens can be Bevy; the Orin runs no graphics and no simulator | Ben |
+| 5 Nov | A drive only suggests map changes; a person accepts them. No RTK (above) | Ben |
+| 7 Nov | **0.3:** one car model shared by ego, the simulators and the Rust drivers; algorithms that know the lag (MPPI in Rust, the lag-aware MPC); the behaviour planner and the stop-point check; directions on the campus | Ben |
+| 7 Nov | **Gazebo merged into Rust:** our own simulator, every sensor, beside Gazebo until it wins | Ben: "merge in everything from gazebo so its standalone in rust" |
+| 7 Nov | **Diffusion on the car only as a trial:** `diffusion_trial:=true`, 0.5 m/s at most, the guard and every lock as always | Ben: "We want diffusion" |
+| 7 Nov | **The Rust ESP32 keeps every C++ behaviour at a minimum** ([parity](esp32-cpp-parity.md)); its WiFi pages as JSON, read only, off by default | Ben |
+| 7 Nov | **One forward speed limit, 1.0 m/s, for ego and the spine**, with a test that fails if they differ; the spine's stop rules: every lost input is a hard stop (T3.6) | Arsh |
+| 8 Nov | **Our own simulator is the default** (`simulator:=own`); `simulator:=gazebo` for computers with no GPU | Ben, after the head-to-head runs |
+| 8 Nov | **Off Nav2 one piece at a time** (costmap, planner, navigator, smoother), each beside Nav2 until it wins; **Nav2 stays the default and on the car** | Ben |
+| 8 Nov | **On the car, 0.3 keeps the defaults:** the new pieces are off or simulator-only ([Rolling out](rollout.md)) | Ben |
+| 8 Nov | The adaptive brake, a sim trial: brake harder when the car slows too little, never past the brake's safe maximum | Ben |
+
+## Proposed in November: Ben's to decide
+
+Designs, **nothing of them built**.
+
+| Design | What it proposes | Waits on |
+|---|---|---|
+| [One shape](designs/2026-11-13_one-shape.md) (13 Nov; reviewed: go, with changes) | nine levels, one world model, one boss (the behaviour planner), the league (`stack:=`), 36 switches down to 8, lane lines as soft costs | D1-D7 (TODO 147-152) |
+| [The whole car](designs/2026-11-14_the-whole-car.md) (14 Nov) | every design merged: one picture of the world, one car model, one scorecard, and what's missing | W1-W7 (TODO 153-160) |
+| [The hardware debug plan](designs/2026-11-07_esp32-debug-link_brief.md) (7 Nov) | debug one part of the car at a time; the order chosen by Ben | the hardware people: a USB cable, the current limits, the return wire (TODO 126) |
+| Where the CBF safety filter goes (K1), a live shadow lock (S1), reversing on long drives (TODO 122) | see each design | Ben |
+
 ## Open questions
 
 The design doc numbers 34 questions, and doesn't rank them. **Bold** marks the ones that
@@ -176,7 +217,7 @@ The design doc's next steps take Q1–Q9, Q18, Q20 and Q22 to the car with a tap
 
 | Q | Topic | The question |
 |---|---|---|
-| **Q1** | Dimensions | Wheelbase, track, overall size, steering limit, top speed? The old code disagrees: 1.3–1.57 m wheelbase |
+| **Q1** | Dimensions | Wheelbase, track, overall size, steering limit, top speed? The old code disagrees: 1.3–1.57 m wheelbase. **Partly answered** (Betsi, 1 Nov): wheelbase 1.561 m, track 0.65 m front and 0.85 m rear, the lidar's and GPS's heights. The steering limit, the weight and the wheel diameter are still open |
 | **Q2** | Steering feedback | Is the steering's position sensor wired to its Jrk G2? How do its counts map to the wheel angle? |
 | **Q3** | Brake | How far does it travel, how hard does it brake, and what does it do if power is lost? That defines the safe state |
 | **Q4** | Throttle | Which motor controller does the DAC drive? Does it brake on its own? Is reverse safe while moving? |
@@ -196,8 +237,8 @@ The design doc's next steps take Q1–Q9, Q18, Q20 and Q22 to the car with a tap
 | Q13 | Board | Add a CAN transceiver to today's ESP32 board, or a new board? Who changes the PCB? |
 | Q14 | The Orin's side | Its built-in CAN with a transceiver, or a USB-CAN adapter? |
 | Q15 | The bus | Bitrate, connectors, cable route, terminators, and what else shares it |
-| Q16 | Watchdog | How long without a command before it acts, how hard it brakes, and what the steering does |
-| Q17 | Wireless updates | Keep them? If so, how are they authenticated? |
+| Q16 | Watchdog | How long without a command before it acts, how hard it brakes, and what the steering does. **Built as:** 100 ms, full brake, latched (CAN v0.2.0, 15 Oct; the Rust ESP32's heartbeat, 24 Oct). The steering's part is still open (below) |
+| Q17 | Wireless updates | Keep them? If so, how are they authenticated? **Built, off by default** (7 Nov): only while parked, with a password, a checked image; never in the car-day build |
 
 ### Sensors and localization
 
@@ -236,9 +277,9 @@ From tonight's audits and the Mac work. They're small, but someone has to say ye
 | GPS driver | `ublox_gps` is the default now (Tentative, above); keep it, or go back to `ublox_dgnss` (the car only). With Q18 |
 | `/safety/estop` reliability (N2) | send it repeatedly, or make the mux hear it reliably |
 | Respawning device nodes (N3) | restart a sensor driver when it dies? |
-| Nav2's lookahead (N7) | its turn command flips sign about once a second in the sim |
+| Nav2's lookahead (N7) | its turn command flips sign about once a second in the sim. Still open: "the wiggle" (TODO 124, 149); the single-goal tree's replanning at 1 Hz is the suspect |
 | Package renames | the inherited packages' new names, in [Conventions](conventions.md) |
-| A `vendor/` folder | keep downloaded source out of git, with a list to fetch it again |
+| A `vendor/` folder | done: downloaded source stays out of git, `pixi run get vendor` fetches it again |
 | Stop signs as a twist_mux lock | priority 30: it holds Nav2 and the AI slot, never a person or a test script; 4 s stop, then 10 s to drive past. Built and working on the bench (Proposed) |
 | The steering on an e-stop | hold where it is (`ESTOP_STEERING = Hold` in `spine-core`), or centre it (the 2025-26 firmware) |
 | The brake after boot | `IDLE_BRAKE = 0.0` lets it go once the e-stop clears; the 2025-26 firmware kept it full on (1.0). ⚠️ Keeping it on may be safer on a slope |

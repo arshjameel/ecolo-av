@@ -1,6 +1,6 @@
 # The team's work list, after Friday's audit
 
-> **A snapshot from 15 October 2026.** What's true now: [Status](status.md), [The plan](plan.md) and `TODO.md`. The audits ran on 16 and 21 Oct (`docs/history/audit-2026-10-16-car.md`, `audit-2026-10-21-car.md`).
+> **A snapshot from 15 October 2026**, kept as a record: its "Audit says", "Who" and "Done" columns were never filled in. What's true now: [Status](status.md), [The plan](plan.md) and `TODO.md`. The audits ran on 16 and 21 Oct and 6 Nov (`docs/history/audit-*-car.md`). The steps at the car are now [Car day](car-day.md), [Car setup](car-setup.md) and [Rolling out](rollout.md).
 
 Written 15 October 2026, **before** the audit, as a draft. After Friday, update it from
 what the audit found: tick the "Audit says" column, fix each task's size, and put a name

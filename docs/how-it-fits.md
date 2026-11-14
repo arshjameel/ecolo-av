@@ -38,6 +38,10 @@ it without changing anything downstream.
   top of `ekf_local`'s `odom → base_link`. Chained together, they give the car's true
   position, and the local estimate stays smooth.
 
+Three more localizers run **beside** the EKFs as trials, off by default ([Trials](trials.md)):
+NDT on a saved lidar map (`aav_ndt`, `ndt:=true`; into `ekf_global` with `ndt_ekf:=true`),
+KISS-ICP lidar odometry (`kiss_icp:=true`) and AMCL (`amcl:=true`).
+
 ## 3. Drivers propose, the mux picks
 
 Every driver publishes a `TwistStamped` (speed in m/s, turn rate in rad/s) on its own
@@ -46,10 +50,11 @@ topic. None of them knows what kind of vehicle it's driving.
 | Driver | Topic | Priority |
 |---|---|---|
 | Joystick: the safety driver | `/drivers/joy/cmd_vel` | 100 |
-| RC transmitter, on "RC via ROS" (proposed, TODO 48) | `/drivers/rc/cmd_vel` | 95 |
+| RC transmitter, on "RC via ROS" (`aav_rc`, built 24 Oct; off until the hardware lead answers H9 and H10) | `/drivers/rc/cmd_vel` | 95 |
 | Keyboard, or another remote | `/drivers/keyboard/cmd_vel` | 90 |
 | Actuator tests: measure the car (stages 3-4) | `/drivers/tests/cmd_vel` | 60 |
 | Scripted: speed up, hold, slow down | `/drivers/scripted/cmd_vel` | 50 |
+| The hardware panel's buttons, while Space is held | `/drivers/buttons/cmd_vel` | 45 |
 | Replay of a recorded drive | `/drivers/replay/cmd_vel` | 40 |
 | Drive to point: drive to one GPS point and stop | `/drivers/point/cmd_vel` | 25 |
 | Nav2: drive to a point on the map | `/drivers/nav/cmd_vel` | 20 |
@@ -59,8 +64,31 @@ topic. None of them knows what kind of vehicle it's driving.
 `/control/cmd_vel`. Publishing `true` on `/safety/estop` blocks every driver until someone publishes
 `false`.
 
+Locks hold every driver below their priority: the e-stop (255), the no-timeout lock (60),
+the geofence (51), the stop sign and the sensor watchdog (30), the stop hold (21). See
+[section 7](#7-safety-layers).
+
 Teleop is just another driver. The keyboard's commands take the same path as Nav2's:
 mux, ego, then the turtle or the car.
+
+### Inside the Nav2 driver
+
+`/drivers/nav/cmd_vel` is the end of a chain. Stock Nav2 is the default for each step, and
+the only choice on the car; ours run beside it in the simulator until they win
+([Switches](switches.md)).
+
+| Step | Default | Beside it (a switch) |
+|---|---|---|
+| Which roads | none: a goal on the map | street routes (Valhalla) or the campus's road graph, `aav_routes` |
+| The rules: slow, stop, wait | none | the behaviour planner, `aav_behaviour` (`behaviour:=true`): a speed cap on Nav2 ([Stopping](stopping.md)) |
+| Plan, follow, replan, recover | Nav2's bt_navigator | `aav_navigator` (`navigator:=own`) |
+| Where may I go | Nav2's costmaps | `aav_costmap` (`costmap:=own`) |
+| The path | Nav2's State Lattice (since 1 Nov) | Hybrid-A* (forward only), `aav_planner` (`planner:=own`), the diffusion planner (`planner:=diffusion`) |
+| Steer along it | Nav2's MPPI | Pure Pursuit (`controller:=rpp`); ours: `aav_track` and `aav_mppi_lag` (`tracker:=`) |
+| Smooth the command | Nav2's velocity smoother | `aav_smoother` (`smoother:=own`) |
+
+How these become nine levels with one switch each is a design, **proposed, not built**:
+[one shape](designs/2026-11-13_one-shape.md), [the whole car](designs/2026-11-14_the-whole-car.md).
 
 ## 4. ego: the virtual car
 
@@ -73,6 +101,7 @@ into `/ego/actuator_cmd`: an `AckermannDriveStamped` with a speed and a steering
 | Bicycle model | steering angle = atan(wheelbase × turn rate ÷ speed). A car can't turn on the spot, so at zero speed ego holds the wheels where they are. |
 | Limits | 1.0 m/s top speed to start; acceleration; steering ±0.5 rad; steering rate |
 | Timeout | no command for 0.3 s: brake to a stop |
+| The car's lag (7 Nov) | in a simulator, asks a little early for the actuators' lag (`lag_lead`); publishes where the car will be for the next 2 s (`/ego/trace`) and where it would stop (`/ego/stop_point`) ([Car model](car-model.md)) |
 
 ## 5. One car model, everywhere
 
@@ -83,11 +112,12 @@ files hand them to every part that needs them.
 |---|---|
 | ego | the wheelbase and steering limit, for the bicycle model |
 | URDF (`robot_state_publisher`) | where each sensor sits |
-| Nav2 | the footprint, and the tightest turn: wheelbase ÷ tan(max steer) = 2.87 m |
+| Nav2 | the footprint, and the tightest turn: wheelbase ÷ tan(max steer) = 2.86 m |
 | `turtlesim_adapter`, `gazebo_adapter` | the wheelbase, so the turtle and the simulated car turn like the car |
 | `aav_spine`, `aav_legacy` | the wheelbase, track and wheel size |
+| The car model (`car_model.py`, and its Rust twin) | the actuators' lags and dead times, the mass: shared by ego, the simulators and the lag-aware followers |
 
-Most of the numbers are still guesses: see [Car numbers](car_measurements.md).
+The wheelbase and track are measured (1 Nov); most other numbers are still guesses: see [Car numbers](car_measurements.md).
 The same numbers make the car's linear model (transfer functions, state space, the
 margins with the delays): [The car as a linear model](vehicle-model.md).
 
@@ -98,7 +128,8 @@ margins with the delays): [The car as a linear model](vehicle-model.md).
 | The car, today (`actuators:=uart`) | `aav_legacy` | `legacy_uart_bridge` on the Motor Pi: UART frames for the ESP32 |
 | The CAN spine, later (`actuators:=can`) | `aav_spine_bridge` | `spine_bridge` on the Orin: CAN frames for the spine firmware |
 | turtlesim | `aav_turtlesim` | the stock turtlesim, steered with the bicycle model |
-| Gazebo | `aav_gazebo` | a simulated car with an IMU and GPS, on the real car's topics |
+| Our own simulator (`pixi run sim`, the default since 8 Nov) | `aav_simulator`, `aav_sim_cameras` | Rust: the worlds, the car, lidar, radar, IMU, GPS, wheels and cameras, on the real car's topics ([page](own-simulator.md)) |
+| Gazebo (`simulator:=gazebo`) | `aav_gazebo` | the same car and sensors; for computers with no GPU |
 | CARLA | `aav_carla` | adapter ready, untested: needs the NVIDIA computer ([CARLA](carla.md)) |
 
 Each backend reports the car's speed back on `/vehicle/odom`. That closes the loop into
@@ -151,7 +182,13 @@ Two more, for the automatic drivers only (Nav2 and the AI slot; never a person o
 | Layer | Stops Nav2 when |
 |---|---|
 | collision_monitor | radar or lidar points in the stop zone just ahead; or the radar or lidar goes quiet for 1 s |
+| The stop-sign lock (`aav_detector`'s watcher) | a stop sign is close: a 4 s stop, then time to drive past |
+| The stop hold (`aav_safety`) | collision_monitor stopped the car: held until the zone stays clear for 1 s |
 | The sensor watchdog (`aav_safety`) | the wheels, the IMU, the GPS or an EKF go quiet, send NaN or freeze; the GPS jumps; the wheels disagree with the IMU or the GPS; the HUD's screen freezes or dies (its [heartbeat](hud.md#the-heartbeat), on the car); a front camera's stream goes quiet (its detections, on the car); the watchdog itself goes quiet (fail-safe: twist_mux's lock times out). A twist_mux lock, shown on the HUD and the map window ([simulation](simulation.md#sensor-failures-on-purpose)) |
+
+The **geofence** (`aav_safety`, 29 Oct) holds every program, not only Nav2: before the
+car's stopping distance reaches the fence, or when the position can't be trusted. People
+still drive ([Geofence](geofence.md)).
 
 !!! warning "Today's car has no layer 5"
   The 2025-26 ESP32 firmware has no timeout. If the bridge dies, the last throttle stays
@@ -163,7 +200,7 @@ Two more, for the automatic drivers only (Nav2 and the AI slot; never a person o
 ## 8. The real graph, three ways
 
 The same layers, as they really run: `pixi run tools/ros.sh python3 tools/graph_picture.py` saved each one from a live
-profile on Ben's Mac (saved 20 Oct, before the output mux). Read them left to right. The middle stays the same in all
+profile on Ben's Mac (saved 20 Oct: before the output mux, the trials and our own simulator, so today's graphs have more nodes). Read them left to right. The middle stays the same in all
 three; only the left edge (where the data comes from) and the right edge (who plays the
 car) change.
 
@@ -171,7 +208,7 @@ car) change.
 |---|---|---|
 | `pixi run turtle` | 9, 23 | the whole command path on one line: `scripted_driver` → `twist_mux` → `ego` → `turtlesim_adapter`, and `/vehicle/odom` back into `ekf_local` |
 | `pixi run bench` | 27, 50 | the stand-ins on the left (`mock_*`, `spine_sim`); `/vehicle/bench/truth` feeding every mock; `spine_bridge` and `spine_sim` talking over `/can/tx`, `/can/rx` |
-| `pixi run sim` (empty world) | 19, 38 | no mocks: `gz_bridge` brings in `/gazebo/imu` and `/gazebo/navsat`, and `gazebo_imu` and `gazebo_gps` turn them into `/sensors/...` |
+| `pixi run sim simulator:=gazebo` (empty world) | 19, 38 | no mocks: `gz_bridge` brings in `/gazebo/imu` and `/gazebo/navsat`, and `gazebo_imu` and `gazebo_gps` turn them into `/sensors/...` |
 
 ### The turtle
 

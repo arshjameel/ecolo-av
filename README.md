@@ -16,6 +16,7 @@ Every page is in [`docs/`](docs/). The ones people ask for most:
 
 | Page | What it's for |
 |---|---|
+| [Status](docs/status.md) | what works, where and when it last ran, and what's next |
 | [The plan](docs/plan.md) | what's left to build, in order, by the gates |
 | [Features](docs/features.md) | what the software does, why, and who built it |
 | [Git](docs/git.md) | worktrees, conflicts during a rebase, handy commands; the flow is in [CONTRIBUTING.md](CONTRIBUTING.md) |
@@ -105,15 +106,15 @@ reaches a real car on the same network. A family is one command and a word after
 |---|---|
 | `turtle` | turtlesim plays the car |
 | `keyboard` | drive from the keyboard, in a second terminal: `keyboard --local` with `turtle` or `bench`, `keyboard --sim` with `sim`. With no flag it drives whatever shares the ROS domain: on the car's network, the car |
-| `sim` | Gazebo plays the car (`world:=road`, `hud:=true`, `sim_speed:=3`...) |
-| `demo` | the whole simulated car at once: Gazebo, RViz, the HUD and the map window. `demo --debug` adds the debug HUD (the lidar's cubes, NDT, where each localizer puts the car); `demo --fullscreen` |
+| `sim` | our own simulator plays the car (the default since 8 Nov; `simulator:=gazebo` for Gazebo, on a computer with no GPU); `world:=road`, `hud:=true`, `sim_speed:=3`... |
+| `demo` | the whole simulated car at once: the simulator, RViz, the HUD and the map window. `demo --debug` adds the debug HUD (the lidar's cubes, NDT, where each localizer puts the car); `demo --fullscreen` |
 | `pick` | a menu of the switches (who steers, where-am-I, speed loop), so you needn't remember them: prints the command, saves it, runs it; `pick last` runs it again ([Switches](docs/switches.md)) |
 | `bench` | the real car's software, with stand-ins for the hardware |
 | `view` | the car's model in RViz |
 | `carla-car` | CARLA plays the car: `carla-car host:=<the CARLA computer>` |
 | `drive-to-point` | drive to one point and stop smoothly: `drive-to-point --sim --ahead 20` |
 | `ghost` | a pretend person in Nav2's view, to test stopping: `ghost ahead 10` |
-| `sim-fault` | make a Gazebo sensor fail on purpose: `sim-fault gps stop`, then `sim-fault gps ok` |
+| `sim-fault` | make a simulated sensor fail on purpose: `sim-fault gps stop`, then `sim-fault gps ok` |
 
 ### The screens
 
@@ -126,7 +127,7 @@ Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
 | `debug-hud` | the debug screen: the lidar's cubes, the localizers, every sensor |
 | `hw-panel` | the hardware panel: every sensor's number, and simple buttons (hold Space to drive) for Gazebo or the bench, beside `sim` or `demo --debug` (this computer only) |
 | `dev-window` | the developer window (Bevy): Ben's layout. Pretend data; `--live` beside `demo` or `sim`; `--watch` listens only |
-| `sim-cameras` | our simulator's cameras (Bevy, offscreen): the timing check; `--ros` publishes Gazebo's camera topics (this computer only) |
+| `sim-cameras` | our simulator's cameras (Bevy, offscreen) on their own: the timing check; `--ros` publishes the car's camera topics (this computer only). `sim` starts them itself |
 | `rviz` | RViz with the driving layout: map, costmaps, path, car |
 | `graph` | a live picture of the nodes and topics |
 
@@ -137,12 +138,12 @@ Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
 | `check` | the running graph against the contract: `check turtle` (or `sim`, `road`, `spine`, `car`, `replay`, `bench`) |
 | `drop-in` | is what's running a true drop-in? Each stream's rate and frame against the contract; only listens |
 | `bench-check` | starts bench mode and tests the whole graph: contract, drive, e-stops (2 min) |
-| `sim-check` | starts Gazebo's road world headless and tests the whole graph in it (2 min) |
+| `sim-check` | starts the road world headless and tests the whole graph in it (2 min); `--simulator gazebo` for Gazebo |
 | `measure` | `measure controllers`: Pure Pursuit against MPPI (and the trials: docs/trials.md) on the same routes; `measure timing`: are messages on time?; `measure stream`: the camera stream end to end; `measure atob <bag>`: scores an A-to-B run; `measure lane`: a long lane drive scored by the truth (`--simulator own`, `--world campus`); `measure bandwidth`: every topic's MB/s; `measure diffusion`: the diffusion planner's time a plan against its budget (for the Orin) |
 | `diffusion` | the diffusion planner trial (`planner:=diffusion`): `diffusion data` (the lattice's and Hybrid-A*'s paths on random maps, no Gazebo), `diffusion train` (the model, scored by its guard, into `models/diffusion/planner.onnx`; `pixi install --locked -e learn` first), `diffusion score`, `diffusion replay <folder>` (a Gazebo run's recorded plans through a model, offline), `diffusion export --fp16` |
-| `campus` | Carleton for Gazebo, Nav2 and NDT, from OpenStreetMap, into `maps/campus/`: then `pixi run sim world:=campus` ([docs](docs/campus.md)) |
+| `campus` | Carleton for the simulators, Nav2 and NDT, from OpenStreetMap, into `maps/campus/`: then `pixi run sim world:=campus` ([docs](docs/campus.md)) |
 | `campus-route` | directions on the campus, without ROS: `campus-route "Mackenzie Building"` (from P4), `--from`, `--waypoints`, `--list`; the same graph as `street_router router:=campus` ([docs](docs/routes.md#on-the-campus)) |
-| `ndt-map` | NDT's map of Gazebo's test lot: `drive` the mapping route headless, or `build` from a bag; into `maps/ndt/` |
+| `ndt-map` | NDT's map of the simulator's test lot: `drive` the mapping route headless, or `build` from a bag; into `maps/ndt/` |
 
 ### At the car
 
@@ -212,7 +213,7 @@ script and how to run it. Some you may want:
 | [`firmware/`](firmware/README.md) | the CAN contract (`can/aav.dbc`), the wheel encoder's UDP packet vectors (`udp/`), the spine's Rust logic and device drivers (`spine/`), and the inherited C++ firmware (`legacy/`) |
 | [`tools/`](tools/README.md) | tests, keyboard, graph check, the network doctor, recording, the docs builder, the progress mailer, the MCP server for AI apps |
 | `docs/` | the docs (markdown sources, the HTML in `docs/html/`), the topic contract, and the history |
-| [`models/`](models/README.md) | the detector models: RF-DETR Nano (the default) and YOLO11n, downloaded by `pixi run get models`, and their exports (`.onnx`, `.mlpackage`). Not in git |
+| [`models/`](models/README.md) | the detector models: RF-DETR Nano (the default) and YOLO11n, downloaded by `pixi run get models`, and their exports (`.onnx`, `.mlpackage`); the diffusion planner's model (`pixi run diffusion train`). Not in git |
 | [`vendor/`](vendor/README.md) | the ROS 2 and ros2-rust source, for looking things up (`pixi run get vendor`); also the downloaded tools: MediaMTX, PlatformIO, QEMU, `cargo-tools`, `esp`, `car-kit-cache`. Not ours, and not in git |
 | `archive/` | the 2025-26 and 2024-25 teams' repos, as they were (in git), and our port of their Flutter HUD (`2026-27-flutter-hud/`, put away 25 Oct). Reference only: never build or fix them (`docs/older-code.md`) |
 | `.github/` | the CI workflow (`workflows/test.yml`) and the pull request template |
@@ -250,10 +251,12 @@ The rules every part keeps. The full list is in [CLAUDE.md](CLAUDE.md).
 
 ## Status
 
-Everything builds on Jazzy, on Linux and on Macs, and every test passes. The turtle,
-Gazebo and bench mode (the whole car's software, with stand-ins for the hardware) all
-run. Nothing has run on the car yet. What works, what's untested and what's missing:
-[docs/status.md](docs/status.md).
+Everything builds on Jazzy, on Linux and on Macs. The turtle, our own simulator, Gazebo
+and bench mode (the whole car's software, with stand-ins for the hardware) all run.
+Release 0.2 was 3 Nov; 0.3 (our own simulator, and our own costmap, planner, navigator
+and smoother beside Nav2) merged on 9 Nov. The car drove on 13 Nov with only the
+localization update installed: the full suite isn't on the car yet. What works, what's
+untested and what's next: [docs/status.md](docs/status.md).
 
 Decisions and open questions (**Q1–Q34**) are in the team design doc, *AAV 2026–27
 Autonomy Stack — Architecture & Plan* (a Claude Doc). Conventions are in
@@ -266,7 +269,7 @@ Autonomy Stack — Architecture & Plan* (a Claude Doc). Conventions are in
 | The 2026-27 AAV capstone team | this design, the new code, and every decision: see [Decisions](docs/decisions.md) |
 | The 2025-26 team (GitHub org `AAV-2025-2026`) | the ESP32 actuator firmware, the Pico 2 wheel encoder, the IMU driver, the radar driver and its clustering, lane keeping, the HUD app, and the steering geometry |
 | The 2024-25 team (`Carleton-AAV-Capstone`) | the battery monitor, the camera calibrations, and the first YOLO stop-sign detector |
-| Open-source projects | ROS 2 Jazzy, Nav2, robot_localization, twist_mux, imu_tools, Gazebo, RoboStack and Pixi, rclrs (ros2-rust), Roboflow's RF-DETR (the car's object detector), Ultralytics YOLO, NVIDIA TensorRT, Apple's Core ML Tools, and Rust's embedded-hal, Catppuccin's colour palettes (the screens' themes, MIT) |
+| Open-source projects | ROS 2 Jazzy, Nav2, robot_localization, twist_mux, imu_tools, Gazebo, RoboStack and Pixi, rclrs (ros2-rust), Bevy and raylib (the screens and our simulator's cameras), KISS-ICP, Roboflow's RF-DETR (the car's object detector), Ultralytics YOLO, NVIDIA TensorRT, Apple's Core ML Tools, and Rust's embedded-hal, Catppuccin's colour palettes (the screens' themes, MIT) |
 
 ## Where the code came from
 
