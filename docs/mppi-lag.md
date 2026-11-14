@@ -14,8 +14,14 @@ Nav2 still plans the path; ours follows it. It is a **trial**, beside Nav2's MPP
 > - **On very slow actuators** it keeps the path (0.1 m) where the lag-free MPPI **loses it**.
 > - **At vehicle.yaml's guesses** both stay within a few cm: the lag is small there.
 > - **Fast:** 1.7 ms a tick on an M4 Max (2000 samples x 56 steps); about 10 ms on the Orin.
-> - **Gazebo:** not a fair test yet: on a loaded computer the odometry stalled and it gave up
+> - **Gazebo, 7 Nov:** not a fair test: on a loaded computer the odometry stalled and it gave up
 >   ([below](#in-gazebo)); while driving it was closer to the path (0.13 m against 0.20 m).
+> - **Our simulator, 8 Nov** (newer; the numbers live on other pages): the lot tour, 3 runs,
+>   **11 of 12 legs** (Nav2's MPPI 8: [trials](trials.md#results-our-simulator-8-nov-the-lot-tour-3-runs-each)).
+>   In an all-ours stack it passes the campus's first goal at 2.5 m/s and uses twice
+>   Nav2's MPPI's CPU (33-39 % against 17-18 %: [our navigator](own-navigator.md#the-verdict)).
+>   Open: TODO 152 (slow earlier near the goal, fewer futures, time it on the Orin).
+> - **Costmap:** Nav2's local costmap, or ours with `costmap:=own` ([page](own-costmap.md)).
 
 ## How it fits
 
@@ -48,9 +54,11 @@ still in their dead time**. Nav2's starts from the pose and speed alone.
 
 ### The trait: where the shared car model plugs in
 
-Another 0.3 job builds a shared crate, `car-model` (`ros/bringup/aav_description/car-model`).
-`LagModel` already follows its rules (the four rows above). Until it merges, the model sits
-behind a trait (`crates/mppi-lag/src/model.rs`); at the merge, that crate implements it.
+The shared crate, `car-model` (`ros/bringup/aav_description/car-model`), is merged (0.3).
+`LagModel` follows its rules (the four rows above) and sits behind a trait
+(`crates/mppi-lag/src/model.rs`). The shared crate implements the trait behind the cargo
+feature `shared` (`src/shared.rs`, tested against `LagModel`); the node still runs
+`LagModel` (TODO 139).
 
 ```rust
 pub trait CarModel: Sync {
@@ -190,12 +198,12 @@ cd ros/drivers/aav_mppi_lag && cargo test --release -p mppi-lag
 
 | Missing | Next |
 |---|---|
-| The shared car-model crate | implement `CarModel` with it at merge |
+| The shared car-model crate | built behind the feature `shared`; switch the node over after a quiet-machine sim-check (TODO 139) |
 | The car's real lags | tests 3.10-3.12, 4.1-4.5; then these runs again |
 | The Orin's tick | measured on the Orin |
 | Reversing | forward only, as every tracker |
 | ego's jerk limit, sideways slow-down | not modelled (off at our speeds) |
-| A fair Gazebo run | the whole lot tour on a quiet computer, both followers |
+| The goal at speed, the CPU | passes a goal at 2.5 m/s; twice Nav2's MPPI's CPU (8 Nov; TODO 152) |
 | A gap in odometry | gives up after 1 s, as `aav_track`; Nav2's MPPI drives on: decide which is right |
 | A live swap | it is its own node: `tracker:=` at launch only |
 

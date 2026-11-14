@@ -146,3 +146,29 @@ links, research picks.
 | ESP32 brief, 7 Nov | rotate the WiFi password; close the C++ `/update` page | open (Q34) |
 
 Where the designs disagree with each other: [the whole car](../designs/2026-11-14_the-whole-car.md#where-the-designs-disagree), R1-R6.
+
+## 8. Each level today: the default, the challengers, the latest score
+
+From the code and the pages, 14 Nov. The car has no switch for the costmap, navigator,
+smoother, follower trials or behaviour: `car.launch.py` starts Nav2's.
+
+| Level | Default (sim and car) | Challengers | Latest score against the default |
+|---|---|---|---|
+| Costmap | Nav2's | `costmap:=own` | 8 Nov: 100 % of 40,000 cells the same; 4-5 % of a core against 7-9 % |
+| Planner | Nav2's State Lattice | `own`, `diffusion`, `hybrid`, `smac2d`, `navfn`, `theta_star` | `own`, 8 Nov: lot 12 of 12 both; campus 4 of 9 against 3; about 20 % slower on long plans. `diffusion`, 8 Nov: 12 of 12 |
+| Navigator | Nav2's `bt_navigator` | `navigator:=own` | 8 Nov, all ours against all Nav2: lot 7 against 8 of 12; campus 4 against 2 of 6 |
+| Follower | Nav2's MPPI | `rpp`; `tracker:=` pure_pursuit, stanley, lqr, mpc, mpc_full, mpc_lag, mppi_lag | 8 Nov, lot, 3 runs: MPPI 8, RPP 9, `mppi_lag` 11, `mpc_lag` 6 of 12. `mppi_lag` uses twice the CPU and passes a goal at 2.5 m/s |
+| Smoother | Nav2's `velocity_smoother` | `smoother:=own` | 8 Nov: 10 of 12 both; ego clipped 0-0.1 % of steering against 9-15 % |
+| Behaviour | none | `behaviour:=true` | 8 Nov, Gazebo: stopped for an obstacle 2 of 4; **never entered APPROACH at a stop sign, cause unknown** |
+| Localization | the two EKFs | `ndt`, `ndt_ekf`, `amcl`, `kiss_icp`, `kiss_ekf` | `ndt_ekf`, 3 Nov, Gazebo: 17 cm down to 1.8 cm; needs a saved map |
+
+Found on the way:
+
+| Finding | Where |
+|---|---|
+| `sim.launch.py` declares **59** launch arguments, not 36 | `docs/switches.md` now lists all 59 |
+| "All ours" on the lot scores 7 of 12 on one page and 10 of 12 on another, the same day: different runs, and neither page says so | `own-navigator.md`, `own-smoother.md` |
+| A follower's score (`mppi_lag` 11) and the whole stack's (all ours, 7) are easy to mix up | `trials.md`, `own-navigator.md` |
+| The output mux's target is `sim`; `stack.launch.py` still spells `target:=gazebo` | `sources-and-targets.md` |
+| `trials.md` (1,197 lines) could split by subject: trackers, localizers, planners, diffusion, voxels, with the page as the index | proposed |
+| `path-followers.md` is now a 22-29 Oct record: merge into trials, or mark as history | proposed |

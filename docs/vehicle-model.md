@@ -66,7 +66,7 @@ The whole chain, from the set speed and the path to the car:
 | τl | the linkage's lag | 0.1 s | `steer_lag` GUESS |
 | ωn, ζ | the steering's natural frequency, damping | 12.6 rad/s, 1.03 | |
 | δ | the wheel angle (centre wheel), + left | rad | |
-| L | wheelbase | 1.57 m | `wheelbase` TODO measure |
+| L | wheelbase | 1.57 m on this page; **measured 1.561 m** (1 Nov, `vehicle.yaml`): the page's numbers were worked with 1.57 | `wheelbase` MEASURED |
 | e_y, e_θ | sideways and heading error from the path | m, rad | |
 | ld | pure pursuit's lookahead | 1.5 to 4 m | `nav2.yaml` |
 | T | a delay | s | |
@@ -446,7 +446,7 @@ rolling about 0.3 s late.
 | `steer_rate` | 0.8 rad/s | 3.11 `steer-rate` | τm, ωn |
 | `steer_lag` | 0.1 s | 3.11 `steer-rate` (and 4.5 `circles`) | τl, ωn, ζ |
 | ζ of the steering | from the two lags | 3.11's step, if it overshoots | `steer_overshoot` |
-| `wheelbase` | 1.57 m | the tape measure (M-list) | v/L in A |
+| `wheelbase` | 1.561 m: **measured**, 1 Nov (this page used 1.57) | the tape measure (M-list): done | v/L in A |
 | the wheel speed's age | 50 ms | the Arduino's pulse rate (H-list) | the speed loop's delay |
 | `throttle_dead_time`, `brake_dead_time`, `steer_dead_time` | 0 (not set) | 4.1, 4.3, 3.11: only if the data resolves them | each loop's delay |
 | delays on the Orin | the Mac's 26 ms | car day 4d, 5 | the lateral margins |

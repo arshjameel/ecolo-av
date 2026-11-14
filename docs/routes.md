@@ -152,7 +152,7 @@ end. Gazebo's map lets Nav2 go either way on a one-way road; the route doesn't.
 |---|---|
 | `test_campus_graph.py`: a made-up map, 19 tests; every site place reached from P4 on the real map | all pass |
 | `test_street_router.py`: a place by name, with a fake car and Nav2 (`colcon test`) | passes |
-| Gazebo, `world:=campus`, headless: P4 to **Fieldhouse** (route 453 m, 18 waypoints) | **did not arrive** (below) |
+| Gazebo, `world:=campus`, headless: P4 to **Fieldhouse** (route 453 m, 18 waypoints) | **did not arrive** (below). With our navigator, 8 Nov: 1 of 2 |
 
 The route, the waypoints and the follow call all worked. Nav2 did not finish the drive:
 
@@ -168,7 +168,7 @@ stop on the corner already turned. Our car can't turn that tightly there.
 | Next (TODO 140) | Why |
 |---|---|
 | put a bend's waypoint a few metres *before* the corner, facing along the road in | no stop half-turned at a corner; Nav2 plans the turn itself |
-| or send one goal through all the points (Nav2's `navigate_through_poses`) | no stop at each waypoint at all |
+| or send one goal through all the points (Nav2's `navigate_through_poses`) | no stop at each waypoint at all. **Our navigator does this** (`navigator:=own`, a trial): 8 Nov, our simulator, 2 runs: it arrived 1 of 2 (263 s), Nav2 0 of 2 ([scores](own-navigator.md#the-campus-25-ms-2-runs)) |
 | `stop:` points for the places, measured on the day | the middle of a building is not where a car pulls up |
 
 NDT was off in these runs (its campus floor is still TODO 121); the EKF used GPS.

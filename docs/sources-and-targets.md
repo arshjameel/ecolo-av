@@ -7,7 +7,8 @@ everything is real. Package `aav_io_mux`, built 23 Oct.
 
 !!! note "The short version"
     - **Source:** where the sensor data comes from: `real`, `sim`, `bench` or `replay`.
-    - **Target:** who plays the car: `car`, `gazebo`, `bench`, `turtle` or `carla`.
+    - **Target:** who plays the car: `car`, `sim` (any simulator: ours or Gazebo), `bench`,
+      `turtle` or `carla`. (`stack.launch.py` still spells the sim profile `target:=gazebo`.)
     - Every backend reads only its own target's topic, `/control/<target>/actuator_cmd`.
       Nothing reads `/ego/actuator_cmd` directly any more.
     - The real car's topic carries commands only while **every** source is REAL. One SIM
@@ -73,14 +74,14 @@ gate is shut (Ben, 24 Oct), and says why.
 | says `OPEN` for this bridge's target, within 1.5 s | `armed` |
 | says `WAIT` or `STOP` | refused: `the safety gate is shut: <its line>; arm once it says OPEN` |
 | hasn't been heard, or is quiet for 1.5 s (`gate_timeout`) | refused: no word, or quiet for so long |
-| says `OPEN` for another target (`gazebo`, on the car) | refused: not this bridge's gate |
+| says `OPEN` for another target (`sim`, on the car) | refused: not this bridge's gate |
 | says anything, during an e-stop | refused: the e-stop first |
 
 | The bridge's `source:=` | Its target | Its gate |
 |---|---|---|
 | `real` | `car` | `OPEN - car: ...` |
 | `bench` | `bench` | `OPEN - bench: ...` |
-| `sim` (Gazebo, `spine:=true`) | `gazebo` | `OPEN - sim: ...` |
+| `sim` (the simulator, `spine:=true`) | `sim` | `OPEN - sim: ...` |
 
 - Disarming always works.
 - Both bridges, Rust and Python, say the same words (`spine-bridge`'s `gate.rs`,
@@ -105,7 +106,7 @@ ros2 launch aav_bringup stack.launch.py target:=gazebo world:=road
 | `target:=` | Starts | Source |
 |---|---|---|
 | `turtle` | `turtle.launch.py` | sim |
-| `gazebo` | `sim.launch.py` | sim |
+| `gazebo` | `sim.launch.py` (our simulator by default; the mux's target is `sim`) | sim |
 | `bench` | `bench.launch.py` | bench |
 | `car` | `car.launch.py` (with `machine:=`) | real |
 | `carla` | `carla.launch.py` | sim |

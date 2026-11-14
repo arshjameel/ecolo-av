@@ -15,7 +15,7 @@ Our own costmap, in Rust, runs beside Nav2's as a trial: [Our own costmap](own-c
 
 | | Local costmap | Global costmap |
 |---|---|---|
-| Used by | the controller (MPPI), each step | the planner (SmacPlannerHybrid), once per path |
+| Used by | the controller (MPPI), each step | the planner (the State Lattice; Hybrid-A* forward only), once per path |
 | Frame | `odom`: smooth, moves with the car | `map`: fixed to the ground by GPS |
 | Size | 20 m x 20 m rolling window, centred on the car | the size of the map that `map_server` loads |
 | Cell size | 0.10 m (200 x 200 cells) | 0.25 m |
@@ -41,7 +41,7 @@ by `navigation.launch.py`.
 
 | Layer | Reads | On | Marks | Clears |
 |---|---|---|---|---|
-| `obstacle_layer` | `/sensors/radar/points` (in `radar_link`) | `radar:=true`: the bench always; the car where the machine file that runs `navigation` also runs `radar`; never Gazebo (its car has no radar) | each point 0.3-8.4 m from the radar, -0.5 to 2 m high | the cells between the radar and each point |
+| `obstacle_layer` | `/sensors/radar/points` (in `radar_link`) | `radar:=true`: the bench always; the car where the machine file that runs `navigation` also runs `radar`; in the sim where the world has the radar stand-in (`road`, `test_lot`, `campus`; `radar:=false` drops it) | each point 0.3-8.4 m from the radar, -0.5 to 2 m high | the cells between the radar and each point |
 | `camera_layer` | `/perception/camera_obstacles`, `/perception/camera_view` | `camera_obstacles:=true`: the bench's argument, or the car's `camera_obstacles` part next to `navigation`. Off until the cameras are calibrated (Q22) | where each detected object stands on the road, out to 12 m | everything the camera sees, out to 12 m, before it marks |
 | `lidar_layer` | `/sensors/lidar/scan` (from `lidar_scan`, `aav_lidar`) | where the lidar runs: on by default on the car (the Orin) and in Gazebo; `lidar:=true` on the bench | points 0.3 m or more above the road ([below](#body-roll-and-the-lidar-todo-52e)), out to 12 m | along each beam, out to 15 m |
 | `ghost_layer` | `/safety/ghost/scan` | `ghost:=true` only ([Ghost obstacles](ghost-obstacles.md)) | the pretend person | only old ghosts |
@@ -219,8 +219,8 @@ Python and PyYAML, not ROS.
     ```
 
    It says `wrote example_lot.pgm/.yaml: 320 x 240 px, 80 x 60 m`.
-3. Start Gazebo with the test lot: `pixi run sim world:=test_lot`. On a Mac, add
-   `gui:=false`, then run `pixi run tools/ros.sh tools/gz_window.sh` and `pixi run rviz` in two more terminals.
+3. Start the simulator with the test lot: `pixi run sim world:=test_lot`. With
+   `simulator:=gazebo` on a Mac, add `gui:=false`, then run `pixi run tools/ros.sh tools/gz_window.sh` and `pixi run rviz` in two more terminals.
 4. In RViz, send a **2D Goal Pose** at about (30, 0): 30 m straight ahead, past the box.
 
 **You should see** the planned path bend around your box. In the test on 10 October it

@@ -94,7 +94,7 @@ ros2 action send_goal /follow_gps_waypoints nav2_msgs/action/FollowGPSWaypoints 
 
 | Part | Does | File |
 |---|---|---|
-| Speed | speed up gently (0.5 m/s²), hold the cruise speed, then slow down **by the distance left**: v = √(2·a·d), with a = **half of `max_brake`** | `approach.py` |
+| Speed | speed up gently (0.5 m/s²), hold the cruise speed, then slow down **by the distance left**: v = √(2·a·(d − lead·v)), with a = **half of `max_brake`**. `stop_law:=hybrid` picks the stopping law instead (a trial: [How the car stops](stopping.md)) | `approach.py` |
 | Steering | turn towards B first if it is more than 20° off the nose; then pure pursuit along the straight line to B | `line.py` |
 | One drive | the two together, tick by tick (50 Hz) | `drive.py` |
 | Rules | when it may start, when it must stop, how close is close (1 m with RTK, 2 m without) | `rules.py` |
@@ -139,7 +139,7 @@ wherever it is, so the stop doesn't land on B. `approach.py` explains it at the 
 ### Run it
 
 ```bash
-pixi run sim                                               # Gazebo, in one terminal
+pixi run sim                                               # the simulator, in one terminal
 pixi run drive-to-point --sim --ahead 20                   # 20 m ahead of the car
 pixi run drive-to-point --sim --ahead 30 --left 10         # ... and 10 m to its left
 pixi run drive-to-point --sim --x 30 --y 5                 # a map point (x east, y north, metres)

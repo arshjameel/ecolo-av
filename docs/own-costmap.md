@@ -35,14 +35,15 @@ odometry, /tf ────┤
 |---|---|---|
 | `/drivers/nav/costmap/local` | OccupancyGrid (0-100) | screens, RViz |
 | `/drivers/nav/costmap/local_raw` | nav2_msgs/Costmap (0-255) | `mppi_lag` |
-| `/drivers/nav/costmap/global`, `global_raw` | the same, the whole map | the planner, next |
+| `/drivers/nav/costmap/global`, `global_raw` | the same, the whole map | our planner (`planner:=own`) |
 | `/drivers/nav/costmap/status` | DiagnosticStatus | update time, what it waits for |
 | `/drivers/nav/costmap/clear_entirely_local`, `_global` | service, Nav2's ClearEntireCostmap | the recovery: forget every mark |
 
 **The recovery clears ours too.** When stuck, Nav2's behaviour trees call
 `local_costmap/clear_entirely_local_costmap`. With `costmap:=own` and
 `tracker:=mppi_lag`, the launch file points that call at our local costmap, the one MPPI
-reads. The global clear stays Nav2's: the planner still reads Nav2's global costmap.
+reads. The global clear stays Nav2's under Nav2's navigator; our navigator
+(`navigator:=own`) clears ours ([page](own-navigator.md)).
 
 ## What it does, layer by layer
 
@@ -152,15 +153,15 @@ Our local update: **0.50-0.55 ms** on average, 0.58 ms at the 95th percentile.
 | the global costmap | the map's own cells, unknown kept, 3 m of gentle inflation (119 at 1 m) |
 | the distance transform | exact against brute force |
 
-## What's missing for the planner step
+## What's missing
 
 - **The planner** reads Nav2's global costmap (`planner_server`). Our planner
   ([page](own-planner.md), `planner:=own`) reads `/drivers/nav/costmap/global_raw` when
   `costmap:=own` is on too.
 - **The global costmap's size:** the campus map is large; ours rebuilds it all each second
   (27 ms for 500 m × 500 m without ROS). Fine now; only the changed part if it grows.
-- **The global clear:** ours serves it, but the trees still clear Nav2's global costmap
-  (the planner's). Our planner and navigator should call ours.
+- **The global clear:** ours serves it. Our navigator calls it (8 Nov); Nav2's trees
+  still clear Nav2's global costmap.
 - **Radar, cubes and cameras** (point clouds, placed by `/tf_static`'s mounts): built,
   but untested; the sim's runs had the lidar's scan alone.
 - **On the car:** untested. Nav2 stays there.

@@ -15,7 +15,7 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 > - **Betsi's measurements** (1 Nov: wheelbase 1.561 m, track 0.75 m, lidar and GPS heights): the runs above used the old guesses. Rerun with hers: `sim-check` 9 of 9, `bench-check` 6 of 6, NDT's lot tour 4 of 4 legs, the EKF 1 cm off; the lattice's moves rebuilt (radius 3.572 m).
 > - **1 Nov: the lattice is the default planner** (Ben), and the car reverses again; forward only, Hybrid-A*. [Planners](#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32).
 > - **Afternoon:** LQR rebuilt with a preview (U-turn 2 of 3 in a quiet run; it weaved on a busy Mac), `mpc_full` 10 of 12. [Results](#results-29-october-afternoon-lqr-rebuilt-and-mpc_full).
-> - **Planners** (`planner:=`): Nav2's State Lattice (on our own primitives), Smac 2D, NavFn and Theta*, beside Hybrid-A*. 29 Oct, forward only: Hybrid-A* 4 of 4, the lattice 2 of 4. **30 Oct, reversing on, 3-4 runs: every leg for hybrid, lattice and lattice32; the lattice the fastest** (184 s a tour against 213 s). Hybrid stays the default until Ben decides. [Results](#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32).
+> - **Planners** (`planner:=`): Nav2's State Lattice (on our own primitives), Smac 2D, NavFn and Theta*, beside Hybrid-A*. 29 Oct, forward only: Hybrid-A* 4 of 4, the lattice 2 of 4. **30 Oct, reversing on, 3-4 runs: every leg for hybrid, lattice and lattice32; the lattice the fastest** (184 s a tour against 213 s). Ben chose the lattice on 1 Nov (above). [Results](#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32).
 > - **Voxels** (`voxels:=true`, 30 Oct): Nav2 reads the lidar as 0.25 m cubes. It stopped 0.44 m before the post (the scan 0.36 m), drove the lot tour 4 of 4, 6 ms a cloud. [Results](#voxels-30-oct-the-lidar-as-cubes).
 > - **KISS-ICP** (`aav_kiss_icp`, stock, MIT): lidar odometry, scored against `ekf_local`, never in an EKF yet. `kiss_icp:=true`. 30 Oct, one run: **0.04 m per 100 m** over the lot tour, against ekf_local's 0.33; about 1 ms a scan; once the ground was cut out. [Results](#30-oct-kiss-icp-beside-ekf_local-one-run-mppi-the-lot-tour). Design: `docs/designs/2026-10-30_kiss-icp.md`.
 > - **KISS-ICP into the local EKF** (`kiss_ekf:=true`), 1 Nov: its twist beside the wheels and IMU. Gazebo, 5 runs: **no clear win yet** (ekf_local 0.30-1.27 m per 100 m with it, 0.44-1.91 without; the spread is the Mac's load). Its covariance is now measured. [Results](#kiss-icp-into-the-local-ekf-1-nov).
@@ -23,6 +23,7 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 > - **Diffusion for 0.3**, 7-8 Nov: the guard refused the model mostly for turns (G5) and, at the U-turn's cusp, headings (G6). Each gear smoothed on its own, more U-turn data, the map encoded once: offline **77 → 87 %** of plans with a passing sample, G5 refusals **2,197 → 850**. In the simulator, 3 runs each: **77 → 88 %** of plans from the model (92 % in a fourth), the U-turn **40 → 72 %**, every leg, 171-175 s a tour against the lattice's 180-185 s. Allowed on the car as a gated trial (0.5 m/s). [Results](#diffusion-7-8-nov-the-u-turn-the-orin-the-car).
 > - **3 Nov, everything for 0.2** (Gazebo, 3 runs each): every switch drives a leg; diffusion every leg, **73 %** of plans from the model; NDT into the EKF **17 → 1.8 cm**, every leg; voxels slower, and once drove through the post. **No default changed.** [Results](#3-nov-everything-for-02).
 > - **7 Nov, the lag-aware MPC** (`tracker:=mpc_lag`): plans steering and speed through the car's own lags (the shared car model); tells ego to keep its lead off. Pretend car: no speed overshoot (others 14 %), and with the lags doubled the U-turn at 2 m/s off by **0.17 m** (MPC 0.36, LQR 0.27). **Our simulator, 3 runs: 6 of 12 legs** (MPPI 8, RPP 9, the Rust `mppi_lag` 11): best on the legs it drives, but it never made the U-turn by the building: it doesn't read the costmap. [Results](#lag-aware-mpc-7-nov-mpc_lag).
+> - **7-8 Nov, our own Rust pieces** (each has its page; all trials, Nav2's stay the default and on the car): MPPI with lag (`tracker:=mppi_lag`, [page](mppi-lag.md)), the costmap ([page](own-costmap.md)), the planner ([page](own-planner.md)), the navigator ([page](own-navigator.md)), the velocity smoother ([page](own-smoother.md)); the behaviour planner and the adaptive brake ([how the car stops](stopping.md)). What is the default today: [Switches](switches.md#the-defaults-what-runs-if-you-say-nothing).
 > - The design: `docs/designs/2026-10-29_trials.md`.
 
 ## What is on trial
@@ -40,18 +41,18 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 | NDT's pose into the global EKF | the global EKF on GPS alone | `ndt_ekf:=true` |
 | KISS-ICP lidar odometry (how far the car moved, no map) | `ekf_local` (wheels and IMU) | `kiss_icp:=true` (after `pixi install --locked -e kiss`) |
 | KISS-ICP's twist into the local EKF | `ekf_local` on the wheels and IMU alone | `kiss_ekf:=true` |
-| State Lattice planner, our primitives | Hybrid-A* | `planner:=lattice` (`lattice_headings:=32`: the 32-heading file) |
-| Smac 2D, NavFn, Theta* planners (ignore the turning circle: sim and bench only) | Hybrid-A* | `planner:=smac2d`, `navfn`, `theta_star` |
+| State Lattice planner, our primitives | Hybrid-A* | `planner:=lattice`: **won, the default since 1 Nov** (`lattice_headings:=32`: the 32-heading file, still a trial) |
+| Smac 2D, NavFn, Theta* planners (ignore the turning circle: sim and bench only) | the lattice | `planner:=smac2d`, `navfn`, `theta_star` |
 | The lidar as 0.25 m cubes over the fitted road (`aav_voxels`) | the flat scan (`lidar_scan`) | `voxels:=true` |
 | A diffusion model draws the path, a guard checks it, the lattice behind it (`aav_diffusion_planner`; on the car only with `diffusion_trial:=true`, 0.5 m/s) | the lattice | `planner:=diffusion` (after `pixi install --locked -e learn`, `pixi run diffusion data`, `pixi run diffusion train`) |
 
 ## Where a tracker sits
 
 ```
-goal ─► bt_navigator ─► planner_server (Smac Hybrid-A*, replans every 1 s)
+goal ─► bt_navigator ─► planner_server (the lattice, replans every 1 s)
               │ FollowPath ("follow_path")
               ▼
-   tracker:=none (default)          tracker:=stanley | lqr | mpc | mpc_full | pure_pursuit
+   tracker:=none (default)          tracker:=stanley | lqr | mpc | mpc_full | mpc_lag | pure_pursuit
    controller_server (MPPI, RPP)    aav_track's track node; controller_server's own
                                     action is renamed follow_path_unused
               └──────► cmd_vel_nav ◄──────┘

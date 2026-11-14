@@ -1,7 +1,10 @@
 # Path followers: Regulated Pure Pursuit and MPPI
 
 Nav2's planner draws a path; a **controller** turns it into a speed and a turn, 20 times a
-second. We have two, and a script that compares them on the same drives in Gazebo.
+second. Nav2 has two, and a script that compares them on the same drives in the simulator.
+Our own followers are trials beside them: the trackers ([Trials](trials.md)) and the Rust
+MPPI with the actuators' lag ([page](mppi-lag.md)). The newest scores are there (8 Nov);
+this page is the 22-29 Oct record, all in Gazebo.
 
 > **The short version**
 > - **MPPI** is the default (since 22 Oct): it tries 2000 possible futures every cycle through a model of the car, and picks the best blend. It turns to a goal's heading; it costs more computer.
@@ -46,10 +49,11 @@ pixi run measure controllers --controllers mppi --speed 2
 pixi run measure controllers --trackers lqr mpc --runs 3   # the trial trackers (docs/trials.md)
 ```
 
-For each tour and controller the script starts Gazebo's test lot with no windows, on a ROS
+For each tour and controller the script starts the test lot with no windows (our
+simulator since 8 Nov; Gazebo before, and with `--lag-scale`), on a ROS
 domain of its own (this computer only), sends the same goals, and records where the car
-really was (Gazebo's ground truth). Forward only by default; `--reversing` lets Nav2 back
-up, as it may on the car since 22 Oct. The results go to
+really was (the simulator's ground truth). Forward only by default; `--reversing` lets Nav2 back
+up, as it does by default in the sim and on the car. The results go to
 `log/controller-compare/<time>/`:
 
 | File | What |
@@ -210,8 +214,9 @@ only, a U-turn in a 14 m lane is still about a coin toss; backing up makes it re
 ![Run s, forward only, after the EKF fix: both make the U-turn as a loop; MPPI's is wider. In run t MPPI's loop met the north wall](img/controllers-lot-forward-ekf.svg)
 
 Still to do: MPPI drives on east a few metres before it backs up, where the plan backs
-up at once. The car may reverse since 22 Oct (Ben), where the lidar watches behind it; off by
-default on the car since 26 Oct, until the wheels tell direction (H5).
+up at once. The car may reverse since 22 Oct (Ben), where the lidar watches behind it. It was
+off by default on the car from 26 Oct; on again since 1 Nov (`car.launch.py`
+`reversing:=true`), with the lattice as the planner.
 
 ## Results, 22 October, first runs
 
