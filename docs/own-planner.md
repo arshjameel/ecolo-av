@@ -16,6 +16,9 @@ lattice with `planner:=lattice` or `stack:=stock`). Nav2 stays on the car.
 >   (within a metre), the same planning time (3-5 ms a call).
 > - **Campus:** both planners failed the same legs (MPPI gave up, not the planner);
 >   ours took about **20 % longer** to plan the long legs (180 ms against 150 ms).
+>   15 Nov: 11 % off without changing a path (`examples/campus.rs` times the legs on
+>   the real map, no ROS; the outline's check no longer allocates). Splitting across cores
+>   doesn't pay: one step of the search is about 1 µs.
 > - **Not yet a winner:** as good on the lot, a little slower on the campus.
 > - **Hybrid-A\* too (14 Nov):** `planner_search:=hybrid` runs Nav2's Hybrid-A*
 >   ported, on the same search ([below](#hybrid-a-a-second-search-14-nov)). A challenger.

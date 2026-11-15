@@ -77,7 +77,41 @@ pub fn map(name: &str) -> Result<Grid, String> {
         "{}/../../../aav_navigation/maps/{name}.pgm",
         env!("CARGO_MANIFEST_DIR")
     );
-    let bytes = std::fs::read(&path).map_err(|e| format!("{path}: {e}"))?;
+    read_pgm(&path, (-10.0, -10.0), None)
+}
+
+/// `measure controllers --tours campus`: the start (lot P4, `maps/campus/place.yaml`), then each leg's goal (x, y,
+/// heading degrees), on `pixi run campus`'s map.
+pub const CAMPUS_START: Pose = Pose::new(49.25, -70.75, 0.0);
+pub const CAMPUS_TOUR: [(&str, f64, f64, f64); 3] = [
+    ("out of the lot", 73.0, -38.0, 45.0),
+    ("along the road", 165.0, -111.0, -40.0),
+    ("round the bend", 139.0, -190.0, 109.0),
+];
+
+/// The campus map (`pixi run campus`: `maps/campus/campus.pgm`, 0.25 m cells, origin
+/// (-900, -900)), cut to the campus tour's area, x -60..260 m and y -260..60 m, and
+/// inflated as nav2.yaml's global costmap. An error if the map isn't made yet.
+pub fn campus() -> Result<Grid, String> {
+    let path = format!(
+        "{}/../../../../../maps/campus/campus.pgm",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    read_pgm(
+        &path,
+        (-900.0, -900.0),
+        Some(((-60.0, -260.0), (260.0, 60.0))),
+    )
+}
+
+/// A map_server PGM with its origin (m), the part `crop` keeps ((x0, y0), (x1, y1) m; None:
+/// all of it), read as map_server's trinary mode does, then inflated.
+fn read_pgm(
+    path: &str,
+    origin: (f64, f64),
+    crop: Option<((f64, f64), (f64, f64))>,
+) -> Result<Grid, String> {
+    let bytes = std::fs::read(path).map_err(|e| format!("{path}: {e}"))?;
     // The header: P5, comments, width, height, maxval, one whitespace byte, then the data.
     let mut fields = Vec::new();
     let mut i = 0;
@@ -109,9 +143,24 @@ pub fn map(name: &str) -> Result<Grid, String> {
     );
     let data = bytes.get(i + 1..i + 1 + w * h).ok_or("the PGM is short")?;
     let max = max as f64;
-    let mut grid = Grid::new((-10.0, -10.0), RESOLUTION, w, h, 0);
-    for row in 0..h {
-        for cx in 0..w {
+    // The cells kept: x from c0 to c1, y (up from the map's bottom) from r0 to r1.
+    let cell = |m: f64, o: f64, n: usize| (((m - o) / RESOLUTION).max(0.0) as usize).min(n);
+    let ((c0, r0), (c1, r1)) = match crop {
+        None => ((0, 0), (w, h)),
+        Some(((x0, y0), (x1, y1))) => (
+            (cell(x0, origin.0, w), cell(y0, origin.1, h)),
+            (cell(x1, origin.0, w), cell(y1, origin.1, h)),
+        ),
+    };
+    let corner = (
+        origin.0 + c0 as f64 * RESOLUTION,
+        origin.1 + r0 as f64 * RESOLUTION,
+    );
+    let mut grid = Grid::new(corner, RESOLUTION, c1 - c0, r1 - r0, 0);
+    for up in r0..r1 {
+        // The PGM's first row is the map's top.
+        let row = h - 1 - up;
+        for cx in c0..c1 {
             let occupied = (max - f64::from(data[row * w + cx])) / max;
             let cost = if occupied > 0.65 {
                 LETHAL
@@ -120,8 +169,7 @@ pub fn map(name: &str) -> Result<Grid, String> {
             } else {
                 NO_INFORMATION
             };
-            // The PGM's first row is the map's top.
-            grid.set(cx, h - 1 - row, cost);
+            grid.set(cx - c0, up - r0, cost);
         }
     }
     inflation().apply(&mut grid);
