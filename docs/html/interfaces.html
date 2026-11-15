@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">113 min read · 4 sections</div></header>
+<div class="meta">114 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -1122,7 +1122,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/localization/odom/local</code></td>
 <td><code>nav_msgs/msg/Odometry</code></td>
 <td><code>ekf_local</code></td>
-<td><code>controller_server</code>, <code>bt_navigator</code>, <code>scripted_driver</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>sensor_watchdog</code>, <code>debug_hud</code>, <code>ndt</code>, <code>localization_health</code>, <code>dev_window</code>, <code>behaviour</code>, <code>ego</code>, <code>things</code></td>
+<td><code>controller_server</code>, <code>bt_navigator</code>, <code>scripted_driver</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>sensor_watchdog</code>, <code>debug_hud</code>, <code>ndt</code>, <code>localization_health</code>, <code>dev_window</code>, <code>behaviour</code>, <code>ego</code>, <code>things</code>, <code>hud</code></td>
 <td>turtle, sim, car, replay, bench</td>
 <td>odom frame. Smooth; drifts.</td>
 </tr>
@@ -1370,9 +1370,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/world/things</code></td>
 <td><code>aav_interfaces/msg/Things</code></td>
 <td><code>things</code></td>
-<td><code>behaviour</code>, <code>stop_sign_watcher</code></td>
+<td><code>behaviour</code>, <code>stop_sign_watcher</code>, <code>hud</code>, <code>dev_window</code></td>
 <td>-</td>
-<td>Only with things:=true (navigation.launch.py, sim.launch.py; needs the lidar, and voxels runs for it), 10 Hz, frame odom - every thing near the car, one list (docs/designs/2026-11-14_the-whole-car.md, Seeing - things, not just points). aav_things groups /perception/voxels/cubes (cubes within 0.6 m make a thing; walls over 8 m left to the map), follows each with a constant-velocity Kalman filter (greedy nearest association, 2 m gate - AB3DMOT's simple baseline), and lists it once seen in 3 clouds. Each Thing - id (kept while listed), kind (unknown, or with things_names:=true the camera detector's label where the thing's box overlaps one - person, car, stop sign - held 3 s, TODO 192; stop_sign_watcher then takes a named stop sign's distance from the lidar), x, y, vx, vy (m, m/s over the ground), length, width, height, position_sigma, confidence, last_seen, seen, radar (its speed along the radar's ray from /perception/radar/clusters too, radar:=true), coasting (not in the last cloud - moved on its speed; slower than 0.5 m/s taken as parked). Kept 3 s unseen, 30 s within 4 m of base_link (the blind zone before the bumper). The behaviour planner reads it; the screens will.</td>
+<td>Only with things:=true (navigation.launch.py, sim.launch.py; needs the lidar, and voxels runs for it), 10 Hz, frame odom - every thing near the car, one list (docs/designs/2026-11-14_the-whole-car.md, Seeing - things, not just points). aav_things groups /perception/voxels/cubes (cubes within 0.6 m make a thing; walls over 8 m left to the map), follows each with a constant-velocity Kalman filter (greedy nearest association, 2 m gate - AB3DMOT's simple baseline), and lists it once seen in 3 clouds. Each Thing - id (kept while listed), kind (unknown, or with things_names:=true the camera detector's label where the thing's box overlaps one - person, car, stop sign - held 3 s, TODO 192; stop_sign_watcher then takes a named stop sign's distance from the lidar), x, y, vx, vy (m, m/s over the ground), length, width, height, position_sigma, confidence, last_seen, seen, radar (its speed along the radar's ray from /perception/radar/clusters too, radar:=true), coasting (not in the last cloud - moved on its speed; slower than 0.5 m/s taken as parked). Kept 3 s unseen, 30 s within 4 m of base_link (the blind zone before the bumper). The behaviour planner reads it. The screens draw it (hud_core::things - each box in its kind's colour, person yellow, vehicle blue, stop sign red, other names green, unknown orange) - the HUD in AHEAD (placed with /localization/odom/local; named things past its 6 m drawing listed along its top, such as STOP SIGN 12 m), the developer window in the 3D scene and on the map (key K), with the name over each (TODO 192 step 3).</td>
 </tr>
 <tr>
 <td><code>/world/things/markers</code></td>
@@ -1380,7 +1380,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>things</code></td>
 <td>-</td>
 <td>-</td>
-<td>Only with things:=true, 10 Hz, frame odom - for RViz and the screens. A DELETEALL first, then per thing a box (orange; grey while coasting), an arrow for its speed and its id and speed as text (R where the radar gave it).</td>
+<td>Only with things:=true, 10 Hz, frame odom - for RViz and the screens. A DELETEALL first, then per thing a box coloured by its kind (aav_things looks.py, the screens' colours - person yellow, car, truck, bus, motorcycle blue, stop sign red, other names green, unknown orange; grey while coasting), an arrow for its speed, and its name, id and speed as text, such as 'person 3 1.2 m/s' (an unknown thing its id only; R where the radar gave the speed).</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/behaviour/state</code></td>

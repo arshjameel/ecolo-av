@@ -17,6 +17,7 @@ use hud_core::{
     health::Health,
     origin::{Announcement, Origins},
     picture::Picture,
+    things::Thing,
     vehicle::VehicleStatus,
 };
 use map_core::{
@@ -78,6 +79,9 @@ pub enum Update {
     RoadAhead(RoadAhead),
     /// The squiggly line's numbers: the gap, the stop, the room.
     Ahead(Summary),
+    /// The things near the car (`/world/things`, odom), named by the camera
+    /// (`hud_core::things`: kind, words, colour).
+    Things(Vec<Thing>),
 }
 
 /// The road ahead (`/world/road_ahead`, the whole-car design), on the map: where the car

@@ -51,7 +51,7 @@ pixi run dev-window --live --chunks maps/campus/chunks     # the 3 x 3 chunks ro
 | V | outline every live cube | S | live scan |
 | N | NDT's cells, dark to light purple (off, the default: cubes by height) | P | plan |
 | O | costmap | C, R | from behind it (the default) or the car; reset |
-| T | the squiggly line (on) | | |
+| T | the squiggly line (on) | K | the things, with their names (on) |
 
 ### The squiggly line (Ben, 7 Nov)
 
@@ -80,6 +80,20 @@ Live (8 Nov, `--live` beside our own simulator, after its Nav2 goal had finished
 so the stop bar sits at the car and the words say NO PLAN, STOPS IN 0.00 m.
 [The picture](../../../docs/img/dev-window-squiggly-live.png). The drive itself was caught
 by the HUD (`docs/hud.md`).
+
+**The things** (`/world/things`, odom; key K, TODO 192): each thing near the car as a box
+in its kind's colour, in the 3D scene and on the map, with its name over it.
+
+| Kind | Colour |
+|---|---|
+| person | yellow |
+| car, truck, bus, motorcycle | blue |
+| stop sign | red |
+| any other name | green |
+| unknown (no camera named it) | orange, no name |
+
+The colours are `hud_core::things`' (the HUD's and the RViz markers' too). Silent for 2 s:
+not drawn. Pretend data: a person crossing ahead, a stop sign, a car, an unnamed box.
 
 **A goal sent elsewhere** (sim-check, the tools, RViz, the map window): while plans keep
 coming on `/plan` (within 5 s), the map marks the plan's end in gold and says "driving

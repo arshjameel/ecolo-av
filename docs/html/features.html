@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">77 min read · 15 sections</div></header>
+<div class="meta">78 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -368,7 +368,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="../designs/2026-11-14_the-whole-car.md">The things, a trial</a> (<code>aav_things</code> <code>things</code>, <code>things:=true</code>, <code>/world/things</code>)</td>
-<td>The whole car (14 Nov): nothing near the car had an id, a speed or a memory. The lidar's cubes grouped into things, one constant-velocity Kalman filter each (AB3DMOT: the simple tracker is a strong baseline; no stock tracker on RoboStack), the radar's speed along its ray, and a memory, so a box that goes into the blind zone before the bumper stays known. 15 Nov, names (<code>things_names:=true</code>, TODO 192): each thing's box drawn into the cameras' pictures takes the detector's label it overlaps (person, car, stop sign): the lidar says where, the camera says what; exact in the simulator, calibration first on the car (Q22); the stop sign watcher then takes a named stop sign's distance from the lidar, not its pixel height. 14 Nov: the behaviour planner reads it (<code>behaviour:=true things:=true</code>): it waits for what moves and leaves a parked thing to the planner to go round</td>
+<td>The whole car (14 Nov): nothing near the car had an id, a speed or a memory. The lidar's cubes grouped into things, one constant-velocity Kalman filter each (AB3DMOT: the simple tracker is a strong baseline; no stock tracker on RoboStack), the radar's speed along its ray, and a memory, so a box that goes into the blind zone before the bumper stays known. 15 Nov, names (<code>things_names:=true</code>, TODO 192): each thing's box drawn into the cameras' pictures takes the detector's label it overlaps (person, car, stop sign): the lidar says where, the camera says what; exact in the simulator, calibration first on the car (Q22); the stop sign watcher then takes a named stop sign's distance from the lidar, not its pixel height. 14 Nov: the behaviour planner reads it (<code>behaviour:=true things:=true</code>): it waits for what moves and leaves a parked thing to the planner to go round. 15 Nov, names on the screens (Ben: "object deteciton and display like a stop sign"): the markers say <code>person 3</code> and colour each box by kind (yellow person, blue vehicle, red stop sign); the developer window (3D and map, key K) and the HUD's AHEAD draw each thing with its name</td>
 <td>Ben</td>
 <td>2026-11-14</td>
 <td>built</td>

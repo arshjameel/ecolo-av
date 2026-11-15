@@ -14,6 +14,7 @@ use hud_core::{
     ahead::{self, Ahead, PlanSource, Summary, Tone},
     gate::Light,
     origin::Origins,
+    things::Thing,
     vehicle::VehicleStatus,
 };
 use map_core::{
@@ -119,6 +120,8 @@ pub struct Layers {
     pub plan: bool,
     /// The squiggly line: the trace, the plan ahead, the stop bar and their words (key T).
     pub ahead: bool,
+    /// The things near the car, each box in its kind's colour, with its name (key K).
+    pub things: bool,
 }
 
 impl Default for Layers {
@@ -132,6 +135,7 @@ impl Default for Layers {
             scan: true,
             plan: true,
             ahead: true,
+            things: true,
         }
     }
 }
@@ -252,6 +256,9 @@ pub struct WorldNews {
     /// The squiggly line, in base_link, and when its trace and numbers were last heard.
     pub ahead: Ahead,
     trace_heard: Option<Instant>,
+    /// The things near the car (odom), named by the camera, and when they were last heard.
+    things: Vec<Thing>,
+    things_heard: Option<Instant>,
     /// When the newest plan came: a navigator replans while it drives a goal.
     plan_heard: Option<Instant>,
     summary_heard: Option<Instant>,
@@ -333,6 +340,10 @@ impl WorldNews {
                 self.ahead.summary = Some(summary);
                 self.summary_heard = Some(now);
             }
+            Update::Things(things) => {
+                self.things = things;
+                self.things_heard = Some(now);
+            }
         }
     }
 
@@ -344,6 +355,14 @@ impl WorldNews {
         (now.saturating_duration_since(heard) <= GOAL_PLAN_FRESH)
             .then(|| self.plan.last().copied())
             .flatten()
+    }
+
+    /// The things while they are fresh; none once `things` has been quiet 2 s.
+    pub fn things_now(&self, now: Instant) -> &[Thing] {
+        match self.things_heard {
+            Some(at) if now.saturating_duration_since(at) <= feed::STALE_AFTER => &self.things,
+            _ => &[],
+        }
     }
 
     /// The squiggly line while ego's trace is fresh, with its numbers while they are.
@@ -496,7 +515,7 @@ pub fn draw(
     picture: Res<PictureImage>,
     mut state: ResMut<UiState>,
     window: Single<&Window>,
-    mut camera: Single<&mut Camera, With<CubesCamera>>,
+    mut camera: Single<(&mut Camera, &GlobalTransform), With<CubesCamera>>,
 ) -> Result {
     let picture_id = contexts.add_image(EguiTextureHandle::Weak(picture.0.id()));
     let ctx = contexts.ctx_mut()?.clone();
@@ -546,6 +565,12 @@ pub fn draw(
     panel(&mut root, console_rect, |ui| console_panel(ui, state));
     cubes_panel(&mut root, cubes_rect, state);
     ndt_line(&root, cubes_rect, &state.world, state.layers.ndt_cubes);
+    if state.layers.things {
+        let (eyes, at) = (&*camera.0, camera.1);
+        thing_names(&root, cubes_rect, &state.world, |p| {
+            eyes.world_to_viewport(at, p).ok()
+        });
+    }
     if state.layers.ahead {
         let now = Instant::now();
         ahead_words(&root, cubes_rect, &state.world, now);
@@ -557,7 +582,7 @@ pub fn draw(
     let scale = window.scale_factor();
     let inner = cubes_rect.shrink(1.0);
     set_viewport(
-        &mut camera,
+        &mut camera.0,
         UVec2::new((inner.left() * scale) as u32, (inner.top() * scale) as u32),
         UVec2::new(
             (inner.width() * scale) as u32,
@@ -600,6 +625,7 @@ fn read_keys(ctx: &egui::Context, state: &mut UiState) {
             (egui::Key::S, &mut layers.scan),
             (egui::Key::P, &mut layers.plan),
             (egui::Key::T, &mut layers.ahead),
+            (egui::Key::K, &mut layers.things),
         ] {
             if input.key_pressed(key) {
                 *layer = !*layer;
@@ -1014,6 +1040,7 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
         ui.toggle_value(&mut layers.scan, "Cubes");
         ui.toggle_value(&mut layers.plan, "Plan");
         ui.toggle_value(&mut layers.ahead, "Ahead");
+        ui.toggle_value(&mut layers.things, "Things");
     });
 
     let rect = ui.available_rect_before_wrap();
@@ -1169,6 +1196,34 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
         for cube in world.cubes.cubes.iter().take(MAX_MAP_CUBES) {
             let p = feed::odom_to_map([cube.centre[0], cube.centre[1]], world.car_odom, car);
             painter.circle_filled(to(p), 1.5, egui::Color32::from_rgb(40, 220, 110));
+        }
+    }
+    if layers.things {
+        // Each thing: its box (odom, onto the map) in its kind's colour, and its name.
+        for thing in world.things_now(Instant::now()) {
+            let (hl, hw) = (thing.length / 2.0, thing.width / 2.0);
+            let corner = |dx: f64, dy: f64| {
+                let odom = [(thing.x + dx) as f32, (thing.y + dy) as f32];
+                to(feed::odom_to_map(odom, world.car_odom, car))
+            };
+            let outline = vec![
+                corner(-hl, -hw),
+                corner(hl, -hw),
+                corner(hl, hw),
+                corner(-hl, hw),
+                corner(-hl, -hw),
+            ];
+            let colour = rgba_colour(thing.colour());
+            painter.add(egui::Shape::line(outline, egui::Stroke::new(2.0, colour)));
+            if thing.is_named() {
+                painter.text(
+                    corner(0.0, hw),
+                    egui::Align2::CENTER_BOTTOM,
+                    thing.label(),
+                    egui::FontId::proportional(14.0),
+                    egui::Color32::WHITE,
+                );
+            }
         }
     }
     if layers.plan && world.plan.len() >= 2 {
@@ -1378,6 +1433,53 @@ fn algorithms_tab(ui: &mut egui::Ui, state: &mut UiState) {
         }
     });
     ui.add_enabled(false, egui::Button::new("SWAP (not built yet)"));
+}
+
+/// The things' names in the 3D scene: each named thing's words over its top, in a dark
+/// box, as the camera sees them (`place`: a point in odom to the window, None off screen).
+fn thing_names(
+    root: &egui::Ui,
+    rect: egui::Rect,
+    world: &WorldNews,
+    place: impl Fn(Vec3) -> Option<Vec2>,
+) {
+    let painter = root.painter_at(rect);
+    for thing in world.things_now(Instant::now()) {
+        if !thing.is_named() {
+            continue;
+        }
+        let top = Vec3::new(thing.x as f32, thing.y as f32, thing.height as f32 + 0.4);
+        let Some(at) = place(top).map(|p| egui::pos2(p.x, p.y)) else {
+            continue;
+        };
+        if !rect.contains(at) {
+            continue;
+        }
+        let galley = painter.layout_no_wrap(
+            thing.label(),
+            egui::FontId::proportional(16.0),
+            egui::Color32::WHITE,
+        );
+        let size = galley.size() + egui::vec2(12.0, 6.0);
+        let back = egui::Rect::from_center_size(at - egui::vec2(0.0, size.y / 2.0), size);
+        painter.rect_filled(back, 3.0, egui::Color32::from_black_alpha(190));
+        painter.rect_stroke(
+            back,
+            3.0,
+            egui::Stroke::new(2.0, rgba_colour(thing.colour())),
+            egui::StrokeKind::Inside,
+        );
+        painter.galley(
+            back.min + egui::vec2(6.0, 3.0),
+            galley,
+            egui::Color32::WHITE,
+        );
+    }
+}
+
+/// A hud_core colour (the things' kinds) for egui.
+fn rgba_colour(c: hud_core::theme::Rgba) -> egui::Color32 {
+    egui::Color32::from_rgba_unmultiplied(c.r, c.g, c.b, c.a)
 }
 
 /// The road ahead's colour for a speed limit: green at the strip's top speed, red at a stop.

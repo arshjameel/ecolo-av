@@ -12,6 +12,7 @@ use debug_core::{
 use hud_core::{
     origin::{Announcement, Entry, Origin},
     picture::Picture,
+    things::Thing,
     units::{Fraction, MetresPerSecond, Radians},
     vehicle::{Faults, Mode, VehicleStatus},
 };
@@ -20,7 +21,7 @@ use map_core::{
     grid::{Grid, GridInfo},
 };
 
-use crate::feed::{Feed, Level, RoadAhead, Update};
+use crate::feed::{self, Feed, Level, RoadAhead, Update};
 
 /// A straight piece of wall on the map, metres.
 pub type Wall = (Point, Point);
@@ -217,6 +218,32 @@ pub fn ahead_at(t: f64) -> Vec<Update> {
     updates
 }
 
+/// The pretend things at `t` seconds, round the car (odom): a person crossing 6 m ahead,
+/// a stop sign by the road, a car further on and a box no camera has named. They ride
+/// along with the car, so they stay in view.
+pub fn things_at(t: f64, car: Pose) -> Vec<Thing> {
+    let thing = |id, name: &str, at: (f64, f64), (length, width, height)| {
+        let p = feed::from_base(car, at);
+        Thing {
+            id,
+            name: name.to_owned(),
+            x: p.x,
+            y: p.y,
+            length,
+            width,
+            height,
+            ..Thing::default()
+        }
+    };
+    let walk = (t / 12.0 * TAU).sin() * 3.0;
+    vec![
+        thing(3, "person", (6.0, walk), (0.5, 0.5, 1.7)),
+        thing(7, "stop sign", (9.0, -2.5), (0.3, 0.3, 2.1)),
+        thing(9, "car", (16.0, 1.5), (4.0, 1.8, 1.5)),
+        thing(4, "unknown", (4.0, 3.0), (0.6, 0.6, 0.5)),
+    ]
+}
+
 impl PretendFeed {
     pub fn new(cubes: u32) -> Self {
         Self {
@@ -322,6 +349,8 @@ impl Feed for PretendFeed {
             // ego and look_ahead send theirs at 10 Hz.
             self.next_ahead = t + 0.1;
             updates.extend(ahead_at(t));
+            // things sends at 10 Hz too.
+            updates.push(Update::Things(things_at(t, car_odom)));
         }
         if t >= self.next_slow {
             self.next_slow = t + 0.5;
@@ -471,6 +500,17 @@ mod tests {
             })
             .expect("a trace");
         assert!(trace.last().is_some_and(|p| p.1 > 0.05));
+    }
+
+    #[test]
+    fn the_pretend_things_are_named_and_ahead_of_the_car() {
+        let car = car_at(5.0);
+        let things = things_at(5.0, car);
+        let named =
+            hud_core::things::named_ahead(&things, (car.position.x, car.position.y, car.yaw), 30.0);
+        let labels: Vec<_> = named.iter().map(|(t, _)| t.label()).collect();
+        assert_eq!(labels, vec!["person 3", "stop sign 7", "car 9"]);
+        assert!(things.iter().any(|t| !t.is_named()));
     }
 
     #[test]

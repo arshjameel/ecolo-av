@@ -638,6 +638,22 @@ fn draw_wireframes(state: Res<panels::UiState>, mut gizmos: Gizmos) {
             gizmos.line(side(1.0), side(-1.0), Color::srgb(0.92, 0.16, 0.16));
         }
     }
+    if state.layers.things {
+        // The things near the car (odom): each an upright box in its kind's colour
+        // (hud_core::things); their names are words over the scene (panels::thing_names).
+        for thing in world.things_now(std::time::Instant::now()) {
+            let c = thing.colour();
+            gizmos.cube(
+                Transform::from_xyz(thing.x as f32, thing.y as f32, thing.height as f32 / 2.0)
+                    .with_scale(Vec3::new(
+                        thing.length.max(0.1) as f32,
+                        thing.width.max(0.1) as f32,
+                        thing.height.max(0.1) as f32,
+                    )),
+                Color::srgb_u8(c.r, c.g, c.b),
+            );
+        }
+    }
     if state.layers.nav2_cubes {
         for cube in world.cubes.cubes.iter().take(MAX_OUTLINES) {
             gizmos.cube(

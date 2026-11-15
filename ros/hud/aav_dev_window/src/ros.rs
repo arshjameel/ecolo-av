@@ -7,7 +7,8 @@
 //! `/map`, the costmap, `/system/source`, `/vehicle/status`, the output gate, the
 //! watchdog, and the squiggly line's four, all base_link: `/ego/trace` (Path),
 //! `/ego/plan_ahead` (Path), `/ego/stop_point` (PoseStamped), `/ego/ahead`
-//! (DiagnosticStatus); the road ahead, map (`aav_interfaces/RoadAhead`)
+//! (DiagnosticStatus); the road ahead, map (`aav_interfaces/RoadAhead`); the things
+//! near the car, odom (`aav_interfaces/Things`, named by the camera)
 //! (`config/dev_window.yaml`).
 //! Publishes, only with `--developer`: `/goal_pose`, `/safety/estop` (only ever true).
 //! Serves and calls nothing.
@@ -37,6 +38,7 @@ use hud_core::{
     heartbeat::{Frames, Heartbeat},
     origin::{Announcement, Entry, Origin},
     picture::Picture,
+    things::Thing,
     units::{Fraction, MetresPerSecond, Radians},
     vehicle::{Faults, Mode, VehicleStatus},
 };
@@ -46,7 +48,7 @@ use map_core::{
 };
 use rclrs::*;
 use ros_env::aav_interfaces::msg::{
-    DataSource, RoadAhead as RoadAheadMsg, VehicleStatus as VehicleStatusMsg,
+    DataSource, RoadAhead as RoadAheadMsg, Things, VehicleStatus as VehicleStatusMsg,
 };
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::diagnostic_msgs::msg::DiagnosticStatus;
@@ -97,6 +99,7 @@ struct Topics {
     stop_point: String,
     ahead: String,
     road_ahead: String,
+    things: String,
 }
 
 /// A Path's points, as they are (base_link for the squiggly line's two).
@@ -502,6 +505,28 @@ fn spin(
             let road =
                 RoadAhead::from_parts(&points, f64::from(m.spacing), f64::from(m.end), &stops);
             send(&tx, Update::RoadAhead(road));
+        }
+    })?;
+    let _things = node.create_subscription(topics.things.as_str().qos(newest), {
+        let tx = tx.clone();
+        move |m: Things| {
+            let things = m
+                .things
+                .iter()
+                .map(|t| Thing {
+                    id: t.id,
+                    name: t.kind.clone(),
+                    x: f64::from(t.x),
+                    y: f64::from(t.y),
+                    vx: f64::from(t.vx),
+                    vy: f64::from(t.vy),
+                    length: f64::from(t.length),
+                    width: f64::from(t.width),
+                    height: f64::from(t.height),
+                    coasting: t.coasting,
+                })
+                .collect();
+            send(&tx, Update::Things(things));
         }
     })?;
     let _map = node.create_subscription(topics.map.as_str().qos(latched), {
