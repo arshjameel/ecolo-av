@@ -8,3 +8,11 @@ publish.workspace = true
 
 # No dependencies: it builds offline, and tests on any laptop.
 [dependencies]
+
+# TODO 203: benchmarks only (benches/update.rs); the car kit vendors it with the rest.
+[dev-dependencies]
+criterion = { version = "0.7", default-features = false, features = ["cargo_bench_support"] }
+
+[[bench]]
+name = "update"
+harness = false

@@ -42,6 +42,7 @@ lidar points ──Mount──▶ base_link ──ScanFilter──▶ ~500 point
 ```sh
 cd ros/localization/aav_ndt && cargo test --locked -p ndt-core
 cargo test --release --locked -p ndt-core --test matching -- --nocapture   # times per match
+cargo bench -p ndt-core                                 # a match and building the cubes (criterion)
 ```
 
 | Test (`tests/`) | Checks |

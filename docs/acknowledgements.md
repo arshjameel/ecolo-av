@@ -104,6 +104,7 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **rclrs** (ros2-rust) | Apache-2.0 | runs | our Rust ROS nodes |
 | **rayon** | MIT / Apache-2.0 | runs | each map chunk loaded and built on its own core (`map-chunks` `Store::update`, TODO 195) |
 | **proptest** | MIT / Apache-2.0 | tests only | the stop zone's, the map chunks' and the car model's rules checked on thousands of random inputs (`tests/props.rs`, TODO 204) |
+| **criterion** (Brook Heisler, Jorge Aparicio) | MIT / Apache-2.0 | benchmarks only | MPPI's tick, the planner's legs, the costmap's updates and an NDT match timed with statistics (`benches/`, TODO 203) |
 | **tracing**, **tracing-subscriber** (tokio-rs) | MIT | runs, only when built in | the MPPI tick's stages as spans, timed on stderr (`aav_mppi_lag` feature `trace`, TODO 196) |
 | **Tracy** (Bartosz Taudul), through **tracing-tracy** | BSD-3-Clause; MIT / Apache-2.0 | runs, only when built in | the same spans, live in the Tracy viewer (feature `tracy`) |
 | **RoboStack**; **Pixi** | BSD-3 | runs | ROS on Macs and any Linux, without admin rights |

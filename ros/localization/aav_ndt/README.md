@@ -78,6 +78,7 @@ world:=test_lot ndt:=true`, after `pixi run ndt-map drive` made the map.
 
 ```sh
 cd ros/localization/aav_ndt && cargo test --locked -p ndt-core
+cargo bench -p ndt-core                                 # a match and building the cubes, on the tests' yard (criterion)
 pixi run build && colcon test --packages-select aav_ndt && colcon test-result --verbose
 ```
 

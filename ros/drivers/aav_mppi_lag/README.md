@@ -135,6 +135,7 @@ All read once at start.
 cd ros/drivers/aav_mppi_lag && cargo test --release -p mppi-lag          # tools/test.sh runs it
 cargo test --release -p mppi-lag --test closed_loop explore -- --ignored --nocapture
 cargo run --release -p mppi-lag --example timing                         # ms a tick
+cargo bench -p mppi-lag                                                  # a tick, 1000 and 2000 samples, lane or not (criterion: says if a change made it slower)
 cargo run --release -p mppi-lag --example follow_plan -- paths/*.csv     # planned paths, followed (lattice-planner's moves example writes them)
 cargo run --release -p mppi-lag --example wiggle                         # the wiggle: each suspect at 2.5 m/s, before and after (docs/mppi-lag.md)
 STEER_GAMMA=0.05 SPEED=1.0 ONLY=after cargo run --release -p mppi-lag --example wiggle   # one setting tried (also BATCH, TEMP, CORR, STD, GAMMA)

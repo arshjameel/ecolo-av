@@ -15,6 +15,14 @@ car-model = { path = "../../../../bringup/aav_description/car-model", optional =
 # subscriber (mppi-node's own `trace` and `tracy` features) to time.
 tracing = { version = "0.1", optional = true, default-features = false, features = ["std"] }
 
+# TODO 203: benchmarks (benches/tick.rs), never in the node's build.
+[dev-dependencies]
+criterion = { version = "0.7", default-features = false, features = ["cargo_bench_support"] }
+
+[[bench]]
+name = "tick"
+harness = false
+
 [features]
 shared = ["dep:car-model"]
 trace = ["dep:tracing"]

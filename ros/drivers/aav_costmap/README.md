@@ -73,5 +73,6 @@ are never lowered.
 ```sh
 cargo test -p costmap                                  # the layers and hand-made scenes
 cargo run --release -p costmap --example timing        # how long an update takes (local; global at the campus's size)
+cargo bench -p costmap                                  # the same cases, measured by criterion
 pixi run build && colcon test --packages-select aav_costmap
 ```
