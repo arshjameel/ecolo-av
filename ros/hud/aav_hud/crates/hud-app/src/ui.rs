@@ -31,7 +31,7 @@
 //! stops the car. Below it: how far that stop is, how far off the plan, and the room
 //! left before the goal or an obstacle. The things near the car (`/world/things`) show
 //! there too, each box in its kind's colour with its name above (PERSON 3, STOP SIGN 7);
-//! named things past the drawing are listed along its top (CAR 14 m; TODO 192). The GPS
+//! named things past the drawing are listed in its header row (CAR 14 m; TODO 192). The GPS
 //! fix kind sits in the top strip.
 //!
 //! Every colour comes from the theme (`hud_core::theme`, `theme:` in config/hud.yaml):
@@ -1166,7 +1166,7 @@ const NAMED_LISTED: usize = 2;
 
 /// The things near the car (`/world/things`), in AHEAD: each one in the drawing as its
 /// box, coloured by its kind (hud_core::things), with its name above it (PERSON 3); the
-/// nearest named ones past the drawing as words along its top (STOP SIGN 12 m). Nothing
+/// nearest named ones past the drawing as words in the header row (STOP SIGN 12 m). Nothing
 /// while the things or the car's pose are quiet.
 fn things_ahead(c: &mut Canvas, state: &HudState, now: Instant, view: &View) {
     let Some((things, car)) = state.things_now(now) else {
@@ -1199,9 +1199,11 @@ fn things_ahead(c: &mut Canvas, state: &HudState, now: Instant, view: &View) {
         .filter(|(t, _)| !view.shows(t.in_base(car)))
         .take(NAMED_LISTED)
         .collect();
-    for (i, (thing, distance)) in past.iter().enumerate() {
-        let y = view.rect.1 + 4.0 + i as f32 * 20.0;
-        let x = view.rect.0 + view.rect.2 - 8.0;
+    // In the header row beside AHEAD, right to left: the drawing's top edge is where a
+    // near thing's name goes, and the two collided (seen 15 Nov).
+    let y = view.rect.1 - 24.0;
+    let mut x = view.rect.0 + view.rect.2 - 8.0;
+    for (thing, distance) in past {
         let words = format!(
             "{} {}",
             thing.name.trim().to_uppercase(),
@@ -1210,6 +1212,7 @@ fn things_ahead(c: &mut Canvas, state: &HudState, now: Instant, view: &View) {
         let w = c.width(&words, 16.0);
         c.dot((x - w - 10.0, y + 8.0), 5.0, thing.colour());
         c.right(x, y, 16.0, &words, c.t.text);
+        x -= w + 30.0;
     }
 }
 
