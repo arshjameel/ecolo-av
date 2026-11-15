@@ -373,16 +373,31 @@ class Seen:
 MOVING = 0.3   # m/s over the ground: slower is parked (the planner goes round it)
 
 
+@dataclass(frozen=True)
+class Crossing:
+    """When a thing beside the lane counts as in it: it will walk in before the car comes."""
+
+    across: float = 0.2     # m/s towards the lane, at least: slower is walking along it
+    slack: float = 2.0      # s: in the lane up to this long after the car would reach it
+    horizon: float = 6.0    # s: no further ahead than this (a speed's error grows with time)
+
+
 def moving_ahead(things: Sequence[Seen], car: Tuple[float, float, float], front: float,
-                 half_width: float, reach: float = 30.0, moving: float = MOVING) -> float:
+                 half_width: float, reach: float = 30.0, moving: float = MOVING,
+                 speed: float = 0.0, crossing: Optional[Crossing] = Crossing()) -> float:
     """
     Return the nearest x (m, base_link) of a moving thing in the lane straight ahead, or inf.
 
-    car: (x, y, yaw) in odom, as the things are. The lane is |y| <= half_width, widened by
-    each thing's half width, from the front bumper out to `reach`. A thing slower than
-    `moving` is parked: it is left to the planner, which plans round it (the whole car,
-    "the things"; TODO 162). What moves (a person, a car) is waited for. The stop zone's
-    lock still stops the car for anything, parked or not.
+    car: (x, y, yaw) in odom, as the things are; speed: the car's, m/s. The lane is
+    |y| <= half_width, widened by each thing's half width, from the front bumper out to
+    `reach`. A thing slower than `moving` is parked: it is left to the planner, which plans
+    round it (the whole car, "the things"; TODO 162). What moves (a person, a car) is waited
+    for. The stop zone's lock still stops the car for anything, parked or not.
+
+    A thing beside the lane, walking into it, counts too (TODO 194): if at its speed it
+    is in the lane before the car, at its speed, has reached it (plus `crossing.slack`),
+    within `crossing.horizon`. Only what is in the lane now counted before, so a person
+    crossing was seen about a metre from the bumper: too late to slow. None: no crossing.
     """
     cx, cy, yaw = car
     c, s = math.cos(yaw), math.sin(yaw)
@@ -393,9 +408,30 @@ def moving_ahead(things: Sequence[Seen], car: Tuple[float, float, float], front:
         dx, dy = t.x - cx, t.y - cy
         px, py = c * dx + s * dy, -s * dx + c * dy
         near = px - t.length / 2.0
-        if front < px + t.length / 2.0 and near <= reach and abs(py) <= half_width + t.width / 2.0:
+        if not (front < px + t.length / 2.0 and near <= reach):
+            continue
+        lane = half_width + t.width / 2.0
+        if abs(py) <= lane or (crossing is not None and _walks_in(
+                py, -s * t.vx + c * t.vy, lane, near - front,
+                speed - (c * t.vx + s * t.vy), crossing)):
             nearest = min(nearest, max(near, front))
     return nearest
+
+
+def _walks_in(y: float, vy: float, lane: float, gap: float, closing: float,
+              crossing: Crossing) -> bool:
+    """
+    Return whether a thing `y` m to the side, moving `vy` m/s across, is in the lane in time.
+
+    lane: the half width it is in at; gap: m from the bumper to it; closing: m/s the car
+    gains on it. In time: before the car reaches it, plus the slack, within the horizon.
+    """
+    towards = -math.copysign(1.0, y) * vy
+    if towards < crossing.across:
+        return False
+    enters = (abs(y) - lane) / towards
+    reaches = max(0.0, gap) / closing if closing > 0.0 else math.inf
+    return enters <= min(reaches + crossing.slack, crossing.horizon)
 
 
 def diagnostic(decision: Decision) -> Dict[str, str]:

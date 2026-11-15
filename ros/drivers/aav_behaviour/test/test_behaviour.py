@@ -287,3 +287,32 @@ def test_moving_ahead_waits_for_what_moves_and_leaves_parked_things_to_the_plann
     # Inside the bumper's reach already: it counts from the bumper.
     close = Seen(x=10.0, y=6.6, vx=0.5, vy=0.0, length=0.6, width=0.6)
     assert moving_ahead([close], car, front=1.8, half_width=0.6) == pytest.approx(1.8)
+
+
+def test_moving_ahead_counts_a_person_who_will_walk_into_the_lane_before_the_car_comes():
+    # TODO 194: a person 3.4 m right of the lane, 5.6 m ahead, walking left at 0.8 m/s, the
+    # car at 0.9 m/s. Only "in the lane now" saw them a metre from the bumper: too late.
+    from aav_behaviour.behaviour import Crossing, moving_ahead, Seen
+    car = (0.0, 0.0, 0.0)                     # facing +x in odom: left is +y
+    walker = Seen(x=5.6, y=-3.4, vx=0.0, vy=0.8, length=0.5, width=0.5)
+    ahead = moving_ahead([walker], car, front=1.8, half_width=0.6, speed=0.9)
+    assert ahead == pytest.approx(5.35)       # where they will cross, less half their length
+    # Without the prediction, they don't count until they are in the lane.
+    assert moving_ahead([walker], car, front=1.8, half_width=0.6, speed=0.9,
+                        crossing=None) == math.inf
+    # Walking away from the lane, or along beside it: not in the way.
+    away = Seen(x=5.6, y=-3.4, vx=0.0, vy=-0.8, length=0.5, width=0.5)
+    along = Seen(x=5.6, y=-3.4, vx=1.2, vy=0.1, length=0.5, width=0.5)
+    assert moving_ahead([away, along], car, front=1.8, half_width=0.6, speed=0.9) == math.inf
+    # From the left, walking right: the same.
+    left = Seen(x=5.6, y=3.4, vx=0.0, vy=-0.8, length=0.5, width=0.5)
+    assert moving_ahead([left], car, front=1.8, half_width=0.6, speed=0.9) == pytest.approx(5.35)
+    # Far from the lane and slow to reach it: past the horizon, not yet.
+    slow = Seen(x=20.0, y=-8.0, vx=0.0, vy=0.4, length=0.5, width=0.5)
+    assert moving_ahead([slow], car, front=1.8, half_width=0.6, speed=0.9) == math.inf
+    # They'd come into the lane long after the car has gone by: not in the way.
+    late = Seen(x=4.0, y=-2.0, vx=0.0, vy=0.4, length=0.5, width=0.5)
+    assert moving_ahead([late], car, front=1.8, half_width=0.6, speed=2.0,
+                        crossing=Crossing(slack=1.0)) == math.inf
+    # The car standing: within the horizon, they count.
+    assert moving_ahead([walker], car, front=1.8, half_width=0.6) == pytest.approx(5.35)

@@ -192,7 +192,10 @@ class BehaviourNode(Node):
         if self.odom_pose is None:
             return
         seen = [Seen(t.x, t.y, t.vx, t.vy, t.length, t.width) for t in msg.things]
-        self.moving = moving_ahead(seen, self.odom_pose, self.p['front'], self.p['half_width'])
+        # The car's speed: a person walking in counts if they are in the lane by the time
+        # the car would reach them (TODO 194).
+        self.moving = moving_ahead(seen, self.odom_pose, self.p['front'], self.p['half_width'],
+                                   speed=max(0.0, self.speed or 0.0))
         self.things_time = self.now()
 
     def obstacle_ahead(self, now):

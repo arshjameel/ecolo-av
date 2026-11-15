@@ -7,7 +7,7 @@
 <!-- Generated from docs/stopping.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>How the car stops</h1>
-<div class="meta">13 min read · 4 sections</div></header>
+<div class="meta">14 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -319,6 +319,11 @@ a lock or Nav2's goal check makes every final stop.</p>
 <td>collision_monitor, then the <code>stop_zone</code> lock</td>
 </tr>
 <tr>
+<td>A moving thing (<code>things:=true</code>)</td>
+<td>to the thing, in the lane now <strong>or walking into it</strong> before the car gets there (below)</td>
+<td>the <code>stop_zone</code> lock</td>
+</tr>
+<tr>
 <td>The fence</td>
 <td>along the plan to where the geofence would say NEAR</td>
 <td>the geofence's lock</td>
@@ -330,6 +335,29 @@ a lock or Nav2's goal check makes every final stop.</p>
 </tr>
 </tbody>
 </table></div>
+<h3 id="someone-walking-into-the-lane-todo-194">Someone walking into the lane (TODO 194)</h3>
+<p>With <code>things:=true</code>, a thing moving at 0.3 m/s or more counts when:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>It is</th>
+<th>It counts if</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>in the lane now</td>
+<td>always</td>
+</tr>
+<tr>
+<td>beside the lane, walking towards it (0.2 m/s or more across)</td>
+<td>at its speed it is in the lane before the car reaches it + 2 s, and within 6 s</td>
+</tr>
+</tbody>
+</table></div>
+<p>Before 15 Nov only "in the lane now" counted. A person crossing was seen about 1 m from the
+bumper: too late to slow, and only the stop zone stopped the car (<code>behaviour.py</code>
+<code>moving_ahead</code>, <code>Crossing</code>).</p>
 <h3 id="the-cap">The cap</h3>
 <div class="table-wrap"><table>
 <thead>

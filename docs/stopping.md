@@ -79,8 +79,22 @@ a lock or Nav2's goal check makes every final stop.
 |---|---|---|
 | A stop sign | camera range to the sign − 4.7 m | the `stop_sign` lock |
 | An obstacle in the lane | lidar: nearest point ahead − bumper − stop zone | collision_monitor, then the `stop_zone` lock |
+| A moving thing (`things:=true`) | to the thing, in the lane now **or walking into it** before the car gets there (below) | the `stop_zone` lock |
 | The fence | along the plan to where the geofence would say NEAR | the geofence's lock |
 | The goal | along the plan to its end | Nav2's goal check |
+
+### Someone walking into the lane (TODO 194)
+
+With `things:=true`, a thing moving at 0.3 m/s or more counts when:
+
+| It is | It counts if |
+|---|---|
+| in the lane now | always |
+| beside the lane, walking towards it (0.2 m/s or more across) | at its speed it is in the lane before the car reaches it + 2 s, and within 6 s |
+
+Before 15 Nov only "in the lane now" counted. A person crossing was seen about 1 m from the
+bumper: too late to slow, and only the stop zone stopped the car (`behaviour.py`
+`moving_ahead`, `Crossing`).
 
 ### The cap
 

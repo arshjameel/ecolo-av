@@ -666,7 +666,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tbody>
 <tr>
 <td><a href="stopping.html#2-the-behaviour-planner">The behaviour planner</a> (<code>aav_behaviour</code>, <code>behaviour:=true</code>, a trial): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK; a speed cap on Nav2 from the stopping law for a stop sign, an obstacle in the lane, the fence and the goal; <code>/drivers/nav/behaviour/state</code></td>
-<td>Ben, 7 Nov: "we can use that to say if we have turned enough or slowing down enough". Today the sign's lock fires at cruise speed and nothing says why the car waits: this slows the car before each stop, and the locks still make every stop. Since 15 Nov it holds the release of an obstacle 1 s, so a thing at the lane's edge no longer makes it speed up and slow down over and over</td>
+<td>Ben, 7 Nov: "we can use that to say if we have turned enough or slowing down enough". Today the sign's lock fires at cruise speed and nothing says why the car waits: this slows the car before each stop, and the locks still make every stop. Since 15 Nov it holds the release of an obstacle 1 s, so a thing at the lane's edge no longer makes it speed up and slow down over and over; and (TODO 194) a person walking into the lane counts before they step in, if at their speed they get there before the car: it only saw them in the lane, a metre from the bumper, too late to slow</td>
 <td>Ben</td>
 <td>2026-11-07</td>
 <td>built</td>

@@ -62,7 +62,7 @@ Parameters (from `vehicle.behaviour_params`: nav2.yaml, vehicle.yaml, ego.yaml):
 | `stop_distance_m`, `near_depth`, `plan_timeout` | 4.7 m, 2.5 m, 25 s | the to-pose tree keeps a path up to 20 s near the goal |
 | `road_rate_hz`, `road_length`, `road_spacing` | 10 Hz, 40 m, 0.5 m | the road ahead: how often, how far, how fine |
 | `lane_map` | empty | a `lanes.yaml` (`aav_description` `lane_map.py`): the road ahead's line on the right lane's centre, with its hard and soft edges. Empty: the line is `/plan`'s, edges NaN. `sim.launch.py lane_map:=world` gives the world's own |
-| `things`, `things_timeout` | false, 1.0 s | true (`navigation.launch.py things:=true`): read `/world/things` (`aav_things`); an obstacle stop only for a thing that moves (0.3 m/s or more); a parked thing is the planner's to go round (TODO 162). The stop zone's lock still stops the car for anything. A list older than `things_timeout`: the scan's rule, where the scan runs |
+| `things`, `things_timeout` | false, 1.0 s | true (`navigation.launch.py things:=true`): read `/world/things` (`aav_things`); an obstacle stop only for a thing that moves (0.3 m/s or more), in the lane or walking into it before the car gets there (`Crossing`, TODO 194); a parked thing is the planner's to go round (TODO 162). The stop zone's lock still stops the car for anything. A list older than `things_timeout`: the scan's rule, where the scan runs |
 
 | Module | No ROS? | Holds |
 |---|---|---|
