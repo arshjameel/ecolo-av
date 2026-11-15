@@ -7,7 +7,7 @@
 <!-- Generated from docs/mppi-lag.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>MPPI that knows the lag</h1>
-<div class="meta">21 min read · 12 sections</div></header>
+<div class="meta">23 min read · 13 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -115,7 +115,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-model">The model</a><a href="#what-differs-from-nav2s-mppi">What differs from Nav2&#x27;s MPPI</a><a href="#results-without-ros">Results without ROS</a><a href="#speed">Speed</a><a href="#in-gazebo">In Gazebo</a><a href="#reversing">Reversing</a><a href="#cusps">Cusps</a><a href="#the-lane">The lane</a><a href="#lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn&#x27;t cancel the lag twice</a><a href="#run-it">Run it</a><a href="#what-is-missing">What is missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-model">The model</a><a href="#what-differs-from-nav2s-mppi">What differs from Nav2&#x27;s MPPI</a><a href="#results-without-ros">Results without ROS</a><a href="#speed">Speed</a><a href="#in-gazebo">In Gazebo</a><a href="#reversing">Reversing</a><a href="#cusps">Cusps</a><a href="#the-campus-junction-the-geofence-not-mppi">The campus junction: the geofence, not MPPI</a><a href="#the-lane">The lane</a><a href="#lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn&#x27;t cancel the lag twice</a><a href="#run-it">Run it</a><a href="#what-is-missing">What is missing</a></nav>
 <div class="lead"><p>Ben, 7 Nov (0.3): <strong>"have the algorithms know about lag"</strong>.</p>
 <p>Nav2's MPPI plans as if the car obeys at once. It can't take our lag model without a C++
 plugin, and we write no C++. So MPPI is <strong>ported to Rust</strong>, with the lag in its model.
@@ -720,6 +720,70 @@ at its goal. The progress check starts again at each new stretch.</p>
 <p>The planner's own path (exported from <code>lattice-planner</code> on the lot's map), 8 seeds
 each: 0 of 8 before, 8 of 8 after; also with a slow car, rolling at 0.8 m/s, or
 started 0.2 rad off. <strong>In the simulator: not yet run</strong> with the fix.</p>
+</section>
+<section class="card"><h2 id="the-campus-junction-the-geofence-not-mppi">The campus junction: the geofence, not MPPI</h2>
+<p><strong>Found 14 Nov night:</strong> the campus tour's "round the bend", all ours, reversing on.
+After 92 m the car stood still at a wide junction, (224.25, -160.90), for 70 s:
+4 short reverses, 11 x "no progress in time", then the leg gave up.</p>
+<pre class="highlight"><code>  start ··· road east ───────●╮    ● the car stopped: 196.9 m from the start
+                          :   │    the path turns right (r ≈ 4.5 m), south,
+                          :   │    out to 216 m from the start
+                          :   ╰─╮
+                          :     ← the sim's fence, 200 m round the start</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Evidence (the saved run)</th>
+<th>Says</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the car's spot</td>
+<td><strong>196.9 m</strong> from the start spot (49.2, -70.8)</td>
+</tr>
+<tr>
+<td>the planned path</td>
+<td>reaches <strong>216 m</strong> from it: 62 of its 246 points past 198.9 m</td>
+</tr>
+<tr>
+<td>the launch log</td>
+<td><code>geofence NEAR: a stopping path ... comes 1.1 m from the edge</code>, at each stop</td>
+</tr>
+<tr>
+<td>what MPPI asked</td>
+<td>2.4 m/s forward, or 0.4 m/s back: the car <strong>did not move</strong> either way</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Cause:</strong> the sim's geofence (<code>geofence_radius</code>, 200 m) holds every program, forward
+and back, near its edge, by design. MPPI was never the one stopping.</p>
+<p><strong>Fix:</strong> the campus tours in <code>measure controllers</code> run with a 600 m fence
+(<code>CAMPUS_FENCE</code>, as <code>docs/routes.md</code>), and a leg's notes now say "the geofence held
+the car" when it did.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Closed loop, <code>campus_junction_round_the_bend</code></th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the run's own path, 51 points from 75 m in; 2.5 m/s asked; rolling, 0.6 m off, 15° across</td>
+<td>reached in 39.6 s</td>
+</tr>
+<tr>
+<td>off the path</td>
+<td>0.011 m mean, 0.039 m worst</td>
+</tr>
+<tr>
+<td>backing up</td>
+<td>none</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In the simulator:</strong> not yet run with the 600 m fence.</p>
 </section>
 <section class="card"><h2 id="the-lane">The lane</h2>
 <p>TODO 169. With a lane map, the road ahead (<code>/world/road_ahead</code>, the behaviour planner's)

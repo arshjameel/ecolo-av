@@ -30,6 +30,10 @@ in the car, on the dash Pi; laptop screens can be Bevy; the Orin runs no graphic
 | **Developer window** (Bevy, `pixi run dev-window`; Ben, 5 Nov) | the scene, what the lidar sees with NDT, a map you click, a console: live on the simulators | absorbs the debug screen ([design](designs/2026-11-05_one-window.md)); not the cockpit, as planned on 3 Nov |
 | **Hardware**: the [hardware panel](hud.md#the-hardware-panel) | every sensor, simple buttons, the steering's ends | stays separate |
 
+The developer window live, 14 Nov: our stack (`stack:=ours`) driving the road world, the road ahead's line on the AHEAD panel:
+
+![The developer window while our stack drives](img/dev-window-ours-live.png)
+
 ## How it starts
 
 ```text

@@ -150,6 +150,9 @@ from std_msgs.msg import Bool, String  # noqa: E402
 from std_srvs.srv import Trigger  # noqa: E402
 import yaml  # noqa: E402
 
+# The campus tours' geofence: a 600 m circle round lot P4, as docs/routes.md runs it. The
+# sim's 200 m holds every program before the campus's further roads.
+CAMPUS_FENCE = 'geofence_radius:=600'
 # (name, x m, y m, heading deg): each leg's goal, map frame.
 TOURS = {
     'lot': {'obstacle': False, 'legs': [
@@ -162,8 +165,9 @@ TOURS = {
         ('past the box', 30.0, 0.0, 0.0),
     ]},
     # Carleton (pixi run campus): only when asked for, at the campus's speed. Long roads and real
-    # bends, where a wobble shows.
-    'campus': {'obstacle': False, 'world': worlds.CAMPUS, 'legs': [
+    # bends, where a wobble shows. Round the bend's route goes 216 m from the start: the sim's
+    # 200 m fence held the car at a junction 196.9 m out (14 Nov night), so the campus's fence.
+    'campus': {'obstacle': False, 'world': worlds.CAMPUS, 'launch': [CAMPUS_FENCE], 'legs': [
         ('out of the lot', 73.0, -38.0, 45.0),
         ('along the road', 165.0, -111.0, -40.0),
         # Facing along the road (-71 deg, measured on campus.pgm, 14 Nov): -100 deg left the
@@ -179,9 +183,9 @@ TOURS = {
     # TODO 140: directions on the campus, P4 to the Fieldhouse, as GPS waypoints (route:
     # from, to, by the campus graph). The leg's goal is the last waypoint, put on the map
     # by /fromLL when the run starts (None until then).
-    # The fence: a 600 m circle, as docs/routes.md runs it (200 m stops it half way).
+    # The fence: as docs/routes.md runs it (200 m stops it half way).
     'fieldhouse': {'obstacle': False, 'world': worlds.CAMPUS, 'route': ('P4', 'Fieldhouse'),
-                   'launch': ['geofence_radius:=600'],
+                   'launch': [CAMPUS_FENCE],
                    'legs': [('P4 to the Fieldhouse', None, None, None)]},
 }
 # --stacks: every navigation piece Nav2's, or every one ours (mppi_lag follows).
@@ -284,6 +288,7 @@ class Recorder(Node):
         self.last_truth = self.glob = None
         self.lock, self.locked, self.states = None, False, set()
         self.monitor, self.monitor_stops = None, 0
+        self.fence = set()   # the geofence's holds while driving (NEAR, OUTSIDE, ...)
         self.create_subscription(Odometry, '/vehicle/sim/truth', self.on_truth, 10)
         self.create_subscription(Odometry, '/localization/odom/global', self.on_global, 10)
         self.create_subscription(Path, '/plan', self.on_plan, 10)
@@ -314,6 +319,7 @@ class Recorder(Node):
         self.create_subscription(String, '/safety/sensor_watchdog/state', self.on_state, 10)
         self.create_subscription(CollisionMonitorState, '/safety/collision_monitor/state',
                                  self.on_monitor, 10)
+        self.create_subscription(String, '/safety/geofence/state', self.on_fence, 10)
         # Nav2's navigator's actions, or ours (--stacks own: navigator:=own).
         self.nav = ActionClient(self, NavigateToPose,
                                 vehicle.navigator_action(navigator, 'navigate_to_pose'))
@@ -334,6 +340,7 @@ class Recorder(Node):
         self.kiss, self.kiss_status, self.local = [], [], []
         self.diffusion = []
         self.locked, self.states, self.monitor_stops = False, set(), 0
+        self.fence = set()
         self.recording = True
 
     def on_truth(self, msg):
@@ -447,6 +454,12 @@ class Recorder(Node):
     def on_state(self, msg):
         if self.recording and msg.data not in ('', 'OK'):
             self.states.add(msg.data[:90])
+
+    def on_fence(self, msg):
+        # 'STATE: why'. STARTING before the first leg isn't a hold while driving.
+        state = msg.data.split(':', 1)[0]
+        if self.recording and state in ('NEAR', 'OUTSIDE', 'LOST', 'JUMP', 'COASTING'):
+            self.fence.add(state)
 
     def on_monitor(self, msg):
         if self.recording and msg.action_type == CollisionMonitorState.STOP and (
@@ -634,6 +647,8 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server
                      (': ' + '; '.join(sorted(rec.states)) if rec.states else ''))
     if rec.monitor_stops:
         notes.append(f'collision_monitor stopped the car {rec.monitor_stops}x')
+    if rec.fence:
+        notes.append('the geofence held the car: ' + ', '.join(sorted(rec.fence)))
     if rec.diffusion:
         notes.append(diffusion_note(rec.diffusion))
     if rec.voxels:

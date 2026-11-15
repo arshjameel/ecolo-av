@@ -266,6 +266,42 @@ The planner's own path (exported from `lattice-planner` on the lot's map), 8 see
 each: 0 of 8 before, 8 of 8 after; also with a slow car, rolling at 0.8 m/s, or
 started 0.2 rad off. **In the simulator: not yet run** with the fix.
 
+## The campus junction: the geofence, not MPPI
+
+**Found 14 Nov night:** the campus tour's "round the bend", all ours, reversing on.
+After 92 m the car stood still at a wide junction, (224.25, -160.90), for 70 s:
+4 short reverses, 11 x "no progress in time", then the leg gave up.
+
+```
+  start ··· road east ───────●╮    ● the car stopped: 196.9 m from the start
+                          :   │    the path turns right (r ≈ 4.5 m), south,
+                          :   │    out to 216 m from the start
+                          :   ╰─╮
+                          :     ← the sim's fence, 200 m round the start
+```
+
+| Evidence (the saved run) | Says |
+|---|---|
+| the car's spot | **196.9 m** from the start spot (49.2, -70.8) |
+| the planned path | reaches **216 m** from it: 62 of its 246 points past 198.9 m |
+| the launch log | `geofence NEAR: a stopping path ... comes 1.1 m from the edge`, at each stop |
+| what MPPI asked | 2.4 m/s forward, or 0.4 m/s back: the car **did not move** either way |
+
+**Cause:** the sim's geofence (`geofence_radius`, 200 m) holds every program, forward
+and back, near its edge, by design. MPPI was never the one stopping.
+
+**Fix:** the campus tours in `measure controllers` run with a 600 m fence
+(`CAMPUS_FENCE`, as `docs/routes.md`), and a leg's notes now say "the geofence held
+the car" when it did.
+
+| Closed loop, `campus_junction_round_the_bend` | Result |
+|---|---|
+| the run's own path, 51 points from 75 m in; 2.5 m/s asked; rolling, 0.6 m off, 15° across | reached in 39.6 s |
+| off the path | 0.011 m mean, 0.039 m worst |
+| backing up | none |
+
+**In the simulator:** not yet run with the 600 m fence.
+
 ## The lane
 
 TODO 169. With a lane map, the road ahead (`/world/road_ahead`, the behaviour planner's)
