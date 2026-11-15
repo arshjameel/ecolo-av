@@ -1024,6 +1024,24 @@ def with_lidar_memory(cfg, seconds):
     return cfg
 
 
+def with_global_window(cfg, metres):
+    """
+    Return nav2.yaml's dict with the global costmap a `metres` square rolling with the car.
+
+    The three levels' middle level (TODO 175, step 3): 192 m is the 3 x 3 map chunks round
+    the car. The planner then searches only that, and the static layer fills it from the
+    map as it rolls. The street router's legs (10-30 m between waypoints) always fit; a
+    goal further than half the window away can't be planned to. 0: the whole map, as the
+    file has it. Nav2's costmap and ours both read it.
+    """
+    if not (math.isfinite(metres) and metres >= 0.0):
+        raise ValueError(f'global_window must be 0 or more metres (got {metres})')
+    if metres > 0.0:
+        block = cfg['global_costmap']['global_costmap']['ros__parameters']
+        block.update(rolling_window=True, width=float(metres), height=float(metres))
+    return cfg
+
+
 def nav2_rewrites(v, reversing=False, planner='hybrid'):
     """
     Values to substitute into aav_navigation/config/nav2.yaml.

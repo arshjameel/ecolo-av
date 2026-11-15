@@ -99,7 +99,7 @@ New: `/maps/chunks/loaded` (which chunks are in memory, for the dev window and t
 |---|---|---|
 | 1 | **The chunk store** (Rust crate, no ROS): `(i, j)` from x, y; load and drop by distance; each chunk's layers | laptop tests: the right 15 chunks load along a campus route |
 | 2 | **Chunk files**: `chunk-map` cuts a map server's map into one `.pgm` per chunk; then `pixi run campus` and `ndt-map` call it | ✅ occupancy, 15 Nov: the campus in 625 chunks per detail, 1.5 s; read back cell for cell. NDT next |
-| 3 | **The middle planner on chunks**: our planner plans ~100 m ahead on the loaded chunks, then again as the car goes | campus tours: legs and time no worse than the whole-map planner |
+| 3 | **The middle planner on chunks**: our planner plans ~100 m ahead on the loaded chunks, then again as the car goes | 🔧 15 Nov, first form: `global_window:=192` rolls the global costmap with the car (the 3 x 3 chunks); the street router's 10-30 m legs fit. To score: campus tours, legs and time against the whole map. Later: a far goal planned via the lane route |
 | 4 | **NDT on chunks** | 🔧 15 Nov, `ndt-core` `chunks.rs`: the campus NDT map in 699 chunk files; the 3 x 3 round the start holds 10,354 cubes of 890,407 (1.2 %), built in 0.01 s against 0.9 s, cube for cube the same. The node: `ndt_chunks:=` (off by default) loads them as the car drives; builds, not yet run in a simulator |
 | 5 | **The subtraction**: the things from new occupancies only | fewer things on a walled campus road; a person still found |
 | 6 | **Lanelet2 in Rust** as the route level's map (TODO 175) | a route by lanes, stop lines in the road ahead |

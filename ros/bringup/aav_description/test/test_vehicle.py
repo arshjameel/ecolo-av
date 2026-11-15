@@ -840,3 +840,17 @@ def test_a_still_car_sends_a_nearly_certain_zero_and_a_moving_one_unchanged():
     assert vehicle.standstill_covariance(0.5, cov) == cov
     assert vehicle.standstill_covariance(math.nan, cov) == cov
     assert cov[35] == 1e3                  # the caller's list is left alone
+
+
+def test_a_global_window_rolls_the_global_costmap_and_0_leaves_it():
+    """TODO 175 step 3: the global costmap as a 192 m square round the car."""
+    def cfg():
+        return {'global_costmap': {'global_costmap': {'ros__parameters': {
+            'rolling_window': False, 'resolution': 0.25}}}}
+    block = vehicle.with_global_window(cfg(), 192.0)['global_costmap']['global_costmap'][
+        'ros__parameters']
+    assert block == {'rolling_window': True, 'width': 192.0, 'height': 192.0,
+                     'resolution': 0.25}
+    assert vehicle.with_global_window(cfg(), 0.0) == cfg()
+    with pytest.raises(ValueError):
+        vehicle.with_global_window(cfg(), -1.0)
