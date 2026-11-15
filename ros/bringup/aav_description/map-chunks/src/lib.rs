@@ -18,6 +18,7 @@
 //!   the route crosses in the next `ahead` metres at [`Detail::Coarse`].
 //! - [`Store`]: the loaded chunks; [`Store::update`] loads the new ones and drops the rest.
 //! - [`OccupancyChunk`] and [`cut`]: one chunk's occupancy, and a whole map cut into them.
+//! - [`files`]: a map server's map in, one `.pgm` per chunk out, and back.
 //!
 //! Units: metres, in the map frame.
 //!
@@ -34,6 +35,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+
+pub mod files;
 
 /// A point on the map (m).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -327,6 +330,18 @@ impl OccupancyChunk {
             side,
             cells: vec![UNKNOWN; side * side],
         }
+    }
+
+    /// A chunk from its cells, row by row from the lower left; `None` if there aren't
+    /// exactly side x side of them.
+    pub fn from_cells(grid: &Grid, key: ChunkKey, detail: Detail, cells: Vec<i8>) -> Option<Self> {
+        let side = grid.cells_per_side(detail);
+        (cells.len() == side * side).then_some(Self {
+            key,
+            detail,
+            side,
+            cells,
+        })
     }
 
     /// Cells along one side.

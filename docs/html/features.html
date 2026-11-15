@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">73 min read · 15 sections</div></header>
+<div class="meta">74 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -579,8 +579,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="../designs/2026-11-15_three-levels.md">Map chunks</a> (<code>aav_description</code> <code>map-chunks</code>, Rust, no ROS): the map in fixed 64 m squares; the 3 x 3 round the car at 0.25 m, the route's next 100 m at 1 m; load and drop as the car goes; cut a whole map into chunks</td>
-<td>Ben, 14-15 Nov: "I like having hte 3 levels with fixed size map chunks"; "the splitting of the map into quadtrees kind of thing or octree but fixed size". Step 1 of 7 of the three levels (TODO 175): the store the planner, NDT, the things and the dev window will share. Nothing uses it yet</td>
+<td><a href="../designs/2026-11-15_three-levels.md">Map chunks</a> (<code>aav_description</code> <code>map-chunks</code>, Rust, no ROS): the map in fixed 64 m squares; the 3 x 3 round the car at 0.25 m, the route's next 100 m at 1 m; load and drop as the car goes; cut a whole map into chunk files (<code>chunk-map</code>: the campus in 625 chunks a detail, 1.5 s)</td>
+<td>Ben, 14-15 Nov: "I like having hte 3 levels with fixed size map chunks"; "the splitting of the map into quadtrees kind of thing or octree but fixed size". Steps 1-2 of 7 of the three levels (TODO 175): the store the planner, NDT, the things and the dev window will share. Nothing uses it yet</td>
 <td>Ben</td>
 <td>2026-11-15</td>
 <td>built</td>

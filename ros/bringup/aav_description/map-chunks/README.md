@@ -28,6 +28,8 @@ shared by our planner, NDT, the things and the dev window. Nothing uses it yet.
 | `Store<T>::update(want, load)` | load the new chunks, drop the rest; a failed load changes nothing |
 | `OccupancyChunk` (`unknown`, `at`, `mark`) | one chunk's cells, -1 unknown, 0-100 as ROS counts |
 | `cut(grid, WholeMap, detail)` | a whole map cut into chunks, each cell the worst under it |
+| `files::read_map`, `write_chunks`, `read_chunk`, `read_grid` | a map server's `.yaml` + `.pgm` in; `<out>/chunks.yaml`, `fine/i_j.pgm`, `coarse/i_j.pgm` out (trinary colours, any viewer shows them), and back |
+| `chunk-map <map.yaml> <out> [size]` (a binary) | the same from the command line: the campus, 625 chunks a detail, 1.5 s |
 
 ## Testing
 

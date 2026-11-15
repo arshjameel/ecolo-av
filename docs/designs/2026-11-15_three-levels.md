@@ -22,7 +22,7 @@ along its route. Plan at three zoom levels, each on the chunks it needs.
 
 | Today | The cost |
 |---|---|
-| The campus global costmap is one grid: 1800 x 1800 m at 0.25 m = **52 million cells** | memory, and every planner query searches one big map |
+| The campus global costmap is one grid: 1600 x 1600 m at 0.25 m = **41 million cells** | memory, and every planner query searches one big map |
 | The NDT map is one file: **12.3 million points**, all loaded | start-up time, memory on the Orin |
 | Our planner plans the whole way to the goal on that grid | slow on long routes (TODO 152: 180 ms) |
 | Everything the lidar sees is "a thing" | a wall seen again looks new; the tracker works harder |
@@ -55,7 +55,7 @@ way), the path (the road ahead), and the close-up (the things).
 |---|---|
 | **Fixed 64 m squares**, on a grid from the map's origin; a chunk is `(i, j)` | finding a chunk is one division, no tree to walk or rebalance; each chunk can go to its own thread |
 | **Two detail levels**, 1 m and 0.25 m | Ben's "further away less fine": what a quadtree's levels would give, with two fixed sizes |
-| **Loaded**: the 3 x 3 chunks round the car, plus those the route crosses in the next 100 m | about 15 chunks of the campus's ~800: 2 % |
+| **Loaded**: the 3 x 3 chunks round the car, plus those the route crosses in the next 100 m | about 15 chunks of the campus's 625: 2 % |
 | **3D inside a chunk**: a hash of 1 m voxels (NDT's cells) | an octree's job, flat: lookups are one hash; only cells with points exist |
 
 A quadtree or an octree fits a map with big empty areas and a few dense ones. A campus is
@@ -98,7 +98,7 @@ New: `/maps/chunks/loaded` (which chunks are in memory, for the dev window and t
 | # | Step | Done when |
 |---|---|---|
 | 1 | **The chunk store** (Rust crate, no ROS): `(i, j)` from x, y; load and drop by distance; each chunk's layers | laptop tests: the right 15 chunks load along a campus route |
-| 2 | **Chunk files**: `pixi run campus` and `ndt-map` write one file per chunk | the campus map in chunks, same cells as today's |
+| 2 | **Chunk files**: `chunk-map` cuts a map server's map into one `.pgm` per chunk; then `pixi run campus` and `ndt-map` call it | ✅ occupancy, 15 Nov: the campus in 625 chunks per detail, 1.5 s; read back cell for cell. NDT next |
 | 3 | **The middle planner on chunks**: our planner plans ~100 m ahead on the loaded chunks, then again as the car goes | campus tours: legs and time no worse than the whole-map planner |
 | 4 | **NDT on chunks** | the same pose, less memory, faster start |
 | 5 | **The subtraction**: the things from new occupancies only | fewer things on a walled campus road; a person still found |
