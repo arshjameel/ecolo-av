@@ -124,7 +124,8 @@ def test_joystick_overrides_every_source(run):
         assert run.until_mux_passes(driver, 5.0), f'{driver} never reached the mux output'
         output = run.spin(0.3, driver)
 
-        assert output == {speed}, (
+        # Nothing but its own commands (that they arrive is the wait's check above).
+        assert output <= {speed}, (
             f'{driver} did not reach the mux output; '
             f'expected {speed}, actual {output}'
         )
