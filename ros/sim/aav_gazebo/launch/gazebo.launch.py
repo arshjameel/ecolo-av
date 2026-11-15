@@ -453,7 +453,7 @@ def generate_launch_description():
                               description='with spine:=true: spine_bridge in rust '
                                           '(aav_spine_bridge) or python (aav_spine)'),
         DeclareLaunchArgument('noise_seed', default_value='1',
-                              description='simulator:=own: the sensors\' noise seed; the same '
+                              description='simulator:=own: the sensors noise seed; the same '
                                           'seed, the same streams'),
         DeclareLaunchArgument('wheel_noise', default_value='0',
                               description='simulator:=own: m/s of noise on each wheel speed '
