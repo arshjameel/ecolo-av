@@ -490,8 +490,11 @@ def launch_setup(context):
         actions += [
             include(context, 'aav_detector', 'detector.launch.py', labels='stop sign',
                     use_sim_time='true'),
+            # With things named (TODO 192), the lidar gives the stop sign's distance.
             Node(package='aav_detector', executable='stop_sign_watcher', name='stop_sign_watcher',
-                 parameters=[{'use_sim_time': True}]),
+                 parameters=[{'use_sim_time': True,
+                              'lidar_distance': flag['things']
+                              and arg('things_names').lower() == 'true'}]),
         ]
     if flag['camera_obstacles']:
         actions.append(Node(package='aav_detector', executable='camera_obstacles',

@@ -1,5 +1,5 @@
-from aav_detector.stop_sign import (biggest_sign, CLEAR, GAZEBO_FOCAL_PX, PASSING,
-                                    sign_distance_m, sign_point,
+from aav_detector.stop_sign import (biggest_sign, CLEAR, GAZEBO_FOCAL_PX, lidar_sign,
+                                    PASSING, sign_distance_m, sign_point,
                                     STOPPING, StopRule, StopSignWatcher)
 import pytest
 
@@ -90,3 +90,11 @@ def test_the_biggest_sign_box():
              ('person', 0.9, 200.0, 50.0), ('stop sign', 0.2, 90.0, 10.0)]
     assert biggest_sign(boxes, 0.5) == (300.0, 60.0)
     assert biggest_sign([], 0.5) is None
+
+
+def test_the_lidar_gives_the_named_signs_distance():
+    """TODO 192 step 2: the stop sign the lidar sees beats the pixel height's guess."""
+    things = [('person', 6.1, 0.2), ('stop_sign', 7.9, 1.6), ('stop sign', 20.0, 1.5)]
+    assert lidar_sign((7.0, 1.4), things) == (7.9, 1.6)
+    assert lidar_sign((7.0, 1.4), things[:1]) is None          # no sign named: the camera's
+    assert lidar_sign((12.0, 1.4), things, gate_m=3.0) is None  # too far from the guess

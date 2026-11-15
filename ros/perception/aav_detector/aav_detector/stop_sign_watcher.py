@@ -10,7 +10,13 @@ Publishes   /perception/stop_sign        std_msgs/Bool, 10 Hz: true while the ca
                                     stop sign seen by a forward camera is, in that camera's
                                     frame at the picture's stamp (sign_point: the range from
                                     its height, the bearing from its column and the lens).
-                                    Only while CLEAR: the behaviour planner slows for it
+                                    Only while CLEAR: the behaviour planner slows for it.
+                                    With lidar_distance (off by default), a thing the
+                                    things node named stop sign within 3 m of that guess
+                                    gives the point instead: the lidar's distance, not the
+                                    pixel height's (TODO 192 step 2)
+            /world/things           aav_interfaces/Things, odom (lidar_distance only)
+Uses TF     odom <-> each forward camera's frame (lidar_distance only)
 
 A sign counts once it is stop_distance_m (4.7) away or closer: its box's height, the
 sign's (sign_height_m, 0.75) and the focal length of the camera that saw it, the fy of
@@ -29,13 +35,17 @@ Needs no PyTorch: it runs in the default environment.
 import signal
 
 from aav_detector.ground import is_optical
-from aav_detector.stop_sign import biggest_sign, CLEAR, sign_point, StopRule, StopSignWatcher
+from aav_detector.stop_sign import (biggest_sign, CLEAR, lidar_sign, sign_point, StopRule,
+                                    StopSignWatcher)
+from aav_interfaces.msg import Things
 from geometry_msgs.msg import Point, PointStamped
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo
 from std_msgs.msg import Bool
+import tf2_geometry_msgs  # noqa: F401 - registers PointStamped with tf2
+import tf2_ros
 from vision_msgs.msg import Detection2DArray
 
 CAMERA_INFO = [f'/sensors/camera/{c}/camera_info' for c in ('front_left', 'front_right', 'rear')]
@@ -72,6 +82,14 @@ class Watcher(Node):
         self.create_subscription(Detection2DArray, '/perception/detections', self.on_boxes, 10)
         self.create_timer(0.1, self.tick)
         self.state = self.watcher.state
+        # The lidar's distance to a sign the things node named (TODO 192 step 2).
+        self.use_lidar = bool(p('lidar_distance', False).value)
+        self.gate_m = float(p('lidar_gate_m', 3.0).value)
+        self.things = ('odom', [])          # (frame, [(kind, x, y)]) from /world/things
+        if self.use_lidar:
+            self.tf = tf2_ros.Buffer()
+            self.tf_listener = tf2_ros.TransformListener(self.tf, self)
+            self.create_subscription(Things, '/world/things', self.on_things, 10)
 
     def now(self) -> float:
         return self.get_clock().now().nanoseconds * 1e-9
@@ -113,7 +131,30 @@ class Watcher(Node):
         fx, cx = self.lens.get(msg.header.frame_id, (None, None))
         x, y, z = sign_point(sign[0], sign[1], focal or self.watcher.rule.focal_px, fx, cx,
                              is_optical(msg.header.frame_id), self.watcher.rule.sign_height_m)
-        self.point.publish(PointStamped(header=msg.header, point=Point(x=x, y=y, z=z)))
+        point = PointStamped(header=msg.header, point=Point(x=x, y=y, z=z))
+        if self.use_lidar:
+            point = self.lidar_point(point) or point
+        self.point.publish(point)
+
+    def on_things(self, msg: Things):
+        self.things = (msg.header.frame_id, [(t.kind, t.x, t.y) for t in msg.things])
+
+    def lidar_point(self, camera: PointStamped):
+        """Return the named sign's lidar place in the camera's frame, or None."""
+        frame, things = self.things
+        if not things:
+            return None
+        try:
+            guess = self.tf.transform(camera, frame)
+            found = lidar_sign((guess.point.x, guess.point.y), things, self.gate_m)
+            if found is None:
+                return None
+            guess.point.x, guess.point.y = found
+            back = self.tf.transform(guess, camera.header.frame_id)
+        except tf2_ros.TransformException:
+            return None
+        back.header = camera.header
+        return back
 
     def tick(self):
         self.publish(self.watcher.tick(self.now()))
