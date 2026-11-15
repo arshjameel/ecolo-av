@@ -560,6 +560,7 @@ debug screen and the hardware panel.
 | HUD | ![Before](img/hud-before-theme.png) | ![Mocha](img/hud-raylib.png) | ![Initial D](img/hud-initial-d.png) |
 | Map | ![Before](img/map-before-theme.png) | ![Mocha](img/map-streets-demo.png) | ![Initial D](img/map-initial-d.png) |
 | Debug screen | ![Before](img/debug-hud-before-theme.png) | ![Mocha](img/debug-hud-seeing.png) | ![Initial D](img/debug-hud-initial-d.png) |
+| Hardware panel | | | ![Initial D](img/hw-panel-initial-d.png) |
 | Hardware panel | ![Before](img/hw-panel-before-theme.png) | ![Mocha](img/hw-panel-demo.png) | ![Initial D](img/hw-panel-initial-d.png) |
 
 ### The themes
@@ -608,7 +609,7 @@ Only the localizers keep Catppuccin's colours (blue, green, orange, purple, yell
 a picture means the same in every theme. Corners come from `Style::corner`: soft in the
 glass themes, under a third as round in Initial D.
 
-The pictures (2 Nov, Ben's Mac, pretend data): `pixi run hud --demo --screenshot FILE`;
+The pictures (2 Nov; the Initial D ones again 15 Nov, with the faint car on all four, and the hardware panel's added; Ben's Mac, pretend data): `pixi run hud --demo --screenshot FILE`;
 `pixi run map --demo --zoom 2.5 --screenshot FILE`; `pixi run debug-hud --demo
 --screenshot FILE --after 8`; `pixi run hw-panel --demo --screenshot FILE --after 12`.
 

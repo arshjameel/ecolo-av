@@ -123,7 +123,7 @@ history: [todo-done](docs/history/todo-done.md#the-old-lists-as-they-were-on-15-
 |---|---|---|
 | 132 | **The lag-aware MPC** (`tracker:=mpc_lag`): keep off obstacles (costmap cost in the QP); move to Rust before the car (near 50 ms a tick on the Orin, estimated) | 🟡 built and scored |
 | 114 | **The developer window**: the algorithm list with SWAP, cancel a goal, try a slower laptop | 🔧 |
-| 98 | **The faint car behind every screen**: drawn on all four; the four screenshots are left | 🔧 |
+| 98 | **The faint car behind every screen**: drawn on all four; the four screenshots are left | ✅ 15 Nov: the four Initial D pictures taken again from `--demo` (`docs/hud.md`, the themes table; the hardware panel's added), the faint car on each |
 | 120 | **The campus map**: fit a real drive to it, the GPS offset, a person approves map changes | 🟡 |
 | 93 | **The cubes let the car into a post once** (1 of 3 runs, 3 Nov): run `sim-check --lidar-obstacle --voxels` again on today's stack | ⬜ before voxels near the car |
 | 94 | **Drive-to-point stops 0.61 m past B** by the car's own EKF, once a run (limit 0.5 m) | ⬜ |
