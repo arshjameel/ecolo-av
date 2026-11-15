@@ -113,6 +113,12 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             clear and reach its goal. behaviour:=true
                                             things:=true; --moving-only skips the road
                                             world's run)
+    pixi run sim-check --stop-zone-shadow (TODO 182: our stop zone in Rust in shadow beside
+                                            collision_monitor through the obstacle check:
+                                            both must stop, ours within 0.3 s of Nav2's,
+                                            and never clear while Nav2 stops more than
+                                            0.2 s; --stop-zone-shadow-only skips the road
+                                            world's run)
     pixi run sim-check --low-box          (TODO 188: a 0.5 m box the roof lidar loses near
                                             the bumper, the radar off; the car must go round
                                             it clear. Two runs: lidar_memory:=0, then 3 s;
@@ -282,6 +288,7 @@ from sensor_msgs_py import point_cloud2  # noqa: E402
 from std_msgs.msg import Bool, String, UInt64  # noqa: E402
 from std_srvs.srv import SetBool, Trigger  # noqa: E402
 import stop_points  # noqa: E402
+import stop_zone_compare  # noqa: E402
 import street_check  # noqa: E402
 import tf2_ros  # noqa: E402
 from vision_msgs.msg import Detection2DArray  # noqa: E402
@@ -1362,6 +1369,37 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
            f'({math.hypot(gx - x1, gy - y1):.2f} m, {math.degrees(turned):.0f} deg off), '
            f'{turns} changes of direction, {room:.2f} m from a wall at the closest '
            f'(street {width:g} m)')
+
+
+def check_stop_zone_shadow(probe, delay_limit=0.3, missed_limit=0.2):
+    """
+    Our stop zone (stop_zone_shadow:=true) beside Nav2's through the obstacle check.
+
+    Both states are recorded as (time, stop) while check_obstacle drives at a box; then
+    stop_zone_compare scores them. Ours must stop too, within delay_limit s of Nav2's
+    first stop, and be clear while Nav2 stops no more than missed_limit s (TODO 182).
+    """
+    nav2, ours = [], []
+    probe.create_subscription(
+        CollisionMonitorState, '/safety/collision_monitor/state',
+        lambda m: nav2.append((probe.now(), m.action_type == CollisionMonitorState.STOP)), 10)
+    probe.create_subscription(
+        DiagnosticStatus, '/safety/stop_zone/shadow/state',
+        lambda m: ours.append((probe.now(), m.level != DiagnosticStatus.OK)), 10)
+    start = probe.now()
+    check_obstacle(probe, name='obstacle (with the shadow)')
+    end = probe.now()
+    if not ours:
+        result('stop zone shadow', False, 'our stop zone said nothing (is aav_stop_zone built?)')
+        return
+    c = stop_zone_compare.compare(nav2, ours, start, end)
+    ok = (c.our_stops > 0 and c.nav2_stops > 0 and c.delay is not None
+          and abs(c.delay) <= delay_limit and c.missed <= missed_limit)
+    delay = 'never both stopped' if c.delay is None else f"ours {c.delay:+.2f} s from Nav2's"
+    result('stop zone shadow', ok,
+           f'agree {100 * c.agree:.1f} % of {end - start:.0f} s; first stop {delay}; '
+           f'clear while Nav2 stopped {c.missed:.2f} s, stopped alone {c.extra:.2f} s; '
+           f'stops: Nav2 {c.nav2_stops}, ours {c.our_stops}')
 
 
 def check_low_box(probe):
@@ -2926,7 +2964,8 @@ def main():
     if not {'--drive-to-point-only', '--speed-steps-only', '--spine-points-only',
             '--stop-point-only', '--loaded-stop-only', '--behaviour-only', '--lane-only',
             '--things-only', '--behaviour-things-only', '--legs-only',
-            '--three-point-only', '--moving-only', '--low-box-only'} & set(args):
+            '--three-point-only', '--moving-only', '--low-box-only',
+            '--stop-zone-shadow-only'} & set(args):
         # With --obstacle the planner is blind to the box, so the stop zone must stop the car.
         session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}']
                 + (['plan_around:=false'] if '--obstacle' in args else []),
@@ -3043,6 +3082,12 @@ def main():
         logs.append(f'{stem}-moving{ext}')
         session(['behaviour:=true', 'things:=true', 'lidar:=true'],
                 [check_moving_thing], logs[-1], 'moving thing')
+    if {'--stop-zone-shadow', '--stop-zone-shadow-only'} & set(args):
+        # Its own run: our stop zone beside Nav2's, the planner blind to the box.
+        stem, ext = os.path.splitext(log)
+        logs.append(f'{stem}-stop-zone-shadow{ext}')
+        session(['stop_zone_shadow:=true', 'plan_around:=false'], [check_stop_zone_shadow],
+                logs[-1], 'stop zone shadow')
     if {'--low-box', '--low-box-only'} & set(args):
         # Two runs, the radar off: without the lidar's memory, then with 3 s of it.
         stem, ext = os.path.splitext(log)

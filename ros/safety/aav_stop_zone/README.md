@@ -33,7 +33,7 @@ casually.
 | `StopZone::step(now, Command, readings)` | `Decision { out, stop, band }`: the command to send (or none), why it stopped |
 | `Polygon::contains` | the ray-crossing point test |
 
-Not yet: a measure comparing the shadow with `collision_monitor` run by run; mounts from
+The comparison: `pixi run sim-check --stop-zone-shadow` (ours must stop within 0.3 s of Nav2's and never be clear while it stops for more than 0.2 s). Not yet: mounts from
 `/tf_static` (the launch gives the radar's from vehicle.yaml; the rest send base_link);
 the `slowdown`, `limit` and `approach` actions (our config uses none); sensors with roll
 or pitch.
