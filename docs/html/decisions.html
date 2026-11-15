@@ -7,7 +7,7 @@
 <!-- Generated from docs/decisions.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Decisions and open questions</h1>
-<div class="meta">51 min read · 16 sections</div></header>
+<div class="meta">52 min read · 16 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -876,6 +876,26 @@ answer.</p>
 <tr>
 <td>14 Nov</td>
 <td><strong>We run our own stack; Nav2 and Gazebo leave</strong>: "I would like to remove nav2 and gazeboo ... run everythign ourselves in rust and/or python". <code>stack:=ours</code> and our simulator become the default now; Nav2 and Gazebo stay only as yardsticks until 0.4-rc1 is scored, then are deleted. robot_localization, twist_mux and teleop_twist_* stay for now. CLAUDE.md's rules changed to match</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>No freeze on new challengers</strong> (the whole-car design's W6: no): "We want to build the best version ... that might inlcude reading papers or merging ideas together that we already have"</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>The order</strong>: the 0.4-rc1 list first (the sway, 170, 174, 182-185), then the whole-car design's gaps (the planner inside the road ahead's edges, the soft edge to pass, following at a gap, the things' critic), then 155 and 156</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>Lanelet2 in Rust</strong> (our own reader, TODO 175) now, after the sway work</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td>The old <code>wip/</code> branches (7 Nov): checked against <code>next</code>, anything useful taken, then archived</td>
 <td>Ben</td>
 </tr>
 </tbody>

@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">72 min read · 15 sections</div></header>
+<div class="meta">73 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -439,7 +439,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="a-to-b.html">Drive to point: GPS A to B</a> (<code>aav_drive_to_point</code>)</td>
-<td>The Gate 4 goal: drive to a GPS point and stop within 1 m; in Gazebo it stopped within 0.4 m. Called <code>aav_goto</code> until 26 Oct: renamed so the name says the job (action <code>/drive_to_point</code>, slot <code>point</code>, <code>pixi run drive-to-point</code>)</td>
+<td>The Gate 4 goal: drive to a GPS point and stop within 1 m; in Gazebo it stopped within 0.4 m. Called <code>aav_goto</code> until 26 Oct: renamed so the name says the job (action <code>/drive_to_point</code>, slot <code>point</code>, <code>pixi run drive-to-point</code>). Since 15 Nov it stops if the car leaves the drive's own corridor (3 m off the line, 2 m past B), whatever the cause</td>
 <td>Ben</td>
 <td>2026-10-15</td>
 <td>sim</td>
