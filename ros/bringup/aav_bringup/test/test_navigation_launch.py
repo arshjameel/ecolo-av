@@ -414,6 +414,7 @@ def test_own_navigator_takes_bt_navigators_place_beside_nav2s_servers():
     nodes = nav_nodes()
     assert 'navigator' not in nodes and 'bt_navigator' in nodes
     nodes = nav_nodes(navigator='own')
+    # Ours serves Nav2's action names (/navigate_to_pose...): only one server may.
     assert 'bt_navigator' not in nodes and 'waypoint_follower' not in nodes
     assert {'planner_server', 'controller_server'} <= set(nodes)
     assert 'bt_navigator' not in managed(nodes)
@@ -456,9 +457,9 @@ def test_the_sim_passes_the_navigator_on_and_the_car_never_does():
     assert sent_to_navigation(CAR, machine='all')['navigator'] == 'nav2'
     with pytest.raises(ValueError, match='navigator:='):
         sent_to_navigation(SIM, navigator='mine')
-    assert vehicle.navigator_action('own', 'follow_gps_waypoints') == (
-        '/drivers/nav/navigator/follow_gps_waypoints')
-    assert vehicle.navigator_action('nav2', 'navigate_to_pose') == '/navigate_to_pose'
+    # Either navigator serves Nav2's names: no goal sender knows which runs.
+    assert vehicle.navigator_action('follow_gps_waypoints') == '/follow_gps_waypoints'
+    assert vehicle.navigator_action('navigate_to_pose') == '/navigate_to_pose'
 
 
 def test_own_smoother_takes_velocity_smoothers_place_under_its_name():

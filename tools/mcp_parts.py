@@ -130,8 +130,9 @@ def contract_for(spec: dict, name: str) -> Optional[str]:
         for section in ('topics', 'services', 'actions'):
             for key, entry in (spec.get(section) or {}).items():
                 nodes = list(entry.get('pub') or []) + list(entry.get('sub') or [])
-                if entry.get('server'):
-                    nodes.append(entry['server'])
+                server = entry.get('server')
+                if server:     # one node, or a list of drop-ins (the navigators)
+                    nodes += server if isinstance(server, list) else [server]
                 if name in nodes:
                     found.setdefault(section, {})[key] = entry
     if not found:

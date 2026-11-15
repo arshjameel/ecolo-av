@@ -538,9 +538,9 @@ class Probe(Node):
         self.drive_to_point = ActionClient(self, DriveToPoint, '/drive_to_point')
         self.estop = self.create_publisher(Bool, '/safety/estop', 10)
         self.to_ll = self.create_client(ToLL, '/toLL')
-        # Nav2's navigator, or ours (--navigator own: navigation.launch.py navigator:=own).
+        # Whichever navigator runs (--navigator nav2 or own) serves Nav2's action names.
         self.nav = ActionClient(self, NavigateToPose,
-                                vehicle.navigator_action(NAVIGATOR, 'navigate_to_pose'))
+                                vehicle.navigator_action('navigate_to_pose'))
         self.stop, self.stop_picture, self.picture, self.stop_sign = False, None, None, None
         self.create_subscription(Bool, '/perception/stop_sign', self.on_stop, 10)
         self.create_subscription(Image, '/perception/detections/image',
@@ -2247,7 +2247,6 @@ EVERY_RUN = []   # launch arguments every session adds: --speed-loop's, --simula
 SIMULATOR = None      # --simulator gazebo or own; else sim.launch.py's default (main)
 # What runs: sim.launch.py's default stack (ours, stacks.DEFAULT), or --stack's, with any
 # --navigator, --costmap, --planner or --tracker on top (main works it out again).
-NAVIGATOR = 'own'     # --navigator nav2: bt_navigator in aav_navigator's place
 # All ours (navigator, planner and costmap own, tracker mppi_lag: the default): Nav2's
 # costmaps don't run at all, so they aren't missing from the graph.
 ALL_OURS = True
@@ -2714,7 +2713,7 @@ def main():
         SIMULATOR = DEFAULT_SIMULATOR
     # Always said: the checks place models and read logs the way this simulator wants.
     EVERY_RUN.append(f'simulator:={SIMULATOR}')
-    global COSTMAP, NAVIGATOR, ALL_OURS
+    global COSTMAP, ALL_OURS
     chosen = {}
     for flag_name, choices in (('--costmap', vehicle.COSTMAPS), ('--tracker', vehicle.TRACKERS),
                                ('--navigator', vehicle.NAVIGATORS),
@@ -2729,8 +2728,6 @@ def main():
                 EVERY_RUN.append('reversing:=false')     # aav_track's: forward only
             if flag_name == '--costmap':
                 COSTMAP = args[at + 1]
-            if flag_name == '--navigator':
-                NAVIGATOR = args[at + 1]
             chosen[flag_name[2:]] = args[at + 1]
     # The stack (stacks.yaml, docs/league.md): --stack's, else the launch's default (ours).
     # The launch sets its switches, and a flag above, set by hand, still wins over it.
@@ -2748,7 +2745,6 @@ def main():
     for level in ('costmap', 'tracker', 'navigator', 'planner'):
         chosen.setdefault(level, picked.get(level))
     COSTMAP = chosen['costmap'] or COSTMAP
-    NAVIGATOR = chosen['navigator'] or NAVIGATOR
     ALL_OURS = vehicle.all_ours(chosen.get('navigator'), chosen.get('planner'),
                                 chosen.get('costmap'), chosen.get('tracker'))
     if SIMULATOR == 'own' and CAMERAS:

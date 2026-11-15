@@ -90,7 +90,8 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           local one instead of Nav2's (docs/own-costmap.md)
   navigator:=own          aav_navigator's navigator (Rust, a trial): our own navigator in
                           place of bt_navigator and waypoint_follower. It serves the same four
-                          actions under /drivers/nav/navigator/ and /goal_pose, and calls
+                          actions under Nav2's names (/navigate_to_pose...), so no goal
+                          sender knows which navigator runs, and /goal_pose; and calls
                           whichever planner, follower and costmap clears run. With
                           planner:=own costmap:=own tracker:=mppi_lag (all ours) no Nav2
                           server runs for navigation: only map_server, the velocity smoother
@@ -442,7 +443,7 @@ def nodes(context):
                          'things': things,
                          # Every navigator action: a goal running on any of them.
                          'goal_status_topics': [
-                             vehicle.navigator_action(navigator, a) + '/_action/status'
+                             vehicle.navigator_action(a) + '/_action/status'
                              for a in vehicle.NAVIGATOR_ACTIONS]}]))
     if collision_monitor:
         # Holds collision_monitor's stops (aav_safety stop_hold, twist_mux's stop_zone
@@ -747,7 +748,7 @@ def generate_launch_description():
         DeclareLaunchArgument('navigator', default_value=vehicle.DEFAULT_NAVIGATOR,
                               description='nav2 (the default: bt_navigator and '
                                           'waypoint_follower) or own: aav_navigator, our own, '
-                                          'on /drivers/nav/navigator/*; car.launch.py refuses '
+                                          "under Nav2's action names; car.launch.py refuses "
                                           'it (docs/own-navigator.md)'),
         DeclareLaunchArgument('smoother', default_value=vehicle.DEFAULT_SMOOTHER,
                               description="nav2 (the default: Nav2's velocity_smoother) or "

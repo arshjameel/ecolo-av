@@ -9,8 +9,8 @@ default (`stack:=ours`; Nav2's with `navigator:=nav2` or `stack:=stock`). Nav2 s
 > - **Switch:** `navigator:=own`. Package `aav_navigator` (Rust).
 > - **What it is:** what Nav2's `bt_navigator`, our behaviour trees and
 >   `waypoint_follower` do for the car, as one state machine.
-> - **Drop-in:** Nav2's four actions, under `/drivers/nav/navigator/`. Each goal sender
->   has a `navigator` switch.
+> - **Drop-in:** Nav2's four actions, under Nav2's own names (`/navigate_to_pose`...),
+>   in `bt_navigator`'s and `waypoint_follower`'s place. No goal sender knows which runs.
 > - **All ours:** `navigator:=own planner:=own costmap:=own tracker:=mppi_lag`. Then no
 >   Nav2 server navigates.
 > - **Scores:** test lot 7 of 12 legs (Nav2 8); the box 3 of 3 (Nav2 3); campus 4 of 6
@@ -30,16 +30,18 @@ goal senders ──▶ navigator (ours) ──ComputePathToPose─────�
 
 The safety locks, collision_monitor and twist_mux never change.
 
-| Action (ours) | Nav2's | Used by |
+| Action (the same name for both) | Nav2's server | Used by |
 |---|---|---|
-| `/drivers/nav/navigator/navigate_to_pose` | `/navigate_to_pose` | the tools, sim-check, RViz (`/goal_pose`) |
-| `/drivers/nav/navigator/navigate_through_poses` | `/navigate_through_poses` | anyone with several poses |
-| `/drivers/nav/navigator/follow_waypoints` | `/follow_waypoints` | map waypoints |
-| `/drivers/nav/navigator/follow_gps_waypoints` | `/follow_gps_waypoints` | street_router, language_drive |
+| `/navigate_to_pose` | `bt_navigator` | the tools, sim-check, RViz and the screens (`/goal_pose`) |
+| `/navigate_through_poses` | `bt_navigator` | anyone with several poses |
+| `/follow_waypoints` | `waypoint_follower` | map waypoints |
+| `/follow_gps_waypoints` | `waypoint_follower` | street_router, language_drive |
 
-**Who sends to which.** `vehicle.navigator_action(navigator, name)` gives the name.
-`street_router` and `language_drive` have a `navigator` parameter;
-`measure controllers --stacks` and `sim-check --navigator` choose by the switch.
+**Who sends to which.** Nobody chooses (since 14 Nov). With `navigator:=own`, Nav2's
+two servers don't start, and ours serves their names. So `street_router`,
+`language_drive`, `sim-check`, `measure controllers`, `bench-check` and the screens
+send to the same place whichever runs. `/goal_pose` reaches ours too.
+`vehicle.navigator_action(name)` gives the full name.
 
 ## What it does
 

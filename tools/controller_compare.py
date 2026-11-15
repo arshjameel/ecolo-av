@@ -63,8 +63,8 @@ The trials (docs/trials.md):
                     all of Nav2 (bt_navigator, the lattice, Nav2's costmaps, MPPI) against
                     all of ours (navigator:=own planner:=own costmap:=own
                     tracker:=mppi_lag: aav_navigator, aav_planner, aav_costmap,
-                    aav_mppi_lag), forward only (mppi_lag can't reverse). Each sends
-                    goals to its own navigator's actions (docs/own-navigator.md)
+                    aav_mppi_lag), forward only (mppi_lag can't reverse). Both serve
+                    Nav2's action names, so the goals go to the same place
     pixi run measure controllers --stacks nav2 own --tours fieldhouse --speed 2.5
                     the campus route, P4 to the Fieldhouse (453 m, TODO 140): the campus
                     graph's GPS waypoints, as street_router makes them, sent to each
@@ -272,7 +272,7 @@ def follower_pid(pgid, name='controller_server'):
 class Recorder(Node):
     """Where the car really is, what Nav2 planned and asked for, and the safety layers."""
 
-    def __init__(self, navigator=vehicle.DEFAULT_NAVIGATOR):
+    def __init__(self):
         # On Gazebo's clock, like every node in the sim.
         super().__init__('controller_compare', parameter_overrides=[
             Parameter('use_sim_time', value=True)])
@@ -323,11 +323,11 @@ class Recorder(Node):
         self.create_subscription(CollisionMonitorState, '/safety/collision_monitor/state',
                                  self.on_monitor, 10)
         self.create_subscription(String, '/safety/geofence/state', self.on_fence, 10)
-        # Nav2's navigator's actions, or ours (--stacks own: navigator:=own).
+        # Whichever navigator runs (--stacks own: ours) serves Nav2's action names.
         self.nav = ActionClient(self, NavigateToPose,
-                                vehicle.navigator_action(navigator, 'navigate_to_pose'))
+                                vehicle.navigator_action('navigate_to_pose'))
         self.gps = ActionClient(self, FollowGPSWaypoints,
-                                vehicle.navigator_action(navigator, 'follow_gps_waypoints'))
+                                vehicle.navigator_action('follow_gps_waypoints'))
         self.from_ll = self.create_client(FromLL, '/fromLL')
         self.planner = ActionClient(self, ComputePathToPose, '/compute_path_to_pose')
         # planner:=own: ours (aav_planner), beside planner_server's lattice.
@@ -889,10 +889,9 @@ def session(tour, follower, args, out_dir, body, used, run=1):
     # --smoothers: (..., smoother, label); otherwise (..., label).
     label = follower[-1]
     smoother = follower[4] if len(follower) > 4 else None
-    extra, navigator = [], vehicle.DEFAULT_NAVIGATOR
+    extra = []
     if kind == 'stack':
         kind, controller, extra = STACKS[follower[1]]
-        navigator = 'own' if follower[1] == 'own' else vehicle.DEFAULT_NAVIGATOR
     tag = f'{label}-{run}' if args.runs > 1 else label
     log_path = os.path.join(out_dir, f'sim-{tour}-{tag}.log')
     command = ['ros2', 'launch', 'aav_bringup', 'sim.launch.py',
@@ -957,7 +956,7 @@ def session(tour, follower, args, out_dir, body, used, run=1):
         launch = subprocess.Popen(command, cwd=ROOT, env=dict(os.environ), stdout=log,
                                   stderr=subprocess.STDOUT, start_new_session=True)
         rclpy.init()
-        rec = Recorder(navigator)
+        rec = Recorder()
         rec.watchdog = not args.gps_off
         try:
             up = rec.spin_for(UP_TIME, lambda: rec.last_truth is not None and rec.glob)

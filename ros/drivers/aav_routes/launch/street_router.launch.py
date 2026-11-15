@@ -30,9 +30,6 @@ def generate_launch_description():
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('router', default_value='valhalla',
                               description='valhalla, osrm, or campus (its own road graph)'),
-        DeclareLaunchArgument('navigator', default_value='nav2',
-                              description='whose navigator drives the route: nav2 or own '
-                                          '(aav_navigator, navigation.launch.py navigator:=own)'),
         DeclareLaunchArgument('speed', default_value='1.0',
                               description='m/s: the car, for the time the status line gives'),
         Node(
@@ -45,7 +42,6 @@ def generate_launch_description():
                     [FindPackageShare('aav_routes'), 'config', 'street_router.yaml']),
                 {'use_sim_time': LaunchConfiguration('use_sim_time'),
                  'router': LaunchConfiguration('router'),
-                 'navigator': LaunchConfiguration('navigator'),
                  'speed': ParameterValue(LaunchConfiguration('speed'), value_type=float)},
             ],
         ),
