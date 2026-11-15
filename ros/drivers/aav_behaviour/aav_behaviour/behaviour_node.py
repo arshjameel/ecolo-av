@@ -82,7 +82,8 @@ class BehaviourNode(Node):
         # to 20 s without replanning (navigate_to_pose_car.xml), so /plan goes quiet there.
         p = {name: self.declare_parameter(name, default).value for name, default in (
             ('base_speed', 1.0), ('floor', 0.3), ('accel', 0.5), ('fall', 2.0),
-            ('ask_after', 30.0), ('max_deceleration', 2.0), ('max_jerk', 2.0),
+            ('ask_after', 30.0), ('release_hold', 1.0),
+            ('max_deceleration', 2.0), ('max_jerk', 2.0),
             ('vehicle_yaml', ''), ('speed_loop', 'default'),
             ('stop_distance_m', 4.7), ('front', 2.0), ('half_width', 0.6),
             ('stop_gap', 1.0), ('near_depth', 2.5), ('plan_timeout', 25.0),
@@ -112,7 +113,7 @@ class BehaviourNode(Node):
                                    'the road ahead follows the lane centre')
         self.machine = Behaviour(curve, Settings(
             base=p['base_speed'], floor=p['floor'], accel=p['accel'], fall=p['fall'],
-            ask_after=p['ask_after']))
+            ask_after=p['ask_after'], release_hold=p['release_hold']))
         self.get_logger().info(
             f'{curve.describe()}; cap {p["floor"]:g}-{p["base_speed"]:g} m/s on '
             '/drivers/nav/speed_limit')

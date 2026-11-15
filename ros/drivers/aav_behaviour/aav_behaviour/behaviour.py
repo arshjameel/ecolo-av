@@ -56,6 +56,10 @@ class Settings:
     odom_stale: float = 0.5    # s without odometry: the cap goes to the floor
     sign_lost: float = 5.0     # s without a sign point in APPROACH for the sign: DRIVE
     passed: float = 1.0        # m past a sign's stop with no lock: DRIVE, and a warning
+    # s an obstacle must stay gone before APPROACH lets go of it (TODO 189): a thing at the
+    # lane's edge drops in and out of it tick by tick, and the car sped up and slowed again
+    # four times for one person crossing. Slowing stays at once; only the release waits.
+    release_hold: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -107,6 +111,7 @@ class Behaviour:
         self.last = None            # the last tick's time
         self.sign_lock = False      # the stop_sign lock, last tick
         self.served = -math.inf     # when the stop_sign lock last went off
+        self.gone_since = None      # APPROACH(obstacle): when the obstacle stopped binding
 
     # --- the pieces ------------------------------------------------------------------
 
@@ -186,6 +191,11 @@ class Behaviour:
         # The cap for the state.
         if self.state == DRIVE:
             want = self.cap_for(left) if stop is not None else 0.0
+        elif self.state == APPROACH and self.gone_since is not None:
+            # Holding the release (TODO 189): keep the cap it had; a new stop still binds.
+            want = max(self.cap, s.floor)
+            if stop is not None:
+                want = min(want, max(self.cap_for(left), s.floor))
         elif self.state == APPROACH:
             mine = [x for x in w.stops if x.reason == self.reason]
             ahead = min((x.left for x in mine), default=left)
@@ -237,6 +247,8 @@ class Behaviour:
         if self.reason in ('obstacle', 'fence', 'goal') and self.binding(mine) is None:
             # No longer binds: a new goal's long path, or the obstacle moved further off.
             mine = []
+        if mine or self.reason != 'obstacle':
+            self.gone_since = None
         lock = LOCK_OF.get(self.reason)
         if lock is not None and locks.get(lock) and still:
             self._go(STOPPED, self.reason, w.now)
@@ -251,7 +263,14 @@ class Behaviour:
         elif self.reason == 'goal' and not w.goal_active:
             self._go(DRIVE, '', w.now)
         elif self.reason in ('obstacle', 'fence', 'goal') and not mine:
-            # What we slowed for has gone (the obstacle moved, a new plan): speed up again.
+            # What we slowed for has gone (the obstacle moved, a new plan): speed up again;
+            # an obstacle only once it has stayed gone release_hold s (TODO 189).
+            if self.reason == 'obstacle' and stop is None:
+                if self.gone_since is None:
+                    self.gone_since = w.now
+                if w.now - self.gone_since < s.release_hold:
+                    return
+            self.gone_since = None
             self._go(GO, self.reason, w.now) if stop is None else self._go(
                 APPROACH, stop.reason, w.now)
 

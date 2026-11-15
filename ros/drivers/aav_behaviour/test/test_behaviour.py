@@ -110,8 +110,32 @@ def test_an_obstacle_that_goes_away_lets_the_car_speed_up_again():
     for i in range(10):
         b.step(world(0.1 * i, stops=[Stop('obstacle', 1.0)]))
     assert b.state == APPROACH and b.cap < 1.0
+    held = b.cap
     d = b.step(world(1.0))
+    assert d.state == APPROACH and d.cap == pytest.approx(held)    # gone: hold the release
+    d = b.step(world(2.05))
     assert d.state == GO and d.cap >= FLOOR
+
+
+def test_an_obstacle_flickering_at_the_lanes_edge_doesnt_flap_the_state():
+    # TODO 189: a person crossing dropped in and out of the lane tick by tick.
+    b = Behaviour(CURVE)
+    states = []
+    for i in range(60):
+        here = (i // 3) % 2 == 0           # 0.3 s seen, 0.3 s not, over and over
+        d = b.step(world(0.1 * i, stops=[Stop('obstacle', 1.0)] if here else []))
+        states.append(d.state)
+    first = states.index(APPROACH)
+    assert all(s == APPROACH for s in states[first:])
+
+
+def test_a_new_stop_still_binds_while_the_release_is_held():
+    b = Behaviour(CURVE)
+    for i in range(10):
+        b.step(world(0.1 * i, stops=[Stop('obstacle', 1.0)]))
+    held = b.step(world(1.0)).cap          # the obstacle gone: holding
+    d = b.step(world(1.1, stops=[Stop('goal', 0.5)]))
+    assert (d.state, d.reason) == (APPROACH, 'goal') and d.cap <= held
 
 
 def test_wait_to_go_when_every_lock_is_off_then_drive_at_the_base():
