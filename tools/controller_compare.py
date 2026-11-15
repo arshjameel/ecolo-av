@@ -1282,6 +1282,18 @@ def main():
     args.kiss_icp = args.kiss_icp or args.kiss_ekf
     if args.ndt and not os.path.isfile(NDT_MAP):
         parser.error(f'--ndt: no map at {NDT_MAP}; make it with pixi run ndt-map drive')
+    for tour in args.tours:
+        # The files a tour needs, before half an hour of driving finds one missing.
+        plan = TOURS[tour]
+        if plan.get('world') == worlds.CAMPUS and not os.path.isfile(
+                os.path.join(ROOT, worlds.CAMPUS_MAP)):
+            parser.error(f'--tours {tour}: no {worlds.CAMPUS_MAP}; make it with pixi run campus')
+        if plan.get('route'):
+            try:
+                campus_route(*plan['route'])
+            except Exception as e:  # noqa: B902 - any reason the route can't be drawn
+                parser.error(f'--tours {tour}: no route {plan["route"][0]} to '
+                             f'{plan["route"][1]}: {e}')
     started = datetime.datetime.now()
     out_dir = args.out or os.path.join(ROOT, 'log', 'controller-compare',
                                        f'{started:%Y%m%d-%H%M%S}')
@@ -1292,7 +1304,13 @@ def main():
     for tour in args.tours:
         for follower in followers(args):
             for run in range(1, args.runs + 1):
-                results += session(tour, follower, args, out_dir, body, used, run)
+                try:
+                    results += session(tour, follower, args, out_dir, body, used, run)
+                except Exception as e:  # noqa: B902 - one tour's crash must not lose the rest
+                    print(f'   {tour} crashed: {e!r}', flush=True)
+                    results += [(tour, name, follower[-1], None,
+                                 [f'crashed: {e}'], {'run': run})
+                                for name, *_ in tour_legs(tour, args)]
     # The numbers first: a report that fails must not lose them.
     with open(os.path.join(out_dir, 'results.json'), 'w') as f:
         json.dump([{'tour': t, 'leg': n, 'controller': c, 'row': row, 'notes': notes, **drawn}
