@@ -1,9 +1,14 @@
-//! The search: Nav2's `AStarAlgorithm<NodeLattice>` with its `AnalyticExpansion`.
+//! The search: Nav2's `AStarAlgorithm` with its `AnalyticExpansion`, for both of its car
+//! nodes: `NodeLattice` (the State Lattice) and `NodeHybrid` (Hybrid-A*).
 //!
-//! A* over (cell, heading). From each node, every move in the primitives file (and, when
-//! reversing is allowed, the same moves driven backwards); each move is checked for the
-//! car's outline along the way. Every so often it tries to finish with one Reeds-Shepp
-//! (or Dubins) curve straight to the goal.
+//! A* over (cell, heading). From each node, every move in the lattice (and, when
+//! reversing is allowed, the same moves driven backwards). The State Lattice's moves come
+//! from the primitives file and are checked for the car's outline along the way;
+//! Hybrid-A*'s are three short arcs (`Lattice::hybrid`), checked where they end. Every so
+//! often it tries to finish with one Reeds-Shepp (or Dubins) curve straight to the goal.
+//!
+//! The two differ only where `Expansion` says: how a move is checked, what it costs, and
+//! how the obstacle estimate is searched.
 
 use std::collections::{BinaryHeap, HashMap};
 use std::time::Instant;
@@ -60,6 +65,27 @@ pub struct Found {
     pub iterations: usize,
 }
 
+/// Which of Nav2's two car searches: how they expand differs, the rest is shared.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Expansion {
+    /// The State Lattice (`NodeLattice`): the primitives file's moves, each swept.
+    Lattice,
+    /// Hybrid-A* (`NodeHybrid`): short arcs at full lock, checked at their ends.
+    Hybrid {
+        /// The obstacle estimate on 2 x 2 blocks (`downsample_obstacle_heuristic`).
+        downsample_obstacle_heuristic: bool,
+    },
+}
+
+/// Which way a move turns, and whether it is driven backwards: Nav2's `TurnDirection`
+/// (`FORWARD`, `LEFT`, `RIGHT`, `REVERSE`, `REV_LEFT`, `REV_RIGHT`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Turn {
+    Straight,
+    Left,
+    Right,
+}
+
 /// The things a search needs that don't change between plans.
 pub struct Search<'a> {
     pub lattice: &'a Lattice,
@@ -67,6 +93,7 @@ pub struct Search<'a> {
     pub checker: &'a Checker,
     pub distances: &'a DistanceTable,
     pub kind: CurveKind,
+    pub expansion: Expansion,
 }
 
 /// Fast hashing for node keys (they are already well spread).
@@ -143,6 +170,12 @@ impl Search<'_> {
                 (start.0 as usize, start.1 as usize),
                 (goal.0 as usize, goal.1 as usize),
                 s.cost_penalty,
+                matches!(
+                    self.expansion,
+                    Expansion::Hybrid {
+                        downsample_obstacle_heuristic: true
+                    }
+                ),
             ),
             goal,
             best: (f32::MAX, 0),
@@ -229,12 +262,17 @@ impl Search<'_> {
     }
 
     /// The estimate from a node to the goal (Nav2's `getHeuristicCost`): the larger of
-    /// round-the-obstacles and the car's curve, from the node's whole cell.
+    /// round-the-obstacles and the car's curve; the curve from the node's whole cell
+    /// (the lattice) or its own pose (Hybrid-A*).
     fn heuristic(&self, st: &mut State, id: usize) -> f32 {
         let node = &st.nodes[id];
         let (cx, cy, h) = (node.x as usize, node.y as usize, node.heading);
+        let at = match self.expansion {
+            Expansion::Lattice => (cx as f64, cy as f64, h),
+            Expansion::Hybrid { .. } => (node.x, node.y, h),
+        };
         let obstacles = st.obstacles.get(st.grid, cx, cy);
-        let curve = self.distances.get((cx, cy, h), st.goal, obstacles);
+        let curve = self.distances.get(at, st.goal, obstacles);
         let estimate = obstacles.max(curve);
         if estimate < st.best.0 {
             st.best = (estimate, id);
@@ -274,6 +312,11 @@ impl Search<'_> {
         ) else {
             return None;
         };
+        if matches!(self.expansion, Expansion::Hybrid { .. }) {
+            // Hybrid-A*'s moves are about a cell's diagonal: the end is the whole check
+            // (`NodeHybrid::isNodeValid`), and its cell's cost is the move's.
+            return Some(worst);
+        }
         let spacing = 2.0 * res * res;
         let mut last = (1e9, 1e9);
         for &(px, py, yaw) in &prim.poses {
@@ -294,8 +337,68 @@ impl Search<'_> {
         Some(worst)
     }
 
-    /// Nav2's `NodeLattice::getTraversalCost`.
+    /// Which way a move turns (Nav2's `TurnDirection`, with the backwards flag).
+    fn turn(&self, by: (usize, usize, bool)) -> (Turn, bool) {
+        let prim = self.primitive(by);
+        let turn = if prim.arc_length < 0.001 {
+            Turn::Straight
+        } else if prim.left_turn {
+            Turn::Left
+        } else {
+            Turn::Right
+        };
+        (turn, by.2)
+    }
+
+    /// What a move costs: Nav2's `NodeLattice::getTraversalCost` or
+    /// `NodeHybrid::getTraversalCost`.
     fn travel(
+        &self,
+        from: Option<(usize, usize, bool)>,
+        by: (usize, usize, bool),
+        cost: u8,
+    ) -> f64 {
+        match self.expansion {
+            Expansion::Lattice => self.travel_lattice(from, by, cost),
+            Expansion::Hybrid { .. } => self.travel_hybrid(from, by, cost),
+        }
+    }
+
+    /// Nav2's `NodeHybrid::getTraversalCost`: the move's length (its arc's, if it turns),
+    /// dearer on expensive ground; a turn costs `non_straight_penalty` times as much, and
+    /// `change_penalty` more when it isn't the turn before (left, right and straight, each
+    /// forward or backwards: six kinds); backwards, `reverse_penalty` times all that.
+    fn travel_hybrid(
+        &self,
+        from: Option<(usize, usize, bool)>,
+        by: (usize, usize, bool),
+        cost: u8,
+    ) -> f64 {
+        let s = self.settings;
+        let res = self.lattice.resolution;
+        let Some(from) = from else {
+            // The first move from the start: the straight move's length, as Nav2's
+            // `travel_distance_cost`.
+            return self.lattice.moves[0][0].length / res;
+        };
+        let raw = self.primitive(by).length / res
+            * ((1.0 - s.retrospective_penalty) + s.cost_penalty * f64::from(cost) / 252.0);
+        let (turn, backwards) = self.turn(by);
+        let mut travel = if turn == Turn::Straight {
+            raw
+        } else if self.turn(from) == (turn, backwards) {
+            raw * s.non_straight_penalty
+        } else {
+            raw * (s.non_straight_penalty + s.change_penalty)
+        };
+        if backwards {
+            travel *= s.reverse_penalty;
+        }
+        travel
+    }
+
+    /// Nav2's `NodeLattice::getTraversalCost`.
+    fn travel_lattice(
         &self,
         from: Option<(usize, usize, bool)>,
         by: (usize, usize, bool),
@@ -508,5 +611,146 @@ impl Search<'_> {
             }
         }
         Some(out)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scenes;
+
+    /// Hybrid-A*'s moves on 0.25 m cells at 3.572 m, and the tables a search needs.
+    fn hybrid(settings: &Settings) -> (Lattice, Checker, DistanceTable) {
+        let lattice = Lattice::hybrid(3.572, 72, 0.25, false).expect("good settings");
+        let checker = Checker::new(&scenes::outline(), None, true);
+        let distances = DistanceTable::new(
+            CurveKind::ReedsShepp,
+            3.572 / 0.25,
+            &lattice.headings,
+            (settings.lookup_table_size / 0.25) as usize,
+        );
+        (lattice, checker, distances)
+    }
+
+    const HYBRID: Expansion = Expansion::Hybrid {
+        downsample_obstacle_heuristic: true,
+    };
+
+    #[test]
+    fn hybrid_travel_costs_are_nav2s() {
+        let settings = Settings {
+            allow_reverse: true,
+            change_penalty: 0.1,
+            ..Settings::hybrid()
+        };
+        let (lattice, checker, distances) = hybrid(&settings);
+        let search = Search {
+            lattice: &lattice,
+            settings: &settings,
+            checker: &checker,
+            distances: &distances,
+            kind: CurveKind::ReedsShepp,
+            expansion: HYBRID,
+        };
+        // From heading 0: 0 straight, 1 left, 2 right; heading 36's, driven backwards.
+        let (straight, left, right) = ((0, 0, false), (0, 1, false), (0, 2, false));
+        let back_left = (36, 1, true);
+        let chord = lattice.moves[0][0].length / 0.25;
+        let arc = lattice.moves[0][1].length / 0.25;
+        let reward = 1.0 - settings.retrospective_penalty;
+        let close = |a: f64, b: f64| (a - b).abs() < 1e-9;
+        // The first move: the straight move's length, whatever it is.
+        assert!(close(search.travel(None, left, 100), chord));
+        // Straight: its length, dearer on expensive ground.
+        assert!(close(
+            search.travel(Some(left), straight, 0),
+            chord * reward
+        ));
+        let dear = chord * (reward + settings.cost_penalty * 126.0 / 252.0);
+        assert!(close(search.travel(Some(left), straight, 126), dear));
+        // The same turn again: non_straight_penalty; another: plus change_penalty.
+        assert!(close(
+            search.travel(Some(left), left, 0),
+            arc * reward * 1.2
+        ));
+        assert!(close(
+            search.travel(Some(right), left, 0),
+            arc * reward * (1.2 + 0.1)
+        ));
+        // From straight into a turn is a change too (Nav2 compares the six kinds).
+        assert!(close(
+            search.travel(Some(straight), left, 0),
+            arc * reward * (1.2 + 0.1)
+        ));
+        // Backwards: reverse_penalty times; forward left to backward left is a change.
+        assert!(close(
+            search.travel(Some(back_left), back_left, 0),
+            arc * reward * 1.2 * 2.0
+        ));
+        assert!(close(
+            search.travel(Some(left), back_left, 0),
+            arc * reward * (1.2 + 0.1) * 2.0
+        ));
+        // The arc is longer than its chord: R x angle (two 5 degree bins).
+        assert!(arc > chord && close(arc, 3.572 / 0.25 * 10f64.to_radians()));
+    }
+
+    #[test]
+    fn hybrid_moves_and_reversed_moves_are_nav2s_six() {
+        let settings = Settings {
+            allow_reverse: true,
+            ..Settings::hybrid()
+        };
+        let (lattice, checker, distances) = hybrid(&settings);
+        let search = Search {
+            lattice: &lattice,
+            settings: &settings,
+            checker: &checker,
+            distances: &distances,
+            kind: CurveKind::ReedsShepp,
+            expansion: HYBRID,
+        };
+        // Facing +x (heading 0): each move's end (m) and the car's heading there.
+        let ends: Vec<(f64, f64, usize, bool)> = search
+            .moves(0)
+            .map(|by| {
+                let prim = search.primitive(by);
+                let (x, y) = prim.end();
+                let heading = if by.2 {
+                    lattice.opposite(prim.end_heading)
+                } else {
+                    prim.end_heading
+                };
+                (x, y, heading, by.2)
+            })
+            .collect();
+        assert_eq!(ends.len(), 6);
+        let forward: Vec<_> = ends.iter().filter(|e| !e.3).collect();
+        let backward: Vec<_> = ends.iter().filter(|e| e.3).collect();
+        assert!(forward.iter().all(|e| e.0 > 0.0));
+        assert!(backward.iter().all(|e| e.0 < 0.0));
+        let headings = |v: &[&(f64, f64, usize, bool)]| {
+            let mut h: Vec<usize> = v.iter().map(|e| e.2).collect();
+            h.sort_unstable();
+            h
+        };
+        assert_eq!(headings(&forward), vec![0, 2, 70]);
+        assert_eq!(headings(&backward), vec![0, 2, 70]);
+        // Forward to the left (y > 0) turns the nose left (+2 bins); backwards to the left
+        // turns it right (Nav2's REV_LEFT: -2 bins).
+        let left = forward.iter().find(|e| e.1 > 0.01).expect("a LEFT move");
+        assert_eq!(left.2, 2);
+        let rev_left = backward
+            .iter()
+            .find(|e| e.1 > 0.01)
+            .expect("a REV_LEFT move");
+        assert_eq!(rev_left.2, 70);
+        // Forward only (DUBIN): three.
+        let forward_only = Settings::hybrid();
+        let search = Search {
+            settings: &forward_only,
+            ..search
+        };
+        assert_eq!(search.moves(0).count(), 3);
     }
 }

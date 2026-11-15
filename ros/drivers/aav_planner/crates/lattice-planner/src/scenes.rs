@@ -1,10 +1,11 @@
-//! Hand-made maps for the tests and `examples/scenes.rs`: our car, our lattice file and
-//! nav2.yaml's global costmap (0.25 m cells, 3 m of inflation at scaling 1.0).
+//! Hand-made maps for the tests and the examples: our car, our lattice file and
+//! nav2.yaml's global costmap (0.25 m cells, 3 m of inflation at scaling 1.0); and the
+//! example lot (`map`) with the lot tour's legs (`LOT_TOUR`).
 
-use costmap::cost::LETHAL;
+use costmap::cost::{LETHAL, NO_INFORMATION};
 use costmap::{footprint, Grid, Inflation};
 
-use crate::{Lattice, Planner, Pose, Settings};
+use crate::{Hybrid, Lattice, Planner, Pose, Settings};
 
 /// vehicle.yaml's body (2.0 m x 1.0 m, the rear axle 0.2 m from the back), as
 /// `vehicle.footprint_points` gives it.
@@ -44,6 +45,87 @@ pub fn planner(reversing: bool) -> Planner {
         ..Settings::default()
     };
     Planner::new(lattice(), settings, &outline(), Some(&inflation()))
+}
+
+/// Hybrid-A* as navigation.launch.py starts ours with `planner_search:=hybrid`: nav2.yaml's
+/// `GridBased` block, at the lattice file's radius (both are vehicle.plan_turning_radius).
+pub fn hybrid_planner(reversing: bool) -> Planner {
+    let settings = Settings {
+        allow_reverse: reversing,
+        ..Settings::hybrid()
+    };
+    let spec = Hybrid::new(lattice().turning_radius);
+    Planner::hybrid(spec, settings, &outline(), Some(&inflation()), RESOLUTION)
+        .expect("nav2.yaml's Hybrid-A* block is good")
+}
+
+/// `measure controllers --tours lot`: the start, then each leg's goal (x, y, heading
+/// degrees), on `example_lot`.
+pub const LOT_START: Pose = Pose::new(0.0, 0.0, 0.0);
+pub const LOT_TOUR: [(&str, f64, f64, f64); 4] = [
+    ("a left turn", 15.0, 15.0, 90.0),
+    ("round the building", 35.0, 42.0, 0.0),
+    ("turn back", 20.0, 42.0, 180.0),
+    ("home", 0.0, 0.0, 0.0),
+];
+
+/// aav_navigation's map `name` (`maps/<name>.pgm`, binary P5, with `example_lot.yaml`'s
+/// 0.25 m cells and origin (-10, -10)), read as map_server's trinary mode does (occupied
+/// above 0.65, free under 0.25, else unknown), then inflated as nav2.yaml's global costmap.
+pub fn map(name: &str) -> Result<Grid, String> {
+    let path = format!(
+        "{}/../../../aav_navigation/maps/{name}.pgm",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let bytes = std::fs::read(&path).map_err(|e| format!("{path}: {e}"))?;
+    // The header: P5, comments, width, height, maxval, one whitespace byte, then the data.
+    let mut fields = Vec::new();
+    let mut i = 0;
+    let at = |i: usize| bytes.get(i).copied().ok_or("the PGM ends in its header");
+    while fields.len() < 4 {
+        while at(i)?.is_ascii_whitespace() {
+            i += 1;
+        }
+        if at(i)? == b'#' {
+            while at(i)? != b'\n' {
+                i += 1;
+            }
+            continue;
+        }
+        let start = i;
+        while !at(i)?.is_ascii_whitespace() {
+            i += 1;
+        }
+        fields.push(String::from_utf8_lossy(&bytes[start..i]).into_owned());
+    }
+    if fields[0] != "P5" {
+        return Err(format!("{path}: not a binary PGM (P5)"));
+    }
+    let number = |s: &str| s.parse::<usize>().map_err(|e| format!("{path}: {s}: {e}"));
+    let (w, h, max) = (
+        number(&fields[1])?,
+        number(&fields[2])?,
+        number(&fields[3])?,
+    );
+    let data = bytes.get(i + 1..i + 1 + w * h).ok_or("the PGM is short")?;
+    let max = max as f64;
+    let mut grid = Grid::new((-10.0, -10.0), RESOLUTION, w, h, 0);
+    for row in 0..h {
+        for cx in 0..w {
+            let occupied = (max - f64::from(data[row * w + cx])) / max;
+            let cost = if occupied > 0.65 {
+                LETHAL
+            } else if occupied < 0.25 {
+                0
+            } else {
+                NO_INFORMATION
+            };
+            // The PGM's first row is the map's top.
+            grid.set(cx, h - 1 - row, cost);
+        }
+    }
+    inflation().apply(&mut grid);
+    Ok(grid)
 }
 
 /// One scene: a map, a start, a goal, and whether a path must exist with and without

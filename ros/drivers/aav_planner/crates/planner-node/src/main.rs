@@ -1,4 +1,5 @@
-//! planner: our own path planner (Nav2's State Lattice, in Rust), beside planner_server.
+//! planner: our own path planner (Nav2's State Lattice, or its Hybrid-A*, in Rust), beside
+//! planner_server.
 //!
 //! Action      drivers/nav/planner/compute_path_to_pose
 //!                                         nav2_msgs/action/ComputePathToPose: one path from
@@ -33,8 +34,9 @@
 //!                                         (the trees then plan again)
 //! Calls       nothing.
 //! Parameters  settings (JSON: aav_description's vehicle.planner_params, from the tuned
-//!             nav2.yaml's Lattice block, vehicle.yaml's outline and the global costmap's
-//!             inflation), costmap_topic, costmap_updates_topic (empty: none),
+//!             nav2.yaml's Lattice block, or with "search": "hybrid" (planner_search:=hybrid)
+//!             its GridBased Hybrid-A* block; vehicle.yaml's outline and the global
+//!             costmap's inflation), costmap_topic, costmap_updates_topic (empty: none),
 //!             costmap_latched, map_frame, odom_frame, base_frame, is_path_valid_service.
 //!
 //! The maths is the `lattice-planner` crate; this file only moves messages. Each goal is
@@ -48,7 +50,7 @@ use std::time::Duration;
 use anyhow::{anyhow, bail, Context as _, Result};
 use costmap::{footprint, Arrival, Grid, Inflation};
 use futures::channel::oneshot;
-use lattice_planner::{cusps, length, Lattice, Plan, PlanError, Planner, Pose, Settings};
+use lattice_planner::{cusps, length, Hybrid, Lattice, Plan, PlanError, Planner, Pose, Settings};
 use rclrs::*;
 use ros_env::builtin_interfaces::msg::{Duration as DurationMsg, Time};
 use ros_env::diagnostic_msgs::msg::{DiagnosticStatus, KeyValue};
@@ -114,12 +116,8 @@ fn main() -> Result<()> {
     let planner_through = Arc::clone(&planner);
     log_info!(
         node.logger(),
-        "State Lattice (ours): {} headings, {} m cells, turning radius {} m, reversing {}; \
-         costmap {costmap_topic}",
-        planner.lattice().headings.len(),
-        planner.lattice().resolution,
-        planner.lattice().turning_radius,
-        planner.settings().allow_reverse
+        "{} (ours); costmap {costmap_topic}",
+        planner.describe()
     );
 
     let core = Core {
@@ -317,8 +315,14 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// The planner from vehicle.planner_params' JSON.
+/// The planner from vehicle.planner_params' JSON: the State Lattice, or Hybrid-A* when
+/// `search` is "hybrid".
 fn build(spec: &Value) -> Result<Planner> {
+    let hybrid = match spec["search"].as_str().unwrap_or("lattice") {
+        "lattice" => false,
+        "hybrid" => true,
+        other => bail!("search {other:?}: lattice or hybrid"),
+    };
     let number = |key: &str, default: f64| -> Result<f64> {
         match &spec[key] {
             Value::Null => Ok(default),
@@ -333,9 +337,24 @@ fn build(spec: &Value) -> Result<Planner> {
             v => v.as_bool().ok_or_else(|| anyhow!("{key}: true or false")),
         }
     };
-    let d = Settings::default();
+    let d = if hybrid {
+        Settings::hybrid()
+    } else {
+        Settings::default()
+    };
+    // Hybrid-A*'s motion model says whether it reverses (Nav2's motion_model_for_search);
+    // the lattice's allow_reverse_expansion.
+    let allow_reverse = if hybrid {
+        match spec["motion_model_for_search"].as_str().unwrap_or("DUBIN") {
+            "DUBIN" => false,
+            "REEDS_SHEPP" => true,
+            other => bail!("motion_model_for_search {other:?}: DUBIN or REEDS_SHEPP"),
+        }
+    } else {
+        flag("allow_reverse_expansion", d.allow_reverse)?
+    };
     let settings = Settings {
-        allow_reverse: flag("allow_reverse_expansion", d.allow_reverse)?,
+        allow_reverse,
         allow_unknown: flag("allow_unknown", d.allow_unknown)?,
         tolerance: number("tolerance", d.tolerance)?,
         max_iterations: number("max_iterations", d.max_iterations as f64)? as usize,
@@ -372,11 +391,6 @@ fn build(spec: &Value) -> Result<Planner> {
         smooth_path: flag("smooth_path", d.smooth_path)?,
         smoother: d.smoother,
     };
-    let file = spec["lattice_filepath"]
-        .as_str()
-        .ok_or_else(|| anyhow!("lattice_filepath: a path is needed"))?;
-    let text = std::fs::read_to_string(file).with_context(|| format!("reading {file}"))?;
-    let lattice = Lattice::parse(&text)?;
     let corners: Vec<(f64, f64)> = spec["footprint"]
         .as_array()
         .ok_or_else(|| anyhow!("footprint: a list of [x, y] is needed"))?
@@ -397,6 +411,43 @@ fn build(spec: &Value) -> Result<Planner> {
             inscribed_radius: footprint::radii(&outline).0,
         }),
     };
+    if hybrid {
+        let radius = number("minimum_turning_radius", f64::NAN)?;
+        if radius.is_nan() || radius <= 0.0 {
+            bail!("minimum_turning_radius: a radius in m is needed (vehicle.plan_turning_radius)");
+        }
+        let defaults = Hybrid::new(radius);
+        let bins = number(
+            "angle_quantization_bins",
+            defaults.angle_quantization_bins as f64,
+        )?;
+        let spec_hybrid = Hybrid {
+            minimum_turning_radius: radius,
+            angle_quantization_bins: bins as usize,
+            allow_primitive_interpolation: flag(
+                "allow_primitive_interpolation",
+                defaults.allow_primitive_interpolation,
+            )?,
+            downsample_obstacle_heuristic: flag(
+                "downsample_obstacle_heuristic",
+                defaults.downsample_obstacle_heuristic,
+            )?,
+        };
+        // The global costmap's cells; another size makes the moves again.
+        let resolution = number("resolution", 0.25)?;
+        return Ok(Planner::hybrid(
+            spec_hybrid,
+            settings,
+            &outline,
+            inflation.as_ref(),
+            resolution,
+        )?);
+    }
+    let file = spec["lattice_filepath"]
+        .as_str()
+        .ok_or_else(|| anyhow!("lattice_filepath: a path is needed"))?;
+    let text = std::fs::read_to_string(file).with_context(|| format!("reading {file}"))?;
+    let lattice = Lattice::parse(&text)?;
     Ok(Planner::new(
         lattice,
         settings,

@@ -126,6 +126,91 @@ impl Lattice {
         })
     }
 
+    /// Hybrid-A*'s moves as a lattice (Nav2's `HybridMotionTable::initDubin`): from each of
+    /// `bins` headings, straight on, and full lock left and right, each one chord just over
+    /// a cell's diagonal long (so every move leaves its cell), at `radius` m on `resolution`
+    /// m cells. The turn is a whole number of heading bins. With `interpolation` (Nav2's
+    /// `allow_primitive_interpolation`), also the gentler turns of fewer bins, each with the
+    /// same chord. Reversing (Reeds-Shepp) needs nothing more: the search drives the facing
+    /// heading's moves backwards, which are Nav2's `REVERSE`, `REV_LEFT` and `REV_RIGHT`.
+    ///
+    /// Each move has one pose, its end: Hybrid-A* checks the car only where a move ends.
+    pub fn hybrid(
+        radius: f64,
+        bins: usize,
+        resolution: f64,
+        interpolation: bool,
+    ) -> Result<Self, LatticeError> {
+        if bins < 2 || !bins.is_multiple_of(2) {
+            return Err(LatticeError(format!(
+                "angle_quantization_bins {bins}: an even number of 2 or more is needed"
+            )));
+        }
+        if resolution.is_nan() || resolution <= 0.0 {
+            return Err(LatticeError(format!(
+                "resolution {resolution}: more than 0 is needed"
+            )));
+        }
+        // Nav2 raises a radius under one cell to one cell.
+        let r = (radius / resolution).max(1.0);
+        let bin = TAU / bins as f64;
+        // The smallest turn whose chord leaves the cell, rounded up to whole bins.
+        let least = 2.0 * (std::f64::consts::SQRT_2 / (2.0 * r)).min(1.0).asin();
+        let increments = if least < bin {
+            1
+        } else {
+            (least / bin).ceil() as usize
+        };
+        let angle = increments as f64 * bin;
+        let dx = r * angle.sin();
+        let dy = r - r * angle.cos();
+        let chord = dx.hypot(dy);
+        // (bins turned, x, y, cells driven): left; right mirrors it.
+        let mut turns = vec![(increments, dx, dy, r * angle)];
+        if interpolation {
+            for i in 1..increments {
+                let a = i as f64 * bin;
+                let rn = chord / (2.0 * (a / 2.0).sin());
+                turns.push((i, rn * a.sin(), rn - rn * a.cos(), rn * a));
+            }
+        }
+        let headings: Vec<f64> = (0..bins).map(|h| h as f64 * bin).collect();
+        let moves = headings
+            .iter()
+            .enumerate()
+            .map(|(h, &theta)| {
+                let (s, c) = theta.sin_cos();
+                let make = |x: f64, y: f64, turn: isize, cells: f64| {
+                    let end = (h as isize + turn).rem_euclid(bins as isize) as usize;
+                    Primitive {
+                        start_heading: h,
+                        end_heading: end,
+                        left_turn: turn > 0,
+                        length: cells * resolution,
+                        arc_length: if turn == 0 { 0.0 } else { cells * resolution },
+                        poses: vec![(
+                            (x * c - y * s) * resolution,
+                            (x * s + y * c) * resolution,
+                            headings[end],
+                        )],
+                    }
+                };
+                let mut out = vec![make(chord, 0.0, 0, chord)];
+                for &(i, x, y, cells) in &turns {
+                    out.push(make(x, y, i as isize, cells));
+                    out.push(make(x, -y, -(i as isize), cells));
+                }
+                out
+            })
+            .collect();
+        Ok(Self {
+            turning_radius: r * resolution,
+            resolution,
+            headings,
+            moves,
+        })
+    }
+
     /// The heading index nearest an angle (Nav2's `getClosestAngularBin`).
     pub fn nearest_heading(&self, yaw: f64) -> usize {
         self.headings
