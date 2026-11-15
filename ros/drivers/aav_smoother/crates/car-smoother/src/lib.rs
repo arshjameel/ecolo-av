@@ -418,6 +418,24 @@ impl Smoother {
     }
 }
 
+/// The car's measured speed (closed loop), and when it arrived.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Reading {
+    /// m/s.
+    pub speed: f64,
+    /// s: when it arrived.
+    pub at: f64,
+}
+
+impl Reading {
+    /// The speed while the reading is at most `max_age` s old; `None` once odometry has
+    /// stopped, so closed loop runs on the last speed sent (as open loop) rather than on
+    /// one reading for ever. Nav2's own smoother keeps the last reading.
+    pub fn fresh(&self, now: f64, max_age: f64) -> Option<f64> {
+        (now - self.at <= max_age).then_some(self.speed)
+    }
+}
+
 /// Move `current` toward `target`: at most `accel * dt` getting faster (the same way),
 /// `decel * dt` otherwise. Nav2's rule (velocity_smoother.cpp `applyConstraints`).
 pub fn slew(current: f64, target: f64, accel: f64, decel: f64, dt: f64) -> f64 {
@@ -622,6 +640,28 @@ mod tests {
         assert!((o.v - 0.65).abs() < 1e-9);
         // No measurement yet: from the last speed sent.
         assert!((s.tick(0.1, None).unwrap().v - 0.7).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_stale_reading_is_not_used() {
+        let r = Reading {
+            speed: 0.6,
+            at: 1.0,
+        };
+        assert_eq!(r.fresh(1.5, 1.0), Some(0.6));
+        assert_eq!(r.fresh(2.0, 1.0), Some(0.6));
+        assert_eq!(r.fresh(2.01, 1.0), None);
+        // Odometry stopped at 0.6 m/s: closed loop ramps from what it sent, not 0.6.
+        let settings = Settings {
+            feedback: Feedback::ClosedLoop,
+            ..settings()
+        };
+        let mut s = Smoother::new(settings, Car::default()).unwrap();
+        s.command(1.0, 0.0, 0.0).unwrap();
+        let o = s.tick(0.05, r.fresh(0.05, 1.0)).unwrap();
+        assert!((o.v - 0.65).abs() < 1e-9);
+        let o = s.tick(3.0, r.fresh(3.0, 1.0)).unwrap();
+        assert!((o.v - 0.7).abs() < 1e-9);
     }
 
     #[test]

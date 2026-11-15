@@ -44,6 +44,19 @@ impl Pose {
     pub fn distance(&self, other: &Pose) -> f64 {
         (self.x - other.x).hypot(self.y - other.y)
     }
+
+    /// `local`, a pose in this pose's own frame, put in the frame this pose is in
+    /// (`self ∘ local`). With `self` = map -> odom, an odom pose becomes a map pose; with
+    /// `self` = the car in map, a base_link pose (1 m ahead, say) becomes a map pose.
+    pub fn compose(&self, local: &Pose) -> Pose {
+        let (s, c) = self.yaw.sin_cos();
+        let yaw = self.yaw + local.yaw;
+        Pose::new(
+            self.x + c * local.x - s * local.y,
+            self.y + s * local.x + c * local.y,
+            yaw.sin().atan2(yaw.cos()),
+        )
+    }
 }
 
 /// What a goal asks for.
@@ -419,4 +432,33 @@ pub enum Command {
     },
     /// The goal `id` ended.
     Finished { id: u64, outcome: Outcome },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::f64::consts::{FRAC_PI_2, PI};
+
+    fn near(a: &Pose, b: &Pose) -> bool {
+        a.distance(b) < 1e-9 && (a.yaw - b.yaw).sin().abs() < 1e-9
+    }
+
+    #[test]
+    fn compose_puts_a_local_pose_in_the_outer_frame() {
+        // A car at (2, 1) facing +y; 1 m ahead of it is (2, 2), 1 m to its left (1, 1).
+        let car = Pose::new(2.0, 1.0, FRAC_PI_2);
+        assert!(near(
+            &car.compose(&Pose::new(1.0, 0.0, 0.0)),
+            &Pose::new(2.0, 2.0, FRAC_PI_2)
+        ));
+        assert!(near(
+            &car.compose(&Pose::new(0.0, 1.0, 0.0)),
+            &Pose::new(1.0, 1.0, FRAC_PI_2)
+        ));
+        // The identity changes nothing; the yaw stays within (-pi, pi].
+        let p = Pose::new(3.0, -4.0, 0.5);
+        assert!(near(&Pose::default().compose(&p), &p));
+        let turned = Pose::new(0.0, 0.0, PI - 0.1).compose(&Pose::new(0.0, 0.0, 0.3));
+        assert!(turned.yaw.abs() <= PI && (turned.yaw - (0.2 - PI)).abs() < 1e-9);
+    }
 }

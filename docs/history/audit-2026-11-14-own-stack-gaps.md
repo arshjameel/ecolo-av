@@ -4,6 +4,66 @@ Ben, 14 Nov: "get all our rust code up to the same standard as the nav2 and gaze
 we can drop their work and have our own complete stack". Nothing is cut until the car runs,
 and stock stays the default until ours wins ([the whole car](../designs/2026-11-14_the-whole-car.md)).
 
+## Status, 14 Nov night
+
+Checked item by item against the code on `next` (gate 171). Laptop only: unit and cargo
+tests, no simulator run for this check.
+
+### Navigation
+
+| Item | State | Where |
+|---|---|---|
+| `/tf` age checks | done | costmap (odometry, map -> odom), planner (TF_ERROR), navigator (1 s), mppi_lag (map -> odom) |
+| Respawn | done | `navigation.launch.py` (1 s), `test_respawn.py` |
+| A watchdog on our nodes' status | **for Ben** | see below |
+| Costmap age checks | done | mppi_lag `costmap_timeout`, planner; `costmap/src/age.rs` |
+| clippy and fmt | done | `tools/test.sh` (clippy on the logic crates; the rclrs nodes need ROS's messages) |
+| Tests of the node binaries | left (M) | only `test_respawn.py`; needs a ROS test harness |
+| Run on the car | left | gate 173 |
+| Costmap: says its age, stops on stale odometry | done | status topic; `age.rs` |
+| Costmap: threads and bounds | done | each costmap on its own thread; only the changed area |
+| Costmap: radar, cubes, camera clouds | left (L) | TODO 156, 175 |
+| Planner: `IsPathValid` | done | served by the planner |
+| Planner: Hybrid-A* | **for Ben** | see below |
+| Planner: 20 % slower on long plans | left | needs a timing run on the campus |
+| Navigator: time limits | done | `plan_timeout`, `follow_timeout`, `recovery_timeout` |
+| Navigator: `IsPathValid` on the final approach | done | once a second |
+| Navigator: BackUp with no behaviour server | done | FollowPath on `path::straight_back` |
+| Navigator: goals in other frames | **done tonight** | `odom`, `base_link` by the latest /tf (`Pose::compose`) |
+| Navigator: error codes as enums, no `expect` | done | `PlanError`, `FollowError`, `Abort` |
+| Navigator: lot score | sim | gate 167: 4/4 after the cusp fix |
+| Smoother: a stale speed used for ever | **done tonight** | odometry over `velocity_timeout` old not used (`Reading::fresh`) |
+| Smoother: campus at 2.5 m/s | sim | gate 167 |
+| mppi_lag: costmap age | done | `costmap_timeout` |
+| mppi_lag: an odometry gap | done | the path ends after `odom_timeout` |
+| mppi_lag: forward only, cusps | done | reverses; cusp fix (gate 174) |
+| mppi_lag: the goal at 2.5 m/s; CPU on the Orin | sim, car | gate 167, 173 |
+| Reversing everywhere | left | TODO 174: `aav_track`'s trackers are forward only |
+
+### Our simulator
+
+| Item | State | Where |
+|---|---|---|
+| M1 cameras on software Vulkan | sim | needs a try without a GPU |
+| M2 `cameras:=false`, a CI job | done | nightly `sim` job in `test.yml` (not yet seen green there) |
+| M3 the stop sign's size | sim | |
+| M4 Gazebo's helpers and names | left (L) | |
+| M5 placing the car | done | `vehicle/sim/set_entity_state` |
+| S1 repeatable runs | **part done tonight** | lidar noise the same on any `threads`; Python noise seeded. Left: wall-clock pace |
+| S2 the shared car model | left (M) | sim to check |
+| S3 the IMU | left (S) | sim to check |
+| S4 perfect wheel odometry | **for Ben** | see below |
+| S5 tests of `sim-node`, `scene.rs` | left (M) | |
+| S6, S7, N1-N4 | sim | |
+
+### For Ben
+
+| Question | Recommendation |
+|---|---|
+| A watchdog on our nodes' status? | Warn only (`stop: false`): respawn, mppi_lag's costmap age and twist_mux's timeout already stop the car when a costmap or the follower dies; a lock would also hold the point driver and the AI slot |
+| Hybrid-A* in our planner? | After the release: the lattice ties Nav2's on the lot |
+| Noise and slip on the simulated wheels (S4)? | Yes, seeded and off by default: Gazebo's wheels are perfect too, so it isn't a gap against Gazebo, only against the car |
+
 **How this was made:** two read-only reviews of the code and docs. Nothing was built or run
 for them, and clippy was not run. Sizes: **S** under a day, **M** 2-4 days, **L** a week or more.
 

@@ -39,6 +39,7 @@ Ours keeps Nav2's speed limits, timeout, deadband and feedback, and steers like 
 - Same topics, parameters and message types as Nav2's; nothing downstream can tell.
 - `|w| <= |v| tan(max_steering) / L`, always; the wheels move at most `steering_rate`.
 - A command older than `velocity_timeout`: slow to a stop, then publish nothing (Nav2's).
+- Closed loop: odometry older than `velocity_timeout` is not used; the last speed sent stands in (Nav2's keeps the last reading for ever).
 - Below `min_speed_for_steering` the wheels hold, as ego holds them.
 - Never on the car: `car.launch.py` always passes `smoother:=nav2`.
 

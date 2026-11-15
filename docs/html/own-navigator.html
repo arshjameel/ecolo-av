@@ -241,6 +241,11 @@ order: the costmap (<a href="own-costmap.html">done</a>), the planner (<a href="
 <td>refused on the other navigator</td>
 </tr>
 <tr>
+<td>a goal in another frame (14 Nov)</td>
+<td><code>odom</code> and <code>base_link</code> put on the map by the latest /tf; any other refused</td>
+<td>any frame tf2 knows, at the goal's stamp</td>
+</tr>
+<tr>
 <td>a server that dies mid-goal (14 Nov)</td>
 <td>time limits: no plan in 10 s is a timeout (recovered as one); a follower silent for 4 s ends the goal (107); a clear unanswered in 5 s failed</td>
 <td>the lifecycle bond (4 s) takes the stack down</td>

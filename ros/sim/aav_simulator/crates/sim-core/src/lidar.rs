@@ -114,19 +114,22 @@ impl Scan {
         let mut ranges = vec![f32::INFINITY; rings.len() * steps.len()];
         let width = steps.len().max(1);
         let chunk = rings.len().div_ceil(threads.max(1)).max(1);
-        // One noise stream per worker, forked in order, so a seed still repeats.
-        let streams: Vec<Noise> = (0..rings.len().div_ceil(chunk))
-            .map(|_| noise.fork())
-            .collect();
+        // One noise stream per ring, forked in order: a seed gives the same scan on any
+        // number of threads (one stream per worker made the noise depend on `threads`).
+        let mut streams: Vec<Noise> = rings.iter().map(|_| noise.fork()).collect();
         std::thread::scope(|s| {
-            for ((rows, ring_angles), mut n) in ranges
+            for ((rows, ring_angles), ring_noise) in ranges
                 .chunks_mut(width * chunk)
                 .zip(rings.chunks(chunk))
-                .zip(streams)
+                .zip(streams.chunks_mut(chunk))
             {
                 let steps = &steps;
                 s.spawn(move || {
-                    for (row, &elevation) in rows.chunks_mut(width).zip(ring_angles) {
+                    for ((row, &elevation), n) in rows
+                        .chunks_mut(width)
+                        .zip(ring_angles)
+                        .zip(ring_noise.iter_mut())
+                    {
                         let (se, ce) = (elevation as f64).sin_cos();
                         for (cell, &azimuth) in row.iter_mut().zip(steps) {
                             let (sa, ca) = (azimuth as f64).sin_cos();
@@ -287,5 +290,24 @@ mod tests {
         let a = Scan::cast(&LidarSpec::ROOF, &scene, &lidar, &mut Noise::new(9), 4);
         let b = Scan::cast(&LidarSpec::ROOF, &scene, &lidar, &mut Noise::new(9), 4);
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn the_noise_does_not_depend_on_the_threads() {
+        let scene = Scene::new(Mesh::plane(400.0, 400.0).triangles);
+        let lidar = Pose::new(Vec3::new(0.0, 0.0, 1.52), Rot3::IDENTITY);
+        let one = Scan::cast(&LidarSpec::ROOF, &scene, &lidar, &mut Noise::new(9), 1);
+        for threads in [2, 3, 4, 7, 16] {
+            let many = Scan::cast(
+                &LidarSpec::ROOF,
+                &scene,
+                &lidar,
+                &mut Noise::new(9),
+                threads,
+            );
+            assert_eq!(one, many, "{threads} threads");
+        }
+        // And the noise is there: the lowest ring isn't the noiseless 5.873 m everywhere.
+        assert!(one.ranges[..1800].windows(2).any(|w| w[0] != w[1]));
     }
 }
