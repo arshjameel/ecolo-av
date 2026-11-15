@@ -124,6 +124,7 @@ From `config/mppi_lag.yaml`: `model` (lag or ideal), `steer_std`, `noise_correla
 cd ros/drivers/aav_mppi_lag && cargo test --release -p mppi-lag          # tools/test.sh runs it
 cargo test --release -p mppi-lag --test closed_loop explore -- --ignored --nocapture
 cargo run --release -p mppi-lag --example timing                         # ms a tick
+cargo run --release -p mppi-lag --example follow_plan -- paths/*.csv     # planned paths, followed (lattice-planner's moves example writes them)
 ```
 
 | Test | Covers |

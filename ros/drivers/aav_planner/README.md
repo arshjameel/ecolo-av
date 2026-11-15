@@ -52,5 +52,6 @@ pixi run measure controllers --planners lattice own --reversing --tours lot
 ```sh
 cargo test -p lattice-planner                                # curves, hand-made maps
 cargo run --release -p lattice-planner --example scenes      # the maps, timed
+cargo run --release -p lattice-planner --example moves       # Nav2's moves against the smooth ones, the lot tour
 pixi run build && colcon test --packages-select aav_planner
 ```
