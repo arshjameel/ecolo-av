@@ -9,7 +9,8 @@ Nav2 still plans the path; ours follows it. It is a **trial**, beside Nav2's MPP
 > **The short version**
 > - **Switch:** `tracker:=mppi_lag`. Package `aav_mppi_lag`.
 > - **Reverses** (14 Nov) as Nav2's MPPI does, with `reversing:=true`: it stops at each
->   cusp, then backs up ([below](#reversing)).
+>   cusp, then backs up ([below](#reversing)). The lot's turn back stalled at a cusp
+>   until the control cost was fixed (14 Nov, [Cusps](#cusps)).
 > - **Same MPPI:** Nav2's sampling, critics, softmax and smoothing, nav2.yaml's numbers.
 > - **New model:** ego's ramps, the spine's speed loop, the pedals' and steering's lags.
 > - **Without ROS:** it predicts the car **70 times better** (8 mm off over 2.8 s, against 0.56 m).
@@ -88,9 +89,11 @@ pub trait CarModel: Sync {
 |---|---|---|---|
 | Samples | (vx, wz), each step clipped to ax, az | (speed, steering), clipped to the range only | ego's ramps are in the model; Nav2's clipping drifts samples slower |
 | Noise | white | **correlated**, AR(1) 0.8 | see below |
+| Control cost | gamma / std² x Σ u e | gamma x u' Σ⁻¹ e, Σ the AR(1) noise's covariance; Nav2's for white noise | Nav2's form on correlated noise stopped the car ([Cusps](#cusps)) |
 | Sent | element 1 | element 0 | the dead times already hold what was sent |
 | Critics | the eight in nav2.yaml | the same eight, same weights; PathAngle's three modes; and our `LaneCritic` with a lane map ([below](#the-lane)) | Nav2 has no critic for a lane |
 | At a cusp (reversing) | the critics' goal is the path's end | the cusp, while one lies ahead; the goal check waits for the last stretch | the car stops there as at a goal; Nav2 stops only because the path ends |
+| Cusp reached | within the inversion tolerances | the same, or stopped within the goal's tolerances | it may stop just outside them ([Cusps](#cusps)) |
 
 ### Why the noise is correlated
 
@@ -105,6 +108,7 @@ with the first, forward-Euler version of the model):
 | correlated 0.8 | 0.036 m | 0.018 m |
 
 So ours samples smooth wiggles (colored-noise MPPI). `noise_correlation: 0.0` gives Nav2's.
+The control cost must then use the same noise's covariance ([Cusps](#cusps)).
 
 ## Results without ROS
 
@@ -123,20 +127,21 @@ A pretend car: ego and the lag model, stepped every 0.01 s. MPPI at 20 Hz, 1000 
 
 | Path, car | Lag-aware | Lag-free |
 |---|---|---|
-| circle r 5 m, vehicle.yaml, 1 m/s | 0.015 / 0.028 m | 0.015 / 0.031 m |
-| S 2 x 16 m, vehicle.yaml, 2 m/s | 0.035 / 0.087 m | 0.024 / 0.052 m |
-| S 2 x 16 m, slow car, 2 m/s | 0.041 / 0.097 m | 0.021 / 0.077 m |
-| corner r 4 m, **very slow** car, 2 m/s | **0.023 / 0.101 m** | 0.248 / **1.467 m** |
-| S 2 x 16 m, **very slow** car, 2 m/s | **0.049 / 0.103 m** | **lost it** (4.1 / 8.0 m) |
-| S 2 x 16 m, **very slow** car, 3 m/s | **0.048 / 0.107 m** | **lost it** (3.5 / 7.3 m) |
+| circle r 5 m, vehicle.yaml, 1 m/s | 0.011 / 0.018 m | 0.009 / 0.021 m |
+| S 2 x 16 m, vehicle.yaml, 2 m/s | 0.017 / 0.037 m | 0.019 / 0.049 m |
+| S 2 x 16 m, slow car, 2 m/s | **0.015 / 0.030 m** | 0.042 / 0.094 m |
+| corner r 4 m, **very slow** car, 2 m/s | **0.014 / 0.070 m** | **lost it** (2.3 / 6.0 m) |
+| S 2 x 16 m, **very slow** car, 2 m/s | **0.030 / 0.063 m** | **lost it** (2.2 / 6.5 m) |
+| S 2 x 16 m, **very slow** car, 3 m/s | **0.030 / 0.066 m** | **lost it** (5.2 / 8.5 m) |
 
 The slow car: steering 0.5 rad/s, 0.3 s lag, 0.2 s dead time. The very slow car: steering 0.3 rad/s, 0.5 s linkage lag, 0.3 s steering and 0.2 s pedal
-dead times.
+dead times. Numbers from 14 Nov, after the control cost fix ([Cusps](#cusps)); before
+it, lag-aware was 1.5-2x further off everywhere.
 
-**Honestly:** at vehicle.yaml's guesses (0.1 s lags, no dead times) the lag is small, and
-the lag-free MPPI tracks as well or 1-2 cm better (on the slow car too), but 2-4 s
-slower over each route. The lag model pays off
-when the actuators are slow. The real numbers come from tests 3.10-3.12 and 4.1-4.5.
+**Honestly:** at vehicle.yaml's guesses (0.1 s lags, no dead times) the lag is small:
+the two track within 1-2 cm of each other, the lag-free one 2-4 s slower over each
+route. The lag model pays off when the actuators are slow. The real numbers come from
+tests 3.10-3.12 and 4.1-4.5.
 
 ## Speed
 
@@ -207,12 +212,9 @@ What is new in the maths (`crates/mppi-lag`):
 | Path | Result |
 |---|---|
 | 8 m straight back | reached; 1 mm mean, 3 mm worst off the path; never forward |
-| 6 m ahead, a cusp, a quarter circle (r 5 m) back | reached; forward to 1.06 m/s, a stop, back at 0.5 m/s; one change of direction |
-| the same with r 4 m | **not reached**: it fell 0.6 m outside the bend and stopped short |
-
-Why r 4 m fails: the path bends at once after the cusp, and the car starts from a stop
-with its wheels straight. The planner's radius is 3.6 m. In the stack the navigator
-replans, which may save it; not measured yet.
+| 6 m ahead, a cusp, a quarter circle (r 5 m) back | reached; forward to 1.06 m/s, a stop, back at 0.5 m/s; one change of direction; 0.008 m mean off |
+| the same with r 3.6 m (the planner's) | reached; 0.033 m mean, 0.088 m worst (r 4 m failed before the [Cusps](#cusps) fix) |
+| the test lot's turn back | reached in 25.9 s; from rolling and off the path, 27.6 s ([Cusps](#cusps)) |
 
 **Our simulator, 14 Nov, all ours** (`--navigator own --planner own --costmap own
 --tracker mppi_lag`, reversing on; a busy Mac, load 25-40), one run each:
@@ -223,8 +225,46 @@ replans, which may save it; not measured yet.
 | `--plan-around` (a box in the lane) | PASS: goal 30 m on, 2.6 m clear of the box |
 | plain (contract, sensors, a scripted drive) | PASS, every line |
 
-Not yet seen in the simulator: a path with a cusp (a three-point turn). The lot tour
-with `measure controllers --stacks own --reversing` would show it.
+## Cusps
+
+**Found 14 Nov:** `measure controllers --stacks nav2 own --tours lot --reversing`. On
+the "turn back" leg (35, 42) facing east to (20, 42) facing west, Nav2's MPPI got there
+in 59 s; `mppi_lag` gave up 4 times ("no progress in time"), 22.6 m driven.
+
+Our planner's path there: **back** round a 3.6 m bend, a cusp, then forward round to
+face west. Rebuilt without ROS (`turn_back` in `tests/closed_loop.rs`):
+
+| Step | What happened |
+|---|---|
+| 1 | backing up, MPPI steered only 0.1 rad of the 0.4 needed |
+| 2 | 0.7 m outside the bend, it stopped 1.9 m beside the cusp |
+| 3 | nothing moved it on: Stuck after 10 s, every time |
+
+**Cause: the control cost.** MPPI adds gamma x u x noise / std² for each sample (Nav2's
+form, made for white noise). Ours samples correlated noise, and kept that form:
+
+| Noise | Spread of the control cost |
+|---|---|
+| white (Nav2) | 1 x |
+| correlated 0.8, white form (ours before) | **3 x**: it outweighed the critics and pulled speed and steering to 0 |
+| correlated 0.8, its own covariance (ours now) | 1/3 x |
+
+**Fix 1:** the cost uses the noise's own covariance (`control_cost` in `optimizer.rs`).
+With `noise_correlation: 0` it is Nav2's exactly.
+
+**Fix 2:** starting rolling and 0.5 m off the path, the car stopped 0.6 m from the cusp:
+outside the inversion tolerance (0.5 m), so still Stuck. Now a cusp also counts once the
+car has **stopped within the goal's tolerances** (1 m, 0.75 rad), as the path would end
+at its goal. The progress check starts again at each new stretch.
+
+| Closed loop, the turn back | Before | After |
+|---|---|---|
+| from a stop on the path | Stuck at 18.9 s | reached in 25.9 s |
+| rolling at 0.5 m/s, 0.5 m and 11° off | Stuck at 18.3 s | reached in 27.6 s (needs fix 2) |
+
+The planner's own path (exported from `lattice-planner` on the lot's map), 8 seeds
+each: 0 of 8 before, 8 of 8 after; also with a slow car, rolling at 0.8 m/s, or
+started 0.2 rad off. **In the simulator: not yet run** with the fix.
 
 ## The lane
 
@@ -306,8 +346,8 @@ cd ros/drivers/aav_mppi_lag && cargo test --release -p mppi-lag
 | The shared car-model crate | built behind the feature `shared`; switch the node over after a quiet-machine sim-check (TODO 139) |
 | The car's real lags | tests 3.10-3.12, 4.1-4.5; then these runs again |
 | The Orin's tick | measured on the Orin |
-| Reversing at a tight bend | after a cusp, a bend under ~1.1 x the planner's radius ([above](#reversing)) |
-| Reversing, scored | `measure controllers --stacks own --reversing`: not yet run |
+| Reversing, scored | `measure controllers --stacks own --reversing`: the turn back failed (14 Nov); run it again with the [Cusps](#cusps) fix |
+| The forward legs with the new control cost | closer to the path without ROS; the simulator's tours again (forward only too) |
 | ego's jerk limit, sideways slow-down | not modelled (off at our speeds) |
 | The goal at speed, the CPU | passes a goal at 2.5 m/s; twice Nav2's MPPI's CPU (8 Nov; TODO 152) |
 | A gap in odometry | gives up after 1 s, as `aav_track`; Nav2's MPPI drives on: decide which is right |
