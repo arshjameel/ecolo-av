@@ -5,7 +5,7 @@ hardware catches up (Ben, 5 Nov). Nothing here has met the real campus yet.
 
 ```sh
 pixi run campus                                       # builds maps/campus/ (about 10 s)
-pixi run sim world:=campus reversing:=false screen_cubes:=true ndt:=true gui:=false rviz:=false
+pixi run sim world:=campus screen_cubes:=true ndt:=true gui:=false rviz:=false
 pixi run dev-window --live --ndt-map maps/ndt/campus.pcd   # in a second terminal
 ```
 
@@ -82,7 +82,7 @@ campus: NDT is watched, and doesn't steer the estimate.
 
 | Finding | What to do |
 |---|---|
-| With `reversing` on, the car backs a long way to a goal behind it, at 0.5 m/s | use `reversing:=false` here; a decision for later (TODO 122) |
+| With `reversing` on, the car backs a long way to a goal behind it, at 0.5 m/s | reversing stays on (a must-have for 0.4-rc1): our stack reached 9 of 9 campus legs with it (TODO 167); `reversing:=false` for forward only |
 | MPPI stayed near 1 m/s at any `sim_speed`: its 3 m of path was shorter than its futures | fixed: the path now grows with the speed. Campus default 2.5 m/s (mean 2.2) |
 | The car wiggles: the turn rate flips about once a second | TODO 124; to be tested on its own (TODO 149) |
 | Kerbs sit at Nav2's 0.3 m floor | TODO 119: test it now this world exists |

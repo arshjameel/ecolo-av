@@ -120,7 +120,7 @@
 <div class="lead"><p>Carleton in the simulator (ours, the default since 8 Nov, or Gazebo), on one Nav2 costmap, with a guessed NDT map. It's for practice while the
 hardware catches up (Ben, 5 Nov). Nothing here has met the real campus yet.</p>
 <pre class="highlight"><code class="language-sh">pixi run campus                                       # builds maps/campus/ (about 10 s)
-pixi run sim world:=campus reversing:=false screen_cubes:=true ndt:=true gui:=false rviz:=false
+pixi run sim world:=campus screen_cubes:=true ndt:=true gui:=false rviz:=false
 pixi run dev-window --live --ndt-map maps/ndt/campus.pcd   # in a second terminal</code></pre>
 <p>Click a road or lot on the map, then confirm, as in any world. The car starts in lot P4,
 because the datum itself is on a station shelter. It drives at up to 2.5 m/s here, in the
@@ -251,7 +251,7 @@ campus: NDT is watched, and doesn't steer the estimate.</p>
 <tbody>
 <tr>
 <td>With <code>reversing</code> on, the car backs a long way to a goal behind it, at 0.5 m/s</td>
-<td>use <code>reversing:=false</code> here; a decision for later (TODO 122)</td>
+<td>reversing stays on (a must-have for 0.4-rc1): our stack reached 9 of 9 campus legs with it (TODO 167); <code>reversing:=false</code> for forward only</td>
 </tr>
 <tr>
 <td>MPPI stayed near 1 m/s at any <code>sim_speed</code>: its 3 m of path was shorter than its futures</td>
