@@ -49,6 +49,10 @@ levels:
       # Nav2's Hybrid-A* ported into our planner, beside the lattice it shares the search
       # with (planner_search:=hybrid, docs/own-planner.md). A challenger (14 Nov, TODO 178).
       hybrid_rs: {planner: own, planner_search: hybrid}
+      # Ours with its smoother pulling harder (plan_smoothing:=strong, w_data 0.02): no
+      # staircase on a road at an angle (TODO 168, 15 Nov; docs/mppi-lag.md, "The sway
+      # that was left"). Ours' pick since 15 Nov, scored with mppi_lag_calm.
+      lattice_rs_strong: {planner: own, plan_smoothing: strong}
       diffusion: {planner: diffusion}
     score: ''
   steer:
@@ -57,6 +61,11 @@ levels:
     options:
       mppi: {controller: mppi, tracker: none}
       mppi_lag: {controller: mppi, tracker: mppi_lag}
+      # mppi_lag following in odom with the map's corrections taken slowly (TODO 186), its
+      # steering's control cost 0.05 (TODO 168). Ours' pick since 15 Nov: the sway at or
+      # under Nav2's on the lot and the campus (docs/mppi-lag.md, "The sway that was left").
+      mppi_lag_calm: {controller: mppi, tracker: mppi_lag, map_correction: slow,
+                      mppi_lag_steer_gamma: '0.05'}
       mpc_lag: {controller: mppi, tracker: mpc_lag}
       rpp: {controller: rpp, tracker: none}
     score: ''
@@ -95,7 +104,7 @@ stacks:
     pose: ekf
     costmap: ours
     navigator: ours
-    path: lattice_rs
-    steer: mppi_lag
+    path: lattice_rs_strong
+    steer: mppi_lag_calm
     smoother: nav2
     behaviour: 'on'

@@ -1,3 +1,4 @@
+import copy
 import json
 import math
 from pathlib import Path
@@ -857,6 +858,30 @@ def test_a_global_window_rolls_the_global_costmap_and_0_leaves_it():
     assert vehicle.with_global_window(cfg(), 0.0) == cfg()
     with pytest.raises(ValueError):
         vehicle.with_global_window(cfg(), -1.0)
+
+
+def test_plan_smoothing_strong_weights_the_smoother_for_both_planners():
+    """TODO 168: plan_smoothing:=strong lowers w_data in GridBased's smoother block."""
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+    v = vehicle.load(CONFIG)['vehicle']
+    tuned = vehicle.nav2_tuned(nav2, v, planner='own', lattice_file='/x/l.json')
+    assert 'smoother' not in vehicle.planner_params(tuned, v)      # nav2: Nav2's defaults
+    assert vehicle.with_plan_smoothing(copy.deepcopy(tuned), 'nav2') == tuned
+    strong = vehicle.with_plan_smoothing(tuned, 'strong')
+    block = strong['planner_server']['ros__parameters']['GridBased']['smoother']
+    assert block == vehicle.PLAN_SMOOTHINGS['strong']
+    assert block['w_data'] < 0.2                                  # Nav2's own w_data
+    assert vehicle.planner_params(strong, v)['smoother'] == block  # ours reads it too
+    assert vehicle.check_plan_smoothing('') == 'nav2'
+    with pytest.raises(ValueError):
+        vehicle.check_plan_smoothing('soft')
+
+
+def test_mppi_lag_steer_gamma_is_a_number_0_or_more():
+    assert vehicle.check_steer_gamma('0.05') == pytest.approx(0.05)
+    for bad in ('x', '-1', 'nan'):
+        with pytest.raises(ValueError):
+            vehicle.check_steer_gamma(bad)
 
 
 def test_the_stop_zone_shadow_reads_what_collision_monitor_reads():

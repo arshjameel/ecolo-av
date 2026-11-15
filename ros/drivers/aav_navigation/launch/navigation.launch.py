@@ -50,7 +50,11 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           radius and the map's cells (refused if either differs),
                           backwards too with reversing:=true.
                           lattice_headings:=32 takes the trial file with 32 headings
-                          (lattice_ackermann_32.json). lattice_moves:=smooth (or
+                          (lattice_ackermann_32.json). plan_smoothing:=strong: the
+                          smoother pulls harder (w_data 0.02), so a road at an angle is no
+                          staircase (TODO 168). mppi_lag_steer_gamma:=0.05: mppi_lag's
+                          control cost on its steering 3 times nav2.yaml's gamma, a
+                          challenger (TODO 168). lattice_moves:=smooth (or
                           smooth_fast) takes the trial moves whose curvature changes no
                           faster than the steering turns at 1 m/s (2.5 m/s), and turns
                           the lattice's smoother off (tools/lattice_smooth.py). smac2d, navfn,
@@ -234,7 +238,8 @@ def voxels_car(cfg):
 def tuned_copy(source, v, reversing, max_speed, radar, lidar, ghost=False,
                controller=vehicle.DEFAULT_CONTROLLER, plan_around=True, camera=False,
                planner='hybrid', lattice_file=None, voxels=False,
-               lattice_moves=vehicle.LATTICE_MOVES[0], lidar_memory=0.0, global_window=0.0):
+               lattice_moves=vehicle.LATTICE_MOVES[0], lidar_memory=0.0, global_window=0.0,
+               plan_smoothing='nav2'):
     """Return a temporary copy of nav2.yaml, tuned by vehicle.nav2_tuned (no ROS there)."""
     with open(source) as f:
         cfg = vehicle.nav2_tuned(yaml.safe_load(f), v, reversing, max_speed, radar, lidar,
@@ -242,6 +247,7 @@ def tuned_copy(source, v, reversing, max_speed, radar, lidar, ghost=False,
                                  lattice_file, voxels, lattice_moves)
     vehicle.with_lidar_memory(cfg, lidar_memory)
     vehicle.with_global_window(cfg, global_window)
+    vehicle.with_plan_smoothing(cfg, plan_smoothing)
     out = tempfile.NamedTemporaryFile('w', prefix='nav2_', suffix='.yaml', delete=False)
     with out:
         yaml.safe_dump(cfg, out)
@@ -383,7 +389,8 @@ def nodes(context):
                         float(speed) if speed else None, radar, lidar, ghost, controller,
                         flag(context, 'plan_around'), guard, planner, lattice_file, voxels,
                         moves, float(LaunchConfiguration('lidar_memory').perform(context)),
-                        float(LaunchConfiguration('global_window').perform(context)))
+                        float(LaunchConfiguration('global_window').perform(context)),
+                        LaunchConfiguration('plan_smoothing').perform(context))
     params = ParameterFile(
         RewrittenYaml(source_file=source, param_rewrites=rewrites, convert_types=True),
         allow_substs=True)
@@ -625,6 +632,13 @@ def nodes(context):
         if correction not in ('slow', 'newest'):
             raise ValueError(f'map_correction:={correction}: slow or newest')
         slew = {'map_correction': correction == 'slow'}
+        # TODO 168: mppi_lag's control cost on its steering, a challenger (empty:
+        # nav2.yaml's gamma, as Nav2's MPPI). Higher leans the samples toward a straighter
+        # wheel: less sampling jitter. On the steering only: a higher gamma on the speed
+        # too slowed the car on the campus and dithered at a cusp (15 Nov).
+        gamma = LaunchConfiguration('mppi_lag_steer_gamma').perform(context).strip()
+        if gamma:
+            slew['steer_gamma'] = vehicle.check_steer_gamma(gamma)
         if tracker == 'mppi_lag':
             # aav_mppi_lag (Rust): Nav2's MPPI with the actuators' lag in its model. nav2.yaml's
             # MPPI block and checks, vehicle.yaml's actuators, ego.yaml's ramps.
@@ -810,6 +824,16 @@ def generate_launch_description():
                                           'trial: curvature no faster than the steering '
                                           'turns at 1 or 2.5 m/s, the smoother off '
                                           '(config/lattice_ackermann_smooth*.json)'),
+        DeclareLaunchArgument('mppi_lag_steer_gamma', default_value='',
+                              description="with tracker:=mppi_lag: its steering's control "
+                                          "cost weight; empty: nav2.yaml's gamma (0.015, as "
+                                          "Nav2's MPPI). 0.05, a challenger: less sampling "
+                                          'jitter (TODO 168)'),
+        DeclareLaunchArgument('plan_smoothing', default_value='nav2',
+                              description="the planner's smoother: nav2, Nav2's weights (the "
+                                          'default); strong, a challenger: it also takes out '
+                                          "the lattice's staircase on roads at an angle "
+                                          '(vehicle.PLAN_SMOOTHINGS, TODO 168)'),
         DeclareLaunchArgument('planner_search', default_value=vehicle.PLANNER_SEARCHES[0],
                               description='with planner:=own: lattice (the default), the '
                                           "State Lattice; or hybrid, a challenger: Nav2's "

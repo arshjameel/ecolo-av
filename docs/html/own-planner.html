@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-planner.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own planner</h1>
-<div class="meta">12 min read · 7 sections</div></header>
+<div class="meta">13 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -117,7 +117,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#hand-made-maps-no-ros">Hand-made maps (no ROS)</a><a href="#in-our-simulator-8-nov">In our simulator (8 Nov)</a><a href="#hybrid-a-a-second-search-14-nov">Hybrid-A*: a second search (14 Nov)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#hand-made-maps-no-ros">Hand-made maps (no ROS)</a><a href="#in-our-simulator-8-nov">In our simulator (8 Nov)</a><a href="#hybrid-a-a-second-search-14-nov">Hybrid-A*: a second search (14 Nov)</a><a href="#the-staircase-and-the-strong-smoother-15-nov">The staircase and the strong smoother (15 Nov)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
 <div class="lead"><p>Ben, 8 Nov: move off Nav2 <strong>one piece at a time</strong>, each beside Nav2 until it wins. The
 order: the costmap (<a href="own-costmap.html">done</a>), then <strong>the path planner</strong> (this page), then
 the navigator. Since 14 Nov ours is the simulator's default (<code>stack:=ours</code>; Nav2's
@@ -606,6 +606,35 @@ search.rs (A*) ───┤
 <li>No <code>use_quadratic_cost_penalty</code> or <code>cache_obstacle_heuristic</code> (nav2.yaml leaves both
   off).</li>
 </ul>
+</section>
+<section class="card"><h2 id="the-staircase-and-the-strong-smoother-15-nov">The staircase and the strong smoother (15 Nov)</h2>
+<p>TODO 168. The lattice has 16 headings. A road at 8° is planned as steps (0°, 17°,
+0°... every ~9 m, 0.2 m high). Nav2's smoother weights (w_data 0.2, w_smooth 0.3) only
+take out wiggles shorter than ~2 m, so the steps stay, and the follower drives them.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Switch</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>plan_smoothing:=nav2</code></td>
+<td>Nav2's weights (<code>navigation.launch.py</code>'s default; <code>stack:=stock</code>; the car)</td>
+</tr>
+<tr>
+<td><code>plan_smoothing:=strong</code></td>
+<td>w_data 0.02 in the GridBased block's <code>smoother</code>: Nav2's lattice and ours both read it. The sim's <code>ours</code> stack picks it</td>
+</tr>
+</tbody>
+</table></div>
+<pre class="highlight"><code class="language-sh">W_DATA=0.02 cargo run --release -p lattice-planner --example staircase   # no ROS</code></pre>
+<p>The plan's own swing on a 6.5 m road at 2.2 m/s: 0.08-0.16 m with Nav2's weights,
+0.02-0.07 m strong. The lot's corners keep to the car (tightest 3.08 m; the car turns at
+2.86 m). In the sim it took a share of the campus's sway off; the rest, and the
+numbers: <a href="mppi-lag.html#the-sway-that-was-left">mppi-lag.md, The sway that was left</a>.
+<code>tests/scenes.rs</code> checks the steps go (8°: under half the swing).</p>
 </section>
 <section class="card"><h2 id="whats-missing">What's missing</h2>
 <ul>

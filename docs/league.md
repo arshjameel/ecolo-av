@@ -13,8 +13,10 @@ waiting to beat it.
   │ navigator  │ nav2      │ ours                         │
   │ path       │ lattice   │ lattice_rs, lattice_smooth,  │
   │            │           │ lattice_rs_smooth, hybrid,   │
-  │            │           │ hybrid_rs, diffusion         │
-  │ steer      │ mppi      │ mppi_lag, mpc_lag, rpp       │
+  │            │           │ hybrid_rs, diffusion,        │
+  │            │           │ lattice_rs_strong            │
+  │ steer      │ mppi      │ mppi_lag, mppi_lag_calm,     │
+  │            │           │ mpc_lag, rpp                 │
   │ smoother   │ nav2      │ ours                         │
   │ behaviour  │ off       │ on (the road ahead)          │
   └────────────┴───────────┴──────────────────────────────┘
@@ -31,7 +33,7 @@ The champions above stay as they are: they are what the car runs.
 
 | `stack:=` | What it runs |
 |---|---|
-| `ours` (the default) | every level we built: our costmap, navigator, planner (`lattice_rs`), `mppi_lag`, and the road ahead (`behaviour:=true`) |
+| `ours` (the default) | every level we built: our costmap, navigator, planner (`lattice_rs_strong`: `lattice_rs` with `plan_smoothing:=strong`), `mppi_lag_calm` (`mppi_lag` with `map_correction:=slow` and `mppi_lag_steer_gamma:=0.05`), and the road ahead (`behaviour:=true`). The two calm picks since 15 Nov: they took ours' sway to Nav2's ([why](mppi-lag.md#the-sway-that-was-left)) |
 | `stock` | every level stock: Nav2 and robot_localization |
 | `best` | every level's champion |
 | `car` | the champions approved for the car (`car.launch.py` runs these today) |
@@ -47,7 +49,7 @@ pixi run sim stack:=stock planner:=own           # Nav2's, but our planner
 ```
 
 The launch prints what it picked, such as
-`stack:=ours - pose ekf, costmap ours, navigator ours, path lattice_rs, steer mppi_lag, ...`.
+`stack:=ours - pose ekf, costmap ours, navigator ours, path lattice_rs_strong, steer mppi_lag_calm, ...`.
 
 !!! note "How a hand-set switch is seen"
     The switches a stack sets are empty by default in `sim.launch.py`, meaning "the

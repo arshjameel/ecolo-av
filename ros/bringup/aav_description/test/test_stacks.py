@@ -16,7 +16,8 @@ DEFAULTS = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.DEFAULT
             'navigator': vehicle.DEFAULT_NAVIGATOR, 'smoother': vehicle.DEFAULT_SMOOTHER,
             'behaviour': 'false', 'ndt_ekf': 'false', 'kiss_ekf': 'false',
             'lattice_moves': vehicle.LATTICE_MOVES[0],
-            'planner_search': vehicle.PLANNER_SEARCHES[0]}
+            'planner_search': vehicle.PLANNER_SEARCHES[0],
+            'plan_smoothing': 'nav2', 'map_correction': 'newest', 'mppi_lag_steer_gamma': ''}
 # What the launch passes when no switch is given: each declared empty, "the stack's choice".
 NOT_GIVEN = {name: stacks.CHOSEN for name in DEFAULTS}
 VALID = {'controller': vehicle.CONTROLLERS, 'tracker': vehicle.TRACKERS,
@@ -24,7 +25,9 @@ VALID = {'controller': vehicle.CONTROLLERS, 'tracker': vehicle.TRACKERS,
          'navigator': vehicle.NAVIGATORS, 'smoother': vehicle.SMOOTHERS,
          'behaviour': ('true', 'false'), 'ndt_ekf': ('true', 'false'),
          'kiss_ekf': ('true', 'false'), 'lattice_moves': vehicle.LATTICE_MOVES,
-         'planner_search': vehicle.PLANNER_SEARCHES}
+         'planner_search': vehicle.PLANNER_SEARCHES,
+         'plan_smoothing': tuple(vehicle.PLAN_SMOOTHINGS), 'map_correction': ('newest', 'slow'),
+         'mppi_lag_steer_gamma': ('', '0.05')}
 
 
 def test_the_four_stacks_are_there():

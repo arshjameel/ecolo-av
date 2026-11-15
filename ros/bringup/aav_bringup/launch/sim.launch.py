@@ -90,6 +90,11 @@ bench's argument names:
                       smac2d, navfn and theta_star don't, trials only. pixi run
                       measure controllers --planners scores them (docs/controllers.md).
                       lattice_headings:=32: the lattice's trial file, 32 headings
+                      plan_smoothing:=strong: the planner's smoother pulls harder, so a
+                      road at an angle is no staircase (a challenger, TODO 168)
+                      mppi_lag_steer_gamma:=0.05: mppi_lag's control cost on its steering
+                      (empty: nav2.yaml's gamma, 0.015), a challenger: less sampling
+                      jitter (TODO 168)
                       lattice_moves:=smooth|smooth_fast: the lattice's trial moves,
                       curvature no faster than the steering turns (tools/lattice_smooth.py)
                       planner_search:=hybrid: with planner:=own, ours runs Nav2's
@@ -250,7 +255,9 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'navigator': vehicle.DEFAULT_NAVIGATOR, 'smoother': vehicle.DEFAULT_SMOOTHER,
                   'behaviour': 'false', 'ndt_ekf': 'false', 'kiss_ekf': 'false',
                   'lattice_moves': vehicle.LATTICE_MOVES[0],
-                  'planner_search': vehicle.PLANNER_SEARCHES[0]}
+                  'planner_search': vehicle.PLANNER_SEARCHES[0],
+                  'plan_smoothing': 'nav2', 'map_correction': 'newest',
+                  'mppi_lag_steer_gamma': ''}
 
 
 def launch_setup(context):
@@ -431,6 +438,9 @@ def launch_setup(context):
                                navigator=vehicle.check_navigator(arg('navigator')),
                                smoother=vehicle.check_smoother(arg('smoother')),
                                lattice_headings=arg('lattice_headings'),
+                               plan_smoothing=vehicle.check_plan_smoothing(
+                                   arg('plan_smoothing')),
+                               mppi_lag_steer_gamma=arg('mppi_lag_steer_gamma'),
                                lattice_moves=arg('lattice_moves'),
                                lidar_memory=arg('lidar_memory'),
                                global_window=arg('global_window'),
@@ -723,6 +733,16 @@ def generate_launch_description():
         DeclareLaunchArgument('diffusion_record', default_value='',
                               description="with planner:=diffusion: a folder for each plan's "
                                           'inputs, to replay offline (training/replay.py)'),
+        DeclareLaunchArgument('mppi_lag_steer_gamma', default_value=stacks.CHOSEN,
+                              description="with tracker:=mppi_lag: its steering's control cost "
+                                          "weight (TODO 168): 0.05; nav2.yaml's gamma when "
+                                          "nothing sets it. Empty: the stack's choice (ours: "
+                                          "0.05; stock: nav2.yaml's)"),
+        DeclareLaunchArgument('plan_smoothing', default_value=stacks.CHOSEN,
+                              description="the planner's smoother: nav2, Nav2's weights; "
+                                          "strong, it also takes out the lattice's staircase "
+                                          "(TODO 168). Empty: the stack's choice (ours: "
+                                          'strong; stock: nav2)'),
         DeclareLaunchArgument('lattice_headings',
                               default_value=str(vehicle.LATTICE_HEADINGS[0]),
                               description='with planner:=lattice: 16 headings (the default) '
@@ -809,9 +829,10 @@ def generate_launch_description():
         DeclareLaunchArgument('truth_pose', default_value='false',
                               description="a test: the simulator's truth as the pose, in "
                                           "ekf_global's place (aav_gazebo truth_localizer)"),
-        DeclareLaunchArgument('map_correction', default_value='newest',
+        DeclareLaunchArgument('map_correction', default_value=stacks.CHOSEN,
                               description='with a trial tracker: newest, or slow (the held '
-                                          'map -> odom, a challenger, TODO 186)'),
+                                          "map -> odom, TODO 186). Empty: the stack's "
+                                          'choice (ours: slow; stock: newest)'),
         DeclareLaunchArgument('replan_hz', default_value='1.0',
                               description="how often Nav2's navigate-to-pose tree plans "
                                           'again; 0: once per goal (a test)'),
