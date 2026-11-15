@@ -56,6 +56,7 @@ Many values are still `TODO measure` (docs/car_measurements.md).
 | `lattice_file_name(headings, moves)`, `check_lattice_moves(moves)`, `smooth_moves(moves)` | the primitives file for 16 headings (the default) or 32 (`LATTICE_HEADINGS`, `lattice_headings:=`), and for Nav2's moves or the smooth ones (`LATTICE_MOVES`, `lattice_moves:=`; 16 headings only) |
 | `check_planner_search(search, planner)`, `planner_params(tuned, v, costmap, search, nav2)` | our planner's search (`PLANNER_SEARCHES`, `planner_search:=`: `lattice` or `hybrid`, with `planner:=own` only); its settings: the tuned Lattice block, or with `hybrid` nav2.yaml's own Hybrid-A* block, the planning radius, the motion model and the global costmap's cells |
 | `check_tracker(name, reversing)`, `track_params(nav2, cfg, ego, max_speed)` | a trial tracker's name, checked (`FORWARD_ONLY_TRACKERS`, `aav_track`'s, refused with `reversing`); `aav_track`'s parameters from nav2.yaml, vehicle.yaml and ego.yaml |
+| `mpc_lag_rs_params(nav2, cfg, ego, max_speed)` | `aav_mpc_lag`'s (`tracker:=mpc_lag_rs`): `track_params` without the lookahead, and vehicle.yaml's actuators as `actuators.<key>` (`MPPI_LAG_ACTUATORS`) |
 | `mppi_lag_params(nav2, cfg, ego, max_speed, reversing, lane)` | `aav_mppi_lag`'s: nav2.yaml's MPPI block and checks, the costmap's outline, vehicle.yaml's actuators (`MPPI_LAG_ACTUATORS`), ego's ramps; with `reversing`, set up to reverse as `nav2_tuned` sets Nav2's MPPI; with `lane` (a lane map), `/world/road_ahead` (`ROAD_AHEAD_TOPIC`) and our `LaneCritic` (`LANE_CRITIC`) |
 | `obstacle_heights(v)`, `centre_of_mass(...)` | the lidar's height band; centre of mass from the scales |
 
@@ -64,7 +65,7 @@ Constants: `SELF_MARGIN`, `SENSOR_HALF_SIZE` (m), `STOP_ZONE_AHEAD`, `STOP_ZONE_
 `VOXELS_IMPLS` (`python`: `aav_voxels`, `rust`: `aav_voxels_rs`) with `DEFAULT_VOXELS_IMPL = 'python'` and `check_voxels_impl(name)` (`voxels_impl:=`);
 `CONTROLLERS = ('rpp', 'mppi')` with `DEFAULT_CONTROLLER = 'mppi'` (the car's, and the fallback of
 `sim.launch.py`'s `controller`); `TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr',
-'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag')` with `DEFAULT_TRACKER = 'none'` (`tracker:=`, `docs/trials.md`), kept apart from
+'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag', 'mpc_lag_rs')` with `DEFAULT_TRACKER = 'none'` (`tracker:=`, `docs/trials.md`), kept apart from
 `CONTROLLERS`; `PLANNERS = ('hybrid', 'lattice', 'smac2d', 'navfn', 'theta_star', 'diffusion', 'own')` with
 `DEFAULT_PLANNER = 'lattice'` and `FORWARD_ONLY_PLANNER = 'hybrid'` (`default_planner(reversing)` picks), `CAR_PLANNERS = ('hybrid', 'lattice')` (the ones that keep to
 the turning radius), `TRIAL_CAR_PLANNERS = ('diffusion',)` with `DIFFUSION_TRIAL_SPEED = 0.5`

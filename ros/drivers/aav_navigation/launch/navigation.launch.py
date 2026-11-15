@@ -79,7 +79,8 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
   tracker:=pure_pursuit|stanley|lqr|mpc|mpc_full|mpc_lag
                           aav_track's track node follows the path instead
                           (tracker:=mppi_lag: aav_mppi_lag's mppi_lag node, Nav2's MPPI
-                          with the actuators' lag; docs/mppi-lag.md)
+                          with the actuators' lag; docs/mppi-lag.md; tracker:=mpc_lag_rs:
+                          aav_mpc_lag's mpc_lag_rs node, mpc_lag in Rust, a challenger)
                           of controller_server: it serves follow_path (bt_navigator's
                           FollowPath) and publishes cmd_vel_nav; controller_server keeps
                           running (its costmaps, the trees' clear calls) with its own action
@@ -625,7 +626,16 @@ def nodes(context):
         if correction not in ('slow', 'newest'):
             raise ValueError(f'map_correction:={correction}: slow or newest')
         slew = {'map_correction': correction == 'slow'}
-        if tracker == 'mppi_lag':
+        if tracker == 'mpc_lag_rs':
+            # aav_mpc_lag (Rust): aav_track's mpc_lag ported, a challenger beside it. The
+            # same numbers as the track node gets, and vehicle.yaml's actuators.
+            own = FindPackageShare('aav_mpc_lag').perform(context) + '/config/mpc_lag_rs.yaml'
+            actions.append(Node(
+                package='aav_mpc_lag', executable='mpc_lag_rs', name='mpc_lag_rs',
+                output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
+                parameters=[own, vehicle.mpc_lag_rs_params(nav2, cfg, ego, max_speed),
+                            {'use_sim_time': use_sim_time, **slew}]))
+        elif tracker == 'mppi_lag':
             # aav_mppi_lag (Rust): Nav2's MPPI with the actuators' lag in its model. nav2.yaml's
             # MPPI block and checks, vehicle.yaml's actuators, ego.yaml's ramps.
             own = FindPackageShare('aav_mppi_lag').perform(context) + '/config/mppi_lag.yaml'

@@ -219,7 +219,7 @@ MAP_SPEC = os.path.join(ROOT, 'ros', 'drivers', 'aav_navigation', 'maps',
                         'example_lot.spec.yaml')
 COLOURS = {'rpp': '#1f6fb4', 'mppi': '#e8590c', 'pure_pursuit': '#2b8a3e', 'stanley': '#862e9c',
            'lqr': '#c92a2a', 'mpc': '#e67700', 'mpc_full': '#5f3dc4',
-           'mpc_lag': '#087f5b', 'mppi_lag': '#0b7285',
+           'mpc_lag': '#087f5b', 'mppi_lag': '#0b7285', 'mpc_lag_rs': '#2f9e44',
            # --planners: a column is a planner's name when one follower drives them all.
            'hybrid': '#e8590c', 'lattice': '#1f6fb4', 'smac2d': '#2b8a3e',
            'navfn': '#862e9c', 'theta_star': '#c92a2a', 'lattice32': '#5f3dc4',
@@ -235,12 +235,14 @@ NDT_CONFIG = os.path.join(ROOT, 'ros', 'localization', 'aav_ndt', 'config', 'ndt
 # The process to time for each kind of follower (its command line, in the run's group).
 PROCESS = {'controller': 'controller_server', 'tracker': 'lib/aav_track/track',
            # tracker:=mppi_lag runs aav_mppi_lag's Rust node, not aav_track's.
-           'mppi_lag': 'lib/aav_mppi_lag/mppi_lag'}
+           'mppi_lag': 'lib/aav_mppi_lag/mppi_lag',
+           # tracker:=mpc_lag_rs runs aav_mpc_lag's Rust node.
+           'mpc_lag_rs': 'lib/aav_mpc_lag/mpc_lag_rs'}
 
 
 def follower_process(kind, controller):
     """Return the command-line piece of the process to time for this follower."""
-    return PROCESS['mppi_lag'] if controller == 'mppi_lag' else PROCESS[kind]
+    return PROCESS[controller] if controller in ('mppi_lag', 'mpc_lag_rs') else PROCESS[kind]
 
 
 def seconds(stamp):
@@ -1239,7 +1241,8 @@ def main():
                         help="Nav2's followers (default: both, unless --trackers is given)")
     parser.add_argument('--trackers', nargs='+', type=tracker_names, default=None,
                         help='the trial trackers (aav_track, docs/trials.md): pure_pursuit, '
-                             'stanley, lqr, mpc, mpc_full, mpc_lag; spaces or commas between. '
+                             'stanley, lqr, mpc, mpc_full, mpc_lag, mpc_lag_rs; spaces or commas '
+                             'between. '
                              'Forward only')
     parser.add_argument('--planners', nargs='+', type=planner_names, default=None,
                         help="Nav2's planners (planner:=): " + ', '.join(PLANNER_WORDS) +

@@ -52,6 +52,8 @@ FOLLOWERS = [
      ['tracker:=mpc_full', 'reversing:=false']),
     ('mpc_lag', "ours: MPC that knows the car's lags (plans speed and steering)",
      ['tracker:=mpc_lag', 'reversing:=false']),
+    ('mpc_lag_rs', 'ours: the same MPC in Rust, a challenger (about 7 times faster)',
+     ['tracker:=mpc_lag_rs', 'reversing:=false']),
 ]
 
 # Who draws the route (planner:=): ours (the sim's default since 14 Nov), or Nav2's.

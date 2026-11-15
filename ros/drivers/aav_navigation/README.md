@@ -47,7 +47,7 @@ Launch: `ros2 launch aav_navigation navigation.launch.py [args]`
 | `lattice_moves` | `nav2` | with `planner:=lattice` or `own`: `smooth` (1 m/s) or `smooth_fast` (2.5 m/s), a trial: moves whose curvature changes no faster than the steering turns (`config/lattice_ackermann_smooth*.json`), and the lattice's smoother off |
 | `planner_search` | `lattice` | with `planner:=own`: `hybrid`, a challenger: our planner runs Nav2's Hybrid-A* ported instead of the State Lattice, on `nav2.yaml`'s `GridBased` block (Reeds-Shepp with `reversing:=true`, else Dubins; `docs/own-planner.md`) |
 | `plan_around` | true | false: the planner sees only the map, so the car stops (stop tests) |
-| `tracker` | `none` | a trial follower (`aav_track`): `pure_pursuit`, `stanley`, `lqr`, `mpc`, `mpc_full`; or `mppi_lag` (`aav_mppi_lag`: Nav2's MPPI with the lag). It serves `follow_path`; controller_server's becomes `follow_path_unused`. `aav_track`'s are refused with `reversing:=true` (`docs/trials.md`); `mppi_lag` reverses as Nav2's MPPI |
+| `tracker` | `none` | a trial follower (`aav_track`): `pure_pursuit`, `stanley`, `lqr`, `mpc`, `mpc_full`; or `mppi_lag` (`aav_mppi_lag`: Nav2's MPPI with the lag); or `mpc_lag_rs` (`aav_mpc_lag`: `mpc_lag` in Rust, a challenger). It serves `follow_path`; controller_server's becomes `follow_path_unused`. `aav_track`'s are refused with `reversing:=true` (`docs/trials.md`); `mppi_lag` reverses as Nav2's MPPI |
 | `navigator` | `nav2` | `own`: our own navigator (`aav_navigator`) in place of `bt_navigator` and `waypoint_follower`, serving their action names (a drop-in: no goal sender knows which runs); with `planner:=own costmap:=own tracker:=mppi_lag` also no `planner_server`, `controller_server` or `behavior_server` (`docs/own-navigator.md`). `car.launch.py` always passes `nav2` |
 | `map_correction` | `slow` | with a `tracker`: `slow` (TODO 186), the follower's held map -> odom moves toward the newest at most 0.1 m/s and 1°/s at the car, so the GPS's jitter never jumps the path under the car; `newest`: each new path by the newest map -> odom, as until 15 Nov. The follower gets it as its bool parameter `map_correction`, never in its own yaml (the file would win) |
 | `amcl` | false | true (needs `lidar:=true`): stock AMCL, scored only, on `/localization/amcl/pose` (`config/amcl.yaml`: `tf_broadcast: false`) |
@@ -69,7 +69,7 @@ Nodes started:
 | `collision_monitor` | `/control/cmd_vel_smoothed` -> `/drivers/nav/cmd_vel`; publishes `/safety/collision_monitor/state`, `stop_zone`, `collision_points_marker` |
 | `lidar_scan`, `ghost_obstacle` | with `lidar:=true`, `ghost:=true` |
 | `voxels` (`aav_voxels`, or `aav_voxels_rs` with `voxels_impl:=rust`) | with `voxels:=true` or `screen_cubes:=true` |
-| `track` (`aav_track`), or `mppi_lag` (`aav_mppi_lag`) with `tracker:=mppi_lag` | with `tracker:=` on: `follow_path` -> `cmd_vel_nav`, in controller_server's place |
+| `track` (`aav_track`), or `mppi_lag` (`aav_mppi_lag`) with `tracker:=mppi_lag`, or `mpc_lag_rs` (`aav_mpc_lag`) with `tracker:=mpc_lag_rs` | with `tracker:=` on: `follow_path` -> `cmd_vel_nav`, in controller_server's place |
 | `amcl`, `lifecycle_manager_localization` | with `amcl:=true`: AMCL and its own lifecycle manager; with `amcl_map:=`, also `amcl_map_server` |
 | `lifecycle_manager_navigation` | brings the servers up |
 

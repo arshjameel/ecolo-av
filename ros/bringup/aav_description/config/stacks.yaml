@@ -58,6 +58,8 @@ levels:
       mppi: {controller: mppi, tracker: none}
       mppi_lag: {controller: mppi, tracker: mppi_lag}
       mpc_lag: {controller: mppi, tracker: mpc_lag}
+      # mpc_lag in Rust (aav_mpc_lag), beside the Python one: a challenger (TODO 132, 199).
+      mpc_lag_rs: {controller: mppi, tracker: mpc_lag_rs}
       rpp: {controller: rpp, tracker: none}
     score: ''
   smoother:

@@ -21,7 +21,10 @@ CONTROLLERS = {
     'mppi': 'MPPI (Nav2 controller_server)',
     'rpp': 'Regulated Pure Pursuit (Nav2 controller_server)',
 }
-TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag')
+TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag',
+            'mpc_lag_rs')
+# The trackers with a package of their own (the rest are aav_track's).
+TRACKER_PACKAGES = {'mppi_lag': 'aav_mppi_lag', 'mpc_lag_rs': 'aav_mpc_lag'}
 # How a trial localizer is used: not at all, scored beside the EKFs, or fused into one.
 USES = ('off', 'scored', 'fused')
 
@@ -63,7 +66,7 @@ def rows(c):
     """Return the run's algorithms as (what, which) pairs, in the order a person reads them."""
     if c.nav:
         planner = PLANNERS[c.planner]
-        package = 'aav_mppi_lag' if c.tracker == 'mppi_lag' else 'aav_track'
+        package = TRACKER_PACKAGES.get(c.tracker, 'aav_track')
         follower = (CONTROLLERS[c.controller] if c.tracker == 'none'
                     else f'{c.tracker} ({package}, trial)')
     else:

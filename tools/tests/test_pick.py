@@ -34,7 +34,7 @@ def test_every_switch_is_a_sim_launch_argument():
 def test_followers_match_vehicle_py():
     text = _read(VEHICLE)
     controllers = re.search(r'^CONTROLLERS = \((.*)\)', text, re.M).group(1)
-    trackers = re.search(r'^TRACKERS = \((.*)\)', text, re.M).group(1)
+    trackers = re.search(r'^TRACKERS = \((.*?)\)', text, re.M | re.S).group(1)
     for _, _, args in pick.FOLLOWERS:
         for arg in args:
             name, value = arg.split(':=')
