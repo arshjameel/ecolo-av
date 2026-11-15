@@ -479,18 +479,28 @@ fn straight_reverse() {
 
 #[test]
 fn forward_stop_reverse_through_a_cusp() {
+    // r 5 m, and the planner's own 3.6 m. Before the control cost knew the noise was
+    // correlated, at r 4 m the car fell 0.6 m outside the bend after the cusp and
+    // stopped short.
+    for r in [5.0, 3.6] {
+        forward_stop_reverse(r);
+    }
+}
+
+fn forward_stop_reverse(r: f64) {
     let truth = LagModel::default();
     let run = drive_way(
         truth,
         truth,
-        &forward_then_back(6.0, 5.0),
+        &forward_then_back(6.0, r),
         1.0,
         Way::Reversing,
     );
     let fastest = run.speeds.iter().copied().fold(0.0, f64::max);
     let slowest = run.speeds.iter().copied().fold(0.0, f64::min);
     println!(
-        "6 m ahead, cusp, quarter circle r 5 back: {:.3} m mean, {:.3} m worst, {:.1} s,          reached {}, speeds {slowest:.2} .. {fastest:.2} m/s",
+        "6 m ahead, cusp, quarter circle r {r} back: {:.3} m mean, {:.3} m worst, {:.1} s, \
+         reached {}, speeds {slowest:.2} .. {fastest:.2} m/s",
         run.mean_cross, run.max_cross, run.time, run.reached
     );
     assert!(run.reached, "{:?}", run.poses.last());
@@ -508,10 +518,9 @@ fn forward_stop_reverse_through_a_cusp() {
         "no going forward again"
     );
     // Looser than going forward: the path bends at once after the cusp, and the car
-    // starts from a stop with its wheels straight (at r 4, under ~1.1 x the planner's
-    // 3.6 m, it fell 0.6 m outside the bend and stopped short: docs/mppi-lag.md).
+    // starts from a stop with its wheels straight.
     assert!(
-        run.mean_cross < 0.15 && run.max_cross < 0.4,
+        run.mean_cross < 0.06 && run.max_cross < 0.15,
         "{:.3} {:.3}",
         run.mean_cross,
         run.max_cross
