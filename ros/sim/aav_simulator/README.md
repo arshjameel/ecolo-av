@@ -42,7 +42,7 @@ since 8 Nov**; `simulator:=gazebo` starts Gazebo instead.
 | pub | `/gazebo/radar/points` | PointCloud2, 10 Hz, `radar_link`, 61 x 3, best effort (`radar`) |
 | pub | `/vehicle/sim/entities` | MarkerArray, latched: every placed model (its SDF file, its pose), for the cameras |
 | service | `/vehicle/sim/spawn_entity`, `/vehicle/sim/delete_entity` | `simulation_interfaces`: place or remove a model |
-| service | `/vehicle/sim/set_entity_state` | `simulation_interfaces/SetEntityState`: put the car (`aav`) at a pose, standing still (Gazebo's `set_pose`) |
+| service | `/vehicle/sim/set_entity_state` | `simulation_interfaces/SetEntityState`: put the car (`aav`) at a pose, standing still (Gazebo's `set_pose`); or a placed model at a pose, then moving at the twist (map frame: x, y, turn), as a person walking (TODO 170; the cameras draw it where it was put) |
 
 Parameters: `world`, `models`, `start_x`, `start_y`, `start_yaw`, the car's size and sensor
 mounts (`aav_gazebo`'s `gazebo.launch.py` passes `vehicle.yaml`'s), `lidar`, `radar`,

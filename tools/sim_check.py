@@ -107,6 +107,12 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             the planner sees; the car must go round it,
                                             never APPROACH(obstacle). One more run;
                                             --behaviour-things-only skips the road world's)
+    pixi run sim-check --moving           (TODO 170, our simulator: a person crosses the
+                                            lane ahead at 1 m/s while the car drives on;
+                                            the behaviour must slow for it, the car keep
+                                            clear and reach its goal. behaviour:=true
+                                            things:=true; --moving-only skips the road
+                                            world's run)
     pixi run sim-check --three-point      (reverse, TODO 174: a 6.5 m street of walls, a
                                             goal behind the car facing back; the car must
                                             turn in it, backing at least once, without
@@ -2545,6 +2551,71 @@ def check_behaviour_things(probe):
            f'states: {" > ".join(seen) or "none heard"}')
 
 
+def walk_model(name, x, y, yaw, vx, vy):
+    """Put a placed model at (x, y, yaw), then walking at (vx, vy) m/s: our simulator."""
+    return ros_service(
+        '/vehicle/sim/set_entity_state', 'simulation_interfaces/srv/SetEntityState',
+        f'{{entity: "{name}", state: {{header: {{frame_id: "map"}}, pose: {{position: '
+        f'{{x: {x}, y: {y}, z: 0.0}}, orientation: {{z: {math.sin(yaw / 2.0)}, '
+        f'w: {math.cos(yaw / 2.0)}}}}}, twist: {{linear: {{x: {vx}, y: {vy}}}}}}}}}')
+
+
+def check_moving_thing(probe, ahead=14.0, side=5.0, walk=1.0, goal=35.0):
+    """
+    Check the car lets a person cross: `ahead` m before the bumper, from `side` m right.
+
+    They walk left at `walk` m/s.
+    The car drives to a goal `goal` m on as they start. The behaviour must slow for them
+    (APPROACH(obstacle): a moving thing in the lane, TODO 170), the car keep at least
+    0.3 m from them, and reach the goal once they are by. Our simulator only: Gazebo's
+    models don't walk.
+    """
+    if SIMULATOR == 'gazebo':
+        result('moving thing', None, "skipped: Gazebo's placed models don't walk")
+        return
+    body = vehicle.load()['vehicle']['body']
+    front = body['length'] - body['rear_overhang']
+    x0, y0 = probe.xy(probe.truth)
+    h = yaw_of(probe.truth)
+    c, s = math.cos(h), math.sin(h)
+    along = front + ahead
+    px, py = x0 + along * c + side * s, y0 + along * s - side * c     # to the right
+    vx, vy = -walk * s, walk * c                                         # walking left
+    if not place_model(POST, px, py, h, name='walker'):
+        result('moving thing', False, 'could not place the walker')
+        return
+    since = probe.now()
+    if not walk_model('walker', px, py, h, vx, vy):
+        remove_model('walker')
+        result('moving thing', False, 'the simulator would not walk the walker')
+        return
+    t0 = seconds(probe.truth.header.stamp)
+    start = len(probe.track)
+    done = probe.go_to(x0 + goal * c, y0 + goal * s, h)
+    if done is not None:
+        probe.spin_for(240.0, done.done)
+        if not done.done():
+            probe.goal.cancel_goal_async()
+    remove_model('walker')
+    if done is None:
+        result('moving thing', False, 'no navigator, or it refused the goal')
+        return
+    gaps = []
+    for t, x, y, yaw, _ in probe.track[start:]:
+        wx, wy = px + vx * (t - t0), py + vy * (t - t0)
+        ux, uy = math.cos(yaw), math.sin(yaw)
+        k = max(-body['rear_overhang'], min(front, (wx - x) * ux + (wy - y) * uy))
+        # The car's centre line against the post's centre: less half the car, half the post.
+        gaps.append(math.hypot(wx - x - k * ux, wy - y - k * uy) - body['width'] / 2.0 - 0.25)
+    seen = behaviour_seen(probe, since)
+    reached = done.done() and done.result().status == 4
+    clear = min(gaps) if gaps else float('nan')
+    slowed = 'APPROACH(obstacle)' in seen or 'STOP(obstacle)' in seen
+    result('moving thing', reached and slowed and clear > 0.3,
+           f'{"reached" if reached else "did not reach"} the goal, {clear:.2f} m from the '
+           f'walker at the closest; states {" > ".join(seen) or "none heard"}')
+
+
 def lowest_cap(probe, since):
     caps = [cap for t, _, _, cap, _ in probe.behaviour if t >= since and cap > 0.0]
     return min(caps) if caps else None
@@ -2825,7 +2896,7 @@ def main():
     if not {'--drive-to-point-only', '--speed-steps-only', '--spine-points-only',
             '--stop-point-only', '--loaded-stop-only', '--behaviour-only', '--lane-only',
             '--things-only', '--behaviour-things-only', '--legs-only',
-            '--three-point-only'} & set(args):
+            '--three-point-only', '--moving-only'} & set(args):
         # With --obstacle the planner is blind to the box, so the stop zone must stop the car.
         session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}']
                 + (['plan_around:=false'] if '--obstacle' in args else []),
@@ -2936,6 +3007,12 @@ def main():
         logs.append(f'{stem}-behaviour-things{ext}')
         session(['behaviour:=true', 'things:=true', 'lidar:=true'],
                 [check_behaviour_things], logs[-1], 'behaviour things')
+    if {'--moving', '--moving-only'} & set(args):
+        # Its own run: the behaviour reads the things, which see the walker (TODO 170).
+        stem, ext = os.path.splitext(log)
+        logs.append(f'{stem}-moving{ext}')
+        session(['behaviour:=true', 'things:=true', 'lidar:=true'],
+                [check_moving_thing], logs[-1], 'moving thing')
     if {'--three-point', '--three-point-only'} & set(args):
         # Its own run: the lidar sees the walls, the default stack reverses (TODO 174).
         stem, ext = os.path.splitext(log)

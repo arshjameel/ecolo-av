@@ -15,6 +15,7 @@ use crate::ground::Ground;
 use crate::lidar::{LidarSpec, Scan};
 use crate::math::{Pose, Rot3, Vec3};
 use crate::noise::Noise;
+use crate::scene::Mesh;
 use crate::world::World;
 
 /// m/s²: SDF's default gravity, which our worlds keep.
@@ -314,6 +315,40 @@ pub struct Simulator {
     last_contact_ns: Option<u64>,
     /// Each wheel's ground height (m): rear right, rear left, front right, front left.
     wheel_heights: [f64; 4],
+    /// Placed models that move on their own (`set_motion`): a person walking.
+    movers: Vec<Mover>,
+}
+
+/// A placed model moving at a steady velocity in the world: a person crossing, a car
+/// going by (TODO 170). The lidar, the radar and the car's body meet it where it is now.
+#[derive(Debug, Clone)]
+struct Mover {
+    name: String,
+    mesh: Mesh,
+    /// m and rad, in the world: where it is now.
+    x: f64,
+    y: f64,
+    z: f64,
+    yaw: f64,
+    /// m/s and rad/s, in the world.
+    velocity: Velocity,
+}
+
+/// A placed model's steady motion, in the world frame (Gazebo's SetEntityState twist).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Velocity {
+    /// m/s, east and north.
+    pub x: f64,
+    pub y: f64,
+    /// rad/s, turning left.
+    pub yaw_rate: f64,
+}
+
+impl Velocity {
+    /// Whether it moves at all.
+    pub fn is_still(&self) -> bool {
+        self.x == 0.0 && self.y == 0.0 && self.yaw_rate == 0.0
+    }
 }
 
 impl Simulator {
@@ -335,6 +370,7 @@ impl Simulator {
             // Forked last: the other sensors' noise stays as it was.
             wheel_noise: seed.fork(),
             drift: [0.0; 3],
+            movers: Vec::new(),
             settings,
             world,
             car,
@@ -406,6 +442,51 @@ impl Simulator {
         })
     }
 
+    /// Put a model in the world at `pose` (x, y, z and yaw used), moving at `velocity` from
+    /// now on (still: it stands there). Replaces any model of the same name.
+    pub fn place_model(&mut self, name: &str, mesh: Mesh, pose: &Pose, velocity: Velocity) {
+        self.movers.retain(|m| m.name != name);
+        self.world.scene.place(name, &mesh, pose);
+        if !velocity.is_still() {
+            let at = pose.position;
+            let f = pose.rotation.apply(Vec3::new(1.0, 0.0, 0.0));
+            self.movers.push(Mover {
+                name: name.to_string(),
+                mesh,
+                x: at.x,
+                y: at.y,
+                z: at.z,
+                yaw: f.y.atan2(f.x),
+                velocity,
+            });
+        }
+    }
+
+    /// Take a placed model away; false if there was none of that name.
+    pub fn remove_model(&mut self, name: &str) -> bool {
+        self.movers.retain(|m| m.name != name);
+        self.world.scene.remove(name)
+    }
+
+    /// Where a moving model is now (x, y, yaw in the world), if it moves.
+    pub fn mover(&self, name: &str) -> Option<(f64, f64, f64)> {
+        self.movers
+            .iter()
+            .find(|m| m.name == name)
+            .map(|m| (m.x, m.y, m.yaw))
+    }
+
+    /// Move each moving model on by dt.
+    fn move_models(&mut self, dt: f64) {
+        for m in &mut self.movers {
+            m.x += m.velocity.x * dt;
+            m.y += m.velocity.y * dt;
+            m.yaw = crate::math::wrap(m.yaw + m.velocity.yaw_rate * dt);
+            let pose = Pose::new(Vec3::new(m.x, m.y, m.z), Rot3::from_yaw(m.yaw));
+            self.world.scene.place(&m.name, &m.mesh, &pose);
+        }
+    }
+
     /// Put the car at (x, y, yaw), standing still, its actuators at rest (Gazebo's
     /// `set_pose`; the node's SetEntityState). The truth and wheel odometry jump with it,
     /// as in Gazebo; on a ground with steps the wheels settle again.
@@ -440,6 +521,7 @@ impl Simulator {
     /// Move on one step under `command`; return what is due now.
     pub fn step(&mut self, command: &Command) -> Vec<Output> {
         let dt = self.settings.step_ns as f64 * 1e-9;
+        self.move_models(dt);
         let before = self.car.state();
         let mut s = self.car.step(command, dt);
         self.time_ns += self.settings.step_ns;
@@ -955,6 +1037,65 @@ mod tests {
             travelled += sim.car().speed.abs() * 0.001;
         }
         (travelled, last.expect("odometry"))
+    }
+
+    #[test]
+    fn a_walker_crosses_and_the_world_meets_it_where_it_is() {
+        use crate::scene::{Mesh, Ray};
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut sim = Simulator::new(settings(), World::flat(400.0), car, (0.0, 0.0, 0.0));
+        let post = Mesh::cuboid(Vec3::new(0.5, 0.5, 1.8));
+        let start = Pose::new(Vec3::new(10.0, -3.0, 0.9), Rot3::from_yaw(0.0));
+        let walk = Velocity {
+            x: 0.0,
+            y: 1.5,
+            yaw_rate: 0.0,
+        };
+        sim.place_model("walker", post, &start, walk);
+        let ahead = Ray {
+            origin: Vec3::new(0.0, 0.0, 1.0),
+            direction: Vec3::new(1.0, 0.0, 0.0),
+        };
+        assert!(
+            sim.world().scene.cast(&ahead, 50.0).is_none(),
+            "not in the lane yet"
+        );
+        let still = Command::Twist {
+            speed: 0.0,
+            yaw_rate: 0.0,
+        };
+        for _ in 0..2000 {
+            sim.step(&still);
+        }
+        let (x, y, _) = sim.mover("walker").expect("it moves");
+        assert!(
+            (x - 10.0).abs() < 1e-9 && (y - 0.0).abs() < 1e-6,
+            "at ({x}, {y})"
+        );
+        let hit = sim
+            .world()
+            .scene
+            .cast(&ahead, 50.0)
+            .expect("in the lane now");
+        assert!((hit - 9.75).abs() < 1e-6, "its near face: {hit}");
+        assert!(sim.remove_model("walker"));
+        assert!(sim.mover("walker").is_none());
+        assert!(sim.world().scene.cast(&ahead, 50.0).is_none());
+    }
+
+    #[test]
+    fn a_still_model_is_placed_once_and_never_moves() {
+        use crate::scene::Mesh;
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut sim = Simulator::new(settings(), World::flat(400.0), car, (0.0, 0.0, 0.0));
+        let at = Pose::new(Vec3::new(5.0, 0.0, 0.5), Rot3::from_yaw(0.0));
+        sim.place_model(
+            "box",
+            Mesh::cuboid(Vec3::new(1.0, 1.0, 1.0)),
+            &at,
+            Velocity::default(),
+        );
+        assert!(sim.mover("box").is_none());
     }
 
     #[test]

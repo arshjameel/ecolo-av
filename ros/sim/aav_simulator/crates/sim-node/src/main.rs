@@ -35,7 +35,9 @@
 //!             vehicle/sim/set_entity_state  simulation_interfaces/SetEntityState: entity
 //!                                     `aav`, the car, put at state.pose (map frame; x, y,
 //!                                     yaw), standing still, as Gazebo's set_pose (a twist
-//!                                     is refused). A placed model: delete and spawn it
+//!                                     is refused). A placed model: put at state.pose,
+//!                                     then moving at state.twist (map frame: linear x,
+//!                                     y, angular z), as a person walking (TODO 170)
 //!
 //! Parameters  world (an SDF file), models (folders for model://, ':'-separated),
 //!             start_x, start_y, start_yaw, wheelbase, track, wheel_radius, max_steering,
@@ -87,7 +89,7 @@ use sim_core::math::{Pose, Rot3, Vec3};
 use sim_core::scene::Mesh;
 use sim_core::sim::{
     Body, Geometry, ImuReading, Joints, Mounts, Odometry, Output, Rates, SensorNoise, Settings,
-    Simulator,
+    Simulator, Velocity,
 };
 use sim_core::world::{Surfaces, World};
 
@@ -247,9 +249,10 @@ fn main() -> Result<()> {
         move |request: SpawnEntity_Request| spawn(&spawning, &search, &request),
     )?;
     let placing = Arc::clone(&shared);
+    let moving_models = models.clone();
     let _set_state = node.create_service::<SetEntityState, _>(
         "vehicle/sim/set_entity_state",
-        move |request: SetEntityState_Request| set_state(&placing, &request),
+        move |request: SetEntityState_Request| set_state(&placing, &moving_models, &request),
     )?;
     let deleting = Arc::clone(&shared);
     let _delete = node.create_service::<DeleteEntity, _>(
@@ -304,12 +307,16 @@ fn run(
             (s.command, std::mem::take(&mut s.changes))
         };
         for change in changes {
-            let scene = &mut sim.world_mut().scene;
             match change {
-                Change::Place { name, mesh, pose } => scene.place(&name, &mesh, &pose),
+                Change::Place {
+                    name,
+                    mesh,
+                    pose,
+                    velocity,
+                } => sim.place_model(&name, mesh, &pose, velocity),
                 Change::PlaceCar(x, y, yaw) => sim.place_car(x, y, yaw),
                 Change::Remove(name) => {
-                    scene.remove(&name);
+                    sim.remove_model(&name);
                 }
             }
         }
@@ -402,6 +409,8 @@ enum Change {
         name: String,
         mesh: Mesh,
         pose: Pose,
+        /// Still, or walking on at this velocity (set_entity_state's twist).
+        velocity: Velocity,
     },
     Remove(String),
 }
@@ -478,6 +487,7 @@ fn spawn(
         name: name.clone(),
         mesh,
         pose,
+        velocity: Velocity::default(),
     });
     SpawnEntity_Response {
         result: sim_result(SimResult::RESULT_OK, ""),
@@ -489,16 +499,14 @@ fn spawn(
 const CAR: &str = "aav";
 
 /// SetEntityState: put the car at a pose next step, standing still (Gazebo's set_pose).
-fn set_state(shared: &Mutex<Shared>, request: &SetEntityState_Request) -> SetEntityState_Response {
+fn set_state(
+    shared: &Mutex<Shared>,
+    models: &[PathBuf],
+    request: &SetEntityState_Request,
+) -> SetEntityState_Response {
     let answer = |code: u8, why: String| SetEntityState_Response {
         result: sim_result(code, why),
     };
-    if request.entity != CAR {
-        return answer(
-            SimResult::RESULT_NOT_FOUND,
-            format!("only the car, {CAR}, moves this way: delete and spawn a model instead"),
-        );
-    }
     let frame = request.state.header.frame_id.trim_start_matches('/');
     if !matches!(frame, "" | "world" | "map") {
         return answer(
@@ -507,6 +515,9 @@ fn set_state(shared: &Mutex<Shared>, request: &SetEntityState_Request) -> SetEnt
         );
     }
     let t = &request.state.twist;
+    if request.entity != CAR {
+        return move_model(shared, models, request);
+    }
     let moving = [
         t.linear.x,
         t.linear.y,
@@ -544,6 +555,81 @@ fn set_state(shared: &Mutex<Shared>, request: &SetEntityState_Request) -> SetEnt
             "the simulator's lock is poisoned".into(),
         ),
     }
+}
+
+/// SetEntityState for a placed model: put it at state.pose (map frame; x, y, z, yaw), then
+/// moving at state.twist (map frame: linear x and y, angular z; zero: it stands), as
+/// Gazebo's. A person crossing the road (TODO 170). The cameras see where it was put.
+fn move_model(
+    shared: &Mutex<Shared>,
+    models: &[PathBuf],
+    request: &SetEntityState_Request,
+) -> SetEntityState_Response {
+    let answer = |code: u8, why: String| SetEntityState_Response {
+        result: sim_result(code, why),
+    };
+    let t = &request.state.twist;
+    if [t.linear.z, t.angular.x, t.angular.y]
+        .iter()
+        .any(|v| *v != 0.0)
+    {
+        return answer(
+            SimResult::RESULT_OPERATION_FAILED,
+            "a model moves on the ground: linear x, y and angular z only".into(),
+        );
+    }
+    let velocity = Velocity {
+        x: t.linear.x,
+        y: t.linear.y,
+        yaw_rate: t.angular.z,
+    };
+    let p = &request.state.pose;
+    let q = &p.orientation;
+    let yaw = (2.0 * (q.w * q.z + q.x * q.y)).atan2(1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+    let finite = [
+        p.position.x,
+        p.position.y,
+        p.position.z,
+        velocity.x,
+        velocity.y,
+    ]
+    .iter()
+    .chain([velocity.yaw_rate].iter())
+    .all(|v| v.is_finite());
+    if !finite {
+        return answer(
+            SetEntityState_Response::INVALID_POSE,
+            "the pose and the twist must be finite".into(),
+        );
+    }
+    let Ok(mut s) = shared.lock() else {
+        let why = "the simulator's lock is poisoned".to_string();
+        return answer(SimResult::RESULT_OPERATION_FAILED, why);
+    };
+    let Some((file, _)) = s.placed.get(&request.entity).cloned() else {
+        let why = format!(
+            "nothing called {} was placed (the car is {CAR})",
+            request.entity
+        );
+        return answer(SimResult::RESULT_NOT_FOUND, why);
+    };
+    let mesh = match World::model_mesh(&file, models, Surfaces::Visual) {
+        Ok(mesh) => mesh,
+        Err(e) => return answer(SimResult::RESULT_OPERATION_FAILED, e.to_string()),
+    };
+    let pose = Pose::new(
+        Vec3::new(p.position.x, p.position.y, p.position.z),
+        Rot3::from_yaw(yaw),
+    );
+    s.placed.insert(request.entity.clone(), (file, pose));
+    s.announce();
+    s.changes.push(Change::Place {
+        name: request.entity.clone(),
+        mesh,
+        pose,
+        velocity,
+    });
+    answer(SimResult::RESULT_OK, String::new())
 }
 
 /// DeleteEntity: take a placed object away next step.
