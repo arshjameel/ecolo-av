@@ -210,6 +210,7 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 15 Nov | **Lanelet2 in Rust** (our own reader, TODO 175) now, after the sway work | Ben |
 | 15 Nov | The old `wip/` branches (7 Nov): checked against `next`, anything useful taken, then archived | Ben |
 | 15 Nov | **Map correction stays `newest`**; `slow` (TODO 186) is a challenger: it won offline, not yet in the simulator | Ben's rule (5 Nov), applied at night |
+| 15 Nov | **Our planner prices a change of gear** (`cusp_penalty: 4.0`, TODO 174): a three-point turn in a 6.5 m street went from 9 changes of direction to 4 (2 runs), the lot and campus tours no worse. Nav2's planner ignores it; 0 gives Nav2's way back | Ben's rule (5 Nov): it won on the same routes |
 | 15 Nov | **The radar clears our costmap inside its view** where it sees nothing (TODO 193), so a thing taken away is forgotten | Ben's night orders |
 | 15 Nov | **32 lattice headings: no win**; 16 stays (TODO 190) | Ben's night orders |
 | 15 Nov | **D2, lane costs**: the one-shape design's proposal taken (a ramp, lowest at the right lane's centre, against `path:=lane`); the go-ahead to finish Fable's designs and the rc1 list | Ben: "lets try to get all of these things finished and merged and tested" |

@@ -19,7 +19,7 @@ use crate::collision::{Checker, Fit};
 use crate::curves::{shortest, CurveKind};
 use crate::heuristic::{DistanceTable, Obstacles};
 use crate::lattice::{Lattice, Primitive};
-use crate::{PlanError, Pose, Settings};
+use crate::{cusps, PlanError, Pose, Settings};
 
 /// One node: a cell and heading the search reached.
 #[derive(Debug, Clone)]
@@ -394,7 +394,16 @@ impl Search<'_> {
         if backwards {
             travel *= s.reverse_penalty;
         }
-        travel
+        travel + self.cusp(from, by)
+    }
+
+    /// `cusp_penalty` (m, in cells) when a move changes gear from the move before.
+    fn cusp(&self, from: (usize, usize, bool), by: (usize, usize, bool)) -> f64 {
+        if from.2 == by.2 {
+            0.0
+        } else {
+            self.settings.cusp_penalty / self.lattice.resolution
+        }
     }
 
     /// Nav2's `NodeLattice::getTraversalCost`.
@@ -425,7 +434,7 @@ impl Search<'_> {
         if by.2 {
             travel *= s.reverse_penalty;
         }
-        travel
+        travel + self.cusp(from, by)
     }
 
     fn expand(&self, st: &mut State, id: usize, open: &mut BinaryHeap<Open>) {
@@ -566,7 +575,14 @@ impl Search<'_> {
             }
         }
         let mut poses = self.backtrace(st, anchor);
+        let joined = poses.len().saturating_sub(2);
         poses.extend(curve.into_iter().map(|(p, _)| p));
+        // With a price on changing gear, the curve's own changes would come free: the
+        // shortest Reeds-Shepp curve near the goal often jiggles back and forth (TODO 174).
+        // Leave those to the search, which prices each one.
+        if s.cusp_penalty > 0.0 && cusps(&poses[joined..]) > 0 {
+            return None;
+        }
         Some(poses)
     }
 
@@ -693,6 +709,39 @@ mod tests {
         ));
         // The arc is longer than its chord: R x angle (two 5 degree bins).
         assert!(arc > chord && close(arc, 3.572 / 0.25 * 10f64.to_radians()));
+    }
+
+    #[test]
+    fn a_change_of_gear_costs_the_cusp_penalty_in_cells() {
+        let settings = Settings {
+            allow_reverse: true,
+            change_penalty: 0.1,
+            cusp_penalty: 4.0,
+            ..Settings::hybrid()
+        };
+        let (lattice, checker, distances) = hybrid(&settings);
+        let search = Search {
+            lattice: &lattice,
+            settings: &settings,
+            checker: &checker,
+            distances: &distances,
+            kind: CurveKind::ReedsShepp,
+            expansion: HYBRID,
+        };
+        let (left, back_left) = ((0, 1, false), (36, 1, true));
+        let arc = lattice.moves[0][1].length / 0.25;
+        let reward = 1.0 - settings.retrospective_penalty;
+        let close = |a: f64, b: f64| (a - b).abs() < 1e-9;
+        // Forward to backward: the move's price, then 4 m (16 cells) for the stop and start.
+        assert!(close(
+            search.travel(Some(left), back_left, 0),
+            arc * reward * (1.2 + 0.1) * 2.0 + 16.0
+        ));
+        // The same gear: nothing more.
+        assert!(close(
+            search.travel(Some(back_left), back_left, 0),
+            arc * reward * 1.2 * 2.0
+        ));
     }
 
     #[test]

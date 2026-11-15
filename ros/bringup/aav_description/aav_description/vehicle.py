@@ -824,7 +824,7 @@ COSTMAP_SOURCE_DEFAULTS = {
 OWN_PLANNER_KEYS = (
     'lattice_filepath', 'allow_reverse_expansion', 'allow_unknown', 'tolerance',
     'max_iterations', 'max_on_approach_iterations', 'max_planning_time',
-    'terminal_checking_interval', 'reverse_penalty', 'change_penalty',
+    'terminal_checking_interval', 'reverse_penalty', 'change_penalty', 'cusp_penalty',
     'non_straight_penalty', 'cost_penalty', 'retrospective_penalty', 'rotation_penalty',
     'analytic_expansion_ratio', 'analytic_expansion_max_length',
     'analytic_expansion_max_cost', 'analytic_expansion_max_cost_override',

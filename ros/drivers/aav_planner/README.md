@@ -58,5 +58,6 @@ cargo test -p lattice-planner                                # curves, hand-made
 cargo run --release -p lattice-planner --example scenes      # the maps, timed
 cargo run --release -p lattice-planner --example moves       # Nav2's moves against the smooth ones, the lot tour
 cargo run --release -p lattice-planner --example hybrid      # Hybrid-A* against the lattice, the lot tour and the maps
+cargo run --release -p lattice-planner --example cusps       # the turns in a street by cusp_penalty (TODO 174)
 pixi run build && colcon test --packages-select aav_planner
 ```

@@ -70,6 +70,10 @@ pub struct Settings {
     pub terminal_checking_interval: usize,
     pub reverse_penalty: f64,
     pub change_penalty: f64,
+    /// m of straight driving a change between forward and back costs (ours, not Nav2's:
+    /// Nav2 prices a backward move, never the stop and start between gears). 0: Nav2's
+    /// way. TODO 174: a 6.5 m street's turn planned 6 cusps.
+    pub cusp_penalty: f64,
     pub non_straight_penalty: f64,
     pub cost_penalty: f64,
     pub retrospective_penalty: f64,
@@ -97,6 +101,7 @@ impl Default for Settings {
             terminal_checking_interval: 5000,
             reverse_penalty: 2.0,
             change_penalty: 0.05,
+            cusp_penalty: 0.0,
             non_straight_penalty: 1.05,
             cost_penalty: 2.0,
             retrospective_penalty: 0.015,

@@ -179,3 +179,31 @@ fn through_poses_joins_the_legs_and_says_which_leg_failed() {
         (0, PlanError::NoValidPath)
     );
 }
+
+/// TODO 174: priced, a change of gear is rare. sim-check --three-point's 6.5 m street turns
+/// with 3 cusps at most, the 8 m road with 2 (Nav2's way, unpriced: 6 and 5).
+#[test]
+fn a_priced_change_of_gear_turns_in_a_street_with_few_cusps() {
+    let settings = lattice_planner::Settings {
+        allow_reverse: true,
+        cusp_penalty: 4.0,
+        ..lattice_planner::Settings::default()
+    };
+    let planner = lattice_planner::Planner::new(
+        scenes::lattice(),
+        settings,
+        &scenes::outline(),
+        Some(&scenes::inflation()),
+    );
+    for (name, most) in [("three-point turn", 3), ("u-turn in a road", 2)] {
+        let scene = scenes::all()
+            .into_iter()
+            .find(|s| s.name == name)
+            .expect("the scene");
+        let plan = planner
+            .plan(&scene.grid, &scene.start, &scene.goal, &|| false)
+            .expect("a path");
+        let n = lattice_planner::cusps(&plan.poses);
+        assert!(n <= most, "{name}: {n} cusps");
+    }
+}

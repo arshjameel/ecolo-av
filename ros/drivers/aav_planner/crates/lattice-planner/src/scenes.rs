@@ -203,6 +203,20 @@ pub fn all() -> Vec<Scene> {
         reverse_ok: true,
     });
 
+    // sim-check --three-point's street (TODO 174): walls 6.5 m apart, the goal 5 m on and
+    // facing back. Narrower than the 8 m road: a clean turn has 2 cusps, 3 at most.
+    let mut street = open(60.0, 20.0);
+    wall(&mut street, 0.0, 0.0, 60.0, 6.75);
+    wall(&mut street, 0.0, 13.25, 60.0, 20.0);
+    out.push(Scene {
+        name: "three-point turn",
+        grid: inflated(street),
+        start: Pose::new(20.0, 10.0, 0.0),
+        goal: Pose::new(25.0, 10.0, std::f64::consts::PI),
+        forward_ok: false,
+        reverse_ok: true,
+    });
+
     // Parked nose-in between two cars, a wall ahead: only reversing gets out.
     let mut lot = open(30.0, 30.0);
     wall(&mut lot, 10.0, 6.0, 15.0, 8.4); // the car on the right
