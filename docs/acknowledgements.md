@@ -1,0 +1,100 @@
+# Acknowledgements: what we built on
+
+Everything we copied, ported, or took an idea from, with its licence and where we used it.
+Ben, 14 Nov: "give acknowlegement to stuff we have looked at or used as insperation".
+Add a row in the same commit as the work (`CLAUDE.md`). Copied or ported code also keeps
+a `PROVENANCE.md` beside it, with the repository, the commit and every change since.
+
+| Kind | Means |
+|---|---|
+| **ported** | their code, rewritten by us (usually C++ to Rust); `PROVENANCE.md` beside ours |
+| **copied** | their code, kept and changed; `PROVENANCE.md` beside it |
+| **runs** | we run their program or library as it is |
+| **idea** | we read it and built our own; no code taken |
+| **data** | maps, models or numbers we use |
+
+## The earlier Carleton AAV teams
+
+| Who | What we took | Kind |
+|---|---|---|
+| The 2025-26 team (`AAV-2025-2026`) | the ESP32 actuator firmware, the wheel encoder and sentinel Picos, the IMU driver, the radar driver and its clustering, lane keeping, the HUD app, the steering geometry | copied, ported |
+| The 2024-25 team (`Carleton-AAV-Capstone`) | the battery monitor, the camera calibrations, the first YOLO stop-sign detector | copied |
+
+Each package's `PROVENANCE.md` says which repository and commit; `docs/older-code.md` has the whole list.
+
+## Navigation
+
+| Source | Licence | Kind | Where we used it |
+|---|---|---|---|
+| **Nav2** (S. Macenski and the Nav2 authors; "The Marathon 2: A Navigation System", IROS 2020) | Apache-2.0 | ported, runs | our costmap (`aav_costmap`), planner (`aav_planner`), navigator (`aav_navigator`), smoother (`aav_smoother`) and follower (`aav_mppi_lag`) are Nav2's, in Rust; Nav2 itself runs as the yardstick until 0.4-rc1 |
+| ROS 1 `costmap_2d` (Willow Garage) | BSD | ported (through Nav2) | the costmap's layers |
+| **MPPI**: G. Williams, A. Aldrich, E. Theodorou, "Model Predictive Path Integral Control: From Theory to Parallel Computation", J. Guidance, Control, and Dynamics, 2017 | paper | idea | the local planner (`aav_mppi_lag`, and Nav2's) |
+| **State Lattice**: M. Pivtoraiko, R. Knepper, A. Kelly, "Differentially Constrained Mobile Robot Motion Planning in State Lattices", J. Field Robotics, 2009 | paper | idea | the path planner (`aav_planner`, Nav2's Smac Lattice) |
+| **Hybrid A\***: D. Dolgov, S. Thrun, M. Montemerlo, J. Diebel, "Path Planning for Autonomous Vehicles in Unknown Semi-structured Environments", IJRR, 2010 | paper | idea | Nav2's Smac Hybrid; ours next (TODO 178) |
+| **A\***: P. Hart, N. Nilsson, B. Raphael, IEEE Trans. Systems Science and Cybernetics, 1968 | paper | idea | the planners' search |
+| **Dijkstra**: E. W. Dijkstra, "A note on two problems in connexion with graphs", Numerische Mathematik, 1959 | paper | idea | the campus route graph (`aav_routes`) |
+| **Reeds-Shepp** curves: J. A. Reeds, L. A. Shepp, Pacific J. Mathematics, 1990 | paper | idea | reversing paths; through OMPL in Nav2's planner |
+| **Continuous-curvature paths**: T. Fraichard, A. Scheuer, "From Reeds and Shepp's to Continuous-Curvature Paths", IEEE T-RO, 2004 | paper | idea | the steering-rate lattice moves (TODO 177) |
+| OMPL (the Open Motion Planning Library) | BSD-3 | ported (through Nav2) | the curves inside the planner |
+| **Pure Pursuit**: R. C. Coulter, CMU-RI-TR-92-01, 1992; **Regulated Pure Pursuit**: S. Macenski et al., Autonomous Robots, 2023 | paper | idea | `aav_track`, Nav2's RPP |
+| **Stanley**: S. Thrun et al., "Stanley: The Robot that Won the DARPA Grand Challenge", J. Field Robotics, 2006 | paper | idea | `aav_track`'s Stanley follower |
+| LQR and MPC (textbook control) | - | idea | `aav_track`'s LQR, MPC and MPC with lag |
+| **Flow matching** and the diffusion planner's other ideas | see `aav_diffusion_planner/PROVENANCE.md` | idea | `planner:=diffusion` |
+
+## Where the car is
+
+| Source | Licence | Kind | Where we used it |
+|---|---|---|---|
+| **robot_localization** (T. Moore, D. Stouch, "A Generalized Extended Kalman Filter Implementation for the Robot Operating System", IAS-13, 2014) | Apache-2.0 | runs | the two EKFs, `navsat_transform` |
+| The Kalman filter: R. E. Kalman, 1960 | paper | idea | the EKFs; the things tracker (`aav_things`) |
+| **NDT**: P. Biber, W. Straßer, IROS 2003; M. Magnusson, PhD thesis, Örebro, 2009 | paper | idea | `aav_ndt` (its `PROVENANCE.md` lists the rest) |
+| **KISS-ICP**: I. Vizzo et al., RA-L, 2023 | MIT | runs | `kiss_icp:=true`, scored beside the EKF |
+| AMCL (Nav2) | LGPL-2.1 | runs | `amcl:=true`, a trial |
+| imu_tools (Madgwick filter) | BSD / GPL-3 | runs | the IMU's orientation |
+
+## Seeing
+
+| Source | Licence | Kind | Where we used it |
+|---|---|---|---|
+| **RF-DETR** (Roboflow) | Apache-2.0 | runs, data | the object and stop-sign detector |
+| **Ultralytics YOLO** | AGPL-3.0 | runs | the earlier detector, compared and kept as an option |
+| **DBSCAN**: M. Ester et al., KDD 1996 | paper | idea, ported | the radar's clusters (`aav_radar_clusters`) |
+| OpenCV | Apache-2.0 | runs | lane finding |
+| NVIDIA TensorRT; Apple Core ML Tools | NVIDIA licence; BSD-3 | runs | the detector on the Orin and on Macs |
+
+## Maps and routes
+
+| Source | Licence | Kind | Where we used it |
+|---|---|---|---|
+| **OpenStreetMap** contributors | ODbL | data | the campus world, its roads and buildings (`pixi run campus`) |
+| **OSRM**; **Valhalla** | BSD-2; MIT | runs | street routes (`aav_routes`) |
+| Contraction Hierarchies: R. Geisberger et al., WEA 2008 | paper | idea | how OSRM answers fast; noted for the route planner |
+| **Lanelet2** (F. Poggenhans et al., ITSC 2018) | BSD-3 | idea | the lane map's shape; tried on RoboStack; our own Rust reader planned (TODO 175) |
+| **Autoware** (the Autoware Foundation) | Apache-2.0 | idea | the three map levels, map chunks loaded near the car, its tracker as a reference (TODO 156, 175) |
+| **Apollo** (Baidu) | Apache-2.0 | idea | routing on a lane graph, then planning along the road ahead |
+
+## Simulators and screens
+
+| Source | Licence | Kind | Where we used it |
+|---|---|---|---|
+| **Gazebo** (Open Robotics) | Apache-2.0 | runs, idea | the first simulator, now a yardstick; its world files (SDF) and sensor models are what ours copies the numbers from |
+| CARLA | MIT | runs | `pixi run carla-car` |
+| **Bevy** | MIT / Apache-2.0 | runs | our simulator's cameras, the developer window |
+| **raylib** | zlib | runs | the HUD, the map window, the debug screen |
+| egui | MIT / Apache-2.0 | runs | the developer window's panels |
+| Foxglove; Lichtblick | MPL-2.0 | runs | the cockpit layouts |
+| Catppuccin | MIT | data | the screens' Mocha and Latte themes |
+| *Initial D* (S. Shigeno) | - | idea | the red-and-black look of the screens; no art copied |
+| Tesla's driving display | - | idea | the "squiggly line" on the HUD and the developer window (Ben, 7 Nov) |
+
+## Tools and the build
+
+| Source | Licence | Kind | Where we used it |
+|---|---|---|---|
+| **ROS 2 Jazzy** | Apache-2.0 | runs | everything |
+| twist_mux; teleop_twist_joy and teleop_twist_keyboard | Apache-2.0; BSD | runs | the command mux and the locks; the joystick and keyboard |
+| **rclrs** (ros2-rust) | Apache-2.0 | runs | our Rust ROS nodes |
+| **RoboStack**; **Pixi** | BSD-3 | runs | ROS on Macs and any Linux, without admin rights |
+| Embassy; embedded-hal | MIT / Apache-2.0 | runs | the spine's firmware |
+| PlatformIO | Apache-2.0 | runs | building the 2025-26 boards' firmware |
+| The Elephant-Goldfish Model (EGM) | Apache-2.0 | runs | how we write and review designs |

@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acknowledgements: what we built on · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Acknowledgements: what we built on</h1>
+<div class="meta">7 min read · 7 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a class="here" href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<span class="sep">Learn:</span>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<span class="sep">Reference:</span>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#the-earlier-carleton-aav-teams">The earlier Carleton AAV teams</a><a href="#navigation">Navigation</a><a href="#where-the-car-is">Where the car is</a><a href="#seeing">Seeing</a><a href="#maps-and-routes">Maps and routes</a><a href="#simulators-and-screens">Simulators and screens</a><a href="#tools-and-the-build">Tools and the build</a></nav>
+<div class="lead"><p>Everything we copied, ported, or took an idea from, with its licence and where we used it.
+Ben, 14 Nov: "give acknowlegement to stuff we have looked at or used as insperation".
+Add a row in the same commit as the work (<code>CLAUDE.md</code>). Copied or ported code also keeps
+a <code>PROVENANCE.md</code> beside it, with the repository, the commit and every change since.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ported</strong></td>
+<td>their code, rewritten by us (usually C++ to Rust); <code>PROVENANCE.md</code> beside ours</td>
+</tr>
+<tr>
+<td><strong>copied</strong></td>
+<td>their code, kept and changed; <code>PROVENANCE.md</code> beside it</td>
+</tr>
+<tr>
+<td><strong>runs</strong></td>
+<td>we run their program or library as it is</td>
+</tr>
+<tr>
+<td><strong>idea</strong></td>
+<td>we read it and built our own; no code taken</td>
+</tr>
+<tr>
+<td><strong>data</strong></td>
+<td>maps, models or numbers we use</td>
+</tr>
+</tbody>
+</table></div></div>
+<section class="card"><h2 id="the-earlier-carleton-aav-teams">The earlier Carleton AAV teams</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who</th>
+<th>What we took</th>
+<th>Kind</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The 2025-26 team (<code>AAV-2025-2026</code>)</td>
+<td>the ESP32 actuator firmware, the wheel encoder and sentinel Picos, the IMU driver, the radar driver and its clustering, lane keeping, the HUD app, the steering geometry</td>
+<td>copied, ported</td>
+</tr>
+<tr>
+<td>The 2024-25 team (<code>Carleton-AAV-Capstone</code>)</td>
+<td>the battery monitor, the camera calibrations, the first YOLO stop-sign detector</td>
+<td>copied</td>
+</tr>
+</tbody>
+</table></div>
+<p>Each package's <code>PROVENANCE.md</code> says which repository and commit; <code>docs/older-code.md</code> has the whole list.</p>
+</section>
+<section class="card"><h2 id="navigation">Navigation</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Licence</th>
+<th>Kind</th>
+<th>Where we used it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Nav2</strong> (S. Macenski and the Nav2 authors; "The Marathon 2: A Navigation System", IROS 2020)</td>
+<td>Apache-2.0</td>
+<td>ported, runs</td>
+<td>our costmap (<code>aav_costmap</code>), planner (<code>aav_planner</code>), navigator (<code>aav_navigator</code>), smoother (<code>aav_smoother</code>) and follower (<code>aav_mppi_lag</code>) are Nav2's, in Rust; Nav2 itself runs as the yardstick until 0.4-rc1</td>
+</tr>
+<tr>
+<td>ROS 1 <code>costmap_2d</code> (Willow Garage)</td>
+<td>BSD</td>
+<td>ported (through Nav2)</td>
+<td>the costmap's layers</td>
+</tr>
+<tr>
+<td><strong>MPPI</strong>: G. Williams, A. Aldrich, E. Theodorou, "Model Predictive Path Integral Control: From Theory to Parallel Computation", J. Guidance, Control, and Dynamics, 2017</td>
+<td>paper</td>
+<td>idea</td>
+<td>the local planner (<code>aav_mppi_lag</code>, and Nav2's)</td>
+</tr>
+<tr>
+<td><strong>State Lattice</strong>: M. Pivtoraiko, R. Knepper, A. Kelly, "Differentially Constrained Mobile Robot Motion Planning in State Lattices", J. Field Robotics, 2009</td>
+<td>paper</td>
+<td>idea</td>
+<td>the path planner (<code>aav_planner</code>, Nav2's Smac Lattice)</td>
+</tr>
+<tr>
+<td><strong>Hybrid A*</strong>: D. Dolgov, S. Thrun, M. Montemerlo, J. Diebel, "Path Planning for Autonomous Vehicles in Unknown Semi-structured Environments", IJRR, 2010</td>
+<td>paper</td>
+<td>idea</td>
+<td>Nav2's Smac Hybrid; ours next (TODO 178)</td>
+</tr>
+<tr>
+<td><strong>A*</strong>: P. Hart, N. Nilsson, B. Raphael, IEEE Trans. Systems Science and Cybernetics, 1968</td>
+<td>paper</td>
+<td>idea</td>
+<td>the planners' search</td>
+</tr>
+<tr>
+<td><strong>Dijkstra</strong>: E. W. Dijkstra, "A note on two problems in connexion with graphs", Numerische Mathematik, 1959</td>
+<td>paper</td>
+<td>idea</td>
+<td>the campus route graph (<code>aav_routes</code>)</td>
+</tr>
+<tr>
+<td><strong>Reeds-Shepp</strong> curves: J. A. Reeds, L. A. Shepp, Pacific J. Mathematics, 1990</td>
+<td>paper</td>
+<td>idea</td>
+<td>reversing paths; through OMPL in Nav2's planner</td>
+</tr>
+<tr>
+<td><strong>Continuous-curvature paths</strong>: T. Fraichard, A. Scheuer, "From Reeds and Shepp's to Continuous-Curvature Paths", IEEE T-RO, 2004</td>
+<td>paper</td>
+<td>idea</td>
+<td>the steering-rate lattice moves (TODO 177)</td>
+</tr>
+<tr>
+<td>OMPL (the Open Motion Planning Library)</td>
+<td>BSD-3</td>
+<td>ported (through Nav2)</td>
+<td>the curves inside the planner</td>
+</tr>
+<tr>
+<td><strong>Pure Pursuit</strong>: R. C. Coulter, CMU-RI-TR-92-01, 1992; <strong>Regulated Pure Pursuit</strong>: S. Macenski et al., Autonomous Robots, 2023</td>
+<td>paper</td>
+<td>idea</td>
+<td><code>aav_track</code>, Nav2's RPP</td>
+</tr>
+<tr>
+<td><strong>Stanley</strong>: S. Thrun et al., "Stanley: The Robot that Won the DARPA Grand Challenge", J. Field Robotics, 2006</td>
+<td>paper</td>
+<td>idea</td>
+<td><code>aav_track</code>'s Stanley follower</td>
+</tr>
+<tr>
+<td>LQR and MPC (textbook control)</td>
+<td>-</td>
+<td>idea</td>
+<td><code>aav_track</code>'s LQR, MPC and MPC with lag</td>
+</tr>
+<tr>
+<td><strong>Flow matching</strong> and the diffusion planner's other ideas</td>
+<td>see <code>aav_diffusion_planner/PROVENANCE.md</code></td>
+<td>idea</td>
+<td><code>planner:=diffusion</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="where-the-car-is">Where the car is</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Licence</th>
+<th>Kind</th>
+<th>Where we used it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>robot_localization</strong> (T. Moore, D. Stouch, "A Generalized Extended Kalman Filter Implementation for the Robot Operating System", IAS-13, 2014)</td>
+<td>Apache-2.0</td>
+<td>runs</td>
+<td>the two EKFs, <code>navsat_transform</code></td>
+</tr>
+<tr>
+<td>The Kalman filter: R. E. Kalman, 1960</td>
+<td>paper</td>
+<td>idea</td>
+<td>the EKFs; the things tracker (<code>aav_things</code>)</td>
+</tr>
+<tr>
+<td><strong>NDT</strong>: P. Biber, W. Straßer, IROS 2003; M. Magnusson, PhD thesis, Örebro, 2009</td>
+<td>paper</td>
+<td>idea</td>
+<td><code>aav_ndt</code> (its <code>PROVENANCE.md</code> lists the rest)</td>
+</tr>
+<tr>
+<td><strong>KISS-ICP</strong>: I. Vizzo et al., RA-L, 2023</td>
+<td>MIT</td>
+<td>runs</td>
+<td><code>kiss_icp:=true</code>, scored beside the EKF</td>
+</tr>
+<tr>
+<td>AMCL (Nav2)</td>
+<td>LGPL-2.1</td>
+<td>runs</td>
+<td><code>amcl:=true</code>, a trial</td>
+</tr>
+<tr>
+<td>imu_tools (Madgwick filter)</td>
+<td>BSD / GPL-3</td>
+<td>runs</td>
+<td>the IMU's orientation</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="seeing">Seeing</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Licence</th>
+<th>Kind</th>
+<th>Where we used it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RF-DETR</strong> (Roboflow)</td>
+<td>Apache-2.0</td>
+<td>runs, data</td>
+<td>the object and stop-sign detector</td>
+</tr>
+<tr>
+<td><strong>Ultralytics YOLO</strong></td>
+<td>AGPL-3.0</td>
+<td>runs</td>
+<td>the earlier detector, compared and kept as an option</td>
+</tr>
+<tr>
+<td><strong>DBSCAN</strong>: M. Ester et al., KDD 1996</td>
+<td>paper</td>
+<td>idea, ported</td>
+<td>the radar's clusters (<code>aav_radar_clusters</code>)</td>
+</tr>
+<tr>
+<td>OpenCV</td>
+<td>Apache-2.0</td>
+<td>runs</td>
+<td>lane finding</td>
+</tr>
+<tr>
+<td>NVIDIA TensorRT; Apple Core ML Tools</td>
+<td>NVIDIA licence; BSD-3</td>
+<td>runs</td>
+<td>the detector on the Orin and on Macs</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="maps-and-routes">Maps and routes</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Licence</th>
+<th>Kind</th>
+<th>Where we used it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>OpenStreetMap</strong> contributors</td>
+<td>ODbL</td>
+<td>data</td>
+<td>the campus world, its roads and buildings (<code>pixi run campus</code>)</td>
+</tr>
+<tr>
+<td><strong>OSRM</strong>; <strong>Valhalla</strong></td>
+<td>BSD-2; MIT</td>
+<td>runs</td>
+<td>street routes (<code>aav_routes</code>)</td>
+</tr>
+<tr>
+<td>Contraction Hierarchies: R. Geisberger et al., WEA 2008</td>
+<td>paper</td>
+<td>idea</td>
+<td>how OSRM answers fast; noted for the route planner</td>
+</tr>
+<tr>
+<td><strong>Lanelet2</strong> (F. Poggenhans et al., ITSC 2018)</td>
+<td>BSD-3</td>
+<td>idea</td>
+<td>the lane map's shape; tried on RoboStack; our own Rust reader planned (TODO 175)</td>
+</tr>
+<tr>
+<td><strong>Autoware</strong> (the Autoware Foundation)</td>
+<td>Apache-2.0</td>
+<td>idea</td>
+<td>the three map levels, map chunks loaded near the car, its tracker as a reference (TODO 156, 175)</td>
+</tr>
+<tr>
+<td><strong>Apollo</strong> (Baidu)</td>
+<td>Apache-2.0</td>
+<td>idea</td>
+<td>routing on a lane graph, then planning along the road ahead</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="simulators-and-screens">Simulators and screens</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Licence</th>
+<th>Kind</th>
+<th>Where we used it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Gazebo</strong> (Open Robotics)</td>
+<td>Apache-2.0</td>
+<td>runs, idea</td>
+<td>the first simulator, now a yardstick; its world files (SDF) and sensor models are what ours copies the numbers from</td>
+</tr>
+<tr>
+<td>CARLA</td>
+<td>MIT</td>
+<td>runs</td>
+<td><code>pixi run carla-car</code></td>
+</tr>
+<tr>
+<td><strong>Bevy</strong></td>
+<td>MIT / Apache-2.0</td>
+<td>runs</td>
+<td>our simulator's cameras, the developer window</td>
+</tr>
+<tr>
+<td><strong>raylib</strong></td>
+<td>zlib</td>
+<td>runs</td>
+<td>the HUD, the map window, the debug screen</td>
+</tr>
+<tr>
+<td>egui</td>
+<td>MIT / Apache-2.0</td>
+<td>runs</td>
+<td>the developer window's panels</td>
+</tr>
+<tr>
+<td>Foxglove; Lichtblick</td>
+<td>MPL-2.0</td>
+<td>runs</td>
+<td>the cockpit layouts</td>
+</tr>
+<tr>
+<td>Catppuccin</td>
+<td>MIT</td>
+<td>data</td>
+<td>the screens' Mocha and Latte themes</td>
+</tr>
+<tr>
+<td><em>Initial D</em> (S. Shigeno)</td>
+<td>-</td>
+<td>idea</td>
+<td>the red-and-black look of the screens; no art copied</td>
+</tr>
+<tr>
+<td>Tesla's driving display</td>
+<td>-</td>
+<td>idea</td>
+<td>the "squiggly line" on the HUD and the developer window (Ben, 7 Nov)</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="tools-and-the-build">Tools and the build</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Licence</th>
+<th>Kind</th>
+<th>Where we used it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ROS 2 Jazzy</strong></td>
+<td>Apache-2.0</td>
+<td>runs</td>
+<td>everything</td>
+</tr>
+<tr>
+<td>twist_mux; teleop_twist_joy and teleop_twist_keyboard</td>
+<td>Apache-2.0; BSD</td>
+<td>runs</td>
+<td>the command mux and the locks; the joystick and keyboard</td>
+</tr>
+<tr>
+<td><strong>rclrs</strong> (ros2-rust)</td>
+<td>Apache-2.0</td>
+<td>runs</td>
+<td>our Rust ROS nodes</td>
+</tr>
+<tr>
+<td><strong>RoboStack</strong>; <strong>Pixi</strong></td>
+<td>BSD-3</td>
+<td>runs</td>
+<td>ROS on Macs and any Linux, without admin rights</td>
+</tr>
+<tr>
+<td>Embassy; embedded-hal</td>
+<td>MIT / Apache-2.0</td>
+<td>runs</td>
+<td>the spine's firmware</td>
+</tr>
+<tr>
+<td>PlatformIO</td>
+<td>Apache-2.0</td>
+<td>runs</td>
+<td>building the 2025-26 boards' firmware</td>
+</tr>
+<tr>
+<td>The Elephant-Goldfish Model (EGM)</td>
+<td>Apache-2.0</td>
+<td>runs</td>
+<td>how we write and review designs</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="features.html"><small>Previous</small>← Features</a>
+<a class="next" href="release-0.2.html"><small>Next</small>The 0.2 guide →</a></nav>
+</main>
+<footer>Source: <code>docs/acknowledgements.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

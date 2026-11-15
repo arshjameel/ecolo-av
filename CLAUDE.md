@@ -33,6 +33,11 @@ These are the conventions decided so far. They apply to people and to Claude ses
   Their code is in the GitHub orgs `AAV-2025-2026` and `Carleton-AAV-Capstone`.
 - **Inherited code** keeps a `PROVENANCE.md`: where it came from (repo, branch, commit),
   and every change made since. Update it when you change such a file.
+- **Credit what we use and what inspires us** (Ben, 14 Nov: "give acknowlegement to stuff
+  we have looked at or used as insperation"). `docs/acknowledgements.md` lists every
+  project, paper, map source and tool we copied from, ported, or took an idea from, with
+  its licence and where we used it. Add a row in the same commit as the work. Copied or
+  ported code also keeps its `PROVENANCE.md`.
 - **Secrets** never go in git, logs or docs. Write down only where a secret is and what
   type it is. The legacy firmware reads WiFi credentials from an untracked
   `secrets.h`; copy it from `secrets.h.example`. Old credentials in the inherited repos

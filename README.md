@@ -271,6 +271,9 @@ Autonomy Stack — Architecture & Plan* (a Claude Doc). Conventions are in
 | The 2024-25 team (`Carleton-AAV-Capstone`) | the battery monitor, the camera calibrations, and the first YOLO stop-sign detector |
 | Open-source projects | ROS 2 Jazzy, Nav2, robot_localization, twist_mux, imu_tools, Gazebo, RoboStack and Pixi, rclrs (ros2-rust), Bevy and raylib (the screens and our simulator's cameras), KISS-ICP, Roboflow's RF-DETR (the car's object detector), Ultralytics YOLO, NVIDIA TensorRT, Apple's Core ML Tools, and Rust's embedded-hal, Catppuccin's colour palettes (the screens' themes, MIT) |
 
+Everything we copied, ported or took an idea from (projects, papers, maps, tools), with its
+licence: [Acknowledgements](docs/acknowledgements.md).
+
 ## Where the code came from
 
 New code was written for this design. Code reused from the 2025-26 team (GitHub org

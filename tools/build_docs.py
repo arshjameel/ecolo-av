@@ -54,6 +54,8 @@ PAGES = [
     ('work.md', 'Work', "The plan, what's done, what needs doing"),
     ('plan.md', 'The plan', 'The proposal as a to-do list: the gates, every task'),
     ('features.md', 'Features', 'What the software does, why, and who built it'),
+    ('acknowledgements.md', 'Acknowledgements',
+     'What we copied, ported, or took an idea from, and its licence'),
     ('release-0.2.md', 'The 0.2 guide',
      'Each part of 0.2: what it does, how to run it, tips, how solid'),
     ('whats-new.md', "What's new", '22 Oct to 1 Nov, by area, with pictures (history)'),
