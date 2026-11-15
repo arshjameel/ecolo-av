@@ -401,7 +401,7 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><strong>Lanelet2</strong> (F. Poggenhans et al., ITSC 2018)</td>
 <td>BSD-3</td>
 <td>idea</td>
-<td>the lane map's shape; tried on RoboStack; our own Rust reader planned (TODO 175)</td>
+<td>the lane map's shape and its <code>.osm</code> format; tried on RoboStack; our own Rust reader, <code>lanelet-map</code> (TODO 175)</td>
 </tr>
 <tr>
 <td><strong>Autoware</strong> (the Autoware Foundation)</td>
@@ -414,6 +414,12 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>Apache-2.0</td>
 <td>idea</td>
 <td>routing on a lane graph, then planning along the road ahead; its HD map cut into fixed tiles (<code>map-chunks</code>)</td>
+</tr>
+<tr>
+<td><strong>roxmltree</strong> (Y. Kladov and contributors)</td>
+<td>MIT or Apache-2.0</td>
+<td>dependency</td>
+<td>reading Lanelet2's <code>.osm</code> XML in <code>lanelet-map</code></td>
 </tr>
 <tr>
 <td><strong>OctoMap</strong> (A. Hornung et al., <em>Autonomous Robots</em>, 2013)</td>

@@ -1,0 +1,15 @@
+[package]
+name = "lanelet-map"
+description = "Lanelet2 maps in Rust: the standard .osm format read (points, lines, lanelets, stop lines, right of way), the routing graph and A* over lanes. No ROS. Our own code after Lanelet2's format (TODO 175)."
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
+
+# Its own workspace: a std crate beside a ROS package, for the route and behaviour planners
+# and the dev window (docs/designs/2026-11-15_three-levels.md, step 6).
+[workspace]
+
+[dependencies]
+# MIT or Apache-2.0: a small read-only XML tree, enough for Lanelet2's .osm files.
+roxmltree = "0.20"

@@ -69,9 +69,10 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **OpenStreetMap** contributors | ODbL | data | the campus world, its roads and buildings (`pixi run campus`) |
 | **OSRM**; **Valhalla** | BSD-2; MIT | runs | street routes (`aav_routes`) |
 | Contraction Hierarchies: R. Geisberger et al., WEA 2008 | paper | idea | how OSRM answers fast; noted for the route planner |
-| **Lanelet2** (F. Poggenhans et al., ITSC 2018) | BSD-3 | idea | the lane map's shape; tried on RoboStack; our own Rust reader planned (TODO 175) |
+| **Lanelet2** (F. Poggenhans et al., ITSC 2018) | BSD-3 | idea | the lane map's shape and its `.osm` format; tried on RoboStack; our own Rust reader, `lanelet-map` (TODO 175) |
 | **Autoware** (the Autoware Foundation) | Apache-2.0 | idea | the three map levels, map chunks loaded near the car, its tracker as a reference (TODO 156, 175) |
 | **Apollo** (Baidu) | Apache-2.0 | idea | routing on a lane graph, then planning along the road ahead; its HD map cut into fixed tiles (`map-chunks`) |
+| **roxmltree** (Y. Kladov and contributors) | MIT or Apache-2.0 | dependency | reading Lanelet2's `.osm` XML in `lanelet-map` |
 | **OctoMap** (A. Hornung et al., *Autonomous Robots*, 2013) | paper | idea | 3D occupancy; why our chunks hold a flat hash of voxels instead of a tree (TODO 175) |
 | **Quadtrees** (R. Finkel, J. Bentley, *Acta Informatica*, 1974) | paper | idea | splitting a chunk only where it pays, the fallback in the three-levels design |
 
