@@ -140,13 +140,13 @@ topics:
     type: geometry_msgs/msg/TwistStamped
     pub: [stop_zone]
     sub: []
-    live: [sim]
+    live: []
     note: Our stop zone in Rust (aav_stop_zone, stop_zone_shadow:=true), in shadow - the command collision_monitor's twin would send, zero where it would stop. Nothing reads it; measures compare it with collision_monitor's (TODO 182).
   /safety/stop_zone/shadow/state:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [stop_zone]
     sub: []
-    live: [sim]
+    live: []
     note: Each command - OK (clear) or WARN and why it would stop (points in the forward or backward box, or a silent sensor).
   /safety/stop_hold/lock:
     type: std_msgs/msg/Bool
