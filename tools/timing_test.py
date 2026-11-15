@@ -366,7 +366,10 @@ def main():
             ['ros2', 'launch', 'aav_bringup', 'sim.launch.py', 'world:=test_lot', 'gui:=false',
              # Reversing, as the car's reversing:=true (Ben, 22 Oct): forward only, the lot tour's
              # U-turn can end facing a wall, and the drive stops there (23 Oct).
-             'rviz:=false', 'reversing:=true'],
+             'rviz:=false', 'reversing:=true',
+             # Nav2's stack, as every timing run before 14 Nov (the sim's default is now
+             # ours): its /navigate_to_pose takes the goals, the numbers stay comparable.
+             'stack:=stock'],
             cwd=ROOT, env=dict(os.environ), stdout=log, stderr=subprocess.STDOUT,
             start_new_session=True)
         rclpy.init()

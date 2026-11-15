@@ -1,7 +1,7 @@
 # aav_costmap
 
 Our own costmaps, in Rust: Nav2's `costmap_2d` layers ported, run **beside** Nav2's
-costmaps as a trial (`costmap:=own`). Nav2 stays the default, and on the car.
+costmaps (`costmap:=own`). The simulator's default since 14 Nov (`stack:=ours`); Nav2's stays on the car.
 The page: [docs/own-costmap.md](../../../docs/own-costmap.md).
 
 ```

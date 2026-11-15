@@ -60,7 +60,7 @@ Many values are still `TODO measure` (docs/car_measurements.md).
 
 Constants: `SELF_MARGIN`, `SENSOR_HALF_SIZE` (m), `STOP_ZONE_AHEAD`, `STOP_ZONE_BEHIND`, `STOP_ZONE_MARGIN` (m),
 `SEES_BEHIND`, `PLAN_TURN_MARGIN`, `GROUND_CLEARANCE`, `OVERHEAD_MARGIN` (m), and
-`CONTROLLERS = ('rpp', 'mppi')` with `DEFAULT_CONTROLLER = 'mppi'` (the default of
+`CONTROLLERS = ('rpp', 'mppi')` with `DEFAULT_CONTROLLER = 'mppi'` (the car's, and the fallback of
 `sim.launch.py`'s `controller`); `TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr',
 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag')` with `DEFAULT_TRACKER = 'none'` (`tracker:=`, `docs/trials.md`), kept apart from
 `CONTROLLERS`; `PLANNERS = ('hybrid', 'lattice', 'smac2d', 'navfn', 'theta_star', 'diffusion', 'own')` with
@@ -138,13 +138,14 @@ for now (`docs/decisions.md`).
 ### `aav_description.stacks` (no ROS): the league
 
 `config/stacks.yaml`: each level's champion and challengers, and the stacks `best`, `car`,
-`stock`, `ours` (`docs/league.md`). `sim.launch.py stack:=` reads it.
+`stock`, `ours` (`docs/league.md`). `sim.launch.py stack:=` reads it; `DEFAULT = 'ours'` is
+the simulator's stack since 14 Nov.
 
 | Item | What |
 |---|---|
 | `load(path=None)`, `check(league)` | the file, checked: every champion and every stack's pick is a level's option |
 | `choices(league, stack)`, `switches(league, stack)` | each level's option; the launch switches they set |
-| `resolve(league, stack, given, defaults)` | the switches to use: the stack's, except one set by hand (not its default) |
+| `resolve(league, stack, given, fallback)` | the switches to use: each one given by hand, else the stack's, else its fallback. A switch not given is `CHOSEN` (empty): `sim.launch.py` declares them so |
 | `describe(league, stack)` | one line for the log |
 
 ### `aav_description.adaptive_brake` (no ROS): a heavier car

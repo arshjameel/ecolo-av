@@ -7,8 +7,11 @@ docs/designs/2026-11-13_one-shape.md, "The league"; the page: docs/league.md.
     stacks.yaml ──▶ load ──▶ switches('ours') ──▶ {'costmap': 'own', 'tracker': 'mppi_lag', ...}
                                     │
     sim.launch.py's arguments ──────┴──▶ resolve ──▶ what the launch uses: a switch given
-                                                     on the command line (not its default)
-                                                     wins over the stack
+                                                     on the command line wins over the stack
+
+The stack's switches are declared empty (CHOSEN) in sim.launch.py, so a value given by
+hand is never mistaken for "not given": `costmap:=nav2` wins over `stack:=ours` too.
+Ours is the simulator's default (DEFAULT, Ben, 14 Nov: "Ours default now, then delete").
 """
 
 from __future__ import annotations
@@ -20,7 +23,9 @@ import yaml
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCE_FILE = os.path.join(HERE, '..', 'config', 'stacks.yaml')
-NONE = ''          # stack:= empty: no stack, every switch as given
+NONE = ''          # stack:= empty: no stack, each switch as given, else its fallback
+DEFAULT = 'ours'   # sim.launch.py's stack:= when none is given (Ben, 14 Nov)
+CHOSEN = ''        # a switch's declared default: "the stack's choice"
 
 
 def config_path() -> str:
@@ -86,29 +91,30 @@ def switches(league: Mapping, stack: str) -> Dict[str, str]:
 
 
 def resolve(league: Mapping, stack: str, given: Mapping[str, str],
-            defaults: Mapping[str, str]) -> Dict[str, str]:
+            fallback: Mapping[str, str]) -> Dict[str, str]:
     """
-    Return the switches to use: the stack's, except where a switch was set by hand.
+    Return the switches to use: each one set by hand, else the stack's, else its fallback.
 
-    given: every switch's value as the launch has it; defaults: each one's declared default.
-    A switch whose value differs from its default was set by hand, and is kept. With no
-    stack (empty), `given` comes back unchanged.
+    given: each switch's value as the launch has it, CHOSEN (empty) where nobody set it;
+    fallback: what a switch takes when neither a hand nor the stack sets it (the
+    champions' values, Nav2's today). With no stack (empty), only the hand and the
+    fallback count.
     """
-    out = dict(given)
-    if not stack:
-        return out
-    for switch, value in switches(league, stack).items():
-        if switch not in defaults:
+    picks = switches(league, stack) if stack else {}
+    for switch in picks:
+        if switch not in fallback:
             raise ValueError(f'stacks.yaml sets {switch}:=, which this launch file '
                              'does not have')
-        if str(given.get(switch, defaults[switch])).lower() == str(defaults[switch]).lower():
-            out[switch] = value
+    out = dict(given)
+    for switch, value in fallback.items():
+        mine = str(given.get(switch, CHOSEN)).strip()
+        out[switch] = mine if mine != CHOSEN else picks.get(switch, str(value))
     return out
 
 
 def describe(league: Mapping, stack: str) -> str:
     """Return one line for the log: 'stack:=ours - pose ekf, costmap ours, ...'."""
     if not stack:
-        return 'no stack: every switch as given'
+        return "no stack: every switch as given, else the champions' (Nav2's)"
     picks = ', '.join(f'{level} {option}' for level, option in choices(league, stack).items())
     return f'stack:={stack} - {picks}'

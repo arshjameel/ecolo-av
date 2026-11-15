@@ -1,7 +1,7 @@
 # aav_mppi_lag
 
 Nav2's MPPI path follower, ported to Rust, with the **actuators' lag in its model**.
-A trial beside Nav2's own MPPI (`docs/trials.md`, `docs/mppi-lag.md`). Nav2 still plans
+The simulator's default follower since 14 Nov (`stack:=ours`), beside Nav2's own MPPI (`docs/trials.md`, `docs/mppi-lag.md`). A planner still plans
 the path; this node follows it.
 
 ```

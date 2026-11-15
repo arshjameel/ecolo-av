@@ -1,8 +1,8 @@
 # aav_navigator
 
 Our own navigator, in Rust: what Nav2's `bt_navigator`, our behaviour trees and
-`waypoint_follower` do for the car. A trial (`navigator:=own`), **in their place**; Nav2's
-stays the default, and on the car. The page: [docs/own-navigator.md](../../../docs/own-navigator.md).
+`waypoint_follower` do for the car (`navigator:=own`), **in their place**. The simulator's default since 14 Nov (`stack:=ours`); Nav2's
+stays on the car. The page: [docs/own-navigator.md](../../../docs/own-navigator.md).
 
 ```
 goal (RViz, the map window, street_router, language_drive, the tools)

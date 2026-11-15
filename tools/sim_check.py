@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Sim check: start Gazebo's road world headless, then test the car's whole graph in it.
+Sim check: start the road world headless, then test the car's whole graph in it.
+
+Our simulator and our own stack by default (--simulator gazebo, --stack stock: Nav2's).
 
     pixi run sim-check                     (about 2 minutes, on this computer only)
     pixi run -e ml sim-check --perception  (adds the detector and the stop sign: 2 more minutes)
@@ -22,19 +24,21 @@ Sim check: start Gazebo's road world headless, then test the car's whole graph i
                                             the car must stop, and say why: 5 more minutes)
     pixi run sim-check --faults --no-watchdog   (the same without the sensor watchdog: a report
                                             of what the stack does on its own, no pass or fail)
-    pixi run sim-check --costmap own       (every run with our own costmaps beside Nav2's,
-                                            costmap:=own, aav_costmap; the obstacle legs
-                                            then also report each costmap process's CPU,
-                                            our update time, and Nav2's local costmap
-                                            against ours while the car stands still)
-    pixi run sim-check --tracker mppi_lag  (every run with that path follower, tracker:=;
-                                            with --costmap own it reads our costmap)
-    pixi run sim-check --navigator own     (every run with our own navigator, navigator:=own,
-                                            aav_navigator; with --planner own --costmap own
-                                            --tracker mppi_lag, no Nav2 server navigates)
-    pixi run sim-check --stack ours        (every run with a named stack from stacks.yaml,
-                                            stack:=, docs/league.md: stock, ours, best,
-                                            car; a flag above still wins over it)
+    Every run checks the launch's default stack, ours (stack:=ours: our planner, mppi_lag,
+    our costmaps and navigator, the behaviour planner), unless a flag below says otherwise.
+    pixi run sim-check --stack stock       (every run with a named stack from stacks.yaml,
+                                            stack:=, docs/league.md: stock (every level
+                                            Nav2's), ours, best, car; a flag below still
+                                            wins over it)
+    pixi run sim-check --costmap nav2      (every run with that costmap, costmap:=; with
+                                            Nav2's and ours both running, the obstacle legs
+                                            also report each costmap process's CPU, our
+                                            update time, and Nav2's local costmap against
+                                            ours while the car stands still)
+    pixi run sim-check --tracker none      (every run with that path follower, tracker:=;
+                                            none: Nav2's controller_server)
+    pixi run sim-check --navigator nav2    (every run with that navigator, navigator:=;
+                                            nav2: bt_navigator; also --planner)
     pixi run sim-check --legs-only --lidar-obstacle --plan-around
                                            (only the extra runs named, not the road
                                             world's first run: the costmap's scoring)
@@ -2241,11 +2245,13 @@ CAMERAS = True        # --no-cameras: none drawn (our simulator on a computer wi
 
 EVERY_RUN = []   # launch arguments every session adds: --speed-loop's, --simulator's
 SIMULATOR = None      # --simulator gazebo or own; else sim.launch.py's default (main)
-NAVIGATOR = 'nav2'    # --navigator own: aav_navigator in bt_navigator's place
-# All ours (--navigator own --planner own --costmap own --tracker mppi_lag): Nav2's
+# What runs: sim.launch.py's default stack (ours, stacks.DEFAULT), or --stack's, with any
+# --navigator, --costmap, --planner or --tracker on top (main works it out again).
+NAVIGATOR = 'own'     # --navigator nav2: bt_navigator in aav_navigator's place
+# All ours (navigator, planner and costmap own, tracker mppi_lag: the default): Nav2's
 # costmaps don't run at all, so they aren't missing from the graph.
-ALL_OURS = False
-COSTMAP = 'nav2'      # --costmap own: aav_costmap beside Nav2's (sim.launch.py costmap:=)
+ALL_OURS = True
+COSTMAP = 'own'       # --costmap nav2: Nav2's costmaps instead of aav_costmap
 LOCAL_COSTMAP = {'nav2': '/local_costmap/costmap', 'own': '/drivers/nav/costmap/local'}
 SIMULATOR_NAMES = {'gazebo': 'Gazebo', 'own': 'our simulator'}
 VOXELS = False   # --voxels: every session with the lidar takes voxels:=true
@@ -2726,21 +2732,23 @@ def main():
             if flag_name == '--navigator':
                 NAVIGATOR = args[at + 1]
             chosen[flag_name[2:]] = args[at + 1]
+    # The stack (stacks.yaml, docs/league.md): --stack's, else the launch's default (ours).
+    # The launch sets its switches, and a flag above, set by hand, still wins over it.
+    from aav_description import stacks
+    league = stacks.load()
+    stack = stacks.DEFAULT
     if '--stack' in args:
-        # A named stack from stacks.yaml (docs/league.md): the launch sets its switches, and
-        # a switch a run or a flag above sets by hand still wins, as on the command line.
-        from aav_description import stacks
-        league = stacks.load()
         at = args.index('--stack')
         if at + 1 >= len(args) or args[at + 1] not in stacks.names(league):
             print(f'--stack takes {", ".join(stacks.names(league))}', file=sys.stderr)
             return 2
-        EVERY_RUN.append(f'stack:={args[at + 1]}')
-        picked = stacks.switches(league, args[at + 1])
-        for level in ('costmap', 'tracker', 'navigator', 'planner'):
-            chosen.setdefault(level, picked.get(level))
-        COSTMAP = chosen['costmap'] or COSTMAP
-        NAVIGATOR = chosen['navigator'] or NAVIGATOR
+        stack = args[at + 1]
+        EVERY_RUN.append(f'stack:={stack}')
+    picked = stacks.switches(league, stack)
+    for level in ('costmap', 'tracker', 'navigator', 'planner'):
+        chosen.setdefault(level, picked.get(level))
+    COSTMAP = chosen['costmap'] or COSTMAP
+    NAVIGATOR = chosen['navigator'] or NAVIGATOR
     ALL_OURS = vehicle.all_ours(chosen.get('navigator'), chosen.get('planner'),
                                 chosen.get('costmap'), chosen.get('tracker'))
     if SIMULATOR == 'own' and CAMERAS:

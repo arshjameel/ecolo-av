@@ -84,7 +84,8 @@ The trials (docs/trials.md):
                     each plan's inputs, for pixi run diffusion replay
 
 For each tour and controller it:
-1. starts sim.launch.py world:=test_lot gui:=false rviz:=false controller:=<rpp|mppi>
+1. starts sim.launch.py world:=test_lot gui:=false rviz:=false stack:=stock (Nav2's, then
+   the piece under test on top: the sim's own default is ours) controller:=<rpp|mppi>
    (or tracker:=<name>) [planner:=<name>] reversing:=false (forward only, unless
    --reversing), on a ROS domain and Gazebo partition of its own, on this computer only;
 2. waits for Gazebo's truth, the global EKF and Nav2;
@@ -897,6 +898,10 @@ def session(tour, follower, args, out_dir, body, used, run=1):
     command = ['ros2', 'launch', 'aav_bringup', 'sim.launch.py',
                f'world:={plan.get("world", "test_lot")}',
                'gui:=false', 'rviz:=false',
+               # Every run on Nav2's stack, then the piece under test on top (the sim's
+               # default is ours since 14 Nov): each column differs from the next in what
+               # it names, and the scores stay comparable with the runs before.
+               'stack:=stock',
                f'tracker:={controller}' if kind == 'tracker' else f'controller:={controller}',
                # Forward only, as on the car (the sim's default lets Nav2 reverse; MPPI
                # then dithered between forward and back at the start, 22 Oct), unless

@@ -351,7 +351,9 @@ def test_amcl_may_have_a_map_of_its_own():
 
 
 def test_the_sim_passes_the_trials_on_and_checks_them():
-    assert sent_to_navigation(SIM)['tracker'] == 'none'
+    # Ours by default (stack:=ours): mppi_lag; Nav2's controller_server with stack:=stock.
+    assert sent_to_navigation(SIM)['tracker'] == 'mppi_lag'
+    assert sent_to_navigation(SIM, stack='stock')['tracker'] == 'none'
     assert sent_to_navigation(SIM)['live_swap'] == 'true'
     assert sent_to_navigation(SIM, tracker='mpc', reversing='false')['tracker'] == 'mpc'
     with pytest.raises(ValueError, match='reversing:=false'):
@@ -447,8 +449,11 @@ def test_all_ours_runs_no_nav2_server_for_navigation():
 
 
 def test_the_sim_passes_the_navigator_on_and_the_car_never_does():
-    assert sent_to_navigation(SIM)['navigator'] == 'nav2'
-    assert sent_to_navigation(SIM, navigator='own')['navigator'] == 'own'
+    assert sent_to_navigation(SIM)['navigator'] == 'own'          # ours, the default
+    assert sent_to_navigation(SIM, stack='stock')['navigator'] == 'nav2'
+    assert sent_to_navigation(SIM, navigator='nav2')['navigator'] == 'nav2'
+    assert sent_to_navigation(SIM, stack='stock', navigator='own')['navigator'] == 'own'
+    assert sent_to_navigation(CAR, machine='all')['navigator'] == 'nav2'
     with pytest.raises(ValueError, match='navigator:='):
         sent_to_navigation(SIM, navigator='mine')
     assert vehicle.navigator_action('own', 'follow_gps_waypoints') == (
@@ -544,7 +549,8 @@ def test_bad_planners_are_refused():
 
 
 def test_the_sim_passes_any_planner_and_the_car_only_car_shaped_ones():
-    assert sent_to_navigation(SIM)['planner'] == 'lattice'
+    assert sent_to_navigation(SIM)['planner'] == 'own'            # ours, the default
+    assert sent_to_navigation(SIM, stack='stock')['planner'] == 'lattice'
     for planner in vehicle.PLANNERS:
         assert sent_to_navigation(SIM, planner=planner)['planner'] == planner
     # The car picks by reversing: the lattice, or Hybrid-A* forward only (or blind behind).

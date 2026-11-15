@@ -1,7 +1,7 @@
 """
-The whole stack in Gazebo: same nodes and configs as the car, simulated hardware.
+The whole stack in a simulator: same nodes and configs as the car, simulated hardware.
 
-  ros2 launch aav_bringup sim.launch.py [stack:=|best|car|stock|ours]
+  ros2 launch aav_bringup sim.launch.py [stack:=ours|stock|best|car|]
       [world:=empty|test_lot|road|campus] [nav:=true]
       [teleop:=false] [gui:=true] [rviz:=true]
       [perception:=false] [lane:=false|true|fake] [camera_obstacles:=false] [hud:=false]
@@ -9,19 +9,28 @@ The whole stack in Gazebo: same nodes and configs as the car, simulated hardware
       [obstacle:=false] [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true] [radar:=true]
       [actuator_model:=true] [speed_loop:=default|smooth|lqi] [sim_speed:=]
       [payload:=0] [adaptive_brake:=false]
-      [reversing:=true] [controller:=mppi] [planner:=lattice] [tracker:=none] [costmap:=nav2]
+      [reversing:=true] [controller:=] [planner:=] [tracker:=] [costmap:=] [navigator:=]
+      [smoother:=] [behaviour:=]
       [amcl:=false] [voxels:=false]
       [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
       [kiss_ekf:=false]
-      [plan_around:=true] [behaviour:=false] [things:=false]
+      [plan_around:=true] [things:=false]
       [watchdog:=true] [geofence:=true] [geofence_radius:=200.0]
       [watch_hud:=false] [faults:=false] [spine:=false] [arm:=true]
       [esp32:=false] [esp32_loop:=pi]
       [bridge:=rust|python]
       [ghost:=false] [simulator:=gazebo|own]
   pixi run sim world:=road                         the road: the car's camera and radar
-  pixi run sim world:=campus stack:=ours           every level ours (aav_description's
-                                                   config/stacks.yaml, docs/league.md)
+  pixi run sim world:=campus                       Carleton, every level ours
+  pixi run sim stack:=stock                        every level Nav2's (the yardstick)
+  pixi run sim costmap:=nav2                       Nav2's costmaps, the rest ours
+
+Ours is the default (Ben, 14 Nov: "Ours default now, then delete"): stack:=ours sets the
+planner, path follower, costmap, navigator, smoother, behaviour and pose at once
+(aav_description's config/stacks.yaml, docs/league.md). Those switches are empty by
+default, meaning "the stack's choice"; any value given by hand wins over the stack.
+stack:= (empty): no stack, each switch as given, else the champions' (Nav2's). The real
+car (car.launch.py) keeps its own choices until ours wins there too.
   pixi run -e ml sim world:=road perception:=true  adds the detector and the stop-sign watcher
   pixi run sim world:=test_lot sim_speed:=3 hud:=true   Gazebo, RViz, Nav2 and the HUD window
   pixi run sim world:=test_lot map:=true           ... and the big screen's map window
@@ -73,9 +82,11 @@ bench's argument names:
                       the car's 1.0 m/s cap (ego.yaml, nav2.yaml) is for its first drives.
                       ego refuses it outside a simulator
   controller:=rpp     Nav2 follows the path with Regulated Pure Pursuit, not MPPI (the
-                      default): pixi run measure controllers drives both (docs/path-followers.md)
-  planner:=hybrid     Nav2 plans with another planner (navigation.launch.py planner:=):
-                      lattice (the default) or hybrid keep to the car's turning radius;
+                      champion), with tracker:=none: pixi run measure controllers drives
+                      both (docs/path-followers.md)
+  planner:=hybrid     another planner (navigation.launch.py planner:=): own (ours, the
+                      default), lattice (Nav2's, stack:=stock) or hybrid keep to the car's
+                      turning radius;
                       smac2d, navfn and theta_star don't, trials only. pixi run
                       measure controllers --planners scores them (docs/controllers.md).
                       lattice_headings:=32: the lattice's trial file, 32 headings
@@ -90,17 +101,19 @@ bench's argument names:
                       planner:=own: our own planner (aav_planner: Nav2's lattice in
                       Rust) answers the trees, Nav2's lattice beside it
                       (docs/own-planner.md)
-  tracker:=lqr        a trial path follower (aav_track: pure_pursuit, stanley, lqr or mpc)
-                      in controller_server's place, on Nav2's same planner, smoother and
-                      collision_monitor. aav_track's drive forwards only: with
-                      reversing:=false (docs/trials.md); mppi_lag reverses too
-  costmap:=own        our own costmaps beside Nav2's (aav_costmap, a trial); with
-                      tracker:=mppi_lag, mppi_lag reads ours (docs/own-costmap.md)
-  navigator:=own      our own navigator in place of bt_navigator and waypoint_follower
-                      (aav_navigator, a trial); with planner:=own costmap:=own
-                      tracker:=mppi_lag, no Nav2 server navigates
-                      (docs/own-navigator.md)
-  behaviour:=true    the behaviour states and a speed cap on Nav2 from the stopping law
+  tracker:=lqr        another path follower in controller_server's place (mppi_lag, ours
+                      in Rust, is the default; aav_track: pure_pursuit, stanley, lqr or
+                      mpc), on the same planner, smoother and collision_monitor.
+                      aav_track's drive forwards only: with reversing:=false
+                      (docs/trials.md); mppi_lag reverses too. tracker:=none: Nav2's
+                      controller_server (controller:=)
+  costmap:=nav2       Nav2's costmaps instead of ours (aav_costmap, the default; with
+                      tracker:=mppi_lag, mppi_lag reads ours: docs/own-costmap.md)
+  navigator:=nav2     bt_navigator and waypoint_follower instead of our own navigator
+                      (aav_navigator, the default); with planner:=own costmap:=own
+                      tracker:=mppi_lag, no Nav2 server navigates (docs/own-navigator.md)
+  behaviour:=false    no behaviour planner (on by default with stack:=ours). On:
+                      the behaviour states and a speed cap on Nav2 from the stopping law
                       (aav_behaviour, a trial: docs/stopping.md); it also sends the road ahead
                       (/world/road_ahead), and ego holds Nav2 to it (ego road_ahead:=true)
   lane_map:=world    with behaviour:=true: the road ahead's line is the lane's centre, from
@@ -214,8 +227,10 @@ def include(context, package, launch_file, **args):
                           for k, v in args.items()}.items())
 
 
-# The switches a stack (stack:=, config/stacks.yaml) may set, and their declared defaults.
-STACK_DEFAULTS = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.DEFAULT_TRACKER,
+# The switches a stack (stack:=, config/stacks.yaml) may set. Each is declared empty
+# (stacks.CHOSEN: "the stack's choice"), so any value given by hand wins; with no stack,
+# an empty one takes its fallback here (the champions', Nav2's: as car.launch.py runs).
+STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.DEFAULT_TRACKER,
                   'planner': vehicle.DEFAULT_PLANNER, 'costmap': vehicle.DEFAULT_COSTMAP,
                   'navigator': vehicle.DEFAULT_NAVIGATOR, 'smoother': vehicle.DEFAULT_SMOOTHER,
                   'behaviour': 'false', 'ndt_ekf': 'false', 'kiss_ekf': 'false',
@@ -226,11 +241,11 @@ def launch_setup(context):
     def raw(name):
         return LaunchConfiguration(name).perform(context)
 
-    # stack:= sets the switches in STACK_DEFAULTS at once; one given by hand still wins.
+    # stack:= sets the switches in STACK_FALLBACK at once; one given by hand still wins.
     stack = raw('stack').strip().lower()
     league = stacks.load()
-    picked = stacks.resolve(league, stack, {n: raw(n) for n in STACK_DEFAULTS},
-                            STACK_DEFAULTS)
+    picked = stacks.resolve(league, stack, {n: raw(n) for n in STACK_FALLBACK},
+                            STACK_FALLBACK)
     print(f'[sim.launch.py] {stacks.describe(league, stack)}', flush=True)
 
     def arg(name):
@@ -485,11 +500,12 @@ def launch_setup(context):
 
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument('stack', default_value=stacks.NONE,
-                              description='the league (config/stacks.yaml): best, car, '
-                              'stock or ours sets the planner, path follower, costmap, '
-                              'navigator, smoother, behaviour and pose at once; a switch '
-                              'given by hand still wins. Empty: every switch as given'),
+        DeclareLaunchArgument('stack', default_value=stacks.DEFAULT,
+                              description='the league (config/stacks.yaml): ours (the '
+                              'default), stock (Nav2), best or car sets the planner, path '
+                              'follower, costmap, navigator, smoother, behaviour and pose '
+                              'at once; a switch given by hand still wins. Empty: every '
+                              "switch as given, else the champions' (Nav2's)"),
         DeclareLaunchArgument('world', default_value='empty',
                               description='empty, test_lot or road'),
         DeclareLaunchArgument('nav', default_value='true'),
@@ -605,13 +621,16 @@ def generate_launch_description():
                               description='Nav2 may drive backwards, at up to '
                                           "vehicle.yaml's max_reverse_speed "
                                           '(docs/learn-nav2.md, Reversing)'),
-        DeclareLaunchArgument('controller', default_value=vehicle.DEFAULT_CONTROLLER,
+        DeclareLaunchArgument('controller', default_value=stacks.CHOSEN,
                               description='mppi or rpp (Regulated Pure Pursuit): what '
-                                          "follows Nav2's path (docs/path-followers.md)"),
-        DeclareLaunchArgument('planner', default_value=vehicle.DEFAULT_PLANNER,
-                              description=', '.join(vehicle.PLANNERS) + ": Nav2's planner. "
-                                          "hybrid and lattice keep to the car's turning "
-                                          'radius; the others are trials (docs/controllers.md)'),
+                                          'follows the path in controller_server, with '
+                                          'tracker:=none (docs/path-followers.md). Empty: '
+                                          "the stack's choice"),
+        DeclareLaunchArgument('planner', default_value=stacks.CHOSEN,
+                              description=', '.join(vehicle.PLANNERS) + ': the planner. '
+                                          "own (ours), hybrid and lattice keep to the car's "
+                                          'turning radius; the others are trials '
+                                          "(docs/controllers.md). Empty: the stack's choice"),
         DeclareLaunchArgument('diffusion_model', default_value='',
                               description='with planner:=diffusion: the model (.onnx); '
                                           'empty: models/diffusion/planner.onnx. A file '
@@ -627,51 +646,56 @@ def generate_launch_description():
                               default_value=str(vehicle.LATTICE_HEADINGS[0]),
                               description='with planner:=lattice: 16 headings (the default) '
                                           'or 32 (a trial file)'),
-        DeclareLaunchArgument('lattice_moves', default_value=vehicle.LATTICE_MOVES[0],
+        DeclareLaunchArgument('lattice_moves', default_value=stacks.CHOSEN,
                               description="with planner:=lattice (or own): nav2, Nav2's "
-                                          'moves (the default); smooth or smooth_fast, a '
-                                          'trial (tools/lattice_smooth.py)'),
-        DeclareLaunchArgument('behaviour', default_value='false',
-                              description='true: the behaviour states and a speed cap on '
-                                          'Nav2 (aav_behaviour, a trial)'),
+                                          'moves; smooth or smooth_fast, a trial '
+                                          "(tools/lattice_smooth.py). Empty: the stack's "
+                                          "choice (nav2's moves)"),
+        DeclareLaunchArgument('behaviour', default_value=stacks.CHOSEN,
+                              description='true: the behaviour states, the road ahead and '
+                                          'a speed cap (aav_behaviour); false: none. '
+                                          "Empty: the stack's choice (on in ours)"),
         DeclareLaunchArgument('lane_map', default_value='',
                               description="with behaviour:=true: world (the world's lane "
                                           "map) or a lanes.yaml: the road ahead's line on "
                                           "the lane's centre; empty: /plan's line"),
-        DeclareLaunchArgument('navigator', default_value=vehicle.DEFAULT_NAVIGATOR,
-                              description="nav2 or own: our own navigator in bt_navigator's "
-                                          'place (aav_navigator, a trial; '
-                                          'docs/own-navigator.md)'),
-        DeclareLaunchArgument('smoother', default_value=vehicle.DEFAULT_SMOOTHER,
+        DeclareLaunchArgument('navigator', default_value=stacks.CHOSEN,
+                              description="own (aav_navigator, in bt_navigator's place; "
+                                          'docs/own-navigator.md) or nav2. Empty: the '
+                                          "stack's choice"),
+        DeclareLaunchArgument('smoother', default_value=stacks.CHOSEN,
                               description="nav2 or own: our own velocity smoother in Nav2's "
                                           'place, for a car (aav_smoother, a trial; '
-                                          'docs/own-smoother.md)'),
-        DeclareLaunchArgument('costmap', default_value=vehicle.DEFAULT_COSTMAP,
-                              description="nav2 or own: our own costmaps beside Nav2's "
-                                          '(aav_costmap, a trial; docs/own-costmap.md)'),
-        DeclareLaunchArgument('tracker', default_value=vehicle.DEFAULT_TRACKER,
-                              description="a trial path follower in controller_server's "
+                                          "docs/own-smoother.md). Empty: the stack's choice"),
+        DeclareLaunchArgument('costmap', default_value=stacks.CHOSEN,
+                              description='own (aav_costmap; docs/own-costmap.md) or nav2. '
+                                          "Empty: the stack's choice"),
+        DeclareLaunchArgument('tracker', default_value=stacks.CHOSEN,
+                              description="a path follower in controller_server's "
                                           'place: ' + ', '.join(vehicle.TRACKERS) +
                                           " (aav_track's with reversing:=false; "
-                                          'docs/trials.md)'),
+                                          'docs/trials.md); none: controller_server. Empty: '
+                                          "the stack's choice"),
         DeclareLaunchArgument('amcl', default_value='false',
                               description='stock AMCL beside the EKF, scored only '
                                           '(world:=test_lot nav:=true lidar:=true)'),
         DeclareLaunchArgument('ndt', default_value='false',
                               description='NDT on the saved lidar map, scored only '
                                           '(world:=test_lot lidar:=true, ndt_map present)'),
-        DeclareLaunchArgument('ndt_ekf', default_value='false',
+        DeclareLaunchArgument('ndt_ekf', default_value=stacks.CHOSEN,
                               description='a trial: NDT (ndt:=true implied) and its pose '
-                                          'into ekf_global, beside the GPS'),
+                                          "into ekf_global, beside the GPS. Empty: the stack's "
+                                          'choice (false)'),
         DeclareLaunchArgument('ndt_map', default_value=DEFAULT_NDT_MAP,
                               description="NDT's map (pixi run ndt-map drive); relative to "
                                           'where the launch starts'),
         DeclareLaunchArgument('kiss_icp', default_value='false',
                               description='KISS-ICP lidar odometry, scored only (a world '
                                           'with the lidar; pixi install --locked -e kiss)'),
-        DeclareLaunchArgument('kiss_ekf', default_value='false',
+        DeclareLaunchArgument('kiss_ekf', default_value=stacks.CHOSEN,
                               description='a trial: KISS-ICP (kiss_icp:=true implied) and its '
-                                          'twist into ekf_local, beside the wheels and IMU'),
+                                          'twist into ekf_local, beside the wheels and IMU. '
+                                          "Empty: the stack's choice (false)"),
         DeclareLaunchArgument('plan_around', default_value='true',
                               description="true: Nav2's planner plans round what the radar "
                                           'and lidar see; false: the map only, so the car '

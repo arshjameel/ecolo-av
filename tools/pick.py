@@ -30,10 +30,13 @@ PROGRAMS = [
     ('sim', 'Gazebo and the car only (add windows yourself)'),
 ]
 
-# Who steers along Nav2's path: Nav2's own controller, or one of our trial trackers.
+# Who steers along the path: ours (mppi_lag, the sim's default since 14 Nov, stack:=ours),
+# Nav2's own controller, or one of our trial trackers.
 # (value, plain words, the launch arguments it sets)
 FOLLOWERS = [
-    ('mppi', "Nav2's MPPI: tries 1,000 wiggles, keeps the good ones (default)",
+    ('mppi_lag', "ours: Nav2's MPPI in Rust, knowing the steering and pedals lag (default)",
+     ['tracker:=mppi_lag']),
+    ('mppi', "Nav2's MPPI: tries 1,000 wiggles, keeps the good ones",
      ['controller:=mppi', 'tracker:=none']),
     ('rpp', "Nav2's Regulated Pure Pursuit: steer at a point ahead, slow in bends",
      ['controller:=rpp', 'tracker:=none']),
@@ -49,14 +52,14 @@ FOLLOWERS = [
      ['tracker:=mpc_full', 'reversing:=false']),
     ('mpc_lag', "ours: MPC that knows the car's lags (plans speed and steering)",
      ['tracker:=mpc_lag', 'reversing:=false']),
-    ('mppi_lag', "ours: Nav2's MPPI in Rust, knowing the steering and pedals lag",
-     ['tracker:=mppi_lag']),
 ]
 
-# Who draws the route: Nav2's planner (planner:=). Gazebo, the lot tour, MPPI: hybrid
-# and lattice 30 Oct, reversing on, 4 runs each; the grid planners 29 Oct, forward only.
+# Who draws the route (planner:=): ours (the sim's default since 14 Nov), or Nav2's.
+# Gazebo, the lot tour, MPPI: hybrid and lattice 30 Oct, reversing on, 4 runs each; the
+# grid planners 29 Oct, forward only.
 PLANNERS = [
-    ('lattice', "State Lattice: our car's own moves (default; every leg, 184 s a tour)",
+    ('own', "our own planner: Nav2's lattice in Rust (default)", ['planner:=own']),
+    ('lattice', "Nav2's State Lattice: our car's own moves (every leg, 184 s a tour)",
      ['planner:=lattice']),
     ('hybrid', "Hybrid-A*: routes a car can drive (the car's default; 213 s a tour)",
      ['planner:=hybrid']),
@@ -67,8 +70,6 @@ PLANNERS = [
      ['planner:=theta_star']),
     ('diffusion', 'a model draws it, a guard checks it, the lattice if it fails (a trial)',
      ['planner:=diffusion']),
-    ('own', "our own planner: Nav2's lattice in Rust, beside Nav2's (a trial)",
-     ['planner:=own']),
 ]
 
 # Where-am-I finders that run beside the EKF and are scored (they never steer yet); with

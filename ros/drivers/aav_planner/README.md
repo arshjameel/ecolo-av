@@ -1,8 +1,8 @@
 # aav_planner
 
 Our own path planner, in Rust: Nav2's Smac **State Lattice** planner ported, run
-**beside** Nav2's `planner_server` as a trial (`planner:=own`). Nav2 stays the default,
-and on the car. The page: [docs/own-planner.md](../../../docs/own-planner.md).
+**beside** Nav2's `planner_server` (`planner:=own`). The simulator's default since 14 Nov (`stack:=ours`); Nav2's stays
+on the car. The page: [docs/own-planner.md](../../../docs/own-planner.md).
 
 ```
 global costmap (Nav2's /global_costmap/costmap_raw, or ours with costmap:=own), /tf

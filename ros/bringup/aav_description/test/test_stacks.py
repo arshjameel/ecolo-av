@@ -10,12 +10,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FILE = os.path.join(HERE, '..', 'config', 'stacks.yaml')
 SIM_LAUNCH = os.path.join(HERE, '..', '..', 'aav_bringup', 'launch', 'sim.launch.py')
 LEAGUE = stacks.load(FILE)
-# Each switch's declared default in sim.launch.py, as the launch file passes them.
+# Each switch's fallback in sim.launch.py (STACK_FALLBACK): the champions', Nav2's.
 DEFAULTS = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.DEFAULT_TRACKER,
             'planner': vehicle.DEFAULT_PLANNER, 'costmap': vehicle.DEFAULT_COSTMAP,
             'navigator': vehicle.DEFAULT_NAVIGATOR, 'smoother': vehicle.DEFAULT_SMOOTHER,
             'behaviour': 'false', 'ndt_ekf': 'false', 'kiss_ekf': 'false',
             'lattice_moves': vehicle.LATTICE_MOVES[0]}
+# What the launch passes when no switch is given: each declared empty, "the stack's choice".
+NOT_GIVEN = {name: stacks.CHOSEN for name in DEFAULTS}
 VALID = {'controller': vehicle.CONTROLLERS, 'tracker': vehicle.TRACKERS,
          'planner': vehicle.PLANNERS, 'costmap': vehicle.COSTMAPS,
          'navigator': vehicle.NAVIGATORS, 'smoother': vehicle.SMOOTHERS,
@@ -45,8 +47,25 @@ def test_every_switch_is_an_argument_of_sim_launch():
 def test_best_is_every_champion_and_today_that_is_the_defaults():
     assert stacks.choices(LEAGUE, 'best') == {
         name: level['champion'] for name, level in LEAGUE['levels'].items()}
-    # The champions are what sim runs with no switches at all, until a challenger wins.
-    assert stacks.resolve(LEAGUE, 'best', DEFAULTS, DEFAULTS) == DEFAULTS
+    # The champions are the fallback: what stack:=best, or no stack at all, runs.
+    assert stacks.resolve(LEAGUE, 'best', NOT_GIVEN, DEFAULTS) == DEFAULTS
+    assert stacks.resolve(LEAGUE, stacks.NONE, NOT_GIVEN, DEFAULTS) == DEFAULTS
+
+
+def test_ours_is_the_default_stack():
+    # Ben, 14 Nov: "Ours default now, then delete". The car keeps its own (car.launch.py).
+    assert stacks.DEFAULT == 'ours'
+    out = stacks.resolve(LEAGUE, stacks.DEFAULT, NOT_GIVEN, DEFAULTS)
+    assert out == dict(DEFAULTS, **stacks.switches(LEAGUE, 'ours'))
+    assert (out['costmap'], out['navigator'], out['planner'], out['tracker']) == (
+        'own', 'own', 'own', 'mppi_lag')
+
+
+def test_stock_is_every_level_nav2s():
+    out = stacks.resolve(LEAGUE, 'stock', NOT_GIVEN, DEFAULTS)
+    assert (out['costmap'], out['navigator'], out['planner'], out['tracker'],
+            out['controller'], out['smoother'], out['behaviour']) == (
+        'nav2', 'nav2', 'lattice', 'none', 'mppi', 'nav2', 'false')
 
 
 def test_ours_sets_every_level_we_built():
@@ -63,15 +82,23 @@ def test_ours_reverses():
 
 
 def test_a_switch_set_by_hand_wins():
-    given = dict(DEFAULTS, tracker='mpc_lag')
+    given = dict(NOT_GIVEN, tracker='mpc_lag')
     out = stacks.resolve(LEAGUE, 'ours', given, DEFAULTS)
     assert out['tracker'] == 'mpc_lag'
     assert out['costmap'] == 'own'
 
 
-def test_no_stack_changes_nothing():
-    given = dict(DEFAULTS, planner='hybrid')
-    assert stacks.resolve(LEAGUE, '', given, DEFAULTS) == given
+def test_a_switch_set_by_hand_to_its_fallback_still_wins():
+    # costmap:=nav2 is the fallback's value: still told apart from "not given".
+    out = stacks.resolve(LEAGUE, 'ours', dict(NOT_GIVEN, costmap='nav2'), DEFAULTS)
+    assert (out['costmap'], out['navigator'], out['tracker']) == ('nav2', 'own', 'mppi_lag')
+    out = stacks.resolve(LEAGUE, 'stock', dict(NOT_GIVEN, costmap='own'), DEFAULTS)
+    assert (out['costmap'], out['navigator']) == ('own', 'nav2')
+
+
+def test_no_stack_takes_each_switch_as_given_else_its_fallback():
+    out = stacks.resolve(LEAGUE, '', dict(NOT_GIVEN, planner='hybrid'), DEFAULTS)
+    assert out == dict(DEFAULTS, planner='hybrid')
 
 
 def test_unknown_names_are_refused():

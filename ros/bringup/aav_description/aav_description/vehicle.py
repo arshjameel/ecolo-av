@@ -337,8 +337,8 @@ def check_tracker(tracker, reversing=False):
     return name
 
 
-# Whose costmaps (costmap:=, docs/own-costmap.md): nav2 (the default, and the car's) or own
-# (aav_costmap, a trial beside Nav2's). Each one's raw local costmap, for aav_mppi_lag.
+# Whose costmaps (costmap:=, docs/own-costmap.md): nav2 (the car's) or own (aav_costmap:
+# the sim's, stack:=ours). Each one's raw local costmap, for aav_mppi_lag.
 COSTMAPS = ('nav2', 'own')
 DEFAULT_COSTMAP = 'nav2'
 COSTMAP_RAW_TOPICS = {'nav2': '/local_costmap/costmap_raw',
@@ -354,7 +354,7 @@ def check_costmap(costmap):
 
 
 # Whose navigator (navigator:=, docs/own-navigator.md): nav2 (bt_navigator and
-# waypoint_follower: the default, and the car's) or own (aav_navigator, a trial). Each
+# waypoint_follower: the car's) or own (aav_navigator: the sim's, stack:=ours). Each
 # one's actions, by Nav2's own short names: a goal sender asks navigator_action() for its.
 NAVIGATORS = ('nav2', 'own')
 DEFAULT_NAVIGATOR = 'nav2'

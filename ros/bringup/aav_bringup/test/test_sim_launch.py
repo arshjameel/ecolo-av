@@ -93,6 +93,60 @@ def names(actions):
     return found
 
 
+# The league (docs/league.md): ours is the simulator's default (Ben, 14 Nov: "Ours default
+# now, then delete"); stack:=stock is Nav2's; a switch given by hand wins over either.
+def stack_of(**args):
+    """Return what navigation.launch.py and ego are given: the stack's switches, resolved."""
+    sent = included(started(SIM, **args))
+    nav = sent['navigation.launch.py']
+    return {'planner': nav['planner'], 'controller': nav['controller'],
+            'tracker': nav['tracker'], 'costmap': nav['costmap'],
+            'navigator': nav['navigator'], 'smoother': nav['smoother'],
+            'behaviour': nav['behaviour'], 'road_ahead': sent['ego.launch.py']['road_ahead'],
+            'ndt_ekf': sent['localization.launch.py']['ndt_ekf'],
+            'kiss_ekf': sent['localization.launch.py']['kiss_ekf'],
+            'lattice_moves': nav['lattice_moves']}
+
+
+OURS = {'planner': 'own', 'controller': 'mppi', 'tracker': 'mppi_lag', 'costmap': 'own',
+        'navigator': 'own', 'smoother': 'nav2', 'behaviour': 'true', 'road_ahead': 'true',
+        'ndt_ekf': 'false', 'kiss_ekf': 'false', 'lattice_moves': 'nav2'}
+STOCK = {'planner': 'lattice', 'controller': 'mppi', 'tracker': 'none', 'costmap': 'nav2',
+         'navigator': 'nav2', 'smoother': 'nav2', 'behaviour': 'false', 'road_ahead': 'false',
+         'ndt_ekf': 'false', 'kiss_ekf': 'false', 'lattice_moves': 'nav2'}
+
+
+def test_the_default_stack_is_ours():
+    assert stack_of() == OURS
+    assert stack_of(stack='ours') == OURS
+
+
+def test_stack_stock_is_every_level_nav2s():
+    assert stack_of(stack='stock') == STOCK
+    # No stack at all: each switch's fallback, the champions' (Nav2's today).
+    assert stack_of(stack='') == STOCK
+
+
+def test_a_switch_given_by_hand_wins_over_the_stack():
+    # One piece Nav2's, the rest ours: costmap:=nav2 is told apart from "not given".
+    assert stack_of(costmap='nav2') == dict(OURS, costmap='nav2')
+    assert stack_of(behaviour='false') == dict(OURS, behaviour='false', road_ahead='false')
+    assert stack_of(tracker='none', controller='rpp') == dict(
+        OURS, tracker='none', controller='rpp')
+    # And one piece ours on Nav2's stack.
+    assert stack_of(stack='stock', planner='own') == dict(STOCK, planner='own')
+
+
+def test_the_stacks_switches_are_declared_empty_so_a_hand_set_one_is_seen():
+    declared = {a.name: a.default_value
+                for a in SIM.generate_launch_description().get_launch_arguments()}
+    for name in SIM.STACK_FALLBACK:
+        assert perform_substitutions(LaunchContext(), declared[name]) == '', name
+    assert perform_substitutions(LaunchContext(), declared['stack']) == 'ours'
+    # The car can reverse (Ben, 14 Nov): still the sim's default.
+    assert perform_substitutions(LaunchContext(), declared['reversing']) == 'true'
+
+
 def test_the_defaults_start_what_pixi_run_sim_always_has():
     actions = started(SIM)
     sent = included(actions)
@@ -117,7 +171,9 @@ def test_run_info_says_which_algorithms_the_run_uses():
     # The cockpit's Algorithms table (aav_run_info): the launch's own choices, resolved.
     info = parameters(node(started(SIM), 'run_info'))
     assert (info['profile'], info['planner'], info['controller'], info['tracker']) == (
-        'sim world:=empty', 'lattice', 'mppi', 'none')
+        'sim world:=empty', 'own', 'mppi', 'mppi_lag')
+    info = parameters(node(started(SIM, stack='stock'), 'run_info'))
+    assert (info['planner'], info['controller'], info['tracker']) == ('lattice', 'mppi', 'none')
     assert not any(info[k] for k in ('voxels', 'ndt', 'kiss_icp', 'amcl', 'lidar'))
     info = parameters(node(started(SIM, world='road', voxels='true', tracker='lqr',
                                    reversing='false', kiss_ekf='true'), 'run_info'))
