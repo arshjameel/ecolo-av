@@ -505,6 +505,23 @@ parameter, `fault.<sensor>`, of that sensor's node (`gazebo_gps`, `gazebo_imu`,
 `gazebo_radar`, `gazebo_camera`; the wheels' is `gazebo_adapter`'s). The logic is
 `aav_gazebo/faults.py`.
 
+### Actuator failures on purpose (15 Nov, TODO 159)
+
+The actuators break too, in `gazebo_adapter`, between the speed loop and the car:
+
+| Actuator | Faults | Stands for |
+|---|---|---|
+| `steer` | `stuck`: holds the angle it was asked for when it failed | a jammed linkage, a steering actuator that stopped following |
+| `throttle` | `stuck`: holds its level; the brake still works against it | a stuck DAC |
+| `brake` | `weak` (30 % of what is asked), `dead` (none) | a slipping or unpowered brake actuator |
+
+```bash
+pixi run sim-fault brake weak             # then: pixi run sim-fault brake ok
+pixi run sim-check --actuator-faults-only # each one measured: the safety case's numbers
+```
+
+What each did: [the safety case](safety-case.md), hazards 3, 7 and 8.
+
 ### The sensor watchdog
 
 `aav_safety`'s `sensor_watchdog` watches what Nav2 and the AI slot need. While one isn't

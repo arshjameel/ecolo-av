@@ -34,6 +34,10 @@ Publishes   gazebo/cmd_vel        geometry_msgs/Twist (bridged to /model/aav/cmd
 Sensor faults on purpose (faults.py, docs/full-simulation.md step 6): fault.odom (ok,
 stop, freeze, nan), set while it runs (pixi run sim-fault odom stop), changes what
 /vehicle/odom and /vehicle/wheels carry. The other sensors' faults are their nodes'.
+Actuator faults on purpose (TODO 159, the actuator model only): fault.steer (ok, stuck),
+fault.throttle (ok, stuck), fault.brake (ok, weak, dead), between the speed loop (or the
+firmware's outputs) and the car; /vehicle/steering, throttle and brake still say what was
+asked as their command, and what the car did as measured.
 
 The actuator model (actuator_model.py, docs/full-simulation.md step 3) sits between
 ego and Gazebo: a stand-in for the spine's speed loop turns ego's speed into throttle and
@@ -65,7 +69,8 @@ Parameters  actuator_model (true), speed_loop (default: the actuator model's spe
             cmd_timeout (0.2 s), wheelbase,
             wheel_radius, rendered (the world renders sensors), cameras (it draws the
             cameras: rendered unless simulator:=own), radar, lidar (what
-            /system/source announces), fault.odom (ok), speed_variance
+            /system/source announces), fault.odom, fault.steer, fault.throttle,
+            fault.brake (ok), speed_variance
 
 So ekf_local, ekf_global, navsat_transform and imu_filter_madgwick run in simulation
 with the same configs as on the car, and radar_clusters, Nav2's costmap and
@@ -203,6 +208,10 @@ class GazeboAdapter(Node):
         self.faults = {'odom': [faults.Fault('odom'), faults.Fault('odom')]}
         for sensor in self.faults:
             self.declare_parameter(f'fault.{sensor}', 'ok')
+        # The actuators' faults on purpose (TODO 159): between the speed loop and the car.
+        self.actuator_faults = faults.ActuatorFaults()
+        for actuator in faults.ACTUATORS:
+            self.declare_parameter(f'fault.{actuator}', 'ok')
         # Whole numbers too: `ros2 param set /gazebo_adapter payload 90`.
         whole = ParameterDescriptor(dynamic_typing=True)
         self.set_load(float(self.declare_parameter('payload', 0.0, whole).value),
@@ -251,6 +260,11 @@ class GazeboAdapter(Node):
             if not p.name.startswith('fault.'):
                 continue
             sensor = p.name[len('fault.'):]
+            if sensor in faults.ACTUATORS:
+                why = self.set_actuator_fault(sensor, p)
+                if why is not None:
+                    return SetParametersResult(successful=False, reason=why)
+                continue
             if sensor not in self.faults:
                 return SetParametersResult(
                     successful=False, reason=f"{sensor}'s fault is /{faults.NODES.get(sensor)}'s")
@@ -266,6 +280,21 @@ class GazeboAdapter(Node):
             else:
                 self.get_logger().warning(f'FAULT ON PURPOSE: {sensor} {mode}')
         return SetParametersResult(successful=True)
+
+    def set_actuator_fault(self, actuator, p):
+        """Set an actuator's fault from its parameter: None, or why it can't."""
+        mode = p.value if p.type_ == Parameter.Type.STRING else repr(p.value)
+        why = faults.check_actuator(actuator, mode)
+        if why is None and mode != 'ok' and not isinstance(self.model, Actuators):
+            why = 'actuator faults need the actuator model (actuator_model:=true)'
+        if why is not None:
+            return why
+        self.actuator_faults.switch(actuator, mode)
+        if mode == 'ok':
+            self.get_logger().info(f'fault cleared: {actuator} ok')
+        else:
+            self.get_logger().warning(f'FAULT ON PURPOSE: {actuator} {mode}')
+        return None
 
     def faulty(self, sensor, msg, nan=None, jump=None, stream=0):
         """Return msg through the sensor's fault (None: send nothing), stamped as msg."""
@@ -307,11 +336,17 @@ class GazeboAdapter(Node):
             demand = (Demand(throttle=self.cmd.throttle, brake=self.cmd.brake,
                              reverse=self.cmd.reverse) if fresh else SILENT_SPINE)
             steer = self.cmd.steering if self.cmd is not None else 0.0
-            s = self.state = self.model.drive(demand, steer, dt)
+            asked = steer
+            demand, steer = self.actuator_faults.apply(demand, steer)
+            s = self.state = replace(self.model.drive(demand, steer, dt), steer_command=asked)
         else:
             speed = self.cmd.speed if fresh else 0.0
             steer = self.cmd.steering_angle if self.cmd is not None else 0.0
-            s = self.state = self.model.step(speed, steer, dt)
+            if isinstance(self.model, Actuators):
+                s = self.state = self.model.step(speed, steer, dt,
+                                                 fault=self.actuator_faults.apply)
+            else:
+                s = self.state = self.model.step(speed, steer, dt)
 
         out = Twist()
         out.linear.x = s.speed

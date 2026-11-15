@@ -97,8 +97,9 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             /world/things within 1 m, standing; taken away,
                                             still listed 1.5 s on, gone after 5 s. One more
                                             run; --things-only skips the road world's run)
-    pixi run sim-check --behaviour        (the behaviour trial, behaviour:=true: an
-                                            obstacle in the lane and a Nav2 goal, each
+    pixi run sim-check --behaviour        (the behaviour trial, behaviour:=true: a wall
+                                            across the road (nothing to go round) and a
+                                            Nav2 goal, each
                                             slowed by the speed cap, and with -e ml
                                             --perception the stop sign too; one more run.
                                             --behaviour-only skips the road world's run)
@@ -129,6 +130,17 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             the bumper, the radar off; the car must go round
                                             it clear. Two runs: lidar_memory:=0, then 3 s;
                                             --low-box-only skips the road world's run)
+    pixi run sim-check --actuator-faults  (TODO 159, the empty world: the e-stop from 1 m/s
+                                            healthy, with a weak brake, a dead one and a
+                                            stuck throttle: metres to stand; the steering
+                                            stuck in a turn: does anything stop the car.
+                                            Evidence for docs/safety-case.md; one more run,
+                                            --actuator-faults-only skips the road world's)
+    pixi run sim-check --kerb             (TODO 119: a 0.3 m kerb across the road, the
+                                            planner blind to it; the stop zone must stop
+                                            the car before it and the local costmap mark
+                                            it. Two runs: the lidar alone, then with the
+                                            radar; --kerb-only skips the road world's run)
     pixi run sim-check --three-point      (reverse, TODO 174: a 6.5 m street of walls, a
                                             goal behind the car facing back; the car must
                                             turn in it, backing at least once, without
@@ -269,7 +281,7 @@ os.environ['GZ_IP'] = '127.0.0.1'
 os.environ['GZ_PARTITION'] = os.environ.get('AAV_SIM_PARTITION', f'sim_check_{DOMAIN}')
 
 from aav_description import vehicle  # noqa: E402
-from aav_gazebo.faults import NODES as FAULT_NODES  # noqa: E402
+from aav_gazebo.faults import ACTUATOR_NODE, NODES as FAULT_NODES  # noqa: E402
 from aav_interfaces.action import DriveToPoint, ScriptedDrive  # noqa: E402
 from aav_interfaces.msg import ActuatorState, SpineOutputs, VehicleStatus  # noqa: E402
 from aav_lane_geometry.msg import LaneGeometry  # noqa: E402
@@ -296,6 +308,7 @@ from std_srvs.srv import SetBool, Trigger  # noqa: E402
 import stop_points  # noqa: E402
 import stop_zone_compare  # noqa: E402
 import street_check  # noqa: E402
+from street_check import WALL_THICK  # noqa: E402
 import tf2_ros  # noqa: E402
 from vision_msgs.msg import Detection2DArray  # noqa: E402
 from visualization_msgs.msg import Marker  # noqa: E402
@@ -314,6 +327,7 @@ OBSTACLE = os.path.join(MODELS, 'obstacle', 'model.sdf')   # the bench's 1 m box
 POST = os.path.join(MODELS, 'post', 'model.sdf')           # 0.5 x 0.5 x 1.8 m: a person
 LOW_BOX = os.path.join(MODELS, 'low_box', 'model.sdf')     # 0.5 m: the lidar loses it close
 WALL = os.path.join(MODELS, 'wall', 'model.sdf')           # 10 x 0.3 x 2 m: a street's side
+KERB = os.path.join(MODELS, 'kerb', 'model.sdf')           # 10 x 0.3 x 0.3 m: a foot-tall kerb
 # What the radar adds to the road world's graph: absent with radar:=false.
 RADAR_TOPICS = ('/sensors/radar/points', '/perception/radar/clusters',
                 '/perception/radar/cluster_boxes')
@@ -1126,14 +1140,15 @@ def costmap_peak(grid, x, y, radius):
 
 
 def check_obstacle(probe, ahead=15.0, goal=30.0, model=OBSTACLE, depth=1.0, name='obstacle',
-                   costmap=False, backwards=False):
+                   costmap=False, backwards=False, across=False):
     """
     Put a model `ahead` m in the lane: the stop zone must stop the car before it.
 
     model is the bench's box (1 m deep) unless given; the lidar's check uses the post
     (0.5 m). With costmap, the local costmap must also mark it while the car stands there.
     backwards: the model and the goal are behind the car, which must back up to them, and
-    the stop zone behind the rear bumper must stop it.
+    the stop zone behind the rear bumper must stop it. across: the model turned a quarter
+    turn (a wall across the road: nothing to go round).
     """
     body = vehicle.load()['vehicle']['body']
     # base_link to the bumper the car drives towards: the front one, or the rear one.
@@ -1149,7 +1164,7 @@ def check_obstacle(probe, ahead=15.0, goal=30.0, model=OBSTACLE, depth=1.0, name
 
     # Its near face `ahead` m past the bumper, on the car's line.
     bx, by = x0 + (front + ahead + depth / 2.0) * c, y0 + (front + ahead + depth / 2.0) * s
-    if not place_model(model, bx, by, h):
+    if not place_model(model, bx, by, h + (math.pi / 2.0 if across else 0.0)):
         result(name, False, "could not place the box (the simulator's create service)")
         return
     newest = {}     # the local costmap, in odom: on the world's origin, as the car started
@@ -1324,6 +1339,23 @@ def check_plan_around(probe, ahead=15.0, goal=30.0, depth=1.0, model=OBSTACLE,
            f'longest, stop zone fired: {stop_zone}')
 
 
+def place_street(x0, y0, h, half, alongs, name):
+    """
+    Put a street's walls in the world (street_check.walls): their names, or None.
+
+    If one can't be placed, the ones placed go again and the check `name` fails.
+    """
+    names = []
+    for wall, wx, wy in street_check.walls(x0, y0, h, half, alongs):
+        if not place_model(WALL, wx, wy, h, name=wall):
+            result(name, False, f'could not place {wall}: {SERVICE_SAID[0]}')
+            for placed in names:
+                remove_model(placed)
+            return None
+        names.append(wall)
+    return names
+
+
 def check_three_point_turn(probe, width=6.5, goal=5.0):
     """
     Turn round in a narrow street: walls `width` m apart, a goal `goal` m on, facing back.
@@ -1338,19 +1370,9 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
     c, s = math.cos(h), math.sin(h)
     half = width / 2.0
     # Four 10 m walls a side, from 15 m behind to 25 m ahead: too long to drive round.
-    names = []
-    for side in (1.0, -1.0):
-        offset = half + 0.15                       # the wall's centre: its face at `half`
-        for k, along in enumerate((-10.0, 0.0, 10.0, 20.0)):
-            name = f'wall_{"l" if side > 0 else "r"}{k}'
-            wx = x0 + along * c - side * offset * s
-            wy = y0 + along * s + side * offset * c
-            if not place_model(WALL, wx, wy, h, name=name):
-                result('three-point turn', False, f'could not place {name}: {SERVICE_SAID[0]}')
-                for placed in names:
-                    remove_model(placed)
-                return
-            names.append(name)
+    names = place_street(x0, y0, h, half, (-10.0, 0.0, 10.0, 20.0), 'three-point turn')
+    if names is None:
+        return
     probe.spin_for(3.0)          # the lidar sees the walls before the planner is asked
     start = len(probe.track)
     gx, gy, gyaw = x0 + goal * c, y0 + goal * s, math.atan2(-s, -c)
@@ -1407,6 +1429,19 @@ def check_stop_zone_shadow(probe, delay_limit=0.3, missed_limit=0.2):
            f'agree {100 * c.agree:.1f} % of {end - start:.0f} s; first stop {delay}; '
            f'clear while Nav2 stopped {c.missed:.2f} s, stopped alone {c.extra:.2f} s; '
            f'stops: Nav2 {c.nav2_stops}, ours {c.our_stops}')
+
+
+def check_kerb(probe, sensors):
+    """
+    Lay a foot-tall kerb across the road (TODO 119), the planner blind to it: is it seen.
+
+    The lidar keeps only points 0.3 m or more above the road (GROUND_CLEARANCE), the
+    kerb's own height. It must stop the car before the kerb as check_obstacle's box, and
+    the local costmap must mark it; our simulator stops a car that drives into a step
+    over 0.1 m as at a wall. sensors: the words for which ran (the lidar, the radar).
+    """
+    check_obstacle(probe, model=KERB, depth=0.3, across=True, costmap=True,
+                   name=f'kerb, 0.3 m ({sensors})')
 
 
 def check_low_box(probe):
@@ -1661,7 +1696,7 @@ def signal_watchdog(mode):
 def fault_client(probe, sensor):
     """Return a parameter client for the node that takes this sensor's fault."""
     clients = probe.__dict__.setdefault('fault_clients', {})
-    node = FAULT_NODES[sensor]
+    node = FAULT_NODES.get(sensor, ACTUATOR_NODE)     # an actuator's: gazebo_adapter
     if node not in clients:
         clients[node] = AsyncParameterClient(probe, node)
     return clients[node]
@@ -1982,6 +2017,127 @@ def check_estop(probe, spine, hardware=False):
         held(probe, 1.0, press=publisher)
     STOPS[(stop, 'spine' if spine else 'direct')] = (brake, stood, v0)
     result(name, ok, detail)
+
+
+def roll_out(probe, x0, y0, press, limit=30.0):
+    """
+    Press the e-stop until the car stands, at most `limit` s of the sim's time.
+
+    Return (metres from (x0, y0) to where it stood or was at the end, s, standing).
+    """
+    t0 = probe.now()
+
+    def still():
+        press.publish(Bool(data=True))
+        return probe.now() > t0 + 0.2 and abs(probe.speed()) < STILL
+
+    standing = probe.spin_for(limit, still)
+    x, y = probe.xy(probe.truth)
+    return math.hypot(x - x0, y - y0), probe.now() - t0, standing
+
+
+def actuator_stop(probe, fault):
+    """
+    One e-stop from about 1 m/s with an actuator fault (None: healthy): its result line.
+
+    The fault goes on 0.5 s before the press, so a stuck throttle holds the cruise's.
+    Mended afterwards, the e-stop let go and the drive ended.
+    """
+    name = f'actuator {" ".join(fault)}: the e-stop' if fault else 'actuator healthy: the e-stop'
+    handle = get_going(probe, False)
+    if handle is None:
+        result(name, False, 'the car would not get going')
+        return None
+    if fault and not set_fault(probe, *fault):
+        result(name, False, f'gazebo_adapter refused {" ".join(fault)}')
+        finish(probe, handle)
+        return None
+    probe.spin_for(0.5)
+    v0 = abs(probe.speed())
+    x0, y0 = probe.xy(probe.truth)
+    metres, took, standing = roll_out(probe, x0, y0, probe.estop)
+    v_end = abs(probe.speed())
+    if fault:
+        set_fault(probe, fault[0], 'ok')
+    probe.spin_for(10.0, lambda: abs(probe.speed()) < STILL)
+    held(probe, 1.0, press=probe.estop)
+    finish(probe, handle)
+    return name, v0, metres, took, standing, v_end
+
+
+TURNING = 0.06     # rad/s: the car is in the bend (check_actuator_faults)
+
+
+def check_actuator_faults(probe, react=40.0):
+    """
+    Actuator faults on purpose (TODO 159, faults.ACTUATORS): what each does, as evidence.
+
+    The e-stop from about 1 m/s, healthy, then with a weak brake, a dead one and a stuck
+    throttle: how far the car rolls and whether it stands within 30 s. Then the steering
+    stuck in a turn, Nav2 driving to a goal round the corner: does anything stop the car
+    in `react` s, and how far off the straight to the goal it gets. Each line is evidence
+    for docs/safety-case.md; none fails because a layer is missing (the safety case says
+    which are), only when the fault could not be set or the car would not drive.
+    """
+    if not fault_client(probe, 'steer').wait_for_services(timeout_sec=20.0):
+        result('actuator faults', False, "no gazebo_adapter parameters: can't set a fault")
+        return
+    base = None
+    for fault in (None, ('brake', 'weak'), ('brake', 'dead'), ('throttle', 'stuck')):
+        out = actuator_stop(probe, fault)
+        if out is None:
+            continue
+        name, v0, metres, took, standing, v_end = out
+        base = metres if fault is None else base
+        than = f' ({metres / base:.1f} x the healthy {base:.2f} m)' if base and fault else ''
+        ended = (f'stood still after {took:.1f} s' if standing
+                 else f'still at {v_end:.2f} m/s after {took:.0f} s')
+        result(name, True, f'from {v0:.2f} m/s: {metres:.2f} m{than}, {ended}')
+    # The steering stuck in a turn: a goal 10 m on and 10 m left, facing left (a bend of
+    # about 10 m radius: 0.1 rad/s at 1 m/s), stuck once the car turns at TURNING.
+    x0, y0 = probe.xy(probe.truth)
+    h = yaw_of(probe.truth)
+    c, s = math.cos(h), math.sin(h)
+    gx, gy = x0 + 10.0 * c - 10.0 * s, y0 + 10.0 * s + 10.0 * c
+    done = probe.go_to(gx, gy, h + math.pi / 2.0)
+    name = 'actuator steer stuck: in a turn'
+    if done is None:
+        result(name, False, 'no navigator, or it refused the goal')
+        return
+    turning = probe.spin_for(60.0, lambda: abs(probe.truth.twist.twist.angular.z) > TURNING
+                             and probe.speed() > 0.3)
+    if not turning or not set_fault(probe, 'steer', 'stuck'):
+        result(name, False, 'the car never turned' if not turning else 'refused the fault')
+        probe.goal.cancel_goal_async()
+        return
+    t0, start = probe.now(), len(probe.track)
+    rate = probe.truth.twist.twist.angular.z
+    probe.spin_for(react)
+    run = probe.track[start:]
+    # Standing still for 3 s or more (a change of direction passes through 0 too).
+    stood, since = None, None
+    for t, *_, v in run:
+        since = (since if since is not None else t) if abs(v) < STILL else None
+        if since is not None and t - since >= 3.0:
+            stood = since - t0
+            break
+    # How far it went from the straight line to the goal, and how far it drove.
+    dx, dy = gx - x0, gy - y0
+    length = math.hypot(dx, dy)
+    off = max((abs((x - x0) * dy - (y - y0) * dx) / length for _, x, y, *_ in run), default=0.0)
+    driven = sum(math.hypot(b[1] - a[1], b[2] - a[2]) for a, b in zip(run, run[1:]))
+    status = done.result().status if done.done() else None
+    set_fault(probe, 'steer', 'ok')
+    if not done.done():
+        probe.goal.cancel_goal_async()
+    probe.spin_for(10.0, lambda: abs(probe.speed()) < STILL)
+    why = ('the goal ended (status {})'.format(status) if status is not None
+           else 'nothing ended the goal')
+    still = f'stood still {stood:.0f} s after it' if stood is not None else 'never stood 3 s'
+    result(name, True,
+           f'stuck turning at {rate:+.2f} rad/s: {still} (watched {react:.0f} s); drove '
+           f'{driven:.1f} m, {street_check.turns(run)} changes of direction, up to {off:.1f} m '
+           f'off the straight to the goal; {why}')
 
 
 def check_not_armed(probe):
@@ -2814,8 +2970,12 @@ def check_behaviour(probe, sign=False):
             speed_at.append(abs(probe.speed()))
         return False
 
+    # A wall across the road (TODO 162): with room beside a box, the follower's own costmap
+    # steers round it before the cap binds (at 1 m/s only in the last 2 m), and there is
+    # no stop to score. A parked box to pass is --behaviour-things' leg.
     timer = probe.create_timer(0.05, watch)
-    check_obstacle(probe, name='behaviour: obstacle (the stop zone)')
+    check_obstacle(probe, model=WALL, depth=WALL_THICK, across=True,
+                   name='behaviour: obstacle (the stop zone)')
     probe.destroy_timer(timer)
     seen = behaviour_seen(probe, since)
     at = f'{speed_at[0]:.2f} m/s' if speed_at else 'never'
@@ -3067,7 +3227,8 @@ def main():
             '--stop-point-only', '--loaded-stop-only', '--behaviour-only', '--lane-only',
             '--things-only', '--behaviour-things-only', '--legs-only',
             '--three-point-only', '--moving-only', '--low-box-only',
-            '--stop-zone-shadow-only', '--thing-names-only'} & set(args):
+            '--stop-zone-shadow-only', '--thing-names-only',
+            '--actuator-faults-only', '--kerb-only'} & set(args):
         # With --obstacle the planner is blind to the box, so the stop zone must stop the car.
         session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}']
                 + (['plan_around:=false'] if '--obstacle' in args else []),
@@ -3099,6 +3260,22 @@ def main():
         logs.append(f'{stem}-ghost{ext}')
         session(['ghost:=true', f'lidar:={str(lidar).lower()}'], [check_ghost], logs[-1],
                 'ghost')
+    if {'--kerb', '--kerb-only'} & set(args):
+        # Two runs (TODO 119): the lidar alone, then with the radar, as on the car. The
+        # planner is blind to the kerb (plan_around:=false): only seeing it stops the car.
+        stem, ext = os.path.splitext(log)
+        for radar_on, words in ((False, 'the lidar'), (True, 'the lidar and the radar')):
+            logs.append(f'{stem}-kerb-{"radar" if radar_on else "lidar"}{ext}')
+            session(['lidar:=true', f'radar:={str(radar_on).lower()}', 'plan_around:=false'],
+                    [lambda probe, w=words: check_kerb(probe, w)], logs[-1], f'kerb, {words}',
+                    ignore=() if radar_on else RADAR_TOPICS, radar=radar_on)
+    if {'--actuator-faults', '--actuator-faults-only'} & set(args):
+        # Its own run, the empty world (room to roll and to circle): the actuators' faults
+        # on purpose (TODO 159), gazebo_adapter's. No lidar or radar: a lighter run.
+        stem, ext = os.path.splitext(log)
+        logs.append(f'{stem}-actuator-faults{ext}')
+        session(['lidar:=false', 'radar:=false'], [check_actuator_faults], logs[-1],
+                'actuator faults', world='empty')
     if '--faults' in args:
         # Its own run: a fault spoils the car's software for a while, and the camera's
         # picture goes through gazebo_adapter (faults:=true). No lidar: a lighter run.

@@ -397,9 +397,12 @@ def launch_setup(context):
                 esp32=arg('esp32'), esp32_loop=arg('esp32_loop'), simulator=simulator),
         include(context, 'aav_command_mux', 'mux.launch.py', use_sim_time='true',
                 sensor_lock=flag['watchdog'], geofence_lock=flag['geofence']),
-        # behaviour:=true: the road ahead's writer runs, so ego holds Nav2 to it.
+        # behaviour:=true: the road ahead's writer runs, so ego holds Nav2 to it. Its writer
+        # runs inside navigation: with nav:=false there is no road ahead, and ego held the
+        # point driver at 0 for ever waiting for one (TODO 94, 15 Nov).
         include(context, 'aav_ego', 'ego.launch.py', use_sim_time='true',
-                sim_max_speed=sim_speed, road_ahead=str(flag['behaviour']).lower()),
+                sim_max_speed=sim_speed,
+                road_ahead=str(flag['behaviour'] and flag['nav']).lower()),
         # ego's commands go to Gazebo (gazebo_adapter, or spine_bridge with spine:=true)
         # only while every source is SIM (aav_io_mux).
         include(context, 'aav_io_mux', 'io_mux.launch.py', target='sim', source='sim',

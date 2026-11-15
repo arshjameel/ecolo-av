@@ -60,5 +60,6 @@ cargo bench -p lattice-planner                               # the lot's and cam
 cargo run --release -p lattice-planner --example moves       # Nav2's moves against the smooth ones, the lot tour
 cargo run --release -p lattice-planner --example hybrid      # Hybrid-A* against the lattice, the lot tour and the maps
 W_DATA=0.02 cargo run --release -p lattice-planner --example staircase   # a road at an angle: the plan's own swing (TODO 168)
+cargo run --release -p lattice-planner --example cusps       # the turns in a street by cusp_penalty (TODO 174)
 pixi run build && colcon test --packages-select aav_planner
 ```

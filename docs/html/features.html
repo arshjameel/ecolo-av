@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">83 min read · 15 sections</div></header>
+<div class="meta">87 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -503,7 +503,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tbody>
 <tr>
 <td><a href="league.html">The league</a> (<code>stack:=</code>, <code>aav_description</code> <code>config/stacks.yaml</code>, <code>stacks.py</code>)</td>
-<td>Ben, 13 Nov: "Thats to many switches" and "picking the best algorithms in each location". One file names each level's champion and challengers; <code>stack:=best</code>, <code>car</code>, <code>stock</code> or <code>ours</code> sets every level at once in <code>sim.launch.py</code>, and a switch given by hand still wins. Nothing is deleted: a loser stays a challenger. Since 14 Nov (Ben: "Ours default now, then delete") <code>stack:=ours</code> is the simulator's default and <code>stack:=stock</code> gives Nav2's; the stack's switches are declared empty, so any value given by hand wins (<code>costmap:=nav2</code> too). The car keeps its own</td>
+<td>Ben, 13 Nov: "Thats to many switches" and "picking the best algorithms in each location". One file names each level's champion and challengers; <code>stack:=best</code>, <code>car</code>, <code>stock</code> or <code>ours</code> sets every level at once in <code>sim.launch.py</code>, and a switch given by hand still wins. Nothing is deleted: a loser stays a challenger. Since 14 Nov (Ben: "Ours default now, then delete") <code>stack:=ours</code> is the simulator's default and <code>stack:=stock</code> gives Nav2's; the stack's switches are declared empty, so any value given by hand wins (<code>costmap:=nav2</code> too). The car keeps its own. 15 Nov, one switch per level (Fable's "36 switches to 8"): <code>pose:=</code>, <code>path:=</code>, <code>steer:=</code>, <code>lanes:=</code> pick a level's option by its league name, over the stack's pick</td>
 <td>Ben</td>
 <td>2026-11-14</td>
 <td>built</td>
@@ -580,7 +580,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="own-planner.html">Our own planner</a> (<code>aav_planner</code>, <code>planner:=own</code>)</td>
-<td>Ben, 8 Nov: move off Nav2 one piece at a time; the planner after the costmap. Nav2's State Lattice (our default) ported to Rust: the same primitives file, nav2.yaml's penalties, the Reeds-Shepp finish and the smoother, on Nav2's global costmap or ours. It answers Nav2's own ComputePathToPose, so the behaviour trees call it and nothing else changes. Test lot, 3 runs each: 12 of 12 legs as Nav2's lattice, the same paths and times; campus: about 20 % slower on 250 m legs (both lost the same legs to MPPI). Nav2 stays the default 14 Nov: a global costmap older than 2 s (planner_server's 1 s wait plus a publish period) is not planned on: TIMEOUT, as Nav2's PlannerTimedOut.</td>
+<td>Ben, 8 Nov: move off Nav2 one piece at a time; the planner after the costmap. Nav2's State Lattice (our default) ported to Rust: the same primitives file, nav2.yaml's penalties, the Reeds-Shepp finish and the smoother, on Nav2's global costmap or ours. It answers Nav2's own ComputePathToPose, so the behaviour trees call it and nothing else changes. Test lot, 3 runs each: 12 of 12 legs as Nav2's lattice, the same paths and times; campus: about 20 % slower on 250 m legs (both lost the same legs to MPPI). Nav2 stays the default 14 Nov: a global costmap older than 2 s (planner_server's 1 s wait plus a publish period) is not planned on: TIMEOUT, as Nav2's PlannerTimedOut. 15 Nov (TODO 174): a change of gear has a price (<code>cusp_penalty</code>, 4 m), and the last Reeds-Shepp curve may not change gear: a three-point turn in a 6.5 m street drove 4 changes of direction instead of 9</td>
 <td>Ben</td>
 <td>2026-11-08</td>
 <td>sim</td>
@@ -1230,8 +1230,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td>Sensor failures on purpose (<code>pixi run sim-fault</code>)</td>
-<td>Breaks a sensor in Gazebo, to prove the watchdog catches it</td>
+<td>Sensor and actuator failures on purpose (<code>pixi run sim-fault</code>; <code>sim-check --faults</code>, <code>--actuator-faults</code>)</td>
+<td>Breaks a sensor in the sim, to prove the watchdog catches it. Since 15 Nov (TODO 159) the actuators too, in <code>gazebo_adapter</code>: the steering or throttle stuck, the brake weak or dead, so the safety case has a number for hazards 3, 7 and 8 (a dead brake rolls 9.7 m after the e-stop from 0.9 m/s; stuck steering goes unnoticed)</td>
 <td>Ben</td>
 <td>2026-10-15</td>
 <td>sim</td>
@@ -1329,14 +1329,14 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="hud.html#the-hardware-panel">Hardware panel</a> (<code>hw_panel</code>, <code>pixi run hw-panel</code>): every sensor's number from its own node with OK / STALE / NEVER, and very simple buttons (Speed +/-, steering, CENTRE, STOP, hold Space to drive, E-STOP) through twist_mux's buttons slot (45), ego and the spine; speed only on SIM and BENCH (1.0 m/s), off on the real car until TODO 49b, with the reason on screen; an e-stop, a takeover or a source change zeroes it. Since 1 Nov in the screens' theme (<code>theme:</code> mocha or latte)</td>
-<td>Test every sensor and work every actuator from one screen with simple buttons (Ben, 29 Oct: "one screen just to test all the sensors and operate all the actuators", "We need very simple buttons"), without going around the car's caps and e-stop</td>
+<td><a href="hud.html#the-hardware-panel">Hardware panel</a> (<code>hw_panel</code>, <code>pixi run hw-panel</code>): every sensor's number from its own node with OK / STALE / NEVER, and very simple buttons (Speed +/-, steering, CENTRE, STOP, hold Space to drive, E-STOP) through twist_mux's buttons slot (45), ego and the spine; speed only on SIM and BENCH (1.0 m/s), off on the real car until TODO 49b, with the reason on screen; an e-stop, a takeover or a source change zeroes it. Since 1 Nov in the screens' theme (<code>theme:</code> mocha or latte). 15 Nov, a fourth page, <strong>MEASURE</strong> (TODO 71): speed, distance, top and mean speed since RESET, a tape run typed in, and the wheel diameter's check (know-the-car test 3: PASS within 1 %, or the diameter to copy); SAVE writes a file, never vehicle.yaml</td>
+<td>Test every sensor and work every actuator from one screen with simple buttons (Ben, 29 Oct: "one screen just to test all the sensors and operate all the actuators", "We need very simple buttons"), without going around the car's caps and e-stop; and measure the car there too, so <code>wheel_diameter</code> is fitted on car day without a laptop's maths</td>
 <td>Ben</td>
 <td>2026-10-29</td>
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="../designs/2026-11-05_own-simulator.md">Developer window</a> (<code>aav_dev_window</code>, <code>pixi run dev-window</code>, Bevy): Ben's layout: the scene, console, what the lidar sees from the car with NDT's cells going dark to light purple, one map you click, and the keys. Pretend data or live ROS, as drop-ins</td>
+<td><a href="../designs/2026-11-05_own-simulator.md">Developer window</a> (<code>aav_dev_window</code>, <code>pixi run dev-window</code>, Bevy): Ben's layout: the scene, console, what the lidar sees from the car with NDT's cells going dark to light purple, one map you click, and the keys. Pretend data or live ROS, as drop-ins. 15 Nov (TODO 114): CANCEL THE GOAL (the navigator's cancel service) and SWAP (<code>aav_track</code>'s follower, live, in the simulator), behind the same gates as a goal</td>
 <td>One screen for developers instead of many windows, with widgets a raylib screen would have to draw by hand. It is also the first step to our own simulator</td>
 <td>Ben</td>
 <td>2026-11-05</td>
@@ -1551,6 +1551,34 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Numbers for how well the car sped up, held its speed and stopped on B, the same for Gazebo and car runs; a tape-measured stop splits the GPS error from the control error</td>
 <td>Ben</td>
 <td>2026-10-26</td>
+<td>built</td>
+</tr>
+<tr>
+<td><a href="../../README.md">Rerun, a trial viewer</a> (<code>pixi run -e rerun view-bag &lt;drive&gt;.mcap</code>)</td>
+<td>TODO 197, Ben, 15 Nov: "maybe if its better then what we already ahve": Rerun opens our recordings as they are (it reads ROS 2 messages from their definitions), frame by frame, beside Foxglove, Lichtblick and the dev window. Its own environment, laptops only. Kept only if it shows a bad drive faster</td>
+<td>Ben</td>
+<td>2026-11-15</td>
+<td>built</td>
+</tr>
+<tr>
+<td>A recording's plans, followed again (<code>cargo run --release -p mppi-lag --example follow_plan -- &lt;drive&gt;.mcap</code>)</td>
+<td>TODO 202: the sim's or the car's own plans (<code>/plan</code> in a <code>tools/record.sh</code> recording) driven again offline by MPPI on the lag model, without ROS: a bad stretch of a drive can be tried with a changed setting in seconds, and each plan gets the same table as the planner's test paths (how far off, steering flips)</td>
+<td>Ben</td>
+<td>2026-11-15</td>
+<td>built</td>
+</tr>
+<tr>
+<td>Benchmarks (<code>cargo bench -p mppi-lag</code>, <code>lattice-planner</code>, <code>costmap</code>, <code>ndt-core</code>)</td>
+<td>TODO 203: the timing examples print one number; criterion warms up, repeats until the spread is small, and says whether a change made a hot path slower: MPPI's tick (1000 and 2000 samples, with a lane or not), the planner's lot and campus legs (lattice and Hybrid-A*, forward and reversing), the costmap's local and global updates, an NDT match and its cubes</td>
+<td>Ben</td>
+<td>2026-11-15</td>
+<td>built</td>
+</tr>
+<tr>
+<td><a href="mppi-lag.html">Where MPPI's tick goes</a> (<code>aav_mppi_lag</code>, built with <code>--cmake-args -DMPPI_LAG_FEATURES=trace</code> or <code>tracy</code>, run with <code>AAV_TRACE=1</code> or <code>AAV_TRACE=tracy</code>)</td>
+<td>TODO 196: see where a Rust node's time goes, live, against its budget (MPPI's 50 ms). Each stage of a tick (<code>mppi.rollout</code>, <code>mppi.critics</code>, <code>mppi.weigh</code>, <code>mppi.smooth</code>, inside <code>mppi.tick</code>) is a <code>tracing</code> span, timed on stderr or in the Tracy viewer. Off by default: without the feature the spans are nothing and the crate keeps no dependencies</td>
+<td>Ben</td>
+<td>2026-11-15</td>
 <td>built</td>
 </tr>
 <tr>

@@ -456,6 +456,10 @@ planner_server:
       max_planning_time: 5.0
       reverse_penalty: 2.0                  # as Hybrid's
       change_penalty: 0.05
+      cusp_penalty: 4.0                     # ours only (planner:=own; Nav2's ignores it): a
+                                            # change of gear costs 4 m of driving, and the last
+                                            # curve may not change gear. 0: Nav2's way. A 6.5 m
+                                            # street's turn: 9 changes to 4 (TODO 174)
       non_straight_penalty: 1.05
       cost_penalty: 2.0
       retrospective_penalty: 0.015

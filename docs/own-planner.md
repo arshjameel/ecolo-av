@@ -101,6 +101,38 @@ inflation). M4 Max, the best of 5.
 The tests check every path: clear of walls, starts at the start, ends at the goal, no
 turn under 80 % of the turning radius, no reversing when forward only.
 
+### A price on changing gear (`cusp_penalty`, 15 Nov, TODO 174)
+
+Nav2 prices a backward move (`reverse_penalty`), never the stop and start between gears.
+In a narrow street that gave turns with 5 or 6 cusps, and the car drove them all
+(`sim-check --three-point`: 7 changes of direction). Two parts, ours only:
+
+| Part | What |
+|---|---|
+| `cusp_penalty` (m) | each change between forward and back costs that many metres of straight driving |
+| The last curve | with a price set, a Reeds-Shepp curve to the goal that changes gear is refused; the search, which prices each change, finds the end instead |
+
+Offline (`cargo run --release -p lattice-planner --example cusps`), M4 Max:
+
+| Street | `cusp_penalty` 0 (Nav2's way) | 2 m | 4 m | 8 m |
+|---|---|---|---|---|
+| 8 m road, U-turn | 5 cusps, 13.3 m, 2 ms | 2, 16.1 m, 62 ms | 2, 16.0 m, 100 ms | 2, 15.8 m, 69 ms |
+| 6.5 m street (`--three-point`'s) | 6 cusps, 16.5 m, 12 ms | 3, 16.3 m, 55 ms | 3, 16.3 m, 71 ms | 3, 16.3 m, 125 ms |
+| parking-lot exit | 1 cusp | 1 | 1 | 1 |
+
+A price alone (the last curve still free) gave 3-5 cusps, no better than chance.
+
+In our simulator (15 Nov, all ours, reversing), 4 m against 0:
+
+| Test | 0 (Nav2's way) | 4 m |
+|---|---|---|
+| `sim-check --three-point` (6.5 m street) | 9 changes of direction (7 earlier that day) | **4 and 4** (2 runs), 0.65 m from the walls |
+| the lot tour (`measure controllers`, 3 and 2 runs) | 12/12, sway 0.031, off the path 0.21 m, worst 1.57 m; turn back 30 s, 2 reversals | 8/8, sway 0.031, 0.21 m, worst 0.98 m; turn back 29-30 s, 2 reversals |
+| the campus tour (3 runs and 1) | 9/9, sway 0.231, 0.22 m | 3/3, sway 0.225, 0.22 m |
+
+**4 m is our planner's default since 15 Nov** (`nav2.yaml`'s Lattice block,
+`cusp_penalty`; Nav2's planner ignores it). Set 0 for Nav2's way.
+
 ## In our simulator (8 Nov)
 
 `measure controllers --planners lattice own --reversing`, MPPI follows, 3 runs each.

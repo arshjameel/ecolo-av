@@ -7,7 +7,7 @@
 <!-- Generated from docs/league.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The league</h1>
-<div class="meta">3 min read · 3 sections</div></header>
+<div class="meta">4 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -117,7 +117,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-stacks">The stacks</a><a href="#how-a-challenger-wins">How a challenger wins</a><a href="#where-things-are">Where things are</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-stacks">The stacks</a><a href="#one-switch-per-level-15-nov">One switch per level (15 Nov)</a><a href="#how-a-challenger-wins">How a challenger wins</a><a href="#where-things-are">Where things are</a></nav>
 <div class="lead"><p>One file says <strong>what the car is</strong>: each level's champion, and the challengers
 waiting to beat it.</p>
 <pre class="highlight"><code class="language-text">  config/stacks.yaml (aav_description)
@@ -187,6 +187,67 @@ pixi run sim stack:=stock planner:=own           # Nav2's, but our planner</code
 stack's choice". Any value you give is yours, even one that matches the champion:
 <code>costmap:=nav2</code> wins over <code>stack:=ours</code>.</p>
 </div>
+</section>
+<section class="card"><h2 id="one-switch-per-level-15-nov">One switch per level (15 Nov)</h2>
+<p>Fable's clean-up (one shape, "From 36 switches to 8"): pick a level's option by its name in
+<code>stacks.yaml</code>, not by the switches under it.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Switch</th>
+<th>Options</th>
+<th>Sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pose:=</code></td>
+<td><code>ekf</code>, <code>ndt_ekf</code>, <code>kiss_ekf</code></td>
+<td><code>ndt_ekf</code>, <code>kiss_ekf</code></td>
+</tr>
+<tr>
+<td><code>path:=</code></td>
+<td><code>lattice</code>, <code>lattice_rs</code>, <code>lattice_smooth</code>, <code>lattice_rs_smooth</code>, <code>hybrid</code>, <code>hybrid_rs</code>, <code>lattice_rs_strong</code>, <code>diffusion</code></td>
+<td><code>planner</code>, <code>planner_search</code>, <code>plan_smoothing</code>, <code>lattice_moves</code></td>
+</tr>
+<tr>
+<td><code>steer:=</code></td>
+<td><code>mppi</code>, <code>mppi_lag</code>, <code>mppi_lag_calm</code>, <code>mpc_lag</code>, <code>rpp</code></td>
+<td><code>controller</code>, <code>tracker</code>, <code>map_correction</code>, <code>mppi_lag_steer_gamma</code></td>
+</tr>
+<tr>
+<td><code>lanes:=</code></td>
+<td><code>off</code>, <code>ramp</code></td>
+<td><code>lane_costs</code></td>
+</tr>
+</tbody>
+</table></div>
+<pre class="highlight"><code class="language-sh">pixi run sim world:=campus path:=hybrid_rs       # all ours, but our Hybrid-A*
+pixi run sim stack:=stock steer:=mppi_lag_calm   # Nav2's, but our calm MPPI</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who wins</th>
+<th>Over</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a single switch by hand (<code>planner_search:=lattice</code>)</td>
+<td>everything</td>
+</tr>
+<tr>
+<td>a level switch (<code>path:=hybrid_rs</code>)</td>
+<td>the stack's pick for that level: the level's other switches go back to their fallback (<code>plan_smoothing</code> to <code>nav2</code>)</td>
+</tr>
+<tr>
+<td>the stack (<code>stack:=ours</code>)</td>
+<td>the fallback (Nav2's)</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>costmap</code>, <code>navigator</code>, <code>smoother</code> and <code>behaviour</code> are switches already (by <code>own</code>, <code>true</code>...),
+so they stay as they are. The old switches keep working.</p>
 </section>
 <section class="card"><h2 id="how-a-challenger-wins">How a challenger wins</h2>
 <div class="table-wrap"><table>

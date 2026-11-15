@@ -393,7 +393,7 @@ straight and a bend at 2.5 m/s, less with a sim-like pose, none backing up.
 
 | Left | Numbers |
 |---|---|
-| **The simulator** must confirm: the campus tour, all ours | without ROS: swing 0.18 to 0.11 m, sway 0.59 to 0.26 m/s². Done 15 Nov: 0.66 to 0.21-0.23 m/s²; the rest in [The sway that was left](#the-sway-that-was-left) |
+| **The simulator** confirmed (15 Nov, all ours, 3 runs each, twice: drive-k and TODO 164's re-score) | sway, lot 0.055 → 0.030-0.031 m/s², campus 0.66 → 0.21-0.23; every leg reached in the re-score (lot 12/12, campus 9/9); off the path 0.21-0.22 m mean. Nav2: 0.017 and 0.12 |
 | The target (drive-j, 15 Nov, before both fixes): Nav2's sway | campus at 2.5 m/s: ours 0.662, Nav2 0.123 m/s²; the lot: ours 0.055, Nav2 0.017 m/s². Keep ours' 100% legs and its off-path (0.13 m campus, 0.12 m lot) |
 | The planner's jogs: 16 lattice headings make a road at an angle a staircase (±8° every ~10 m) | the plan itself swings 0.13 m at 2.4 m/s, both stacks; most of what is left |
 | **Fixed too:** our navigator planned again every second; each new plan moved a little. Now it keeps a clear to-pose path up to 10 s, as the trees' KeepAValidPath (`keep_path_age`, [own navigator](own-navigator.md)) | without ROS, the lot's left turn at 1 m/s: sway 0.075 (the sim's, ours) to 0.038 m/s²; a plan kept all the way, 0.025; Nav2 in the sim 0.017 |

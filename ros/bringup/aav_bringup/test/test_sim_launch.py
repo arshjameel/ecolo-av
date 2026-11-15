@@ -167,6 +167,14 @@ def test_a_switch_given_by_hand_wins_over_the_stack():
     assert stack_of(stack='stock', planner='own') == dict(STOCK, planner='own')
 
 
+def test_ego_waits_for_the_road_ahead_only_where_its_writer_runs():
+    # The behaviour node writes /world/road_ahead inside navigation: with nav:=false ego
+    # must not wait for it, or it holds the point driver at 0 (TODO 94, found 15 Nov).
+    sent = included(started(SIM, nav='false'))
+    assert sent['ego.launch.py']['road_ahead'] == 'false'
+    assert included(started(SIM))['ego.launch.py']['road_ahead'] == 'true'
+
+
 def test_the_stacks_switches_are_declared_empty_so_a_hand_set_one_is_seen():
     declared = {a.name: a.default_value
                 for a in SIM.generate_launch_description().get_launch_arguments()}

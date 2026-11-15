@@ -1642,7 +1642,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/track/set_parameters</code></td>
 <td><code>rcl_interfaces/srv/SetParameters</code></td>
 <td><code>track</code></td>
-<td>aav_track's own parameter service (every ROS node has one). Listed for the one change that matters - tracker, swapped live (a trial, docs/trials.md) - refused unless the node runs with live_swap:=true, which only sim.launch.py sets. Called by the debug HUD's keys 1-4 (debug_hud, aav_hud), only while /system/source says SIM, by Lichtblick's cockpit layout (its Call Service panel, through foxglove_bridge on 127.0.0.1), and by <code>ros2 param set /track tracker lqr</code>.</td>
+<td>aav_track's own parameter service (every ROS node has one). Listed for the one change that matters - tracker, swapped live (a trial, docs/trials.md) - refused unless the node runs with live_swap:=true, which only sim.launch.py sets. Called by the debug HUD's keys 1-4 (debug_hud, aav_hud) and the developer window's SWAP (dev_window, --live, TODO 114), only while /system/source says SIM, by Lichtblick's cockpit layout (its Call Service panel, through foxglove_bridge on 127.0.0.1), and by <code>ros2 param set /track tracker lqr</code>.</td>
 </tr>
 </tbody>
 </table></div>
@@ -1698,7 +1698,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/navigate_to_pose</code></td>
 <td><code>nav2_msgs/action/NavigateToPose</code></td>
 <td><code>bt_navigator</code>, <code>navigator</code></td>
-<td>Drive to one map-frame pose. Nav2's bt_navigator (navigator:=nav2, the car's), or our navigator in its place (navigator:=own - aav_navigator, the sim's default; docs/own-navigator.md) under the same name, so no goal sender knows which runs. Ours - our behaviour trees' logic in Rust - plans (the planner's ComputePathToPose), follows (FollowPath), replans every second except on the final approach, recovers (clear the local or global costmap, then in turn clear both, wait 5 s, back up 1 m when reversing; 6 times), else gives up with the step's Nav2 error code. A newer goal on any of its actions replaces this one (aborted, code 0). Feedback as Nav2's (distance along the path, recoveries).</td>
+<td>Drive to one map-frame pose. Nav2's bt_navigator (navigator:=nav2, the car's), or our navigator in its place (navigator:=own - aav_navigator, the sim's default; docs/own-navigator.md) under the same name, so no goal sender knows which runs. Ours - our behaviour trees' logic in Rust - plans (the planner's ComputePathToPose), follows (FollowPath), replans every second except on the final approach, recovers (clear the local or global costmap, then in turn clear both, wait 5 s, back up 1 m when reversing; 6 times), else gives up with the step's Nav2 error code. A newer goal on any of its actions replaces this one (aborted, code 0). Feedback as Nav2's (distance along the path, recoveries). Cancelled through its _action/cancel_goal by the goal leash (aav_safety) and the developer window's CANCEL THE GOAL (dev_window, --live, SIM only; an empty request - every goal).</td>
 </tr>
 <tr>
 <td><code>/navigate_through_poses</code></td>

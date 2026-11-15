@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-planner.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own planner</h1>
-<div class="meta">14 min read · 8 sections</div></header>
+<div class="meta">16 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -346,6 +346,93 @@ inflation). M4 Max, the best of 5.</p>
 </table></div>
 <p>The tests check every path: clear of walls, starts at the start, ends at the goal, no
 turn under 80 % of the turning radius, no reversing when forward only.</p>
+<h3 id="a-price-on-changing-gear-cusp_penalty-15-nov-todo-174">A price on changing gear (<code>cusp_penalty</code>, 15 Nov, TODO 174)</h3>
+<p>Nav2 prices a backward move (<code>reverse_penalty</code>), never the stop and start between gears.
+In a narrow street that gave turns with 5 or 6 cusps, and the car drove them all
+(<code>sim-check --three-point</code>: 7 changes of direction). Two parts, ours only:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cusp_penalty</code> (m)</td>
+<td>each change between forward and back costs that many metres of straight driving</td>
+</tr>
+<tr>
+<td>The last curve</td>
+<td>with a price set, a Reeds-Shepp curve to the goal that changes gear is refused; the search, which prices each change, finds the end instead</td>
+</tr>
+</tbody>
+</table></div>
+<p>Offline (<code>cargo run --release -p lattice-planner --example cusps</code>), M4 Max:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Street</th>
+<th><code>cusp_penalty</code> 0 (Nav2's way)</th>
+<th>2 m</th>
+<th>4 m</th>
+<th>8 m</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>8 m road, U-turn</td>
+<td>5 cusps, 13.3 m, 2 ms</td>
+<td>2, 16.1 m, 62 ms</td>
+<td>2, 16.0 m, 100 ms</td>
+<td>2, 15.8 m, 69 ms</td>
+</tr>
+<tr>
+<td>6.5 m street (<code>--three-point</code>'s)</td>
+<td>6 cusps, 16.5 m, 12 ms</td>
+<td>3, 16.3 m, 55 ms</td>
+<td>3, 16.3 m, 71 ms</td>
+<td>3, 16.3 m, 125 ms</td>
+</tr>
+<tr>
+<td>parking-lot exit</td>
+<td>1 cusp</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+</tr>
+</tbody>
+</table></div>
+<p>A price alone (the last curve still free) gave 3-5 cusps, no better than chance.</p>
+<p>In our simulator (15 Nov, all ours, reversing), 4 m against 0:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Test</th>
+<th>0 (Nav2's way)</th>
+<th>4 m</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sim-check --three-point</code> (6.5 m street)</td>
+<td>9 changes of direction (7 earlier that day)</td>
+<td><strong>4 and 4</strong> (2 runs), 0.65 m from the walls</td>
+</tr>
+<tr>
+<td>the lot tour (<code>measure controllers</code>, 3 and 2 runs)</td>
+<td>12/12, sway 0.031, off the path 0.21 m, worst 1.57 m; turn back 30 s, 2 reversals</td>
+<td>8/8, sway 0.031, 0.21 m, worst 0.98 m; turn back 29-30 s, 2 reversals</td>
+</tr>
+<tr>
+<td>the campus tour (3 runs and 1)</td>
+<td>9/9, sway 0.231, 0.22 m</td>
+<td>3/3, sway 0.225, 0.22 m</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>4 m is our planner's default since 15 Nov</strong> (<code>nav2.yaml</code>'s Lattice block,
+<code>cusp_penalty</code>; Nav2's planner ignores it). Set 0 for Nav2's way.</p>
 </section>
 <section class="card"><h2 id="in-our-simulator-8-nov">In our simulator (8 Nov)</h2>
 <p><code>measure controllers --planners lattice own --reversing</code>, MPPI follows, 3 runs each.

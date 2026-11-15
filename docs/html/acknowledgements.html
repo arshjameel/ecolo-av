@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">10 min read · 7 sections</div></header>
+<div class="meta">11 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -574,6 +574,42 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>MIT / Apache-2.0</td>
 <td>tests only</td>
 <td>the stop zone's, the map chunks' and the car model's rules checked on thousands of random inputs (<code>tests/props.rs</code>, TODO 204)</td>
+</tr>
+<tr>
+<td><strong>rstar</strong> (the georust project)</td>
+<td>MIT / Apache-2.0</td>
+<td>runs</td>
+<td>an R-tree of the Lanelet2 map's centre lines, for the nearest lane (<code>lanelet-map</code>, TODO 201)</td>
+</tr>
+<tr>
+<td><strong>Rerun</strong> (rerun.io)</td>
+<td>MIT / Apache-2.0</td>
+<td>a trial viewer, laptops only</td>
+<td>our MCAP recordings opened as they are (<code>pixi run -e rerun view-bag</code>, TODO 197)</td>
+</tr>
+<tr>
+<td><strong>mcap</strong> (Foxglove)</td>
+<td>MIT</td>
+<td>examples and tests only</td>
+<td>MPPI's <code>follow_plan</code> reads a recording's plans (<code>examples/bag</code>, TODO 202)</td>
+</tr>
+<tr>
+<td><strong>criterion</strong> (Brook Heisler, Jorge Aparicio)</td>
+<td>MIT / Apache-2.0</td>
+<td>benchmarks only</td>
+<td>MPPI's tick, the planner's legs, the costmap's updates and an NDT match timed with statistics (<code>benches/</code>, TODO 203)</td>
+</tr>
+<tr>
+<td><strong>tracing</strong>, <strong>tracing-subscriber</strong> (tokio-rs)</td>
+<td>MIT</td>
+<td>runs, only when built in</td>
+<td>the MPPI tick's stages as spans, timed on stderr (<code>aav_mppi_lag</code> feature <code>trace</code>, TODO 196)</td>
+</tr>
+<tr>
+<td><strong>Tracy</strong> (Bartosz Taudul), through <strong>tracing-tracy</strong></td>
+<td>BSD-3-Clause; MIT / Apache-2.0</td>
+<td>runs, only when built in</td>
+<td>the same spans, live in the Tracy viewer (feature <code>tracy</code>)</td>
 </tr>
 <tr>
 <td><strong>RoboStack</strong>; <strong>Pixi</strong></td>

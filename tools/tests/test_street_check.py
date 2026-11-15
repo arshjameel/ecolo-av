@@ -42,3 +42,12 @@ def test_a_street_along_another_heading():
     track = [(0, 1.0, 4.0, math.pi / 2, 1.0)]
     room = street_check.clearance(track, 0.0, 0.0, math.pi / 2, 3.25, BODY)
     assert math.isclose(room, 3.25 - 1.5)
+
+
+def test_the_walls_faces_are_half_the_street_from_its_line():
+    spots = street_check.walls(1.0, 2.0, math.pi / 2.0, 1.3, (0.0, 10.0))
+    assert [name for name, *_ in spots] == ['wall_l0', 'wall_l1', 'wall_r0', 'wall_r1']
+    # Heading north: left is west (-x), each centre 1.3 + 0.15 m off the line.
+    (_, lx, ly), (_, _, ly1), (_, rx, _), _ = spots
+    assert math.isclose(lx, 1.0 - 1.45) and math.isclose(rx, 1.0 + 1.45)
+    assert math.isclose(ly, 2.0) and math.isclose(ly1, 12.0)

@@ -405,6 +405,7 @@ fn build(spec: &Value) -> Result<Planner> {
         .max(1.0) as usize,
         reverse_penalty: number("reverse_penalty", d.reverse_penalty)?,
         change_penalty: number("change_penalty", d.change_penalty)?,
+        cusp_penalty: number("cusp_penalty", d.cusp_penalty)?,
         non_straight_penalty: number("non_straight_penalty", d.non_straight_penalty)?,
         cost_penalty: number("cost_penalty", d.cost_penalty)?,
         retrospective_penalty: number("retrospective_penalty", d.retrospective_penalty)?,

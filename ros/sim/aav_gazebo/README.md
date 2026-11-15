@@ -66,7 +66,7 @@ aboard), `adaptive_brake`.
 
 | Node | Parameters |
 |---|---|
-| `gazebo_adapter` | `actuator_model` (true), `speed_loop` (default, smooth, lqi or firm), `payload` (0 kg aboard, live), `adaptive_brake` (false, live; not with spine or esp32: `docs/stopping.md`), `spine` (false), `esp32` (false), `rate_hz` (50), `cmd_timeout` (0.2 s), `wheelbase`, `wheel_radius` (m, from `vehicle.yaml` via the launch file), `rendered`, `radar`, `lidar`, `speed_variance`, `fault.odom` |
+| `gazebo_adapter` | `actuator_model` (true), `speed_loop` (default, smooth, lqi or firm), `payload` (0 kg aboard, live), `adaptive_brake` (false, live; not with spine or esp32: `docs/stopping.md`), `spine` (false), `esp32` (false), `rate_hz` (50), `cmd_timeout` (0.2 s), `wheelbase`, `wheel_radius` (m, from `vehicle.yaml` via the launch file), `rendered`, `radar`, `lidar`, `speed_variance`, `fault.odom`; the actuators' `fault.steer` (ok, stuck), `fault.throttle` (ok, stuck), `fault.brake` (ok, weak, dead) |
 | `gazebo_imu` | `gyro_stddev` (0.02 rad/s), `accel_stddev` (0.2 m/s²), `imu_x` (m), `gyro_bias` (rad/s), `fault.imu`, `seed` (3) |
 | `gazebo_gps` | `gps_stddev` (0.5 m), `gps_speed_stddev` (0.05 m/s), `antenna_x`, `antenna_y` (m), `every` (1), `fault.gps`, `seed` (5: the velocity noise) |
 | `gazebo_radar` | `radar_range` (8.4 m), `fault.radar` |
@@ -75,13 +75,19 @@ aboard), `adaptive_brake`.
 `fault.<sensor>` is one of ok, stop, freeze, nan, jump (GPS only). Set it live:
 `pixi run sim-fault gps stop`.
 
+The actuators' faults (TODO 159, the actuator model only) sit between the speed loop and
+the car: a stuck steering actuator or throttle holds what it was asked for when it failed;
+a weak brake gives 30 % of what is asked, a dead one none. `/vehicle/steering`, `throttle`
+and `brake` still carry what was asked as `command`, and what the car did as `measured`.
+`pixi run sim-fault brake weak`; `pixi run sim-check --actuator-faults` measures each.
+
 ### Modules
 
 | Module | Holds | ROS? |
 |---|---|---|
 | `actuator_model.py` | re-exports `aav_description.car_model` (moved there 7 Nov: one car model for ego and the sims): `SpeedLoop` (spine-core's gains), `Actuators`, `Ideal`, `ActuatorConfig`, `speed_loop_profile` | no |
 | `esp32_firmware.py` | `Esp32Firmware`: the 2025-26 C++ ESP32's frame handling, throttle ramp and brake | no |
-| `faults.py` | the fault modes, `Fault` | no |
+| `faults.py` | the sensors' fault modes, `Fault`; the actuators', `ActuatorFaults` | no |
 | `imu.py` | the car's own acceleration, which Gazebo's IMU misses | no |
 | `gps.py` | the receiver's velocity from the truth | no |
 | `radar.py` | Gazebo's lidar cloud as the TI radar's; with our simulator's `speed` field, a moving thing's own Doppler speed (TODO 194) | no |
@@ -93,7 +99,7 @@ aboard), `adaptive_brake`.
 | `gazebo_*.py` | the six nodes | yes |
 
 Models (`models/`): `obstacle` (the bench's 1 m box), `post` (person-sized, for the
-lidar's obstacle check in `tools/sim_check.py`), `stop_sign`.
+lidar's obstacle check in `tools/sim_check.py`), `kerb` (0.3 m high, `sim-check --kerb`), `stop_sign`.
 
 ## Invariants
 
