@@ -174,6 +174,12 @@ impl Localizer {
         self.restarts
     }
 
+    /// Swap in a matcher on another map (the chunks near the car changed); the tracking,
+    /// the odometry and the anchor stay.
+    pub fn set_matcher(&mut self, matcher: Matcher) {
+        self.matcher = matcher;
+    }
+
     pub fn matcher(&self) -> &Matcher {
         &self.matcher
     }

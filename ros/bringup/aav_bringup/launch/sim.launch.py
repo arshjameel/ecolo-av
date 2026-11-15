@@ -442,7 +442,8 @@ def launch_setup(context):
         here = ({'ndt_min_score': worlds.CAMPUS_NDT_MIN_SCORE,
                  'ndt_min_height': worlds.CAMPUS_NDT_FLOOR} if world == worlds.CAMPUS else {})
         actions.append(include(context, 'aav_ndt', 'ndt.launch.py', use_sim_time='true',
-                               ndt_map=ndt_map, ndt_x=start_x, ndt_y=start_y,
+                               ndt_map=ndt_map, ndt_chunks=arg('ndt_chunks'),
+                               ndt_x=start_x, ndt_y=start_y,
                                ndt_yaw=start_yaw, **here))
     if kiss_icp:
         # Scored only (measure controllers --kiss-icp), unless kiss_ekf:=true: then
@@ -752,6 +753,9 @@ def generate_launch_description():
                               description='a trial: NDT (ndt:=true implied) and its pose '
                                           "into ekf_global, beside the GPS. Empty: the stack's "
                                           'choice (false)'),
+        DeclareLaunchArgument('ndt_chunks', default_value='',
+                              description='with ndt:=true: the map in 64 m chunks from this '
+                                          'folder (maps/campus/chunks/ndt; TODO 175)'),
         DeclareLaunchArgument('ndt_map', default_value=DEFAULT_NDT_MAP,
                               description="NDT's map (pixi run ndt-map drive); relative to "
                                           'where the launch starts'),

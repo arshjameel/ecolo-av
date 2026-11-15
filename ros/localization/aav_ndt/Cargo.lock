@@ -621,6 +621,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "ctrlc",
+ "map-chunks",
  "ndt-core",
  "rclrs",
  "ros-env",

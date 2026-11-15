@@ -152,6 +152,62 @@ impl ChunkedMap {
     }
 }
 
+/// The points of the chunks near the car, for a matcher with several cube sizes.
+///
+/// The node rebuilds its `Matcher` (`Matcher::new_or_empty`) from `points()` whenever
+/// `update` says the loaded chunks changed: about once a chunk (64 m) driven.
+#[derive(Debug)]
+pub struct ChunkedPoints {
+    dir: PathBuf,
+    grid: Grid,
+    store: Store<Vec<Point>>,
+}
+
+impl ChunkedPoints {
+    pub fn new(dir: &Path, grid: Grid) -> Self {
+        Self {
+            dir: dir.to_path_buf(),
+            grid,
+            store: Store::new(),
+        }
+    }
+
+    /// Load the 3 x 3 chunks round `car`; true if they changed.
+    pub fn update(&mut self, car: FlatPoint) -> Result<bool, ChunkError> {
+        let want: BTreeMap<ChunkKey, Detail> = wanted(&self.grid, car, &[], 0.0)
+            .into_keys()
+            .map(|key| (key, Detail::Fine))
+            .collect();
+        let dir = &self.dir;
+        let changes = self.store.update(&want, |key, _| read_points(dir, key))?;
+        Ok(!(changes.loaded.is_empty() && changes.dropped.is_empty()))
+    }
+
+    /// Every loaded chunk's points.
+    pub fn points(&self) -> Vec<Point> {
+        self.store
+            .loaded()
+            .filter_map(|(key, _)| self.store.get(key))
+            .flat_map(|(_, points)| points.iter().copied())
+            .collect()
+    }
+
+    /// The loaded chunks.
+    pub fn loaded(&self) -> impl Iterator<Item = ChunkKey> + '_ {
+        self.store.loaded().map(|(key, _)| key)
+    }
+}
+
+/// One chunk's points: none if it has no file.
+fn read_points(dir: &Path, key: ChunkKey) -> Result<Vec<Point>, ChunkError> {
+    let path = chunk_path(dir, key);
+    match File::open(&path) {
+        Ok(file) => pcd::read(file).map_err(|e| ChunkError::Pcd(path, e)),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Vec::new()),
+        Err(e) => Err(ChunkError::Io(path, e)),
+    }
+}
+
 /// One chunk's cubes: `None` if it has no file or too few points for a cube.
 fn load_chunk(
     dir: &Path,
@@ -253,6 +309,36 @@ mod tests {
         let err = ChunkedMap::new(Path::new("."), odd, MapSettings::with_cube(1.0)).unwrap_err();
         assert!(matches!(err, ChunkError::Misaligned { .. }), "{err}");
         assert!(ChunkedMap::new(Path::new("."), grid(), MapSettings::with_cube(2.0)).is_ok());
+    }
+
+    #[test]
+    fn the_points_near_the_car_feed_a_matcher_that_finds_the_wall() {
+        use crate::{MatchSettings, Matcher};
+        let dir = scratch("points");
+        write_chunks(&dir, &grid(), &street()).unwrap();
+        let mut near = ChunkedPoints::new(&dir, grid());
+        assert!(near.update(FlatPoint::new(1.0, 1.0)).unwrap());
+        assert!(!near.update(FlatPoint::new(2.0, 1.0)).unwrap()); // the same chunk
+        let points = near.points();
+        assert!(points.iter().all(|p| (-64.0..128.0).contains(&p.x)));
+        let matcher = Matcher::new_or_empty(
+            &points,
+            &[2.0, 1.0],
+            MapSettings::with_cube,
+            MatchSettings::default(),
+        )
+        .unwrap();
+        assert!(matcher.levels().all(|(_, curves)| curves > 0));
+        // Far from every wall: empty levels, not an error.
+        let empty = Matcher::new_or_empty(
+            &[],
+            &[2.0, 1.0],
+            MapSettings::with_cube,
+            MatchSettings::default(),
+        )
+        .unwrap();
+        assert!(empty.levels().all(|(_, curves)| curves == 0));
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]

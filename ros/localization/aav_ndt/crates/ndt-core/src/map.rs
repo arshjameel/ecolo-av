@@ -115,6 +115,14 @@ impl CubeMap {
         Ok(Self { side, cubes })
     }
 
+    /// A map with no cubes (nothing loaded near the car): every match finds no overlap.
+    pub fn empty(side: f64) -> Self {
+        Self {
+            side,
+            cubes: HashMap::new(),
+        }
+    }
+
     /// The side of a cube (m).
     pub fn side(&self) -> f64 {
         self.side

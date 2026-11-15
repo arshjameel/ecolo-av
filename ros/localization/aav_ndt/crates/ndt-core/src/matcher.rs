@@ -128,6 +128,33 @@ impl Matcher {
         Ok(Self { levels, settings })
     }
 
+    /// As `new`, but a cube size with no curve gets an empty map instead of an error: the
+    /// chunks near the car may hold nothing (`chunks.rs`); a match then finds no overlap.
+    pub fn new_or_empty(
+        map_points: &[Point],
+        cubes: &[f64],
+        map: impl Fn(f64) -> MapSettings,
+        settings: MatchSettings,
+    ) -> Result<Self, MapError> {
+        let levels = cubes
+            .iter()
+            .map(|&side| {
+                let built = match CubeMap::build(map_points, &map(side)) {
+                    Err(MapError::NoCubes { .. }) => Ok(CubeMap::empty(side)),
+                    other => other,
+                };
+                built.map(|map| Level {
+                    map,
+                    gauss: Gauss::new(side, settings.outlier_ratio),
+                })
+            })
+            .collect::<Result<Vec<_>, MapError>>()?;
+        if levels.is_empty() {
+            return Err(MapError::BadCube(f64::NAN));
+        }
+        Ok(Self { levels, settings })
+    }
+
     /// The cube sizes and how many curves each has.
     pub fn levels(&self) -> impl Iterator<Item = (f64, usize)> + '_ {
         self.levels.iter().map(|l| (l.map.side(), l.map.len()))

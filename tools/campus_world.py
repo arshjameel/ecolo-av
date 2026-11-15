@@ -1107,13 +1107,19 @@ def main():
 
 
 def chunk_map(map_yaml: Path, out: Path):
-    """Cut the map into 64 m chunk files (map-chunks' chunk-map, TODO 175); skip without cargo."""
+    """Cut the map, and NDT's, into 64 m chunk files (chunk-map, ndt-chunks: TODO 175)."""
     crate = ROOT / 'ros' / 'bringup' / 'aav_description' / 'map-chunks'
     if shutil.which('cargo') is None:
         print('chunks: skipped (no cargo here); the whole map is written')
         return
     subprocess.run(['cargo', 'run', '-q', '--release', '--locked', '--bin', 'chunk-map', '--',
                     str(map_yaml), str(out)], cwd=crate, check=True)
+    ndt = ROOT / 'maps' / 'ndt' / 'campus.pcd'
+    if ndt.exists():
+        origin = yaml.safe_load(map_yaml.read_text())['origin']
+        subprocess.run(['cargo', 'run', '-q', '--release', '--locked', '--bin', 'ndt-chunks',
+                        '--', str(ndt), str(out / 'ndt'), str(origin[0]), str(origin[1])],
+                       cwd=ROOT / 'ros' / 'localization' / 'aav_ndt', check=True)
 
 
 if __name__ == '__main__':
