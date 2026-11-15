@@ -5,7 +5,8 @@ Neither EKF reads the other's topic. They meet only in TF: ekf_global publishes
 map -> odom, worked out on top of ekf_local's odom -> base_link.
 
   ros2 launch aav_localization localization.launch.py [gps:=true] [gps_heading:=true]
-      [health:=true] [ndt_ekf:=false] [kiss_ekf:=false] [start_x:=0.0] [start_y:=0.0]
+      [health:=true] [ndt_ekf:=false] [kiss_ekf:=false] [lane_pose:=false] [lane_map:=]
+      [start_x:=0.0] [start_y:=0.0]
       [start_yaw:=0.0] [use_sim_time:=false]
 
   /vehicle/odom, /sensors/imu/data ──> ekf_local ──> /localization/odom/local, TF odom -> base_link
@@ -30,6 +31,13 @@ kiss_ekf:=true (a trial, docs/trials.md): ekf_local also takes KISS-ICP's twist,
 on top of ekf_local.yaml. KISS-ICP itself is aav_kiss_icp's: sim.launch.py
 kiss_ekf:=true starts both. Without its odometry, ekf_local runs on the wheels and IMU.
 
+lane_pose:=true (a trial, TODO 155): lane_pose (aav_lane_pose) turns the lane finder's
+lines and lane_map:= (a lanes.yaml) into the car's place across its lane, and ekf_global
+takes its x and y (config/ekf_global_lane.yaml on top; pose1 after NDT's with ndt_ekf).
+The lane finder itself is the caller's: sim.launch.py lane_pose:=true starts it.
+
+  /perception/lane/geometry, TF map -> base_link ──> lane_pose ──> /localization/lane/pose
+
 start_x, start_y, start_yaw: where the car is when this starts, in the map frame
 (metres east and north of the datum, yaw in radians counter-clockwise from east).
 Park on the marked start spot and these are its numbers.
@@ -43,12 +51,15 @@ static map -> odom identity stands in, so map-frame tools still work.
       changes nothing above. health:=false leaves it out
 """
 
+import os
+
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+import yaml
 
 
 def ekf_services(node_name):
@@ -78,8 +89,14 @@ def global_ekf(context):
     config = PathJoinSubstitution([FindPackageShare('aav_localization'), 'config'])
     initial_state = [x, y, 0.0, 0.0, 0.0, yaw] + [0.0] * 9
     files = [PathJoinSubstitution([config, 'ekf_global.yaml'])]
-    if LaunchConfiguration('ndt_ekf').perform(context).lower() == 'true':
+    ndt = LaunchConfiguration('ndt_ekf').perform(context).lower() == 'true'
+    if ndt:
         files.append(PathJoinSubstitution([config, 'ekf_global_ndt.yaml']))
+    if LaunchConfiguration('lane_pose').perform(context).lower() == 'true':
+        # robot_localization reads pose0, pose1... in order: after NDT's, the lane's is pose1.
+        files.append(lane_pose_params(
+            os.path.join(FindPackageShare('aav_localization').perform(context), 'config',
+                         'ekf_global_lane.yaml'), 1 if ndt else 0))
     return [Node(
         package='robot_localization',
         executable='ekf_node',
@@ -94,6 +111,25 @@ def global_ekf(context):
     )]
 
 
+def lane_pose_params(path, index):
+    """Return ekf_global_lane.yaml's parameters, its pose0 renamed pose<index>."""
+    with open(path) as f:
+        params = yaml.safe_load(f)['ekf_global']['ros__parameters']
+    return {(f'pose{index}' + k[len('pose0'):] if k.startswith('pose0') else k): v
+            for k, v in params.items()}
+
+
+def lane_pose_node(context):
+    if LaunchConfiguration('lane_pose').perform(context).lower() != 'true':
+        return []
+    lane_map = LaunchConfiguration('lane_map').perform(context)
+    if not lane_map:
+        raise ValueError('lane_pose:=true needs lane_map:= (a lanes.yaml)')
+    return [Node(package='aav_lane_pose', executable='lane_pose', name='lane_pose',
+                 parameters=[{'lane_map': lane_map,
+                              'use_sim_time': LaunchConfiguration('use_sim_time')}])]
+
+
 def generate_launch_description():
     config = PathJoinSubstitution([FindPackageShare('aav_localization'), 'config'])
     use_sim_time = {'use_sim_time': LaunchConfiguration('use_sim_time')}
@@ -105,6 +141,11 @@ def generate_launch_description():
                               description="ekf_global also takes NDT's pose (a trial)"),
         DeclareLaunchArgument('kiss_ekf', default_value='false',
                               description="ekf_local also takes KISS-ICP's twist (a trial)"),
+        DeclareLaunchArgument('lane_pose', default_value='false',
+                              description='ekf_global also takes the lane pose: the lane '
+                                          "finder's offset against lane_map (a trial)"),
+        DeclareLaunchArgument('lane_map', default_value='',
+                              description='the lanes.yaml lane_pose reads (lane_pose:=true)'),
         DeclareLaunchArgument('global_ekf', default_value='true',
                               description='false: no ekf_global; something else gives '
                                           'map -> odom (the sim, truth_pose:=true)'),
@@ -115,6 +156,7 @@ def generate_launch_description():
 
         OpaqueFunction(function=local_ekf),
         OpaqueFunction(function=global_ekf),
+        OpaqueFunction(function=lane_pose_node),
         Node(
             package='robot_localization',
             executable='navsat_transform_node',

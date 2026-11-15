@@ -620,3 +620,50 @@ def test_the_watchdog_watches_only_our_nodes_that_run():
         rules = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']
     for name in ours:
         assert rules[name]['kind'] == 'node' and rules[name]['stop'] is False
+
+
+def test_lane_pose_runs_the_lane_finder_and_feeds_the_global_ekf():
+    # Off by default: the global EKF on GPS alone (TODO 155, a challenger).
+    assert included(started(SIM, world='road'))['localization.launch.py'][
+        'lane_pose'] == 'false'
+    actions = started(SIM, world='road', lane_pose='true')
+    sent = included(actions)
+    assert sent['localization.launch.py']['lane_pose'] == 'true'
+    # The world's own lane map, though lane_map:= is empty (the behaviour planner's).
+    assert sent['localization.launch.py']['lane_map'].endswith('road.lanes.yaml')
+    assert 'lane_finder.launch.py' in sent
+    assert 'lane_follower.launch.py' not in sent        # nothing steers by the lane
+    with pytest.raises(ValueError, match='lane_pose'):
+        started(SIM, world='road', lane_pose='true', cameras='false')
+    with pytest.raises(ValueError, match='truth_pose'):
+        started(SIM, world='road', lane_pose='true', truth_pose='true')
+
+
+def global_ekf_dicts(**args):
+    """Return the parameters ekf_global is given as values (not files), as one dict."""
+    context = context_for(LOCALIZATION, **args)
+    (ekf,) = LOCALIZATION.global_ekf(context)
+    found = {}
+    for p in evaluate_parameters(context, ekf._Node__parameters):
+        if isinstance(p, dict):
+            found.update(p)
+    return found
+
+
+def test_the_global_ekf_reads_the_lane_pose_only_with_lane_pose():
+    assert not any(k.startswith('pose') for k in global_ekf_dicts())
+    p = global_ekf_dicts(lane_pose='true', lane_map='/x/lanes.yaml')
+    assert p['pose0'] == '/localization/lane/pose'
+    # x and y only: the covariance says which way across the lane.
+    assert [i for i, on in enumerate(p['pose0_config']) if on] == [0, 1]
+    assert 0 < p['pose0_rejection_threshold'] < 10
+    assert p['smooth_lagged_data'] is True
+    # With NDT's pose too, NDT keeps pose0 and the lane's is pose1.
+    both = global_ekf_dicts(lane_pose='true', lane_map='/x/lanes.yaml', ndt_ekf='true')
+    assert both['pose1'] == '/localization/lane/pose' and 'pose0' not in both
+    (lane,) = LOCALIZATION.lane_pose_node(context_for(LOCALIZATION, lane_pose='true',
+                                                      lane_map='/x/lanes.yaml'))
+    assert lane._Node__node_executable == 'lane_pose'
+    assert LOCALIZATION.lane_pose_node(context_for(LOCALIZATION)) == []
+    with pytest.raises(ValueError, match='lane_map'):
+        LOCALIZATION.lane_pose_node(context_for(LOCALIZATION, lane_pose='true'))

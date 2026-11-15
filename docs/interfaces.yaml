@@ -641,7 +641,7 @@ topics:
   /perception/lane/geometry:
     type: aav_lane_geometry/msg/LaneGeometry
     pub: [lane_finder, fake_lane_geometry_pub]
-    sub: [control_interface]
+    sub: [control_interface, lane_pose]
     note: "One per camera picture, from lane_finder (aav_lane_finder, classic OpenCV), in base_link. vehicle_offset_m - the car from the lane's centre, 3 m ahead (lookahead), + = the car is left of it. Each line as y = a x^2 + b x + c (m), its radius (m; 9999 = straight or not seen) and confidence (0-1); the lane width (m). Bench - lane:=true runs lane_finder, lane:=fake runs fake_lane_geometry_pub (its polynomials are pixels)."
   /perception/lane/image:
     type: sensor_msgs/msg/Image
@@ -779,6 +779,11 @@ topics:
     pub: []
     sub: [amcl]
     note: Starts AMCL again from a pose (its initialpose, renamed; RViz "2D Pose Estimate" publishes /initialpose, so set its topic to this). amcl:=true starts it from the sim's start pose without it (set_initial_pose).
+  /localization/lane/pose:
+    type: geometry_msgs/msg/PoseWithCovarianceStamped
+    pub: [lane_pose]
+    sub: [ekf_global]
+    note: A trial (TODO 155) - the lane finder as a pose sensor (aav_lane_pose). Map frame, the camera picture's stamp. From /perception/lane/geometry's lines and the lane map (a lanes.yaml), the car's place across its lane; along the lane, where TF map -> base_link already has it. Its x, y covariance is turned to the lane's heading - 0.15 m across with both lines (0.30 with one), 50 m along - so it corrects only sideways; yaw (the lane's heading less the car's angle to the lines, 0.05 rad) is in the message, not fused. Only pictures that pass the gates - a line sure enough, the car within 0.3 rad of the lane, the map's lane width, no junction or road end from 4 m behind to 12 m ahead, no jump over 0.4 m, within 1.5 m of the filter. Only with lane_pose:=true (sim.launch.py, localization.launch.py; off by default); then ekf_global fuses x and y (pose0, or pose1 after NDT's; refused past 5 sigma; aav_localization config/ekf_global_lane.yaml).
   /localization/ndt/pose:
     type: geometry_msgs/msg/PoseWithCovarianceStamped
     pub: [ndt]
