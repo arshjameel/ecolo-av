@@ -142,3 +142,28 @@ def test_the_obstacle_is_the_benchs():
     size = numbers(box.find('.//visual/geometry/box/size').text)
     assert size == [x2 - x1, y2 - y1, RADAR['box_height']]
     assert numbers(box.find('.//link/pose').text)[2] == RADAR['box_height'] / 2.0  # on the ground
+
+
+def test_the_road_worlds_lane_map_matches_its_tarmac_and_lines():
+    lanes = yaml.safe_load((PACKAGE / 'worlds' / 'road.lanes.yaml').read_text())
+    (road,) = lanes['roads']
+    tarmac = visual(sdf(PACKAGE / 'worlds' / 'road.sdf'), 'tarmac')
+    x, y = numbers(tarmac.find('pose').text)[:2]
+    length, width = numbers(tarmac.find('geometry/box/size').text)[:2]
+    assert road['width'] == pytest.approx(width)
+    assert road['width'] - 2 * road['edge_inset'] == pytest.approx(CAMERA['lane_width'])
+    assert road['points'] == [[x - length / 2, y], [x + length / 2, y]]
+    assert road['lanes'] == 1
+
+
+def test_the_lane_map_by_world(tmp_path, monkeypatch):
+    assert worlds.lane_map_file(str(PACKAGE), 'road', '') == ''
+    assert worlds.lane_map_file(str(PACKAGE), 'road', 'world').endswith('road.lanes.yaml')
+    with pytest.raises(ValueError, match='no lane map'):
+        worlds.lane_map_file(str(PACKAGE), 'test_lot', 'world')
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValueError, match='pixi run campus'):
+        worlds.lane_map_file(str(PACKAGE), worlds.CAMPUS, 'world')
+    mine = tmp_path / 'mine.yaml'
+    mine.write_text('roads: []\n')
+    assert worlds.lane_map_file(str(PACKAGE), 'empty', 'mine.yaml') == str(mine)

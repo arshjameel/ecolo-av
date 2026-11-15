@@ -25,7 +25,9 @@ Publishes   /drivers/nav/speed_limit   nav2_msgs/SpeedLimit, 20 Hz: absolute m/s
             /world/road_ahead        aav_interfaces/RoadAhead (map), 10 Hz: the road ahead,
                                      /plan's next 40 m from the car, its stops, its end,
                                      the speed limit by the stopping law (road_ahead.py;
-                                     docs/designs/2026-11-14_the-whole-car.md)
+                                     docs/designs/2026-11-14_the-whole-car.md). With
+                                     lane_map (a lanes.yaml): the line is the car's lane's
+                                     centre along the route, with its edges (lane_map.py)
 
 The maths is behaviour.py (no ROS); the stopping law is aav_description stop_law.py, from
 the car model's numbers. It isn't a driver: no cmd_vel, no twist_mux slot. It only ever
@@ -39,6 +41,7 @@ import signal
 from aav_behaviour.behaviour import (active_plan, along_until, Behaviour, diagnostic, lane_ahead,
                                      path_left, Settings, Stop, World)
 from aav_description.car_model import ActuatorConfig, speed_loop_profile
+from aav_description.lane_map import lane_line, load as load_lanes, with_edges
 from aav_description.road_ahead import build
 from aav_description.road_ahead_ros import to_msg
 from aav_description.stop_law import from_car_model
@@ -80,6 +83,9 @@ class BehaviourNode(Node):
             ('stop_gap', 1.0), ('near_depth', 2.5), ('plan_timeout', 25.0),
             ('rate_hz', 20.0), ('state_rate_hz', 5.0), ('obstacles', True),
             ('road_rate_hz', 10.0), ('road_length', 40.0), ('road_spacing', 0.5),
+            # A lanes.yaml (lane_map.py): the road ahead's line on the lane's centre. Empty:
+            # the line is the plan's.
+            ('lane_map', ''),
             # Each navigator action's status (navigation.launch.py: Nav2's or ours,
             # navigator:=): a goal running on any of them.
             ('goal_status_topics', ['/navigate_to_pose/_action/status']))}
@@ -92,6 +98,10 @@ class BehaviourNode(Node):
         curve = from_car_model(car, p['max_deceleration'], p['max_jerk'],
                                loop=speed_loop_profile(p['speed_loop']))
         self.curve = curve
+        self.lanes = load_lanes(p['lane_map']) if p['lane_map'] else None
+        if self.lanes is not None:
+            self.get_logger().info(f'lane map {p["lane_map"]}: {len(self.lanes.roads)} roads; '
+                                   'the road ahead follows the lane centre')
         self.machine = Behaviour(curve, Settings(
             base=p['base_speed'], floor=p['floor'], accel=p['accel'], fall=p['fall'],
             ask_after=p['ask_after']))
@@ -256,14 +266,19 @@ class BehaviourNode(Node):
         return Header(stamp=self.get_clock().now().to_msg(), frame_id='base_link')
 
     def publish_road(self):
-        """Send the road ahead: /plan from the car, cut at the nearest stop (the end)."""
+        """Send the road ahead: /plan (or its lane's centre) from the car, cut at the end."""
         now = self.now()
         plan, _ = self.driving(now)
+        if self.lanes is not None and plan and self.pose is not None:
+            plan = lane_line(self.lanes, plan, self.pose, spacing=self.p['road_spacing'],
+                             length=self.p['road_length'])
         d = self.decision
         strip = build(plan, self.pose, self.stops(now), self.curve,
                       self.p['base_speed'], state=d.state if d else '',
                       reason=d.reason if d else '', spacing=self.p['road_spacing'],
                       length=self.p['road_length'])
+        if self.lanes is not None:
+            strip = with_edges(strip, self.lanes)
         self.road.publish(to_msg(strip, Header(stamp=self.get_clock().now().to_msg(),
                                                frame_id='map')))
 

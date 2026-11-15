@@ -1,0 +1,11 @@
+# The road world's lane map (road.sdf, and the bench's road: aav_bench bench.yaml). The
+# format: aav_description lane_map.py. One lane, 3.5 m between the painted lines' centres,
+# 0.5 m of tarmac outside each line, running east along y = 0 from x = -20 to 100 m.
+# The behaviour planner reads it with sim.launch.py lane_map:=world.
+roads:
+- name: road
+  width: 4.5        # m, kerb to kerb: the tarmac
+  edge_inset: 0.5   # m from the tarmac's edge to the painted line's centre
+  lanes: 1          # one lane, either way: the car drives down its middle
+  oneway: false
+  points: [[-20.0, 0.0], [100.0, 0.0]]

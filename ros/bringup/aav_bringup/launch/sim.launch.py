@@ -101,6 +101,10 @@ bench's argument names:
   behaviour:=true    the behaviour states and a speed cap on Nav2 from the stopping law
                       (aav_behaviour, a trial: docs/stopping.md); it also sends the road ahead
                       (/world/road_ahead), and ego holds Nav2 to it (ego road_ahead:=true)
+  lane_map:=world    with behaviour:=true: the road ahead's line is the lane's centre, from
+                      the world's lane map (road: aav_gazebo worlds/road.lanes.yaml; campus:
+                      maps/campus/lanes.yaml), with its edges; or a lanes.yaml's path.
+                      Empty (the default): the line is /plan's
   amcl:=true          stock AMCL beside the global EKF, scored only (docs/trials.md): only
                       in world:=test_lot with nav:=true and the lidar, from the start pose
   voxels:=true        Nav2's local costmap and collision_monitor read the lidar as 0.25 m
@@ -261,6 +265,7 @@ def launch_setup(context):
         raise ValueError('lag_scale:= needs simulator:=gazebo (our simulator has no '
                          'lag_scale yet)')
     world_path = worlds.world_file(gazebo_share, world)
+    lane_map = worlds.lane_map_file(gazebo_share, world, arg('lane_map').strip())
     # The lidar and radar where the world has them; the cameras only where they're drawn.
     sensors = worlds.has_sensors(world_path)
     cameras = worlds.has_cameras(world_path, simulator) and arg('cameras').lower() == 'true'
@@ -376,7 +381,8 @@ def launch_setup(context):
                                                       'example_lot_amcl.yaml')
                                          if amcl else ''),
                                plan_around=str(flag['plan_around']).lower(),
-                               behaviour=str(flag['behaviour']).lower()))
+                               behaviour=str(flag['behaviour']).lower(),
+                               lane_map=lane_map))
     if ndt:
         # Scored only (measure controllers --ndt), unless ndt_ekf:=true: then ekf_global
         # reads its pose (measure controllers --ndt-ekf scores the difference).
@@ -594,6 +600,10 @@ def generate_launch_description():
         DeclareLaunchArgument('behaviour', default_value='false',
                               description='true: the behaviour states and a speed cap on '
                                           'Nav2 (aav_behaviour, a trial)'),
+        DeclareLaunchArgument('lane_map', default_value='',
+                              description="with behaviour:=true: world (the world's lane "
+                                          "map) or a lanes.yaml: the road ahead's line on "
+                                          "the lane's centre; empty: /plan's line"),
         DeclareLaunchArgument('navigator', default_value=vehicle.DEFAULT_NAVIGATOR,
                               description="nav2 or own: our own navigator in bt_navigator's "
                                           'place (aav_navigator, a trial; '

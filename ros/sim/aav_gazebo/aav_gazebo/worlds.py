@@ -29,6 +29,8 @@ CAMPUS_SDF = os.path.join('maps', 'campus', 'campus.sdf')
 CAMPUS_MAP = os.path.join('maps', 'campus', 'campus.yaml')
 CAMPUS_PLACE = os.path.join('maps', 'campus', 'place.yaml')
 CAMPUS_NDT = os.path.join('maps', 'ndt', 'campus.pcd')
+# The campus's lane map: its painted roads (aav_description lane_map.py's format).
+CAMPUS_LANES = os.path.join('maps', 'campus', 'lanes.yaml')
 # NDT's poor-fit floor on the campus. ndt.yaml's 2.3 is the test lot's: walls close by. Here
 # (5 Nov, 60 s drive at P11's road) fits scored 1.73-1.94 on the guess and 2.00-2.31 on a
 # recorded map, and stayed within 0.12 m of the truth. Whether a WRONG pose can score this
@@ -64,6 +66,27 @@ def world_file(share: str, world: str) -> str:
     if not os.path.isfile(path):
         known = sorted(f[:-len('.sdf')] for f in os.listdir(folder) if f.endswith('.sdf'))
         raise ValueError(f'world:={world}: no such world. Pick one of {known}')
+    return path
+
+
+def lane_map_file(share: str, world: str, given: str) -> str:
+    """
+    Return the lane map the behaviour planner reads (sim.launch.py lane_map:=), or ''.
+
+    given: '' (none: the road ahead follows /plan), 'world' (this world's own:
+    worlds/<world>.lanes.yaml, or the campus's maps/campus/lanes.yaml), or a file's path.
+    """
+    if not given:
+        return ''
+    if given != 'world':
+        path = os.path.abspath(given)
+    elif world == CAMPUS:
+        path = os.path.abspath(CAMPUS_LANES)
+    else:
+        path = os.path.join(share, 'worlds', f'{world}.lanes.yaml')
+    if not os.path.isfile(path):
+        hint = ' Make it with `pixi run campus`' if world == CAMPUS and given == 'world' else ''
+        raise ValueError(f'lane_map:={given}: no lane map at {path}.{hint}')
     return path
 
 

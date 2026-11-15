@@ -21,7 +21,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', glob('launch/*.launch.py')),
         ('share/' + package_name + '/config', glob('config/*.yaml')),
-        ('share/' + package_name + '/worlds', glob('worlds/*.sdf')),
+        ('share/' + package_name + '/worlds', glob('worlds/*.sdf') + glob('worlds/*.lanes.yaml')),
         *tree('models'),
     ],
     install_requires=['setuptools'],

@@ -114,6 +114,9 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           a stop sign, an obstacle in the lane, the fence and the goal.
                           controller_server reads /drivers/nav/speed_limit; the locks still
                           make every stop. false (the default): the stock path, no cap
+  lane_map:=<lanes.yaml>  with behaviour:=true: the road ahead's line is the car's lane's
+                          centre along the route, with its edges (aav_description
+                          lane_map.py); empty (the default): the line is /plan's
   amcl_map:=<yaml>        AMCL's own map (finer, obstacles as outlines: maps/README.md),
                           from amcl_map_server on /localization/amcl/map; empty: Nav2's /map
 
@@ -398,6 +401,7 @@ def nodes(context):
             parameters=[vehicle.behaviour_params(nav2, cfg, ego,
                                                  float(speed) if speed else None, controller),
                         {'obstacles': lidar and not voxels, 'use_sim_time': use_sim_time,
+                         'lane_map': LaunchConfiguration('lane_map').perform(context),
                          # Every navigator action: a goal running on any of them.
                          'goal_status_topics': [
                              vehicle.navigator_action(navigator, a) + '/_action/status'
@@ -670,6 +674,9 @@ def generate_launch_description():
         DeclareLaunchArgument('behaviour', default_value='false',
                               description='true: aav_behaviour, the behaviour states and a '
                                           'speed cap on Nav2 (a trial, docs/stopping.md)'),
+        DeclareLaunchArgument('lane_map', default_value='',
+                              description="with behaviour: a lanes.yaml, so the road ahead's "
+                                          "line is the lane's centre; empty: /plan's line"),
         DeclareLaunchArgument('costmap', default_value=vehicle.DEFAULT_COSTMAP,
                               description='nav2 (the default) or own: aav_costmap, our own '
                                           "costmaps beside Nav2's, on /drivers/nav/costmap/"
