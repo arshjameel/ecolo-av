@@ -813,3 +813,19 @@ def test_the_diffusion_car_trial_needs_its_switch_and_a_low_speed():
     for bad in ('0.51', '1.0', '0', '-1', 'fast'):
         with pytest.raises(ValueError, match='max_speed'):
             vehicle.diffusion_trial_speed(bad)
+
+
+def test_lidar_memory_sets_the_local_lidar_sources_only():
+    # TODO 188: the stock blind-zone memory, on the lidar's marking sources.
+    path = (Path(__file__).resolve().parents[3] / 'drivers' / 'aav_navigation' / 'config'
+            / 'nav2.yaml')
+    with open(path) as f:
+        cfg = yaml.safe_load(f)
+    layer = cfg['local_costmap']['local_costmap']['ros__parameters']['lidar_layer']
+    assert layer['lidar']['observation_persistence'] == 0.0
+    vehicle.with_lidar_memory(cfg, 3.0)
+    assert layer['lidar']['observation_persistence'] == 3.0
+    assert layer['voxels']['observation_persistence'] == 3.0
+    assert layer['voxels_ground']['observation_persistence'] == 0.0     # clears only
+    with pytest.raises(ValueError):
+        vehicle.with_lidar_memory(cfg, -1.0)

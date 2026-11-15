@@ -978,6 +978,28 @@ def behaviour_params(nav2, cfg, ego=None, max_speed=None, controller=DEFAULT_CON
     return out
 
 
+LIDAR_MEMORY_SOURCES = ('lidar', 'voxels')    # the local lidar layer's marking sources
+
+
+def with_lidar_memory(cfg, seconds):
+    """
+    Return nav2.yaml's dict with the local lidar layer remembering marks for `seconds`.
+
+    observation_persistence on the lidar's marking sources (the scan, or the cubes): a box
+    the roof lidar saw on the way in stays marked that long after it drops below the
+    lowest beam, about 2.5 m from the bumper for a 0.5 m box (TODO 188, the stock
+    blind-zone memory). 0: the newest scan only, as the file has it. Nav2's costmap and
+    ours both read it.
+    """
+    if not (math.isfinite(seconds) and seconds >= 0.0):
+        raise ValueError(f'lidar_memory must be 0 or more seconds (got {seconds})')
+    layer = cfg['local_costmap']['local_costmap']['ros__parameters']['lidar_layer']
+    for source in LIDAR_MEMORY_SOURCES:
+        if source in layer:
+            layer[source]['observation_persistence'] = float(seconds)
+    return cfg
+
+
 def nav2_rewrites(v, reversing=False, planner='hybrid'):
     """
     Values to substitute into aav_navigation/config/nav2.yaml.

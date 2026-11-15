@@ -221,12 +221,13 @@ def voxels_car(cfg):
 def tuned_copy(source, v, reversing, max_speed, radar, lidar, ghost=False,
                controller=vehicle.DEFAULT_CONTROLLER, plan_around=True, camera=False,
                planner='hybrid', lattice_file=None, voxels=False,
-               lattice_moves=vehicle.LATTICE_MOVES[0]):
+               lattice_moves=vehicle.LATTICE_MOVES[0], lidar_memory=0.0):
     """Return a temporary copy of nav2.yaml, tuned by vehicle.nav2_tuned (no ROS there)."""
     with open(source) as f:
         cfg = vehicle.nav2_tuned(yaml.safe_load(f), v, reversing, max_speed, radar, lidar,
                                  ghost, controller, plan_around, camera, planner,
                                  lattice_file, voxels, lattice_moves)
+    vehicle.with_lidar_memory(cfg, lidar_memory)
     out = tempfile.NamedTemporaryFile('w', prefix='nav2_', suffix='.yaml', delete=False)
     with out:
         yaml.safe_dump(cfg, out)
@@ -367,7 +368,7 @@ def nodes(context):
     source = tuned_copy(f'{share}/config/nav2.yaml', v, reversing,
                         float(speed) if speed else None, radar, lidar, ghost, controller,
                         flag(context, 'plan_around'), guard, planner, lattice_file, voxels,
-                        moves)
+                        moves, float(LaunchConfiguration('lidar_memory').perform(context)))
     params = ParameterFile(
         RewrittenYaml(source_file=source, param_rewrites=rewrites, convert_types=True),
         allow_substs=True)
@@ -700,6 +701,9 @@ def generate_launch_description():
                               description='true: a pretend person (aav_ghost), its own '
                                           'costmap layer and collision_monitor source; '
                                           'placed with pixi run ghost'),
+        DeclareLaunchArgument('lidar_memory', default_value='0.0',
+                              description='s the local lidar layer keeps a mark after the '
+                                          'lidar loses it (0: the newest scan only; TODO 188)'),
         DeclareLaunchArgument('cube_floor', default_value='',
                               description="m above the road: the cubes' floor (empty: the "
                                           "car's obstacle height)"),

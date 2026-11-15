@@ -113,6 +113,10 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             clear and reach its goal. behaviour:=true
                                             things:=true; --moving-only skips the road
                                             world's run)
+    pixi run sim-check --low-box          (TODO 188: a 0.5 m box the roof lidar loses near
+                                            the bumper, the radar off; the car must go round
+                                            it clear. Two runs: lidar_memory:=0, then 3 s;
+                                            --low-box-only skips the road world's run)
     pixi run sim-check --three-point      (reverse, TODO 174: a 6.5 m street of walls, a
                                             goal behind the car facing back; the car must
                                             turn in it, backing at least once, without
@@ -294,6 +298,7 @@ SIGN_X = BENCH['stop_signs'][0]         # m east: the stop sign
 MODELS = os.path.join(ROOT, 'ros', 'sim', 'aav_gazebo', 'models')
 OBSTACLE = os.path.join(MODELS, 'obstacle', 'model.sdf')   # the bench's 1 m box
 POST = os.path.join(MODELS, 'post', 'model.sdf')           # 0.5 x 0.5 x 1.8 m: a person
+LOW_BOX = os.path.join(MODELS, 'low_box', 'model.sdf')     # 0.5 m: the lidar loses it close
 WALL = os.path.join(MODELS, 'wall', 'model.sdf')           # 10 x 0.3 x 2 m: a street's side
 # What the radar adds to the road world's graph: absent with radar:=false.
 RADAR_TOPICS = ('/sensors/radar/points', '/perception/radar/clusters',
@@ -1252,7 +1257,8 @@ def check_lane_keeping(probe):
            f'cm, heading {heading:+.3f} rad, over {driven:.0f} s; {finder}')
 
 
-def check_plan_around(probe, ahead=15.0, goal=30.0, depth=1.0):
+def check_plan_around(probe, ahead=15.0, goal=30.0, depth=1.0, model=OBSTACLE,
+                      name='plan around'):
     """
     Put the box `ahead` m in the lane: the car must drive round it, not stop for it.
 
@@ -1266,22 +1272,22 @@ def check_plan_around(probe, ahead=15.0, goal=30.0, depth=1.0):
     c, s = math.cos(h), math.sin(h)
     centre = front + ahead + depth / 2.0
     bx, by = x0 + centre * c, y0 + centre * s
-    if not place_model(OBSTACLE, bx, by, h):
-        result('plan around', False, "could not place the box (the simulator's create service)")
+    if not place_model(model, bx, by, h):
+        result(name, False, "could not place the box (the simulator's create service)")
         return
     start = len(probe.track)
     seen = len(probe.monitor)
     watch = CostmapWatch(probe)
     done = probe.go_to(x0 + goal * c, y0 + goal * s, h)
     if done is None:
-        result('plan around', False, 'no Nav2, or it refused the goal')
+        result(name, False, 'no Nav2, or it refused the goal')
     else:
         probe.spin_for(240.0, done.done)
     remove_model()
     costs = watch.report()
     if done is None:
         return
-    result(f'plan around: costmaps ({COSTMAP})', None, costs)
+    result(f'{name}: costmaps ({COSTMAP})', None, costs)
     drive = probe.track[start:]
     # The car's centre line, base_link to the bumper, against the box's centre: less half
     # the car's width and half the box.
@@ -1298,7 +1304,7 @@ def check_plan_around(probe, ahead=15.0, goal=30.0, depth=1.0):
     passed = (x - x0) * c + (y - y0) * s > centre + depth
     clear = min(gaps) if gaps else float('nan')
     ok = reached and passed and not stop_zone and stood < 3.0 and clear > 0.3
-    result('plan around', ok,
+    result(name, ok,
            f'{"reached" if reached else "did not reach"} the goal {goal:.0f} m on, '
            f'{clear:.2f} m clear of the box at the closest, stood still {stood:.1f} s at the '
            f'longest, stop zone fired: {stop_zone}')
@@ -1356,6 +1362,17 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
            f'({math.hypot(gx - x1, gy - y1):.2f} m, {math.degrees(turned):.0f} deg off), '
            f'{turns} changes of direction, {room:.2f} m from a wall at the closest '
            f'(street {width:g} m)')
+
+
+def check_low_box(probe):
+    """
+    Go round a 0.5 m box the roof lidar loses within about 2.5 m of the bumper (TODO 188).
+
+    The radar is off (as on the car today), so only the costmap's memory of the lidar
+    (lidar_memory:=) keeps the box marked as the car passes it. The same rules as
+    --plan-around: reach the goal past it, at least 0.3 m clear, the stop zone quiet.
+    """
+    check_plan_around(probe, ahead=10.0, goal=25.0, depth=0.5, model=LOW_BOX, name='low box')
 
 
 def stood_still(track, still=0.02):
@@ -2909,7 +2926,7 @@ def main():
     if not {'--drive-to-point-only', '--speed-steps-only', '--spine-points-only',
             '--stop-point-only', '--loaded-stop-only', '--behaviour-only', '--lane-only',
             '--things-only', '--behaviour-things-only', '--legs-only',
-            '--three-point-only', '--moving-only'} & set(args):
+            '--three-point-only', '--moving-only', '--low-box-only'} & set(args):
         # With --obstacle the planner is blind to the box, so the stop zone must stop the car.
         session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}']
                 + (['plan_around:=false'] if '--obstacle' in args else []),
@@ -3026,6 +3043,14 @@ def main():
         logs.append(f'{stem}-moving{ext}')
         session(['behaviour:=true', 'things:=true', 'lidar:=true'],
                 [check_moving_thing], logs[-1], 'moving thing')
+    if {'--low-box', '--low-box-only'} & set(args):
+        # Two runs, the radar off: without the lidar's memory, then with 3 s of it.
+        stem, ext = os.path.splitext(log)
+        for memory in ('0.0', '3.0'):
+            logs.append(f'{stem}-low-box-{memory}{ext}')
+            session(['radar:=false', 'lidar:=true', f'lidar_memory:={memory}'], [check_low_box],
+                    logs[-1], f'low box, lidar_memory {memory} s', ignore=RADAR_TOPICS,
+                    radar=False)
     if {'--three-point', '--three-point-only'} & set(args):
         # Its own run: the lidar sees the walls, the default stack reverses (TODO 174).
         stem, ext = os.path.splitext(log)
