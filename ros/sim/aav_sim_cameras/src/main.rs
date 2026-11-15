@@ -11,6 +11,7 @@
 //! sim_cameras --world road.sdf        # a Gazebo world (the core's reader), not the test copy
 //! sim_cameras --at 49,-71,0          # parked there (m, m, rad), in the map frame
 //! sim_cameras --image-topic front_left=/x/image_raw  # its picture elsewhere (faults)
+//! sim_cameras --software              # a software renderer only (lavapipe), even beside a GPU
 //! ```
 //!
 //! Without `--ros` nothing is published: it renders, times and prints.
@@ -25,7 +26,7 @@ use std::{
 };
 
 use camera_core::{world, Cameras, Frame, Pose, Rig, SimWorld};
-use sim_cameras::BevyRenderer;
+use sim_cameras::{Adapter, BevyRenderer};
 
 const CAMERAS: &str = include_str!("../config/cameras.yaml");
 const VEHICLE: &str = include_str!("../../../bringup/aav_description/config/vehicle.yaml");
@@ -62,6 +63,7 @@ struct Options {
     models: Vec<PathBuf>,
     topics: Vec<(String, String)>,
     at: Option<[f64; 3]>,
+    adapter: Adapter,
 }
 
 impl Options {
@@ -80,6 +82,7 @@ impl Options {
             models: Vec::new(),
             topics: Vec::new(),
             at: None,
+            adapter: Adapter::Any,
         };
         while let Some(arg) = args.next() {
             let mut value = |name: &str| args.next().ok_or(format!("{name} needs a value"));
@@ -129,6 +132,7 @@ impl Options {
                         .ok_or(format!("--image-topic {v}: camera=/topic"))?;
                     o.topics.push((name.to_owned(), topic.to_owned()));
                 }
+                "--software" => o.adapter = Adapter::Software,
                 "-h" | "--help" => return Err(USAGE.to_owned()),
                 other => return Err(format!("unknown option {other}\n{USAGE}")),
             }
@@ -141,7 +145,7 @@ impl Options {
 }
 
 const USAGE: &str = "sim_cameras [--ros] [--pose script|truth] [--seconds S] \
-[--cameras front_left,front_right,rear,chase] [--save DIR] [--speed M/S] [--from X] [--plain-sign] [--bench N] [--at X,Y,YAW] [--world FILE.sdf] [--models DIR:DIR] [--image-topic camera=/topic]";
+[--cameras front_left,front_right,rear,chase] [--save DIR] [--speed M/S] [--from X] [--plain-sign] [--bench N] [--at X,Y,YAW] [--world FILE.sdf] [--models DIR:DIR] [--image-topic camera=/topic] [--software]";
 
 fn number(s: &str) -> Result<f64, String> {
     s.parse().map_err(|e| format!("{s}: {e}"))
@@ -274,7 +278,8 @@ fn test_world(plain: bool) -> SimWorld {
 
 fn run_in(o: &Options, rig: Rig, world: &SimWorld, dirs: &[PathBuf]) -> Result<(), String> {
     let start = Instant::now();
-    let renderer = BevyRenderer::new(&rig, world).map_err(|e| e.to_string())?;
+    let renderer = BevyRenderer::with_adapter(&rig, world, o.adapter).map_err(|e| e.to_string())?;
+    eprintln!("sim_cameras: drawing with {}", renderer.adapter());
     eprintln!(
         "sim_cameras: Bevy ready in {:.1} s; cameras: {}",
         start.elapsed().as_secs_f64(),

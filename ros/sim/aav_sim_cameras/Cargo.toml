@@ -22,13 +22,25 @@ path = "src/main.rs"
 # `ros` needs ROS sourced for the message types (tools/sim_cameras.sh does it).
 default = []
 ros = ["dep:rclrs", "dep:ros-env"]
+# Vulkan on a Mac too (wgpu's portability loader), so Mesa's lavapipe can be tried there
+# as CI's runners use it: tools/software_gl.sh --force. Metal stays the default adapter.
+vulkan-on-mac = ["wgpu/vulkan-portability"]
 
 [dependencies]
 camera-core = { path = "crates/camera-core" }
 # The core simulator's world reader (--world): Gazebo's SDF files, as the rays see them.
 sim-core = { path = "../aav_simulator/crates/sim-core" }
-# The same Bevy as the developer window. "3d" is all it draws with; no window is opened.
-bevy = { version = "0.20", default-features = false, features = ["3d"] }
+# The same Bevy as the developer window, without its window: "3d"'s renderer, but none of
+# its platform (winit, X11, Wayland, gamepads, the clipboard), so a Linux computer with no
+# screen builds it with nothing more installed (gilrs wanted libudev's headers).
+bevy = { version = "0.20", default-features = false, features = [
+    "default_app",
+    "std",
+    "multi_threaded",
+    "3d_bevy_render",
+] }
+# Bevy's own wgpu, for the adapter's kind (GPU or software) and Vulkan on a Mac.
+wgpu = { version = "30", default-features = false }
 image = { version = "0.25", default-features = false, features = ["png"] }
 rclrs = { version = "0.8", optional = true }
 ros-env = { version = "0.3", optional = true }

@@ -53,7 +53,9 @@ pixi run sim-cameras --world maps/campus/campus.sdf --at 49,-71,0 --save /tmp/pi
 (`aav_gazebo` `worlds.sim_cameras_command`). With `--ros` it also reads
 `/vehicle/sim/entities` and draws each model placed while running. With `faults:=true` the
 front left picture goes elsewhere: `--image-topic front_left=/gazebo/camera/front_left/image_raw`
-(its camera_info stays). A computer with no GPU can't run it: use `simulator:=gazebo`.
+(its camera_info stays). A computer with no GPU draws in software: put
+`tools/software_gl.sh` in front (Mesa's lavapipe); `--software` asks for it beside a GPU.
+The log's first line says which adapter draws.
 
 In Rust, for the core simulator (no ROS needed):
 
@@ -67,7 +69,7 @@ let frames = cameras.tick(&car_in_map, sim_time)?;  // only the cameras due now
 ## Invariants
 
 - **Its own Cargo workspace, no `package.xml`**: colcon and the car's builds never compile
-  Bevy. Runs on a Mac or a Linux desktop with a GPU, never on the Orin.
+  Bevy. Runs on a Mac or a Linux desktop (with no GPU: in software), never on the Orin.
 - The camera mounts come from `vehicle.yaml`: the only place car measurements live.
 - Pictures are stamped with the car pose's time, and drawn on the whole tenths of sim
   time, as Gazebo's 10 Hz sensors.
@@ -76,7 +78,7 @@ let frames = cameras.tick(&car_in_map, sim_time)?;  // only the cameras due now
 
 ## Side Effects
 
-- Uses the GPU. With `--ros`: publishes the camera topics above, through
+- Uses the GPU, or with none a software renderer (lavapipe, on the CPU). With `--ros`: publishes the camera topics above, through
   `tools/ros.sh --local`, so it never meets a real car.
 - It doesn't announce on `/system/source`: the simulator that starts it does, as
   `gazebo_adapter` does for Gazebo's cameras (`aav_gazebo/sources.py`).
