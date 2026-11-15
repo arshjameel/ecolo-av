@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">70 min read · 15 sections</div></header>
+<div class="meta">71 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -562,6 +562,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben</td>
 <td>2026-11-08</td>
 <td>sim</td>
+</tr>
+<tr>
+<td><a href="own-planner.html#hybrid-a-a-second-search-14-nov">Hybrid-A* in our planner</a> (<code>planner:=own planner_search:=hybrid</code>; the league's <code>hybrid_rs</code>)</td>
+<td>Ben, 14 Nov: "Hybrid-A<em> in our Rust planner: Now" (TODO 178). Nav2's SmacPlannerHybrid ported, a challenger beside our lattice (the champion stays): short arcs at full lock from 72 headings, Reeds-Shepp with reversing, Dubins forward only, on nav2.yaml's own Hybrid-A</em> block. It shares the lattice's search, outline check, estimates, curve finish and smoother; only how a node expands differs. Offline on the test lot, reversing: the same tour length as our lattice (134 m), slower to plan (48 ms against 17 ms a tour), more changes of direction (7 against 2). Not yet run in a simulator</td>
+<td>Ben</td>
+<td>2026-11-14</td>
+<td>built</td>
 </tr>
 <tr>
 <td><a href="own-navigator.html">Our own navigator</a> (<code>aav_navigator</code>, <code>navigator:=own</code>; all ours: <code>navigator:=own planner:=own costmap:=own tracker:=mppi_lag</code>)</td>

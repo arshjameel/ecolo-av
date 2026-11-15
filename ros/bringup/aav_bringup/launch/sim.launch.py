@@ -92,6 +92,9 @@ bench's argument names:
                       lattice_headings:=32: the lattice's trial file, 32 headings
                       lattice_moves:=smooth|smooth_fast: the lattice's trial moves,
                       curvature no faster than the steering turns (tools/lattice_smooth.py)
+                      planner_search:=hybrid: with planner:=own, ours runs Nav2's
+                      Hybrid-A* ported instead of the lattice (a challenger, the league's
+                      hybrid_rs)
                       planner:=diffusion: a model draws the path, a guard checks it,
                       the lattice's path when it fails (aav_diffusion_planner, a trial:
                       pixi install --locked -e learn, pixi run diffusion train first);
@@ -234,7 +237,8 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'planner': vehicle.DEFAULT_PLANNER, 'costmap': vehicle.DEFAULT_COSTMAP,
                   'navigator': vehicle.DEFAULT_NAVIGATOR, 'smoother': vehicle.DEFAULT_SMOOTHER,
                   'behaviour': 'false', 'ndt_ekf': 'false', 'kiss_ekf': 'false',
-                  'lattice_moves': vehicle.LATTICE_MOVES[0]}
+                  'lattice_moves': vehicle.LATTICE_MOVES[0],
+                  'planner_search': vehicle.PLANNER_SEARCHES[0]}
 
 
 def launch_setup(context):
@@ -407,6 +411,7 @@ def launch_setup(context):
                                smoother=vehicle.check_smoother(arg('smoother')),
                                lattice_headings=arg('lattice_headings'),
                                lattice_moves=arg('lattice_moves'),
+                               planner_search=arg('planner_search'),
                                diffusion_model=arg('diffusion_model'),
                                diffusion_record=arg('diffusion_record'),
                                diffusion_smoothing=arg('diffusion_smoothing'),
@@ -651,6 +656,10 @@ def generate_launch_description():
                                           'moves; smooth or smooth_fast, a trial '
                                           "(tools/lattice_smooth.py). Empty: the stack's "
                                           "choice (nav2's moves)"),
+        DeclareLaunchArgument('planner_search', default_value=stacks.CHOSEN,
+                              description='with planner:=own: lattice, the State Lattice; '
+                                          "hybrid, Nav2's Hybrid-A* in Rust (a challenger). "
+                                          "Empty: the stack's choice (the lattice)"),
         DeclareLaunchArgument('behaviour', default_value=stacks.CHOSEN,
                               description='true: the behaviour states, the road ahead and '
                                           'a speed cap (aav_behaviour); false: none. '

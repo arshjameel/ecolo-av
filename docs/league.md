@@ -13,7 +13,7 @@ waiting to beat it.
   │ navigator  │ nav2      │ ours                         │
   │ path       │ lattice   │ lattice_rs, lattice_smooth,  │
   │            │           │ lattice_rs_smooth, hybrid,   │
-  │            │           │ diffusion                    │
+  │            │           │ hybrid_rs, diffusion         │
   │ steer      │ mppi      │ mppi_lag, mpc_lag, rpp       │
   │ smoother   │ nav2      │ ours                         │
   │ behaviour  │ off       │ on (the road ahead)          │

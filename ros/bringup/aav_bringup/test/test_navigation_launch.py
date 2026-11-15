@@ -405,6 +405,25 @@ def test_smooth_moves_reach_our_planner_with_its_smoother_off():
         nav_nodes(planner='own', lattice_moves='smooth', lattice_headings='32')
 
 
+def test_planner_search_hybrid_gives_our_planner_the_hybrid_a_star_block():
+    # planner_search:=hybrid (TODO 178): ours runs Hybrid-A* on nav2.yaml's GridBased block.
+    for reversing, model in (('false', 'DUBIN'), ('true', 'REEDS_SHEPP')):
+        s = json.loads(given(nav_nodes(planner='own', planner_search='hybrid',
+                                       reversing=reversing)['planner'])['settings'])
+        assert s['search'] == 'hybrid'
+        assert s['motion_model_for_search'] == model
+        assert s['angle_quantization_bins'] == 72
+        assert s['non_straight_penalty'] == 1.2 and s['change_penalty'] == 0.0
+        assert 'lattice_filepath' not in s
+    # The default stays the lattice; another planner can't take the switch.
+    s = json.loads(given(nav_nodes(planner='own')['planner'])['settings'])
+    assert 'search' not in s
+    with pytest.raises(ValueError, match='planner:=own'):
+        nav_nodes(planner='lattice', planner_search='hybrid')
+    with pytest.raises(ValueError, match='pick one of'):
+        nav_nodes(planner='own', planner_search='rrt')
+
+
 def managed(nodes):
     """Return the servers lifecycle_manager_navigation brings up."""
     return given(nodes['lifecycle_manager_navigation'])['node_names']

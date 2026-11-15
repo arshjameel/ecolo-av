@@ -18,71 +18,14 @@
 use std::f64::consts::PI;
 use std::path::Path;
 
-use costmap::cost::{LETHAL, NO_INFORMATION};
-use costmap::Grid;
 use lattice_planner::{cusps, length, scenes, Lattice, Planner, Pose, Settings};
 
 const CONFIG: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../../aav_navigation/config"
 );
-const MAPS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../aav_navigation/maps");
 /// The window curvature is measured over (m).
 const WINDOW: f64 = 0.5;
-
-/// `measure controllers --tours lot`: the start, then each leg's goal (x, y, heading deg).
-const LEGS: [(&str, f64, f64, f64); 4] = [
-    ("a left turn", 15.0, 15.0, 90.0),
-    ("round the building", 35.0, 42.0, 0.0),
-    ("turn back", 20.0, 42.0, 180.0),
-    ("home", 0.0, 0.0, 0.0),
-];
-
-/// A map_server map: its PGM (binary, P5) read as Nav2's trinary mode does (occupied
-/// above 0.65, free under 0.25, else unknown), then inflated as nav2.yaml's global costmap.
-fn load_map(name: &str) -> Grid {
-    let bytes = std::fs::read(format!("{MAPS}/{name}.pgm")).expect("the map's PGM");
-    // The header: P5, comments, width, height, maxval, one whitespace byte, then the data.
-    let mut fields = Vec::new();
-    let mut i = 0;
-    while fields.len() < 4 {
-        while bytes[i].is_ascii_whitespace() {
-            i += 1;
-        }
-        if bytes[i] == b'#' {
-            while bytes[i] != b'\n' {
-                i += 1;
-            }
-            continue;
-        }
-        let start = i;
-        while !bytes[i].is_ascii_whitespace() {
-            i += 1;
-        }
-        fields.push(String::from_utf8_lossy(&bytes[start..i]).into_owned());
-    }
-    let data = &bytes[i + 1..];
-    let (w, h): (usize, usize) = (fields[1].parse().unwrap(), fields[2].parse().unwrap());
-    let max: f64 = fields[3].parse().unwrap();
-    // example_lot.yaml: 0.25 m cells, origin (-10, -10).
-    let mut grid = Grid::new((-10.0, -10.0), scenes::RESOLUTION, w, h, 0);
-    for row in 0..h {
-        for cx in 0..w {
-            let occupied = (max - f64::from(data[row * w + cx])) / max;
-            let cost = if occupied > 0.65 {
-                LETHAL
-            } else if occupied < 0.25 {
-                0
-            } else {
-                NO_INFORMATION
-            };
-            // The PGM's first row is the map's top.
-            grid.set(cx, h - 1 - row, cost);
-        }
-    }
-    scenes::inflation().apply(&mut grid);
-    grid
-}
 
 /// Curvature (1/m) every `WINDOW` m along each stretch between cusps.
 fn curvatures(poses: &[Pose]) -> Vec<Vec<f64>> {
@@ -147,7 +90,7 @@ fn smoothness(poses: &[Pose], limit: f64) -> (f64, f64, usize) {
 
 fn main() {
     let out = std::env::args().nth(1);
-    let grid = load_map("example_lot");
+    let grid = scenes::map("example_lot").expect("the example lot");
     println!(
         "Curvature change: the largest over {WINDOW} m windows (1/m^2); 'over' = metres above \
          0.31 1/m^2, the most the steering (0.6 rad/s) keeps up with at 1 m/s"
@@ -188,9 +131,9 @@ fn main() {
                 &scenes::outline(),
                 Some(&scenes::inflation()),
             );
-            let mut from = Pose::new(0.0, 0.0, 0.0);
+            let mut from = scenes::LOT_START;
             let mut sums = (0.0, 0.0);
-            for (n, (name, x, y, deg)) in LEGS.iter().enumerate() {
+            for (n, (name, x, y, deg)) in scenes::LOT_TOUR.iter().enumerate() {
                 let goal = Pose::new(*x, *y, deg.to_radians());
                 // The best of 3 for the time.
                 let mut best: Option<lattice_planner::Plan> = None;

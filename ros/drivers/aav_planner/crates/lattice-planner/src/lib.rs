@@ -1,15 +1,19 @@
-//! Our own path planner: Nav2's Smac State Lattice planner, ported to Rust (no ROS).
+//! Our own path planner: Nav2's Smac State Lattice and Hybrid-A* planners, ported to Rust
+//! (no ROS).
 //!
-//! Given a costmap (the `costmap` crate's `Grid`), the car's outline and our lattice
-//! primitives file, `Planner::plan` finds a path a car can drive from a start pose to a
-//! goal pose: A* over the moves in the file (forward, and backward if allowed), finishing
-//! with a Reeds-Shepp or Dubins curve when one is clear, then smoothed. The costs and
-//! penalties are nav2.yaml's (`Settings::default`). PROVENANCE.md says what came from
-//! where and what changed.
+//! Given a costmap (the `costmap` crate's `Grid`) and the car's outline, `Planner::plan`
+//! finds a path a car can drive from a start pose to a goal pose: A* over the car's moves
+//! (forward, and backward if allowed), finishing with a Reeds-Shepp or Dubins curve when
+//! one is clear, then smoothed. The moves are our lattice primitives file
+//! (`Planner::new`, the State Lattice) or Hybrid-A*'s short arcs at full lock
+//! (`Planner::hybrid`); everything else is the same code. The costs and penalties are
+//! nav2.yaml's (`Settings::default`, `Settings::hybrid`). PROVENANCE.md says what came
+//! from where and what changed.
 //!
 //! ```text
 //! start ─▶ search (search.rs) ─▶ curve to the goal (curves.rs) ─▶ smoother (smoother.rs) ─▶ path
 //!            │  moves: lattice.rs        fits?: collision.rs        how far?: heuristic.rs
+//!            │  (the file, or Lattice::hybrid's arcs)
 //! ```
 
 pub mod collision;
@@ -20,13 +24,15 @@ pub mod scenes;
 pub mod search;
 pub mod smoother;
 
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use costmap::{footprint, Grid, Inflation};
 
 pub use collision::Checker;
 pub use curves::CurveKind;
-pub use lattice::Lattice;
+pub use lattice::{Lattice, LatticeError};
+pub use search::Expansion;
 pub use smoother::SmootherSettings;
 
 use heuristic::DistanceTable;
@@ -106,6 +112,45 @@ impl Default for Settings {
     }
 }
 
+impl Settings {
+    /// nav2.yaml's Hybrid-A* block (`GridBased`, SmacPlannerHybrid): its penalties differ
+    /// from the lattice's (no change penalty, a dearer turn).
+    pub fn hybrid() -> Self {
+        Self {
+            change_penalty: 0.0,
+            non_straight_penalty: 1.2,
+            ..Self::default()
+        }
+    }
+}
+
+/// Hybrid-A*'s own settings (nav2.yaml's `GridBased` block); the motion model is
+/// `Settings::allow_reverse`: Reeds-Shepp (`REEDS_SHEPP`) if the car may reverse, else
+/// Dubins (`DUBIN`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Hybrid {
+    /// m: the radius the arcs turn at (vehicle.plan_turning_radius).
+    pub minimum_turning_radius: f64,
+    /// Headings: each node's heading is one of these many bins.
+    pub angle_quantization_bins: usize,
+    /// Also the gentler turns between straight and full lock.
+    pub allow_primitive_interpolation: bool,
+    /// The obstacle estimate on 2 x 2 blocks (Nav2's default).
+    pub downsample_obstacle_heuristic: bool,
+}
+
+impl Hybrid {
+    /// nav2.yaml's block for a car turning at `minimum_turning_radius` m.
+    pub fn new(minimum_turning_radius: f64) -> Self {
+        Self {
+            minimum_turning_radius,
+            angle_quantization_bins: 72,
+            allow_primitive_interpolation: false,
+            downsample_obstacle_heuristic: true,
+        }
+    }
+}
+
 /// Why there is no path (Nav2's `ComputePathToPose` error codes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlanError {
@@ -153,24 +198,20 @@ pub struct Plan {
     pub total_time: f64,
 }
 
-/// The planner: the lattice, the car, and the tables built once.
-pub struct Planner {
+/// The moves and the tables made from them, for one size of cell.
+struct Tables {
     lattice: Lattice,
-    settings: Settings,
     checker: Checker,
     distances: DistanceTable,
-    kind: CurveKind,
 }
 
-impl Planner {
-    /// `outline`: the car's footprint (m, base_link), already padded. `inflation`: the
-    /// costmap's inflation settings (its cost at the circumscribed radius lets most poses
-    /// skip the outline check); None if the costmap has none.
-    pub fn new(
+impl Tables {
+    fn new(
         lattice: Lattice,
-        settings: Settings,
+        settings: &Settings,
         outline: &[(f64, f64)],
         inflation: Option<&Inflation>,
+        kind: CurveKind,
     ) -> Self {
         let possible = inflation.and_then(|i| {
             let (_, circumscribed) = footprint::radii(outline);
@@ -178,29 +219,164 @@ impl Planner {
                 .then(|| i.cost(circumscribed / lattice.resolution, lattice.resolution))
         });
         let checker = Checker::new(outline, possible, settings.allow_unknown);
-        let kind = if settings.allow_reverse {
-            CurveKind::ReedsShepp
-        } else {
-            CurveKind::Dubins
-        };
         let radius = lattice.turning_radius / lattice.resolution;
         let cells = (settings.lookup_table_size / lattice.resolution) as usize;
         let distances = DistanceTable::new(kind, radius, &lattice.headings, cells);
         Self {
             lattice,
-            settings,
             checker,
             distances,
-            kind,
         }
+    }
+}
+
+/// Where the moves come from.
+enum Moves {
+    /// The primitives file: made for one size of cell.
+    Lattice(Arc<Tables>),
+    /// Hybrid-A*'s arcs: made again for a costmap with other cells (as Nav2 does when the
+    /// costmap's resolution changes), and kept.
+    Hybrid {
+        spec: Hybrid,
+        tables: Mutex<Arc<Tables>>,
+    },
+}
+
+/// The planner: the moves, the car, and the tables built once.
+pub struct Planner {
+    settings: Settings,
+    outline: Vec<(f64, f64)>,
+    inflation: Option<Inflation>,
+    kind: CurveKind,
+    moves: Moves,
+}
+
+impl Planner {
+    /// The State Lattice on a primitives file. `outline`: the car's footprint (m,
+    /// base_link), already padded. `inflation`: the costmap's inflation settings (its cost
+    /// at the circumscribed radius lets most poses skip the outline check); None if the
+    /// costmap has none.
+    pub fn new(
+        lattice: Lattice,
+        settings: Settings,
+        outline: &[(f64, f64)],
+        inflation: Option<&Inflation>,
+    ) -> Self {
+        let kind = curve_kind(&settings);
+        let tables = Tables::new(lattice, &settings, outline, inflation, kind);
+        Self {
+            settings,
+            outline: outline.to_vec(),
+            inflation: inflation.copied(),
+            kind,
+            moves: Moves::Lattice(Arc::new(tables)),
+        }
+    }
+
+    /// Hybrid-A* (Nav2's SmacPlannerHybrid), its tables made for `resolution` m cells (the
+    /// global costmap's; another costmap's makes them again). Reeds-Shepp if
+    /// `settings.allow_reverse`, else Dubins.
+    pub fn hybrid(
+        spec: Hybrid,
+        settings: Settings,
+        outline: &[(f64, f64)],
+        inflation: Option<&Inflation>,
+        resolution: f64,
+    ) -> Result<Self, LatticeError> {
+        let kind = curve_kind(&settings);
+        let lattice = Lattice::hybrid(
+            spec.minimum_turning_radius,
+            spec.angle_quantization_bins,
+            resolution,
+            spec.allow_primitive_interpolation,
+        )?;
+        let tables = Tables::new(lattice, &settings, outline, inflation, kind);
+        Ok(Self {
+            settings,
+            outline: outline.to_vec(),
+            inflation: inflation.copied(),
+            kind,
+            moves: Moves::Hybrid {
+                spec,
+                tables: Mutex::new(Arc::new(tables)),
+            },
+        })
     }
 
     pub fn settings(&self) -> &Settings {
         &self.settings
     }
 
-    pub fn lattice(&self) -> &Lattice {
-        &self.lattice
+    /// The search's expansion: the lattice's or Hybrid-A*'s.
+    pub fn expansion(&self) -> Expansion {
+        match &self.moves {
+            Moves::Lattice(_) => Expansion::Lattice,
+            Moves::Hybrid { spec, .. } => Expansion::Hybrid {
+                downsample_obstacle_heuristic: spec.downsample_obstacle_heuristic,
+            },
+        }
+    }
+
+    /// m: the radius the moves and the curves to the goal turn at.
+    pub fn turning_radius(&self) -> f64 {
+        match &self.moves {
+            Moves::Lattice(t) => t.lattice.turning_radius,
+            Moves::Hybrid { spec, .. } => spec.minimum_turning_radius,
+        }
+    }
+
+    /// One line for the log: which search, its headings, cells and radius.
+    pub fn describe(&self) -> String {
+        let reversing = self.settings.allow_reverse;
+        match &self.moves {
+            Moves::Lattice(t) => format!(
+                "State Lattice: {} headings, {} m cells, turning radius {} m, reversing {reversing}",
+                t.lattice.headings.len(),
+                t.lattice.resolution,
+                t.lattice.turning_radius,
+            ),
+            Moves::Hybrid { spec, .. } => format!(
+                "Hybrid-A* ({}): {} headings, turning radius {} m, primitive interpolation {}, \
+                 downsampled obstacle estimate {}",
+                if reversing { "REEDS_SHEPP" } else { "DUBIN" },
+                spec.angle_quantization_bins,
+                spec.minimum_turning_radius,
+                spec.allow_primitive_interpolation,
+                spec.downsample_obstacle_heuristic,
+            ),
+        }
+    }
+
+    /// The tables for `grid`'s cells: the lattice's must match; Hybrid-A*'s are made
+    /// again for other cells.
+    fn tables(&self, grid: &Grid) -> Result<Arc<Tables>, PlanError> {
+        let fits = |t: &Tables| (grid.resolution - t.lattice.resolution).abs() <= 1e-6;
+        match &self.moves {
+            Moves::Lattice(t) if fits(t) => Ok(Arc::clone(t)),
+            Moves::Lattice(_) => Err(PlanError::WrongResolution),
+            Moves::Hybrid { spec, tables } => {
+                // A plan that panicked mid-build leaves no half-made tables: the lock's
+                // value is always a whole set.
+                let mut held = tables.lock().unwrap_or_else(|e| e.into_inner());
+                if !fits(&held) {
+                    let lattice = Lattice::hybrid(
+                        spec.minimum_turning_radius,
+                        spec.angle_quantization_bins,
+                        grid.resolution,
+                        spec.allow_primitive_interpolation,
+                    )
+                    .map_err(|_| PlanError::WrongResolution)?;
+                    *held = Arc::new(Tables::new(
+                        lattice,
+                        &self.settings,
+                        &self.outline,
+                        self.inflation.as_ref(),
+                        self.kind,
+                    ));
+                }
+                Ok(Arc::clone(&held))
+            }
+        }
     }
 
     /// Plan from `start` to `goal` (world poses on `grid`'s frame). `cancelled` is asked
@@ -213,9 +389,7 @@ impl Planner {
         cancelled: &dyn Fn() -> bool,
     ) -> Result<Plan, PlanError> {
         let began = Instant::now();
-        if (grid.resolution - self.lattice.resolution).abs() > 1e-6 {
-            return Err(PlanError::WrongResolution);
-        }
+        let tables = self.tables(grid)?;
         let to_cells = |p: &Pose| {
             (
                 (p.x - grid.origin_x) / grid.resolution,
@@ -245,16 +419,17 @@ impl Planner {
             });
         }
         let search = Search {
-            lattice: &self.lattice,
+            lattice: &tables.lattice,
             settings: &self.settings,
-            checker: &self.checker,
-            distances: &self.distances,
+            checker: &tables.checker,
+            distances: &tables.distances,
             kind: self.kind,
+            expansion: self.expansion(),
         };
         let found = search.run(
             grid,
-            (sx, sy, self.lattice.nearest_heading(start.yaw)),
-            (gx, gy, self.lattice.nearest_heading(goal.yaw)),
+            (sx, sy, tables.lattice.nearest_heading(start.yaw)),
+            (gx, gy, tables.lattice.nearest_heading(goal.yaw)),
             cancelled,
         )?;
         let mut raw: Vec<Pose> = Vec::with_capacity(found.poses.len());
@@ -281,7 +456,7 @@ impl Planner {
             smoother::smooth(
                 &mut poses,
                 grid,
-                self.lattice.turning_radius,
+                tables.lattice.turning_radius,
                 &self.settings.smoother,
                 left,
             );
@@ -331,6 +506,14 @@ impl Planner {
             from = *goal;
         }
         Ok(whole)
+    }
+}
+
+fn curve_kind(settings: &Settings) -> CurveKind {
+    if settings.allow_reverse {
+        CurveKind::ReedsShepp
+    } else {
+        CurveKind::Dubins
     }
 }
 

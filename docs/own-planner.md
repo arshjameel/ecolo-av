@@ -17,6 +17,8 @@ lattice with `planner:=lattice` or `stack:=stock`). Nav2 stays on the car.
 > - **Campus:** both planners failed the same legs (MPPI gave up, not the planner);
 >   ours took about **20 % longer** to plan the long legs (180 ms against 150 ms).
 > - **Not yet a winner:** as good on the lot, a little slower on the campus.
+> - **Hybrid-A\* too (14 Nov):** `planner_search:=hybrid` runs Nav2's Hybrid-A*
+>   ported, on the same search ([below](#hybrid-a-a-second-search-14-nov)). A challenger.
 
 ## How it fits
 
@@ -75,6 +77,9 @@ start ─▶ A* over the moves ─▶ now and then: one curve straight to the go
 | Time the hand-made maps | `cargo run --release -p lattice-planner --example scenes` |
 | Try the smooth moves (a trial) | `pixi run sim planner:=own lattice_moves:=smooth` ([why](controllers.md#smooth-moves-a-trial-14-nov)) |
 | Compare the moves offline | `cargo run --release -p lattice-planner --example moves` (the lot tour on `example_lot`) |
+| Run Hybrid-A* instead | `pixi run sim planner:=own planner_search:=hybrid` (or `stack:=ours` with the league's `hybrid_rs`) |
+| Hybrid-A* against the lattice offline | `cargo run --release -p lattice-planner --example hybrid` |
+| ... and in the simulator | `pixi run measure controllers --planners own own_hybrid --reversing --tours lot` |
 
 ## Hand-made maps (no ROS)
 
@@ -139,10 +144,84 @@ Same spot, same map, leg by leg: the lengths agree within 2 m (once 2.2 m: 44.2 
 - Nav2's lattice stays the default. Next: make ours faster (remember each node's check,
   as Nav2 does, where it is safe), and Hybrid-A* for forward only.
 
+## Hybrid-A*: a second search (14 Nov)
+
+Ben, 14 Nov: "Hybrid-A* in our Rust planner: Now" (TODO 178). Nav2's
+SmacPlannerHybrid (Dolgov et al., 2010), ported into the same crate. **A challenger:**
+the league's champion stays our lattice (`lattice_rs`); this is `hybrid_rs`.
+
+> - **Switch:** `planner:=own planner_search:=hybrid`. Nothing else changes: the same
+>   node, actions, topics and costmap.
+> - **Settings:** `nav2.yaml`'s own Hybrid-A* block (`GridBased`), as Nav2's gets it:
+>   72 headings, the planning radius (3.57 m), Reeds-Shepp with `reversing:=true`,
+>   else Dubins (forward only).
+
+### What is shared, what differs
+
+Nav2 runs both planners on one A*; only the node type differs. Ours too:
+
+```
+                  ┌── the lattice: the primitives file's moves, each swept
+search.rs (A*) ───┤
+                  └── Hybrid-A*: 3 short arcs (6 reversing), checked where they end
+  shared: the outline check, both estimates, the curve to the goal, the smoother
+```
+
+| Part | The lattice | Hybrid-A* |
+|---|---|---|
+| moves from a heading | 6 from our file, 16 headings | straight, full left, full right; 72 headings (5°) |
+| a move's length | as the file draws it | 0.63 m: just over a cell's diagonal, a 10° turn |
+| backwards | the same moves, driven backwards | the same (Nav2's `REVERSE`, `REV_LEFT`, `REV_RIGHT`) |
+| does it fit? | along the whole move | at its end only |
+| a turn costs | × 1.05, + 0.05 to change | × 1.2 (no change penalty in nav2.yaml) |
+| round the obstacles | every cell | 2 × 2 blocks (Nav2's default: a quarter of the work) |
+
+### Offline: the lot tour (no ROS)
+
+`cargo run --release -p lattice-planner --example hybrid`: `example_lot`, the four legs
+`measure controllers --tours lot` drives, our car, M4 Max, the best of 3.
+
+**Reversing (the car's setting):**
+
+| Leg | Lattice: m, ms, cusps | Hybrid-A*: m, ms, cusps |
+|---|---|---|
+| a left turn | 21.9, < 1, 0 | 22.5, < 1, **1** |
+| round the building | 40.9, 1, 0 | 41.1, < 1, 0 |
+| turn back (35, 42, 0°) to (20, 42, 180°) | 20.8, 2, 1 | 20.1, 8, **3** |
+| home | 50.4, 14, 1 | 50.7, 39, **3** |
+| **whole tour** | **133.9 m, 17 ms, 2 cusps** | **134.3 m, 48 ms, 7 cusps** |
+
+**Forward only (Dubins):**
+
+| Leg | Lattice: m, ms | Hybrid-A*: m, ms |
+|---|---|---|
+| a left turn | 21.9, < 1 | 21.9, < 1 |
+| round the building | 40.9, 1 | 40.8, < 1 |
+| turn back (a loop round) | 39.3, 8 | **36.4**, 5 |
+| home | 52.3, 27 | 52.7, 44 |
+| **whole tour** | **154.4 m, 36 ms** | **151.9 m, 50 ms** |
+
+- **Tightest turn:** before smoothing, Hybrid-A* keeps to 3.57 m on every leg (its arcs
+  are exactly the radius); the lattice to 3.63 m. The shared smoother then tightens
+  some corners on both (3.12 m Hybrid, 3.33 m lattice), still wider than full lock
+  (2.86 m).
+- **Cusps:** Hybrid-A* finishes with a Reeds-Shepp curve from a 5° heading, so near
+  the goal it often backs up a little to line up (as Nav2's does). More changes of
+  direction for the follower.
+- **Time:** 2-3 times the lattice's on long legs (more, shorter moves); all well
+  inside the 5 s limit.
+
+### Not done yet
+
+- **The simulator:** not run. Next: `measure controllers --planners own own_hybrid
+  --reversing --tours lot`, 3 runs.
+- No `use_quadratic_cost_penalty` or `cache_obstacle_heuristic` (nav2.yaml leaves both
+  off).
+
 ## What's missing
 
-- **Hybrid-A*** (the forward-only default on the car): not ported. `planner:=own` with
-  `reversing:=false` plans Dubins moves on the lattice instead.
+- **Hybrid-A*** (the forward-only default on the car): ported 14 Nov
+  ([above](#hybrid-a-a-second-search-14-nov)); not yet run in a simulator.
 - **`ComputePathThroughPoses`**: done 8 Nov (`/drivers/nav/planner/compute_path_through_poses`,
   a plan a leg, joined, as Nav2's planner_server does).
 - **The navigator step**: done 8 Nov ([our own navigator](own-navigator.md)): it calls

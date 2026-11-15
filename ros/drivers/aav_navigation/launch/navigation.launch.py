@@ -71,6 +71,10 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           beside it, its /plan renamed /drivers/nav/planner/nav2_plan.
                           It plans on the global costmap costmap:= picks. car.launch.py
                           refuses it (docs/own-planner.md)
+  planner_search:=hybrid  with planner:=own: our planner runs Nav2's Hybrid-A* ported
+                          (SmacPlannerHybrid, a challenger) instead of the lattice, on
+                          nav2.yaml's GridBased block: Reeds-Shepp with reversing:=true,
+                          else Dubins. lattice (the default): the State Lattice
   tracker:=pure_pursuit|stanley|lqr|mpc|mpc_full|mpc_lag
                           aav_track's track node follows the path instead
                           (tracker:=mppi_lag: aav_mppi_lag's mppi_lag node, Nav2's MPPI
@@ -297,6 +301,8 @@ def nodes(context):
         raise ValueError('amcl:=true needs lidar:=true: AMCL reads /sensors/lidar/scan')
 
     planner = vehicle.check_planner(LaunchConfiguration('planner').perform(context))
+    search = vehicle.check_planner_search(
+        LaunchConfiguration('planner_search').perform(context), planner)
 
     cfg = vehicle.load()
     v = cfg['vehicle']
@@ -493,10 +499,13 @@ def nodes(context):
                          'global': json.dumps(blocks['global']),
                          'use_sim_time': use_sim_time}]))
     if own_planner:
-        # aav_planner (Rust): Nav2's lattice ported, from the same tuned Lattice block, the
+        # aav_planner (Rust): Nav2's lattice ported, from the same tuned Lattice block (or
+        # Hybrid-A*, planner_search:=hybrid, from nav2.yaml's own Hybrid-A* block), the
         # car's outline and the global costmap's inflation. Not a lifecycle node.
         with open(source) as f:
-            settings = vehicle.planner_params(yaml.safe_load(f), v, costmap)
+            tuned = yaml.safe_load(f)
+        with open(f'{share}/config/nav2.yaml') as f:
+            settings = vehicle.planner_params(tuned, v, costmap, search, yaml.safe_load(f))
         topic, updates, latched = vehicle.GLOBAL_COSTMAP_TOPICS[costmap]
         actions.append(Node(
             package='aav_planner', executable='planner', name='planner', output='screen',
@@ -723,6 +732,11 @@ def generate_launch_description():
                                           'trial: curvature no faster than the steering '
                                           'turns at 1 or 2.5 m/s, the smoother off '
                                           '(config/lattice_ackermann_smooth*.json)'),
+        DeclareLaunchArgument('planner_search', default_value=vehicle.PLANNER_SEARCHES[0],
+                              description='with planner:=own: lattice (the default), the '
+                                          "State Lattice; or hybrid, a challenger: Nav2's "
+                                          "Hybrid-A* in Rust, on nav2.yaml's GridBased "
+                                          'block (docs/own-planner.md)'),
         DeclareLaunchArgument('plan_around', default_value='true',
                               description='true: the planner sees the radar and lidar too, '
                                           'and plans round what they see; false: the map '

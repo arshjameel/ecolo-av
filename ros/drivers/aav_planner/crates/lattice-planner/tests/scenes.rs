@@ -20,9 +20,19 @@ fn clear(grid: &costmap::Grid, p: &Pose) -> bool {
 
 #[test]
 fn each_scene_with_and_without_reversing() {
+    each_scene(scenes::planner);
+}
+
+#[test]
+fn each_scene_with_and_without_reversing_hybrid_a_star() {
+    each_scene(scenes::hybrid_planner);
+}
+
+/// Every scene, forward only and reversing, with the planner `make` gives.
+fn each_scene(make: fn(bool) -> lattice_planner::Planner) {
     let lattice = scenes::lattice();
     for reversing in [false, true] {
-        let planner = scenes::planner(reversing);
+        let planner = make(reversing);
         for scene in scenes::all() {
             let expect = if reversing {
                 scene.reverse_ok
@@ -76,11 +86,20 @@ fn each_scene_with_and_without_reversing() {
 
 #[test]
 fn reversing_out_of_the_parking_space_backs_out_first() {
+    backs_out_first(scenes::planner);
+}
+
+#[test]
+fn reversing_out_of_the_parking_space_backs_out_first_hybrid_a_star() {
+    backs_out_first(scenes::hybrid_planner);
+}
+
+fn backs_out_first(make: fn(bool) -> lattice_planner::Planner) {
     let scene = scenes::all()
         .into_iter()
         .find(|s| s.name == "parking-lot exit")
         .unwrap();
-    let plan = scenes::planner(true)
+    let plan = make(true)
         .plan(&scene.grid, &scene.start, &scene.goal, &|| false)
         .unwrap();
     // Its first metre runs behind the car (the car faces +x).
