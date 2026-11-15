@@ -37,4 +37,4 @@ topics as the real car, so everything upstream runs unchanged.
 
 ## Verification
 
-- Run: `pixi run test`, then `pixi run sim-check` (on oirp-spss: `tools/software_gl.sh pixi run sim-check --simulator gazebo`).
+- Run: `pixi run test`, then `pixi run sim-check` (with no GPU, as on oirp-spss: `tools/software_gl.sh pixi run sim-check`).

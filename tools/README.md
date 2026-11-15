@@ -93,7 +93,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `pick.py` | a plain-words menu of the sim's switches (route, follower, where-am-I, speed loop): prints, saves and runs the command (`docs/switches.md`) | `pick` |
 | `sim_fault.sh` | make a Gazebo sensor fail on purpose, or mend it | `sim-fault` |
 | `gz_window.sh` | Gazebo's window again, following the car | - (ros.sh) |
-| `software_gl.sh` | Mesa's software OpenGL, for Gazebo with no GPU | - (put in front) |
+| `software_gl.sh` | Mesa's software renderers with no GPU: OpenGL for Gazebo, Vulkan (lavapipe) for our cameras; `--force` even beside a GPU, a Mac too | - (put in front) |
 | `fake_vlp16.py` | pretends to be the VLP-16 lidar: its UDP packets | - |
 | `controller_compare.py` | Regulated Pure Pursuit against MPPI, and the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt`, `--ndt-ekf`, `--gps-off`, `--voxels`, `--kiss-icp`), same routes | `measure controllers` |
 | `diffusion.sh` | the diffusion planner trial's family: `data`, `train`, `score` (`models/diffusion/`) | `diffusion <data, train, score>` |

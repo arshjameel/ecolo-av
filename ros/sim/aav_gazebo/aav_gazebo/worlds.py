@@ -130,6 +130,35 @@ def repo_root(here: str) -> str:
     raise ValueError(f'simulator:=own: no {SIM_CAMERAS} above {here}: run from the repository')
 
 
+# Set by tools/software_gl.sh: more cargo features for the cameras (vulkan-on-mac, to draw
+# with Mesa's lavapipe on a Mac), and the folder holding the Vulkan loader on a Mac.
+FEATURES_VAR = 'AAV_SIM_CAMERAS_FEATURES'
+VULKAN_LIB_VAR = 'AAV_VULKAN_LIB_DIR'
+
+
+def sim_cameras_features(environ) -> str:
+    """Return the cameras' cargo features: ros, and any software_gl.sh adds."""
+    extra = [f for f in environ.get(FEATURES_VAR, '').split(',') if f]
+    return ','.join(['ros'] + extra)
+
+
+def sim_cameras_env(environ, system: str) -> dict:
+    """
+    Return what the cameras' process needs added to its environment (none on a GPU).
+
+    On a Mac, the Vulkan loader for the software renderer is found through
+    DYLD_LIBRARY_PATH, which macOS takes out of any program started through /usr/bin/env
+    (every tools/*.sh): tools/software_gl.sh gives the folder another name, and it comes
+    back here, in front of ROS's own (the cameras' message libraries). On Linux it stays in
+    LD_LIBRARY_PATH: nothing to add.
+    """
+    folder = environ.get(VULKAN_LIB_VAR, '')
+    if system != 'Darwin' or not folder:
+        return {}
+    ros = environ.get('DYLD_LIBRARY_PATH', '')
+    return {'DYLD_LIBRARY_PATH': folder + (':' + ros if ros else '')}
+
+
 def sim_cameras_command(root: str, world: str, models, chase: bool = True,
                         relay: str = '') -> list:
     """
@@ -140,7 +169,7 @@ def sim_cameras_command(root: str, world: str, models, chase: bool = True,
     the first time). chase=False leaves out the chase camera. relay: the front left
     picture's topic instead of its own (its camera_info stays), for gazebo_camera's faults.
     """
-    cmd = ['cargo', 'run', '--release', '-q', '--features', 'ros',
+    cmd = ['cargo', 'run', '--release', '-q', '--features', sim_cameras_features(os.environ),
            '--manifest-path', os.path.join(root, SIM_CAMERAS), '--',
            '--ros', '--pose', 'truth', '--world', world, '--models', ':'.join(models)]
     if not chase:

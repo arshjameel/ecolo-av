@@ -91,6 +91,20 @@ def test_our_cameras_run_from_the_repository_on_the_world_file():
     assert '--cameras' not in worlds.sim_cameras_command(root, 'w', [])
 
 
+def test_software_rendering_reaches_the_cameras():
+    # tools/software_gl.sh's settings: more cargo features, and the Vulkan loader on a Mac.
+    assert worlds.sim_cameras_features({}) == 'ros'
+    extra = {worlds.FEATURES_VAR: 'vulkan-on-mac'}
+    assert worlds.sim_cameras_features(extra) == 'ros,vulkan-on-mac'
+    lib = {worlds.VULKAN_LIB_VAR: '/tmp/vk'}
+    assert worlds.sim_cameras_env(lib, 'Darwin') == {'DYLD_LIBRARY_PATH': '/tmp/vk'}
+    assert worlds.sim_cameras_env(lib, 'Linux') == {}
+    assert worlds.sim_cameras_env({}, 'Darwin') == {}
+    # In front of ROS's own libraries, never in their place.
+    both = worlds.sim_cameras_env({**lib, 'DYLD_LIBRARY_PATH': '/ros/lib'}, 'Darwin')
+    assert both == {'DYLD_LIBRARY_PATH': '/tmp/vk:/ros/lib'}
+
+
 def test_every_world_is_named_aav_and_sits_on_the_datum():
     navsat = SRC / 'localization' / 'aav_localization' / 'config' / 'navsat.yaml'
     lat, lon, _ = yaml.safe_load(navsat.read_text())['navsat_transform']['ros__parameters'][

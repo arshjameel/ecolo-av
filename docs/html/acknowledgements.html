@@ -472,6 +472,18 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>our simulator's cameras, the developer window</td>
 </tr>
 <tr>
+<td><strong>Mesa</strong> (llvmpipe, lavapipe), from conda-forge</td>
+<td>MIT</td>
+<td>runs</td>
+<td>drawing with no GPU (<code>tools/software_gl.sh</code>): Gazebo's cameras through OpenGL, ours through Vulkan (lavapipe, 15 Nov)</td>
+</tr>
+<tr>
+<td>Khronos Vulkan loader (<code>libvulkan-loader</code>, conda-forge)</td>
+<td>Apache-2.0</td>
+<td>runs</td>
+<td>finds lavapipe for our cameras with no GPU (<code>tools/software_gl.sh</code>)</td>
+</tr>
+<tr>
 <td><strong>raylib</strong></td>
 <td>zlib</td>
 <td>runs</td>

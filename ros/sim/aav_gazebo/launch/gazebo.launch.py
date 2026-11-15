@@ -98,6 +98,7 @@ camera at the car once the window is up.
 
 import atexit
 import os
+import platform
 import sys
 import tempfile
 
@@ -214,7 +215,9 @@ def own_cameras(share, world, chase, relay):
     cmd = worlds.sim_cameras_command(worlds.repo_root(__file__), world, model_paths(share),
                                      chase=chase,
                                      relay=faults.CAMERA_RELAYED if relay else '')
-    return ExecuteProcess(cmd=cmd, name='sim_cameras', output='screen')
+    env = worlds.sim_cameras_env(os.environ, platform.system())
+    return ExecuteProcess(cmd=cmd, name='sim_cameras', output='screen',
+                          additional_env=env or None)
 
 
 def own_simulator(context, share, world, car, lidar, radar):

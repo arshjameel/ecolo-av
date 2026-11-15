@@ -2980,10 +2980,11 @@ def main():
     if SIMULATOR == 'own' and CAMERAS:
         # The launch starts the cameras with cargo run, which builds them first if they
         # changed: minutes for Bevy, longer than start-up's 120 s. Build them here instead.
-        from aav_gazebo.worlds import SIM_CAMERAS
+        from aav_gazebo.worlds import SIM_CAMERAS, sim_cameras_features
         print("Building our simulator's cameras (aav_sim_cameras), if they changed...",
               flush=True)
-        built = subprocess.run(['cargo', 'build', '--release', '-q', '--features', 'ros',
+        built = subprocess.run(['cargo', 'build', '--release', '-q', '--features',
+                                sim_cameras_features(os.environ),
                                 '--manifest-path', os.path.join(ROOT, SIM_CAMERAS)])
         if built.returncode != 0:
             print("our simulator's cameras did not build: see above, or try --no-cameras",
