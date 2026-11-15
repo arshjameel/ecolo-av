@@ -1,0 +1,28 @@
+[package]
+name = "mpc-node"
+description = "mpc_lag_rs: the ROS 2 node around mpc-lag, in controller_server's FollowPath place"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "mpc_lag_rs"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+# The shared car model: vehicle.yaml's actuators, as parameters.
+car-model = { path = "../../../../bringup/aav_description/car-model" }
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"] }
+# The one-shot channel between the action's task and the tick.
+futures = "0.3"
+mpc-lag = { path = "../mpc-lag" }
+# Reused from aav_mppi_lag, not copied: the held map -> odom (TODO 186) and Nav2's goal
+# and progress checks (the same as aav_track's checks.py).
+mppi-lag = { path = "../../../aav_mppi_lag/crates/mppi-lag" }
+rclrs = "0.8"
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = "0.3"
+spine-core = { path = "../../../../../firmware/spine/crates/spine-core" }

@@ -1,0 +1,16 @@
+[package]
+name = "mpc-lag"
+description = "The lag-aware MPC: steering and set speed planned through the car's own lags (aav_track's mpc_lag, in Rust)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Only our own crates: the shared car model (the estimate) and the spine's speed loop
+# (its gains). The QP is our own port of qp.py's ADMM (src/qp.rs).
+[dependencies]
+car-model = { path = "../../../../bringup/aav_description/car-model" }
+spine-core = { path = "../../../../../firmware/spine/crates/spine-core" }
+
+[dev-dependencies]
+serde_json = "1"
