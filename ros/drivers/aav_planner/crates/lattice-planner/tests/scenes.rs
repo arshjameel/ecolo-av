@@ -4,7 +4,9 @@
 
 use costmap::cost::LETHAL;
 use costmap::footprint;
-use lattice_planner::{cusps, length, scenes, tightest_turn, PlanError, Pose};
+use lattice_planner::{
+    cusps, length, scenes, tightest_turn, PlanError, Planner, Pose, Settings, SmootherSettings,
+};
 
 /// The car's outline is off every lethal cell at this pose.
 fn clear(grid: &costmap::Grid, p: &Pose) -> bool {
@@ -178,4 +180,71 @@ fn through_poses_joins_the_legs_and_says_which_leg_failed() {
             .unwrap_err(),
         (0, PlanError::NoValidPath)
     );
+}
+
+/// m RMS: how far the path swings round its own ~9 m average, sideways from the road at
+/// `angle` through (10, 10), away from its first and last 10 m (a pose every ~0.25 m).
+fn staircase(poses: &[Pose], angle: f64) -> f64 {
+    let (c, s) = (angle.cos(), angle.sin());
+    let side: Vec<f64> = poses
+        .iter()
+        .filter(|p| {
+            let along = (p.x - 10.0) * c + (p.y - 10.0) * s;
+            along > 10.0 && along < 105.0
+        })
+        .map(|p| -(p.x - 10.0) * s + (p.y - 10.0) * c)
+        .collect();
+    let half = 18;
+    let swings: Vec<f64> = (half..side.len().saturating_sub(half))
+        .map(|i| side[i] - side[i - half..=i + half].iter().sum::<f64>() / (2 * half + 1) as f64)
+        .collect();
+    (swings.iter().map(|x| x * x).sum::<f64>() / swings.len().max(1) as f64).sqrt()
+}
+
+#[test]
+fn strong_smoothing_takes_out_the_staircase_on_a_road_at_an_angle() {
+    // TODO 168: a road at 8 degrees, between the lattice's 0 and 22.5, planned as steps;
+    // Nav2's weights leave them, plan_smoothing:=strong's (w_data 0.02) take them out.
+    let angle = 8f64.to_radians();
+    let grid = scenes::angled_road(angle, 120.0);
+    let start = Pose::new(10.0, 10.0, angle);
+    let goal = Pose::new(
+        10.0 + 115.0 * angle.cos(),
+        10.0 + 115.0 * angle.sin(),
+        angle,
+    );
+    let plan = |w_data: f64| {
+        let settings = Settings {
+            smoother: SmootherSettings {
+                w_data,
+                ..SmootherSettings::default()
+            },
+            ..Settings::default()
+        };
+        let planner = Planner::new(
+            scenes::lattice(),
+            settings,
+            &scenes::outline(),
+            Some(&scenes::inflation()),
+        );
+        planner
+            .plan(&grid, &start, &goal, &|| false)
+            .expect("a path along the road")
+    };
+    let nav2 = plan(SmootherSettings::default().w_data);
+    let strong = plan(0.02);
+    let (before, after) = (
+        staircase(&nav2.poses, angle),
+        staircase(&strong.poses, angle),
+    );
+    assert!(
+        before > 0.05,
+        "Nav2's weights: {before:.3} m (the steps should show)"
+    );
+    assert!(
+        after < 0.5 * before,
+        "strong: {after:.3} m against {before:.3} m"
+    );
+    assert!(strong.poses.iter().all(|p| clear(&grid, p)));
+    assert!(tightest_turn(&strong.poses, 1.0) >= tightest_turn(&nav2.poses, 1.0));
 }
