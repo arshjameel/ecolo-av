@@ -81,7 +81,9 @@ def ros(request):
     # This computer only, on a domain nobody else is using (CLAUDE.md: shared machines).
     os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
     rclpy.init(domain_id=free_domain())
-    overrides = [Parameter('live_swap', value=True)] if request.param else []
+    # map_correction on, as these tests were written (TODO 186: off by default since 15 Nov).
+    overrides = [Parameter('map_correction', value=True)]
+    overrides += [Parameter('live_swap', value=True)] if request.param else []
     node = Track(parameter_overrides=overrides)
     helper = rclpy.create_node('track_test')
     executor = SingleThreadedExecutor()
