@@ -738,10 +738,17 @@ class Probe(Node):
         goal.pose.pose.orientation.w = math.cos(yaw / 2.0)
         if not self.nav.wait_for_server(timeout_sec=30.0):
             return None
-        sent = self.nav.send_goal_async(goal)
-        self.spin_for(10.0, lambda: sent.done())
-        if not sent.done() or not sent.result().accepted:
-            return None
+        # The action server exists from Nav2's configure, but it turns goals down until its
+        # lifecycle manager activates it: on a busy computer that can be seconds after.
+        end = time.monotonic() + 30.0
+        while True:
+            sent = self.nav.send_goal_async(goal)
+            self.spin_for(10.0, lambda: sent.done())
+            if sent.done() and sent.result().accepted:
+                break
+            if time.monotonic() > end:
+                return None
+            self.spin_for(2.0)
         self.goal = sent.result()     # its handle, to cancel it
         return self.goal.get_result_async()
 
