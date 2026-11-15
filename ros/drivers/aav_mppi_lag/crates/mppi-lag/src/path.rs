@@ -113,6 +113,22 @@ impl GlobalPath {
         self.end < self.poses.len()
     }
 
+    /// True if a cusp lies ahead and `pose` is within `tolerance` of it.
+    pub fn near_cusp(&self, pose: &Pose, tolerance: Inversion) -> bool {
+        let cusp = self.stretch_end();
+        self.cusp_ahead()
+            && pose.distance(&cusp) <= tolerance.xy
+            && wrap(cusp.yaw - pose.yaw).abs() <= tolerance.yaw
+    }
+
+    /// Start the stretch after the next cusp (nothing if no cusp lies ahead).
+    pub fn next_stretch(&mut self) {
+        if self.cusp_ahead() {
+            self.start = self.end;
+            self.end = first_cusp(&self.poses, self.start);
+        }
+    }
+
     /// Every pose not yet pruned.
     pub fn remaining(&self) -> &[Pose] {
         &self.poses[self.start..]
@@ -139,13 +155,9 @@ impl GlobalPath {
             .unwrap_or(self.start);
         let end = first_after(stretch, closest, prune_distance);
         self.start = closest;
-        if let Some(tolerance) = self.inversion.filter(|_| self.cusp_ahead()) {
-            let cusp = self.stretch_end();
-            if pose.distance(&cusp) <= tolerance.xy
-                && wrap(cusp.yaw - pose.yaw).abs() <= tolerance.yaw
-            {
-                self.start = self.end;
-                self.end = first_cusp(&self.poses, self.start);
+        if let Some(tolerance) = self.inversion {
+            if self.near_cusp(pose, tolerance) {
+                self.next_stretch();
             }
         }
         let mut window = &self.poses[closest..end];
@@ -279,6 +291,27 @@ mod tests {
         // Without inversion, the whole path is one stretch (as before).
         let plain = GlobalPath::new(three_point()).expect("a path");
         assert!(!plain.cusp_ahead());
+    }
+
+    #[test]
+    fn near_cusp_and_next_stretch() {
+        let mut path = GlobalPath::new(three_point())
+            .expect("a path")
+            .with_inversion(Inversion::default());
+        let wide = Inversion { xy: 1.0, yaw: 0.75 };
+        let beside = Pose::new(3.0, 0.7, 0.2);
+        assert!(!path.near_cusp(&beside, Inversion::default()), "0.7 m off");
+        assert!(path.near_cusp(&beside, wide));
+        assert!(!path.near_cusp(&Pose::new(3.0, 0.7, 1.0), wide), "turned");
+        path.next_stretch();
+        assert!(!path.cusp_ahead());
+        assert!(!path.near_cusp(&beside, wide), "no cusp left");
+        path.next_stretch();
+        assert_eq!(
+            path.stretch_end(),
+            path.goal(),
+            "nothing past the last stretch"
+        );
     }
 
     #[test]

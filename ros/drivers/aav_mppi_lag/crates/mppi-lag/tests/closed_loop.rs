@@ -1,6 +1,7 @@
 //! Closed loop, no ROS: MPPI drives a pretend car around a circle and an S-curve, and
-//! backwards: a straight reverse, and a path with a cusp (forward, stop, reverse); and a
-//! path drawn off a lane's centre, kept inside the lane by `LaneCritic`.
+//! backwards: a straight reverse, a path with a cusp (forward, stop, reverse), and the
+//! test lot's turn back (reverse, stop, forward), from a stop and arriving off the path;
+//! and a path drawn off a lane's centre, kept inside the lane by `LaneCritic`.
 //!
 //! The pretend car is ego plus the lag model, stepped every 0.01 s (the truth). MPPI ticks
 //! at 20 Hz, sees the car's pose, speed and measured actuators (as Gazebo gives them), and
@@ -566,6 +567,24 @@ fn turn_back_through_a_cusp() {
         .expect("forward after the cusp");
     assert!(run.speeds[..first_forward].iter().any(|&v| v < -0.3));
     assert!(run.mean_cross < 0.3 && run.max_cross < 0.8, "{run:?}");
+}
+
+/// The same, with the car arriving as after the lot's leg before: still rolling on at
+/// 0.5 m/s, 0.5 m and 11 degrees off the path's start. MPPI then stops beside the cusp,
+/// outside the inversion tolerances (0.5 m) but within the goal's (1 m): the stretch
+/// counts as done there, as the path would at its goal.
+#[test]
+fn turn_back_arriving_rolling_and_off_the_path() {
+    let truth = LagModel::default();
+    let poses = turn_back();
+    let start = Pose::new(poses[0].x - 0.4, poses[0].y - 0.3, -0.2);
+    let run = drive_from(truth, truth, &poses, 1.0, Way::Reversing, start, 0.5);
+    println!(
+        "turn back, arriving rolling: {:?} in {:.1} s, {:.3} m mean, {:.3} m worst",
+        run.outcome, run.time, run.mean_cross, run.max_cross
+    );
+    assert_eq!(run.outcome, Some(Outcome::Succeeded), "{:?}", run.rest);
+    assert!(run.time < 45.0, "{:.1} s", run.time);
 }
 
 /// The goal at speed (TODO 152): 80 m straight, asked for 2.5 m/s. The follower says done
