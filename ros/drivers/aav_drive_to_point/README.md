@@ -58,6 +58,7 @@ Parameters (`config/drive_to_point.yaml`; `max_brake`, `wheelbase`, `max_steerin
 | `require_gps` | true | false only where no GPS runs |
 | `watchdog_timeout` | 1.0 s | stop when the watchdog's lock is silent; `watchdog:=false` sets 0 |
 | `stuck_time`, `still_speed`, `still_time` | 5.0 s, 0.05 m/s, 1.0 s | stuck; standing still; at B before it reports |
+| `max_off_line`, `max_overrun` | 3.0 m, 2.0 m | the drive's corridor (`line.Fence`): either side of the line to B; past B |
 | `rate_hz` | 50 Hz | command rate |
 
 **`drive_to_point`** (`point_cli.py`; `tools/drive_to_point.sh`): `--lat/--lon`, `--x/--y`, or `--ahead [--left]`;
@@ -69,7 +70,7 @@ Modules (all but the two nodes have no ROS):
 | Module | Holds |
 |---|---|
 | `approach.py` | `Approach.step`: the speed, `v = sqrt(2 a (d - lead v))`; `planned_deceleration`, `stopping_distance` |
-| `line.py` | `Pose`, `Line`, `pursuit_curvature`, `reachable`, `min_radius`, `turn_speed_limit` |
+| `line.py` | `Pose`, `Line`, `pursuit_curvature`, `reachable`, `min_radius`, `turn_speed_limit`; `Fence`, the drive's corridor |
 | `drive.py` | `Drive`, `Steering`, `Command`: speed and steering together, one tick |
 | `rules.py` | `check_numbers`, `refuse_start`, `refuse_target`, `refuse_outside` (the geofence), `stop_reason`, `not_moving`, `tolerance`, `confirmed` |
 | `point_driver.py`, `point_cli.py` | the action server and its client |
@@ -85,6 +86,9 @@ Modules (all but the two nodes have no ROS):
 - Stops at once (5 zero commands; ego's own deceleration) on: cancel, e-stop, the
   watchdog's lock or its silence, a stale position or fix, someone else driving
   (twist_mux passing another command for 0.3 s), or the car not moving though asked to.
+- Stops when the car leaves the drive's corridor (`line.Fence`, TODO 187), apart from the
+  geofence and Nav2: over `max_off_line` from the line to B, over `max_overrun` past B, or
+  further from the start than B or a turn round, plus `max_overrun`. Not once it stands at B.
 - Also stops when the drive runs past its limits:
 
   | Limit | Over |

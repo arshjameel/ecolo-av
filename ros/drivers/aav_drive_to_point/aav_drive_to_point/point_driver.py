@@ -35,8 +35,11 @@ the measured braking (vehicle.yaml actuators max_brake), so it stops at B (appro
 It steers by pure pursuit: first towards B, then along the straight line to it (line.py).
 It stops at once (zero commands; ego's own deceleration) on a cancel, the e-stop, the
 watchdog's lock or its silence, a stale position or GPS fix, someone else driving, or the
-car standing still though asked to move (rules.py). It
-refuses a B over max_distance away, inside the car's tightest turn, or outside the
+car standing still though asked to move (rules.py). It also stops, apart from the
+geofence and Nav2, when the car leaves the drive's corridor (line.Fence, TODO 187): more
+than max_off_line from the line to B, more than max_overrun past B, or further from the
+start than the drive could need. It refuses a B over max_distance away, inside the
+car's tightest turn, or outside the
 geofence (aav_safety, whose lock at 51 holds this driver too).
 """
 
@@ -51,7 +54,7 @@ from aav_description.car_model import ActuatorConfig
 from aav_drive_to_point import rules
 from aav_drive_to_point.approach import Approach, planned_deceleration, STOPPING
 from aav_drive_to_point.drive import Drive, Steering
-from aav_drive_to_point.line import min_radius, Pose
+from aav_drive_to_point.line import Fence, min_radius, Pose
 from aav_interfaces.action import DriveToPoint
 from aav_interfaces.msg import DataSource
 from aav_safety.geofence import Polygon
@@ -95,7 +98,8 @@ class PointDriver(Node):
             ('wheelbase', 1.57), ('max_steering_angle', 0.5),
             ('max_distance', 200.0), ('pose_timeout', 0.5), ('gps_timeout', 2.0),
             ('require_gps', True), ('watchdog_timeout', 1.0), ('stuck_time', 5.0),
-            ('still_speed', 0.05), ('still_time', 1.0), ('stop_law', 'approach'))}
+            ('still_speed', 0.05), ('still_time', 1.0), ('stop_law', 'approach'),
+            ('max_off_line', 3.0), ('max_overrun', 2.0))}
         self.p = p
         if p['stop_law'] not in STOP_LAWS:
             raise ValueError(f"stop_law:={p['stop_law']}: pick one of {', '.join(STOP_LAWS)}")
@@ -329,6 +333,10 @@ class PointDriver(Node):
                             lookahead_time=p['lookahead_time'],
                             lateral_accel=p['lateral_accel'])
         run = Drive(target, approach, steering, start)
+        # The drive's own corridor (line.Fence, TODO 187), apart from the site's geofence
+        # and from Nav2: a wrong steering sign or a bad pose can't take the car far.
+        corridor = Fence((start.x, start.y), target, turn_radius=self.radius,
+                         max_off_line=p['max_off_line'], max_overrun=p['max_overrun'])
         distance = math.hypot(target[0] - start.x, target[1] - start.y)
         # Limits for the whole drive, from the plan: a turn round costs up to a circle.
         max_path = 2.0 * distance + 2.0 * math.pi * self.radius + 10.0
@@ -377,6 +385,13 @@ class PointDriver(Node):
             if abs(measured) > approach.cruise * 1.2 + 0.3:
                 return stop(f'speed {measured:.2f} m/s, over the cruise speed '
                             f'{approach.cruise:g} m/s')
+            # The corridor, every tick until the car stands still at B: then it asks for
+            # nothing more, and a GPS jump there shouldn't turn a good stop into an abort.
+            standing_at_b = (st['cmd'] is not None and st['cmd'].phase == STOPPING
+                             and abs(measured) < p['still_speed'])
+            why = None if standing_at_b else corridor.breach((pose.x, pose.y), run.line)
+            if why:
+                return stop(why)
             cmd = run.tick(pose, measured, dt)
             st['cmd'] = cmd
             # Asked to move, standing still: something holds the car (a lock this driver

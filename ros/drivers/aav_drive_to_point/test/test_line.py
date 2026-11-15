@@ -1,9 +1,10 @@
-"""The line to B, the carrot on it, pure pursuit and the turning circles."""
+"""The line to B, the carrot on it, pure pursuit, the turning circles and the fence."""
 
 import math
 
-from aav_drive_to_point.line import (bearing_error, Line, min_radius, Pose, pursuit_curvature,
-                                     reachable, to_car, turn_speed_limit, wrap)
+from aav_drive_to_point.line import (bearing_error, Fence, Line, min_radius, Pose,
+                                     pursuit_curvature, reachable, to_car, turn_speed_limit,
+                                     wrap)
 import pytest
 
 R = min_radius(1.57, 0.5)
@@ -61,3 +62,29 @@ def test_inside_the_tightest_circle_is_unreachable():
 def test_tight_turns_go_slower():
     assert turn_speed_limit(0.0, 1.5) == math.inf
     assert turn_speed_limit(1.0 / R, 1.5) == pytest.approx(math.sqrt(1.5 * R))
+
+
+def test_the_fence_holds_a_corridor_round_the_line_and_a_circle_round_the_start():
+    fence = Fence((0.0, 0.0), (10.0, 0.0), turn_radius=R)
+    line = Line((0.0, 0.0), (10.0, 0.0))
+    assert fence.reach == pytest.approx(12.0)
+    assert fence.breach((5.0, 2.9), line) is None
+    assert fence.breach((11.9, 0.0), line) is None          # within max_overrun past B
+    assert 'left of the line' in fence.breach((5.0, 3.1), line)
+    assert 'right of the line' in fence.breach((5.0, -3.1), line)
+    assert 'past B' in fence.breach((12.1, 0.0), line)
+    assert 'from the start' in fence.breach((-12.5, 0.0), line)   # behind A, on the line
+
+
+def test_while_turning_only_the_circle_and_it_fits_a_turn_round():
+    # B 2 m behind: turning round takes the car up to 2 R from the start.
+    fence = Fence((0.0, 0.0), (-2.0, 0.0), turn_radius=R)
+    assert fence.reach == pytest.approx(2.0 * R + 2.0)
+    assert fence.breach((0.0, 2.0 * R)) is None             # the top of the circle
+    assert fence.breach((0.0, 2.0 * R + 2.5)) is not None
+
+
+def test_the_fence_refuses_bad_numbers():
+    for bad in (0.0, -1.0, math.nan):
+        with pytest.raises(ValueError):
+            Fence((0.0, 0.0), (10.0, 0.0), turn_radius=R, max_off_line=bad)
