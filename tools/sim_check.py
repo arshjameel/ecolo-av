@@ -2626,8 +2626,9 @@ def check_moving_thing(probe, ahead=20.0, side=4.0, walk=0.8, goal=35.0, near=15
     """
     Check the car lets a person cross: `ahead` m before the bumper, from `side` m right.
 
-    They start walking left at `walk` m/s once the car's bumper is `near` m from their
-    path, so they cross in front of it whatever its speed. The car drives to a goal `goal`
+    They start walking left at `walk` m/s when the car, at its speed then, would reach
+    their path as they reach the lane (3 to `near` m out), so they cross in front of it
+    whatever its speed. The car drives to a goal `goal`
     m on. The behaviour must slow for them (APPROACH(obstacle) or STOP(obstacle): a moving
     thing in the lane, TODO 170), the car keep at least 0.3 m from them, and reach the
     goal once they are by. Our simulator only: Gazebo's models don't walk.
@@ -2655,8 +2656,16 @@ def check_moving_thing(probe, ahead=20.0, side=4.0, walk=0.8, goal=35.0, near=15
         return
 
     def bumper_near():
+        # Start them so they reach the lane as the car does: `side / walk` s before the
+        # bumper arrives, at the car's speed now (at least 3 m, at most `near` m out).
         x, y = probe.xy(probe.truth)
-        return (x - x0) * c + (y - y0) * s + front >= along - near
+        recent = probe.track[-6:]
+        speed = 0.0
+        if len(recent) >= 2 and recent[-1][0] > recent[0][0]:
+            speed = (math.hypot(recent[-1][1] - recent[0][1], recent[-1][2] - recent[0][2])
+                     / (recent[-1][0] - recent[0][0]))
+        lead = min(near, max(3.0, speed * side / walk))
+        return (x - x0) * c + (y - y0) * s + front >= along - lead
 
     probe.spin_for(120.0, lambda: bumper_near() or done.done())
     t0 = seconds(probe.truth.header.stamp)
