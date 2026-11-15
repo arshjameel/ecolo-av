@@ -19,6 +19,7 @@ Units: m, rad, s. The map frame, x east, y north.
 
 from __future__ import annotations
 
+import bisect
 from dataclasses import dataclass
 import math
 from typing import List, Optional, Sequence, Tuple
@@ -161,3 +162,72 @@ def score(roads: Sequence[Road], track: Sequence[Tuple[float, float, float, floa
         max_error=ordered[-1] if ordered else 0.0, off_road=off,
         lost=sum(not seen for _, seen, _ in lanes) / n,
         both=sum(both for _, _, both in lanes) / n)
+
+
+@dataclass(frozen=True)
+class PoseScore:
+    """The global EKF's pose against the truth, split across and along the car (TODO 155)."""
+
+    samples: int
+    mean_across: float       # m, |sideways error| averaged
+    rms_across: float
+    p95_across: float
+    max_across: float
+    jitter: float            # m, RMS of the sideways error less its own `window` s average
+    rms_along: float
+
+    def line(self) -> str:
+        return (f'EKF sideways error mean {100 * self.mean_across:.1f} cm, RMS '
+                f'{100 * self.rms_across:.1f}, 95 % {100 * self.p95_across:.1f}, max '
+                f'{100 * self.max_across:.1f} cm; jitter {100 * self.jitter:.1f} cm RMS; '
+                f'along RMS {100 * self.rms_along:.1f} cm ({self.samples} poses)')
+
+
+def pose_error(track: Sequence[Tuple[float, float, float, float]],
+               poses: Sequence[Tuple[float, float, float]],
+               window: float = 2.0) -> Optional[PoseScore]:
+    """
+    Score the filter's poses (t, x, y) against the truth (t, x, y, yaw), both in time order.
+
+    Each pose against the truth nearest in time (within 0.1 s), split into sideways (+ =
+    left of the truth, the way it faces) and along. The jitter is the sideways error's
+    quick part: what is left after its centred `window` s average, the swing a follower
+    sees. None without a pose matched.
+    """
+    if not track:
+        return None
+    stamps = [s[0] for s in track]
+    errs = []
+    for t, x, y in poses:
+        i = bisect.bisect_left(stamps, t)
+        near = min((j for j in (i - 1, i) if 0 <= j < len(track)),
+                   key=lambda j: abs(stamps[j] - t))
+        tt, tx, ty, yaw = track[near]
+        if abs(tt - t) > 0.1:
+            continue
+        ex, ey = x - tx, y - ty
+        errs.append((t, -ex * math.sin(yaw) + ey * math.cos(yaw),
+                     ex * math.cos(yaw) + ey * math.sin(yaw)))
+    if not errs:
+        return None
+    across = [e[1] for e in errs]
+    times = [e[0] for e in errs]
+    quick = []
+    lo = hi = 0
+    total = 0.0
+    for t, a in zip(times, across):
+        while hi < len(errs) and times[hi] <= t + window / 2.0:
+            total += across[hi]
+            hi += 1
+        while times[lo] < t - window / 2.0:
+            total -= across[lo]
+            lo += 1
+        quick.append(a - total / (hi - lo))
+    ordered = sorted(abs(a) for a in across)
+    n = len(errs)
+    return PoseScore(
+        samples=n, mean_across=sum(ordered) / n,
+        rms_across=math.sqrt(sum(a * a for a in across) / n),
+        p95_across=ordered[int(0.95 * (n - 1))], max_across=ordered[-1],
+        jitter=math.sqrt(sum(q * q for q in quick) / n),
+        rms_along=math.sqrt(sum(e[2] ** 2 for e in errs) / n))
