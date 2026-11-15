@@ -48,6 +48,8 @@ if command -v cargo >/dev/null; then
   (cd ros/can_bridge/aav_spine_bridge && cargo test -q --locked -p spine-bridge)
   echo "== ros/bringup/aav_description/car-model: the car model's Rust twin, the shared vectors"
   (cd ros/bringup/aav_description/car-model && cargo test -q --locked)
+  echo "== ros/bringup/aav_description/map-chunks: the map's fixed 64 m chunks (TODO 175)"
+  (cd ros/bringup/aav_description/map-chunks && cargo test -q --locked)
   echo "== ros/localization/aav_ndt: NDT's maths, the filters, LOST; the design's checks"
   (cd ros/localization/aav_ndt && cargo test -q --locked -p ndt-core)
   echo "== ros/sim/aav_simulator: our own simulator's core: the car, the rays, Gazebo's worlds"
@@ -83,6 +85,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/perception/aav_radar_clusters -p radar-clustering
   rust_style ros/can_bridge/aav_spine_bridge -p spine-bridge
   rust_style ros/bringup/aav_description/car-model
+  rust_style ros/bringup/aav_description/map-chunks
   rust_style ros/localization/aav_ndt -p ndt-core
   rust_style ros/sim/aav_simulator -p sim-core --features shared
   rust_style ros/drivers/aav_mppi_lag -p mppi-lag --features shared

@@ -579,6 +579,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
+<td><a href="../designs/2026-11-15_three-levels.md">Map chunks</a> (<code>aav_description</code> <code>map-chunks</code>, Rust, no ROS): the map in fixed 64 m squares; the 3 x 3 round the car at 0.25 m, the route's next 100 m at 1 m; load and drop as the car goes; cut a whole map into chunks</td>
+<td>Ben, 14-15 Nov: "I like having hte 3 levels with fixed size map chunks"; "the splitting of the map into quadtrees kind of thing or octree but fixed size". Step 1 of 7 of the three levels (TODO 175): the store the planner, NDT, the things and the dev window will share. Nothing uses it yet</td>
+<td>Ben</td>
+<td>2026-11-15</td>
+<td>built</td>
+</tr>
+<tr>
 <td><a href="own-navigator.html">Our own navigator</a> (<code>aav_navigator</code>, <code>navigator:=own</code>; all ours: <code>navigator:=own planner:=own costmap:=own tracker:=mppi_lag</code>)</td>
 <td>Ben, 8 Nov: move off Nav2 one piece at a time; the navigator is the last piece. What bt_navigator, our behaviour trees and waypoint_follower do (plan, follow, replan, keep the path on the final approach, recover, give up; through-poses; GPS waypoints by the datum) as a Rust state machine, serving Nav2's four actions under Nav2's own names since 14 Nov (a true drop-in: no goal sender knows which navigator runs). GPS waypoints are passed as one through-poses goal, not stop-and-face at each (TODO 140's bends). All ours runs no Nav2 server for navigation. 8 Nov, forward only: test lot 7 of 12 legs (Nav2 8), campus 4 of 6 (Nav2 2), P4 to the Fieldhouse 1 of 2 (Nav2 0). 14 Nov: time limits on the planner, follower and clears, so a server that dies mid-goal fails it instead of hanging it; error codes as enums. 15 Nov (TODO 168): keeps a clear to-pose path up to 10 s, as the trees' KeepAValidPath, instead of planning again every second (each new plan moved a little: the car swayed twice as much). Nav2 stays the default</td>
 <td>Ben</td>
@@ -645,7 +652,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tbody>
 <tr>
 <td><a href="stopping.html#2-the-behaviour-planner">The behaviour planner</a> (<code>aav_behaviour</code>, <code>behaviour:=true</code>, a trial): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK; a speed cap on Nav2 from the stopping law for a stop sign, an obstacle in the lane, the fence and the goal; <code>/drivers/nav/behaviour/state</code></td>
-<td>Ben, 7 Nov: "we can use that to say if we have turned enough or slowing down enough". Today the sign's lock fires at cruise speed and nothing says why the car waits: this slows the car before each stop, and the locks still make every stop</td>
+<td>Ben, 7 Nov: "we can use that to say if we have turned enough or slowing down enough". Today the sign's lock fires at cruise speed and nothing says why the car waits: this slows the car before each stop, and the locks still make every stop. Since 15 Nov it holds the release of an obstacle 1 s, so a thing at the lane's edge no longer makes it speed up and slow down over and over</td>
 <td>Ben</td>
 <td>2026-11-07</td>
 <td>built</td>

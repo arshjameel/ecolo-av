@@ -413,7 +413,19 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><strong>Apollo</strong> (Baidu)</td>
 <td>Apache-2.0</td>
 <td>idea</td>
-<td>routing on a lane graph, then planning along the road ahead</td>
+<td>routing on a lane graph, then planning along the road ahead; its HD map cut into fixed tiles (<code>map-chunks</code>)</td>
+</tr>
+<tr>
+<td><strong>OctoMap</strong> (A. Hornung et al., <em>Autonomous Robots</em>, 2013)</td>
+<td>paper</td>
+<td>idea</td>
+<td>3D occupancy; why our chunks hold a flat hash of voxels instead of a tree (TODO 175)</td>
+</tr>
+<tr>
+<td><strong>Quadtrees</strong> (R. Finkel, J. Bentley, <em>Acta Informatica</em>, 1974)</td>
+<td>paper</td>
+<td>idea</td>
+<td>splitting a chunk only where it pays, the fallback in the three-levels design</td>
 </tr>
 </tbody>
 </table></div>
