@@ -2,7 +2,8 @@
 
 Ben, 8 Nov: move off Nav2 **one piece at a time**, each beside Nav2 until it wins. The
 order: the costmap ([done](own-costmap.md)), the planner ([done](own-planner.md)), then
-**the navigator** (this page), the last piece. Nav2 stays the default, and on the car.
+**the navigator** (this page), the last piece. Since 14 Nov ours is the simulator's
+default (`stack:=ours`; Nav2's with `navigator:=nav2` or `stack:=stock`). Nav2 stays on the car.
 
 > **The short version**
 > - **Switch:** `navigator:=own`. Package `aav_navigator` (Rust).
@@ -13,7 +14,8 @@ order: the costmap ([done](own-costmap.md)), the planner ([done](own-planner.md)
 > - **All ours:** `navigator:=own planner:=own costmap:=own tracker:=mppi_lag`. Then no
 >   Nav2 server navigates.
 > - **Scores:** test lot 7 of 12 legs (Nav2 8); the box 3 of 3 (Nav2 3); campus 4 of 6
->   (Nav2 2); P4 to the Fieldhouse 1 of 2 (Nav2 0). Not the default yet.
+>   (Nav2 2); P4 to the Fieldhouse 1 of 2 (Nav2 0). The sim's default since 14 Nov
+>   (Ben's choice, `stack:=ours`), not the car's.
 
 ## How it fits
 
@@ -143,7 +145,7 @@ again. A goal a few metres past the exit would avoid it.
 
 ### The verdict
 
-- **Not the sim default yet.** On the lot it is as good as Nav2 (7 against 8 of 12,
+- **8 Nov: not the sim default yet** (it is since 14 Nov, by Ben's choice). On the lot it is as good as Nav2 (7 against 8 of 12,
   inside the noise of the U-turn), on the box the same, on the campus better (4 against 2
   of 6; the route 1 against 0 of 2).
 - **But:** `mppi_lag` overshoots the campus's first goal at 2.5 m/s, and uses twice

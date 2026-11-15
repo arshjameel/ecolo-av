@@ -119,7 +119,8 @@
 <nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does-layer-by-layer">What it does, layer by layer</a><a href="#threads-and-bounds-14-nov">Threads and bounds (14 Nov)</a><a href="#try-it">Try it</a><a href="#the-scores-8-nov">The scores (8 Nov)</a><a href="#without-ros">Without ROS</a><a href="#whats-missing">What&#x27;s missing</a></nav>
 <div class="lead"><p>Ben, 8 Nov: move off Nav2 to <strong>our own versions, one piece at a time</strong>, each beside Nav2
 until it wins. The order: the costmap, then a path planner in Rust, then the navigator.
-This page is the first piece. Nav2 stays the default, and stays on the car.</p>
+This page is the first piece. Since 14 Nov ours is the simulator's default (<code>stack:=ours</code>;
+Nav2's with <code>costmap:=nav2</code> or <code>stack:=stock</code>). Nav2 stays on the car.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>

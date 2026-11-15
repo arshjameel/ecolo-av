@@ -2,7 +2,8 @@
 
 Ben, 8 Nov: move off Nav2 to **our own versions, one piece at a time**, each beside Nav2
 until it wins. The order: the costmap, then a path planner in Rust, then the navigator.
-This page is the first piece. Nav2 stays the default, and stays on the car.
+This page is the first piece. Since 14 Nov ours is the simulator's default (`stack:=ours`;
+Nav2's with `costmap:=nav2` or `stack:=stock`). Nav2 stays on the car.
 
 > **The short version**
 > - **Switch:** `costmap:=own`. Package `aav_costmap` (Rust).

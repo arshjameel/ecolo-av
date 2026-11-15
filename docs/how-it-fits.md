@@ -73,22 +73,23 @@ mux, ego, then the turtle or the car.
 
 ### Inside the Nav2 driver
 
-`/drivers/nav/cmd_vel` is the end of a chain. Stock Nav2 is the default for each step, and
-the only choice on the car; ours run beside it in the simulator until they win
-([Switches](switches.md)).
+`/drivers/nav/cmd_vel` is the end of a chain. In the simulator **ours is the default** for
+each step we have built (`stack:=ours`, since 14 Nov); Nav2's is one switch away
+(`stack:=stock`), and still the only choice on the car ([The league](league.md),
+[Switches](switches.md)).
 
-| Step | Default | Beside it (a switch) |
-|---|---|---|
-| Which roads | none: a goal on the map | street routes (Valhalla) or the campus's road graph, `aav_routes` |
-| The rules: slow, stop, wait | none | the behaviour planner, `aav_behaviour` (`behaviour:=true`): a speed cap on Nav2 ([Stopping](stopping.md)) |
-| Plan, follow, replan, recover | Nav2's bt_navigator | `aav_navigator` (`navigator:=own`) |
-| Where may I go | Nav2's costmaps | `aav_costmap` (`costmap:=own`) |
-| The path | Nav2's State Lattice (since 1 Nov) | Hybrid-A* (forward only), `aav_planner` (`planner:=own`), the diffusion planner (`planner:=diffusion`) |
-| Steer along it | Nav2's MPPI | Pure Pursuit (`controller:=rpp`); ours: `aav_track` and `aav_mppi_lag` (`tracker:=`) |
-| Smooth the command | Nav2's velocity smoother | `aav_smoother` (`smoother:=own`) |
+| Step | Sim default (ours) | The car, and `stack:=stock` | Other choices |
+|---|---|---|---|
+| Which roads | none: a goal on the map | the same | street routes (Valhalla) or the campus's road graph, `aav_routes` |
+| The rules: slow, stop, wait | the behaviour planner, `aav_behaviour` ([Stopping](stopping.md)) | none | `behaviour:=false` |
+| Plan, follow, replan, recover | `aav_navigator` | Nav2's bt_navigator | `navigator:=nav2` |
+| Where may I go | `aav_costmap` | Nav2's costmaps | `costmap:=nav2` |
+| The path | `aav_planner` (Nav2's lattice in Rust) | Nav2's State Lattice (since 1 Nov) | Hybrid-A* (forward only), the diffusion planner (`planner:=diffusion`) |
+| Steer along it | `aav_mppi_lag` | Nav2's MPPI | Pure Pursuit (`tracker:=none controller:=rpp`); `aav_track` (`tracker:=`) |
+| Smooth the command | Nav2's velocity smoother | the same | `aav_smoother` (`smoother:=own`) |
 
-How these become nine levels with one switch each is a design, **proposed, not built**:
-[one shape](designs/2026-11-13_one-shape.md), [the whole car](designs/2026-11-14_the-whole-car.md).
+A switch given by hand wins over the stack: `pixi run sim costmap:=nav2` is ours with Nav2's
+costmaps.
 
 ## 4. ego: the virtual car
 

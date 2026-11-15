@@ -7,7 +7,7 @@
 <!-- Generated from docs/switches.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Switches: what you can swap in the simulated car</h1>
-<div class="meta">15 min read · 6 sections</div></header>
+<div class="meta">16 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -116,7 +116,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#who-draws-the-route">Who draws the route</a><a href="#who-steers-along-the-path">Who steers along the path</a><a href="#where-am-i">Where am I</a><a href="#speed">Speed</a><a href="#the-world-and-the-rest">The world and the rest</a><a href="#the-defaults-what-runs-if-you-say-nothing">The defaults: what runs if you say nothing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-stack-ours-by-default">The stack: ours by default</a><a href="#who-draws-the-route">Who draws the route</a><a href="#who-steers-along-the-path">Who steers along the path</a><a href="#where-am-i">Where am I</a><a href="#speed">Speed</a><a href="#the-world-and-the-rest">The world and the rest</a><a href="#the-defaults-what-runs-if-you-say-nothing">The defaults: what runs if you say nothing</a></nav>
 <div class="lead"><p>Every part we're trying out is a <strong>switch</strong> you give when you start. You don't need to
 remember them: <strong><code>pixi run pick</code></strong> asks, in plain words, and runs it.</p>
 <pre class="highlight"><code>pixi run pick          # a menu: what to start, the route, who steers, obstacles, where-am-I, speed loop
@@ -126,6 +126,37 @@ pixi run pick list     # every switch, then stop</code></pre>
 <pre class="highlight"><code>pixi run demo --debug tracker:=mpc reversing:=false ndt:=true ndt_map:=maps/ndt/test_lot.pcd amcl:=false speed_loop:=lqi</code></pre>
 <p><code>sim</code>, <code>demo</code> and <code>demo --debug</code> all take switches as <code>name:=value</code>. If a switch is given
 twice, the last one wins.</p></div>
+<section class="card"><h2 id="the-stack-ours-by-default">The stack: ours by default</h2>
+<p>Since 14 Nov the simulator runs <strong>our stack</strong> unless told otherwise (Ben: "Ours default
+now, then delete"). One switch sets every level at once (<a href="league.html">the league</a>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What runs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pixi run sim</code></td>
+<td>ours: our planner, <code>mppi_lag</code>, our costmaps and navigator, the behaviour planner (<code>stack:=ours</code>)</td>
+</tr>
+<tr>
+<td><code>pixi run sim stack:=stock</code></td>
+<td>every level Nav2's: the yardstick</td>
+</tr>
+<tr>
+<td><code>pixi run sim costmap:=nav2</code></td>
+<td>Nav2's costmaps, the rest ours: <strong>a switch you give always wins</strong></td>
+</tr>
+<tr>
+<td><code>pixi run sim stack:=stock planner:=own</code></td>
+<td>Nav2's stack with our planner</td>
+</tr>
+</tbody>
+</table></div>
+<p>The real car (<code>pixi run car</code>) keeps its own choices until ours wins there too.</p>
+</section>
 <section class="card"><h2 id="who-draws-the-route">Who draws the route</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -137,8 +168,13 @@ twice, the last one wins.</p></div>
 </thead>
 <tbody>
 <tr>
-<td><code>planner:=lattice</code> (default)</td>
-<td>State Lattice: strings our car's own moves together; fast</td>
+<td><code>planner:=own</code> (default)</td>
+<td>ours: Nav2's lattice ported to Rust (more in the table below)</td>
+<td>8 Nov: the test lot 12 of 12 as Nav2's</td>
+</tr>
+<tr>
+<td><code>planner:=lattice</code> (<code>stack:=stock</code>, the car)</td>
+<td>Nav2's State Lattice: strings our car's own moves together; fast</td>
 <td>30 Oct, reversing: every leg, <strong>184 s</strong> a tour. Forward only (29 Oct): 2 of 4, lost the U-turn</td>
 </tr>
 <tr>
@@ -173,7 +209,8 @@ twice, the last one wins.</p></div>
 </tr>
 </tbody>
 </table></div>
-<p>The lattice is the default since 1 Nov (Ben), on the car too, now that it may reverse.
+<p>Nav2's lattice is the car's default since 1 Nov (Ben), now that it may reverse; the
+simulator runs ours since 14 Nov.
 Forward only (<code>reversing:=false</code>, or no lidar), the car takes <code>hybrid</code>: the lattice lost
 the U-turn. The real car takes only <code>hybrid</code> or <code>lattice</code> (it refuses <code>diffusion</code> too). More: <a href="controllers.html">Controllers, Planners</a>, <a href="trials.html#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">the runs</a>.</p>
 </section>
@@ -188,13 +225,13 @@ the U-turn. The real car takes only <code>hybrid</code> or <code>lattice</code> 
 </thead>
 <tbody>
 <tr>
-<td><code>controller:=mppi</code> (default)</td>
-<td>Nav2's: try 1,000 wiggles, keep the good ones</td>
+<td><code>controller:=mppi</code> (<code>stack:=stock</code>, the car)</td>
+<td>Nav2's: try 1,000 wiggles, keep the good ones. In the sim add <code>tracker:=none</code></td>
 <td>8-10 of 12 legs</td>
 </tr>
 <tr>
 <td><code>controller:=rpp</code></td>
-<td>Nav2's: steer at a point ahead, slow in bends</td>
+<td>Nav2's: steer at a point ahead, slow in bends (with <code>tracker:=none</code>)</td>
 <td>10 of 12</td>
 </tr>
 <tr>
@@ -228,7 +265,7 @@ the U-turn. The real car takes only <code>hybrid</code> or <code>lattice</code> 
 <td>our simulator, 8 Nov: 6 of 12 (no U-turn by the building; <a href="trials.html#lag-aware-mpc-7-nov-mpc_lag">trials</a>)</td>
 </tr>
 <tr>
-<td><code>tracker:=mppi_lag</code></td>
+<td><code>tracker:=mppi_lag</code> (default)</td>
 <td>ours: Nav2's MPPI in Rust, knowing the steering and pedals lag (<a href="mppi-lag.html">page</a>)</td>
 <td>our simulator, 8 Nov, 3 runs: 11 of 12 (Nav2's MPPI 8; <a href="trials.html#results-our-simulator-8-nov-the-lot-tour-3-runs-each">trials</a>). It passes a goal at 2.5 m/s and uses twice Nav2's MPPI's CPU (<a href="own-navigator.html#the-verdict">our navigator</a>)</td>
 </tr>
@@ -358,15 +395,15 @@ and doesn't model <code>lqi</code> yet).</p>
 <td>Nav2 sees the lidar as 0.25 m cubes, not a flat scan (a trial: <a href="trials.html#voxels-30-oct-the-lidar-as-cubes">Trials</a>)</td>
 </tr>
 <tr>
-<td><code>costmap:=own</code></td>
-<td>our own costmaps (Rust) beside Nav2's; <code>tracker:=mppi_lag</code> then reads ours. 8 Nov: the same grid as Nav2's, half the CPU; with its clear service, the obstacle legs 3 of 3 as Nav2's (<a href="own-costmap.html">page</a>)</td>
+<td><code>costmap:=own</code> (default; <code>costmap:=nav2</code>: Nav2's)</td>
+<td>our own costmaps (Rust); <code>tracker:=mppi_lag</code> then reads ours. 8 Nov: the same grid as Nav2's, half the CPU; with its clear service, the obstacle legs 3 of 3 as Nav2's (<a href="own-costmap.html">page</a>)</td>
 </tr>
 <tr>
-<td><code>planner:=own</code></td>
+<td><code>planner:=own</code> (default)</td>
 <td>our own planner (Rust: Nav2's lattice ported) answers the behaviour trees, Nav2's lattice beside it; with <code>costmap:=own</code> it plans on our global costmap. 8 Nov: the test lot 12 of 12 as Nav2's, about 20 % slower on the campus's long legs (<a href="own-planner.html">page</a>)</td>
 </tr>
 <tr>
-<td><code>navigator:=own</code></td>
+<td><code>navigator:=own</code> (default; <code>navigator:=nav2</code>: Nav2's)</td>
 <td>our own navigator (Rust) in place of Nav2's bt_navigator and waypoint_follower; with <code>planner:=own costmap:=own tracker:=mppi_lag</code> no Nav2 server navigates (all ours). 8 Nov: test lot 7 of 12 legs (Nav2 8), campus 4 of 6 (Nav2 2) (<a href="own-navigator.html">page</a>)</td>
 </tr>
 <tr>
@@ -375,7 +412,7 @@ and doesn't model <code>lqi</code> yet).</p>
 </tr>
 </tbody>
 </table></div>
-<p>| <code>behaviour:=true</code> | the behaviour planner: a speed cap on Nav2 before a stop sign, an obstacle, the fence and the goal (a trial, off by default: <a href="stopping.html#2-the-behaviour-planner">page</a>) |
+<p>| <code>behaviour:=false</code> | no behaviour planner. On by default in the sim (<code>stack:=ours</code>; off with <code>stack:=stock</code>): a speed cap before a stop sign, an obstacle, the fence and the goal (<a href="stopping.html#2-the-behaviour-planner">page</a>) |
 | <code>lane_map:=world</code> | with <code>behaviour:=true</code>: the road ahead's line on the right lane's centre, with its edges, from the world's lane map (the road world's, or the campus's <code>maps/campus/lanes.yaml</code>); or a <code>lanes.yaml</code>'s path. Off by default: the line is <code>/plan</code>'s |
 | <code>payload:=150</code>, <code>adaptive_brake:=true</code> | kg aboard the modelled car; the brake that learns it stops too slowly (off by default; not with <code>spine</code> or <code>esp32</code>: <a href="stopping.html#4-a-heavier-car-the-adaptive-brake">page</a>) |
 | <code>plan_around:=false</code> | the planner sees only the map, so the car stops for an obstacle (default <code>true</code>: it plans round) |
@@ -446,7 +483,8 @@ said LQI, and a Nav2 goal 15 m ahead ended SUCCEEDED.</p>
 <section class="card"><h2 id="the-defaults-what-runs-if-you-say-nothing">The defaults: what runs if you say nothing</h2>
 <p>Checked 3 Nov (<a href="trials.html#3-nov-everything-for-02">the runs</a>): every switch that existed then
 started and drove a leg in Gazebo. Checked against the launch files 14 Nov: 0.3 changed one
-default (the simulator); our Rust pieces are all trials.</p>
+default (the simulator). Later on 14 Nov the sim's stack became ours (<code>stack:=ours</code>): the
+Sim column below. The bench and the car keep Nav2's; <code>stack:=stock</code> gives the sim Nav2's.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -461,7 +499,7 @@ default (the simulator); our Rust pieces are all trials.</p>
 <tbody>
 <tr>
 <td>Who draws the route</td>
-<td><code>lattice</code></td>
+<td><code>own</code> (ours)</td>
 <td><code>lattice</code></td>
 <td><code>lattice</code> (<code>hybrid</code> if it can't reverse)</td>
 <td>every leg reversing, the fastest: 183 s a tour (3 Nov, 3 runs)</td>
@@ -469,7 +507,7 @@ default (the simulator); our Rust pieces are all trials.</p>
 </tr>
 <tr>
 <td>Who steers</td>
-<td>MPPI</td>
+<td><code>mppi_lag</code> (ours)</td>
 <td>MPPI</td>
 <td>MPPI</td>
 <td>it reads the costmap, so it steers round what the lidar sees; it reverses</td>
@@ -477,7 +515,7 @@ default (the simulator); our Rust pieces are all trials.</p>
 </tr>
 <tr>
 <td>The costmaps</td>
-<td>Nav2's</td>
+<td>ours</td>
 <td>Nav2's</td>
 <td>Nav2's (always)</td>
 <td>stock; the car never takes ours</td>
@@ -485,9 +523,9 @@ default (the simulator); our Rust pieces are all trials.</p>
 </tr>
 <tr>
 <td>Who runs the goal</td>
+<td>ours (<code>aav_navigator</code>)</td>
 <td>Nav2's <code>bt_navigator</code></td>
-<td>the same</td>
-<td>the same (always)</td>
+<td>Nav2's (always)</td>
 <td>stock</td>
 <td><code>navigator:=own</code> (8 Nov: lot 7 of 12 legs, Nav2 8; campus 4 of 6, Nav2 2; sim only)</td>
 </tr>
@@ -501,7 +539,7 @@ default (the simulator); our Rust pieces are all trials.</p>
 </tr>
 <tr>
 <td>Behaviour planner</td>
-<td>off</td>
+<td>on</td>
 <td>off</td>
 <td>none</td>
 <td>a trial (7 Nov); in the sim it never slowed for the stop sign (<a href="stopping.html#2-the-behaviour-planner">page</a>)</td>

@@ -2,7 +2,8 @@
 
 Ben, 8 Nov: move off Nav2 **one piece at a time**, each beside Nav2 until it wins. The
 order: the costmap ([done](own-costmap.md)), then **the path planner** (this page), then
-the navigator. Nav2 stays the default, and stays on the car.
+the navigator. Since 14 Nov ours is the simulator's default (`stack:=ours`; Nav2's
+lattice with `planner:=lattice` or `stack:=stock`). Nav2 stays on the car.
 
 > **The short version**
 > - **Switch:** `planner:=own`. Package `aav_planner` (Rust).

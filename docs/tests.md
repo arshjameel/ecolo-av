@@ -187,7 +187,8 @@ needs a tool we don't have yet.
 ### The stack for every test on the ground
 
 The car's defaults: the best of the Gazebo trials. `test_car_launch.py` pins them. The
-trials wait for 4.22.
+trials wait for 4.22. The simulator runs our stack by default since 14 Nov (`stack:=ours`,
+[the league](league.md)); the car keeps this set until ours wins on it too.
 
 | Job | On the car | Why this one |
 |---|---|---|

@@ -261,57 +261,66 @@ the geofence (51), the stop sign and the sensor watchdog (30), the stop hold (21
 <p>Teleop is just another driver. The keyboard's commands take the same path as Nav2's:
 mux, ego, then the turtle or the car.</p>
 <h3 id="inside-the-nav2-driver">Inside the Nav2 driver</h3>
-<p><code>/drivers/nav/cmd_vel</code> is the end of a chain. Stock Nav2 is the default for each step, and
-the only choice on the car; ours run beside it in the simulator until they win
-(<a href="switches.html">Switches</a>).</p>
+<p><code>/drivers/nav/cmd_vel</code> is the end of a chain. In the simulator <strong>ours is the default</strong> for
+each step we have built (<code>stack:=ours</code>, since 14 Nov); Nav2's is one switch away
+(<code>stack:=stock</code>), and still the only choice on the car (<a href="league.html">The league</a>,
+<a href="switches.html">Switches</a>).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Step</th>
-<th>Default</th>
-<th>Beside it (a switch)</th>
+<th>Sim default (ours)</th>
+<th>The car, and <code>stack:=stock</code></th>
+<th>Other choices</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Which roads</td>
 <td>none: a goal on the map</td>
+<td>the same</td>
 <td>street routes (Valhalla) or the campus's road graph, <code>aav_routes</code></td>
 </tr>
 <tr>
 <td>The rules: slow, stop, wait</td>
+<td>the behaviour planner, <code>aav_behaviour</code> (<a href="stopping.html">Stopping</a>)</td>
 <td>none</td>
-<td>the behaviour planner, <code>aav_behaviour</code> (<code>behaviour:=true</code>): a speed cap on Nav2 (<a href="stopping.html">Stopping</a>)</td>
+<td><code>behaviour:=false</code></td>
 </tr>
 <tr>
 <td>Plan, follow, replan, recover</td>
+<td><code>aav_navigator</code></td>
 <td>Nav2's bt_navigator</td>
-<td><code>aav_navigator</code> (<code>navigator:=own</code>)</td>
+<td><code>navigator:=nav2</code></td>
 </tr>
 <tr>
 <td>Where may I go</td>
+<td><code>aav_costmap</code></td>
 <td>Nav2's costmaps</td>
-<td><code>aav_costmap</code> (<code>costmap:=own</code>)</td>
+<td><code>costmap:=nav2</code></td>
 </tr>
 <tr>
 <td>The path</td>
+<td><code>aav_planner</code> (Nav2's lattice in Rust)</td>
 <td>Nav2's State Lattice (since 1 Nov)</td>
-<td>Hybrid-A* (forward only), <code>aav_planner</code> (<code>planner:=own</code>), the diffusion planner (<code>planner:=diffusion</code>)</td>
+<td>Hybrid-A* (forward only), the diffusion planner (<code>planner:=diffusion</code>)</td>
 </tr>
 <tr>
 <td>Steer along it</td>
+<td><code>aav_mppi_lag</code></td>
 <td>Nav2's MPPI</td>
-<td>Pure Pursuit (<code>controller:=rpp</code>); ours: <code>aav_track</code> and <code>aav_mppi_lag</code> (<code>tracker:=</code>)</td>
+<td>Pure Pursuit (<code>tracker:=none controller:=rpp</code>); <code>aav_track</code> (<code>tracker:=</code>)</td>
 </tr>
 <tr>
 <td>Smooth the command</td>
 <td>Nav2's velocity smoother</td>
+<td>the same</td>
 <td><code>aav_smoother</code> (<code>smoother:=own</code>)</td>
 </tr>
 </tbody>
 </table></div>
-<p>How these become nine levels with one switch each is a design, <strong>proposed, not built</strong>:
-<a href="../designs/2026-11-13_one-shape.md">one shape</a>, <a href="../designs/2026-11-14_the-whole-car.md">the whole car</a>.</p>
+<p>A switch given by hand wins over the stack: <code>pixi run sim costmap:=nav2</code> is ours with Nav2's
+costmaps.</p>
 </section>
 <section class="card"><h2 id="4-ego-the-virtual-car">4. ego: the virtual car</h2>
 <p>ego is the only node that knows the car is a car. Fifty times a second it turns <code>/control/cmd_vel</code>

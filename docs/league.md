@@ -20,32 +20,39 @@ waiting to beat it.
   └────────────┴───────────┴──────────────────────────────┘
           │
           ▼
-  pixi run sim stack:=ours      one word sets every level
+  pixi run sim                  ours: the simulator's default stack
+  pixi run sim stack:=stock     every level Nav2's: the yardstick
 ```
 
 ## The stacks
 
+**Ours is the simulator's default** (Ben, 14 Nov: "Ours default now, then delete").
+The champions above stay as they are: they are what the car runs.
+
 | `stack:=` | What it runs |
 |---|---|
-| (empty) | every switch as you give it: the same as before |
+| `ours` (the default) | every level we built: our costmap, navigator, planner (`lattice_rs`), `mppi_lag`, and the road ahead (`behaviour:=true`) |
+| `stock` | every level stock: Nav2 and robot_localization |
 | `best` | every level's champion |
 | `car` | the champions approved for the car (`car.launch.py` runs these today) |
-| `stock` | every level stock: Nav2 and robot_localization |
-| `ours` | every level we built: our costmap, navigator, planner (`lattice_rs`), `mppi_lag`, and the road ahead (`behaviour:=true`) |
+| (empty) | no stack: each switch as you give it, else the champion's |
 
-A switch you give by hand **still wins**:
+A switch you give by hand **always wins**:
 
 ```sh
-pixi run sim world:=campus stack:=ours                     # all ours
-pixi run sim world:=campus stack:=ours tracker:=mpc_lag    # all ours, but MPC follows
+pixi run sim world:=campus                       # all ours
+pixi run sim world:=campus tracker:=mpc_lag      # all ours, but MPC follows
+pixi run sim world:=campus costmap:=nav2         # Nav2's costmaps, the rest ours
+pixi run sim stack:=stock planner:=own           # Nav2's, but our planner
 ```
 
 The launch prints what it picked, such as
 `stack:=ours - pose ekf, costmap ours, navigator ours, path lattice_rs, steer mppi_lag, ...`.
 
-!!! note "A hand-set switch"
-    "Given by hand" means "not its default". `stack:=ours planner:=lattice` keeps
-    `lattice_rs`, because `lattice` is the default. To keep a default, leave the stack out.
+!!! note "How a hand-set switch is seen"
+    The switches a stack sets are empty by default in `sim.launch.py`, meaning "the
+    stack's choice". Any value you give is yours, even one that matches the champion:
+    `costmap:=nav2` wins over `stack:=ours`.
 
 ## How a challenger wins
 
@@ -66,10 +73,11 @@ recording in its `score:`.
 |---|---|
 | The file | `ros/bringup/aav_description/config/stacks.yaml` |
 | The code (no ROS) | `aav_description.stacks`: `load`, `switches`, `resolve`, `describe` |
-| Its tests | `ros/bringup/aav_description/test/test_stacks.py`: every switch real, `ours` reverses, a hand-set switch wins |
+| Its tests | `ros/bringup/aav_description/test/test_stacks.py`: every switch real, `ours` reverses, a hand-set switch wins; `aav_bringup/test/test_sim_launch.py`: ours by default, `stock` is Nav2's, a hand-set switch wins |
 | The launch | `sim.launch.py stack:=` |
 | The design | [one shape](designs/2026-11-13_one-shape.md), "The league"; [the whole car](designs/2026-11-14_the-whole-car.md), step 7 |
 
 Not yet: `stack:=` on `car.launch.py`, and `pixi run measure league` (re-score every
 challenger and propose a swap). `pixi run measure controllers --stacks nav2 own` scores
-`stock` against `ours` today.
+`stock` against `ours` today: every run there starts from `stack:=stock` and names the
+pieces it tests, so its scores stay comparable with the runs before 14 Nov.
