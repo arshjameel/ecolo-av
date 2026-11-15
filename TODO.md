@@ -21,6 +21,7 @@ Ben, 14 Nov night: "chiping througth the list 166-173 and then the 155, 156, 157
 | then | The lane finder as a pose sensor; the things' camera and radar; record and score a car drive | 155, 156, 157 |
 | 10 | Steering-rate lattice moves, Hybrid-A*, wheel noise, the watchdog's warning | 177-180 |
 | 11 | Ours the default; the last Nav2 pieces; Gazebo's CI job; then Nav2 and Gazebo deleted | 181-184 |
+| 12 | Heavy Python to Rust: voxels, ego + look_ahead, behaviour; the clock at 250 Hz | 185 |
 | last | The Rust made more Rust-like, once feature complete | 176 |
 | 177 | **Steering-rate-aware lattice moves** (Ben, 14 Nov: a trial now): moves whose curvature changes no faster than the steering can, from the car model ego uses; beside today's lattice until it wins (no oscillation, 168) | ⬜ next after the junction |
 | 178 | **Hybrid-A\* in our Rust planner** (Ben, 14 Nov: "Now"): a port of Nav2's, another `path` option in the league | ⬜ |
@@ -30,6 +31,7 @@ Ben, 14 Nov night: "chiping througth the list 166-173 and then the 155, 156, 157
 | 182 | **The last Nav2 pieces replaced**: the velocity smoother (ours, `aav_smoother`, made champion once it scores), the stop zone (Nav2's collision_monitor: a safety lock, ours in Rust with its own tests first), the map server (becomes the map chunks, 175), the lattice file's generator; `nav2_msgs` types kept or ours | ⬜ |
 | 183 | **Gazebo's last job replaced**: our simulator's cameras on a computer with no GPU (software rendering, e.g. Mesa's lavapipe), so CI and oirp-spss run our simulator | ⬜ |
 | 184 | **Nav2 and Gazebo deleted**, once 0.4-rc1 is scored against them (their launch files, configs, trees, Gazebo worlds' plugins, the CI job), keeping their scores in the docs | ⬜ after 0.4-rc1 |
+| 185 | **Heavy Python to Rust** (Ben, 14 Nov: "convert anything that uses a lot of resources to rust"). Measured, our stack driving the road world: each Python node's own work (with `/clock` at 100 Hz) behaviour 10.7 %, voxels 10.5, ego 9.1, localization_health 8.5, look_ahead 7.7, sensor_watchdog 7.5; our Rust nodes about 2 % each. Order: voxels (the chunked maps' base, 175), ego + look_ahead as one node, behaviour, then the watchdog and health. Perception's models stay Python (the work is on the GPU); the Gazebo nodes go with Gazebo. Also: `/clock` at 1000 Hz cost half the simulator's CPU (all processes 336 % to 163 % at 100 Hz): `clock_hz:=` added; 250 the default once sim-check passes with it | ⬜ |
 
 ## Release candidate 0.4-rc1 (Ben, 14 Nov night)
 

@@ -232,6 +232,7 @@ def own_simulator(context, share, world, car, lidar, radar):
     return Node(package='aav_simulator', executable='simulator', name='simulator',
                 output='screen',
                 parameters=[{'world': world, 'models': ':'.join(models), **start,
+                             'clock_hz': float(LaunchConfiguration('clock_hz').perform(context)),
                              'wheelbase': float(v['wheelbase']), 'track': float(v['track']),
                              'wheel_radius': float(v['wheel_diameter']) / 2.0,
                              'max_steering': float(v['max_steering_angle']),
@@ -445,6 +446,10 @@ def generate_launch_description():
         DeclareLaunchArgument('bridge', default_value=bridges.DEFAULT,
                               description='with spine:=true: spine_bridge in rust '
                                           '(aav_spine_bridge) or python (aav_spine)'),
+        DeclareLaunchArgument('clock_hz', default_value='1000',
+                              description='simulator:=own: /clock a second (1000, as Gazebo). '
+                                          'Every node on sim time wakes for each one: 250 '
+                                          'is lighter, timers then step in 4 ms'),
         DeclareLaunchArgument('simulator', default_value=worlds.DEFAULT_SIMULATOR,
                               description='own (the default): our Rust simulator '
                                           '(aav_simulator) in the place of gz sim and its '
