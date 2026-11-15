@@ -111,7 +111,8 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
   map_correction:=newest  (with a tracker) each new path into odom by the newest map ->
                           odom, as until 15 Nov. slow (the default, TODO 186): by the
                           follower's held map -> odom, moved toward the newest at most
-                          0.1 m/s and 1 degree/s at the car (the nodes' map_correction_*)
+                          0.1 m/s and 1 degree/s at the car (the nodes' map_correction_*
+                          rates). Given to the follower as its bool map_correction
   amcl:=true              stock nav2_amcl on the map and /sensors/lidar/scan (so only with
                           lidar:=true), from amcl_x, amcl_y, amcl_yaw (map frame), with its
                           own lifecycle manager. tf_broadcast false: ekf_global keeps
@@ -595,11 +596,12 @@ def nodes(context):
         # keeps the car between them; aav_track keeps each path's points inside them
         # (TODO 169). Without one, the path as planned, as before.
         lane = behaviour and bool(LaunchConfiguration('lane_map').perform(context).strip())
-        # TODO 186: newest, the old way (no slew: rate 0); slow: the nodes' own rates.
+        # TODO 186: slow, the nodes' own rates; newest, the old way (no slew). A switch of
+        # its own, not a rate: the node's file would win over a rate set here.
         correction = LaunchConfiguration('map_correction').perform(context)
         if correction not in ('slow', 'newest'):
             raise ValueError(f'map_correction:={correction}: slow or newest')
-        slew = {'map_correction_speed': 0.0} if correction == 'newest' else {}
+        slew = {'map_correction': correction == 'slow'}
         if tracker == 'mppi_lag':
             # aav_mppi_lag (Rust): Nav2's MPPI with the actuators' lag in its model. nav2.yaml's
             # MPPI block and checks, vehicle.yaml's actuators, ego.yaml's ramps.

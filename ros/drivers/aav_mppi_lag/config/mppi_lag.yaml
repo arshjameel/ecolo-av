@@ -35,7 +35,8 @@ mppi_lag:
     # toward the global EKF's newest at most this fast, measured at the car. Each new path
     # comes into odom by the held one, and the running path moves with it. The GPS's jitter
     # (0.09 m every 0.2 s in the sim) then never jumps the path under the car. 0: the old
-    # way (each new path by the newest). navigation.launch.py map_correction:=newest sets 0.
+    # way (each new path by the newest). navigation.launch.py map_correction:=newest gives
+    # the node map_correction: false, the same (a bool never set here: this file would win).
     map_correction_speed: 0.1           # m/s: odometry drifts 1-2 % (0.05 m/s at 2.5 m/s)
     map_correction_turn_rate: 0.01745   # rad/s (1 degree/s): a GPS step turns up to 4 degrees
     map_correction_snap_distance: 2.0   # m: a bigger gap is a relocalisation: taken at once

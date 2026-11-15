@@ -10,7 +10,9 @@
 //!                                         and map_correction_turn_rate rad/s (TODO 186:
 //!                                         follow in odom, correct slowly); each new path
 //!                                         comes into odom by the held one, and the running
-//!                                         path moves with it. Rates 0: the newest, once a path
+//!                                         path moves with it. map_correction false (the
+//!                                         launch's map_correction:=newest) or rates 0: the
+//!                                         newest, once a path
 //!             vehicle/steering, vehicle/throttle, vehicle/brake
 //!                                         aav_interfaces/ActuatorState: the measured levels,
 //!                                         while fresh (measured_timeout); else the model's own
@@ -1171,9 +1173,13 @@ impl Config {
             critics.push(critic);
         }
 
+        // `map_correction` (the launch file's switch, never in the yaml: a node's own file
+        // wins over the launch's values) false: the old way, whatever the rates say.
         let m = SlewLimits::default();
+        let slew = d.flag("map_correction", true)?;
+        let speed = d.number("map_correction_speed", m.speed)?;
         let map_correction = SlewLimits {
-            speed: d.number("map_correction_speed", m.speed)?,
+            speed: if slew { speed } else { 0.0 },
             turn_rate: d.number("map_correction_turn_rate", m.turn_rate)?,
             snap_distance: d.number("map_correction_snap_distance", m.snap_distance)?,
             snap_angle: d.number("map_correction_snap_angle", m.snap_angle)?,

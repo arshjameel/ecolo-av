@@ -155,9 +155,9 @@ bench's argument names:
   replan_hz:=1.0      how often Nav2's navigate-to-pose tree plans again (navigation.launch.py;
                       1.0 as Nav2's own tree). replan_hz:=0: plan once per goal, the wiggle's
                       second test
-  map_correction:=slow  with a trial tracker (mppi_lag, aav_track): the follower's held map -> odom,
-                      moved toward the newest slowly (TODO 186); newest: each new path by the
-                      newest map -> odom, as until 15 Nov (navigation.launch.py)
+  map_correction:=slow  with a trial tracker (mppi_lag, aav_track): the follower's held
+                      map -> odom, moved toward the newest slowly (TODO 186); newest: each new
+                      path by the newest map -> odom, as until 15 Nov (navigation.launch.py)
   plan_around:=false  Nav2's planner sees only the map, not the radar and lidar: the car
                       stops for an obstacle instead of planning round it (the stop tests)
   watchdog:=true      the sensor watchdog (aav_safety): twist_mux's sensors lock stops Nav2

@@ -13,7 +13,9 @@ Subscribes  localization/odom/local     nav_msgs/Odometry (odom_topic): where th
                                         most map_correction_speed m/s and
                                         map_correction_turn_rate rad/s (a gap over
                                         map_correction_snap_distance m or _snap_angle rad
-                                        is taken at once). Rates 0: the newest, once a path
+                                        is taken at once). map_correction false (the
+                                        launch's map_correction:=newest) or rates 0: the
+                                        newest, once a path
             world/road_ahead            aav_interfaces/RoadAhead (road_ahead_topic; empty,
                                         the default: off): with a lane map, its soft edges;
                                         each new path is kept inside them (lane.py, TODO
@@ -157,8 +159,11 @@ class Track(Node):
                                       p['progress_time'])
         self.period = 1.0 / p['rate_hz']
         # The held map -> odom (TODO 186): moved toward the newest at a bounded rate.
+        # map_correction (the launch's switch, never in track.yaml: a node's own file wins
+        # over the launch's values) false: the old way, whatever the rates say.
+        slew = bool(self.declare_parameter('map_correction', True).value)
         self.slow = SlowFrame(SlewLimits(
-            speed=float(p['map_correction_speed']),
+            speed=float(p['map_correction_speed']) if slew else 0.0,
             turn_rate=float(p['map_correction_turn_rate']),
             snap_distance=float(p['map_correction_snap_distance']),
             snap_angle=float(p['map_correction_snap_angle'])))
