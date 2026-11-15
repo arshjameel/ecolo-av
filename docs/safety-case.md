@@ -73,6 +73,7 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 | a ghost person: 0.21 m; 0.51 m before it | sim (Gazebo), 16 Oct; 3 Nov | Ben |
 | radar: 0.3-0.4 m; lidar: 0.88 m before a box | bench, Oct; 20 Oct | Ben |
 | the cubes trial: **1 of 3 drove 1.30 m into the post** | sim (Gazebo), 3 Nov | Ben |
+| the cubes trial again: 0.20 and 0.19 m before the post, 2 of 2 | sim (ours), 15 Nov, TODO 93 | Ben |
 | a 0.3 m kerb across the road (`--kerb`): **not seen**, the car drove into it, lidar alone and with the radar | sim (ours), 15 Nov, TODO 119 | Ben |
 | the car | not measured | |
 
