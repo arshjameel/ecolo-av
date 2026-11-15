@@ -120,3 +120,13 @@ def test_a_route_weaving_inside_the_lane_still_gives_its_centre():
     route = [(x * 0.5, 1.0 * math.sin(x * 0.5 / 3.0)) for x in range(0, 120)]
     line = lane_line(lanes, route, (0.0, 0.6), length=40.0)
     assert max(abs(y) for _, y in line) < 1e-9
+
+
+def test_roads_at_finds_each_road_under_a_point_once():
+    across = Road('across', ((-50.0, 0.0), (50.0, 0.0)), 7.0)
+    bent = Road('bent', ((0.0, 60.0), (10.0, 70.0), (20.0, 70.0)), 6.0)
+    lanes = LaneMap([STREET, across, bent])
+    assert [r.name for r in lanes.roads_at(0.0, 20.0)] == ['street']
+    assert sorted(r.name for r in lanes.roads_at(1.0, 1.0)) == ['across', 'street']
+    assert [r.name for r in lanes.roads_at(10.0, 70.0)] == ['bent']   # two segments, once
+    assert lanes.roads_at(30.0, 30.0) == []

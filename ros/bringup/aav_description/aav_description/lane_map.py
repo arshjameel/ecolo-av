@@ -129,6 +129,26 @@ class LaneMap:
             for j in range(math.floor((y0 - pad) / CELL), math.floor((y1 + pad) / CELL) + 1):
                 yield i, j
 
+    def roads_at(self, x: float, y: float) -> List[Road]:
+        """
+        Return every road whose tarmac (plus MARGIN) holds (x, y), whichever way it runs.
+
+        Two or more: a junction, or roads drawn over each other. Each road once.
+        """
+        found: List[Road] = []
+        for ri, si in self._cells.get((math.floor(x / CELL), math.floor(y / CELL)), ()):
+            road = self.roads[ri]
+            if any(r is road for r in found):
+                continue
+            a, b = road.points[si], road.points[si + 1]
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            n2 = dx * dx + dy * dy
+            along = ((x - a[0]) * dx + (y - a[1]) * dy) / n2 if n2 > 1e-12 else 0.0
+            t = max(0.0, min(1.0, along))
+            if math.hypot(x - a[0] - t * dx, y - a[1] - t * dy) <= road.width / 2.0 + MARGIN:
+                found.append(road)
+        return found
+
     def lane_at(self, x: float, y: float, heading: float) -> Optional[Lane]:
         """
         Return the car's lane at (x, y), driving at `heading` (rad), or None off every road.
