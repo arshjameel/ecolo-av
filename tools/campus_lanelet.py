@@ -1,7 +1,9 @@
 """
-The campus's painted roads (lanes.yaml) as a Lanelet2 map (.osm), for lanelet-map. No ROS.
+The campus's roads as a Lanelet2 map (.osm), for lanelet-map. No ROS.
 
-TODO 175, step 6: the route level's map. Each road becomes one lanelet per lane, its
+TODO 175, step 6: the route level's map, on the same roads the street router drives
+(campus_site.yaml's kinds, campus_graph.drivable), cut at every junction. Each road
+becomes one lanelet per lane, its
 lines offset from the road's centre line (3.5 m lanes: a one-way road all one way, a
 two-way road half each way); where road ends meet (within JOIN m), short lanelets with
 virtual lines join each lane coming in to each lane going out, except a U-turn or a turn
@@ -9,9 +11,9 @@ sharper than MAX_TURN; at a dead end, a lane turns round onto its road's other w
 Points carry local_x, local_y (lanelet-map reads them) and lat/lon
 (other Lanelet2 readers).
 
-    pixi run python3 tools/campus_lanelet.py [maps/campus/lanes.yaml] [maps/campus/campus.osm]
+    pixi run python3 tools/campus_lanelet.py [maps/campus/campus.osm]
 
-pixi run campus calls it after it writes lanes.yaml. (c) OpenStreetMap contributors, ODbL.
+pixi run campus calls it. (c) OpenStreetMap contributors, ODbL.
 """
 
 from dataclasses import dataclass, field
@@ -20,11 +22,14 @@ from pathlib import Path
 import sys
 from xml.sax.saxutils import quoteattr
 
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'ros' / 'sim' / 'aav_carla'))
-from aav_carla.frames import enu_to_geodetic  # noqa: E402, I100
+sys.path.insert(0, str(ROOT / 'ros' / 'drivers' / 'aav_routes'))
+from aav_carla.frames import enu_to_geodetic, geodetic_to_enu  # noqa: E402, I100
+from aav_routes import campus_graph  # noqa: E402, I100
+
+SITE = ROOT / 'ros' / 'drivers' / 'aav_routes' / 'config' / 'campus_site.yaml'
 
 LANE = 3.5                  # m: one lane's width
 JOIN = 0.5                  # m: road ends this close meet
@@ -192,19 +197,61 @@ def to_xml(osm: Osm, datum) -> str:
     return '\n'.join(out) + '\n'
 
 
-def write(lanes_yaml: Path, out: Path, datum) -> dict:
-    """Write lanes_yaml's roads as a Lanelet2 map at out; return the report."""
-    roads = yaml.safe_load(lanes_yaml.read_text())['roads']
-    osm, report = build(roads)
+def roads_from_osm(osm, kinds, datum, oneway=True) -> list:
+    """
+    Return the roads the car may use (campus_graph.drivable: the router's own) as roads.
+
+    Each way is cut at every node another drivable way shares (a junction, even mid-way),
+    turned to run along its one-way direction, and put east and north of the datum. Its
+    width: the `lanes` tag x LANE, else one lane each way (one lane, one way).
+    """
+    lat0, lon0 = datum
+    ways = [(tags, [r for r in refs if r in osm.nodes]) for tags, refs in osm.ways.values()
+            if campus_graph.drivable(tags, kinds)]
+    uses = {}
+    for _, refs in ways:
+        for k, r in enumerate(refs):
+            ends = k in (0, len(refs) - 1)
+            uses[r] = uses.get(r, 0) + (2 if ends else 1)
+
+    def xy(ref):
+        east, north, _ = geodetic_to_enu(lat0, lon0, 0.0, *osm.nodes[ref], 0.0)
+        return [round(east, 2), round(north, 2)]
+
+    roads = []
+    for tags, refs in ways:
+        direction = campus_graph.one_way(tags) if oneway else 0
+        if direction < 0:
+            refs = refs[::-1]
+        try:
+            lanes = max(1, int(tags.get('lanes', '0')))
+        except ValueError:
+            lanes = 0
+        width = (lanes or (1 if direction else 2)) * LANE
+        piece = refs[:1]
+        for r in refs[1:]:
+            piece.append(r)
+            if uses.get(r, 0) > 1 and r != refs[-1] or r == refs[-1]:
+                if len(piece) > 1:
+                    roads.append({'points': [xy(p) for p in piece], 'width': width,
+                                  'oneway': direction != 0, 'name': tags.get('name', ''),
+                                  'kind': tags.get('highway', '')})
+                piece = [r]
+    return roads
+
+
+def write(out: Path, datum, site: Path = SITE) -> dict:
+    """Write the site's drivable roads as a Lanelet2 map at out; return the report."""
+    info = campus_graph.read_site(site)
+    osm_data = campus_graph.read_osm(ROOT / info.osm)
+    osm, report = build(roads_from_osm(osm_data, info.roads, datum, info.oneway))
     out.write_text(to_xml(osm, datum))
     return report
 
 
 def main():
-    lanes_yaml = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'maps/campus/lanes.yaml'
-    out = Path(sys.argv[2]) if len(sys.argv) > 2 else lanes_yaml.with_name('campus.osm')
-    place = yaml.safe_load((lanes_yaml.parent / 'place.yaml').read_text())
-    print(f'{out}: {write(lanes_yaml, out, place["datum"])}')
+    out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'maps/campus/campus.osm'
+    print(f'{out}: {write(out, campus_graph.read_site(SITE).datum)}')
 
 
 if __name__ == '__main__':

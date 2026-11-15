@@ -1102,7 +1102,7 @@ def main():
     print(f'{args.out}: {report}')
     print(f'start at {start}')
     chunk_map(args.out / 'campus.yaml', args.out / 'chunks')
-    lanelets = campus_lanelet.write(args.out / 'lanes.yaml', args.out / 'campus.osm', (lat0, lon0))
+    lanelets = campus_lanelet.write(args.out / 'campus.osm', (lat0, lon0))
     print(f'lanelets: {lanelets} in {args.out / "campus.osm"}')
 
 

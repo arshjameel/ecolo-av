@@ -49,3 +49,23 @@ def test_the_file_is_lanelet2_osm():
     assert len(lanelets) == 8                # 4 lanes and 4 joins
     node = root.find('node')
     assert math.isfinite(float(node.get('lat'))) and node.find('tag').get('k') == 'local_x'
+
+
+def test_roads_are_cut_where_another_road_crosses_them_mid_way():
+    """Two streets crossing in the middle of both: four roads, joined at the crossing."""
+    graph = campus_lanelet.campus_graph
+    d = 0.0001                       # about 11 m of latitude
+    nodes = {'w': (45.386, -75.696 - 2 * d), 'm': (45.386, -75.696),
+             'e': (45.386, -75.696 + 2 * d), 's': (45.386 - d, -75.696),
+             'n': (45.386 + d, -75.696), 'x': (45.386 + 2 * d, -75.696)}
+    ways = {'1': ({'highway': 'service'}, ['w', 'm', 'e']),
+            '2': ({'highway': 'service', 'oneway': '-1'}, ['s', 'm', 'n', 'x'])}
+    osm_data = graph.Osm(nodes, ways, [])
+    roads = campus_lanelet.roads_from_osm(osm_data, ('service',), (45.386, -75.696))
+    assert len(roads) == 4                   # each street cut at m; n is only on way 2
+    one_way = [r for r in roads if r['oneway']]
+    assert len(one_way) == 2
+    # oneway=-1: driven against the way's order, so from x down to s.
+    assert one_way[0]['points'][0][1] > one_way[0]['points'][-1][1]
+    _, report = campus_lanelet.build(roads)
+    assert report['joins'] > 0
