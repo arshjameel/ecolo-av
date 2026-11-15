@@ -131,7 +131,6 @@ history: [todo-done](docs/history/todo-done.md#the-old-lists-as-they-were-on-15-
 | 119 | **Foot-tall kerbs**: are they seen? Test a 0.3 m kerb in our simulator | ⬜ before autonomy near a kerb |
 | 121 | **NDT's score floor on the campus** (1.5 there, 2.3 in the lot): how high does a wrong pose score? | ⬜ |
 | 71 | **The hardware panel's pages**: actuators off, measure, direct control, typed-in measurements | 🔧 15 Nov: **MEASURE** built (speed and distance since RESET, a tape run typed in, the wheel diameter's check, know-the-car test 3; SAVE to a file; 9 laptop tests, the demo's screenshot looked at). Left: actuators off and direct control need the two-way ESP32 link (`docs/designs/2026-11-06_bench-link.md`, the Rust firmware), so they wait for it |
-| 22o | **Ackermann, the rest**: both front wheels' real angles and the steering curve from `Ackermann.m` (Q2) | ⬜ |
 | 0b | **The spine's state machine, follow-up** (Arsh's #15): the test mode without a wheel speed; a real self-test | ⬜ Arsh |
 | 23 | **sim-check in the nightly CI**: drop `continue-on-error` once it passes a few nights (with 151) | 👀 |
 
@@ -142,6 +141,7 @@ needs the car, a part, or an answer. 157, 158 and 173 are in "What is next".
 
 | # | Task |
 |---|---|
+| 22o | **Ackermann, the rest**: both front wheels' real angles and the steering curve from `Ackermann.m` (Q2). Moved here 15 Nov: the ideal two-wheel angles are already ours (`aav_description` `vehicle.py` `wheel_angles`, the spine bridge's `wheel_angles`). `Ackermann.m` (the 2025-26 team's linkage: actuator length -> passenger wheel by the law of cosines, the other wheel from the trapezoid's loop equation), run as written, gives **anti-Ackermann** (actuator 510 mm: 10.5° and 11.1°, the outer wheel turning more), so either the car is built so or its signs are mixed; it can't stand in for a measurement. On the car: both wheels' angles at 5 actuator positions (a protractor or the phone level on each wheel), against `wheel_angles` |
 | 92 | The people named (e-stop person, safety driver...); the hardware lead's questions: H1 (CORTEX the Motor Pi?), C1 (CAM1's address), `.211`'s job, who owns the router |
 | 126 | The hardware debug plan: a USB cable, the current limits, the return wire, where the steering and brake sensors connect |
 | 49b | Nothing measures the driven (rear) wheels on stands: a speed sensor there before any closed loop on stands |
