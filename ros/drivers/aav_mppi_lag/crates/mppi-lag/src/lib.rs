@@ -21,6 +21,24 @@
 //! | [`follower`] | one path: goal and progress checks, the estimate, MPPI |
 //! | [`rng`] | seedable random numbers |
 //! | `shared` (feature `shared`) | `SharedModel`: the shared `car-model` crate behind [`CarModel`] |
+//!
+//! The feature `trace` (TODO 196) wraps each stage of a tick in a `tracing` span
+//! (`mppi.tick`, `mppi.rollout`, `mppi.critics`, `mppi.weigh`, `mppi.smooth`); without it
+//! [`span!`] is nothing, and the crate has no dependencies.
+
+/// Time the rest of the enclosing block as the stage `$name` (feature `trace`).
+#[cfg(feature = "trace")]
+macro_rules! span {
+    ($name:literal) => {
+        let _span = tracing::info_span!($name).entered();
+    };
+}
+
+/// Without the feature `trace`: nothing.
+#[cfg(not(feature = "trace"))]
+macro_rules! span {
+    ($name:literal) => {};
+}
 
 pub mod age;
 pub mod costmap;

@@ -20,3 +20,13 @@ mppi-lag = { path = "../mppi-lag" }
 rclrs = "0.8"
 # The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
 ros-env = "0.3"
+# TODO 196, off by default: the stage spans of mppi-lag's `trace`, printed or sent to Tracy.
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = { version = "0.3", optional = true, default-features = false, features = ["fmt", "std"] }
+tracing-tracy = { version = "0.11", optional = true }
+
+# Build with them: colcon build ... --cmake-args -DMPPI_LAG_FEATURES=trace (or tracy);
+# run with AAV_TRACE=1 (each stage's time printed as it closes) or AAV_TRACE=tracy.
+[features]
+trace = ["mppi-lag/trace", "dep:tracing", "dep:tracing-subscriber"]
+tracy = ["trace", "dep:tracing-tracy"]

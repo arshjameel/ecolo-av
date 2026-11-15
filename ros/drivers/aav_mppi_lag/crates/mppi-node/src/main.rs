@@ -75,6 +75,8 @@ use ros_env::nav_msgs::msg::{Odometry, Path};
 use ros_env::std_msgs::msg::{Bool, Header};
 use ros_env::tf2_msgs::msg::TFMessage;
 
+mod trace;
+
 /// The name on the status topic, as aav_track's trackers have theirs.
 const TRACKER: &str = "mppi_lag";
 
@@ -82,6 +84,9 @@ fn main() -> Result<()> {
     let context = Context::default_from_env()?;
     let mut executor = context.create_basic_executor();
     let node = executor.create_node("mppi_lag")?;
+    if let Some(to) = trace::start() {
+        log_info!(node.logger(), "AAV_TRACE: the tick's stages timed, to {to}");
+    }
 
     let (config, _params) = Config::declare(&node)?;
     let follower = config.follower()?;

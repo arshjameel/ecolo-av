@@ -319,36 +319,40 @@ impl<M: CarModel> Optimizer<M> {
         let (model, settings, sequence) = (&self.model, &now, &self.sequence);
 
         // 1 and 2: sample and roll out.
-        std::thread::scope(|scope| {
-            for (part, seed) in self.rollouts.chunks_mut(chunk).zip(&seeds) {
-                scope.spawn(move || {
-                    let mut rng = Rng::new(*seed);
-                    let a = settings.noise_correlation.clamp(0.0, 0.999);
-                    let fresh = (1.0 - a * a).sqrt();
-                    for r in part {
-                        let (mut nv, mut ns) = (rng.normal(), rng.normal());
-                        for (c, base) in r.controls.iter_mut().zip(sequence) {
-                            *c = Command::new(
-                                base.speed + settings.speed_std * nv,
-                                base.steer + settings.steer_std * ns,
-                            );
-                            nv = a * nv + fresh * rng.normal();
-                            ns = a * ns + fresh * rng.normal();
+        {
+            span!("mppi.rollout");
+            std::thread::scope(|scope| {
+                for (part, seed) in self.rollouts.chunks_mut(chunk).zip(&seeds) {
+                    scope.spawn(move || {
+                        let mut rng = Rng::new(*seed);
+                        let a = settings.noise_correlation.clamp(0.0, 0.999);
+                        let fresh = (1.0 - a * a).sqrt();
+                        for r in part {
+                            let (mut nv, mut ns) = (rng.normal(), rng.normal());
+                            for (c, base) in r.controls.iter_mut().zip(sequence) {
+                                *c = Command::new(
+                                    base.speed + settings.speed_std * nv,
+                                    base.steer + settings.steer_std * ns,
+                                );
+                                nv = a * nv + fresh * rng.normal();
+                                ns = a * ns + fresh * rng.normal();
+                            }
+                            Self::constrain(settings, &mut r.controls);
+                            let mut s = state.clone();
+                            for (t, c) in r.controls.iter().enumerate() {
+                                model.step(&mut s, *c, settings.model_dt);
+                                r.poses[t] = model.pose(&s);
+                                r.speeds[t] = model.speed(&s);
+                                r.steerings[t] = model.steering(&s);
+                            }
                         }
-                        Self::constrain(settings, &mut r.controls);
-                        let mut s = state.clone();
-                        for (t, c) in r.controls.iter().enumerate() {
-                            model.step(&mut s, *c, settings.model_dt);
-                            r.poses[t] = model.pose(&s);
-                            r.speeds[t] = model.speed(&s);
-                            r.steerings[t] = model.steering(&s);
-                        }
-                    }
-                });
-            }
-        });
+                    });
+                }
+            });
+        }
 
         // 3: the critics, on what this round's samples reached.
+        span!("mppi.critics");
         let furthest = furthest_reached(scene.path, &self.rollouts);
         let valid = path_clear(scene.path, scene.costmap, scene.tracking_unknown);
         let data = CriticData {
@@ -384,6 +388,7 @@ impl<M: CarModel> Optimizer<M> {
 
     /// 4: weigh the samples into a new sequence.
     fn update(&mut self) {
+        span!("mppi.weigh");
         let min = self
             .rollouts
             .iter()
@@ -408,6 +413,7 @@ impl<M: CarModel> Optimizer<M> {
 
     /// One tick: the command to send now, from the car's state `state`.
     pub fn evaluate(&mut self, state: &M::State, scene: &Scene) -> Result<Plan, NoValidControl> {
+        span!("mppi.tick");
         let mut attempts = 0;
         loop {
             for _ in 0..self.settings.iteration_count.max(1) {
@@ -431,7 +437,10 @@ impl<M: CarModel> Optimizer<M> {
         let collided =
             self.rollouts.iter().filter(|r| r.collided).count() as f64 / self.rollouts.len() as f64;
 
-        savitzky_golay(&mut self.sequence, &mut self.history);
+        {
+            span!("mppi.smooth");
+            savitzky_golay(&mut self.sequence, &mut self.history);
+        }
         let command = self.sequence[0];
         let mut s = state.clone();
         let poses = self

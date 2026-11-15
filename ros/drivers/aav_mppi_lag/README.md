@@ -122,7 +122,7 @@ All read once at start.
 - Rust API Guidelines; `cargo fmt` and `cargo clippy` clean; no dependencies in the crate
   by default. The feature `shared` adds the shared `car-model` crate (ours) as
   `SharedModel` behind `CarModel` (`shared.rs`: it drives as `LagModel` does, to 1 cm);
-  the node still runs `LagModel`.
+  the node still runs `LagModel`. The feature `trace` adds `tracing` (below).
 
 ## Side Effects
 
@@ -138,6 +138,15 @@ cargo run --release -p mppi-lag --example timing                         # ms a 
 cargo run --release -p mppi-lag --example follow_plan -- paths/*.csv     # planned paths, followed (lattice-planner's moves example writes them)
 cargo run --release -p mppi-lag --example wiggle                         # the wiggle: each suspect at 2.5 m/s, before and after (docs/mppi-lag.md)
 STEER_GAMMA=0.05 SPEED=1.0 ONLY=after cargo run --release -p mppi-lag --example wiggle   # one setting tried (also BATCH, TEMP, CORR, STD, GAMMA)
+```
+
+Where a tick's time goes (TODO 196), off by default:
+
+```sh
+pixi run build --packages-select aav_mppi_lag --cmake-args -DMPPI_LAG_FEATURES=trace   # or tracy
+AAV_TRACE=1 ...       # each stage's time on stderr as it closes: mppi.tick, mppi.rollout, mppi.critics, mppi.weigh, mppi.smooth
+AAV_TRACE=tracy ...   # live in the Tracy viewer (feature tracy)
+pixi run build --packages-select aav_mppi_lag --cmake-args -DMPPI_LAG_FEATURES=          # back to none (CMake keeps the last)
 ```
 
 | Test | Covers |
