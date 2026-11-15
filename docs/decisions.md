@@ -212,6 +212,7 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 15 Nov | **Map correction stays `newest`**; `slow` (TODO 186) is a challenger: it won offline, not yet in the simulator | Ben's rule (5 Nov), applied at night |
 | 15 Nov | **The radar clears our costmap inside its view** where it sees nothing (TODO 193), so a thing taken away is forgotten | Ben's night orders |
 | 15 Nov | **32 lattice headings: no win**; 16 stays (TODO 190) | Ben's night orders |
+| 15 Nov | **D2, lane costs**: the one-shape design's proposal taken (a ramp, lowest at the right lane's centre, against `path:=lane`); the go-ahead to finish Fable's designs and the rc1 list | Ben: "lets try to get all of these things finished and merged and tested" |
 | 15 Nov | The fork's branches (`one-shape`, `review-13nov`, `setup-localization`, `whole-car`) merged into its `main`, then deleted; their last commits: 0f0a1094, b7ed1837, 566ef0c0, 726bff44 | Ben |
 
 ## Proposed in November: Ben's to decide
