@@ -39,7 +39,7 @@ So ours: about 300 lines of numpy, with tests.
 | in | `/perception/voxels/cubes` | `PointCloud2`, `base_link` (aav_voxels) |
 | in | `/perception/radar/clusters` | `PointCloud2`, the radar's frame (with `radar:=true`) |
 | in | `/localization/odom/local` | `Odometry`: the car's speed, for the radar |
-| in | TF | `odom ← base_link` at each cloud's stamp; `odom ← radar_link` |
+| in | TF | `odom ← base_link` at each cloud's stamp; `odom ← radar_link`. A cloud newer than /tf waits for it (below) |
 | out | `/world/things` | `aav_interfaces/Things`, odom, 10 Hz |
 | out | `/world/things/markers` | `MarkerArray`, odom: box, speed arrow, id |
 
@@ -61,11 +61,19 @@ So ours: about 300 lines of numpy, with tests.
 |---|---|---|
 | `groups.py` | yes | `GroupShape`, `Group`, `group`, `to_frame` |
 | `tracker.py` | yes | `TrackerShape`, `Track`, `Tracker`, `predict`, `update`, `RadarCluster`, `ground_radial_speed` |
+| `tf_wait.py` | yes | `Waiting`, `decide`, `Step`, `WaitShape`: clouds waiting for their transform (tf2's MessageFilter, in short) |
 | `things_node.py` | no | the node |
 
 ## Invariants
 
-- `groups.py` and `tracker.py` have no ROS imports, and their own tests.
+- `groups.py`, `tracker.py` and `tf_wait.py` have no ROS imports, and their own tests.
+- A callback never blocks on /tf. A cloud newer than the newest transform:
+
+  | Its lead | Then |
+  |---|---|
+  | up to 0.1 s | the newest transform stands in |
+  | more | it waits (at most 30 clouds), oldest first |
+  | still waiting after 1.5 s | dropped; the drops are said once every 5 s |
 - Output in `odom` (REP-105); speeds over the ground, not relative to the car.
 - A thing is listed only once seen 3 times: a one-cloud flash never shows.
 - `kind` is `unknown` until camera-to-lidar calibration exists. Never guessed.
