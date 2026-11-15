@@ -78,3 +78,22 @@ def test_pose_error_splits_sideways_and_along_and_finds_the_jitter():
     assert steady.jitter == pytest.approx(0.0, abs=1e-9)
     assert s.pose_error(track, [(99.0, 0.0, 0.0)]) is None
     assert 'jitter 2.5 cm' in got.line()
+
+
+def test_keep_right_counts_the_time_over_the_centre_line_and_each_crossing():
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'ros' / 'bringup'
+                           / 'aav_description'))
+    from aav_description.lane_map import from_dict
+    # Two-way, 7 m: the eastbound lane's centre at y = -1.5, its left line y = 0.
+    lanes = from_dict({'roads': [{'name': 'r', 'width': 7.0, 'points': [[0, 0], [100, 0]]}]})
+    ys = [-1.5] * 10 + [0.5] * 5 + [-1.5] * 5 + [1.0] * 5 + [-1.5] * 5
+    track = [(0.5 * i, 2.0 * i, y, 0.0) for i, y in enumerate(ys)]
+    k = s.keep_right(lanes, track)
+    assert k.crossings == 2
+    assert k.road_s == pytest.approx(0.5 * (len(ys) - 1))
+    assert k.over_centre == pytest.approx(10 * 0.5 / k.road_s)
+    assert k.in_lane + k.over_centre == pytest.approx(1.0)
+    assert k.over_kerb == 0.0
+    # Off every road: nothing counts.
+    off = s.keep_right(lanes, [(0.0, 0.0, 30.0, 0.0), (1.0, 1.0, 30.0, 0.0)])
+    assert off.road_s == 0.0 and math.isnan(off.in_lane)
