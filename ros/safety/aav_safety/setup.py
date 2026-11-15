@@ -28,6 +28,7 @@ setup(
             'stop_hold = aav_safety.stop_hold:main',
             'geofence = aav_safety.geofence_node:main',
             'joy_alive = aav_safety.joy_alive_node:main',
+            'goal_leash = aav_safety.goal_leash_node:main',
         ],
     },
 )

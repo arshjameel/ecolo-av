@@ -131,6 +131,7 @@ What the car decides to do on the road: when to slow, stop, wait and go, and wha
 
 | Feature | Why | Who | Date | Status |
 |---|---|---|---|---|
+| The goal leash (`aav_safety` `goal_leash`, `leash.py`) | TODO 116: the language driver runs on a laptop and sends goals to drivers on the car, and a ROS action carries on when its client vanishes: a laptop dropping off mid-drive left the car driving. The laptop beats 5 times a second; 1 s of quiet cancels its goals (a normal stop, not an e-stop); a clean close says goodbye | Ben | 2026-11-15 | built |
 | [The stop zone in Rust](../ros/safety/aav_stop_zone/README.md) (`aav_stop_zone` `stop-zone`, no ROS): Nav2's collision_monitor stop decision ported: the box by direction, points from every sensor, a silent sensor stops, zeros held; its node runs in shadow (`stop_zone_shadow:=true`, its own topics) | Ben, 14 Nov: "We want to run everythign ourselves in rust"; a safety lock, so its own tests first (TODO 182). Nav2's runs until the node scores the same | Ben | 2026-11-15 | built |
 | Command mux and e-stop lock (`aav_command_mux`, twist_mux) | One command wins by priority, and the e-stop locks every driver out | Ben | 2026-10-09 | sim |
 | Four e-stops | The car's red button stays untouched; the joystick, `pixi run estop` and the HUD add three more | Ben | 2026-10-10 | sim |

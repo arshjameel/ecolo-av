@@ -154,6 +154,12 @@ topics:
     sub: [twist_mux, language_drive, behaviour]
     live: [bench, road]
     note: true from collision_monitor's STOP until it has said anything else for 1 s without a break (aav_safety stop_hold, 10 Hz, wherever navigation.launch.py starts collision_monitor). A twist_mux lock at priority 21 - it holds Nav2 (20) and the AI slot (10) only, never the point driver, a person or a test. Timeout 0 - silence locks nothing (profiles without collision_monitor never publish it), and a stop_hold that dies while true keeps the stop. Without it, an obstacle at the stop zone's edge flickered the monitor between stop and go, and each go let the car creep on.
+  /drivers/language/heartbeat:
+    type: std_msgs/msg/UInt64
+    pub: [language_drive]
+    sub: [goal_leash]
+    live: []
+    note: Reliable. 1, 2, 3... at 5 Hz while language_drive (aav_language, on a laptop) runs; 0 = goodbye when it closes cleanly (having cancelled its own goals). goal_leash (aav_safety, next to the mux on the car, in the sim and on the bench) cancels every goal on /scripted_drive and /follow_gps_waypoints once when the beats stop for 1 s, so a laptop dropping off mid-drive doesn't leave the car driving; a cancel, so the car slows to a stop the driver's own way, not an e-stop. Idle until a first beat (TODO 116).
   /safety/geofence/lock:
     type: std_msgs/msg/Bool
     pub: [geofence]

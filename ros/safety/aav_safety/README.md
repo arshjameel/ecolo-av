@@ -84,6 +84,22 @@ In the namespace `/drivers/joy` (aav_teleop `teleop.launch.py`).
 Parameters: aav_teleop `config/joy_alive.yaml`: `enable_button` 0, `motion_axes` [1],
 `motion_threshold` 0.05, `silent_after` 0.5, `frozen_after` 2.0, `rate_hz` 10.
 
+### Node `goal_leash` (TODO 116)
+
+The language driver (`aav_language`) runs on a laptop and sends goals to drivers on the
+car; a ROS action carries on when its client vanishes. So the laptop beats, and the leash
+cancels its goals if the beats stop:
+
+| When | The leash |
+|---|---|
+| no beat yet | nothing (no laptop driver) |
+| beats on `/drivers/language/heartbeat` (`std_msgs/UInt64`, 1, 2, 3...) | armed |
+| quiet over `timeout` (1 s) | cancels every goal on `actions` (`/scripted_drive`, `/follow_gps_waypoints`) once: the car slows to a stop the driver's way, no e-stop |
+| beat 0 (goodbye: closed cleanly, its goals cancelled) | disarmed, nothing cancelled |
+
+Started next to the mux on the car, in the sim and on the bench. Calls each action's
+`_action/cancel_goal` with an empty goal id and a zero stamp (ROS's "every goal").
+
 ### Node `geofence`
 
 | In / out | Topic | Type |
@@ -149,10 +165,13 @@ each profile passes the inputs it has (sim, bench, car).
 | `geofence_node.py` | no | the node `geofence` |
 | `joy_alive.py` | yes | `JoyAlive`: the joystick's `WAITING`, `SILENT`, `FROZEN` and their latch |
 | `joy_alive_node.py` | no | the node `joy_alive` |
+| `leash.py` | yes | `Leash`: armed by beats, trips once after `timeout` s quiet, disarmed by `GOODBYE` |
+| `goal_leash_node.py` | no | the node `goal_leash` |
 
 ## Invariants
 
-- `watchdog.py`, `wheel_check.py`, `hold.py`, `geofence.py` and `joy_alive.py` have no ROS imports, and their own tests.
+- `watchdog.py`, `wheel_check.py`, `hold.py`, `geofence.py`, `joy_alive.py` and `leash.py` have no ROS imports, and their own tests.
+- `goal_leash` only ever cancels goals: it never drives, and never sets the e-stop.
 - `joy_alive` only ever releases the joystick; it never makes a command of its own. Its
   latch lets go only on a released deadman, so a pad coming back with the trigger held stays stopped.
 - The geofence's lock (51) holds every program, never a person or the actuator tests.

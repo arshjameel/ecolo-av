@@ -499,6 +499,10 @@ def launch_setup(context):
                               things=flag['things']))
         actions.append(include(context, 'aav_safety', 'watchdog.launch.py',
                                inputs=','.join(inputs), use_sim_time='true'))
+    # The goal leash (TODO 116): a laptop driver (aav_language) that goes quiet loses its
+    # goals, as on the car. Does nothing until the language driver beats.
+    actions.append(Node(package='aav_safety', executable='goal_leash', name='goal_leash',
+                        parameters=[{'use_sim_time': True}]))
     if flag['geofence']:
         actions.append(include(context, 'aav_safety', 'geofence.launch.py',
                                backend=('spine' if arg('spine').lower() == 'true' else

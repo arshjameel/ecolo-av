@@ -466,6 +466,10 @@ def launch_setup(context):
                                inputs='odom,imu,local,global' + (',gps' if flag('gps') else '')
                                + (',hud' if flag('watch_hud') else '')
                                + ''.join(f',{c}_stream' for c in streaming)))
+        # The goal leash (TODO 116), next to the mux, always: the language driver runs on a
+        # laptop and sends goals to drivers here; if its beats stop (the laptop dropped off),
+        # its goals are cancelled and the car slows to a stop. Idle until a first beat.
+        actions.append(Node(package='aav_safety', executable='goal_leash', name='goal_leash'))
         # The geofence, next to the mux, always (F6, docs/geofence.md): twist_mux's geofence
         # lock holds every program near the fence's edge, while the global pose can't be
         # trusted, and when the geofence itself goes quiet (the lock's 1 s timeout).

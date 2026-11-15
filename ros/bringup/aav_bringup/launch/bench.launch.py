@@ -152,6 +152,8 @@ def launch_setup(context):
     # the mux's sensors lock needs its heartbeat (aav_command_mux mux.launch.py sensor_lock).
     actions.append(include('aav_safety', 'watchdog.launch.py',
                            inputs='odom,imu,gps,local,global,radar'))
+    # The goal leash (TODO 116): a laptop driver that goes quiet loses its goals, as on the car.
+    actions.append(Node(package='aav_safety', executable='goal_leash', name='goal_leash'))
     # The geofence holds every program near its edge, as on the car, always: the mux's
     # geofence lock needs its heartbeat (mux.launch.py geofence_lock).
     actions.append(include('aav_safety', 'geofence.launch.py', backend='spine',

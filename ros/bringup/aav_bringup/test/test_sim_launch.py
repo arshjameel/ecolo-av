@@ -197,7 +197,7 @@ def test_the_defaults_start_what_pixi_run_sim_always_has():
     assert sensors == 'odom,imu,gps,local,global'.split(',')
     assert {'node_ego', 'node_planner', 'node_mppi_lag'} <= set(inputs)
     assert nav['map'].endswith(os.path.join('maps', 'empty.yaml'))
-    assert names(actions) == {'imu_filter_madgwick', 'run_info', 'rviz2'}
+    assert names(actions) == {'goal_leash', 'imu_filter_madgwick', 'run_info', 'rviz2'}
     assert arguments(node(actions, 'rviz2'))[1].endswith('drive.rviz')
 
 

@@ -127,7 +127,7 @@ history: [todo-done](docs/history/todo-done.md#the-old-lists-as-they-were-on-15-
 | 120 | **The campus map**: fit a real drive to it, the GPS offset, a person approves map changes | 🟡 |
 | 93 | **The cubes let the car into a post once** (1 of 3 runs, 3 Nov): run `sim-check --lidar-obstacle --voxels` again on today's stack | ⬜ before voxels near the car |
 | 94 | **Drive-to-point stops 0.61 m past B** by the car's own EKF, once a run (limit 0.5 m) | ⬜ |
-| 116 | **Does the car stop if the Mac drops off?** The LLM on the Mac sends goals; check, then a heartbeat | ⬜ before the LLM drives the car |
+| 116 | **Does the car stop if the Mac drops off?** The LLM on the Mac sends goals; check, then a heartbeat | ✅ 15 Nov: checked by reading: both goals run on the car (`/scripted_drive`, `/follow_gps_waypoints`) and a ROS action carries on without its client, so yes, the car kept driving. Now the goal leash (`aav_safety` `goal_leash`): the laptop beats at 5 Hz, 1 s quiet cancels its goals (a normal stop), goodbye on a clean close; on the car, in the sim and on the bench; 4 + 2 tests. Not yet tried with a real laptop dropping off |
 | 119 | **Foot-tall kerbs**: are they seen? Test a 0.3 m kerb in our simulator | ⬜ before autonomy near a kerb |
 | 121 | **NDT's score floor on the campus** (1.5 there, 2.3 in the lot): how high does a wrong pose score? | ⬜ |
 | 71 | **The hardware panel's pages**: actuators off, measure, direct control, typed-in measurements | ⬜ |
