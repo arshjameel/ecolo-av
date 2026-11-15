@@ -2743,6 +2743,18 @@ def main():
         NAVIGATOR = chosen['navigator'] or NAVIGATOR
     ALL_OURS = vehicle.all_ours(chosen.get('navigator'), chosen.get('planner'),
                                 chosen.get('costmap'), chosen.get('tracker'))
+    if SIMULATOR == 'own' and CAMERAS:
+        # The launch starts the cameras with cargo run, which builds them first if they
+        # changed: minutes for Bevy, longer than start-up's 120 s. Build them here instead.
+        from aav_gazebo.worlds import SIM_CAMERAS
+        print("Building our simulator's cameras (aav_sim_cameras), if they changed...",
+              flush=True)
+        built = subprocess.run(['cargo', 'build', '--release', '-q', '--features', 'ros',
+                                '--manifest-path', os.path.join(ROOT, SIM_CAMERAS)])
+        if built.returncode != 0:
+            print("our simulator's cameras did not build: see above, or try --no-cameras",
+                  file=sys.stderr)
+            return 1
     log = os.environ.get('AAV_SIM_LOG', '/tmp/aav-sim-check.log')
     logs = [log]
     if not {'--drive-to-point-only', '--speed-steps-only', '--spine-points-only',
