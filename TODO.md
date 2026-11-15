@@ -17,7 +17,7 @@ order; each lands on `main` only after the full test and a sim check.
 | 3 | **The map chunks in use**: the planner and our costmap load the 3 x 3 and the route's chunks | 175 |
 | 4 | **The loose ends**: the behaviour's obstacle leg, the sim car's 14 % overshoot, "all ours" scored again | 162, 163, 164 |
 | 5 | **Faults on purpose** in the sim, into the safety case | 159 |
-| 6 | **Our planner faster**; MPPI slows earlier near the goal | 152 |
+| 6 | **Our planner faster**; MPPI slows earlier near the goal | 152 **The MPPI part, 15 Nov:** slowing earlier near the goal is done another way: the `ours` stack runs the behaviour, and ego holds `mppi_lag` to the road ahead, whose end is the goal (the stopping law). Fewer futures, offline (`wiggle`, the campus corner at 2.33 m/s, 3 seeds, steer gamma 0.05): 2000 samples off 0.131 m, sway 0.076, 0.06 flips/s; 1000: 0.126, 0.078, 0.06; 500: 0.123, 0.080, 0.09; 250: 0.123, 0.087, 0.21 (three times the flips). A tick on one thread (`timing`): 14.7 ms at 2000, 7.3 ms at 1000. Proposed: 1000 samples, half the tick for nothing measurable; to score in the sim, then time on the Orin |
 | 7 | **Reverse in a narrow street** (the three-point turn's next test) | 174 |
 | 8 | Look at the screens' new layers; software cameras on Linux (the slow map correction: scored and in `ours`, 15 Nov) | 183 |
 | 9 | The Rust crates to try: rayon for the chunks in threads, and tracing, first | 195-205 |
