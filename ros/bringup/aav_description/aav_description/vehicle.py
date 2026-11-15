@@ -494,14 +494,38 @@ LATTICE_TOLERANCE = 0.005
 # The lattice primitives files (lattice_headings:=): 16 headings, the default, and 32, a
 # trial (finer headings, more moves; tools/lattice_primitives.py --headings 32).
 LATTICE_HEADINGS = (16, 32)
+# The lattice's moves (lattice_moves:=): nav2, Nav2's generator's (straights and arcs, the
+# default); smooth and smooth_fast, trials: curvature that changes no faster than the
+# steering can turn at 1 m/s (ego's top speed) and at 2.5 m/s (the campus tours'), each
+# move straight at both ends (tools/lattice_smooth.py; 16 headings only).
+LATTICE_MOVES = ('nav2', 'smooth', 'smooth_fast')
 
 
-def lattice_file_name(headings=LATTICE_HEADINGS[0]):
-    """Return the primitives file's name in aav_navigation's config/ for this many headings."""
+def check_lattice_moves(moves):
+    """Return lattice_moves:= checked (empty: nav2), or raise ValueError saying what to pick."""
+    name = str(moves).strip().lower() or LATTICE_MOVES[0]
+    if name not in LATTICE_MOVES:
+        raise ValueError(f'lattice_moves:={moves}: pick one of {", ".join(LATTICE_MOVES)}')
+    return name
+
+
+def smooth_moves(moves):
+    """Return whether lattice_moves:= is one of the smooth trials (not Nav2's moves)."""
+    return check_lattice_moves(moves) != LATTICE_MOVES[0]
+
+
+def lattice_file_name(headings=LATTICE_HEADINGS[0], moves=LATTICE_MOVES[0]):
+    """Return the primitives file's name in aav_navigation's config/: headings, moves."""
     headings = int(headings)
     if headings not in LATTICE_HEADINGS:
         raise ValueError(f'lattice_headings:={headings}: pick one of '
                          f'{", ".join(str(h) for h in LATTICE_HEADINGS)}')
+    moves = check_lattice_moves(moves)
+    if smooth_moves(moves):
+        if headings != LATTICE_HEADINGS[0]:
+            raise ValueError(f'lattice_moves:={moves} has {LATTICE_HEADINGS[0]} headings only, '
+                             f'not lattice_headings:={headings}')
+        return f'lattice_ackermann_{moves}.json'
     tail = '' if headings == LATTICE_HEADINGS[0] else f'_{headings}'
     return f'lattice_ackermann{tail}.json'
 
@@ -937,7 +961,7 @@ def nav2_rewrites(v, reversing=False, planner='hybrid'):
 
 def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False,
                ghost=False, controller=DEFAULT_CONTROLLER, plan_around=True, camera=False,
-               planner='hybrid', lattice_file=None, voxels=False):
+               planner='hybrid', lattice_file=None, voxels=False, lattice_moves='nav2'):
     """
     Return a copy of nav2.yaml's settings (`nav2`, loaded) with what RewrittenYaml can't write.
 
@@ -967,7 +991,10 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
       the launch files always name one, as default_planner(reversing) picks): its
       block (PLANNER_BLOCKS) becomes GridBased, the name the behaviour trees ask for, and
       the spare blocks go. lattice also takes
-      `lattice_file` (the primitives) and, with `reversing`, may expand backwards;
+      `lattice_file` (the primitives) and, with `reversing`, may expand backwards; with
+      `lattice_moves` smooth (LATTICE_MOVES), its smoother off (smooth_path): Nav2's
+      smoother joins each stretch's ends with Dubins curves, the curvature jumps the
+      smooth moves leave out (tools/lattice_smooth.py);
     - with `voxels` and `lidar` (aav_voxels, a trial): the lidar_layer reads the cubes and
       the road they saw (sources voxels, voxels_ground) instead of the scan, and
       collision_monitor's voxels source takes the lidar's place.
@@ -987,6 +1014,8 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
         if planner == 'lattice':
             chosen['lattice_filepath'] = lattice_file
             chosen['allow_reverse_expansion'] = bool(reversing)
+            if smooth_moves(lattice_moves):
+                chosen['smooth_path'] = False
         plans['GridBased'] = chosen
     servers = out['controller_server']['ros__parameters']
     if controller == 'mppi':

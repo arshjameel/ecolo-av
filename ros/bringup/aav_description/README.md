@@ -53,7 +53,7 @@ Many values are still `TODO measure` (docs/car_measurements.md).
 | `ego_params(cfg)`, `spine_params(v)` | ego's and `spine_bridge`'s parameters |
 | `check_planner(name, real, trial)`, `lattice_problems(meta, v, resolution)` | a planner's name, checked (only `CAR_PLANNERS` with `real`; with `trial`, car.launch.py's `diffusion_trial:=true`, `TRIAL_CAR_PLANNERS` only); what's wrong with a lattice primitives file for this car and map |
 | `diffusion_trial_speed(max_speed)` | the diffusion car trial's top speed: empty gives `DIFFUSION_TRIAL_SPEED` (0.5 m/s); above it is refused |
-| `lattice_file_name(headings)` | the primitives file for 16 headings (the default) or 32 (`LATTICE_HEADINGS`, `lattice_headings:=`) |
+| `lattice_file_name(headings, moves)`, `check_lattice_moves(moves)`, `smooth_moves(moves)` | the primitives file for 16 headings (the default) or 32 (`LATTICE_HEADINGS`, `lattice_headings:=`), and for Nav2's moves or the smooth ones (`LATTICE_MOVES`, `lattice_moves:=`; 16 headings only) |
 | `check_tracker(name, reversing)`, `track_params(nav2, cfg, ego, max_speed)` | a trial tracker's name, checked (`FORWARD_ONLY_TRACKERS`, `aav_track`'s, refused with `reversing`); `aav_track`'s parameters from nav2.yaml, vehicle.yaml and ego.yaml |
 | `mppi_lag_params(nav2, cfg, ego, max_speed, reversing, lane)` | `aav_mppi_lag`'s: nav2.yaml's MPPI block and checks, the costmap's outline, vehicle.yaml's actuators (`MPPI_LAG_ACTUATORS`), ego's ramps; with `reversing`, set up to reverse as `nav2_tuned` sets Nav2's MPPI; with `lane` (a lane map), `/world/road_ahead` (`ROAD_AHEAD_TOPIC`) and our `LaneCritic` (`LANE_CRITIC`) |
 | `obstacle_heights(v)`, `centre_of_mass(...)` | the lidar's height band; centre of mass from the scales |
