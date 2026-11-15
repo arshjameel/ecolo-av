@@ -416,6 +416,7 @@ def launch_setup(context):
                                lattice_headings=arg('lattice_headings'),
                                lattice_moves=arg('lattice_moves'),
                                lidar_memory=arg('lidar_memory'),
+                               things_background=arg('things_background'),
                                planner_search=arg('planner_search'),
                                diffusion_model=arg('diffusion_model'),
                                diffusion_record=arg('diffusion_record'),
@@ -704,6 +705,9 @@ def generate_launch_description():
         DeclareLaunchArgument('lidar_memory', default_value='0.0',
                               description='s the local lidar layer keeps a mark after the '
                                           'lidar loses it (0: the newest scan only; TODO 188)'),
+        DeclareLaunchArgument('things_background', default_value='false',
+                              description='with things:=true: cubes on the saved map are '
+                                          'not things (TODO 175 step 5)'),
         DeclareLaunchArgument('lattice_moves', default_value=stacks.CHOSEN,
                               description="with planner:=lattice (or own): nav2, Nav2's "
                                           'moves; smooth or smooth_fast, a trial '

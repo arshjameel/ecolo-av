@@ -135,6 +135,7 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           seconds unseen, on /world/things (and /world/things/markers); the
                           radar's speed too with radar:=true. voxels runs for it. Nothing
                           reads the list yet (docs/designs/2026-11-14_the-whole-car.md)
+  things_background:=true  with things: cubes on /map's walls are not things (TODO 175)
   replan_hz:=0            the navigate-to-pose tree plans once a goal, not every second
                           (a test, the wiggle: TODO 149); any other number, that rate. A
                           copy of the tree, removed when the launch ends
@@ -501,6 +502,8 @@ def nodes(context):
         actions.append(Node(package='aav_things', executable='things', name='things',
                             output='screen',
                             parameters=[config, {'radar': radar,
+                                                 'background': flag(context,
+                                                                    'things_background'),
                                                  'use_sim_time': use_sim_time}]))
     if ghost:
         # Not a lifecycle node either. Its own file, then use_sim_time: the file doesn't
@@ -704,6 +707,9 @@ def generate_launch_description():
         DeclareLaunchArgument('lidar_memory', default_value='0.0',
                               description='s the local lidar layer keeps a mark after the '
                                           'lidar loses it (0: the newest scan only; TODO 188)'),
+        DeclareLaunchArgument('things_background', default_value='false',
+                              description='with things:=true: cubes on the saved map are '
+                                          'not things (TODO 175 step 5)'),
         DeclareLaunchArgument('cube_floor', default_value='',
                               description="m above the road: the cubes' floor (empty: the "
                                           "car's obstacle height)"),
