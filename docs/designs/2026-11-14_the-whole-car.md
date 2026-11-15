@@ -177,7 +177,7 @@ things that keeps what it saw on the way in is tracks-and-memory's Part B, for f
 |---|---|---|
 | Stands still, in my lane (a parked car, a cone) | the boss opens the soft edge; the path goes round and comes back | the road ahead's edges |
 | Moves, or is a person | slows and waits; never swerves round a person | a stop point, by the stopping law |
-| Moves along my lane, ahead | follows at a gap | the speed limit along the strip |
+| Moves along my lane, ahead | follows at a gap | the speed limit along the strip. ✅ 15 Nov: already so. The cap is the stopping law's v_cap(gap − stop_gap), so behind a lead moving away at v the car settles at stop_gap + its stopping distance from v: a constant-safety-distance follow (it stops in time even if the lead stops dead). A time-gap controller only pays above our 1 m/s |
 | Unknown | treated as a person | the boss's contract |
 
 This is the path-and-speed split of Werling (2010) and Apollo's EM planner (Fan 2018): decide
