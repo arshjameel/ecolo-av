@@ -41,6 +41,10 @@ levels:
     options:
       lattice: {planner: lattice}
       lattice_rs: {planner: own}
+      # The smooth moves (tools/lattice_smooth.py): curvature no faster than the steering
+      # turns at 1 m/s, each move straight at both ends, the smoother off. A trial (14 Nov).
+      lattice_smooth: {planner: lattice, lattice_moves: smooth}
+      lattice_rs_smooth: {planner: own, lattice_moves: smooth}
       hybrid: {planner: hybrid}
       diffusion: {planner: diffusion}
     score: ''

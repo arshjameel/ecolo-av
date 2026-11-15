@@ -43,6 +43,7 @@ Launch: `ros2 launch aav_navigation navigation.launch.py [args]`
 | `controller` | `mppi` | or `rpp` (Regulated Pure Pursuit); `docs/path-followers.md` |
 | `planner` | `lattice` (`car.launch.py`: `lattice`, or `hybrid` forward only) | the planner behind `GridBased`: `lattice` (SmacPlannerLattice, `config/lattice_ackermann.json`; refused if it no longer fits `vehicle.yaml` or the map's cells) or `hybrid` (SmacPlannerHybrid) keep to the turning radius; `smac2d`, `navfn`, `theta_star` don't (trials; `car.launch.py` refuses them); `own`: our own planner (`aav_planner`, Nav2's lattice in Rust) answers the trees, Nav2's lattice beside it (`docs/own-planner.md`). `docs/controllers.md`, Planners |
 | `lattice_headings` | 16 | with `planner:=lattice`: 16 headings (`config/lattice_ackermann.json`) or 32, a trial (`config/lattice_ackermann_32.json`) |
+| `lattice_moves` | `nav2` | with `planner:=lattice` or `own`: `smooth` (1 m/s) or `smooth_fast` (2.5 m/s), a trial: moves whose curvature changes no faster than the steering turns (`config/lattice_ackermann_smooth*.json`), and the lattice's smoother off |
 | `plan_around` | true | false: the planner sees only the map, so the car stops (stop tests) |
 | `tracker` | `none` | a trial follower (`aav_track`): `pure_pursuit`, `stanley`, `lqr`, `mpc`, `mpc_full`; or `mppi_lag` (`aav_mppi_lag`: Nav2's MPPI with the lag). It serves `follow_path`; controller_server's becomes `follow_path_unused`. `aav_track`'s are refused with `reversing:=true` (`docs/trials.md`); `mppi_lag` reverses as Nav2's MPPI |
 | `navigator` | `nav2` | `own`: our own navigator (`aav_navigator`) in place of `bt_navigator` and `waypoint_follower`, its actions under `/drivers/nav/navigator/`; with `planner:=own costmap:=own tracker:=mppi_lag` also no `planner_server`, `controller_server` or `behavior_server` (`docs/own-navigator.md`). `car.launch.py` always passes `nav2` |
@@ -78,6 +79,7 @@ Files:
 |---|---|
 | `config/nav2.yaml` | every server's parameters |
 | `config/lattice_ackermann.json` | the State Lattice planner's moves for our car (`planner:=lattice`): made by Nav2's generator, `pixi run python3 tools/lattice_primitives.py` (`tools/lattice_primitives.py`); never edit by hand. `lattice_ackermann_32.json`: the same with 32 headings, a trial (`--headings 32`, `lattice_headings:=32`) |
+| `config/lattice_ackermann_smooth.json`, `_smooth_fast.json` | the smooth moves, a trial (`lattice_moves:=`): made by `pixi run python3 tools/lattice_smooth.py` (ours: Nav2's generator draws no ramps); never edit by hand |
 | `config/amcl.yaml` | AMCL, the trial (`amcl:=true`): `tf_broadcast: false`, the lidar scan, base_link |
 | `behavior_trees/` | `navigate_to_pose_car.xml`, `navigate_through_poses_car.xml`, and `*_car_reversing.xml` twins with BackUp. The to-pose trees keep their path within 8 m of the goal (`vehicle.final_approach`, TODO 17) |
 | `maps/` | `empty` and `example_lot` maps and their specs ([maps/README.md](./maps/README.md)) |

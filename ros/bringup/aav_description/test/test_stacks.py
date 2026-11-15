@@ -14,12 +14,13 @@ LEAGUE = stacks.load(FILE)
 DEFAULTS = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.DEFAULT_TRACKER,
             'planner': vehicle.DEFAULT_PLANNER, 'costmap': vehicle.DEFAULT_COSTMAP,
             'navigator': vehicle.DEFAULT_NAVIGATOR, 'smoother': vehicle.DEFAULT_SMOOTHER,
-            'behaviour': 'false', 'ndt_ekf': 'false', 'kiss_ekf': 'false'}
+            'behaviour': 'false', 'ndt_ekf': 'false', 'kiss_ekf': 'false',
+            'lattice_moves': vehicle.LATTICE_MOVES[0]}
 VALID = {'controller': vehicle.CONTROLLERS, 'tracker': vehicle.TRACKERS,
          'planner': vehicle.PLANNERS, 'costmap': vehicle.COSTMAPS,
          'navigator': vehicle.NAVIGATORS, 'smoother': vehicle.SMOOTHERS,
          'behaviour': ('true', 'false'), 'ndt_ekf': ('true', 'false'),
-         'kiss_ekf': ('true', 'false')}
+         'kiss_ekf': ('true', 'false'), 'lattice_moves': vehicle.LATTICE_MOVES}
 
 
 def test_the_four_stacks_are_there():

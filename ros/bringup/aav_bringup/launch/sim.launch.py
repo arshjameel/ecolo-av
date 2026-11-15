@@ -79,6 +79,8 @@ bench's argument names:
                       smac2d, navfn and theta_star don't, trials only. pixi run
                       measure controllers --planners scores them (docs/controllers.md).
                       lattice_headings:=32: the lattice's trial file, 32 headings
+                      lattice_moves:=smooth|smooth_fast: the lattice's trial moves,
+                      curvature no faster than the steering turns (tools/lattice_smooth.py)
                       planner:=diffusion: a model draws the path, a guard checks it,
                       the lattice's path when it fails (aav_diffusion_planner, a trial:
                       pixi install --locked -e learn, pixi run diffusion train first);
@@ -216,7 +218,8 @@ def include(context, package, launch_file, **args):
 STACK_DEFAULTS = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.DEFAULT_TRACKER,
                   'planner': vehicle.DEFAULT_PLANNER, 'costmap': vehicle.DEFAULT_COSTMAP,
                   'navigator': vehicle.DEFAULT_NAVIGATOR, 'smoother': vehicle.DEFAULT_SMOOTHER,
-                  'behaviour': 'false', 'ndt_ekf': 'false', 'kiss_ekf': 'false'}
+                  'behaviour': 'false', 'ndt_ekf': 'false', 'kiss_ekf': 'false',
+                  'lattice_moves': vehicle.LATTICE_MOVES[0]}
 
 
 def launch_setup(context):
@@ -388,6 +391,7 @@ def launch_setup(context):
                                navigator=vehicle.check_navigator(arg('navigator')),
                                smoother=vehicle.check_smoother(arg('smoother')),
                                lattice_headings=arg('lattice_headings'),
+                               lattice_moves=arg('lattice_moves'),
                                diffusion_model=arg('diffusion_model'),
                                diffusion_record=arg('diffusion_record'),
                                diffusion_smoothing=arg('diffusion_smoothing'),
@@ -623,6 +627,10 @@ def generate_launch_description():
                               default_value=str(vehicle.LATTICE_HEADINGS[0]),
                               description='with planner:=lattice: 16 headings (the default) '
                                           'or 32 (a trial file)'),
+        DeclareLaunchArgument('lattice_moves', default_value=vehicle.LATTICE_MOVES[0],
+                              description="with planner:=lattice (or own): nav2, Nav2's "
+                                          'moves (the default); smooth or smooth_fast, a '
+                                          'trial (tools/lattice_smooth.py)'),
         DeclareLaunchArgument('behaviour', default_value='false',
                               description='true: the behaviour states and a speed cap on '
                                           'Nav2 (aav_behaviour, a trial)'),

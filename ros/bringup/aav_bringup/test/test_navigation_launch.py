@@ -390,6 +390,19 @@ def test_own_planner_takes_the_trees_compute_path_to_pose():
     assert p['costmap_updates_topic'] == ''
 
 
+def test_smooth_moves_reach_our_planner_with_its_smoother_off():
+    # lattice_moves:= (tools/lattice_smooth.py): another file, the same for Nav2's and ours.
+    s = json.loads(given(nav_nodes(planner='own', lattice_moves='smooth')['planner'])[
+        'settings'])
+    assert s['lattice_filepath'].endswith('lattice_ackermann_smooth.json')
+    assert os.path.exists(s['lattice_filepath'])
+    assert s['smooth_path'] is False
+    s = json.loads(given(nav_nodes(planner='own')['planner'])['settings'])
+    assert s['smooth_path'] is True
+    with pytest.raises(ValueError, match='16 headings only'):
+        nav_nodes(planner='own', lattice_moves='smooth', lattice_headings='32')
+
+
 def managed(nodes):
     """Return the servers lifecycle_manager_navigation brings up."""
     return given(nodes['lifecycle_manager_navigation'])['node_names']

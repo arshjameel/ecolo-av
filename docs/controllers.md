@@ -617,6 +617,76 @@ The file is `ros/drivers/aav_navigation/config/lattice_ackermann.json`. If someo
 the wheelbase, the steering lock or a map's cells, the launch refuses `planner:=lattice`
 until the list is made again; a test fails too.
 
+### Smooth moves (a trial, 14 Nov)
+
+Nav2's moves are a straight and an arc. Where they meet, the path's curvature **jumps**
+from 0 to full lock. The steering can't jump: ego turns it at most 0.6 rad/s.
+
+```text
+ Nav2's move                       a smooth move
+ curvature                         curvature
+   ▲   ┌──────┐                      ▲      ____
+   │   │      │                      │     /    \
+   │───┘      └───                   │____/      \____
+   └──────────────▶ metres           └──────────────▶ metres
+     jumps: the follower must guess   ramps no faster than the steering turns
+```
+
+**The rule.** Curvature is tan(steering) / wheelbase. So at speed v the curvature may
+change at most `rate / (wheelbase × v)` per metre. We use 1.25 times less, for margin:
+
+| `lattice_moves:=` | Made for | Curvature change, at most | Full lock takes |
+|---|---|---|---|
+| `nav2` (default) | Nav2's generator | no limit (it jumps) | 0 m |
+| `smooth` | 1 m/s (ego's top speed) | 0.31 1/m² | 0.9 m |
+| `smooth_fast` | 2.5 m/s (the campus tours) | 0.12 1/m² | 2.3 m |
+
+From 0.6 rad/s (ego's `max_steering_rate`, tighter than the motor's 0.8) and the
+1.561 m wheelbase. Every smooth move starts and ends **straight**, so two moves always
+join without a jump. Each turn is a clothoid (a ramp), an arc no tighter than 3.572 m,
+and a ramp back. Nav2's generator can't draw ramps, so `tools/lattice_smooth.py` (ours,
+no ROS) draws them, in Nav2's file format: Nav2's lattice and ours read it unchanged.
+
+```bash
+pixi run python3 tools/lattice_smooth.py          # makes both files and their pictures
+pixi run python3 tools/lattice_smooth.py --check  # still right for vehicle.yaml and ego.yaml?
+pixi run sim planner:=own lattice_moves:=smooth   # or planner:=lattice
+```
+
+With smooth moves the launch turns the lattice's **smoother off**: Nav2's smoother joins
+each path's ends with Dubins curves (straight + full lock), which puts the jumps back.
+
+![Every smooth move: straights at both ends, ramps between](img/lattice-primitives-smooth.png)
+
+**Offline, 14 Nov** (`cargo run --release -p lattice-planner --example moves`: our Rust
+planner, the lot tour's four legs on `example_lot`; worst change over 0.5 m windows):
+
+| Moves, smoother | Tour m (fwd / reversing) | Plan ms | Worst change 1/m² | Metres above 0.31 |
+|---|---|---|---|---|
+| nav2, on (today) | 154 / 134 | 33 / 16 | 0.38-0.54 | 5.0 / 6.0 |
+| smooth, on | 167 / 137 | 42 / 35 | 0.39-0.50 | 7.0 / 7.5 |
+| **smooth, off** (the trial) | 168 / 138 | 39 / 35 | **0.27-0.30** | **0 / 0** |
+| smooth_fast, off | 186 / 148 | 58 / 29 | 0.12-0.47 | 1.5 / 0 |
+
+The paths keep to the steering. `smooth_fast`'s 0.47 is the last 3 m to the goal:
+the search ends on a Dubins curve there (`analytic_expansion_max_length`).
+
+**Closed loop, 14 Nov** (`cargo run --release -p mppi-lag --example follow_plan`: each
+leg's path followed by `mppi_lag` on the pretend car, ego plus the lag model, 1 m/s;
+averages over the 8 legs, forward and reversing):
+
+| Path | Time s | Off the path, mean / worst m | Steering flips /s |
+|---|---|---|---|
+| nav2 moves, smoother on | 309 | 0.067 / 0.344 | 0.40 |
+| smooth | 329 | 0.077 / 0.309 | 0.38 |
+| smooth_fast | 365 | 0.063 / 0.275 | 0.40 |
+
+**No clear win yet.** MPPI looks 2.8 s ahead, so it already rounds the jumps. The worst
+miss is smaller; the mean and the steering's flips are about the same; the tour is
+longer. With the lag-free model (as Nav2's MPPI) the smooth paths came out a little worse
+(mean 0.087 m against 0.068). The trial stays a challenger: next is the simulator, and
+followers that don't look ahead (`pure_pursuit`, `stanley`).
+
 ### Scoring them
 
 ```bash

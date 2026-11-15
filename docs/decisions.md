@@ -202,6 +202,7 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 14 Nov | The sensor watchdog **warns only** about our own nodes; respawn and the age checks stop the car | Ben |
 | 14 Nov | Our simulator's wheels get **noise and slip, seeded, off by default** | Ben |
 | 14 Nov | **Steering-rate-aware lattice moves**, a trial beside today's lattice (no oscillation) | Ben |
+| 14 Nov | The smooth moves are made for **1 m/s** (`smooth`, ego's top speed) and **2.5 m/s** (`smooth_fast`, the campus), at 1/1.25 of ego's 0.6 rad/s; with them the lattice's **smoother is off** (its Dubins ends put the jumps back) | Ben |
 | 14 Nov | **Hybrid-A\* in our Rust planner now**, another option beside the lattice | Ben |
 
 ## Proposed in November: Ben's to decide
