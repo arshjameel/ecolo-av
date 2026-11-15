@@ -1234,9 +1234,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/map</code></td>
 <td><code>nav_msgs/msg/OccupancyGrid</code></td>
 <td><code>map_server</code></td>
-<td><code>global_costmap</code>, <code>local_costmap</code>, <code>map</code>, <code>dev_window</code></td>
+<td><code>global_costmap</code>, <code>local_costmap</code>, <code>map</code>, <code>dev_window</code>, <code>things</code></td>
 <td>sim</td>
-<td>Transient local (latched). From aav_navigation/maps. AMCL reads it too when launched without amcl_map:= (the sim gives it /localization/amcl/map). The map window (map, aav_hud) draws it north up, for the big screen.</td>
+<td>Transient local (latched). From aav_navigation/maps. things reads it only with background true (its walls are not things). AMCL reads it too when launched without amcl_map:= (the sim gives it /localization/amcl/map). The map window (map, aav_hud) draws it north up, for the big screen.</td>
 </tr>
 <tr>
 <td><code>/goal_pose</code></td>
