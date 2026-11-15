@@ -61,6 +61,31 @@ reads. The global clear stays Nav2's under Nav2's navigator; our navigator
 - **One change from Nav2:** the inflation finds the nearest obstacle exactly (a distance
   transform), not by Nav2's brushfire. The costs are the same.
 - **Not ported:** Nav2's 3D voxel layer, range sensors, filters. `nav2.yaml` uses none.
+- **One addition (15 Nov): the radar's view clears.** See below.
+
+## The radar forgets what has gone (15 Nov, TODO 193)
+
+**The problem.** A box in the lane: the radar marks it, the car stops. The box is taken
+away. The radar now returns **nothing** there, and in Nav2's rule only a ray to a point
+clears. So the box stayed in the radar's layer for ever. MPPI saw a wall that wasn't
+there and stood still until its progress check failed (10 s).
+
+**The fix.** A point cloud source can say how wide its view is: `view_angle` (rad), on
+the radar's block in `nav2.yaml`, 120° (the TI radar's, and the simulator's stand-in).
+
+| Where the radar sees... | Ours does |
+|---|---|
+| a point | marks it, clears the ray up to it (as Nav2) |
+| nothing, inside its view | clears the ray out to `raytrace_max_range` (8.4 m), as a scan's inf does |
+| outside its view (beside, behind) | nothing: old marks stay |
+
+- One ray every 0.5° (`obstacle::view_points`): 7 cm apart at 8.4 m.
+- The rays end past `obstacle_max_range`, so they never mark.
+- Only the radar's own layer: the lidar's and the cameras' marks are never touched.
+- Nav2's costmap has no such setting and ignores it (`stack:=stock` keeps the old way).
+- A real radar's sparse frames: a thing it misses in both frames of 0.2 s is cleared, and
+  marked again at the next frame that sees it. collision_monitor still reads the radar
+  itself, not the costmap.
 
 ## Threads and bounds (14 Nov)
 

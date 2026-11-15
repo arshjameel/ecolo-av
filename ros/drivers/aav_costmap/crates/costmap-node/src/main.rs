@@ -248,6 +248,11 @@ struct Input {
     persistence: f64,
     /// A scan's inf rays count (its source's `inf_is_valid`).
     inf_is_valid: bool,
+    /// rad: a cloud's horizontal view (ours, `view_angle`; 0: none). Where none of its
+    /// points lies, nothing is there: those rays clear (obstacle::view_points).
+    view_angle: f64,
+    /// m: those rays' length, past the marking range so they never mark.
+    view_range: f64,
 }
 
 /// One message from a sensor, in its own frame.
@@ -336,6 +341,9 @@ impl Spec {
                     kind,
                     persistence: num(s, "observation_persistence")?,
                     inf_is_valid: flag(s, "inf_is_valid")?,
+                    view_angle: num(s, "view_angle")?,
+                    view_range: num(s, "obstacle_max_range")?.max(num(s, "raytrace_max_range")?)
+                        + 0.1,
                 });
                 sources.push(Source {
                     name: text(s, "name")?,
@@ -1013,10 +1021,16 @@ impl Core {
             } else {
                 &[]
             };
+            let view = if input.kind == Kind::Cloud {
+                costmap::obstacle::view_points(&raw.points, input.view_angle, input.view_range)
+            } else {
+                Vec::new()
+            };
             let points = raw
                 .points
                 .iter()
                 .chain(infs)
+                .chain(&view)
                 .map(|&p| whole.apply(p))
                 .collect();
             out.push(Observation {

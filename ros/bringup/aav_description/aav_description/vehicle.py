@@ -816,7 +816,7 @@ COSTMAP_SOURCE_DEFAULTS = {
     'min_obstacle_height': 0.0, 'max_obstacle_height': 2.0,
     'obstacle_min_range': 0.0, 'obstacle_max_range': 2.5,
     'raytrace_min_range': 0.0, 'raytrace_max_range': 3.0,
-    'inf_is_valid': False, 'observation_persistence': 0.0,
+    'inf_is_valid': False, 'observation_persistence': 0.0, 'view_angle': 0.0,
 }
 
 
@@ -939,7 +939,7 @@ def costmap_params(tuned, v, radar=False, camera=False):
                                         'min_obstacle_height', 'max_obstacle_height',
                                         'obstacle_min_range', 'obstacle_max_range',
                                         'raytrace_min_range', 'raytrace_max_range',
-                                        'observation_persistence')}})
+                                        'observation_persistence', 'view_angle')}})
                 spec['layers'].append({
                     'name': plugin,
                     'min_obstacle_height': float(layer.get('min_obstacle_height', 0.0)),

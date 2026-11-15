@@ -238,6 +238,11 @@ local_costmap:
           raytrace_min_range: 0.0
           raytrace_max_range: 8.4
           observation_persistence: 0.2   # s: both radar frames of each update, not just one
+          # Ours only (aav_costmap; Nav2's layer has no such setting): the radar's view,
+          # 120 degrees (the TI IWR6843AOP's, and the simulator's stand-in). Where it sees
+          # nothing, nothing is there: those rays clear its old marks, as a scan's inf
+          # does. Without it a box taken away stayed in this layer for ever (TODO 193).
+          view_angle: 2.094
       # The detectors' boxes, as points on the road (aav_detector camera_obstacles). Its own
       # layer, so its clearing never wipes the radar's marks. Each update clears what the
       # camera sees, then marks the boxes of the last 0.3 s, from every detector.

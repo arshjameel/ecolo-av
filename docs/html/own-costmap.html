@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-costmap.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own costmap</h1>
-<div class="meta">12 min read · 7 sections</div></header>
+<div class="meta">13 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -117,7 +117,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does-layer-by-layer">What it does, layer by layer</a><a href="#threads-and-bounds-14-nov">Threads and bounds (14 Nov)</a><a href="#try-it">Try it</a><a href="#the-scores-8-nov">The scores (8 Nov)</a><a href="#without-ros">Without ROS</a><a href="#whats-missing">What&#x27;s missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does-layer-by-layer">What it does, layer by layer</a><a href="#the-radar-forgets-what-has-gone-15-nov-todo-193">The radar forgets what has gone (15 Nov, TODO 193)</a><a href="#threads-and-bounds-14-nov">Threads and bounds (14 Nov)</a><a href="#try-it">Try it</a><a href="#the-scores-8-nov">The scores (8 Nov)</a><a href="#without-ros">Without ROS</a><a href="#whats-missing">What&#x27;s missing</a></nav>
 <div class="lead"><p>Ben, 8 Nov: move off Nav2 to <strong>our own versions, one piece at a time</strong>, each beside Nav2
 until it wins. The order: the costmap, then a path planner in Rust, then the navigator.
 This page is the first piece. Since 14 Nov ours is the simulator's default (<code>stack:=ours</code>;
@@ -241,6 +241,46 @@ reads. The global clear stays Nav2's under Nav2's navigator; our navigator
 <li><strong>One change from Nav2:</strong> the inflation finds the nearest obstacle exactly (a distance
   transform), not by Nav2's brushfire. The costs are the same.</li>
 <li><strong>Not ported:</strong> Nav2's 3D voxel layer, range sensors, filters. <code>nav2.yaml</code> uses none.</li>
+<li><strong>One addition (15 Nov): the radar's view clears.</strong> See below.</li>
+</ul>
+</section>
+<section class="card"><h2 id="the-radar-forgets-what-has-gone-15-nov-todo-193">The radar forgets what has gone (15 Nov, TODO 193)</h2>
+<p><strong>The problem.</strong> A box in the lane: the radar marks it, the car stops. The box is taken
+away. The radar now returns <strong>nothing</strong> there, and in Nav2's rule only a ray to a point
+clears. So the box stayed in the radar's layer for ever. MPPI saw a wall that wasn't
+there and stood still until its progress check failed (10 s).</p>
+<p><strong>The fix.</strong> A point cloud source can say how wide its view is: <code>view_angle</code> (rad), on
+the radar's block in <code>nav2.yaml</code>, 120° (the TI radar's, and the simulator's stand-in).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where the radar sees...</th>
+<th>Ours does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a point</td>
+<td>marks it, clears the ray up to it (as Nav2)</td>
+</tr>
+<tr>
+<td>nothing, inside its view</td>
+<td>clears the ray out to <code>raytrace_max_range</code> (8.4 m), as a scan's inf does</td>
+</tr>
+<tr>
+<td>outside its view (beside, behind)</td>
+<td>nothing: old marks stay</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>One ray every 0.5° (<code>obstacle::view_points</code>): 7 cm apart at 8.4 m.</li>
+<li>The rays end past <code>obstacle_max_range</code>, so they never mark.</li>
+<li>Only the radar's own layer: the lidar's and the cameras' marks are never touched.</li>
+<li>Nav2's costmap has no such setting and ignores it (<code>stack:=stock</code> keeps the old way).</li>
+<li>A real radar's sparse frames: a thing it misses in both frames of 0.2 s is cleared, and
+  marked again at the next frame that sees it. collision_monitor still reads the radar
+  itself, not the costmap.</li>
 </ul>
 </section>
 <section class="card"><h2 id="threads-and-bounds-14-nov">Threads and bounds (14 Nov)</h2>

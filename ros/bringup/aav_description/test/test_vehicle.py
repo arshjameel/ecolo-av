@@ -600,6 +600,9 @@ def test_costmap_params_read_nav2s_costmaps_as_nav2_does():
     radar = with_radar['local']['layers'][0]
     assert radar['name'] == 'obstacle_layer'
     assert radar['sources'][0]['observation_persistence'] == 0.2
+    # The radar's view clears what it no longer sees (TODO 193); the lidar's scan has its inf.
+    assert radar['sources'][0]['view_angle'] == pytest.approx(math.radians(120.0), abs=1e-3)
+    assert lidar['view_angle'] == 0.0
     json.dumps(p)   # one JSON parameter each
 
 

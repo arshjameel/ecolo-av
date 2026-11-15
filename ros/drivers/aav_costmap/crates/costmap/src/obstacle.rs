@@ -85,6 +85,40 @@ pub fn scan_points(
         .collect()
 }
 
+/// Degrees between two of [`view_points`]' rays: 0.07 m apart at the radar's 8.4 m, so
+/// no 0.1 m cell between two rays is missed.
+pub const VIEW_STEP: f64 = 0.5 * std::f64::consts::PI / 180.0;
+
+/// A point cloud's "nothing there" (ours; Nav2 has no such setting): in the sensor's own
+/// frame, one point `range` m out (at its height, z = 0) in each direction across its
+/// horizontal view, `view_angle` rad wide and centred on x, that none of `points` lies in.
+/// Its rays clear what an earlier frame marked; give a `range` past the source's
+/// `obstacle_max_range` and they never mark (a scan's inf with `inf_is_valid`, for a
+/// radar: TODO 193, a box taken away stayed in the radar's layer for ever).
+pub fn view_points(points: &[[f64; 3]], view_angle: f64, range: f64) -> Vec<[f64; 3]> {
+    if view_angle <= 0.0 || range <= 0.0 {
+        return Vec::new();
+    }
+    let rays = (view_angle / VIEW_STEP).round().max(1.0) as usize;
+    let step = view_angle / rays as f64;
+    let first = -view_angle / 2.0;
+    let mut seen = vec![false; rays + 1];
+    for p in points {
+        let i = ((p[1].atan2(p[0]) - first) / step).round();
+        if (0.0..=rays as f64).contains(&i) {
+            seen[i as usize] = true;
+        }
+    }
+    seen.iter()
+        .enumerate()
+        .filter(|(_, &s)| !s)
+        .map(|(i, _)| {
+            let (s, c) = (first + i as f64 * step).sin_cos();
+            [range * c, range * s, 0.0]
+        })
+        .collect()
+}
+
 /// One obstacle layer: its sources' settings, and the grid it keeps.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ObstacleLayer {
@@ -305,6 +339,58 @@ mod tests {
         assert_eq!(l.grid.get(150, 100), FREE);
         // Without inf_is_valid an inf is dropped, and clears nothing.
         assert!(scan_points(0.0, 0.1, 0.2, 30.0, &[f32::INFINITY, f32::NAN], false).is_empty());
+    }
+
+    fn radar() -> Source {
+        Source {
+            clearing: true,
+            min_obstacle_height: -0.5,
+            obstacle_min_range: 0.3,
+            obstacle_max_range: 8.4,
+            raytrace_max_range: 8.4,
+            ..Source::named("radar")
+        }
+    }
+
+    #[test]
+    fn view_points_fill_the_view_where_nothing_was_seen() {
+        let wide = 120f64.to_radians();
+        let all = view_points(&[], wide, 8.5);
+        assert_eq!(all.len(), 241);
+        assert!(all.iter().all(|p| ((p[0].hypot(p[1])) - 8.5).abs() < 1e-9));
+        let edge = all[0][1].atan2(all[0][0]);
+        assert!((edge + wide / 2.0).abs() < 1e-9);
+        // A point straight ahead takes its own direction out of the view.
+        let some = view_points(&[[3.0, 0.0, 0.0]], wide, 8.5);
+        assert_eq!(some.len(), 240);
+        assert!(some.iter().all(|p| p[1].abs() > 1e-6));
+        // Behind the sensor, or no view: nothing.
+        assert_eq!(view_points(&[[-3.0, 0.0, 0.0]], wide, 8.5).len(), 241);
+        assert!(view_points(&[], 0.0, 8.5).is_empty());
+    }
+
+    #[test]
+    fn a_radar_forgets_a_box_taken_away() {
+        // TODO 193: the radar marked a box 3 m ahead; then it is taken away and the radar
+        // returns nothing. Nav2's rule alone keeps the mark for ever; the view clears it.
+        let g = Grid::new((-10.0, -10.0), 0.1, 200, 200, FREE);
+        let mut l = ObstacleLayer::new("obstacle_layer", vec![radar()], &g, false);
+        let boxed = seen(vec![[3.0, 0.0, 0.0], [3.0, 0.2, 0.0], [3.0, -0.2, 0.0]]);
+        l.update(&[vec![&boxed]], &[]);
+        assert_eq!(l.grid.cost_at(3.05, 0.05, 0), LETHAL);
+        l.update(&[vec![&seen(vec![])]], &[]);
+        assert_eq!(l.grid.cost_at(3.05, 0.05, 0), LETHAL);
+        let gone = seen(view_points(&[], 120f64.to_radians(), 8.5));
+        l.update(&[vec![&gone]], &[]);
+        assert!(l.grid.data.iter().all(|&c| c == FREE));
+        // While the box is there, its points still mark through the view's clearing, and
+        // the view's own points (past the marking range) never mark.
+        let pts = boxed.points.clone();
+        let mut with_view = pts.clone();
+        with_view.extend(view_points(&pts, 120f64.to_radians(), 8.5));
+        l.update(&[vec![&seen(with_view)]], &[]);
+        assert_eq!(l.grid.cost_at(3.05, 0.05, 0), LETHAL);
+        assert_eq!(l.grid.data.iter().filter(|&&c| c == LETHAL).count(), 3);
     }
 
     #[test]
