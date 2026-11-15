@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!--
-  A 10 m wall, 0.3 m thick and 2 m high: sim_check's narrow street (--three-point, TODO
+  A 10 m wall, 0.3 m thick and 2 m high: sim_check's narrow street (the three-point turn, TODO
   174) lines two rows of them. 2 m, so the roof lidar's lowest beam (15 degrees down from
   1.8 m) still meets one 3 m to the side. Its origin is the centre of its base, on the
   ground; it runs along its own x.
