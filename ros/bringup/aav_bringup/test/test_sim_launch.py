@@ -10,7 +10,9 @@ them (test_lot renders them since 15 Oct). The lidar is on by default (15 Oct).
 import importlib.util
 import os
 
+from ament_index_python.packages import get_package_prefix
 from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import PackageNotFoundError
 from launch import LaunchContext
 from launch.actions import ExecuteProcess, IncludeLaunchDescription
 from launch.utilities import perform_substitutions
@@ -33,6 +35,27 @@ SIM = load('aav_bringup', 'sim.launch.py')
 GAZEBO = load('aav_gazebo', 'gazebo.launch.py')
 # What the parts that read the camera are called: they need a world that renders it.
 CAMERA_PARTS = [{'perception': 'true'}, {'camera_obstacles': 'true'}, {'lane': 'true'}]
+
+
+@pytest.fixture
+def hud_package(monkeypatch):
+    """
+    Let hud:=true find aav_hud, which aav_bringup doesn't depend on.
+
+    The car's install skips aav_hud (tools/car_install.sh), so aav_bringup may not depend
+    on it, and colcon test then leaves it off the package path. Where this workspace
+    built it, put it back; where it wasn't built (a car computer), skip.
+    """
+    try:
+        get_package_share_directory('aav_hud')
+        return
+    except PackageNotFoundError:
+        pass
+    prefix = os.path.join(os.path.dirname(get_package_prefix('aav_bringup')), 'aav_hud')
+    if not os.path.isdir(os.path.join(prefix, 'share', 'aav_hud')):
+        pytest.skip('aav_hud is not built here (a car computer skips it)')
+    monkeypatch.setenv('AMENT_PREFIX_PATH',
+                       os.pathsep.join([prefix, os.environ.get('AMENT_PREFIX_PATH', '')]))
 
 
 def context_for(launch_file, **args):
@@ -229,7 +252,7 @@ def test_faults_route_the_camera_and_the_watchdog_can_be_left_out():
     assert 'watchdog.launch.py' not in included(started(SIM, world='road', watchdog='false'))
 
 
-def test_the_watchdog_wants_the_hud_only_where_one_runs():
+def test_the_watchdog_wants_the_hud_only_where_one_runs(hud_package):
     assert 'hud' not in included(started(SIM))['watchdog.launch.py']['inputs'].split(',')
     sent = included(started(SIM, hud='true'))
     assert 'hud.launch.py' in sent
@@ -300,7 +323,7 @@ def test_the_mux_lock_is_fail_safe_unless_told_no_watchdog_runs():
         MUX.mux(context_for(MUX, sensor_lock='maybe', geofence_lock='true'))
 
 
-def test_the_road_worlds_full_graph():
+def test_the_road_worlds_full_graph(hud_package):
     actions = started(SIM, world='road', perception='true', lane='true',
                       camera_obstacles='true', hud='true', obstacle='true', start_y='0.3')
     sent = included(actions)
@@ -321,7 +344,7 @@ def test_the_cameras_parts_need_a_world_with_a_camera(part):
     started(SIM, world='test_lot', **part)  # the lot renders the cameras: no error
 
 
-def test_the_screens_and_lichtblick():
+def test_the_screens_and_lichtblick(hud_package):
     sent = included(started(SIM, hud='true', map='true'))
     assert sent['hud.launch.py'] == {} and sent['map.launch.py'] == {}
     fox = included(started(SIM, foxglove='true'))['foxglove.launch.py']
