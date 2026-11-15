@@ -213,6 +213,8 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 15 Nov | **The radar clears our costmap inside its view** where it sees nothing (TODO 193), so a thing taken away is forgotten | Ben's night orders |
 | 15 Nov | **32 lattice headings: no win**; 16 stays (TODO 190) | Ben's night orders |
 | 15 Nov | **D2, lane costs**: the one-shape design's proposal taken (a ramp, lowest at the right lane's centre, against `path:=lane`); the go-ahead to finish Fable's designs and the rc1 list | Ben: "lets try to get all of these things finished and merged and tested" |
+| 15 Nov | **Everything goes into the next release (0.4-rc1)**: nothing is held back for a later one | Ben: "Nothing is going into a future rekease we want everything in the next release" |
+| 15 Nov | **One folder on Ben's Mac**, `~/Code/ecolo-av` on `main`: the night's worktrees (`ecolo-next`, `ecolo-night`) merged and removed; the old `~/Code/aav` and `aav-wt` deleted (its one uncommitted edit kept in `docs/history/leftovers/`) | Ben |
 | 15 Nov | The fork's branches (`one-shape`, `review-13nov`, `setup-localization`, `whole-car`) merged into its `main`, then deleted; their last commits: 0f0a1094, b7ed1837, 566ef0c0, 726bff44 | Ben |
 
 ## Proposed in November: Ben's to decide
