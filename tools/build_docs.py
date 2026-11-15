@@ -41,6 +41,8 @@ LEARN_END = 39     # PAGES[24:39] are the learn pages; the rest are reference
 PAGES = [
     ('index.md', 'Start here', 'The picture, and where to go next'),
     ('overview.md', 'Overview', 'Everything in ecolo-av: ours, stock, inherited, missing'),
+    ('release-0.4.md', '0.4-rc1',
+     'The release candidate: what it means, one command per job, ours against Nav2'),
     ('release-notes.md', 'Release notes',
      'Release 0.2: what it does, the screens, how to use it, the words, what is left; 0.1 below'),
     ('getting-started.md', 'Getting started', 'A new laptop to the turtle in 30 minutes (T1.1)'),
