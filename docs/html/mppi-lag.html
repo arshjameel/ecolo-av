@@ -7,7 +7,7 @@
 <!-- Generated from docs/mppi-lag.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>MPPI that knows the lag</h1>
-<div class="meta">23 min read · 13 sections</div></header>
+<div class="meta">30 min read · 14 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -117,7 +117,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-model">The model</a><a href="#what-differs-from-nav2s-mppi">What differs from Nav2&#x27;s MPPI</a><a href="#results-without-ros">Results without ROS</a><a href="#speed">Speed</a><a href="#in-gazebo">In Gazebo</a><a href="#reversing">Reversing</a><a href="#cusps">Cusps</a><a href="#the-campus-junction-the-geofence-not-mppi">The campus junction: the geofence, not MPPI</a><a href="#the-lane">The lane</a><a href="#lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn&#x27;t cancel the lag twice</a><a href="#run-it">Run it</a><a href="#what-is-missing">What is missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-model">The model</a><a href="#what-differs-from-nav2s-mppi">What differs from Nav2&#x27;s MPPI</a><a href="#results-without-ros">Results without ROS</a><a href="#speed">Speed</a><a href="#in-gazebo">In Gazebo</a><a href="#reversing">Reversing</a><a href="#cusps">Cusps</a><a href="#the-campus-junction-the-geofence-not-mppi">The campus junction: the geofence, not MPPI</a><a href="#oscillation-the-cause">Oscillation: the cause</a><a href="#the-lane">The lane</a><a href="#lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn&#x27;t cancel the lag twice</a><a href="#run-it">Run it</a><a href="#what-is-missing">What is missing</a></nav>
 <div class="lead"><p>Ben, 7 Nov (0.3): <strong>"have the algorithms know about lag"</strong>.</p>
 <p>Nav2's MPPI plans as if the car obeys at once. It can't take our lag model without a C++
 plugin, and we write no C++. So MPPI is <strong>ported to Rust</strong>, with the lag in its model.
@@ -153,6 +153,9 @@ Nav2 still plans the path; ours follows it. It is a <strong>trial</strong>, besi
 <li>
 <p><strong>Costmap:</strong> Nav2's local costmap, or ours with <code>costmap:=own</code> (<a href="own-costmap.html">page</a>).</p>
 </li>
+<li><strong>No wiggle at speed</strong> (15 Nov, TODO 168): at 2.5 m/s the steering noise sized for
+  1 m/s made the steering jump side to side; it now shrinks with the speed
+  (<a href="#oscillation-the-cause">Oscillation</a>).</li>
 </ul>
 </blockquote></div>
 <section class="card"><h2 id="how-it-fits">How it fits</h2>
@@ -279,6 +282,12 @@ feature <code>shared</code> (<code>src/shared.rs</code>, tested against <code>La
 <td>white</td>
 <td><strong>correlated</strong>, AR(1) 0.8</td>
 <td>see below</td>
+</tr>
+<tr>
+<td>Steering noise at speed</td>
+<td><code>wz_std</code>: the angle's shrinks as 1 / speed</td>
+<td>0.15 rad up to 1 m/s, then x (1 / speed)²</td>
+<td>the same sideways spread at every speed (<a href="#oscillation-the-cause">Oscillation</a>)</td>
 </tr>
 <tr>
 <td>Control cost</td>
@@ -786,6 +795,211 @@ the car" when it did.</p>
 </tbody>
 </table></div>
 <p><strong>In the simulator:</strong> not yet run with the 600 m fence.</p>
+</section>
+<section class="card"><h2 id="oscillation-the-cause">Oscillation: the cause</h2>
+<p>TODO 168. Ben: <strong>"don't forget reverse and no occelation"</strong>.</p>
+<p><strong>Seen 14 Nov</strong>, the campus tour, all ours (the saved runs, about 2.4 m/s):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>All ours</th>
+<th>All Nav2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>swing: side to side about its own track</td>
+<td><strong>0.18-0.26 m</strong></td>
+<td>0.04-0.08 m</td>
+</tr>
+<tr>
+<td>sway: the sideways push a passenger feels</td>
+<td><strong>0.58-0.76 m/s²</strong></td>
+<td>0.04-0.16 m/s²</td>
+</tr>
+<tr>
+<td>steering changes side</td>
+<td><strong>0.7-1.1 a second</strong></td>
+<td>0.15-0.4 a second</td>
+</tr>
+</tbody>
+</table></div>
+<p>At 1 m/s on the test lot, all ours swung only 0.02 m. The swing is real: the true
+track swings as much as the EKF's (0.22 against 0.23 m). The EKF's own error (0.08 m
+RMS) changes side only 0.2 times a second.</p>
+<h3 id="rebuilt-without-ros">Rebuilt without ROS</h3>
+<p><code>cargo run --release -p mppi-lag --example wiggle</code>. The closed-loop tests above saw only
+nav2.yaml's 3 m of path; MPPI then holds the car near 1.2 m/s. The launch file shows it
+2.8 s of path at the top speed (8.4 m at 2.5 m/s). With that, the model wiggles as the
+sim did: on the sim's own campus path, with a sim-like pose, 0.18 m, 0.59 m/s², 0.76
+changes a second (the sim: 0.20, 0.70, 0.77).</p>
+<p>Each suspect, alone, on 100 m straight at 2.5 m/s (2 runs each):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Suspect</th>
+<th>Sway m/s²</th>
+<th>Steering changes side /s</th>
+<th>Says</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>as on 14 Nov, the true pose</td>
+<td>0.166</td>
+<td>1.89</td>
+<td>wiggles with nothing wrong</td>
+</tr>
+<tr>
+<td>+ an EKF-like pose error (8 cm, 1.2°)</td>
+<td>0.209</td>
+<td>1.45</td>
+<td>adds a little</td>
+</tr>
+<tr>
+<td>+ the pose 0.15 s old</td>
+<td>0.189</td>
+<td>1.38</td>
+<td>adds a little</td>
+</tr>
+<tr>
+<td>+ 0.2 s steering dead time the model doesn't know</td>
+<td>0.194</td>
+<td>1.53</td>
+<td>adds a little</td>
+</tr>
+<tr>
+<td>no lag at all, and the model knows it</td>
+<td>0.229</td>
+<td>2.31</td>
+<td>not the lag</td>
+</tr>
+<tr>
+<td>no speed overshoot</td>
+<td>0.063</td>
+<td>1.63</td>
+<td>less, but it drove slower (1.9 m/s)</td>
+</tr>
+<tr>
+<td>8000 samples, not 2000</td>
+<td>0.092</td>
+<td>1.31</td>
+<td><strong>less: it is sampling noise</strong></td>
+</tr>
+<tr>
+<td>temperature 0.5, not 0.15</td>
+<td>0.082</td>
+<td>1.25</td>
+<td>less: more samples count</td>
+</tr>
+<tr>
+<td>white noise (Nav2's)</td>
+<td>0.034</td>
+<td>0.70</td>
+<td>less, but 6 tests of reversing and slow actuators fail</td>
+</tr>
+<tr>
+<td><strong>after the fix</strong></td>
+<td><strong>0.022</strong></td>
+<td><strong>0.00</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-cause">The cause</h3>
+<pre class="highlight"><code> steering noise 0.15 rad ──▶ a future's end moves v² x the angle
+   1 m/s:   futures 2.8 s long spread ~0.2 m sideways ──▶ many samples count
+   2.5 m/s: they spread ~1 m (6 x as wide) ──▶ the softmax rests on a handful
+            each tick a different handful ──▶ the steering jumps ──▶ the wiggle</code></pre>
+<p>The noise was sized for 1 m/s (Nav2's <code>wz_std</code> 0.1 rad/s at 1 m/s). The critics
+(PathFollow, PathAlign) score where a future ends, sharply, so at 2.5 m/s only the few
+futures that end near the path count, and each tick's few are different ones. Pose
+noise, delays and unknown lag only add to it.</p>
+<h3 id="the-fix">The fix</h3>
+<p><code>steer_std_speed: 1.0</code> (<code>config/mppi_lag.yaml</code>, <code>Settings::steer_std_at</code>): above 1 m/s
+the steering noise is 0.15 x (1 / speed)², 0.024 rad at 2.5 m/s, so the futures spread as
+far sideways as at 1 m/s. It never goes under <code>steer_std_min</code>, 0.024 rad, so above
+2.5 m/s the futures still spread. At 1 m/s and below (the lot, the cusps, backing up)
+nothing changes. The recommended option of the ones tried: more samples cost CPU, a warmer
+softmax blurs the path, white noise breaks reversing.</p>
+<p>At 2.5 m/s, swing m / sway m/s² / steering changes a second, 2 runs each:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>100 m straight, true pose</td>
+<td>0.010 / 0.166 / 1.89</td>
+<td><strong>0.003 / 0.022 / 0.00</strong></td>
+</tr>
+<tr>
+<td>100 m straight, sim-like pose (EKF-like, 0.15 s old)</td>
+<td>0.054 / 0.289 / 1.17</td>
+<td><strong>0.038 / 0.117 / 0.48</strong></td>
+</tr>
+<tr>
+<td>bend r 30 m, true pose</td>
+<td>sway 0.152, 0.49 a second</td>
+<td><strong>sway 0.024, 0.00</strong></td>
+</tr>
+<tr>
+<td>the sim's campus path ("along the road"), true pose</td>
+<td>0.141 / 0.409 / 0.86</td>
+<td><strong>0.090 / 0.194 / 0.30</strong></td>
+</tr>
+<tr>
+<td>the same, sim-like pose</td>
+<td>0.182 / 0.590 / 0.76</td>
+<td><strong>0.112 / 0.262 / 0.37</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>The price: a little further off the path on tight bends (corner r 5 m: 0.014 to
+0.049 m; S 2 x 30 m: 0.013 to 0.025 m). On the campus path, 0.026 to 0.090 m: it cuts
+the plan's jogs (below) instead of following them.</p>
+<p>Tests (<code>tests/closed_loop.rs</code>, as the launch file sets the node up): no wiggle on a
+straight and a bend at 2.5 m/s, less with a sim-like pose, none backing up.</p>
+<h3 id="what-is-left">What is left</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Left</th>
+<th>Numbers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The simulator</strong> must confirm: the campus tour, all ours</td>
+<td>without ROS: swing 0.18 to 0.11 m, sway 0.59 to 0.26 m/s²</td>
+</tr>
+<tr>
+<td>The target (drive-j, 15 Nov, before both fixes): Nav2's sway</td>
+<td>campus at 2.5 m/s: ours 0.662, Nav2 0.123 m/s²; the lot: ours 0.055, Nav2 0.017 m/s². Keep ours' 100% legs and its off-path (0.13 m campus, 0.12 m lot)</td>
+</tr>
+<tr>
+<td>The planner's jogs: 16 lattice headings make a road at an angle a staircase (±8° every ~10 m)</td>
+<td>the plan itself swings 0.13 m at 2.4 m/s, both stacks; most of what is left</td>
+</tr>
+<tr>
+<td><strong>Fixed too:</strong> our navigator planned again every second; each new plan moved a little. Now it keeps a clear to-pose path up to 10 s, as the trees' KeepAValidPath (<code>keep_path_age</code>, <a href="own-navigator.html">own navigator</a>)</td>
+<td>without ROS, the lot's left turn at 1 m/s: sway 0.075 (the sim's, ours) to 0.038 m/s²; a plan kept all the way, 0.025; Nav2 in the sim 0.017</td>
+</tr>
+<tr>
+<td>The lot at 1 m/s: still above Nav2's</td>
+<td>less steering noise at 1 m/s helps the model (sway 0.022 to 0.013 with a sim-like pose) but fails the very slow actuators' S-curve test: not taken</td>
+</tr>
+<tr>
+<td>Backing up at 0.5 m/s, the wheels dither about 1°</td>
+<td>the car itself doesn't move sideways (0.3 mm)</td>
+</tr>
+</tbody>
+</table></div>
 </section>
 <section class="card"><h2 id="the-lane">The lane</h2>
 <p>TODO 169. With a lane map, the road ahead (<code>/world/road_ahead</code>, the behaviour planner's)

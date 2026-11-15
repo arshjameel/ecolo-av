@@ -102,6 +102,11 @@ pub struct Settings {
     pub path_end_tolerance: f64,
     /// s: ... and is younger than this.
     pub path_max_age: f64,
+    /// s: elsewhere, a to-pose goal keeps a path that still ends at the goal and nothing
+    /// blocks (IsPathValid) while it is younger than this (the trees' KeepAValidPath, 10 s;
+    /// TODO 149, 168). Planning every second gave the follower a path a few cm to one side
+    /// each time. 0: plan every `replan_period`, as until 15 Nov.
+    pub keep_path_age: f64,
     /// Recoveries before giving up (the outer RecoveryNode's retries).
     pub retries: u32,
     /// s: the Wait recovery.
@@ -145,6 +150,7 @@ impl Default for Settings {
             final_approach: 8.0,
             path_end_tolerance: 0.5,
             path_max_age: 20.0,
+            keep_path_age: 10.0,
             retries: 6,
             wait: 5.0,
             backup: None,

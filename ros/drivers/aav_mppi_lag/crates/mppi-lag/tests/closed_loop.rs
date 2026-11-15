@@ -164,30 +164,7 @@ fn drive_from<M: CarModel + Clone>(
 ) -> Run {
     let ego = Ego::default();
     let plant = Driven { ego, car: truth };
-    let (mppi, critics, follow) = match way {
-        Way::Forward => (settings(speed), critics(), FollowerSettings::default()),
-        Way::Reversing => (
-            Settings {
-                vx_min: -MAX_REVERSE_SPEED,
-                ..settings(speed)
-            },
-            critics()
-                .into_iter()
-                .filter(|c| c.name() != "PreferForwardCritic")
-                .map(|c| match c {
-                    Critic::PathAngle(mut a) => {
-                        a.mode = PathAngleMode::ConsiderFeasiblePathOrientations;
-                        Critic::PathAngle(a)
-                    }
-                    other => other,
-                })
-                .collect(),
-            FollowerSettings {
-                inversion: Some(Inversion::default()),
-                ..FollowerSettings::default()
-            },
-        ),
-    };
+    let (mppi, critics, follow) = set_up(way, settings(speed));
     let mut follower = Follower::new(controller, ego, mppi, critics, follow, Vec::new());
     let mut car = plant.at_rest(start, rolling);
     let path = GlobalPath::new(poses.to_vec()).expect("a path");
@@ -239,6 +216,34 @@ fn drive_from<M: CarModel + Clone>(
         }
     }
     finish(false, t, &crosses, speeds, trace)
+}
+
+/// MPPI's settings, critics and the follower's for `way`, from forward-only `mppi`.
+fn set_up(way: Way, mppi: Settings) -> (Settings, Vec<Critic>, FollowerSettings) {
+    match way {
+        Way::Forward => (mppi, critics(), FollowerSettings::default()),
+        Way::Reversing => (
+            Settings {
+                vx_min: -MAX_REVERSE_SPEED,
+                ..mppi
+            },
+            critics()
+                .into_iter()
+                .filter(|c| c.name() != "PreferForwardCritic")
+                .map(|c| match c {
+                    Critic::PathAngle(mut a) => {
+                        a.mode = PathAngleMode::ConsiderFeasiblePathOrientations;
+                        Critic::PathAngle(a)
+                    }
+                    other => other,
+                })
+                .collect(),
+            FollowerSettings {
+                inversion: Some(Inversion::default()),
+                ..FollowerSettings::default()
+            },
+        ),
+    }
 }
 
 fn finish(reached: bool, time: f64, crosses: &[f64], speeds: Vec<f64>, poses: Vec<Pose>) -> Run {
@@ -598,8 +603,9 @@ fn turn_back_arriving_rolling_and_off_the_path() {
 
 /// The goal at speed (TODO 152): 80 m straight, asked for 2.5 m/s. The follower says done
 /// within xy_goal_tolerance (1 m); the car must then stop near the goal, not run on past
-/// it. The lag model's car tops out near 1.4 m/s at full throttle, so this is the goal at
-/// its top speed, not the campus's 2.5 m/s (that needs the simulator; 14 Nov: stood
+/// it. Here the critics see nav2.yaml's 3 m of path, not the launch file's 8.4 m at
+/// 2.5 m/s, and MPPI holds the car near 1.3 m/s (the wiggle tests below drive at 2.4), so
+/// this is the goal at that speed, not the campus's 2.5 m/s (the simulator, 14 Nov: stood
 /// 0.47 m short).
 #[test]
 fn the_goal_at_top_speed_stops_near_it() {
@@ -845,4 +851,232 @@ fn campus_junction_round_the_bend() {
     assert!(run.time < 60.0, "{:.1} s", run.time);
     assert!(run.max_cross < 0.3, "{:.3} m", run.max_cross);
     assert!(backed < 0.5, "backed for {backed:.1} s");
+}
+
+// The wiggle (TODO 168). On the campus road at 2.4 m/s mppi_lag's steering changed side
+// about once a second and the car swung 0.2 m (the sim, 14 Nov). The cause: the steering
+// noise (0.15 rad, sized for 1 m/s) spreads the 2.8 s futures v² as wide, so at 2.5 m/s
+// the softmax rested on a handful of samples and each tick's average came out different.
+// These runs drive as the launch file sets the node up: 2000 samples, and the path seen
+// 2.8 s ahead at the top speed (the tests above see nav2.yaml's 3 m, so they never drive
+// much faster than 1.2 m/s). `examples/wiggle.rs` prints every suspect.
+
+/// How much a run wiggled, counted as `tools/drive_metrics.py` does.
+#[derive(Debug)]
+struct Wiggle {
+    reached: bool,
+    /// m: the mean distance off the path.
+    mean_cross: f64,
+    /// m: side to side about the car's own 4 s smoothed track (RMS), `swing_m`.
+    swing: f64,
+    /// m/s²: the sideways push less its 4 s average (RMS), `sway_mps2`.
+    sway: f64,
+    /// The wheels' angle changing side, a second (under 0.02 rad: straight).
+    flips: f64,
+    /// m/s: the mean speed.
+    speed: f64,
+    /// rad: the wheels' angle, RMS.
+    steer_rms: f64,
+}
+
+/// s: drive_metrics.py's WEAVE_WIDTH.
+const WEAVE: f64 = 4.0;
+
+/// Each value's mean over the `half` values either side.
+fn moving_average(v: &[f64], half: usize) -> Vec<f64> {
+    (0..v.len())
+        .map(|i| {
+            let (a, b) = (i.saturating_sub(half), (i + half + 1).min(v.len()));
+            v[a..b].iter().sum::<f64>() / (b - a) as f64
+        })
+        .collect()
+}
+
+/// RMS of `v` less its own `WEAVE` s moving average.
+fn weave(v: &[f64]) -> f64 {
+    let avg = moving_average(v, (WEAVE / PERIOD / 2.0) as usize);
+    let n = v.len().max(1) as f64;
+    (v.iter()
+        .zip(&avg)
+        .map(|(s, a)| (s - a).powi(2))
+        .sum::<f64>()
+        / n)
+        .sqrt()
+}
+
+/// The side offset from the track's own 4 s smoothed track, weaved.
+fn swing(track: &[Pose]) -> f64 {
+    let half = (WEAVE / PERIOD / 2.0) as usize;
+    let xs = moving_average(&track.iter().map(|p| p.x).collect::<Vec<_>>(), half);
+    let ys = moving_average(&track.iter().map(|p| p.y).collect::<Vec<_>>(), half);
+    let offsets: Vec<f64> = (1..track.len().saturating_sub(1))
+        .filter_map(|i| {
+            let (dx, dy) = (xs[i + 1] - xs[i - 1], ys[i + 1] - ys[i - 1]);
+            let l = dx.hypot(dy);
+            (l > 1e-6).then(|| ((track[i].y - ys[i]) * dx - (track[i].x - xs[i]) * dy) / l)
+        })
+        .collect();
+    weave(&offsets)
+}
+
+/// Drive `poses` asking for `speed`, set up as navigation.launch.py sets the node up, with
+/// `steer_std_speed` (0: the noise until 15 Nov). `sim_like`: the pose the follower sees
+/// is 0.15 s old and off by an EKF-like error (AR(1), 8 cm and 1.2 degrees, 2 s, a new
+/// value every 0.2 s), as the sim's saved campus runs had it.
+fn wiggle(poses: &[Pose], speed: f64, way: Way, steer_std_speed: f64, sim_like: bool) -> Wiggle {
+    let truth = LagModel::default();
+    let ego = Ego::default();
+    let plant = Driven { ego, car: truth };
+    let (mppi, critics, follow) = set_up(
+        way,
+        Settings {
+            batch_size: 2000,
+            vx_max: speed,
+            steer_std_speed,
+            seed: 7,
+            threads: 4,
+            ..Settings::default()
+        },
+    );
+    // vehicle.mppi_lag_params: 2.8 s at vx_max, and a fifth more.
+    let follow = FollowerSettings {
+        prune_distance: (2.8 * speed * 1.2).max(3.0),
+        ..follow
+    };
+    let mut follower = Follower::new(truth, ego, mppi, critics, follow, Vec::new());
+    let mut car = plant.at_rest(poses[0], 0.0);
+    let path = GlobalPath::new(poses.to_vec()).expect("a path");
+    let mut rng = mppi_lag::rng::Rng::new(99);
+    let (mut error, mut next_fix) = ((0.0, 0.0, 0.0), 0.0);
+    let mut seen: Vec<Pose> = Vec::new();
+    let (mut crosses, mut steers, mut pushes, mut speeds) = (vec![], vec![], vec![], vec![]);
+    let mut track = Vec::new();
+    let (mut command, mut t, mut reached) = (Command::default(), 0.0, false);
+    let mut yaw = poses[0].yaw;
+    while t < 120.0 {
+        seen.push(plant.pose(&car));
+        let mut pose = seen[seen.len().saturating_sub(if sim_like { 4 } else { 1 })];
+        if sim_like {
+            if t >= next_fix {
+                let a = (-0.2_f64 / 2.0).exp();
+                let k = (1.0 - a * a).sqrt();
+                error.0 = a * error.0 + k * 0.08 * rng.normal();
+                error.1 = a * error.1 + k * 0.08 * rng.normal();
+                error.2 = a * error.2 + k * 1.2_f64.to_radians() * rng.normal();
+                next_fix += 0.2;
+            }
+            pose = Pose::new(pose.x + error.0, pose.y + error.1, pose.yaw + error.2);
+        }
+        follower.observe(&Observation {
+            pose,
+            speed: plant.speed(&car),
+            steering: Some(plant.steering(&car)),
+            throttle: Some(car.car.throttle),
+            brake: Some(car.car.brake),
+        });
+        if t == 0.0 {
+            follower.follow(path.clone(), false);
+        }
+        match follower.tick(t, None) {
+            Some(Tick::Drive(report)) => command = report.command,
+            Some(Tick::Done(outcome)) => {
+                reached = outcome == Outcome::Succeeded;
+                break;
+            }
+            None => {}
+        }
+        for _ in 0..(PERIOD / PHYSICS).round() as usize {
+            plant.step(&mut car, command, PHYSICS);
+        }
+        t += PERIOD;
+        let now = plant.pose(&car);
+        let rate = mppi_lag::model::wrap(now.yaw - yaw) / PERIOD;
+        yaw = now.yaw;
+        let (foot, v) = (path.foot(&now), plant.speed(&car));
+        // Once rolling, past the first 4 s and before the last 3 m.
+        if t > 4.0 && foot.left > 3.0 && v.abs() > 0.2 {
+            crosses.push(foot.cross_track.abs());
+            steers.push(plant.steering(&car));
+            pushes.push(v * rate);
+            speeds.push(v.abs());
+            track.push(now);
+        }
+    }
+    let n = crosses.len().max(1) as f64;
+    let sides: Vec<bool> = steers
+        .iter()
+        .filter(|s| s.abs() >= 0.02)
+        .map(|s| *s > 0.0)
+        .collect();
+    Wiggle {
+        reached,
+        mean_cross: crosses.iter().sum::<f64>() / n,
+        swing: swing(&track),
+        sway: weave(&pushes),
+        flips: sides.windows(2).filter(|w| w[0] != w[1]).count() as f64 / (n * PERIOD),
+        speed: speeds.iter().sum::<f64>() / n,
+        steer_rms: (steers.iter().map(|s| s * s).sum::<f64>() / n).sqrt(),
+    }
+}
+
+/// 100 m straight on at the campus's 2.5 m/s: the wheels hold straight. Until 15 Nov
+/// (the same noise at every speed) they changed side about twice a second.
+#[test]
+fn no_wiggle_on_a_straight_at_campus_speed() {
+    let road = path_through(|u| (100.0 * u, 0.0), 100.0);
+    let now = wiggle(&road, 2.5, Way::Forward, 1.0, false);
+    let before = wiggle(&road, 2.5, Way::Forward, 0.0, false);
+    println!("straight at 2.5 m/s: now {now:?}\n  before {before:?}");
+    assert!(now.reached && now.speed > 2.2, "{now:?}");
+    assert!(now.flips < 0.3, "{now:?}");
+    assert!(now.swing < 0.01 && now.sway < 0.06, "{now:?}");
+    assert!(now.mean_cross < 0.02, "{now:?}");
+    // The cause, pinned: the old noise wiggles on the same road.
+    assert!(
+        before.flips > 1.0 && before.sway > 2.0 * now.sway,
+        "{before:?}"
+    );
+}
+
+/// The same with the pose as the sim gives it (late and noisy): the car still steers
+/// less often and less far than before.
+#[test]
+fn less_wiggle_on_a_straight_with_a_sim_like_pose() {
+    let road = path_through(|u| (100.0 * u, 0.0), 100.0);
+    let now = wiggle(&road, 2.5, Way::Forward, 1.0, true);
+    let before = wiggle(&road, 2.5, Way::Forward, 0.0, true);
+    println!("straight, sim-like pose: now {now:?}\n  before {before:?}");
+    assert!(now.reached, "{now:?}");
+    assert!(now.flips < 0.8 && now.sway < 0.18, "{now:?}");
+    assert!(now.swing < 0.05, "{now:?}");
+    assert!(before.sway > 1.5 * now.sway, "{before:?}");
+}
+
+/// A gentle bend (radius 30 m) at 2.5 m/s: one steady turn, no side to side.
+#[test]
+fn no_wiggle_on_a_gentle_curve_at_campus_speed() {
+    let r = 30.0;
+    let bend = path_through(
+        |u| ((80.0 * u / r).sin() * r, r - (80.0 * u / r).cos() * r),
+        80.0,
+    );
+    let now = wiggle(&bend, 2.5, Way::Forward, 1.0, false);
+    println!("curve r 30 m at 2.5 m/s: {now:?}");
+    assert!(now.reached && now.speed > 2.2, "{now:?}");
+    assert!(now.flips < 0.3 && now.sway < 0.06, "{now:?}");
+    assert!(now.mean_cross < 0.02, "{now:?}");
+}
+
+/// Backing up 15 m (reversing:=true, 0.5 m/s): slower than steer_std_speed, so the noise
+/// is as before. The car doesn't swing; the wheels dither about 1 degree round straight
+/// (0.017 rad RMS, crossing 0.02 rad under once a second), too little to move it at 0.5 m/s.
+#[test]
+fn no_wiggle_backing_up() {
+    let back = straight_back(15.0);
+    let now = wiggle(&back, 1.0, Way::Reversing, 1.0, false);
+    println!("15 m back: {now:?}");
+    assert!(now.reached && now.speed > 0.4, "{now:?}");
+    assert!(now.swing < 0.01 && now.sway < 0.01, "{now:?}");
+    assert!(now.mean_cross < 0.02, "{now:?}");
+    assert!(now.steer_rms < 0.03 && now.flips < 1.2, "{now:?}");
 }

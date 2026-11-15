@@ -8,7 +8,9 @@
 //!    (`noise_correlation`, AR(1); Nav2's is white, 0): a lagging actuator smooths white
 //!    noise away, so its samples would all drive alike and MPPI would learn nothing
 //!    (colored-noise MPPI; see docs/mppi-lag.md). Ego's ramps are not clipped here: they are part of the model
-//!    ([`crate::ego::Driven`]).
+//!    ([`crate::ego::Driven`]). Above `steer_std_speed` the steering noise shrinks with
+//!    the speed squared ([`Settings::steer_std_at`]), so the futures spread as far
+//!    sideways at 2.5 m/s as at 1 m/s (ours; Nav2's wz noise shrinks as 1 / speed).
 //! 2. **Roll out**: each sample through the model from the car's state now: its pose
 //!    and speed, ego's output, the actuators' levels and the commands still in their
 //!    dead time. This is where the lag comes in; Nav2's own model has none. Split across
@@ -53,8 +55,19 @@ pub struct Settings {
     pub gamma: f64,
     /// m/s: the speed noise's spread (Nav2's vx_std).
     pub speed_std: f64,
-    /// rad: the steering noise's spread (Nav2 samples wz instead; ours samples the angle).
+    /// rad: the steering noise's spread (Nav2 samples wz instead; ours samples the angle),
+    /// up to `steer_std_speed`.
     pub steer_std: f64,
+    /// m/s: faster than this, the steering noise shrinks as (steer_std_speed / speed)², so
+    /// the sampled futures spread no further sideways as the car speeds up (a steering
+    /// offset moves a future's end by v² x the angle). 0: `steer_std` at every speed, as
+    /// until 15 Nov, when the softmax rested on a handful of futures, each tick a
+    /// different handful, and the steering wiggled (TODO 168, docs/mppi-lag.md).
+    pub steer_std_speed: f64,
+    /// rad: the steering noise never shrinks below this. With less, MPPI can't move its
+    /// steering fast enough to follow a bend (at 2.5 m/s, 0.009 rad cut a 5 m corner by
+    /// 0.5 m).
+    pub steer_std_min: f64,
     /// 0..1: how much each step's noise carries the last step's (AR(1); 0: white, as
     /// Nav2). The spread stays `speed_std` and `steer_std` either way.
     pub noise_correlation: f64,
@@ -85,6 +98,8 @@ impl Default for Settings {
             gamma: 0.015,
             speed_std: 0.4,
             steer_std: 0.15,
+            steer_std_speed: 1.0,
+            steer_std_min: 0.024,
             noise_correlation: 0.8,
             vx_max: 1.0,
             vx_min: 0.0,
@@ -92,6 +107,21 @@ impl Default for Settings {
             retry_attempt_limit: 1,
             threads: 0,
             seed: 42,
+        }
+    }
+}
+
+impl Settings {
+    /// rad: the steering noise's spread with the car at `speed` m/s (either way):
+    /// `steer_std` up to `steer_std_speed`, then x (steer_std_speed / |speed|)², but never
+    /// under `steer_std_min` (nor over `steer_std`).
+    pub fn steer_std_at(&self, speed: f64) -> f64 {
+        let fast = speed.abs();
+        if self.steer_std_speed > 0.0 && fast > self.steer_std_speed {
+            let shrunk = self.steer_std * (self.steer_std_speed / fast).powi(2);
+            shrunk.max(self.steer_std_min.min(self.steer_std))
+        } else {
+            self.steer_std
         }
     }
 }
@@ -246,7 +276,13 @@ impl<M: CarModel> Optimizer<M> {
         let threads = self.threads().min(self.rollouts.len()).max(1);
         let chunk = self.rollouts.len().div_ceil(threads);
         let seeds: Vec<u64> = (0..threads).map(|_| self.rng.next_u64()).collect();
-        let (model, settings, sequence) = (&self.model, &self.settings, &self.sequence);
+        // This round's steering noise, for the car's speed now; the control cost weighs
+        // the samples by the same spread they were drawn with.
+        let now = Settings {
+            steer_std: self.settings.steer_std_at(self.model.speed(state)),
+            ..self.settings.clone()
+        };
+        let (model, settings, sequence) = (&self.model, &now, &self.sequence);
 
         // 1 and 2: sample and roll out.
         std::thread::scope(|scope| {
@@ -464,6 +500,31 @@ mod tests {
         let nav2: f64 = u.iter().zip(&e).map(|(u, e)| u * e).sum::<f64>() * white.gamma
             / white.speed_std.powi(2);
         assert!((control_cost(&white, &sequence, &sample) - nav2).abs() < 1e-12);
+    }
+
+    #[test]
+    fn steering_noise_keeps_the_same_sideways_spread_above_its_speed() {
+        let s = Settings::default();
+        // Up to 1 m/s, either way: steer_std as it is (backing up keeps it).
+        for v in [0.0, 0.5, -0.5, 1.0, -1.0] {
+            assert_eq!(s.steer_std_at(v), s.steer_std, "{v}");
+        }
+        // Faster: v² x the spread stays what it is at 1 m/s ...
+        for v in [1.5, 2.0, -2.0, 2.5] {
+            let spread = v * v * s.steer_std_at(v);
+            assert!((spread - s.steer_std).abs() < 1e-12, "{v}: {spread}");
+        }
+        assert!((s.steer_std_at(2.5) - 0.024).abs() < 1e-12);
+        // ... down to the floor (from 2.5 m/s).
+        for v in [3.0, -3.0, 5.0] {
+            assert!((s.steer_std_at(v) - s.steer_std_min).abs() < 1e-12, "{v}");
+        }
+        // 0: the same spread at every speed, as before.
+        let flat = Settings {
+            steer_std_speed: 0.0,
+            ..Settings::default()
+        };
+        assert_eq!(flat.steer_std_at(2.5), flat.steer_std);
     }
 
     #[test]

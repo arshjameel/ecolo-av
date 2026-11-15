@@ -35,7 +35,7 @@ pixi run measure controllers --stacks nav2 own --tours lot obstacle --runs 3
 | Goals | in `map`, `odom` or `base_link` (put on the map by the latest /tf); another frame is refused |
 | Subscribes | `/goal_pose` (a to-pose goal); `/tf` (map -> odom -> base_link; older than 1 s: no car pose) |
 | Publishes | `/drivers/nav/navigator/status` (DiagnosticStatus, 2 Hz and at each goal's end) |
-| Calls | `planner_action`, `planner_through_action` (ComputePathToPose, ComputePathThroughPoses); `follow_action` (FollowPath); `clear_local`, `clear_global` (ClearEntireCostmap, comma-separated lists); `backup_action` (BackUp; empty: the follower's FollowPath on a straight line 1 m behind the car); `is_path_valid_service` (IsPathValid, `/is_path_valid`, once a second on the final approach) |
+| Calls | `planner_action`, `planner_through_action` (ComputePathToPose, ComputePathThroughPoses); `follow_action` (FollowPath); `clear_local`, `clear_global` (ClearEntireCostmap, comma-separated lists); `backup_action` (BackUp; empty: the follower's FollowPath on a straight line 1 m behind the car); `is_path_valid_service` (IsPathValid, `/is_path_valid`, once a second while a path is kept: on the final approach, and a to-pose path up to `keep_path_age`, 10 s, as the trees' KeepAValidPath) |
 | Parameters | `settings`: one JSON block from `aav_description`'s `vehicle.navigator_params` (the trees' numbers); the names above; `navsat_file` (the datum); the frames |
 
 A goal sender needs no switch: it sends to Nav2's name, and whichever navigator runs

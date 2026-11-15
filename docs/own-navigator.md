@@ -46,8 +46,8 @@ send to the same place whichever runs. `/goal_pose` reaches ours too.
 ## What it does
 
 ```
-goal ─▶ plan ─▶ follow ─▶ plan again every second
-          │        │        (near the goal: keep the path, TODO 17)
+goal ─▶ plan ─▶ follow ─▶ plan again: at most every second, but keep
+          │        │        a clear path up to 10 s (near the goal: 20 s, TODO 17)
           ▼        ▼
    clear global  clear local      ◀── a failure a recovery can fix
           └────────┴─▶ in turn: clear both ─▶ wait 5 s ─▶ back up 1 m (reversing only)
@@ -56,7 +56,7 @@ goal ─▶ plan ─▶ follow ─▶ plan again every second
 
 | Step | Ours | Nav2's trees |
 |---|---|---|
-| plan | every 1 s (through-poses 3 s) | the same |
+| plan | every 1 s (through-poses 3 s); a to-pose path kept up to 10 s while it ends at the goal and IsPathValid says it is clear (15 Nov, TODO 168: planning every second moved the path a few cm each time, and the car swayed twice as much) | the same (the trees' KeepAValidPath, 14 Nov) |
 | the final approach | keep the path within 8 m of the goal, under 20 s old | the same |
 | a failed replan, while driving a good path | keep driving; give up after 4 in a row | stops the car at once |
 | through-poses | drop a pose within 1 m, **or once passed along the path** | within 1 m only |
