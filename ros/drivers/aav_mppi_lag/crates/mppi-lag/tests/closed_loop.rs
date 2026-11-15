@@ -118,6 +118,8 @@ struct Run {
     speeds: Vec<f64>,
     /// Where it was every tick.
     poses: Vec<Pose>,
+    /// Where it stood once stopped after the follower said done (ego ramping it down).
+    rest: Pose,
 }
 
 /// How a run may drive: forward only (nav2.yaml as it is), or reversing as
@@ -194,13 +196,23 @@ fn drive_way<M: CarModel + Clone>(
         match follower.tick(t, None) {
             Some(Tick::Drive(report)) => command = report.command,
             Some(Tick::Done(outcome)) => {
-                return finish(
+                // Done: the follower stops sending; ego brings the car to rest.
+                let stop = Command {
+                    speed: 0.0,
+                    ..command
+                };
+                for _ in 0..(8.0 / PHYSICS) as usize {
+                    plant.step(&mut car, stop, PHYSICS);
+                }
+                let mut run = finish(
                     outcome == mppi_lag::Outcome::Succeeded,
                     t,
                     &crosses,
                     speeds,
                     trace,
                 );
+                run.rest = plant.pose(&car);
+                return run;
             }
             None => {}
         }
@@ -224,6 +236,7 @@ fn finish(reached: bool, time: f64, crosses: &[f64], speeds: Vec<f64>, poses: Ve
         time,
         mean_cross: crosses.iter().sum::<f64>() / n,
         max_cross: crosses.iter().copied().fold(0.0, f64::max),
+        rest: poses.last().copied().unwrap_or_default(),
         speeds,
         poses,
     }
@@ -490,4 +503,27 @@ fn forward_stop_reverse_through_a_cusp() {
         run.mean_cross,
         run.max_cross
     );
+}
+
+/// The goal at speed (TODO 152): 80 m straight, asked for 2.5 m/s. The follower says done
+/// within xy_goal_tolerance (1 m); the car must then stop near the goal, not run on past
+/// it. The lag model's car tops out near 1.4 m/s at full throttle, so this is the goal at
+/// its top speed, not the campus's 2.5 m/s (that needs the simulator; 14 Nov: stood
+/// 0.47 m short).
+#[test]
+fn the_goal_at_top_speed_stops_near_it() {
+    const GOAL_X: f64 = 80.0;
+    let poses = path_through(|u| (GOAL_X * u, 0.0), GOAL_X);
+    let truth = LagModel::default();
+    let run = drive(truth, truth, &poses, 2.5);
+    let past = run.rest.x - GOAL_X;
+    let top = run.speeds.iter().copied().fold(0.0, f64::max);
+    let at_done = run.speeds.last().copied().unwrap_or(0.0);
+    println!(
+        "goal at 2.5 m/s: reached {} in {:.1} s, top {top:.2} m/s, {at_done:.2} m/s when done, \
+         stood {past:+.2} m past the goal",
+        run.reached, run.time
+    );
+    assert!(run.reached);
+    assert!(past.abs() < 1.0, "stood {past:+.2} m from the goal");
 }

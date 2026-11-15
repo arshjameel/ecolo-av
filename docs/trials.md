@@ -24,6 +24,7 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 > - **3 Nov, everything for 0.2** (Gazebo, 3 runs each): every switch drives a leg; diffusion every leg, **73 %** of plans from the model; NDT into the EKF **17 → 1.8 cm**, every leg; voxels slower, and once drove through the post. **No default changed.** [Results](#3-nov-everything-for-02).
 > - **7 Nov, the lag-aware MPC** (`tracker:=mpc_lag`): plans steering and speed through the car's own lags (the shared car model); tells ego to keep its lead off. Pretend car: no speed overshoot (others 14 %), and with the lags doubled the U-turn at 2 m/s off by **0.17 m** (MPC 0.36, LQR 0.27). **Our simulator, 3 runs: 6 of 12 legs** (MPPI 8, RPP 9, the Rust `mppi_lag` 11): best on the legs it drives, but it never made the U-turn by the building: it doesn't read the costmap. [Results](#lag-aware-mpc-7-nov-mpc_lag).
 > - **7-8 Nov, our own Rust pieces** (each has its page; all trials, Nav2's stay the default and on the car): MPPI with lag (`tracker:=mppi_lag`, [page](mppi-lag.md)), the costmap ([page](own-costmap.md)), the planner ([page](own-planner.md)), the navigator ([page](own-navigator.md)), the velocity smoother ([page](own-smoother.md)); the behaviour planner and the adaptive brake ([how the car stops](stopping.md)). What is the default today: [Switches](switches.md#the-defaults-what-runs-if-you-say-nothing).
+> - **14 Nov, the wiggle** (TODO 149): three tests on the campus road. A new plan every second moved Pure Pursuit and `mppi_lag`; the GPS's jitter moves Pure Pursuit; the smoother nothing; MPPI's 6-8 cm is its own. The trees now keep a valid path: RPP's swing **0.12-0.13 → 0.09 m**, `mppi_lag`'s **0.14-0.17 → 0.10 m**, no more loops at the goal. [Results](#the-wiggle-14-nov-todo-124-149).
 > - The design: `docs/designs/2026-10-29_trials.md`.
 
 ## What is on trial
@@ -1196,3 +1197,82 @@ So the sim keeps today's defaults. To drive with NDT in the EKF, pick it:
   already need the map, with a plain message when it's missing.
 - Find why the cubes let the car through the post once (`sim-check --lidar-obstacle
   --voxels`, run 1 of 3: `log/sim-all/check-lidar-obstacle-voxels.log`).
+
+## The wiggle, 14 Nov (TODO 124, 149)
+
+**The question:** under Nav2 the car's turn flips from side to side. Why?
+
+**The road:** the campus, lot P4 along the road, one goal, about 305 m
+(`pixi run measure controllers --tours wiggle --series`). Our simulator, 2.5 m/s, 2 runs each.
+
+**The numbers** (`drive_metrics.wiggle`, also on every scorecard):
+
+| Number | Means |
+|---|---|
+| swing (m) | how far the car goes side to side about its own smoothed track (RMS) |
+| flips a second | how often the steering, or the turn rate, changes side while moving |
+
+### The three tests
+
+Each switch takes one suspect away. Swing in metres, flips of ego's steering a second.
+
+| Test | MPPI | Pure Pursuit (RPP) | What it says |
+|---|---|---|---|
+| Baseline | 0.054-0.065 m, 0.23-0.27 | 0.119-0.131 m, 0.54-0.56 | |
+| 1. The simulator's truth as the pose (`truth_pose:=true`) | 0.062-0.063 m, 0.21-0.22 | 0.083-0.113 m, **0.29-0.36** | the GPS's jitter: half of RPP's flips; none of MPPI's |
+| 2. One plan a goal (`replan_hz:=0`) | 0.062-0.074 m, 0.26 | **0.082-0.087 m**, 0.45 | the replanning: a third of RPP's swing; none of MPPI's |
+| 3. Before and after the smoother | flips 0.24-0.27 before, the same after | 0.62-0.63 before, 0.60-0.62 after | the smoother adds nothing (`mppi_lag` too: 0.88-1.06 before, 0.79-0.87 after) |
+
+The global EKF's sideways error jumps by **0.09 m RMS every 0.2 s** (the sim's GPS: 0.5 m
+noise, 5 fixes a second), and its heading by about 1°. With the truth as the pose, both go.
+
+**The replanning also made loops:** with a new plan every second the car drove 9-16 new
+routes a goal and 40-130 m more than the route, mostly circling the goal. With one plan: 0.
+
+### The causes
+
+| Cause | Who it moves | Fixed? |
+|---|---|---|
+| **A new plan every second** (the to-pose tree's 1 Hz) | RPP, `mppi_lag`; the loops for all | **yes**: the tree keeps a valid path |
+| **The GPS's jitter through the global EKF** | RPP (half its flips) | no: next, below |
+| **MPPI's own sampling** | MPPI: 0.06-0.08 m, a flip every 4 s; `mppi_lag`: a flip a second | no: the follower itself |
+
+### The fix: keep a valid path
+
+The to-pose trees (`navigate_to_pose_car*.xml`) now plan again only when they must, as
+Nav2's own `nav_to_pose_with_consistent_replanning_and_if_path_becomes_invalid.xml`: the
+path is kept while it still ends at this goal, nothing blocks it (`IsPathValid`) and it is
+under 10 s old. The final approach keeps its 20 s (TODO 17). A config change: Nav2's
+servers are the same.
+
+| Follower | Swing before → after (m) | Steering flips a second | Time (s) | Driven (m) | New routes | Reached |
+|---|---|---|---|---|---|---|
+| MPPI | 0.054, 0.065 → 0.065, 0.080 | 0.27, 0.23 → 0.22, 0.26 | 189, 211 → **146, 142** | 343, 371 → **302, 304** | 9, 12 → **0** | 2/2 → 2/2 |
+| RPP | 0.119, 0.131 → **0.089, 0.094** | 0.54, 0.56 → **0.42, 0.47** | 288, 145 → **125, 126** | 315, 350 → 302, 305 | 4, 4 → **0** | 1/2 → **2/2** |
+| `mppi_lag` | 0.170, 0.137 → **0.100, 0.100** | 0.68, 0.71 → 1.04, 1.15 | 210, 210 → 137, 232 | 431, 93 → 301, 158 | 16, 0 → **0** | 1/2 → 1/2 |
+
+The same, from a recorded drive (`tools/record.sh`, then `tools/score_drive.py`; RPP, one
+run each, the old tree put back for "before"):
+
+| Scorecard row | Before | After |
+|---|---|---|
+| wiggle: side to side, RMS / worst | 0.139 m / 0.50 m | **0.084 m / 0.22 m** |
+| wiggle: steering changed side | 0.43 a second | 0.43 a second |
+| distance, time | 524 m, 242 s | **305 m, 134 s** |
+| off the plan, mean | 0.30 m | **0.17 m** |
+
+**What it shows:** RPP's and `mppi_lag`'s swing is 25-40 % smaller, and no follower loops
+at the end any more. MPPI's swing (6-8 cm) didn't change: it never came from the plan.
+`mppi_lag`'s flips went up because it now spends the whole drive on the road at speed
+(before, half of it was slow circling); its swing still fell.
+
+### Next
+
+- **The GPS's jitter:** follow in `odom` and apply the map's corrections slowly (the
+  whole-car design's idea), or trust each fix less in `ekf_global`. Test 1 says it halves
+  RPP's flips.
+- **`mppi_lag`'s flip a second:** its own sampling; tune its noise and smoothing.
+- **Our navigator** (`aav_navigator`) still plans every second: port `KeepAValidPath`.
+- Not yet on the car, nor in Gazebo (our simulator only); 2 runs each.
+
+Raw runs (not in git): `log/wiggle/a-base`, `a-truth`, `a-once`, `b-after`.
