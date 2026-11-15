@@ -147,6 +147,25 @@ impl CubeMap {
     pub fn cubes(&self) -> impl Iterator<Item = &Cube> {
         self.cubes.values()
     }
+
+    /// One map from several built with the same cube side (the chunks near the car,
+    /// `chunks.rs`); `None` if there are none, or their sides differ. Cubes never straddle
+    /// two parts when each part's points come from whole cubes.
+    pub fn join<'a>(parts: impl IntoIterator<Item = &'a CubeMap>) -> Option<CubeMap> {
+        let mut parts = parts.into_iter();
+        let first = parts.next()?;
+        let mut cubes = first.cubes.clone();
+        for part in parts {
+            if part.side != first.side {
+                return None;
+            }
+            cubes.extend(part.cubes.iter().map(|(k, c)| (*k, *c)));
+        }
+        Some(Self {
+            side: first.side,
+            cubes,
+        })
+    }
 }
 
 fn key(p: &Point, side: f64) -> Key {

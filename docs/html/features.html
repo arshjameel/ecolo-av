@@ -580,7 +580,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="../designs/2026-11-15_three-levels.md">Map chunks</a> (<code>aav_description</code> <code>map-chunks</code>, Rust, no ROS): the map in fixed 64 m squares; the 3 x 3 round the car at 0.25 m, the route's next 100 m at 1 m; load and drop as the car goes; cut a whole map into chunk files (<code>chunk-map</code>: the campus in 625 chunks a detail, 1.5 s)</td>
-<td>Ben, 14-15 Nov: "I like having hte 3 levels with fixed size map chunks"; "the splitting of the map into quadtrees kind of thing or octree but fixed size". Steps 1-2 of 7 of the three levels (TODO 175): the store the planner, NDT, the things and the dev window will share. Nothing uses it yet</td>
+<td>Ben, 14-15 Nov: "I like having hte 3 levels with fixed size map chunks"; "the splitting of the map into quadtrees kind of thing or octree but fixed size". Steps 1, 2, 4 (core) and 5 (off) of 7 of the three levels (TODO 175); NDT's <code>ChunkedMap</code> holds 1.2 % of the campus's cubes: the store the planner, NDT, the things and the dev window will share. Nothing uses it yet</td>
 <td>Ben</td>
 <td>2026-11-15</td>
 <td>built</td>

@@ -16,6 +16,7 @@
 //! | [`localizer`] | all of it per cloud: the guess, the match, LOST and the restarts, the covariance |
 //! | [`pcd`] | the map file: PCL's PCD, binary or ASCII |
 
+pub mod chunks;
 pub mod cloud;
 pub mod guess;
 pub mod localizer;

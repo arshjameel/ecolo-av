@@ -14,6 +14,11 @@ with `ndt_ekf:=true` (a trial) `ekf_global` takes it beside the GPS.
 /localization/odom/global ┘   maps/ndt/*.pcd   └─▶ /localization/ndt/status
 ```
 
+**Chunks** (TODO 175, step 4; not in the node yet): `ndt-core` `chunks.rs` cuts a map into
+one `.pcd` per 64 m chunk and builds only the 3 x 3 round the car (`ChunkedMap`), cube for
+cube the same as the whole map. `cargo run --release --bin ndt-chunks -- map.pcd out/ -900
+-900 [x y]` writes them and compares: on the campus, 1.2 % of the cubes, 0.01 s to build.
+
 ## Interface
 
 ### Crates
