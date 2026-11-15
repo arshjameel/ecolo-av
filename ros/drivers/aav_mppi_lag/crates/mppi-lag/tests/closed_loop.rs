@@ -1,5 +1,6 @@
 //! Closed loop, no ROS: MPPI drives a pretend car around a circle and an S-curve, and
-//! backwards: a straight reverse, and a path with a cusp (forward, stop, reverse).
+//! backwards: a straight reverse, and a path with a cusp (forward, stop, reverse); and a
+//! path drawn off a lane's centre, kept inside the lane by `LaneCritic`.
 //!
 //! The pretend car is ego plus the lag model, stepped every 0.01 s (the truth). MPPI ticks
 //! at 20 Hz, sees the car's pose, speed and measured actuators (as Gazebo gives them), and
@@ -8,8 +9,9 @@
 
 use mppi_lag::lag::Actuators;
 use mppi_lag::{
-    CarModel, Command, Critic, Driven, Ego, Follower, FollowerSettings, GlobalPath, IdealModel,
-    Inversion, LagModel, Observation, PathAngleMode, Pose, Settings, Tick,
+    CarModel, Command, Critic, Driven, Edges, Ego, Follower, FollowerSettings, GlobalPath,
+    IdealModel, Inversion, LagModel, Lane, LanePoint, Observation, PathAngleMode, Pose, Settings,
+    Tick,
 };
 
 const PERIOD: f64 = 0.05;
@@ -526,4 +528,129 @@ fn the_goal_at_top_speed_stops_near_it() {
     );
     assert!(run.reached);
     assert!(past.abs() < 1.0, "stood {past:+.2} m from the goal");
+}
+
+/// The car's outline, padded (vehicle.yaml's 2 x 1 m body, 0.05 m padding).
+const OUTLINE: [(f64, f64); 4] = [(1.85, 0.55), (1.85, -0.55), (-0.25, -0.55), (-0.25, 0.55)];
+
+/// A lane along y = 0 from x = -5 to 45 m: its lines `soft` m and kerbs `hard` m either side.
+fn lane(soft: f64, hard: f64) -> Lane {
+    Lane::new((0..=100).map(|i| LanePoint {
+        x: f64::from(i) * 0.5 - 5.0,
+        y: 0.0,
+        edges: Edges::from_numbers(hard, hard, soft, soft),
+    }))
+    .expect("a lane")
+}
+
+/// The furthest the outline goes left of y = 0 (m), at `pose`.
+fn outline_left(pose: &Pose) -> f64 {
+    let (s, c) = pose.yaw.sin_cos();
+    OUTLINE
+        .iter()
+        .map(|&(x, y)| pose.y + s * x + c * y)
+        .fold(f64::NEG_INFINITY, f64::max)
+}
+
+/// Follow `poses` with the car's outline and, if given, LaneCritic keeping to `lane`.
+fn drive_in_lane(poses: &[Pose], lane: Option<Lane>) -> Run {
+    let truth = LagModel::default();
+    let ego = Ego::default();
+    let plant = Driven { ego, car: truth };
+    let mut critics = critics();
+    if lane.is_some() {
+        critics.extend(Critic::by_name("LaneCritic"));
+    }
+    let mut follower = Follower::new(
+        truth,
+        ego,
+        settings(1.0),
+        critics,
+        FollowerSettings::default(),
+        OUTLINE.to_vec(),
+    );
+    follower.set_lane(lane);
+    let mut car = plant.at_rest(poses[0], 0.0);
+    let path = GlobalPath::new(poses.to_vec()).expect("a path");
+    let (mut command, mut t, mut first) = (Command::default(), 0.0, true);
+    let mut trace = Vec::new();
+    while t < 60.0 {
+        follower.observe(&Observation {
+            pose: plant.pose(&car),
+            speed: plant.speed(&car),
+            steering: Some(plant.steering(&car)),
+            throttle: Some(car.car.throttle),
+            brake: Some(car.car.brake),
+        });
+        if first {
+            follower.follow(path.clone(), false);
+            first = false;
+        }
+        match follower.tick(t, None) {
+            Some(Tick::Drive(report)) => command = report.command,
+            Some(Tick::Done(outcome)) => {
+                let reached = outcome == mppi_lag::Outcome::Succeeded;
+                return finish(reached, t, &[], Vec::new(), trace);
+            }
+            None => {}
+        }
+        for _ in 0..(PERIOD / PHYSICS).round() as usize {
+            plant.step(&mut car, command, PHYSICS);
+        }
+        t += PERIOD;
+        trace.push(plant.pose(&car));
+    }
+    finish(false, t, &[], Vec::new(), trace)
+}
+
+/// The lane keeps the car in (TODO 169): a path drawn 1 m left of a 2.6 m lane's centre
+/// (lines 1.3 m, kerbs 1.8 m either side), so following it would put the outline 0.25 m
+/// over the line. With LaneCritic the car rides the line instead, never near the kerb;
+/// without it, it follows the path over the line.
+#[test]
+fn a_path_off_centre_is_followed_inside_the_lane() {
+    const SOFT: f64 = 1.3;
+    const HARD: f64 = 1.8;
+    // From the lane's centre, over to y = 1 within 6 m, then 24 m straight on.
+    let poses = path_through(
+        |u| {
+            let x = 30.0 * u;
+            let y = if x < 6.0 {
+                0.5 - 0.5 * (std::f64::consts::PI * x / 6.0).cos()
+            } else {
+                1.0
+            };
+            (x, y)
+        },
+        30.0,
+    );
+    let free = drive_in_lane(&poses, None);
+    let kept = drive_in_lane(&poses, Some(lane(SOFT, HARD)));
+    let worst = |run: &Run| run.poses.iter().map(outline_left).fold(f64::MIN, f64::max);
+    let settled = |run: &Run| {
+        let tail = &run.poses[run.poses.len() * 2 / 3..];
+        tail.iter().map(|p| p.y).sum::<f64>() / tail.len() as f64
+    };
+    println!(
+        "path 1 m off centre, lines at {SOFT} m: without the lane the outline reaches {:.3} m \
+         (settles at y {:.2}), with it {:.3} m (y {:.2}); reached {} / {}",
+        worst(&free),
+        settled(&free),
+        worst(&kept),
+        settled(&kept),
+        free.reached,
+        kept.reached
+    );
+    assert!(free.reached && kept.reached, "{free:?} {kept:?}");
+    assert!(
+        worst(&free) > SOFT + 0.15,
+        "the path itself crosses the line"
+    );
+    assert!(
+        worst(&kept) < SOFT + 0.1,
+        "rides the line, at most a little over"
+    );
+    assert!(worst(&kept) < HARD - 0.3, "never near the kerb");
+    // Still on the path's side of the lane: the critic doesn't drag it to the centre.
+    assert!(settled(&kept) > 0.5, "{}", settled(&kept));
 }

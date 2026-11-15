@@ -11,7 +11,8 @@
 //! | [`ego`] | ego's ramps, as a stage in front of any car model ([`ego::Driven`]) |
 //! | [`ideal`] | [`IdealModel`]: no lag, as Nav2's MPPI assumes; for comparison |
 //! | [`optimizer`] | MPPI itself: sample, roll out, score, weigh, smooth |
-//! | [`critics`] | Nav2's eight critics that nav2.yaml runs |
+//! | [`critics`] | Nav2's eight critics that nav2.yaml runs, and our `LaneCritic` |
+//! | [`lane`] | the road ahead's lane and its edges, for `LaneCritic` |
 //! | [`smoothing`] | Nav2's Savitzky-Golay filter |
 //! | [`path`] | the path window (Nav2's PathHandler) and the cross track |
 //! | [`costmap`] | the local costmap and the car's outline on it |
@@ -27,6 +28,7 @@ pub mod ego;
 pub mod follower;
 pub mod ideal;
 pub mod lag;
+pub mod lane;
 pub mod model;
 pub mod optimizer;
 pub mod path;
@@ -42,6 +44,7 @@ pub use ego::{Driven, Ego};
 pub use follower::{Follower, FollowerSettings, Outcome, Report, Tick};
 pub use ideal::IdealModel;
 pub use lag::{Actuators, Gear, LagModel, SpeedLoop};
+pub use lane::{Edges, Lane, LanePoint};
 pub use model::{CarModel, Command, Observation, Pose};
 pub use optimizer::{Optimizer, Plan, Scene, Settings};
 pub use path::{GlobalPath, Inversion};
