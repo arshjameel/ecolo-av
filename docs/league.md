@@ -11,7 +11,9 @@ waiting to beat it.
   │ pose       │ ekf       │ ndt_ekf, kiss_ekf            │
   │ costmap    │ nav2      │ ours                         │
   │ navigator  │ nav2      │ ours                         │
-  │ path       │ lattice   │ lattice_rs, hybrid, diffusion│
+  │ path       │ lattice   │ lattice_rs, lattice_smooth,  │
+  │            │           │ lattice_rs_smooth, hybrid,   │
+  │            │           │ diffusion                    │
   │ steer      │ mppi      │ mppi_lag, mpc_lag, rpp       │
   │ smoother   │ nav2      │ ours                         │
   │ behaviour  │ off       │ on (the road ahead)          │

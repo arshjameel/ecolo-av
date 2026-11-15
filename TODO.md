@@ -23,7 +23,7 @@ Ben, 14 Nov night: "chiping througth the list 166-173 and then the 155, 156, 157
 | 11 | Ours the default; the last Nav2 pieces; Gazebo's CI job; then Nav2 and Gazebo deleted | 181-184 |
 | 12 | Heavy Python to Rust: voxels, ego + look_ahead, behaviour; the clock at 250 Hz | 185 |
 | last | The Rust made more Rust-like, once feature complete | 176 |
-| 177 | **Steering-rate-aware lattice moves** (Ben, 14 Nov: a trial now): moves whose curvature changes no faster than the steering can, from the car model ego uses; beside today's lattice until it wins (no oscillation, 168) | ⬜ next after the junction |
+| 177 | **Steering-rate-aware lattice moves** (Ben, 14 Nov: a trial now): moves whose curvature changes no faster than the steering can, from the car model ego uses; beside today's lattice until it wins (no oscillation, 168) | 🟡 built 14 Nov, branch `lattice-rate`: `lattice_moves:=smooth`/`smooth_fast` (`tools/lattice_smooth.py`); offline the paths keep to the steering, closed loop with `mppi_lag` no clear win yet ([page](docs/controllers.md#smooth-moves-a-trial-14-nov)). Left: the simulator, `measure controllers --planners lattice lattice_smooth own own_smooth` |
 | 178 | **Hybrid-A\* in our Rust planner** (Ben, 14 Nov: "Now"): a port of Nav2's, another `path` option in the league | ⬜ |
 | 179 | **Wheel noise and slip in our simulator** (Ben, 14 Nov): seeded, off by default | ⬜ |
 | 180 | **The sensor watchdog warns about our own nodes** (Ben, 14 Nov: warn only, no lock) | ⬜ |

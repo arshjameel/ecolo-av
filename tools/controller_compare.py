@@ -846,6 +846,10 @@ def followers(args):
 # lattice32: the State Lattice on its 32-heading trial file (lattice_headings:=32).
 PLANNER_VARIANTS = {f'lattice{h}': ('lattice', [f'lattice_headings:={h}'])
                     for h in vehicle.LATTICE_HEADINGS[1:]}
+# lattice_smooth, own_smooth (and _smooth_fast): Nav2's lattice and ours on the smooth
+# moves (lattice_moves:=, tools/lattice_smooth.py).
+PLANNER_VARIANTS.update({f'{p}_{m}': (p, [f'lattice_moves:={m}'])
+                         for p in ('lattice', 'own') for m in vehicle.LATTICE_MOVES[1:]})
 # diffusion_nomodel: the diffusion trial with no model file, so every plan must be the
 # lattice's (its guard's fallback test: docs/tests.md).
 PLANNER_VARIANTS['diffusion_nomodel'] = ('diffusion', ['diffusion_model:=/nonexistent.onnx'])

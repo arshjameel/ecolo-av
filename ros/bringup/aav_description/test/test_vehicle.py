@@ -723,6 +723,31 @@ def test_lattice_needs_its_file_and_reverses_only_with_reversing():
         assert grid['allow_reverse_expansion'] is reversing
 
 
+def test_smooth_moves_have_their_own_file_and_turn_the_smoother_off():
+    assert vehicle.lattice_file_name(16, 'nav2') == 'lattice_ackermann.json'
+    assert vehicle.lattice_file_name(16, 'smooth') == 'lattice_ackermann_smooth.json'
+    assert vehicle.lattice_file_name(16, '') == 'lattice_ackermann.json'
+    assert vehicle.lattice_file_name(16, 'smooth_fast') == 'lattice_ackermann_smooth_fast.json'
+    with pytest.raises(ValueError, match='16 headings only'):
+        vehicle.lattice_file_name(32, 'smooth')
+    with pytest.raises(ValueError, match='pick one of'):
+        vehicle.lattice_file_name(16, 'wiggly')
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+    v = vehicle.load(CONFIG)['vehicle']
+
+    def grid(moves):
+        return vehicle.nav2_tuned(nav2, v, planner='lattice', lattice_file='/x/l.json',
+                                  lattice_moves=moves)['planner_server'][
+                                      'ros__parameters']['GridBased']
+    # Nav2's moves keep nav2.yaml's smoother; the smooth ones would get its Dubins ends back.
+    assert grid('nav2')['smooth_path'] is True
+    assert grid('smooth')['smooth_path'] is False
+    # Our planner (planner:=own) reads the same block.
+    tuned = vehicle.nav2_tuned(nav2, v, planner='own', lattice_file='/x/l.json',
+                               lattice_moves='smooth')
+    assert vehicle.planner_params(tuned, v)['smooth_path'] is False
+
+
 def test_the_committed_lattice_fits_the_car():
     v = vehicle.load(CONFIG)['vehicle']
     meta = json.loads(LATTICE_JSON.read_text())['lattice_metadata']

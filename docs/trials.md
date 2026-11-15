@@ -44,6 +44,7 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 | KISS-ICP's twist into the local EKF | `ekf_local` on the wheels and IMU alone | `kiss_ekf:=true` |
 | State Lattice planner, our primitives | Hybrid-A* | `planner:=lattice`: **won, the default since 1 Nov** (`lattice_headings:=32`: the 32-heading file, still a trial) |
 | Smac 2D, NavFn, Theta* planners (ignore the turning circle: sim and bench only) | the lattice | `planner:=smac2d`, `navfn`, `theta_star` |
+| Smooth lattice moves: curvature no faster than the steering turns, the smoother off ([page](controllers.md#smooth-moves-a-trial-14-nov)) | Nav2's moves | `lattice_moves:=smooth` (1 m/s) or `smooth_fast` (2.5 m/s), with `planner:=lattice` or `own`; `measure controllers --planners lattice lattice_smooth own own_smooth` |
 | The lidar as 0.25 m cubes over the fitted road (`aav_voxels`) | the flat scan (`lidar_scan`) | `voxels:=true` |
 | A diffusion model draws the path, a guard checks it, the lattice behind it (`aav_diffusion_planner`; on the car only with `diffusion_trial:=true`, 0.5 m/s) | the lattice | `planner:=diffusion` (after `pixi install --locked -e learn`, `pixi run diffusion data`, `pixi run diffusion train`) |
 

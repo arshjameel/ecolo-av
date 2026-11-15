@@ -202,6 +202,7 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 14 Nov | The sensor watchdog **warns only** about our own nodes; respawn and the age checks stop the car | Ben |
 | 14 Nov | Our simulator's wheels get **noise and slip, seeded, off by default** | Ben |
 | 14 Nov | **Steering-rate-aware lattice moves**, a trial beside today's lattice (no oscillation) | Ben |
+| 14 Nov | The smooth moves are made for **1 m/s** (`smooth`, ego's top speed) and **2.5 m/s** (`smooth_fast`, the campus), at 1/1.25 of ego's 0.6 rad/s; with them the lattice's **smoother is off** (its Dubins ends put the jumps back) | Ben |
 | 14 Nov | **Hybrid-A\* in our Rust planner now**, another option beside the lattice | Ben |
 | 14 Nov | **We run our own stack; Nav2 and Gazebo leave**: "I would like to remove nav2 and gazeboo ... run everythign ourselves in rust and/or python". `stack:=ours` and our simulator become the default now; Nav2 and Gazebo stay only as yardsticks until 0.4-rc1 is scored, then are deleted. robot_localization, twist_mux and teleop_twist_* stay for now. CLAUDE.md's rules changed to match | Ben |
 

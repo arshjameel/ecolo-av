@@ -222,6 +222,11 @@ and is <strong>scored on the same routes</strong>. It becomes the default only o
 <td><code>planner:=smac2d</code>, <code>navfn</code>, <code>theta_star</code></td>
 </tr>
 <tr>
+<td>Smooth lattice moves: curvature no faster than the steering turns, the smoother off (<a href="controllers.html#smooth-moves-a-trial-14-nov">page</a>)</td>
+<td>Nav2's moves</td>
+<td><code>lattice_moves:=smooth</code> (1 m/s) or <code>smooth_fast</code> (2.5 m/s), with <code>planner:=lattice</code> or <code>own</code>; <code>measure controllers --planners lattice lattice_smooth own own_smooth</code></td>
+</tr>
+<tr>
 <td>The lidar as 0.25 m cubes over the fitted road (<code>aav_voxels</code>)</td>
 <td>the flat scan (<code>lidar_scan</code>)</td>
 <td><code>voxels:=true</code></td>

@@ -49,7 +49,10 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           radius and the map's cells (refused if either differs),
                           backwards too with reversing:=true.
                           lattice_headings:=32 takes the trial file with 32 headings
-                          (lattice_ackermann_32.json). smac2d, navfn,
+                          (lattice_ackermann_32.json). lattice_moves:=smooth (or
+                          smooth_fast) takes the trial moves whose curvature changes no
+                          faster than the steering turns at 1 m/s (2.5 m/s), and turns
+                          the lattice's smoother off (tools/lattice_smooth.py). smac2d, navfn,
                           theta_star: grid paths that ignore the turning radius, so the
                           follower must round their corners; car.launch.py refuses them.
                           diffusion (aav_diffusion_planner): a model draws 16 paths, a
@@ -195,12 +198,13 @@ def flag(context, name):
 
 def tuned_copy(source, v, reversing, max_speed, radar, lidar, ghost=False,
                controller=vehicle.DEFAULT_CONTROLLER, plan_around=True, camera=False,
-               planner='hybrid', lattice_file=None, voxels=False):
+               planner='hybrid', lattice_file=None, voxels=False,
+               lattice_moves=vehicle.LATTICE_MOVES[0]):
     """Return a temporary copy of nav2.yaml, tuned by vehicle.nav2_tuned (no ROS there)."""
     with open(source) as f:
         cfg = vehicle.nav2_tuned(yaml.safe_load(f), v, reversing, max_speed, radar, lidar,
                                  ghost, controller, plan_around, camera, planner,
-                                 lattice_file, voxels)
+                                 lattice_file, voxels, lattice_moves)
     out = tempfile.NamedTemporaryFile('w', prefix='nav2_', suffix='.yaml', delete=False)
     with out:
         yaml.safe_dump(cfg, out)
@@ -220,7 +224,8 @@ def replanning_copy(tree, hz):
     return out.name
 
 
-def lattice_for(share, v, map_yaml, headings=vehicle.LATTICE_HEADINGS[0]):
+def lattice_for(share, v, map_yaml, headings=vehicle.LATTICE_HEADINGS[0],
+                moves=vehicle.LATTICE_MOVES[0]):
     """
     Return the lattice primitives' path, checked against the car and the map.
 
@@ -228,7 +233,7 @@ def lattice_for(share, v, map_yaml, headings=vehicle.LATTICE_HEADINGS[0]):
     or for a car that now turns wider, it would plan moves the car can't make. Refuse
     rather than start it so (pixi run python3 tools/lattice_primitives.py makes a new file).
     """
-    path = f'{share}/config/{vehicle.lattice_file_name(headings)}'
+    path = f'{share}/config/{vehicle.lattice_file_name(headings, moves)}'
     with open(path) as f:
         meta = json.load(f)['lattice_metadata']
     with open(map_yaml) as f:
@@ -297,7 +302,9 @@ def nodes(context):
     map_yaml = LaunchConfiguration('map').perform(context)
     headings = (LaunchConfiguration('lattice_headings').perform(context).strip() or
                 vehicle.LATTICE_HEADINGS[0])
-    lattice_file = (lattice_for(share, v, map_yaml, headings)
+    moves = vehicle.check_lattice_moves(
+        LaunchConfiguration('lattice_moves').perform(context))
+    lattice_file = (lattice_for(share, v, map_yaml, headings, moves)
                     if vehicle.server_planner(planner) == 'lattice' else None)
     trees = '_car_reversing.xml' if reversing else '_car.xml'
     rewrites = vehicle.nav2_rewrites(v, reversing, planner)
@@ -334,7 +341,8 @@ def nodes(context):
     controller = LaunchConfiguration('controller').perform(context).strip().lower()
     source = tuned_copy(f'{share}/config/nav2.yaml', v, reversing,
                         float(speed) if speed else None, radar, lidar, ghost, controller,
-                        flag(context, 'plan_around'), guard, planner, lattice_file, voxels)
+                        flag(context, 'plan_around'), guard, planner, lattice_file, voxels,
+                        moves)
     params = ParameterFile(
         RewrittenYaml(source_file=source, param_rewrites=rewrites, convert_types=True),
         allow_substs=True)
@@ -708,6 +716,12 @@ def generate_launch_description():
                               description='with planner:=lattice: 16 headings (the default '
                                           'file) or 32 (a trial: '
                                           'config/lattice_ackermann_32.json)'),
+        DeclareLaunchArgument('lattice_moves', default_value=vehicle.LATTICE_MOVES[0],
+                              description="with planner:=lattice (or own): nav2, Nav2's "
+                                          'moves (the default); smooth or smooth_fast, a '
+                                          'trial: curvature no faster than the steering '
+                                          'turns at 1 or 2.5 m/s, the smoother off '
+                                          '(config/lattice_ackermann_smooth*.json)'),
         DeclareLaunchArgument('plan_around', default_value='true',
                               description='true: the planner sees the radar and lidar too, '
                                           'and plans round what they see; false: the map '

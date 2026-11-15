@@ -72,6 +72,8 @@ start ─▶ A* over the moves ─▶ now and then: one curve straight to the go
 | On our costmap too | add `costmap:=own` (it then plans on `/drivers/nav/costmap/global_raw`) |
 | Test the maths | `cd ros/drivers/aav_planner && cargo test -p lattice-planner` |
 | Time the hand-made maps | `cargo run --release -p lattice-planner --example scenes` |
+| Try the smooth moves (a trial) | `pixi run sim planner:=own lattice_moves:=smooth` ([why](controllers.md#smooth-moves-a-trial-14-nov)) |
+| Compare the moves offline | `cargo run --release -p lattice-planner --example moves` (the lot tour on `example_lot`) |
 
 ## Hand-made maps (no ROS)
 
