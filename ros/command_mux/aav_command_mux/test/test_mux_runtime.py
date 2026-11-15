@@ -129,6 +129,9 @@ def test_joystick_overrides_every_source(run):
             f'expected {speed}, actual {output}'
         )
     run.spin(0.6)
+    # All start at once: the first message to land passes for an instant (a race), so
+    # let every one be heard first, then the joystick must win.
+    run.spin(0.3, *SPEED)
     output = run.spin(1.0, *SPEED)
 
     assert output == {SPEED['joy']}
