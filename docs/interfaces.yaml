@@ -46,17 +46,17 @@ topics:
   /drivers/joy/cmd_vel:
     type: geometry_msgs/msg/TwistStamped
     pub: [teleop_twist_joy_node]
-    sub: [twist_mux, language_drive]
+    sub: [twist_mux, language_drive, ego]
     note: Priority 100. Only while the deadman (trigger) is held.
   /drivers/keyboard/cmd_vel:
     type: geometry_msgs/msg/TwistStamped
     pub: [teleop_twist_keyboard]
-    sub: [twist_mux, language_drive]
+    sub: [twist_mux, language_drive, ego]
     note: Priority 90 (twist_mux's keyboard slot). A person driving from a laptop - teleop_twist_keyboard in the namespace /drivers/keyboard (tools/keyboard.sh, stamped:=true), or the Foxglove teleop panel set to this topic - on the stand-ins only, as the car's bridge only watches (foxglove.launch.py).
   /drivers/rc/cmd_vel:
     type: geometry_msgs/msg/TwistStamped
     pub: [rc_driver]
-    sub: [twist_mux, language_drive]
+    sub: [twist_mux, language_drive, ego]
     note: Priority 95 (proposed, TODO 48) - a person with the RC transmitter, below the joystick's deadman (100), above the keyboard (90). rc_driver (aav_rc) turns /vehicle/rc into a command only while the transmitter's mode switch is on RC via ROS - throttle stick x max_speed (1.0 m/s; reverse 0.5), steering stick x the steering limit, as a turn rate by the bicycle model - at the uplink's 50 Hz, zeros included, so nothing below it drives. It publishes one zero when the switch leaves RC via ROS; if /vehicle/rc goes quiet while on RC via ROS it keeps publishing zeros (a stop) until the uplink comes back. RC direct never comes here - the ESP32 drives from the sticks itself.
   /drivers/tests/cmd_vel:
     type: geometry_msgs/msg/TwistStamped
@@ -220,8 +220,8 @@ topics:
   /safety/estop:
     type: std_msgs/msg/Bool
     pub: [joy_teleop, hud, language_drive, actuator_test, hw_panel, dev_window]
-    sub: [twist_mux, spine_bridge, legacy_uart_bridge, language_drive, actuator_test, carla_adapter, point_driver, hw_panel, behaviour]
-    note: true = stop. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop. None of them ever publishes false.
+    sub: [twist_mux, spine_bridge, legacy_uart_bridge, language_drive, actuator_test, carla_adapter, point_driver, hw_panel, behaviour, ego]
+    note: true = stop. ego turns the pedal off (full braking) while true. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop. None of them ever publishes false.
   /control/cmd_vel:
     type: geometry_msgs/msg/TwistStamped
     pub: [twist_mux]

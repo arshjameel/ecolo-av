@@ -50,7 +50,8 @@ MODES = ('auto', 'on', 'off')
 START_ONLY = frozenset({'lag_lead_filter', 'lag_lead_max_speed', 'lag_lead_max_steer',
                         'lag_aware_drivers', 'trace_horizon', 'trace_rate_hz',
                         'trace_speed_loop', 'vehicle_yaml', 'road_ahead',
-                        'road_ahead_drivers', 'road_pose_timeout'})
+                        'road_ahead_drivers', 'road_pose_timeout', 'pedal_drivers',
+                        'pedal_let_off', 'pedal_full'})
 
 
 def check_mode(mode) -> Optional[str]:

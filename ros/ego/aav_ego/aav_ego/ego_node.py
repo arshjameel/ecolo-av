@@ -29,7 +29,12 @@ Parameters  the limits (ackermann.Limits) and the body (dynamics.Body: mass, pay
             (road_limit.py; docs/designs/2026-11-14_the-whole-car.md); trace_horizon,
             trace_rate_hz, trace_speed_loop: the trace (trace_ahead.py; its twin takes each
             measured speed);
-            vehicle_yaml: the car model's numbers ('' = aav_description's vehicle.yaml)
+            vehicle_yaml: the car model's numbers ('' = aav_description's vehicle.yaml);
+            pedal_drivers, pedal_let_off, pedal_full: the pedal (pedal.py): while one of
+            pedal_drivers drives, the stick's position sets how hard ego slows (let off:
+            gently; pulled back: braking by how far; then reverse). [] turns it off
+Also        drivers/<d>/cmd_vel for each d in pedal_drivers (whose command is it?), and
+            safety/estop  std_msgs/Bool: while true, the pedal is off (full braking)
 
 Every backend (the CAN spine, the legacy serial bridge, turtlesim, Gazebo,
 CARLA) gets the same /ego/actuator_cmd, through the output mux (aav_io_mux), so
@@ -53,6 +58,7 @@ from aav_ego.ackermann import EgoModel, Limits, live_change, LIVE_LIMITS
 from aav_ego.dynamics import Body
 from aav_ego.lag_lead import (check_mode, command_key, LagAwareWatch, LagLead, lead_wanted,
                               LeadLimits, LeadTimes, START_ONLY)
+from aav_ego.pedal import Pedal
 from aav_ego.road_limit import allowed, cap
 from aav_ego.stop_ahead import stop_point
 from aav_ego.trace_ahead import trace, Twin
@@ -72,6 +78,9 @@ from std_msgs.msg import Bool
 # The program slots of twist_mux.yaml that might lead for the lag themselves. People
 # (joy, rc, keyboard, buttons), the actuator tests and replays never do.
 LAG_AWARE_DRIVERS = ['scripted', 'point', 'nav', 'ai']
+# The people's slots (twist_mux.yaml) that drive with the pedal (pedal.py). The buttons
+# send one fixed speed, so they keep the plain speed.
+PEDAL_DRIVERS = ['joy', 'rc', 'keyboard']
 
 
 class Ego(Node):
@@ -111,6 +120,7 @@ class Ego(Node):
                 TwistStamped, f'drivers/{driver}/cmd_vel',
                 lambda msg, d=driver: self.watch.sent(d, self.key(msg)), 10)
         self.declare_road_ahead()
+        self.declare_pedal()
         self.create_timer(1.0 / rate, self.tick)
         if self.trace_rate > 0.0:
             self.create_timer(1.0 / self.trace_rate, self.publish_trace)
@@ -174,6 +184,34 @@ class Ego(Node):
         self.get_logger().info(
             f'the road ahead limits {", ".join(self.road_drivers)}: '
             f'{self.road_curve.describe()}')
+
+    def declare_pedal(self):
+        """Declare the pedal (pedal.py): which drivers use it, and its two numbers."""
+        p = self.declare_parameter
+        drivers = list(p('pedal_drivers', PEDAL_DRIVERS).value)
+        self.pedal = Pedal(let_off=float(p('pedal_let_off', Pedal().let_off).value),
+                           full=float(p('pedal_full', Pedal().full).value))
+        self.pedal_watch = LagAwareWatch(drivers)
+        self.estop = False
+        for driver in drivers:
+            self.create_subscription(
+                TwistStamped, f'drivers/{driver}/cmd_vel',
+                lambda msg, d=driver: self.pedal_watch.sent(d, self.key(msg)), 10)
+        # Reliable, as the backends' subscriptions: the HUD sends true five times.
+        self.create_subscription(Bool, 'safety/estop',
+                                 lambda msg: setattr(self, 'estop', bool(msg.data)), 10)
+        if drivers:
+            self.get_logger().info(
+                f'the pedal for {", ".join(drivers)}: let off slows at '
+                f'{self.pedal.let_off:g} m/s^2, full back brakes at '
+                f'{self.limits.max_deceleration:g} m/s^2 (a full stick: {self.pedal.full:g} '
+                f'm/s); off during an e-stop')
+
+    def pedal_now(self, cmd):
+        """Return the pedal if a pedal driver's fresh command drives and no e-stop, else None."""
+        if cmd is None or self.estop or self.pedal_watch.whose(self.cmd_key) is None:
+            return None
+        return self.pedal
 
     def on_global(self, msg: Odometry):
         self.road_pose = (msg.pose.pose.position.x, msg.pose.pose.position.y)
@@ -319,6 +357,7 @@ class Ego(Node):
         if not lead_on:
             self.lead.reset()
         step = min(dt, 0.1)
+        self.model.pedal = self.pedal_now(cmd)
         speed, steering, accel = self.model.step(cmd, step, self.lead.step if lead_on else None)
         # The trace's twin: each measured speed (on_odom), then what ego sent.
         self.twin.sent(speed, steering, step)

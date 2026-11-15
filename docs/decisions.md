@@ -216,6 +216,7 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 15 Nov | **Everything goes into the next release (0.4-rc1)**: nothing is held back for a later one | Ben: "Nothing is going into a future rekease we want everything in the next release" |
 | 15 Nov | **One folder on Ben's Mac**, `~/Code/ecolo-av` on `main`: the night's worktrees (`ecolo-next`, `ecolo-night`) merged and removed; the old `~/Code/aav` and `aav-wt` deleted (its one uncommitted edit kept in `docs/history/leftovers/`) | Ben |
 | 15 Nov | The fork's branches (`one-shape`, `review-13nov`, `setup-localization`, `whole-car`) merged into its `main`, then deleted; their last commits: 0f0a1094, b7ed1837, 566ef0c0, 726bff44 | Ben |
+| 15 Nov | **The pedal in ego** for people (joy, rc, keyboard): the stick's position sets how hard ego slows (let go: 1.0 m/s²; full back: 2.0 m/s²), then reverses at 0. Computer drivers keep plain speeds; the AI may join as a challenger | Ben (asked "Everyone", and "a similar concept for the ai too? what do you think?"; advised: people only, since a planner's own slowing must be followed at once, or the car rolls past its stop line) |
 
 ## Proposed in November: Ben's to decide
 

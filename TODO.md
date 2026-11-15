@@ -24,6 +24,12 @@ order; each lands on `main` only after the full test and a sim check.
 | 10 | The Rust made more Rust-like | 176 |
 | waits | The car (hardware lead); one car drive scored | 157, 158, 173 |
 
+## Ben's ideas, 15 Nov (day)
+
+| # | Task | Status |
+|---|---|---|
+| 206 | **The pedal** (Ben, 15 Nov: "we had to swtich between acceleration, braking and reversing ... make that part of the ego"): a person's stick as accelerator and brake in ego (`pedal.py`): let off slows (let go: 1.0 m/s²), pulled back brakes by how far, then reverses. **Built 15 Nov**, 8 laptop tests; the e-stop, a stale command and a turn still brake fully. Live ego node with a pretend joystick, from 1 m/s: full back 2.0 m/s², 0 in 0.5 s, then reverse to -0.5; a little back 1.2 m/s², then -0.2; let go 1.0 m/s², stays stopped; let go with the e-stop: 2.0 m/s². Left: a joystick drive in the sim (feel), then on the car on stands; tune `pedal_let_off`; try `pedal_drivers` with `ai` as a challenger (Ben: "a similar concept for the ai too?") | 🔧 |
+
 ## Rust crates to try (15 Nov)
 
 Ben, 15 Nov: "Would tokio the rust concurrency library help us ... are there other rust
