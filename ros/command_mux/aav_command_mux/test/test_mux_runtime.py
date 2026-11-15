@@ -132,6 +132,9 @@ def test_joystick_overrides_every_source(run):
 
 
 def test_silent_source_times_out(run):
+    # Both start at once after a silence: whichever message lands first passes for an
+    # instant (a race, not priority). Let both be heard, then check the priority.
+    run.spin(0.2, 'keyboard', 'scripted')
     output = run.spin(0.5, 'keyboard', 'scripted')
 
     assert output == {SPEED['keyboard']}
