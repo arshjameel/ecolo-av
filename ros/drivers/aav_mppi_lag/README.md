@@ -79,7 +79,8 @@ From `navigation.launch.py` (`vehicle.mppi_lag_params`; nothing copied):
 | `wheelbase`, `max_steering_angle`, `actuators.*` | vehicle.yaml (dead times 0 while unset) |
 | `ego.*` | ego.yaml's ramps |
 
-From `config/mppi_lag.yaml`: `model` (lag or ideal), `steer_std`, `noise_correlation`,
+From `config/mppi_lag.yaml`: `model` (lag or ideal), `steer_std`, `steer_std_speed` (above it
+the steering noise shrinks as 1 / speed², TODO 168), `steer_std_min` (never under it: 0.024 rad), `noise_correlation`,
 `threads`, `seed`, `use_costmap`, the topics and timeouts (`road_ahead_timeout` 0.5 s). All read once at start.
 
 ### Crate `mppi-lag`
@@ -125,13 +126,14 @@ cd ros/drivers/aav_mppi_lag && cargo test --release -p mppi-lag          # tools
 cargo test --release -p mppi-lag --test closed_loop explore -- --ignored --nocapture
 cargo run --release -p mppi-lag --example timing                         # ms a tick
 cargo run --release -p mppi-lag --example follow_plan -- paths/*.csv     # planned paths, followed (lattice-planner's moves example writes them)
+cargo run --release -p mppi-lag --example wiggle                         # the wiggle: each suspect at 2.5 m/s, before and after (docs/mppi-lag.md)
 ```
 
 | Test | Covers |
 |---|---|
 | `lag.rs`, `ego.rs`, `ideal.rs` | each stage of the model: lags, rate, deadbands, dead times, offset; reversing, the gear changing only at a stop |
 | `critics.rs`, `path.rs` | each critic on hand-made samples, PathAngle's modes on a reversing path, `LaneCritic` inside, over a line, over a kerb, without a lane; the cusps; `lane.rs`: the side, the search, NaN edges |
-| `optimizer.rs`, `smoothing.rs` | the limits, the filter, a straight path, a turn, the same seed the same plan; the control cost against a brute-force covariance inverse |
-| `tests/closed_loop.rs` | a pretend car (ego + the lag model at 100 Hz): the model predicts it; circle and S-curve at vehicle.yaml's lags; a corner and an S on very slow actuators: the lag-aware one closer on the corner, the only one to keep the S; 8 m straight back; 6 m ahead, a stop at the cusp, a quarter circle (r 5 m and the planner's 3.6 m) back; the test lot's turn back (back, cusp, forward), from a stop and arriving rolling 0.5 m off; the campus's "round the bend" junction, on the planner's own path from the sim (`campus_junction_round_the_bend`); a path drawn 1 m off a lane's centre, kept within 0.1 m of the line by `LaneCritic` (0.41 m over without) |
+| `optimizer.rs`, `smoothing.rs` | the limits, the filter, a straight path, a turn, the same seed the same plan; the control cost against a brute-force covariance inverse; the steering noise's spread by speed |
+| `tests/closed_loop.rs` | a pretend car (ego + the lag model at 100 Hz): the model predicts it; circle and S-curve at vehicle.yaml's lags; a corner and an S on very slow actuators: the lag-aware one closer on the corner, the only one to keep the S; 8 m straight back; 6 m ahead, a stop at the cusp, a quarter circle (r 5 m and the planner's 3.6 m) back; the test lot's turn back (back, cusp, forward), from a stop and arriving rolling 0.5 m off; the campus's "round the bend" junction, on the planner's own path from the sim (`campus_junction_round_the_bend`); a path drawn 1 m off a lane's centre, kept within 0.1 m of the line by `LaneCritic` (0.41 m over without); the wiggle (TODO 168), set up as the launch file sets it (2000 samples, 8.4 m of path): no side to side on a straight and a bend at 2.5 m/s, less with a sim-like pose, none backing up |
 
 `colcon test --packages-select aav_mppi_lag` runs the same; `pixi run test` everything.

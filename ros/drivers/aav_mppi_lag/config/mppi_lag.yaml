@@ -8,6 +8,12 @@ mppi_lag:
                                 # ideal: without, as Nav2's MPPI does (a comparison run)
     steer_std: 0.15             # rad: the steering noise. Nav2 samples the turn rate
                                 # (wz_std 0.1 rad/s); at 1 m/s that is atan(0.1 x 1.561) = 0.155
+    steer_std_speed: 1.0        # m/s: faster, the steering noise shrinks as (1.0 / speed)^2
+                                # (0.024 rad at 2.5 m/s), so the futures spread as far sideways
+                                # as at 1 m/s. Without it (0), at 2.5 m/s they spread 6 times as
+                                # wide, MPPI's average rested on a handful of them and the
+                                # steering wiggled (TODO 168, docs/mppi-lag.md "Oscillation")
+    steer_std_min: 0.024        # rad: but never less, so above 2.5 m/s the futures still spread
     noise_correlation: 0.8      # each step's noise keeps 0.8 of the last step's (AR(1), about
                                 # 0.25 s). Nav2's is white (0): through a lagging steering
                                 # white noise averages away, every sample drives alike, and

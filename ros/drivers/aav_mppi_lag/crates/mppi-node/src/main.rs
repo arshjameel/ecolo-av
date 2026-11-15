@@ -1013,6 +1013,8 @@ impl Config {
             gamma: d.number("gamma", s.gamma)?,
             speed_std: d.number("vx_std", s.speed_std)?,
             steer_std: d.number("steer_std", s.steer_std)?,
+            steer_std_speed: d.number("steer_std_speed", s.steer_std_speed)?,
+            steer_std_min: d.number("steer_std_min", s.steer_std_min)?,
             noise_correlation: d.number("noise_correlation", s.noise_correlation)?,
             vx_max: d.number("vx_max", s.vx_max)?,
             vx_min: d.number("vx_min", s.vx_min)?,
