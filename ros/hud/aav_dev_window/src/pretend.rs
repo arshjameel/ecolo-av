@@ -20,7 +20,7 @@ use map_core::{
     grid::{Grid, GridInfo},
 };
 
-use crate::feed::{Feed, Level, Update};
+use crate::feed::{Feed, Level, RoadAhead, Update};
 
 /// A straight piece of wall on the map, metres.
 pub type Wall = (Point, Point);
@@ -176,6 +176,25 @@ pub fn ndt_cells() -> MapCells {
     MapCells::from_points(points, 1.0)
 }
 
+/// A pretend road ahead (`/world/road_ahead`): from the gate east along the lot's lower
+/// lane, slowing to a stop for the goal, as the behaviour planner draws it.
+pub fn road_ahead() -> RoadAhead {
+    const SPACING: f64 = 1.0;
+    const LENGTH: u32 = 30;
+    const TOP: f64 = 2.5;
+    let points: Vec<_> = (0..=LENGTH)
+        .map(|i| {
+            let along = f64::from(i) * SPACING;
+            let to_end = f64::from(LENGTH) * SPACING - along;
+            // The stopping law's shape: v = sqrt(2 a d), a = 0.5 m/s², capped.
+            let limit = (2.0 * 0.5 * to_end).sqrt().min(TOP);
+            (2.0 + along, 10.0, 0.0, limit)
+        })
+        .collect();
+    let end = f64::from(LENGTH) * SPACING;
+    RoadAhead::from_parts(&points, SPACING, end, &[(end, "goal".to_owned())])
+}
+
 /// Pretend ROS.
 pub struct PretendFeed {
     started: Instant,
@@ -271,6 +290,7 @@ impl Feed for PretendFeed {
                 }
             };
             updates.extend(lot_grid(occupied).map(Update::Map));
+            updates.push(Update::RoadAhead(road_ahead()));
             updates.extend(lot_grid(cost).map(Update::Costmap));
             updates.push(Update::Origin(Announcement {
                 announcer: "pretend".to_owned(),
@@ -408,6 +428,25 @@ mod tests {
         assert!(updates.iter().any(|u| matches!(u, Update::Map(_))));
         assert!(updates.iter().any(|u| matches!(u, Update::Picture(_))));
         assert!(updates.iter().any(|u| matches!(u, Update::Cubes(_))));
+    }
+
+    #[test]
+    fn the_first_drain_has_the_road_ahead_ending_at_the_goal() {
+        let mut feed = PretendFeed::new(10);
+        let updates = feed.drain(Instant::now());
+        let road = updates
+            .iter()
+            .find_map(|u| match u {
+                Update::RoadAhead(r) => Some(r.clone()),
+                _ => None,
+            })
+            .expect("a road ahead");
+        assert_eq!(road.line.len(), 31);
+        let (end, heading) = road.end.expect("an end");
+        assert!((end.x - 32.0).abs() < 1e-9 && heading.abs() < 1e-9);
+        assert_eq!(road.stops.len(), 1);
+        assert_eq!(road.stops[0].1, "goal");
+        assert!(road.top_speed() > 2.4);
     }
 
     #[test]
