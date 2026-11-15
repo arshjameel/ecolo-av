@@ -13,6 +13,11 @@ Subscribes  /perception/stop_sign/distance  geometry_msgs/PointStamped: a sign, 
             /localization/odom/local   nav_msgs/Odometry: the speed, and its age
             /localization/odom/global  nav_msgs/Odometry: where the car is on /plan
             /sensors/lidar/scan      sensor_msgs/LaserScan (base_link, best effort): the lane
+            /world/things            aav_interfaces/Things (odom), with things true: then an
+                                     obstacle stop is only for a thing that moves (a parked
+                                     one is the planner's to go round); the scan's rule
+                                     again, where the scan runs, if the list is over
+                                     things_timeout s old (the stop zone still holds)
             /navigate_to_pose/_action/status  action_msgs/GoalStatusArray: a goal running,
                                      or aborted (goal_status_topics: each navigator
                                      action's, Nav2's or ours, navigator:=)
@@ -39,13 +44,13 @@ import math
 import signal
 
 from aav_behaviour.behaviour import (active_plan, along_until, Behaviour, diagnostic, lane_ahead,
-                                     path_left, Settings, Stop, World)
+                                     moving_ahead, path_left, Seen, Settings, Stop, World)
 from aav_description.car_model import ActuatorConfig, speed_loop_profile
 from aav_description.lane_map import lane_line, load as load_lanes, with_edges
 from aav_description.road_ahead import build
 from aav_description.road_ahead_ros import to_msg
 from aav_description.stop_law import from_car_model
-from aav_interfaces.msg import RoadAhead
+from aav_interfaces.msg import RoadAhead, Things
 from aav_safety.geofence import Polygon
 from action_msgs.msg import GoalStatus, GoalStatusArray
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
@@ -86,6 +91,9 @@ class BehaviourNode(Node):
             # A lanes.yaml (lane_map.py): the road ahead's line on the lane's centre. Empty:
             # the line is the plan's.
             ('lane_map', ''),
+            # /world/things (aav_things): wait only for what moves, leave a parked thing to
+            # the planner. False: anything in the lane slows the car (the scan's rule).
+            ('things', False), ('things_timeout', 1.0),
             # Each navigator action's status (navigation.launch.py: Nav2's or ours,
             # navigator:=): a goal running on any of them.
             ('goal_status_topics', ['/navigate_to_pose/_action/status']))}
@@ -135,6 +143,10 @@ class BehaviourNode(Node):
         self.pose = None
         self.create_subscription(Odometry, '/localization/odom/global', self.on_global, 10)
         self.ahead = math.inf          # the nearest thing in the lane, x in base_link (m)
+        self.odom_pose = None          # (x, y, yaw) in odom, from the local odometry
+        self.moving, self.things_time = math.inf, -math.inf
+        if p['things']:
+            self.create_subscription(Things, '/world/things', self.on_things, 10)
         if p['obstacles']:
             self.create_subscription(LaserScan, '/sensors/lidar/scan', self.on_scan,
                                      qos_profile_sensor_data)
@@ -171,6 +183,22 @@ class BehaviourNode(Node):
 
     def on_local(self, msg: Odometry):
         self.speed, self.odom_time = msg.twist.twist.linear.x, self.now()
+        q, at = msg.pose.pose.orientation, msg.pose.pose.position
+        yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
+        self.odom_pose = (at.x, at.y, yaw)
+
+    def on_things(self, msg: Things):
+        if self.odom_pose is None:
+            return
+        seen = [Seen(t.x, t.y, t.vx, t.vy, t.length, t.width) for t in msg.things]
+        self.moving = moving_ahead(seen, self.odom_pose, self.p['front'], self.p['half_width'])
+        self.things_time = self.now()
+
+    def obstacle_ahead(self, now):
+        """Return x (base_link) of what the car slows for: a moving thing, or the scan's."""
+        if self.p['things'] and now - self.things_time <= self.p['things_timeout']:
+            return self.moving
+        return self.ahead
 
     def on_global(self, msg: Odometry):
         self.pose = (msg.pose.pose.position.x, msg.pose.pose.position.y)
@@ -225,8 +253,9 @@ class BehaviourNode(Node):
         left = self.sign_left()
         if left is not None and now - self.sign_time < 5.0:
             found.append(Stop('sign', left))
-        if math.isfinite(self.ahead):
-            found.append(Stop('obstacle', self.ahead - self.p['front'] - self.p['stop_gap']))
+        ahead = self.obstacle_ahead(now)
+        if math.isfinite(ahead):
+            found.append(Stop('obstacle', ahead - self.p['front'] - self.p['stop_gap']))
         plan, whose = self.driving(now)
         if plan and self.pose is not None:
             gx, gy = self.pose

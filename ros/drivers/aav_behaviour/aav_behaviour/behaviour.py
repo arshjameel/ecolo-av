@@ -22,7 +22,7 @@ the stopping law's v_cap(left) (aav_description stop_law.py). The lowest one bin
 | Reason | `left` is | The final stop |
 |---|---|---|
 | `sign` | camera range to the sign − the watcher's `stop_distance_m` | the `stop_sign` lock |
-| `obstacle` | to a thing in the lane, less bumper and stop zone | the `stop_zone` lock |
+| `obstacle` | to a thing in the lane (moving, with things), less bumper and gap | `stop_zone` |
 | `fence` | along the plan to where the geofence would close NEAR | the `geofence` lock |
 | `goal` | along the plan to its end | Nav2's goal check |
 """
@@ -336,6 +336,46 @@ def lane_ahead(ranges: Sequence[float], angle_min: float, angle_increment: float
         px, py = r * math.cos(a), r * math.sin(a)
         if front < px <= reach and abs(py) <= half_width:
             nearest = min(nearest, px)
+    return nearest
+
+
+@dataclass(frozen=True)
+class Seen:
+    """One thing from /world/things, in odom: centre, speed over the ground, size (m, m/s)."""
+
+    x: float
+    y: float
+    vx: float
+    vy: float
+    length: float
+    width: float
+
+
+MOVING = 0.3   # m/s over the ground: slower is parked (the planner goes round it)
+
+
+def moving_ahead(things: Sequence[Seen], car: Tuple[float, float, float], front: float,
+                 half_width: float, reach: float = 30.0, moving: float = MOVING) -> float:
+    """
+    Return the nearest x (m, base_link) of a moving thing in the lane straight ahead, or inf.
+
+    car: (x, y, yaw) in odom, as the things are. The lane is |y| <= half_width, widened by
+    each thing's half width, from the front bumper out to `reach`. A thing slower than
+    `moving` is parked: it is left to the planner, which plans round it (the whole car,
+    "the things"; TODO 162). What moves (a person, a car) is waited for. The stop zone's
+    lock still stops the car for anything, parked or not.
+    """
+    cx, cy, yaw = car
+    c, s = math.cos(yaw), math.sin(yaw)
+    nearest = math.inf
+    for t in things:
+        if math.hypot(t.vx, t.vy) < moving:
+            continue
+        dx, dy = t.x - cx, t.y - cy
+        px, py = c * dx + s * dy, -s * dx + c * dy
+        near = px - t.length / 2.0
+        if front < px + t.length / 2.0 and near <= reach and abs(py) <= half_width + t.width / 2.0:
+            nearest = min(nearest, max(near, front))
     return nearest
 
 

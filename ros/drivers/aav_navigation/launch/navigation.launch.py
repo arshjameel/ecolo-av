@@ -427,6 +427,9 @@ def nodes(context):
                                                  float(speed) if speed else None, controller),
                         {'obstacles': lidar and not voxels, 'use_sim_time': use_sim_time,
                          'lane_map': LaunchConfiguration('lane_map').perform(context),
+                         # The things: wait only for what moves, a parked thing is the
+                         # planner's to go round (behaviour.py moving_ahead).
+                         'things': things,
                          # Every navigator action: a goal running on any of them.
                          'goal_status_topics': [
                              vehicle.navigator_action(navigator, a) + '/_action/status'

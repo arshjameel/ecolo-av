@@ -247,3 +247,19 @@ def test_the_point_drivers_line_outranks_nav2s_plan():
     assert active_plan([], plan, True) == (plan, 'nav')
     assert active_plan([], plan, False) == ([], '')
     assert active_plan([(1.0, 1.0)], [], True) == ([], '')      # one point is no line
+
+
+def test_moving_ahead_waits_for_what_moves_and_leaves_parked_things_to_the_planner():
+    from aav_behaviour.behaviour import moving_ahead, Seen
+    car = (10.0, 5.0, math.pi / 2)            # facing +y in odom
+    walker = Seen(x=10.3, y=15.0, vx=0.8, vy=0.0, length=0.5, width=0.5)
+    parked = Seen(x=10.0, y=9.0, vx=0.05, vy=0.0, length=1.0, width=1.0)
+    beside = Seen(x=14.0, y=12.0, vx=1.0, vy=0.0, length=0.5, width=0.5)
+    behind = Seen(x=10.0, y=2.0, vx=1.0, vy=0.0, length=0.5, width=0.5)
+    things = [walker, parked, beside, behind]
+    ahead = moving_ahead(things, car, front=1.8, half_width=0.6)
+    assert ahead == pytest.approx(9.75)        # the walker, 10 m ahead, less half its length
+    assert moving_ahead([parked], car, front=1.8, half_width=0.6) == math.inf
+    # Inside the bumper's reach already: it counts from the bumper.
+    close = Seen(x=10.0, y=6.6, vx=0.5, vy=0.0, length=0.6, width=0.6)
+    assert moving_ahead([close], car, front=1.8, half_width=0.6) == pytest.approx(1.8)
