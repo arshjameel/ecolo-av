@@ -424,7 +424,8 @@ to 9 cm beside the car. The follower sees a cross-track error and steers at it.
 | The slew | toward the newest, at most `map_correction_speed` (0.1 m/s) and `map_correction_turn_rate` (1°/s) |
 | Measured at the car | a 1° turn about odom's origin 100 m away is 1.7 m there, but 0 at the car |
 | The snap | past `map_correction_snap_distance` (2 m) or `_snap_angle` (10°): taken at once |
-| Off | `map_correction:=newest` (the launch): each new path by the newest, as until 15 Nov |
+| Off | `map_correction:=newest` (the launch's default): each new path by the newest. On: `map_correction:=slow` |
+| Status | **a challenger, off by default** (15 Nov): in `sim-check --obstacle` the car stopped for the box and never drove on once it was gone; with `newest` it did. The stall's cause is still open (TODO 186) |
 | Watch it | `map_gap_m` on `/drivers/nav/track/status`: the held one's gap at the car |
 
 Why 0.1 m/s: odometry drifts 1-2 % of the distance (0.05 m/s at 2.5 m/s), so the held

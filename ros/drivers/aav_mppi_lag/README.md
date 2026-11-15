@@ -85,7 +85,7 @@ the steering noise shrinks as 1 / speed², TODO 168), `steer_std_min` (never und
 and the map correction (TODO 186): `map_correction_speed` (0.1 m/s; 0: off, each new path by
 the newest map -> odom, as before), `map_correction_turn_rate` (1°/s),
 `map_correction_snap_distance` (2 m) and `map_correction_snap_angle` (10°: a bigger gap is a
-relocalisation, taken at once and logged). From the launch: `map_correction` (bool, true;
+relocalisation, taken at once and logged). From the launch: `map_correction` (bool, false since 15 Nov: slow stalled after an obstacle; `map_correction:=slow` gives true;
 `navigation.launch.py map_correction:=newest` gives false, the old way; never in the yaml,
 which would win). All read once at start.
 

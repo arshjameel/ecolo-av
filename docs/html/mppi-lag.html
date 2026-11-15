@@ -1041,7 +1041,11 @@ to 9 cm beside the car. The follower sees a cross-track error and steers at it.<
 </tr>
 <tr>
 <td>Off</td>
-<td><code>map_correction:=newest</code> (the launch): each new path by the newest, as until 15 Nov</td>
+<td><code>map_correction:=newest</code> (the launch's default): each new path by the newest. On: <code>map_correction:=slow</code></td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>a challenger, off by default</strong> (15 Nov): in <code>sim-check --obstacle</code> the car stopped for the box and never drove on once it was gone; with <code>newest</code> it did. The stall's cause is still open (TODO 186)</td>
 </tr>
 <tr>
 <td>Watch it</td>

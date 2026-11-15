@@ -161,7 +161,7 @@ class Track(Node):
         # The held map -> odom (TODO 186): moved toward the newest at a bounded rate.
         # map_correction (the launch's switch, never in track.yaml: a node's own file wins
         # over the launch's values) false: the old way, whatever the rates say.
-        slew = bool(self.declare_parameter('map_correction', True).value)
+        slew = bool(self.declare_parameter('map_correction', False).value)
         self.slow = SlowFrame(SlewLimits(
             speed=float(p['map_correction_speed']) if slew else 0.0,
             turn_rate=float(p['map_correction_turn_rate']),

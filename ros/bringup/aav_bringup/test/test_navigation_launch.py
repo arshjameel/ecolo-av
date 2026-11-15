@@ -318,13 +318,13 @@ def test_map_correction_newest_turns_the_followers_slew_off():
     # TODO 186: a switch of its own (a rate set here would lose to the node's own file).
     for tracker, name in (('mppi_lag', 'mppi_lag'), ('lqr', 'track')):
         p = given(nav_nodes(tracker=tracker)[name])
-        assert p['map_correction'] is True and 'map_correction_speed' not in p
-        p = given(nav_nodes(tracker=tracker, map_correction='newest')[name])
-        assert p['map_correction'] is False
+        assert p['map_correction'] is False and 'map_correction_speed' not in p
+        p = given(nav_nodes(tracker=tracker, map_correction='slow')[name])
+        assert p['map_correction'] is True
     with pytest.raises(ValueError, match='slow or newest'):
         nav_nodes(tracker='lqr', map_correction='fast')
-    assert sent_to_navigation(SIM)['map_correction'] == 'slow'
-    assert sent_to_navigation(SIM, map_correction='newest')['map_correction'] == 'newest'
+    assert sent_to_navigation(SIM)['map_correction'] == 'newest'
+    assert sent_to_navigation(SIM, map_correction='slow')['map_correction'] == 'slow'
 
 
 def test_amcl_needs_the_lidar_and_never_publishes_map_to_odom():

@@ -1176,7 +1176,7 @@ impl Config {
         // `map_correction` (the launch file's switch, never in the yaml: a node's own file
         // wins over the launch's values) false: the old way, whatever the rates say.
         let m = SlewLimits::default();
-        let slew = d.flag("map_correction", true)?;
+        let slew = d.flag("map_correction", false)?;
         let speed = d.number("map_correction_speed", m.speed)?;
         let map_correction = SlewLimits {
             speed: if slew { speed } else { 0.0 },
