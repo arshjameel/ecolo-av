@@ -113,6 +113,8 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             clear and reach its goal. behaviour:=true
                                             things:=true; --moving-only skips the road
                                             world's run)
+    pixi run sim-check --with name:=value  (any sim.launch.py argument on every session,
+                                            repeatable: an A/B of one setting)
     pixi run sim-check --stop-zone-shadow (TODO 182: our stop zone in Rust in shadow beside
                                             collision_monitor through the obstacle check:
                                             both must stop, ours within 0.3 s of Nav2's,
@@ -2915,6 +2917,13 @@ def main():
     EVERY_RUN.append(f'simulator:={SIMULATOR}')
     global COSTMAP, ALL_OURS
     chosen = {}
+    # --with name:=value (repeatable): any sim.launch.py argument, on every session.
+    for at, a in enumerate(args):
+        if a == '--with':
+            if at + 1 >= len(args) or ':=' not in args[at + 1]:
+                print('--with takes name:=value', file=sys.stderr)
+                return 2
+            EVERY_RUN.append(args[at + 1])
     for flag_name, choices in (('--costmap', vehicle.COSTMAPS), ('--tracker', vehicle.TRACKERS),
                                ('--navigator', vehicle.NAVIGATORS),
                                ('--planner', vehicle.PLANNERS)):
