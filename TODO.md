@@ -20,8 +20,30 @@ order; each lands on `main` only after the full test and a sim check.
 | 6 | **Our planner faster**; MPPI slows earlier near the goal | 152 |
 | 7 | **Reverse in a narrow street** (the three-point turn's next test) | 174 |
 | 8 | Look at the screens' new layers; software cameras on Linux; slow map correction in the league | 192, 183, 186 |
-| 9 | The Rust made more Rust-like | 176 |
+| 9 | The Rust crates to try: rayon and tracing first | 195-205 |
+| 10 | The Rust made more Rust-like | 176 |
 | waits | The car (hardware lead); one car drive scored | 157, 158, 173 |
+
+## Rust crates to try (15 Nov)
+
+Ben, 15 Nov: "Would tokio the rust concurrency library help us ... are there other rust
+libraries we could consider using", then "lets add all those crates to our todo list".
+Each is a trial beside what we have; check its licence and credit it in
+`docs/acknowledgements.md` when used. Licences below are to be confirmed.
+
+| # | Crate | Where, and why | Status |
+|---|---|---|---|
+| 195 | **rayon** (MIT/Apache) | many-core loops: our planner's checks (TODO 152), MPPI's futures (today threads by hand), NDT, voxels | ⬜ first |
+| 196 | **tracing** + **tracy** (MIT/Apache; BSD) | see where each Rust node's time goes, live, against its budget (MPPI 50 ms) | ⬜ first |
+| 197 | **Rerun** (MIT/Apache) | view a recorded drive (MCAP) frame by frame: lidar, cameras, poses, plots on one timeline; a challenger to Foxglove/Lichtblick and the dev window for looking back. Not a replay into the nodes (`ros2 bag` stays) | ⬜ |
+| 198 | **tokio** (MIT) | only where we wait on devices: the spine bridge (UDP), the serial drivers, the HUD's ESP32 link. Not the nav maths (that's CPU work: rayon). Only if one of them hits a limit | ⬜ |
+| 199 | **clarabel** (Apache-2.0) | a pure-Rust solver for a proper MPC in Rust (today's `mpc` and `mpc_lag` are Python) | ⬜ |
+| 200 | **kiddo** (MIT/Apache) | fast nearest neighbours: NDT, grouping the things, ICP | ⬜ |
+| 201 | **rstar** (MIT/Apache) | finding nearby lanes in the Lanelet2 map, and the map chunks | ⬜ |
+| 202 | **mcap** (MIT) | read our recordings in Rust tools: scoring a drive, replay checks (TODO 157) | ⬜ |
+| 203 | **criterion** (MIT/Apache) | real benchmarks for the planner, MPPI, the costmap, NDT | ⬜ |
+| 204 | **proptest** (MIT/Apache) | random-input tests for the stop zone, the car model, map chunks | ⬜ |
+| 205 | **zenoh** (`rmw_zenoh`; EPL-2.0/Apache) | ROS 2's newer transport, if Fast DDS keeps giving trouble on the car's WiFi | ⬜ if needed |
 
 ## The night of 14-15 November
 
