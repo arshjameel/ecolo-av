@@ -486,6 +486,27 @@ impl LaneletMap {
         self.rules.get(&id)
     }
 
+    /// The lines a screen draws: every lanelet's painted sides and every stop line, each
+    /// once, in id order; virtual lines (only on the map) left out.
+    pub fn drawn_lines(&self) -> Vec<&Line> {
+        let mut ids: Vec<Id> = self
+            .lanelets
+            .values()
+            .flat_map(|l| [l.left, l.right])
+            .chain(
+                self.rules
+                    .values()
+                    .flat_map(|r| r.stop_lines.iter().copied()),
+            )
+            .collect();
+        ids.sort_unstable();
+        ids.dedup();
+        ids.iter()
+            .filter_map(|id| self.lines.get(id))
+            .filter(|line| line.kind != LineKind::Virtual)
+            .collect()
+    }
+
     /// The lanelets that follow `id`.
     pub fn following(&self, id: Id) -> &[Id] {
         self.next.get(&id).map_or(&[], Vec::as_slice)

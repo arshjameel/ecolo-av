@@ -91,6 +91,22 @@ const BAND_LEGEND: [([u8; 3], &str); 6] = [
     (BAND_RGB[5], "higher"),
 ];
 
+/// One painted line of the lane map, on the map.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LaneLine {
+    pub points: Vec<Point>,
+    pub look: LaneLook,
+}
+
+/// How a lane map's line is drawn.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LaneLook {
+    Solid,
+    Dashed,
+    Stop,
+    Curb,
+}
+
 /// What's drawn. The defaults are the quiet view Ben asked for.
 #[derive(Clone, Copy, Debug)]
 pub struct Layers {
@@ -228,6 +244,8 @@ pub struct WorldNews {
     pub plan: Vec<Point>,
     /// The road ahead, on the map (drawn with the plan, key P).
     pub road_ahead: feed::RoadAhead,
+    /// The lane map's painted lines (`--lanes`, a Lanelet2 .osm), drawn with the road.
+    pub lanes: Vec<LaneLine>,
     /// The squiggly line, in base_link, and when its trace and numbers were last heard.
     pub ahead: Ahead,
     trace_heard: Option<Instant>,
@@ -1103,6 +1121,18 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
                 egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
                 egui::Color32::WHITE,
             );
+        }
+    }
+    if layers.road {
+        for lane in &world.lanes {
+            let (width, colour) = match lane.look {
+                LaneLook::Solid => (1.5, egui::Color32::from_rgb(230, 230, 230)),
+                LaneLook::Dashed => (1.0, egui::Color32::from_rgb(150, 150, 150)),
+                LaneLook::Stop => (3.0, egui::Color32::from_rgb(235, 40, 40)),
+                LaneLook::Curb => (2.0, egui::Color32::from_rgb(200, 170, 60)),
+            };
+            let line: Vec<_> = lane.points.iter().map(|p| to(*p)).collect();
+            painter.add(egui::Shape::line(line, egui::Stroke::new(width, colour)));
         }
     }
     let car = world.car_map;

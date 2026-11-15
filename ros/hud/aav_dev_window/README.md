@@ -41,6 +41,7 @@ pixi run dev-window --live                         # live: may send goals and th
 pixi run dev-window --watch                        # listens to the network it's on; no publishers
 pixi run dev-window --all-layers --seconds 12      # the speed test: prints the frame rate
 pixi run dev-window --cubes 60000 --seconds 8 --screenshot /tmp/window.png
+pixi run dev-window --live --lanes maps/campus/campus.osm   # the lane map's lines (pixi run campus)
 ```
 
 | Key | Does | Key | Does |

@@ -16,6 +16,7 @@
 //! `CLICK_AFTER` seconds, through the same gates: macOS blocks scripted clicks.
 
 mod feed;
+mod lanes;
 mod panels;
 mod pretend;
 #[cfg(feature = "ros")]
@@ -68,6 +69,7 @@ struct Options {
     live: bool,
     developer: bool,
     ndt_map: Option<String>,
+    lanes: Option<String>,
     click_goal: Option<[f64; 2]>,
     cubes: u32,
     all_layers: bool,
@@ -81,6 +83,7 @@ impl Options {
             live: false,
             developer: false,
             ndt_map: None,
+            lanes: None,
             click_goal: None,
             cubes: 20_000,
             all_layers: false,
@@ -94,6 +97,7 @@ impl Options {
                 "--live" => options.live = true,
                 "--developer" => options.developer = true,
                 "--ndt-map" => options.ndt_map = Some(value()?),
+                "--lanes" => options.lanes = Some(value()?),
                 "--click-goal" => {
                     let text = value()?;
                     let parsed = text
@@ -240,6 +244,17 @@ fn main() -> AppExit {
         Some(Some(pretend::ndt_cells()))
     }
     .flatten();
+    if let Some(path) = options.lanes.as_deref() {
+        match lanes::read(path) {
+            Ok(lines) => {
+                ui_state
+                    .world
+                    .note(format!("{path}: {} lane lines", lines.len()));
+                ui_state.world.lanes = lines;
+            }
+            Err(why) => ui_state.world.note(format!("{path}: {why}")),
+        }
+    }
 
     App::new()
         .insert_resource(ClearColor(Color::BLACK))

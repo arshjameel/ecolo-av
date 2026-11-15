@@ -2652,6 +2652,7 @@ dependencies = [
  "bevy_egui",
  "debug-core",
  "hud-core",
+ "lanelet-map",
  "map-core",
  "rclrs",
  "ros-env",
@@ -3904,6 +3905,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "lanelet-map"
+version = "0.1.0"
+dependencies = [
+ "roxmltree",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4120,6 +4128,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "map-chunks"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_yaml_ng",
+]
+
+[[package]]
 name = "map-core"
 version = "0.1.0"
 dependencies = [
@@ -4308,6 +4324,7 @@ dependencies = [
 name = "ndt-core"
 version = "0.1.0"
 dependencies = [
+ "map-chunks",
  "nalgebra",
 ]
 
@@ -5375,6 +5392,12 @@ dependencies = [
  "cfg-if",
  "rustflags",
 ]
+
+[[package]]
+name = "roxmltree"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
 
 [[package]]
 name = "rsqlite-vfs"

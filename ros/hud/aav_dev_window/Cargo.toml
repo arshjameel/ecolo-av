@@ -29,6 +29,7 @@ bevy_egui = "0.43"
 debug-core = { path = "../aav_hud/crates/debug-core" }  # the cubes' bands, the camera
 hud-core = { path = "../aav_hud/crates/hud-core" }      # a picture message into RGBA
 map-core = { path = "../aav_hud/crates/map-core" }      # map to screen and back; grids
+lanelet-map = { path = "../../bringup/aav_description/lanelet-map" }  # the lane map (--lanes)
 serde = { version = "1", features = ["derive"] }
 serde_yaml_ng = "0.10"
 rclrs = { version = "0.8", optional = true }

@@ -172,3 +172,10 @@ fn a_broken_file_says_what_is_wrong() {
         Err(MapError::Xml(_))
     ));
 }
+
+#[test]
+fn a_screen_draws_each_painted_line_once_and_the_stop_line() {
+    let m = map("dashed");
+    let ids: Vec<Id> = m.drawn_lines().iter().map(|l| l.id).collect();
+    assert_eq!(ids, vec![21, 22, 23, 24, 25, 26, 30]);
+}
