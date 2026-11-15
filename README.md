@@ -185,6 +185,7 @@ Flashing writes a board: on the bench only.
 | `talk` | tell the car what to do in plain English; a local model plans it (turtle, sim or bench only) |
 | `-e mcp mcp`, `-e mcp drive-server` | the MCP servers for Claude: read-only, and the drive tools. Claude starts them |
 | `-e routes router` | the street router on 127.0.0.1:8002 (needs `get routes`) |
+| `-e rerun view-bag` | a recording in Rerun, a trial viewer beside Foxglove: `view-bag bags/<drive>/<drive>_0.mcap` (TODO 197) |
 
 ### Without a task
 

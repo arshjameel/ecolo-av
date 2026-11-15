@@ -234,6 +234,18 @@ pyvalhalla = "==3.9.1"
 [feature.routes.tasks]
 router = { cmd = "tools/router.sh", description = "Start the street router (Valhalla) on 127.0.0.1:8002, for street_route: pixi run -e routes router (pixi run get routes first)" }
 
+# Rerun (MIT/Apache-2.0, TODO 197): a recording viewer to try beside Foxglove, Lichtblick
+# and the dev window. It opens our MCAP recordings as they are (ROS 2 messages read from
+# their definitions). Laptops only, its own environment: the default one isn't re-solved.
+[feature.rerun]
+platforms = ["linux-64", "mac"]
+
+[feature.rerun.dependencies]
+rerun-sdk = "*"
+
+[feature.rerun.tasks]
+view-bag = { cmd = "rerun", description = "Open a recording in Rerun (a trial viewer): pixi run -e rerun view-bag bags/<drive>/<drive>_0.mcap" }
+
 # KISS-ICP (MIT, PRBonn): lidar odometry, a trial beside the wheels and the IMU
 # (aav_kiss_icp, docs/designs/2026-10-30_kiss-icp.md). Not in conda-forge or RoboStack;
 # its own wheel on PyPI carries the C++ core, for Linux (x86_64 and aarch64: the Orin)
@@ -325,4 +337,5 @@ kiss = { features = ["kiss"], no-default-feature = true }
 learn = { features = ["learn"], no-default-feature = true }
 gst = { features = ["gst"], no-default-feature = true }
 calib = { features = ["calib"], no-default-feature = true }
+rerun = { features = ["rerun"], no-default-feature = true }
 
