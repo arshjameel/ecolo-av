@@ -249,6 +249,51 @@ pub struct LaneletMap {
     next: BTreeMap<Id, Vec<Id>>,
     /// Lanelet -> the lanelets beside it a car may change into.
     beside: BTreeMap<Id, Vec<Id>>,
+    /// Every centre line's segments, in an R-tree (TODO 201): `nearest` looks at the few
+    /// near a point, not every lanelet's whole line.
+    index: rstar::RTree<Segment>,
+}
+
+/// One segment of a lanelet's centre line, in the R-tree.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Segment {
+    lanelet: Id,
+    a: Point,
+    b: Point,
+}
+
+impl Segment {
+    /// The segments of each lanelet's centre line (a line of one point: a point).
+    fn of(lanelets: &BTreeMap<Id, Lanelet>) -> Vec<Self> {
+        lanelets
+            .values()
+            .flat_map(|l| {
+                let pairs: Vec<(Point, Point)> = match l.centre.as_slice() {
+                    [only] => vec![(*only, *only)],
+                    line => line.windows(2).map(|w| (w[0], w[1])).collect(),
+                };
+                pairs.into_iter().map(move |(a, b)| Segment {
+                    lanelet: l.id,
+                    a,
+                    b,
+                })
+            })
+            .collect()
+    }
+}
+
+impl rstar::RTreeObject for Segment {
+    type Envelope = rstar::AABB<[f64; 2]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        rstar::AABB::from_corners([self.a.x, self.a.y], [self.b.x, self.b.y])
+    }
+}
+
+impl rstar::PointDistance for Segment {
+    fn distance_2(&self, point: &[f64; 2]) -> f64 {
+        distance_to_line(Point::new(point[0], point[1]), &[self.a, self.b]).powi(2)
+    }
 }
 
 /// Points along the centre line: one every this far, at least (m).
@@ -418,7 +463,9 @@ impl LaneletMap {
             rules,
             next: BTreeMap::new(),
             beside: BTreeMap::new(),
+            index: rstar::RTree::new(),
         };
+        map.index = rstar::RTree::bulk_load(Segment::of(&map.lanelets));
         map.link();
         Ok(map)
     }
@@ -517,8 +564,18 @@ impl LaneletMap {
         self.beside.get(&id).map_or(&[], Vec::as_slice)
     }
 
-    /// The lanelet whose centre line passes nearest (x, y).
+    /// The lanelet whose centre line passes nearest (x, y); of two as near (where one
+    /// lane ends and the next begins), the smaller id.
     pub fn nearest(&self, x: f64, y: f64) -> Option<Id> {
+        let mut near = self.index.nearest_neighbor_iter_with_distance_2(&[x, y]);
+        let (first, best) = near.next()?;
+        let tied = near.take_while(|&(_, d)| d <= best).map(|(s, _)| s.lanelet);
+        tied.chain([first.lanelet]).min()
+    }
+
+    /// `nearest` the slow way, every lanelet's whole line: the R-tree's yardstick.
+    #[cfg(test)]
+    fn nearest_by_scan(&self, x: f64, y: f64) -> Option<Id> {
         let p = Point::new(x, y);
         self.lanelets
             .values()

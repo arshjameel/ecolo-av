@@ -26,7 +26,7 @@ Nothing uses it yet: next, the route level and the behaviour planner.
 | `LaneletMap::from_osm(text, Origin)` | read a map; points from `local_x`/`local_y`, or lat/lon east and north of the origin (WGS-84) |
 | `lanelets()`, `lanelet(id)`, `line(id)`, `rule(id)` | the parts |
 | `following(id)`, `beside(id)` | the routing graph |
-| `nearest(x, y)` | the lanelet whose centre line passes nearest |
+| `nearest(x, y)` | the lanelet whose centre line passes nearest (an R-tree of the centre lines' segments, `rstar`; of two as near, the smaller id) |
 | `route(from, to)` | A* over lanes: length driven, a lane change counted as 10 m; `None` if no way |
 | `stops_on(route)` | each stop line met: (lanelet, rule, the line's middle) |
 | `MapError` | why a file couldn't be read |

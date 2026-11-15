@@ -139,6 +139,33 @@ fn the_nearest_lane_is_the_one_you_are_in() {
 }
 
 #[test]
+fn the_r_tree_finds_the_lane_the_whole_scan_finds() {
+    // TODO 201: a grid of points over and round the road, the index against every line.
+    let m = map("dashed");
+    let distance = |id: Id, x: f64, y: f64| {
+        distance_to_line(Point::new(x, y), &m.lanelet(id).expect("a lanelet").centre)
+    };
+    for i in -10..=60 {
+        for j in -12..=16 {
+            let (x, y) = (f64::from(i) * 0.97, f64::from(j) * 0.53);
+            let (fast, slow) = (m.nearest(x, y), m.nearest_by_scan(x, y));
+            let (fast, slow) = (fast.expect("a lane"), slow.expect("a lane"));
+            // Where two are as near (one ends, the next begins), either is right.
+            assert!(
+                (distance(fast, x, y) - distance(slow, x, y)).abs() < 1e-9,
+                "({x}, {y}): {fast} against {slow}"
+            );
+        }
+    }
+}
+
+#[test]
+fn an_empty_map_has_no_nearest_lane() {
+    let m = LaneletMap::from_osm("<osm></osm>", Origin::default()).expect("a map");
+    assert_eq!(m.nearest(0.0, 0.0), None);
+}
+
+#[test]
 fn lat_lon_points_go_on_the_map_round_the_origin() {
     let osm = r#"<osm>
         <node id="1" lat="45.386" lon="-75.696"/>

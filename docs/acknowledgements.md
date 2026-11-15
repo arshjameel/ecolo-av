@@ -104,6 +104,7 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **rclrs** (ros2-rust) | Apache-2.0 | runs | our Rust ROS nodes |
 | **rayon** | MIT / Apache-2.0 | runs | each map chunk loaded and built on its own core (`map-chunks` `Store::update`, TODO 195) |
 | **proptest** | MIT / Apache-2.0 | tests only | the stop zone's, the map chunks' and the car model's rules checked on thousands of random inputs (`tests/props.rs`, TODO 204) |
+| **rstar** (the georust project) | MIT / Apache-2.0 | runs | an R-tree of the Lanelet2 map's centre lines, for the nearest lane (`lanelet-map`, TODO 201) |
 | **mcap** (Foxglove) | MIT | examples and tests only | MPPI's `follow_plan` reads a recording's plans (`examples/bag`, TODO 202) |
 | **criterion** (Brook Heisler, Jorge Aparicio) | MIT / Apache-2.0 | benchmarks only | MPPI's tick, the planner's legs, the costmap's updates and an NDT match timed with statistics (`benches/`, TODO 203) |
 | **tracing**, **tracing-subscriber** (tokio-rs) | MIT | runs, only when built in | the MPPI tick's stages as spans, timed on stderr (`aav_mppi_lag` feature `trace`, TODO 196) |

@@ -13,3 +13,5 @@ publish = false
 [dependencies]
 # MIT or Apache-2.0: a small read-only XML tree, enough for Lanelet2's .osm files.
 roxmltree = "0.20"
+# MIT or Apache-2.0: an R-tree of the centre lines, for `nearest` (TODO 201).
+rstar = "0.12"
