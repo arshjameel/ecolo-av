@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-simulator.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own simulator</h1>
-<div class="meta">11 min read · 8 sections</div></header>
+<div class="meta">12 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -117,7 +117,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#in-one-picture">In one picture</a><a href="#what-it-gives">What it gives</a><a href="#the-worlds">The worlds</a><a href="#the-car">The car</a><a href="#plug-in-points">Plug-in points</a><a href="#head-to-head-with-the-cameras-8-nov-bens-mac-quiet-load-4-15">Head to head, with the cameras (8 Nov, Ben&#x27;s Mac, quiet: load 4-15)</a><a href="#results-7-nov-bens-mac-other-agents-running-load-30-40">Results (7 Nov, Ben&#x27;s Mac, other agents running: load 30-40)</a><a href="#not-there-yet">Not there yet</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#in-one-picture">In one picture</a><a href="#what-it-gives">What it gives</a><a href="#the-worlds">The worlds</a><a href="#the-car">The car</a><a href="#plug-in-points">Plug-in points</a><a href="#head-to-head-with-the-cameras-8-nov-bens-mac-quiet-load-4-15">Head to head, with the cameras (8 Nov, Ben&#x27;s Mac, quiet: load 4-15)</a><a href="#results-7-nov-bens-mac-other-agents-running-load-30-40">Results (7 Nov, Ben&#x27;s Mac, other agents running: load 30-40)</a><a href="#no-gpu-15-nov">No GPU (15 Nov)</a><a href="#not-there-yet">Not there yet</a></nav>
 <div class="lead"><p>Ben, 7 Nov: "merge in everything from gazebo so its standalone in rust". This page is the
 simulator's <strong>core</strong>: the world, the car, the lidar, the radar, the IMU, the GPS, the wheels
 and the clock. The cameras are their own program (<a href="own-simulator-cameras.html">its page</a>),
@@ -127,9 +127,10 @@ Every argument, the worlds and <code>sim-check</code>: <a href="simulation.html"
 pixi run sim-check                                     # the road world's checks, on ours
 pixi run sim simulator:=gazebo world:=test_lot         # Gazebo, as before</code></pre>
 <p><strong>Ours is the default since 8 Nov</strong>: it passed every <code>sim-check</code> leg Gazebo passes (below).
-Gazebo stays, as <code>simulator:=gazebo</code>: to compare, and on a computer with no GPU (GitHub's
-CI, oirp-spss), where our cameras can't draw (<code>sim_cameras</code> says "no GPU to draw with")
-but Gazebo's can, in software (<code>tools/software_gl.sh</code>).</p></div>
+Gazebo stays, as <code>simulator:=gazebo</code>, to compare, until 0.4-rc1 is scored.</p>
+<p><strong>No GPU (15 Nov, TODO 183):</strong> our cameras draw in software too, on Mesa's lavapipe:
+<code>tools/software_gl.sh pixi run sim-check</code>. Gazebo's last job (CI, oirp-spss) can move to
+ours. Tried on a Mac only; on Linux <span class="badge b-untested">untested</span>. See <a href="#no-gpu-15-nov">No GPU</a> below.</p></div>
 <section class="card"><h2 id="in-one-picture">In one picture</h2>
 <pre class="highlight"><code class="language-text"> ego ─&gt; output mux ─&gt; gazebo_adapter ──/gazebo/cmd_vel──&gt; simulator (Rust)
                       (actuator model)                      │ world: Gazebo's .sdf files
@@ -444,6 +445,62 @@ time (<code>simulator:=</code>).</p>
 <td>Real-time factor</td>
 <td>0.71-1.00 under that load</td>
 <td>not run here: its renderer didn't load in this worktree</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="no-gpu-15-nov">No GPU (15 Nov)</h2>
+<p>The cameras are the only part that draws; the rest of our simulator never needed a GPU.
+Their own page has the details: <a href="own-simulator-cameras.html">the cameras, with no GPU</a>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Works?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The cameras on Mesa's lavapipe (software Vulkan), a Mac, forced (<code>software_gl.sh --force</code>)</td>
+<td>yes: 4 cameras at 10 Hz in the road world, pictures as the GPU's</td>
+</tr>
+<tr>
+<td><code>sim-check</code> (road world), the cameras in software, a Mac (<code>software_gl.sh --force</code>)</td>
+<td><strong>pass</strong>, every leg: all 3 cameras at 10.0 Hz, EKF vs truth 0.10 m</td>
+</tr>
+<tr>
+<td><code>sim-check --obstacle</code>, the same way</td>
+<td><strong>pass</strong>: the stop zone stopped the car 0.92 m from the box; the goal reached after</td>
+</tr>
+<tr>
+<td>The same on Linux, no GPU (CI, oirp-spss)</td>
+<td><span class="badge b-untested">untested</span>: CI's nightly <code>sim</code> job now runs it, beside Gazebo's</td>
+</tr>
+<tr>
+<td>The campus world in software</td>
+<td>no: 1.3 s a picture round. Campus needs a GPU</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tools/software_gl.sh pixi run sim-check</code></td>
+<td>Linux, no GPU: our cameras on lavapipe</td>
+</tr>
+<tr>
+<td><code>tools/software_gl.sh --force pixi run sim-check</code></td>
+<td>a Mac or a Linux computer with a GPU: CI's way</td>
+</tr>
+<tr>
+<td><code>pixi run sim-check --no-cameras</code></td>
+<td>anywhere: no pictures at all</td>
 </tr>
 </tbody>
 </table></div>

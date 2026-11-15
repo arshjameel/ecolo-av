@@ -1224,7 +1224,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="own-simulator-cameras.html">Our simulator's cameras</a> (<code>aav_sim_cameras</code>, <code>pixi run sim-cameras</code>)</td>
-<td>Ben, 7 Nov: replace Gazebo with our own Rust simulator, every sensor. Bevy draws each car camera offscreen with Gazebo's picture, lens, rate and frame, so the detector and stop-sign watcher can't tell them apart. Joined to the core (8 Nov): they draw the same world files (test lot, road, campus: boxes, cylinders, planes, OBJ meshes and their pictures), so <code>simulator:=own</code> runs perception, lane and faults. Models placed while running (<code>spawn_entity</code>, the obstacle) are drawn too, from <code>/vehicle/sim/entities</code></td>
+<td>Ben, 7 Nov: replace Gazebo with our own Rust simulator, every sensor. Bevy draws each car camera offscreen with Gazebo's picture, lens, rate and frame, so the detector and stop-sign watcher can't tell them apart. Joined to the core (8 Nov): they draw the same world files (test lot, road, campus: boxes, cylinders, planes, OBJ meshes and their pictures), so <code>simulator:=own</code> runs perception, lane and faults. Models placed while running (<code>spawn_entity</code>, the obstacle) are drawn too, from <code>/vehicle/sim/entities</code>. Since 15 Nov they draw with no GPU too, on Mesa's lavapipe (<code>tools/software_gl.sh</code>; TODO 183: Gazebo's last job), and say which adapter draws</td>
 <td>Ben</td>
 <td>2026-11-08</td>
 <td>sim</td>

@@ -151,8 +151,9 @@ EGM artifact directory: docs/designs
   and its own `GZ_PARTITION`; without them the car never spawns.
   The road world's cameras need `tools/software_gl.sh` in front there (no GPU, as on
   GitHub's runners): `tools/software_gl.sh pixi run sim-check --simulator gazebo`.
-- Our own simulator (`simulator:=own`, the default since 8 Nov) needs a GPU for its
-  cameras; on a computer without one, use `simulator:=gazebo`.
+- Our own simulator (`simulator:=own`, the default since 8 Nov) draws its cameras on the
+  GPU; on a computer without one, put `tools/software_gl.sh` in front (Mesa's lavapipe;
+  tried on a Mac, untested on Linux yet), or use `--no-cameras` or `simulator:=gazebo`.
 
 ## Git
 

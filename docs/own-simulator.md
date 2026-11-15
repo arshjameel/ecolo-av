@@ -13,9 +13,11 @@ pixi run sim simulator:=gazebo world:=test_lot         # Gazebo, as before
 ```
 
 **Ours is the default since 8 Nov**: it passed every `sim-check` leg Gazebo passes (below).
-Gazebo stays, as `simulator:=gazebo`: to compare, and on a computer with no GPU (GitHub's
-CI, oirp-spss), where our cameras can't draw (`sim_cameras` says "no GPU to draw with")
-but Gazebo's can, in software (`tools/software_gl.sh`).
+Gazebo stays, as `simulator:=gazebo`, to compare, until 0.4-rc1 is scored.
+
+**No GPU (15 Nov, TODO 183):** our cameras draw in software too, on Mesa's lavapipe:
+`tools/software_gl.sh pixi run sim-check`. Gazebo's last job (CI, oirp-spss) can move to
+ours. Tried on a Mac only; on Linux [[untested]]. See [No GPU](#no-gpu-15-nov) below.
 
 ## In one picture
 
@@ -132,6 +134,25 @@ time (`simulator:=`).
 | `--drive-to-point`, 1 m/s | 7 of 8 pass, B within 0.11-0.34 m; the +150° leg refused (B inside the tightest turn from where the last leg stopped) | pass (0.2) |
 | `--drive-to-point`, 3 m/s | 3 of 4 pass, B within 0.05-0.12 m; one leg held by the sensor watchdog (a stale sensor on the loaded Mac) | pass (0.2) |
 | Real-time factor | 0.71-1.00 under that load | not run here: its renderer didn't load in this worktree |
+
+## No GPU (15 Nov)
+
+The cameras are the only part that draws; the rest of our simulator never needed a GPU.
+Their own page has the details: [the cameras, with no GPU](own-simulator-cameras.md).
+
+| What | Works? |
+|---|---|
+| The cameras on Mesa's lavapipe (software Vulkan), a Mac, forced (`software_gl.sh --force`) | yes: 4 cameras at 10 Hz in the road world, pictures as the GPU's |
+| `sim-check` (road world), the cameras in software, a Mac (`software_gl.sh --force`) | **pass**, every leg: all 3 cameras at 10.0 Hz, EKF vs truth 0.10 m |
+| `sim-check --obstacle`, the same way | **pass**: the stop zone stopped the car 0.92 m from the box; the goal reached after |
+| The same on Linux, no GPU (CI, oirp-spss) | [[untested]]: CI's nightly `sim` job now runs it, beside Gazebo's |
+| The campus world in software | no: 1.3 s a picture round. Campus needs a GPU |
+
+| Command | Where |
+|---|---|
+| `tools/software_gl.sh pixi run sim-check` | Linux, no GPU: our cameras on lavapipe |
+| `tools/software_gl.sh --force pixi run sim-check` | a Mac or a Linux computer with a GPU: CI's way |
+| `pixi run sim-check --no-cameras` | anywhere: no pictures at all |
 
 ## Not there yet
 

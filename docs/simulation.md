@@ -59,9 +59,9 @@ pixi run sim simulator:=gazebo   # Gazebo itself, not our simulator
 **Since 8 Nov the default is [our own simulator](own-simulator.md)** (`simulator:=own`): it
 plays `gz sim` and its bridges, on the same worlds and topics, so everything else runs
 unchanged. It passed every `sim-check` leg Gazebo passes, three times each. Gazebo stays as
-`simulator:=gazebo`: to compare, and on a computer with no GPU, where only Gazebo's cameras
-draw (in software: `tools/software_gl.sh pixi run sim simulator:=gazebo`). The rest of this
-page says Gazebo: both play the same part.
+`simulator:=gazebo`, to compare. On a computer with no GPU both draw their cameras in
+software: put `tools/software_gl.sh` in front (ours since 15 Nov, [[untested]] on Linux).
+The rest of this page says Gazebo: both play the same part.
 
 | Argument | Default | Means |
 |---|---|---|
@@ -213,10 +213,15 @@ To drive it:
 !!! tip "No GPU, or in a virtual machine?"
   Start it with `gui:=false`, and watch in RViz or Foxglove instead. The empty world
   renders nothing, so it runs anywhere. The road, test_lot and campus worlds render the
-  cameras and the lidar: on Linux with no GPU, start it through `tools/software_gl.sh`, as
-  `tools/software_gl.sh pixi run sim simulator:=gazebo gui:=false` (Mesa's software OpenGL). Without it,
-  Gazebo crashes as the world loads (`Unable to load Ogre Plugin`), and the car never
-  appears. [[works]] on oirp-spss, 23 Oct.
+  cameras: on Linux with no GPU, start it through `tools/software_gl.sh` (Mesa's software
+  renderers).
+
+  | Simulator | Command | Without it |
+  |---|---|---|
+  | ours | `tools/software_gl.sh pixi run sim gui:=false` | `sim_cameras: no GPU to draw with`; [[untested]] on Linux (a Mac, forced: works, 15 Nov) |
+  | Gazebo | `tools/software_gl.sh pixi run sim simulator:=gazebo gui:=false` | Gazebo crashes as the world loads (`Unable to load Ogre Plugin`); [[works]] on oirp-spss, 23 Oct |
+
+  The campus world is too big to draw in software (1.3 s a picture): it needs a GPU.
 
 !!! tip "The car never appears?"
   If the log keeps saying `Requesting list of world names`, Gazebo's programs can't find
