@@ -279,7 +279,7 @@ the car.** Every existing one stays (Ben, 5 Nov).
 | W3 | The lane-centre line first, the cost ramp as the challenger (swaps one shape's steps 1 and 1b) | yes |
 | W4 | The lane finder becomes a pose sensor; the lane driver stays as a challenger | yes |
 | W5 | The lane map's format: Lanelet2 (on RoboStack for Jazzy, 1.2.1, BSD-3-Clause; not yet tried in our `pixi.lock`) | try it; else grow `lanes.yaml` |
-| W6 | The freeze on new challengers until the champion drives on the car | yes |
+| W6 | The freeze on new challengers until the champion drives on the car | yes. **Ben, 15 Nov: no freeze** (`docs/decisions.md`) |
 | W7 | The order above | yes |
 
 One shape's D1-D7 stand, except D2 (W3 replaces it).

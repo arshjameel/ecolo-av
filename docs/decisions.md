@@ -205,6 +205,10 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 14 Nov | The smooth moves are made for **1 m/s** (`smooth`, ego's top speed) and **2.5 m/s** (`smooth_fast`, the campus), at 1/1.25 of ego's 0.6 rad/s; with them the lattice's **smoother is off** (its Dubins ends put the jumps back) | Ben |
 | 14 Nov | **Hybrid-A\* in our Rust planner now**, another option beside the lattice | Ben |
 | 14 Nov | **We run our own stack; Nav2 and Gazebo leave**: "I would like to remove nav2 and gazeboo ... run everythign ourselves in rust and/or python". `stack:=ours` and our simulator become the default now; Nav2 and Gazebo stay only as yardsticks until 0.4-rc1 is scored, then are deleted. robot_localization, twist_mux and teleop_twist_* stay for now. CLAUDE.md's rules changed to match | Ben |
+| 15 Nov | **No freeze on new challengers** (the whole-car design's W6: no): "We want to build the best version ... that might inlcude reading papers or merging ideas together that we already have" | Ben |
+| 15 Nov | **The order**: the 0.4-rc1 list first (the sway, 170, 174, 182-185), then the whole-car design's gaps (the planner inside the road ahead's edges, the soft edge to pass, following at a gap, the things' critic), then 155 and 156 | Ben |
+| 15 Nov | **Lanelet2 in Rust** (our own reader, TODO 175) now, after the sway work | Ben |
+| 15 Nov | The old `wip/` branches (7 Nov): checked against `next`, anything useful taken, then archived | Ben |
 
 ## Proposed in November: Ben's to decide
 
