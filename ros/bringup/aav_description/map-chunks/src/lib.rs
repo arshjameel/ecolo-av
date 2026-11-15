@@ -36,6 +36,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
+use rayon::prelude::*;
+
 pub mod files;
 
 /// A point on the map (m).
@@ -259,16 +261,25 @@ impl<T> Store<T> {
 
     /// Load what `want` holds and isn't loaded at that detail; drop what it doesn't hold.
     ///
-    /// All the loads run first: if one fails, its error comes back and nothing changes.
-    pub fn update<E>(
+    /// All the loads run first, each chunk on its own core (rayon; Ben, 15 Nov: "processing
+    /// each block could be done in threads"): a new chunk reached loads 3 to 15 at once.
+    /// If one fails, its error comes back and nothing changes.
+    pub fn update<E: Send>(
         &mut self,
         want: &BTreeMap<ChunkKey, Detail>,
-        mut load: impl FnMut(ChunkKey, Detail) -> Result<T, E>,
-    ) -> Result<Changes, E> {
-        let fresh = want
+        load: impl Fn(ChunkKey, Detail) -> Result<T, E> + Sync,
+    ) -> Result<Changes, E>
+    where
+        T: Send,
+    {
+        let needed: Vec<(ChunkKey, Detail)> = want
             .iter()
             .filter(|(key, detail)| self.chunks.get(key).map(|(have, _)| have) != Some(detail))
-            .map(|(&key, &detail)| load(key, detail).map(|layers| (key, detail, layers)))
+            .map(|(&key, &detail)| (key, detail))
+            .collect();
+        let fresh = needed
+            .into_par_iter()
+            .map(|(key, detail)| load(key, detail).map(|layers| (key, detail, layers)))
             .collect::<Result<Vec<_>, E>>()?;
         let dropped: Vec<ChunkKey> = self
             .chunks
@@ -433,6 +444,7 @@ pub fn cut(grid: &Grid, map: &WholeMap<'_>, detail: Detail) -> BTreeMap<ChunkKey
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicU32, Ordering};
 
     fn campus() -> Grid {
         Grid::new(Point::new(-900.0, -900.0), 64.0).unwrap()
@@ -522,22 +534,21 @@ mod tests {
     fn the_store_loads_what_is_new_and_drops_what_is_left_behind() {
         let grid = campus();
         let mut store: Store<u32> = Store::new();
-        let mut loads = 0;
-        let mut count = |_: ChunkKey, _: Detail| -> Result<u32, ()> {
-            loads += 1;
-            Ok(loads)
+        let loads = AtomicU32::new(0);
+        let count = |_: ChunkKey, _: Detail| -> Result<u32, ()> {
+            Ok(loads.fetch_add(1, Ordering::Relaxed) + 1)
         };
         let first = store
-            .update(&wanted(&grid, Point::new(5.0, 5.0), &[], 0.0), &mut count)
+            .update(&wanted(&grid, Point::new(5.0, 5.0), &[], 0.0), count)
             .unwrap();
         assert_eq!((first.loaded.len(), first.dropped.len()), (9, 0));
         // One chunk east: three columns new, three dropped, six kept as they were.
         let second = store
-            .update(&wanted(&grid, Point::new(69.0, 5.0), &[], 0.0), &mut count)
+            .update(&wanted(&grid, Point::new(69.0, 5.0), &[], 0.0), count)
             .unwrap();
         assert_eq!((second.loaded.len(), second.dropped.len()), (3, 3));
         assert_eq!(store.len(), 9);
-        assert_eq!(loads, 12);
+        assert_eq!(loads.into_inner(), 12);
     }
 
     #[test]
