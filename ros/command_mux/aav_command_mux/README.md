@@ -86,7 +86,15 @@ Launch arguments:
 
 ## Verification
 
-No tests of its own. Others check its files:
+```sh
+pixi run build && colcon test --packages-select aav_command_mux && colcon test-result --verbose
+```
+
+| Test | Covers |
+|---|---|
+| `test_mux_runtime.py` | priority selection and input timeouts at runtime |
+
+Other tests that check its files:
 
 | Test | Checks |
 |---|---|
