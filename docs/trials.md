@@ -25,6 +25,7 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 > - **7 Nov, the lag-aware MPC** (`tracker:=mpc_lag`): plans steering and speed through the car's own lags (the shared car model); tells ego to keep its lead off. Pretend car: no speed overshoot (others 14 %), and with the lags doubled the U-turn at 2 m/s off by **0.17 m** (MPC 0.36, LQR 0.27). **Our simulator, 3 runs: 6 of 12 legs** (MPPI 8, RPP 9, the Rust `mppi_lag` 11): best on the legs it drives, but it never made the U-turn by the building: it doesn't read the costmap. [Results](#lag-aware-mpc-7-nov-mpc_lag).
 > - **7-8 Nov, our own Rust pieces** (each has its page; all trials, Nav2's stay the default and on the car): MPPI with lag (`tracker:=mppi_lag`, [page](mppi-lag.md)), the costmap ([page](own-costmap.md)), the planner ([page](own-planner.md)), the navigator ([page](own-navigator.md)), the velocity smoother ([page](own-smoother.md)); the behaviour planner and the adaptive brake ([how the car stops](stopping.md)). What is the default today: [Switches](switches.md#the-defaults-what-runs-if-you-say-nothing).
 > - **14 Nov, the wiggle** (TODO 149): three tests on the campus road. A new plan every second moved Pure Pursuit and `mppi_lag`; the GPS's jitter moves Pure Pursuit; the smoother nothing; MPPI's 6-8 cm is its own. The trees now keep a valid path: RPP's swing **0.12-0.13 → 0.09 m**, `mppi_lag`'s **0.14-0.17 → 0.10 m**, no more loops at the goal. [Results](#the-wiggle-14-nov-todo-124-149).
+> - **15 Nov, the lane finder as a pose sensor** (`lane_pose:=true`, TODO 155): the painted lines and the lane map correct the global EKF sideways. Our simulator: sideways error **9-10 → 2 cm** RMS on the straight road world, **9.9 → 5.4 cm** on a campus road; jitter a third to a half. The wiggle with it steering: not shown (little paint on that tour). Off by default. [Results](#the-lane-finder-as-a-pose-sensor-15-nov-todo-155).
 > - The design: `docs/designs/2026-10-29_trials.md`.
 
 ## What is on trial
@@ -1277,3 +1278,84 @@ at the end any more. MPPI's swing (6-8 cm) didn't change: it never came from the
 - Not yet on the car, nor in Gazebo (our simulator only); 2 runs each.
 
 Raw runs (not in git): `log/wiggle/a-base`, `a-truth`, `a-once`, `b-after`.
+
+## The lane finder as a pose sensor, 15 Nov (TODO 155)
+
+**The idea:** the GPS knows where the car is to a metre and jitters. The painted lines
+know where it is **across** the road to a few centimetres. With the lane map, that is a
+pose in the map: sure across the lane, nothing along it.
+
+```text
+ lane_finder ──lines──┐
+ lane map ──centre────┼─► lane_pose ──► /localization/lane/pose ──► ekf_global (x, y)
+ TF map → base_link ──┘    (gates)       0.15 m across, 50 m along
+```
+
+**Switch:** `lane_pose:=true` (`sim.launch.py`, `localization.launch.py`). Off by default:
+the GPS-only EKF stays the champion. Package: `aav_lane_pose`; config:
+`aav_localization/config/ekf_global_lane.yaml`.
+
+### The gates
+
+A picture becomes a pose only if all of these pass. The last two came from the campus.
+
+| Gate | Refused when |
+|---|---|
+| a line | none seen, or the surest under 0.5 confidence |
+| the car's angle | more than 0.3 rad from the lane |
+| the map | off every road; another road or the road's end within 4 m behind, 12 m ahead |
+| the width | both lines seen, gap off the map lane's by over 0.6 m |
+| jumps | the offset moved over 0.4 m in under 1 s |
+| the filter | the offset over 1.5 m from the filter's (the other lane) |
+| **the angle again** | the lines' angle over 0.05 rad from the filter's |
+| **the bend** | the lines' bend over 0.003 1/m from the map lane's |
+
+**Why the last two:** the finder fits each line 4-16 m ahead and carries it back to the
+car. A dashed centre line, or a junction's paint, bends the fit: the offset was then 0.2-0.4 m
+wrong for seconds at a time. On a recorded campus drive (offline, the truth beside it):
+
+| Pictures used | Offset vs the truth, RMS | 95 % | Worst |
+|---|---|---|---|
+| every one | 48 cm | 43 cm | 3.9 m |
+| the angle and bend gates | **4.3 cm** | 9.9 cm | 19 cm |
+
+### The numbers: the global EKF against the truth
+
+`tools/lane_drive.py [--lane-pose]` (`pixi run measure lane`): the lane follower steers by
+the camera; the EKF only watches, so this is the pose alone. Our simulator, 90 s each.
+
+| Road | lane_pose | Sideways error, RMS | 95 % | Worst | Jitter (RMS) |
+|---|---|---|---|---|---|
+| the road world, straight (2 runs each) | off | 9.2, 9.7 cm | 21, 19 cm | 33, 26 cm | 3.2, 3.0 cm |
+| | **on** | **1.9, 2.0, 2.1 cm** | 3.8-3.9 cm | 7-10 cm | **1.0-1.2 cm** |
+| the campus, Library Road, 130 m with a bend | off (2 runs) | 9.9, 9.9 cm | 20, 20 cm | 30 cm | 3.3 cm |
+| | on, before the last two gates | 10.5, 10.8 cm | 29 cm | 35 cm | 1.6 cm |
+| | **on** (2 runs) | **5.4, 5.4 cm** | 13 cm | 20 cm | **2.0, 2.1 cm** |
+
+The jitter is the sideways error less its own 2 s average: the quick swing a path
+follower sees. Along the road nothing changes (6-8 cm RMS), as designed.
+
+### The wiggle with the EKF steering: not shown
+
+The wiggle's tour (`measure controllers --stacks own --tours wiggle --runs 2`, 2.5 m/s):
+
+| lane_pose | Swing (m RMS) | Steering flips a second | Reached |
+|---|---|---|---|
+| off | 0.098, 0.086 | 0.34, 0.28 | 1/2 (run 2: the follower aborted) |
+| on | 0.091, 0.092 | 0.28, 0.32 | 2/2 |
+
+**No effect to read here:** most of that road has no paint the finder sees. Of about
+1,400 pictures a run, 17-32 became poses. The rest: no line (most), a junction, or an
+offset over 1.5 m from the filter's (probably the car out of the map's right-hand lane:
+the planner doesn't keep right). A fair test
+needs a long painted road with the car in its lane (our stack with `lane_map:=world`).
+
+### What it shows
+
+- Where the paint is good, the sideways error is **4-5 times smaller** and the jitter
+  **a third**. On a real road with a bend, **half**.
+- Bad lines would make it worse (the campus, before the last two gates): the gates matter
+  more than the filter.
+- **Not tested:** the car (a real camera, real paint, its EKF heading off by ~2°, which
+  the angle gate leans on); the wiggle with it steering; reversing; night.
+- It stays a challenger, off by default.

@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">114 min read · 4 sections</div></header>
+<div class="meta">115 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -994,7 +994,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/perception/lane/geometry</code></td>
 <td><code>aav_lane_geometry/msg/LaneGeometry</code></td>
 <td><code>lane_finder</code>, <code>fake_lane_geometry_pub</code></td>
-<td><code>control_interface</code></td>
+<td><code>control_interface</code>, <code>lane_pose</code></td>
 <td>-</td>
 <td>One per camera picture, from lane_finder (aav_lane_finder, classic OpenCV), in base_link. vehicle_offset_m - the car from the lane's centre, 3 m ahead (lookahead), + = the car is left of it. Each line as y = a x^2 + b x + c (m), its radius (m; 9999 = straight or not seen) and confidence (0-1); the lane width (m). Bench - lane:=true runs lane_finder, lane:=fake runs fake_lane_geometry_pub (its polynomials are pixels).</td>
 </tr>
@@ -1181,6 +1181,14 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>amcl</code></td>
 <td>-</td>
 <td>Starts AMCL again from a pose (its initialpose, renamed; RViz "2D Pose Estimate" publishes /initialpose, so set its topic to this). amcl:=true starts it from the sim's start pose without it (set_initial_pose).</td>
+</tr>
+<tr>
+<td><code>/localization/lane/pose</code></td>
+<td><code>geometry_msgs/msg/PoseWithCovarianceStamped</code></td>
+<td><code>lane_pose</code></td>
+<td><code>ekf_global</code></td>
+<td>-</td>
+<td>A trial (TODO 155) - the lane finder as a pose sensor (aav_lane_pose). Map frame, the camera picture's stamp. From /perception/lane/geometry's lines and the lane map (a lanes.yaml), the car's place across its lane; along the lane, where TF map -&gt; base_link already has it. Its x, y covariance is turned to the lane's heading - 0.15 m across with both lines (0.30 with one), 50 m along - so it corrects only sideways; yaw (the lane's heading less the car's angle to the lines, 0.05 rad) is in the message, not fused. Only pictures that pass the gates - a line sure enough, the car within 0.3 rad of the lane, the lines' angle within 0.05 rad of the filter's and their bend within 0.003 1/m of the map lane's, the map's lane width, no junction or road end from 4 m behind to 12 m ahead, no jump over 0.4 m, within 1.5 m of the filter. Only with lane_pose:=true (sim.launch.py, localization.launch.py; off by default); then ekf_global fuses x and y (pose0, or pose1 after NDT's; refused past 5 sigma; aav_localization config/ekf_global_lane.yaml).</td>
 </tr>
 <tr>
 <td><code>/localization/ndt/pose</code></td>
