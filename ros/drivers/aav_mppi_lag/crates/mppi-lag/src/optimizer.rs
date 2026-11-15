@@ -13,8 +13,13 @@
 //!    and speed, ego's output, the actuators' levels and the commands still in their
 //!    dead time. This is where the lag comes in; Nav2's own model has none. Split across
 //!    threads.
-//! 3. **Score**: the critics, plus Nav2's control cost
-//!    gamma / std² x sum(u x (u_sample - u)).
+//! 3. **Score**: the critics, plus Nav2's control cost gamma x u' Σ⁻¹ (u_sample - u),
+//!    Σ the noise's covariance ([`control_cost`]). White noise (Nav2's): Σ⁻¹ = 1 / std²,
+//!    so gamma / std² x sum(u x (u_sample - u)), Nav2's own. Correlated noise: Σ⁻¹ is
+//!    AR(1)'s, so the cost sees only each step's fresh part of the noise. Until 14 Nov
+//!    ours used the white form on correlated noise: its spread grew 3x (at 0.8) and
+//!    swamped the critics, so MPPI pulled the speed and steering towards 0 and the car
+//!    stood still beside a cusp (docs/mppi-lag.md, Cusps).
 //! 4. **Weigh**: softmax of -(cost - min) / temperature; the new sequence is the
 //!    weighted mean of the samples, held to the limits again.
 //!
@@ -89,6 +94,39 @@ impl Default for Settings {
             seed: 42,
         }
     }
+}
+
+/// MPPI's control cost of one sample: gamma x u' Σ⁻¹ (sample - u), summed over speed and
+/// steering, with Σ the covariance of the noise the samples were drawn with.
+///
+/// The noise is AR(1) with correlation a and spread std (white for a = 0), so
+/// Σ⁻¹ = 1 / (std² (1 - a²)) x tridiag(-a, [1, 1 + a², ..., 1 + a², 1], -a), and
+///
+/// ```text
+/// u' Σ⁻¹ e = ((1 - a²) u₀ e₀ + Σₜ (uₜ - a uₜ₋₁)(eₜ - a eₜ₋₁)) / (std² (1 - a²))
+/// ```
+///
+/// For a = 0 that is Nav2's gamma / std² x Σ u e. The white form on correlated noise
+/// weighs each sample's whole drift, not its fresh part: at a = 0.8 its spread is 3x
+/// Nav2's (9x the right one), and it outweighed the critics.
+pub fn control_cost(settings: &Settings, sequence: &[Command], sample: &[Command]) -> f64 {
+    let a = settings.noise_correlation.clamp(0.0, 0.999);
+    let fresh = 1.0 - a * a;
+    let pairs = || sequence.iter().zip(sample);
+    let along = |part: fn(&Command) -> f64, std: f64| {
+        let first = pairs()
+            .next()
+            .map_or(0.0, |(u, c)| fresh * part(u) * (part(c) - part(u)));
+        let rest: f64 = pairs()
+            .zip(pairs().skip(1))
+            .map(|((u0, c0), (u1, c1))| {
+                let (e0, e1) = (part(c0) - part(u0), part(c1) - part(u1));
+                (part(u1) - a * part(u0)) * (e1 - a * e0)
+            })
+            .sum();
+        settings.gamma * (first + rest) / (std * std * fresh)
+    };
+    along(|c| c.speed, settings.speed_std) + along(|c| c.steer, settings.steer_std)
 }
 
 /// Every sample ran into something, even after a reset (Nav2's NoValidControl).
@@ -259,25 +297,13 @@ impl<M: CarModel> Optimizer<M> {
             lane: scene.lane,
         };
         let prepared = Prepared::new(&self.critics, data);
-        let (gv, gs) = (
-            settings.gamma / settings.speed_std.powi(2),
-            settings.gamma / settings.steer_std.powi(2),
-        );
         std::thread::scope(|scope| {
             for part in self.rollouts.chunks_mut(chunk) {
                 let prepared = &prepared;
                 scope.spawn(move || {
                     for r in part {
                         let score = prepared.score(r);
-                        let control: f64 = r
-                            .controls
-                            .iter()
-                            .zip(sequence)
-                            .map(|(c, u)| {
-                                gv * u.speed * (c.speed - u.speed)
-                                    + gs * u.steer * (c.steer - u.steer)
-                            })
-                            .sum();
+                        let control = control_cost(settings, sequence, &r.controls);
                         r.cost = score.cost + control;
                         r.collided = score.collided;
                     }
@@ -380,6 +406,64 @@ mod tests {
         (0..=60)
             .map(|i| Pose::new(f64::from(i) * 0.05, 0.0, 0.0))
             .collect()
+    }
+
+    /// u' Σ⁻¹ e the long way: Σ = std² a^|i-j| (AR(1)), solved by Gaussian elimination.
+    fn brute_force(u: &[f64], e: &[f64], std: f64, a: f64) -> f64 {
+        let n = u.len();
+        let mut m: Vec<Vec<f64>> = (0..n)
+            .map(|i| {
+                let mut row: Vec<f64> = (0..n)
+                    .map(|j| std * std * a.powi((i as i32 - j as i32).abs()))
+                    .collect();
+                row.push(e[i]);
+                row
+            })
+            .collect();
+        for col in 0..n {
+            let pivot = m[col].clone();
+            for row in m.iter_mut().skip(col + 1) {
+                let f = row[col] / pivot[col];
+                for (cell, p) in row.iter_mut().zip(&pivot).skip(col) {
+                    *cell -= f * p;
+                }
+            }
+        }
+        let mut x = vec![0.0; n];
+        for row in (0..n).rev() {
+            let known: f64 = (row + 1..n).map(|k| m[row][k] * x[k]).sum();
+            x[row] = (m[row][n] - known) / m[row][row];
+        }
+        u.iter().zip(&x).map(|(a, b)| a * b).sum()
+    }
+
+    #[test]
+    fn control_cost_is_u_times_the_noises_precision_times_e() {
+        let u = [0.5, 0.6, 0.4, -0.2, 0.1];
+        let e = [0.1, -0.3, 0.2, 0.05, -0.1];
+        let sequence: Vec<Command> = u.iter().map(|&v| Command::new(v, 0.0)).collect();
+        let sample: Vec<Command> = u
+            .iter()
+            .zip(&e)
+            .map(|(&v, &n)| Command::new(v + n, 0.0))
+            .collect();
+        for a in [0.0, 0.5, 0.8] {
+            let s = Settings {
+                noise_correlation: a,
+                ..Settings::default()
+            };
+            let want = s.gamma * brute_force(&u, &e, s.speed_std, a);
+            let got = control_cost(&s, &sequence, &sample);
+            assert!((got - want).abs() < 1e-12, "a {a}: {got} vs {want}");
+        }
+        // White noise: Nav2's own, gamma / std² x sum(u e).
+        let white = Settings {
+            noise_correlation: 0.0,
+            ..Settings::default()
+        };
+        let nav2: f64 = u.iter().zip(&e).map(|(u, e)| u * e).sum::<f64>() * white.gamma
+            / white.speed_std.powi(2);
+        assert!((control_cost(&white, &sequence, &sample) - nav2).abs() < 1e-12);
     }
 
     #[test]

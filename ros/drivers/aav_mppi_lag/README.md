@@ -24,7 +24,8 @@ What it adds to Nav2's MPPI:
 |---|---|---|
 | Model of the car | speed and turn rate obey at once (within ax, az limits) | ego's ramps, the spine's speed loop, throttle and brake lag, steering motor rate, linkage lag, deadbands, dead times |
 | State it starts from | pose and speed | pose, speed, ego's output, the actuators' levels, the commands still in their dead time |
-| Noise | white, on (v, w) | on (v, steering), correlated step to step (AR(1), 0.8) |
+| Noise | white, on (v, w) | on (v, steering), correlated step to step (AR(1), 0.8); the control cost weighs it by its own covariance |
+| Cusps | reached within the inversion tolerances | the same, or stopped within the goal's tolerances |
 | The lane | no critic for it | `LaneCritic`, with a lane map: the outline kept inside the road ahead's lines and kerbs |
 | Language | C++ plugin | Rust |
 
@@ -129,7 +130,7 @@ cargo run --release -p mppi-lag --example timing                         # ms a 
 |---|---|
 | `lag.rs`, `ego.rs`, `ideal.rs` | each stage of the model: lags, rate, deadbands, dead times, offset; reversing, the gear changing only at a stop |
 | `critics.rs`, `path.rs` | each critic on hand-made samples, PathAngle's modes on a reversing path, `LaneCritic` inside, over a line, over a kerb, without a lane; the cusps; `lane.rs`: the side, the search, NaN edges |
-| `optimizer.rs`, `smoothing.rs` | the limits, the filter, a straight path, a turn, the same seed the same plan |
-| `tests/closed_loop.rs` | a pretend car (ego + the lag model at 100 Hz): the model predicts it; circle and S-curve at vehicle.yaml's lags; a corner and an S on very slow actuators: the lag-aware one closer on the corner, the only one to keep the S; 8 m straight back; 6 m ahead, a stop at the cusp, a quarter circle (r 5 m) back; a path drawn 1 m off a lane's centre, kept within 0.1 m of the line by `LaneCritic` (0.41 m over without) |
+| `optimizer.rs`, `smoothing.rs` | the limits, the filter, a straight path, a turn, the same seed the same plan; the control cost against a brute-force covariance inverse |
+| `tests/closed_loop.rs` | a pretend car (ego + the lag model at 100 Hz): the model predicts it; circle and S-curve at vehicle.yaml's lags; a corner and an S on very slow actuators: the lag-aware one closer on the corner, the only one to keep the S; 8 m straight back; 6 m ahead, a stop at the cusp, a quarter circle (r 5 m and the planner's 3.6 m) back; the test lot's turn back (back, cusp, forward), from a stop and arriving rolling 0.5 m off; a path drawn 1 m off a lane's centre, kept within 0.1 m of the line by `LaneCritic` (0.41 m over without) |
 
 `colcon test --packages-select aav_mppi_lag` runs the same; `pixi run test` everything.
