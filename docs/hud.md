@@ -776,11 +776,12 @@ pixi run debug-hud --demo          # pretend data: no ROS (a walled lot, a ray-c
 pixi run build && pixi run debug-hud    # the node alone, beside a running sim
 ```
 
-`demo --debug` is `demo` with `amcl:=true tracker:=pure_pursuit reversing:=false`, so AMCL
-and the trial tracker have something to show; and `ndt:=true` too when
-`maps/ndt/test_lot.pcd` is there. No map yet: `pixi run ndt-map drive` once (about 6
-min, headless; the map stays out of git). Swap the tracker live with keys 1-4, or
-from a terminal: `ros2 param set /track tracker lqr` (sim only, both ways).
+`demo --debug` is `demo` with `amcl:=true`, on the default stack (ours), so AMCL has
+something to show; and `ndt:=true` too when `maps/ndt/test_lot.pcd` is there. No map yet:
+`pixi run ndt-map drive` once (about 6 min, headless; the map stays out of git). To swap a
+tracker live, start it with one of `aav_track`'s, forward only:
+`pixi run demo --debug tracker:=pure_pursuit reversing:=false`; then keys 1-4, or
+`ros2 param set /track tracker lqr` (sim only, both ways).
 
 ### How it's built
 

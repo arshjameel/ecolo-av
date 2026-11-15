@@ -34,15 +34,16 @@ for arg in "$@"; do
     *) echo "usage: pixi run demo [--debug] [--fullscreen] [name:=value ...]" >&2; exit 2 ;;
   esac
 done
-# The debug HUD's run: AMCL beside the global EKF and a trial tracker, so every layer
-# and the panel's tracker have something to show (docs/designs/2026-10-29_debug-hud.md).
+# The debug HUD's run: AMCL beside the global EKF, so every layer has something to show
+# (docs/designs/2026-10-29_debug-hud.md). The stack is the default, ours (its follower,
+# mppi_lag, reverses), as every other run; until 15 Nov it took pure_pursuit forward only.
 # The test lot already has nav and the lidar on, as amcl:=true needs.
 # rviz:=false: this script opens RViz itself (step 2, drive.rviz). Without it the launch
 # opens a second one (road.rviz) as well.
 sim_args="world:=test_lot rviz:=false"
 steps=4
 if $debug; then
-  sim_args="$sim_args amcl:=true tracker:=pure_pursuit reversing:=false"
+  sim_args="$sim_args amcl:=true"
   steps=5
   # NDT too, when its map of the test lot has been made (it isn't in git).
   ndt_map=maps/ndt/test_lot.pcd
