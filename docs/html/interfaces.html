@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">109 min read · 4 sections</div></header>
+<div class="meta">110 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -1581,6 +1581,12 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>simulation_interfaces/srv/DeleteEntity</code></td>
 <td><code>simulator</code></td>
 <td>Take a model placed with /vehicle/sim/spawn_entity (or the launch's obstacle:=true) away again. Sim only.</td>
+</tr>
+<tr>
+<td><code>/vehicle/sim/set_entity_state</code></td>
+<td><code>simulation_interfaces/srv/SetEntityState</code></td>
+<td><code>simulator</code></td>
+<td>Our own simulator - put the car (entity aav) at state.pose in the map frame (x, y and yaw), standing still, as Gazebo's set_pose service does; a non-zero twist is refused. The truth and wheel odometry jump with it. tools/sim_frames.py --simulator own uses it. Sim only.</td>
 </tr>
 <tr>
 <td><code>/track/set_parameters</code></td>
