@@ -10,30 +10,35 @@ Ben, 14 Nov night: "chiping througth the list 166-173 and then the 155, 156, 157
 
 | Order | Next step | Row |
 |---|---|---|
-| 1 | Every stack runs: stock and ours on Gazebo (ours on our simulator passes) | 166 |
-| 2 | Ours scores as well as stock: 3 runs each. First drive, 14 Nov: ours missed the lot's "turn back" (stuck at the cusp) | 167 |
+| 1 | Every stack runs: stock and ours on Gazebo (both pass on our simulator) | 166 |
+| 2 | Ours scores as well as stock: 3 runs each. 14 Nov: ours 4/4 on the lot after the cusp fix; the campus waits on the costmap fix | 167 |
 | 3 | The wiggle: each follower's own swing; the EKF change on the car | 168 |
 | 4 | The lane line for `aav_track`'s trackers and Nav2's MPPI (`mppi_lag` done) | 169 |
 | 5 | The things: a moving thing in the sim, then Gazebo | 170 |
 | 6 | The last gaps on the audit list | 171 |
 | 7 | The edges smoothed: one start command per job, errors, docs, a start page | 172 |
 | 8 | On the car, with the hardware lead | 173 |
+| 9 | Reverse everywhere; the costmap in tiles (design first) | 174, 175 |
 | then | The lane finder as a pose sensor; the things' camera and radar; record and score a car drive | 155, 156, 157 |
+| last | The Rust made more Rust-like, once feature complete | 176 |
 
-## Release candidate 1.0-rc1 (Ben, 14 Nov night)
+## Release candidate 0.4-rc1 (Ben, 14 Nov night)
 
-Ben: "refining the project towards a release candidate. Something that is fully function and complete and having the edges smoothed out." The candidate's stack is ours (`stack:=ours`, Rust from planner to follower), with Nav2 one switch away. It passes when every row is ✅:
+Ben: "We are still in beta stages for sure but we want to start thinking about refinement like 0.4rc1"; "refining the project towards a release candidate. Something that is fully function and complete and having the edges smoothed out." The candidate's stack is ours (`stack:=ours`, Rust from planner to follower), with Nav2 one switch away. It passes when every row is ✅:
 
 | # | Gate | Status |
 |---|---|---|
 | 166 | **Every stack runs**: `sim-check` passes on `stack:=stock` and `stack:=ours`, on our simulator and Gazebo | ⬜ |
 | 167 | **Ours scores at least as well as stock** on the lot and campus tours, 3 runs each (`measure controllers --stacks`; TODO 164) | 🔧 14 Nov, 1 run each, reversing on, a busy Mac: the lot, ours 3/4 (missed "turn back": stuck at the cusp), Nav2 4/4; past the box, both; forward legs alike (ours 0.09-0.12 m off the path, Nav2 0.07-0.76). Campus: ours 0/3, every time `mppi_lag` stopped for a costmap 0.84 s old (our costmap does the 41-million-cell global map on the local one's thread); Nav2 2/3. Fieldhouse (18 GPS waypoints): Nav2 2/18 (stuck from a standstill after a sharp waypoint turn), ours 0/18 (the costmap). After the cusp fix (mppi_lag's control cost for its correlated noise; 14 Nov night): ours 4/4 on the lot, turn back in 29 s and 0.15 m off (Nav2 59 s, 0.76 m), home 59 s; past the box 1/1. Next: the costmap's threads and bounds, the route's waypoints, then 3 runs on a quiet machine |
-| 168 | **The wiggle under 5 cm** on the campus road, both stacks (TODO 165: the GPS noise in the pose, our navigator keeps its path) | 🔧 14 Nov: the global EKF trusts each GPS fix less (x, y process noise 0.05 to 0.005): steering changes side 0.39 to 0.30 a second, worst EKF error 0.53 to 0.32 m, the swing itself unchanged at 0.089 m (RPP, our sim, 2 runs each). Left: each follower's own swing; check the EKF change on the car (its odometry is 17 % off loaded) |
+| 168 | **No oscillation** (Ben: "don't forget reverse and no occelation"): the wiggle under 5 cm on the campus road, both stacks (TODO 165: the GPS noise in the pose, our navigator keeps its path) | 🔧 14 Nov: the global EKF trusts each GPS fix less (x, y process noise 0.05 to 0.005): steering changes side 0.39 to 0.30 a second, worst EKF error 0.53 to 0.32 m, the swing itself unchanged at 0.089 m (RPP, our sim, 2 runs each). Left: each follower's own swing; check the EKF change on the car (its odometry is 17 % off loaded) |
 | 169 | **The followers steer along the road ahead's line** (the lane centre), not only its speed | 🔧 `mppi_lag` done 14 Nov: with a lane map its `LaneCritic` keeps the outline inside the lane (our simulator, a goal 1.5 m off centre: 0.05-0.13 m over the line, never near the kerb; 0.95 m over and onto the kerb without). Left: `aav_track`'s trackers, Nav2's MPPI (docs/mppi-lag.md, The lane) |
 | 170 | **The things in the behaviour planner**: wait for what moves, go round what's parked (decides TODO 162). Built (`things:=true`); 14 Nov, our sim: a parked box driven round 2.0 m clear, no APPROACH(obstacle), stop zone quiet (`sim-check --behaviour-things-only`). Left: a moving thing, Gazebo, the car | 🔧 |
 | 171 | **No switch leaves a gap**: reversing everywhere, BackUp, IsPathValid, respawn, age checks, `cameras:=false` in nightly CI | 🔧 most done 14 Nov |
 | 172 | **The edges smoothed**: one start command per job, clear errors, the docs pages shrunk, a "start here" page for the release | ⬜ |
 | 173 | **On the car** (with the hardware lead): the seven blockers (158), then ours driven, recorded and scored | ⬜ |
+| 174 | **Reverse everywhere** (Ben: "reverse is important"): every stack reverses where the plan says, through cusps, on the lot and the campus; `reversing:=true` the sim's default | 🔧 14 Nov: `mppi_lag` through cusps fixed (its control cost); ours drives the lot's turn back in 29 s (Nav2 59 s) |
+| 175 | **The costmap in tiles** (Ben: "quadtree the map ... only the current block and the connecting blocks ... level of detail so further away stuff doesn't have as fine of control"): the big map cut into tiles, only those near the car worked and sent, each on its own thread; coarser cells far away; the lidar's cubes (`aav_voxels`) as an input | 🔧 14 Nov: first step done (each costmap on its own thread; only the changed area redone: the campus's global update 500 ms to 0); a design next |
+| 176 | **The Rust made more Rust-like** (Ben: "once we are confident that we are feature complete"): a pass over every crate against the Rust API Guidelines | ⬜ after the rows above |
 
 ## The whole car: every design merged (14 Nov)
 
