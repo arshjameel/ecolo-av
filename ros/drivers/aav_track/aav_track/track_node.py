@@ -7,6 +7,10 @@ Action      follow_path                 nav2_msgs/action/FollowPath: bt_navigato
 Subscribes  localization/odom/local     nav_msgs/Odometry (odom_topic): where the car is in
                                         odom, its speed and yaw rate
             /tf, /tf_static             map -> odom, to move each new path into odom
+            world/road_ahead            aav_interfaces/RoadAhead (road_ahead_topic; empty,
+                                        the default: off): with a lane map, its soft edges;
+                                        each new path is kept inside them (lane.py, TODO
+                                        169) while it is 0.5 s fresh
 Publishes   cmd_vel_nav                 geometry_msgs/TwistStamped (Twist with stamped:=
                                         false), at rate_hz while a path runs: (v, v tan(steer)
                                         / L), to Nav2's velocity smoother, collision_monitor,
@@ -46,9 +50,11 @@ import time
 
 from aav_description import vehicle as vehicle_file
 from aav_ego.vehicle_model import from_config
+from aav_interfaces.msg import RoadAhead
 from aav_track import trackers
 from aav_track.checks import GoalCheck, ProgressCheck
 from aav_track.lag_model import CarParams
+from aav_track.lane import keep_in_lane, LinePoint
 from aav_track.path import moved, Path, wrap
 from aav_track.speed import SpeedPolicy
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
@@ -117,7 +123,8 @@ class Track(Node):
             ('lookahead_min', 1.5), ('lookahead_max', 4.0), ('lookahead_time', 1.5),
             ('xy_goal_tolerance', 1.0), ('yaw_goal_tolerance', 0.75),
             ('progress_radius', 0.5), ('progress_angle', 0.5), ('progress_time', 10.0),
-            ('wheelbase', 1.57), ('max_steering_angle', 0.5), ('max_steering_rate', 0.6))}
+            ('wheelbase', 1.57), ('max_steering_angle', 0.5), ('max_steering_rate', 0.6),
+            ('road_ahead_topic', ''), ('lane_margin', 0.1))}
         self.p = p
         name = p['tracker']
         if name not in TRACKER_PARAMS:
@@ -157,6 +164,11 @@ class Track(Node):
         self.lag_aware = self.create_publisher(Bool, 'drivers/nav/lag_aware', latched)
         self.say_lag_aware()
         self.create_subscription(Odometry, p['odom_topic'], self.on_odom, 10)
+        # The lane (TODO 169): the road ahead's edges, newest only.
+        self.road = None              # (frame, [LinePoint], when it came)
+        self.half_width = vehicle_file.load()['vehicle']['body']['width'] / 2.0
+        if p['road_ahead_topic']:
+            self.create_subscription(RoadAhead, p['road_ahead_topic'], self.on_road, 1)
         self.server = ActionServer(
             self, FollowPath, 'follow_path', execute_callback=self.execute,
             goal_callback=lambda _: GoalResponse.ACCEPT,
@@ -250,6 +262,19 @@ class Track(Node):
             self.odom = values
             self.odom_time = self.seconds()
 
+    def on_road(self, msg):
+        edges = zip(msg.x, msg.y, msg.heading, msg.left_soft, msg.right_soft)
+        line = [LinePoint(*v) for v in edges]
+        self.road = (msg.header.frame_id.lstrip('/'), line, self.seconds())
+
+    def lane(self, frame):
+        """Return the road ahead's line in `frame`, if it is fresh (0.5 s); else None."""
+        if self.road is None:
+            return None
+        road_frame, line, when = self.road
+        fresh = self.seconds() - when <= 0.5
+        return line if fresh and road_frame == frame.lstrip('/') else None
+
     def path_in_odom(self, msg):
         """Return the goal's path moved into odom, or raise (ValueError: bad, else TF)."""
         poses = [(s.pose.position.x, s.pose.position.y, yaw_of(s.pose.orientation))
@@ -257,6 +282,9 @@ class Track(Node):
         if not poses:
             raise ValueError('the path is empty')
         frame = msg.header.frame_id or self.p['odom_frame']
+        line = self.lane(frame)
+        if line:
+            poses = keep_in_lane(poses, line, self.half_width, self.p['lane_margin'])
         if frame.lstrip('/') != self.p['odom_frame']:
             # The newest map -> odom, without waiting: a wait here would hold the one
             # thread that receives /tf. ekf_global sends it at 30 Hz.

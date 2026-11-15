@@ -38,7 +38,7 @@ pixi run measure controllers --trackers pure_pursuit lqr --tours lot --legs 1
 | Item | What |
 |---|---|
 | Action server | `/follow_path` (`nav2_msgs/action/FollowPath`): the newest path replaces the last without a stop |
-| Subscribes | `/localization/odom/local` (`nav_msgs/Odometry`); `/tf` (map -> odom, once per path) |
+| Subscribes | `/localization/odom/local` (`nav_msgs/Odometry`); `/tf` (map -> odom, once per path); `/world/road_ahead` (`aav_interfaces/RoadAhead`, `road_ahead_topic`: only with `behaviour:=true` and a lane map; each new path kept inside the lane's soft edges while it is 0.5 s fresh) |
 | Publishes | `/cmd_vel_nav` (`geometry_msgs/TwistStamped`, as nav2.yaml's `enable_stamped_cmd_vel`), `/drivers/nav/track/status` (`diagnostic_msgs/DiagnosticStatus`: loop time, missed ticks, cross track, steering), `/drivers/nav/lag_aware` (`std_msgs/Bool`, latched: true while the tracker models the lags itself, `mpc_lag`, so ego's lead stays off; false otherwise and as the node stops) |
 
 Results: succeeded; aborted with Nav2's codes `FAILED_TO_MAKE_PROGRESS`, `TF_ERROR`,
@@ -49,6 +49,7 @@ ego.yaml; nothing copied):
 
 | Name | From |
 |---|---|
+| `road_ahead_topic`, `lane_margin` | the launch's: `/world/road_ahead` with a lane map, else empty (off); 0.1 m kept inside each soft edge |
 | `rate_hz`, `odom_topic`, `stamped` | controller_server's `controller_frequency`, `odom_topic`, `enable_stamped_cmd_vel` |
 | `cruise_speed` | RPP's `desired_linear_vel`, or `max_speed:=` (sim_speed) |
 | `acceleration`, `deceleration` | the velocity smoother's `max_accel`, `max_decel` |
@@ -77,6 +78,7 @@ Modules (all but `track_node.py` have no ROS):
 
 | Module | Holds |
 |---|---|
+| `lane.py` | `keep_in_lane`: each path point moved sideways inside the road ahead's soft edges (TODO 169) |
 | `path.py` | `Path` (arc length, `project` -> `Foot`, `point_at`, `curvature_at`), `moved` (map into odom), `wrap` |
 | `checks.py` | `GoalCheck`, `ProgressCheck`: Nav2's SimpleGoalChecker and PoseProgressChecker |
 | `speed.py` | `SpeedPolicy`: cruise, `line.turn_speed_limit` for a bend ahead, `approach.Approach` on the stopping law (`aav_description` `stop_law.py`, since 7 Nov) to stop |
@@ -114,6 +116,7 @@ runs it). In Gazebo: `pixi run measure controllers --trackers ...`.
 
 | Test | Covers |
 |---|---|
+| `test_lane.py` | inside left alone, over either edge moved in, unknown edges and far points kept, a lane narrower than the car, a line heading north |
 | `test_path.py` | the foot, cross track, bends, past the ends, into odom |
 | `test_checks.py` | the goal and progress checks |
 | `test_speed.py` | cruise, slow before a bend, stop at the end |

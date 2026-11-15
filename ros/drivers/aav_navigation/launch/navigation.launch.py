@@ -565,10 +565,11 @@ def nodes(context):
         with open(ego_file) as f:
             ego = yaml.safe_load(f)['ego']['ros__parameters']
         max_speed = float(speed) if speed else None
+        # behaviour:=true with a lane map: the road ahead has edges. mppi_lag's LaneCritic
+        # keeps the car between them; aav_track keeps each path's points inside them
+        # (TODO 169). Without one, the path as planned, as before.
+        lane = behaviour and bool(LaunchConfiguration('lane_map').perform(context).strip())
         if tracker == 'mppi_lag':
-            # behaviour:=true with a lane map: the road ahead has edges, and LaneCritic
-            # keeps the car between them. Without one, Nav2's critics only, as before.
-            lane = behaviour and bool(LaunchConfiguration('lane_map').perform(context).strip())
             # aav_mppi_lag (Rust): Nav2's MPPI with the actuators' lag in its model. nav2.yaml's
             # MPPI block and checks, vehicle.yaml's actuators, ego.yaml's ramps.
             own = FindPackageShare('aav_mppi_lag').perform(context) + '/config/mppi_lag.yaml'
@@ -586,6 +587,7 @@ def nodes(context):
                 respawn=True, respawn_delay=RESPAWN_DELAY,
                 parameters=[own, vehicle.track_params(nav2, cfg, ego, max_speed),
                             {'tracker': tracker, 'use_sim_time': use_sim_time,
+                             'road_ahead_topic': '/world/road_ahead' if lane else '',
                              'live_swap': IfCondition(
                                  LaunchConfiguration('live_swap')).evaluate(context)}]))
     if diffusion:

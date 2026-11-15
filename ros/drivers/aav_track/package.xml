@@ -17,6 +17,7 @@
   <exec_depend>aav_description</exec_depend>
   <exec_depend>aav_drive_to_point</exec_depend>
   <exec_depend>aav_ego</exec_depend>
+  <exec_depend>aav_interfaces</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>python3-scipy</exec_depend>
 
