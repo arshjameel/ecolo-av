@@ -27,3 +27,18 @@ def test_markers_a_box_an_arrow_and_a_label_per_thing():
     assert markers[0].action == markers[0].DELETEALL
     assert markers[3].text == '4 1.0 m/s R'
     assert markers[2].points[1].x == pytest.approx(11.0)
+
+
+def test_a_named_thing_shows_its_name_and_its_colour():
+    msg = Things()
+    msg.header.frame_id = 'odom'
+    msg.things = [Thing(id=3, kind='stop sign', x=8.0, length=0.3, width=0.3, height=2.0),
+                  Thing(id=5, kind='person', x=6.0, length=0.5, width=0.5, height=1.7,
+                        coasting=True)]
+    markers = things_node.markers(msg).markers
+    sign_box, sign_text = markers[1], markers[3]
+    assert sign_text.text == 'stop sign 3 0.0 m/s'
+    assert (sign_box.color.r, sign_box.color.g) == pytest.approx((0.9, 0.1))
+    # Unseen now: grey, but still named.
+    assert markers[6].text.startswith('person 5')
+    assert markers[4].color.r == pytest.approx(0.6)

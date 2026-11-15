@@ -42,7 +42,7 @@ So ours: about 300 lines of numpy, with tests.
 | in | `/localization/odom/local` | `Odometry`: the car's speed, for the radar |
 | in | TF | `odom ← base_link` at each cloud's stamp; `odom ← radar_link`. A cloud newer than /tf waits for it (below) |
 | out | `/world/things` | `aav_interfaces/Things`, odom, 10 Hz |
-| out | `/world/things/markers` | `MarkerArray`, odom: box, speed arrow, id |
+| out | `/world/things/markers` | `MarkerArray`, odom: a box coloured by kind, a speed arrow, the name and id ("person 3 1.2 m/s") |
 
 ### Parameters (`config/things.yaml`)
 
@@ -62,12 +62,13 @@ So ours: about 300 lines of numpy, with tests.
 |---|---|---|
 | `groups.py` | yes | `GroupShape`, `Group`, `group`, `to_frame` |
 | `tracker.py` | yes | `TrackerShape`, `Track`, `Tracker`, `predict`, `update`, `RadarCluster`, `ground_radial_speed` |
+| `looks.py` | yes | `colour`, `caption`: a thing's colour by kind and its words, for the markers (the Rust screens use the same colours: `hud_core::things`) |
 | `tf_wait.py` | yes | `Waiting`, `decide`, `Step`, `WaitShape`: clouds waiting for their transform (tf2's MessageFilter, in short) |
 | `things_node.py` | no | the node |
 
 ## Invariants
 
-- `groups.py`, `tracker.py` and `tf_wait.py` have no ROS imports, and their own tests.
+- `groups.py`, `tracker.py`, `tf_wait.py`, `naming.py` and `looks.py` have no ROS imports, and their own tests.
 - A callback never blocks on /tf. A cloud newer than the newest transform:
 
   | Its lead | Then |

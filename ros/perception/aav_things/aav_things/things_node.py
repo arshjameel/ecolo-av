@@ -20,8 +20,10 @@ Subscribes  perception/voxels/cubes     sensor_msgs/PointCloud2 (aav_voxels), ba
                                         before grouping (background.py, TODO 175 step 5)
 Publishes   world/things                aav_interfaces/Things, odom, 10 Hz: every confirmed
                                         thing, moved on its speed to the stamp
-            world/things/markers        visualization_msgs/MarkerArray, odom: a box, a speed
-                                        arrow and the id per thing, for RViz and the screens
+            world/things/markers        visualization_msgs/MarkerArray, odom: a box coloured by
+                                        its kind, a speed arrow, and its name, id and speed
+                                        ("person 3 1.2 m/s") per thing (looks.py), for RViz
+                                        and Foxglove
 Uses TF     odom <- base_link at each cloud's stamp; odom <- the radar's frame; with
             background, map <- base_link (the newest: a cloud with none keeps every cube). A cloud
             newer than /tf waits for it (tf_wait.py), never blocking: a hair newer (0.1 s)
@@ -44,6 +46,7 @@ import signal
 from aav_detector import ground
 from aav_interfaces.msg import Thing, Things
 from aav_things.background import Background, new_only
+from aav_things import looks
 from aav_things.groups import group, GroupShape, to_frame
 from aav_things.naming import Camera, Namer, Seen
 from aav_things.tf_wait import Step, Waiting
@@ -329,14 +332,13 @@ def markers(things):
     """Return a box, a speed arrow and the id for each thing; DELETEALL first."""
     array = MarkerArray(markers=[Marker(header=things.header, action=Marker.DELETEALL)])
     for th in things.things:
-        grey = th.coasting
         m = Marker(header=things.header, ns='things', id=th.id * 3, type=Marker.CUBE)
         m.pose.position.x, m.pose.position.y = float(th.x), float(th.y)
         m.pose.position.z = th.height / 2.0
         m.pose.orientation.w = 1.0
         m.scale.x, m.scale.y = max(th.length, 0.1), max(th.width, 0.1)
         m.scale.z = max(th.height, 0.1)
-        m.color.r, m.color.g, m.color.b = (0.6, 0.6, 0.6) if grey else (1.0, 0.6, 0.0)
+        m.color.r, m.color.g, m.color.b = looks.colour(th.kind, th.coasting)
         m.color.a = 0.5
         arrow = Marker(header=things.header, ns='things', id=th.id * 3 + 1, type=Marker.ARROW)
         arrow.points = [Point(x=float(th.x), y=float(th.y), z=float(th.height)),
@@ -350,7 +352,7 @@ def markers(things):
         text.pose.orientation.w = 1.0
         text.scale.z = 0.4
         text.color.r = text.color.g = text.color.b = text.color.a = 1.0
-        text.text = f'{th.id} {math.hypot(th.vx, th.vy):.1f} m/s' + (' R' if th.radar else '')
+        text.text = looks.caption(th.id, th.kind, th.vx, th.vy, th.radar)
         array.markers += [m, arrow, text]
     return array
 
