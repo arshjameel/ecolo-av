@@ -178,11 +178,15 @@ SPEED_LOOP_PROFILES = {
     'smooth': SpeedLoopConfig(kp=1.0, ki=0.25, integral_limit=1.0, setpoint_weight=0.75,
                               anti_windup='clamp'),
     'lqi': SpeedLoopConfig(lqi=LQI_MODEL),
+    # TODO 163: 'smooth' with a firmer brake past a narrower coast band. On this model a set
+    # speed ramped to 0 at 1 m/s^2 is overrun by 0.68 m with smooth's brake, 0.21 m here.
+    'firm': SpeedLoopConfig(kp=1.0, ki=0.25, integral_limit=1.0, setpoint_weight=0.75,
+                            anti_windup='clamp', brake_gain=2.0, coast_band=0.05),
 }
 
 
 def speed_loop_profile(name):
-    """Return a profile's SpeedLoopConfig by name: 'default', 'smooth' or 'lqi'."""
+    """Return a profile's SpeedLoopConfig by name: 'default', 'smooth', 'lqi' or 'firm'."""
     try:
         return SPEED_LOOP_PROFILES[name]
     except KeyError:

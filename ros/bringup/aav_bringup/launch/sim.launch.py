@@ -7,7 +7,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [perception:=false] [lane:=false|true|fake] [camera_obstacles:=false] [hud:=false]
       [map:=false] [foxglove:=false] [chase_camera:=true] [cameras:=true]
       [obstacle:=false] [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true] [radar:=true]
-      [actuator_model:=true] [speed_loop:=default|smooth|lqi] [sim_speed:=]
+      [actuator_model:=true] [speed_loop:=default|smooth|lqi|firm] [sim_speed:=]
       [payload:=0] [adaptive_brake:=false]
       [reversing:=true] [controller:=] [planner:=] [tracker:=] [costmap:=] [navigator:=]
       [smoother:=] [behaviour:=]

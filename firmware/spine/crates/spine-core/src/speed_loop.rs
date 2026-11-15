@@ -192,6 +192,17 @@ impl SpeedLoopConfig {
 }
 
 impl SpeedLoopConfig {
+    /// The `firm` profile (TODO 163): `smooth`, with a firmer brake past a narrower coast
+    /// band. On the car model a set speed ramped to 0 at 1 m/s² is overrun by 0.68 m with
+    /// `smooth`'s brake (0.5 per m/s past 0.2 m/s), 0.21 m with this one. To try on stands.
+    pub fn firm() -> Self {
+        SpeedLoopConfig {
+            brake_gain: 2.0,
+            coast_band: 0.05,
+            ..SpeedLoopConfig::smooth()
+        }
+    }
+
     /// The `lqi` profile (TODO 3: a comparison, not the default): [`LqiConfig::MODEL`],
     /// with today's stop (brake at least `hold_brake` until stopped, then hold it).
     pub fn lqi() -> Self {
@@ -212,14 +223,17 @@ pub enum SpeedLoopProfile {
     Smooth,
     /// [`SpeedLoopConfig::lqi`]: TODO 3's LQI, to compare against the PI.
     Lqi,
+    /// [`SpeedLoopConfig::firm`]: `Smooth` with a firmer brake (TODO 163).
+    Firm,
 }
 
 impl SpeedLoopProfile {
     /// Every profile, in the order the docs list them.
-    pub const ALL: [SpeedLoopProfile; 3] = [
+    pub const ALL: [SpeedLoopProfile; 4] = [
         SpeedLoopProfile::Default,
         SpeedLoopProfile::Smooth,
         SpeedLoopProfile::Lqi,
+        SpeedLoopProfile::Firm,
     ];
 
     /// The profile's name, as the parameter and the docs spell it.
@@ -228,6 +242,7 @@ impl SpeedLoopProfile {
             SpeedLoopProfile::Default => "default",
             SpeedLoopProfile::Smooth => "smooth",
             SpeedLoopProfile::Lqi => "lqi",
+            SpeedLoopProfile::Firm => "firm",
         }
     }
 
@@ -237,6 +252,7 @@ impl SpeedLoopProfile {
             SpeedLoopProfile::Default => SpeedLoopConfig::default(),
             SpeedLoopProfile::Smooth => SpeedLoopConfig::smooth(),
             SpeedLoopProfile::Lqi => SpeedLoopConfig::lqi(),
+            SpeedLoopProfile::Firm => SpeedLoopConfig::firm(),
         }
     }
 }
@@ -247,7 +263,7 @@ pub struct UnknownProfile;
 
 impl fmt::Display for UnknownProfile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("no such speed loop profile: pick default, smooth or lqi")
+        f.write_str("no such speed loop profile: pick default, smooth, lqi or firm")
     }
 }
 

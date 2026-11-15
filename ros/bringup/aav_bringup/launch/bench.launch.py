@@ -5,7 +5,7 @@ Bench mode: the real car's software on one computer, with stand-ins for the hard
       [perception:=false] [lane:=false|true|fake] [hud:=false] [arm:=true] [foxglove:=false]
       [start_y:=0.0] [start_yaw:=0.0] [bend_radius:=] [obstacle:=false]
       [camera_obstacles:=false] [reversing:=true] [lidar:=false] [plan_around:=true]
-      [bridge:=rust|python] [speed_loop:=default|smooth|lqi] [geofence_radius:=100.0]
+      [bridge:=rust|python] [speed_loop:=default|smooth|lqi|firm] [geofence_radius:=100.0]
   pixi run bench                            (the same)
   pixi run bench bridge:=python             (aav_spine's Python spine_bridge, not the Rust one)
   pixi run -e ml bench perception:=true     (adds YOLO and the stop-sign watcher)

@@ -58,7 +58,7 @@ modelled car push and brake less (car_model's share), whoever drives it. adaptiv
 loop and the brake, as it would sit on the car: below ego and every safety lock.
 
 Parameters  actuator_model (true), speed_loop (default: the actuator model's speed loop
-            profile, 'default', 'smooth' or 'lqi': TODO 27, 3), payload (0 kg, live),
+            profile, 'default', 'smooth', 'lqi' or 'firm': TODO 27, 3, 163), payload (0 kg, live),
             adaptive_brake (false, live), lag_scale (1.0: the
             throttle's, brake's and steering's lags times this, to test a follower against
             a car slower than vehicle.yaml says; only the model's), spine (false), rate_hz (50),
