@@ -20,7 +20,7 @@ order; each lands on `main` only after the full test and a sim check.
 | 6 | **Our planner faster**; MPPI slows earlier near the goal | 152 |
 | 7 | **Reverse in a narrow street** (the three-point turn's next test) | 174 |
 | 8 | Look at the screens' new layers; software cameras on Linux; slow map correction in the league | 192, 183, 186 |
-| 9 | The Rust crates to try: rayon and tracing first | 195-205 |
+| 9 | The Rust crates to try: rayon for the chunks in threads, and tracing, first | 195-205 |
 | 10 | The Rust made more Rust-like | 176 |
 | waits | The car (hardware lead); one car drive scored | 157, 158, 173 |
 
@@ -33,10 +33,10 @@ Each is a trial beside what we have; check its licence and credit it in
 
 | # | Crate | Where, and why | Status |
 |---|---|---|---|
-| 195 | **rayon** (MIT/Apache) | many-core loops: our planner's checks (TODO 152), MPPI's futures (today threads by hand), NDT, voxels | ⬜ first |
+| 195 | **rayon** (MIT/Apache) | **the three levels' chunks in threads** (Ben, 15 Nov: "for the nav 3 layers processing each block could be done in threads and building the cost map"): each 64 m chunk's costmap, NDT cubes and things built on its own core, joined when ready (TODO 175); then our planner's checks (TODO 152), MPPI's futures (today threads by hand), voxels | ⬜ first |
 | 196 | **tracing** + **tracy** (MIT/Apache; BSD) | see where each Rust node's time goes, live, against its budget (MPPI 50 ms) | ⬜ first |
-| 197 | **Rerun** (MIT/Apache) | view a recorded drive (MCAP) frame by frame: lidar, cameras, poses, plots on one timeline; a challenger to Foxglove/Lichtblick and the dev window for looking back. Not a replay into the nodes (`ros2 bag` stays) | ⬜ |
-| 198 | **tokio** (MIT) | only where we wait on devices: the spine bridge (UDP), the serial drivers, the HUD's ESP32 link. Not the nav maths (that's CPU work: rayon). Only if one of them hits a limit | ⬜ |
+| 197 | **Rerun** (MIT/Apache) | view a recorded drive (MCAP) frame by frame. Ben, 15 Nov: "maybe if its better then what we already ahve": tried on the same recording beside Foxglove/Lichtblick and the dev window; kept only if it shows a bad drive faster. Not a replay into the nodes (`ros2 bag` stays) | ⬜ a comparison |
+| 198 | **tokio** (MIT) | ~~device links~~: **not now** (Ben, 15 Nov: "maybe not tokio if its more then just concurrency"). It is a whole async runtime, more than threads; rayon and std's threads cover the nav | ⛔ not planned |
 | 199 | **clarabel** (Apache-2.0) | a pure-Rust solver for a proper MPC in Rust (today's `mpc` and `mpc_lag` are Python) | ⬜ |
 | 200 | **kiddo** (MIT/Apache) | fast nearest neighbours: NDT, grouping the things, ICP | ⬜ |
 | 201 | **rstar** (MIT/Apache) | finding nearby lanes in the Lanelet2 map, and the map chunks | ⬜ |
