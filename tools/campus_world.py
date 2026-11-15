@@ -54,6 +54,7 @@ sys.path.insert(0, str(ROOT / 'ros' / 'sim' / 'aav_carla'))
 sys.path.insert(0, str(ROOT / 'tools'))
 from aav_carla.frames import geodetic_to_enu  # noqa: E402, I100
 from aav_carla.georef import CARLETON  # noqa: E402
+import campus_lanelet  # noqa: E402, I100
 from ndt_map import write_pcd  # noqa: E402, I100
 
 NAVSAT = ROOT / 'ros' / 'localization' / 'aav_localization' / 'config' / 'navsat.yaml'
@@ -1101,6 +1102,8 @@ def main():
     print(f'{args.out}: {report}')
     print(f'start at {start}')
     chunk_map(args.out / 'campus.yaml', args.out / 'chunks')
+    lanelets = campus_lanelet.write(args.out / 'lanes.yaml', args.out / 'campus.osm', (lat0, lon0))
+    print(f'lanelets: {lanelets} in {args.out / "campus.osm"}')
 
 
 def chunk_map(map_yaml: Path, out: Path):

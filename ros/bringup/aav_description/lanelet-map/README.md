@@ -30,6 +30,7 @@ Nothing uses it yet: next, the route level and the behaviour planner.
 | `route(from, to)` | A* over lanes: length driven, a lane change counted as 10 m; `None` if no way |
 | `stops_on(route)` | each stop line met: (lanelet, rule, the line's middle) |
 | `MapError` | why a file couldn't be read |
+| `lanelet-route <map.osm> x0 y0 x1 y1` (a binary) | route between two map points, timed; the campus map: `tools/campus_lanelet.py` (run by `pixi run campus`) |
 
 Not yet: lanes driven both ways (`one_way=no`), areas, a map writer, Lanelet2's traffic
 rules by country.
