@@ -95,6 +95,11 @@ Sim check: start Gazebo's road world headless, then test the car's whole graph i
                                             slowed by the speed cap, and with -e ml
                                             --perception the stop sign too; one more run.
                                             --behaviour-only skips the road world's run)
+    pixi run sim-check --behaviour-things (the behaviour trial reading the things,
+                                            behaviour:=true things:=true: a parked box
+                                            the planner sees; the car must go round it,
+                                            never APPROACH(obstacle). One more run;
+                                            --behaviour-things-only skips the road world's)
 
 bench_check.py tests the car's software against pretend sensors that draw a flat world;
 this tests it against Gazebo's camera and radar stand-in, which see the road world
@@ -2449,6 +2454,21 @@ def behaviour_seen(probe, since):
     return seen
 
 
+def check_behaviour_things(probe):
+    """
+    Check the behaviour with the things on: a parked box is the planner's to go round.
+
+    The car must pass the box as in --plan-around, and the behaviour must never wait for it:
+    no APPROACH(obstacle) or STOP(obstacle). The stop zone stays the safety net.
+    """
+    since = probe.now()
+    check_plan_around(probe)
+    seen = behaviour_seen(probe, since)
+    waited = [w for w in seen if w.endswith('(obstacle)')]
+    result('behaviour things: no wait for a parked box', bool(seen) and not waited,
+           f'states: {" > ".join(seen) or "none heard"}')
+
+
 def lowest_cap(probe, since):
     caps = [cap for t, _, _, cap, _ in probe.behaviour if t >= since and cap > 0.0]
     return min(caps) if caps else None
@@ -2702,7 +2722,7 @@ def main():
     logs = [log]
     if not {'--drive-to-point-only', '--speed-steps-only', '--spine-points-only',
             '--stop-point-only', '--loaded-stop-only', '--behaviour-only', '--lane-only',
-            '--things-only', '--legs-only'} & set(args):
+            '--things-only', '--behaviour-things-only', '--legs-only'} & set(args):
         # With --obstacle the planner is blind to the box, so the stop zone must stop the car.
         session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}']
                 + (['plan_around:=false'] if '--obstacle' in args else []),
@@ -2807,6 +2827,12 @@ def main():
                  f'perception:={str(perception).lower()}'],
                 [lambda probe: check_behaviour(probe, sign=perception)], logs[-1],
                 'behaviour')
+    if {'--behaviour-things', '--behaviour-things-only'} & set(args):
+        # Its own run: the behaviour reads the things, the planner sees the box (gate 170).
+        stem, ext = os.path.splitext(log)
+        logs.append(f'{stem}-behaviour-things{ext}')
+        session(['behaviour:=true', 'things:=true', 'lidar:=true'],
+                [check_behaviour_things], logs[-1], 'behaviour things')
     if {'--things', '--things-only'} & set(args):
         # Its own run: the cubes and the things on, the car standing, a box placed.
         stem, ext = os.path.splitext(log)
