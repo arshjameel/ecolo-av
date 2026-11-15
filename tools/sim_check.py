@@ -107,6 +107,11 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             the planner sees; the car must go round it,
                                             never APPROACH(obstacle). One more run;
                                             --behaviour-things-only skips the road world's)
+    pixi run sim-check --three-point      (reverse, TODO 174: a 6.5 m street of walls, a
+                                            goal behind the car facing back; the car must
+                                            turn in it, backing at least once, without
+                                            touching a wall. One more run, with the lidar;
+                                            --three-point-only skips the road world's)
 
 bench_check.py tests the car's software against pretend sensors that draw a flat world;
 this tests it against Gazebo's camera and radar stand-in, which see the road world
@@ -267,6 +272,7 @@ from sensor_msgs_py import point_cloud2  # noqa: E402
 from std_msgs.msg import Bool, String, UInt64  # noqa: E402
 from std_srvs.srv import SetBool, Trigger  # noqa: E402
 import stop_points  # noqa: E402
+import street_check  # noqa: E402
 import tf2_ros  # noqa: E402
 from vision_msgs.msg import Detection2DArray  # noqa: E402
 from visualization_msgs.msg import Marker  # noqa: E402
@@ -282,6 +288,7 @@ SIGN_X = BENCH['stop_signs'][0]         # m east: the stop sign
 MODELS = os.path.join(ROOT, 'ros', 'sim', 'aav_gazebo', 'models')
 OBSTACLE = os.path.join(MODELS, 'obstacle', 'model.sdf')   # the bench's 1 m box
 POST = os.path.join(MODELS, 'post', 'model.sdf')           # 0.5 x 0.5 x 1.8 m: a person
+WALL = os.path.join(MODELS, 'wall', 'model.sdf')           # 10 x 0.3 x 2 m: a street's side
 # What the radar adds to the road world's graph: absent with radar:=false.
 RADAR_TOPICS = ('/sensors/radar/points', '/perception/radar/clusters',
                 '/perception/radar/cluster_boxes')
@@ -1284,6 +1291,60 @@ def check_plan_around(probe, ahead=15.0, goal=30.0, depth=1.0):
            f'{"reached" if reached else "did not reach"} the goal {goal:.0f} m on, '
            f'{clear:.2f} m clear of the box at the closest, stood still {stood:.1f} s at the '
            f'longest, stop zone fired: {stop_zone}')
+
+
+def check_three_point_turn(probe, width=6.5, goal=5.0):
+    """
+    Turn round in a narrow street: walls `width` m apart, a goal `goal` m on, facing back.
+
+    The car's tightest circle needs more than 6.5 m between the walls, so it must back at
+    least once (a three-point turn: TODO 174). It must reach the goal, change direction at
+    least twice, and keep every corner inside the walls.
+    """
+    body = vehicle.load()['vehicle']['body']
+    x0, y0 = probe.xy(probe.truth)
+    h = yaw_of(probe.truth)
+    c, s = math.cos(h), math.sin(h)
+    half = width / 2.0
+    # Four 10 m walls a side, from 15 m behind to 25 m ahead: too long to drive round.
+    names = []
+    for side in (1.0, -1.0):
+        offset = half + 0.15                       # the wall's centre: its face at `half`
+        for k, along in enumerate((-10.0, 0.0, 10.0, 20.0)):
+            name = f'wall_{"l" if side > 0 else "r"}{k}'
+            wx = x0 + along * c - side * offset * s
+            wy = y0 + along * s + side * offset * c
+            if not place_model(WALL, wx, wy, h, name=name):
+                result('three-point turn', False, f'could not place {name}')
+                for placed in names:
+                    remove_model(placed)
+                return
+            names.append(name)
+    probe.spin_for(3.0)          # the lidar sees the walls before the planner is asked
+    start = len(probe.track)
+    gx, gy, gyaw = x0 + goal * c, y0 + goal * s, math.atan2(-s, -c)
+    done = probe.go_to(gx, gy, gyaw)
+    if done is not None:
+        probe.spin_for(300.0, done.done)
+        if not done.done():
+            probe.goal.cancel_goal_async()
+    for name in names:
+        remove_model(name)
+    if done is None:
+        result('three-point turn', False, 'no navigator, or it refused the goal')
+        return
+    drive = probe.track[start:]
+    reached = done.done() and done.result().status == 4
+    turns = street_check.turns(drive)
+    room = street_check.clearance(drive, x0, y0, h, half, body)
+    x1, y1 = probe.xy(probe.truth)
+    turned = abs(math.remainder(yaw_of(probe.truth) - gyaw, math.tau))
+    ok = reached and turns >= 2 and room > 0.0
+    result('three-point turn', ok,
+           f'{"reached" if reached else "did not reach"} the goal '
+           f'({math.hypot(gx - x1, gy - y1):.2f} m, {math.degrees(turned):.0f} deg off), '
+           f'{turns} changes of direction, {room:.2f} m from a wall at the closest '
+           f'(street {width:g} m)')
 
 
 def stood_still(track, still=0.02):
@@ -2763,7 +2824,8 @@ def main():
     logs = [log]
     if not {'--drive-to-point-only', '--speed-steps-only', '--spine-points-only',
             '--stop-point-only', '--loaded-stop-only', '--behaviour-only', '--lane-only',
-            '--things-only', '--behaviour-things-only', '--legs-only'} & set(args):
+            '--things-only', '--behaviour-things-only', '--legs-only',
+            '--three-point-only'} & set(args):
         # With --obstacle the planner is blind to the box, so the stop zone must stop the car.
         session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}']
                 + (['plan_around:=false'] if '--obstacle' in args else []),
@@ -2874,6 +2936,11 @@ def main():
         logs.append(f'{stem}-behaviour-things{ext}')
         session(['behaviour:=true', 'things:=true', 'lidar:=true'],
                 [check_behaviour_things], logs[-1], 'behaviour things')
+    if {'--three-point', '--three-point-only'} & set(args):
+        # Its own run: the lidar sees the walls, the default stack reverses (TODO 174).
+        stem, ext = os.path.splitext(log)
+        logs.append(f'{stem}-three-point{ext}')
+        session(['lidar:=true'], [check_three_point_turn], logs[-1], 'three-point turn')
     if {'--things', '--things-only'} & set(args):
         # Its own run: the cubes and the things on, the car standing, a box placed.
         stem, ext = os.path.splitext(log)
