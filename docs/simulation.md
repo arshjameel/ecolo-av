@@ -518,6 +518,7 @@ the camera), on the map window (a banner across the map), in the log and on
 | radar | `/sensors/radar/points` | quiet 1 s | warn: `collision_monitor` already stops Nav2 |
 | front_left_stream, front_right_stream | a front camera's stream, through its detections on `/perception/detections` (its `frame_id` only: [camera pipeline](camera-pipeline.md#the-sensor-watchdog)) | quiet 1 s; NaN in a box | stop (the car, where `car.launch.py` starts the streams) |
 | hud | `/hud/heartbeat` (the [HUD's](hud.md#the-heartbeat) screen is alive) | quiet 1 s; the count stuck for 1 s; after its first 5 s, **latched** as `hud LOST` until cleared (24 Oct) | stop (only where a HUD is expected: the car, `hud:=true`, `watch_hud:=true`) |
+| our nodes (`node_*`) | our own nodes in the ROS graph: costmap, planner, navigator, mppi_lag, smoother, behaviour, voxels, things, ego, look_ahead (TODO 180) | gone 3 s (each respawns after 1 s, so this is one that keeps dying or hangs) | warn only (Ben, 14 Nov): the costmap's age checks and twist_mux's timeout already stop the car. The sim watches the ones it starts |
 
 It runs in Gazebo (`watchdog:=true`), on the bench (always), and on the car next to the
 mux (odom, IMU, GPS, the EKFs, the HUD, and the camera streams it starts). The checks are `aav_safety/watchdog.py` and

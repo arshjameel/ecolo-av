@@ -302,3 +302,23 @@ def test_traffic_counts_a_silence_that_has_not_ended():
     watch.arrived(4.1, (0.0, 0.0))
     _, gap, worst = watch.traffic(4.2)
     assert gap == pytest.approx(3.1) and worst == pytest.approx(3.1)
+
+
+PLANNER = Rule('planner', '/planner', 'node', max_age=3.0, stop=False)
+
+
+def test_a_node_that_leaves_the_graph_warns_and_never_stops():
+    dog = Watchdog([PLANNER])
+    assert state(dog, 'planner', 0.0) == NEVER and not dog.locked(0.0)
+    dog.watches['planner'].arrived(1.0)
+    assert state(dog, 'planner', 3.9) == OK
+    assert state(dog, 'planner', 4.1) == STALE and not dog.locked(4.1)
+    dog.watches['planner'].arrived(4.2)                # respawned
+    assert state(dog, 'planner', 4.2) == OK
+
+
+def test_a_node_input_may_not_stop_the_car():
+    with pytest.raises(ValueError, match='only warns'):
+        Rule('planner', '/planner', 'node', max_age=3.0)
+    with pytest.raises(ValueError, match='full name'):
+        Rule('planner', 'planner', 'node', max_age=3.0, stop=False)

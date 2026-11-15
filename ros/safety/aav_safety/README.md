@@ -125,6 +125,7 @@ it starts the mux; the bench always; Gazebo with `geofence:=true` (the default).
 | `front_left_stream`, `front_right_stream` | `/perception/detections` (by `frame_id`) | detections | 1.0 s | yes |
 | `hud` | `/hud/heartbeat` | heartbeat, latched | 1.0 s | yes |
 | `radar` | `/sensors/radar/points` | cloud | 1.0 s | no (collision_monitor stops Nav2 itself) |
+| `node_costmap`, `node_planner`, `node_navigator`, `node_mppi_lag`, `node_smoother`, `node_behaviour`, `node_voxels`, `node_things`, `node_ego`, `node_look_ahead` | the node's full name (`/planner`...), looked for in the ROS graph | node | 3.0 s | no: warn only (Ben, 14 Nov). The sim watches the ones it starts |
 
 Per input parameters: `topic`, `kind`, `max_age` (s), `stop`, `frozen_after` (s),
 `max_jump_speed` (m/s), `jump_margin` (m), `frame_id`, `latch`, `latch_grace` (s);

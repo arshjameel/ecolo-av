@@ -93,3 +93,16 @@ sensor_watchdog:
       kind: cloud
       max_age: 1.0
       stop: false
+    # Our own nodes (Ben, 14 Nov: warn only, no lock): kind node, topic = the node's full
+    # name, looked for in the ROS graph each tick. Each respawns 1 s after it dies, so 3 s
+    # gone is a node that keeps dying or hangs. sim.launch.py adds the ones it starts.
+    node_costmap: {topic: /costmap, kind: node, max_age: 3.0, stop: false}
+    node_planner: {topic: /planner, kind: node, max_age: 3.0, stop: false}
+    node_navigator: {topic: /navigator, kind: node, max_age: 3.0, stop: false}
+    node_mppi_lag: {topic: /mppi_lag, kind: node, max_age: 3.0, stop: false}
+    node_smoother: {topic: /velocity_smoother, kind: node, max_age: 3.0, stop: false}
+    node_behaviour: {topic: /behaviour, kind: node, max_age: 3.0, stop: false}
+    node_voxels: {topic: /voxels, kind: node, max_age: 3.0, stop: false}
+    node_things: {topic: /things, kind: node, max_age: 3.0, stop: false}
+    node_ego: {topic: /ego, kind: node, max_age: 3.0, stop: false}
+    node_look_ahead: {topic: /look_ahead, kind: node, max_age: 3.0, stop: false}

@@ -17,6 +17,8 @@ Subscribes  each input's topic, as config/sensor_watchdog.yaml says (the launch 
             hud/heartbeat             std_msgs/UInt64: the HUD's screen is alive (the
                                       frames it has drawn, 10 Hz), where the launch
                                       expects a HUD
+            (graph)                   kind node: our own nodes, looked for in the ROS
+                                      graph each tick; gone, a warning only
             sensors/imu/data          also for the odom input's cross check, if no imu
                                       input watches it
 Publishes   safety/sensor_watchdog/lock   std_msgs/Bool, at rate_hz: true while an input
@@ -124,7 +126,10 @@ class SensorWatchdog(Node):
         # so nothing latches for 3 s after.
         self.dog = Watchdog(rules, stall=max(0.5, 5.0 / rate))
         self.speed = None      # the wheels' newest speed, for the camera's frozen check
+        self.node_rules = [r for r in rules if r.kind == 'node']
         for rule in rules:
+            if rule.kind == 'node':
+                continue        # no topic: tick() looks for it in the ROS graph
             if rule.kind == 'image':
                 qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE)
             elif rule.kind == 'cloud':
@@ -194,6 +199,12 @@ class SensorWatchdog(Node):
 
     def tick(self):
         now = self.now()
+        if self.node_rules:
+            running = {(ns.rstrip('/') + '/' + name)
+                       for name, ns in self.get_node_names_and_namespaces()}
+            for rule in self.node_rules:
+                if rule.topic in running:
+                    self.dog.watches[rule.name].arrived(now)
         self.dog.update(now, time.monotonic())
         states = self.dog.states(now)
         locked = any(stops for *_, stops in states)

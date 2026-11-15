@@ -451,7 +451,15 @@ def launch_setup(context):
                               or flag['faults'])
         inputs = (['odom', 'imu', 'gps', 'local', 'global'] + (['camera'] if camera else [])
                   + (['radar'] if radar else [])
-                  + (['hud'] if flag['hud'] or flag['watch_hud'] else []))
+                  + (['hud'] if flag['hud'] or flag['watch_hud'] else [])
+                  + our_nodes(nav=flag['nav'], costmap=vehicle.check_costmap(arg('costmap')),
+                              planner=planner, tracker=tracker,
+                              navigator=vehicle.check_navigator(arg('navigator')),
+                              smoother=vehicle.check_smoother(arg('smoother')),
+                              behaviour=flag['behaviour'],
+                              cubes=(flag['voxels'] or flag['screen_cubes']
+                                     or flag['things']),
+                              things=flag['things']))
         actions.append(include(context, 'aav_safety', 'watchdog.launch.py',
                                inputs=','.join(inputs), use_sim_time='true'))
     if flag['geofence']:
@@ -516,6 +524,24 @@ def fence_radius(given, world):
     if given.strip():
         return given.strip()
     return str(CAMPUS_FENCE_RADIUS if world == worlds.CAMPUS else FENCE_RADIUS)
+
+
+def our_nodes(nav, costmap, planner, tracker, navigator, smoother, behaviour, cubes,
+              things):
+    """
+    Return the watchdog's node inputs for our own nodes this launch starts (TODO 180).
+
+    Ben, 14 Nov: the watchdog warns about our nodes, warn only. The names are
+    config/sensor_watchdog.yaml's node_* inputs; ego and look_ahead always run.
+    """
+    names = ['node_ego', 'node_look_ahead']
+    if nav:
+        names += [name for name, on in (
+            ('node_costmap', costmap == 'own'), ('node_planner', planner == 'own'),
+            ('node_navigator', navigator == 'own'), ('node_mppi_lag', tracker == 'mppi_lag'),
+            ('node_smoother', smoother == 'own'), ('node_behaviour', behaviour),
+            ('node_voxels', cubes), ('node_things', things)) if on]
+    return names
 
 
 def generate_launch_description():

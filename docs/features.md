@@ -127,7 +127,7 @@ What the car decides to do on the road: when to slow, stop, wait and go, and wha
 |---|---|---|---|---|
 | Command mux and e-stop lock (`aav_command_mux`, twist_mux) | One command wins by priority, and the e-stop locks every driver out | Ben | 2026-10-09 | sim |
 | Four e-stops | The car's red button stays untouched; the joystick, `pixi run estop` and the HUD add three more | Ben | 2026-10-10 | sim |
-| [Sensor watchdog](simulation.md#sensor-failures-on-purpose) (`aav_safety`) | When a sensor fails or freezes, Nav2 stops loudly and says why, instead of driving blind | Ben | 2026-10-15 | sim |
+| [Sensor watchdog](simulation.md#sensor-failures-on-purpose) (`aav_safety`) | When a sensor fails or freezes, Nav2 stops loudly and says why, instead of driving blind; since 15 Nov it also warns (never stops) when one of our own nodes leaves the ROS graph | Ben | 2026-10-15 | sim |
 | Frozen-wheel cross-check | Wheels that stop reporting are caught by checking them against the IMU and GPS | Ben | 2026-10-15 | sim |
 | HUD heartbeat and latch | The safety drivers rely on the screen, so a frozen HUD holds Nav2 until a person clears it | Ben | 2026-10-23 | sim |
 | [Sensor mux and output mux](sources-and-targets.md) (`aav_io_mux`) | Simulated data can never drive the real car, and the spine won't arm while the gate is shut | Ben | 2026-10-23 | sim |

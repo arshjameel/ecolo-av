@@ -570,3 +570,22 @@ def test_the_campus_widens_the_fence_by_itself():
     assert SIM.fence_radius('', 'campus') == '600.0'
     assert SIM.fence_radius('', 'road') == '200.0'
     assert SIM.fence_radius(' 350 ', 'campus') == '350'
+
+
+def test_the_watchdog_watches_only_our_nodes_that_run():
+    # TODO 180 (Ben, 14 Nov: warn only): each name a node_* input of sensor_watchdog.yaml.
+    ours = SIM.our_nodes(nav=True, costmap='own', planner='own', tracker='mppi_lag',
+                         navigator='own', smoother='own', behaviour=True, cubes=True,
+                         things=False)
+    assert 'node_planner' in ours and 'node_mppi_lag' in ours
+    assert 'node_things' not in ours
+    stock = SIM.our_nodes(nav=True, costmap='nav2', planner='lattice', tracker='none',
+                          navigator='nav2', smoother='nav2', behaviour=False, cubes=False,
+                          things=False)
+    assert stock == ['node_ego', 'node_look_ahead']
+    config = os.path.join(get_package_share_directory('aav_safety'), 'config',
+                          'sensor_watchdog.yaml')
+    with open(config) as f:
+        rules = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']
+    for name in ours:
+        assert rules[name]['kind'] == 'node' and rules[name]['stop'] is False

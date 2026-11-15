@@ -39,6 +39,13 @@ A heartbeat input (kind heartbeat) is a program saying it is alive, not a sensor
 HUD's /hud/heartbeat, the number of frames its screen has drawn. Silence (STALE, or NEVER
 before its first) means the screen froze or died; a count that stops rising is FROZEN.
 
+A node input (kind node) is one of our own nodes (Ben, 14 Nov: the watchdog warns about
+our nodes, warn only, no lock): its topic is the node's full name (/planner), and it
+"arrives" each tick the node is in the ROS graph. Gone for max_age (it died, and its 1 s
+respawn didn't bring it back, or it hangs before it joins): STALE, a warning. A node input
+never stops the car (stop must be false): the costmap's and odometry's age checks and
+twist_mux's timeout already stop it while a node it needs is down.
+
 A detections input (kind detections) watches a camera through its detector's output: the
 car's camera_stream nodes (aav_camera_stream) keep their pictures inside, and send a
 Detection2DArray for every picture, boxes or none, all on one topic. Only the messages
@@ -63,7 +70,7 @@ FROZEN = 'FROZEN'
 JUMP = 'JUMP'
 LOST = 'LOST'
 
-KINDS = ('odom', 'imu', 'gps', 'image', 'cloud', 'heartbeat', 'detections')
+KINDS = ('odom', 'imu', 'gps', 'image', 'cloud', 'heartbeat', 'detections', 'node')
 EARTH_RADIUS = 6371000.0    # m
 MOVING = 0.2                # m/s: faster than this, the camera's picture must change
 
@@ -98,6 +105,12 @@ class Rule:
         if self.kind == 'detections' and self.frozen_after > 0.0:
             raise ValueError(f'{self.name}: detections have no frozen check (an empty list '
                              'repeats on a clear road)')
+        if self.kind == 'node' and self.stop:
+            raise ValueError(f'{self.name}: a node input only warns (stop: false; Ben, '
+                             '14 Nov)')
+        if self.kind == 'node' and not self.topic.startswith('/'):
+            raise ValueError(f"{self.name}: a node input's topic is the node's full name, "
+                             'such as /planner')
         if not self.latch_grace >= 0.0:
             raise ValueError(f'{self.name}: latch_grace must be 0 or more seconds')
 
