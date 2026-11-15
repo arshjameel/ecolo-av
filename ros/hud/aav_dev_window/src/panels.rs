@@ -246,6 +246,9 @@ pub struct WorldNews {
     pub road_ahead: feed::RoadAhead,
     /// The lane map's painted lines (`--lanes`, a Lanelet2 .osm), drawn with the road.
     pub lanes: Vec<LaneLine>,
+    /// The map's chunks (`--chunks`, a folder with chunks.yaml): the 3 x 3 round the car,
+    /// as the planner and NDT load them (TODO 175), drawn with the road.
+    pub chunks: Option<map_chunks::Grid>,
     /// The squiggly line, in base_link, and when its trace and numbers were last heard.
     pub ahead: Ahead,
     trace_heard: Option<Instant>,
@@ -1120,6 +1123,32 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
                 ),
                 egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
                 egui::Color32::WHITE,
+            );
+        }
+    }
+    if let (true, Some(grid)) = (layers.road, world.chunks.as_ref()) {
+        let car = map_chunks::Point::new(world.car_map.position.x, world.car_map.position.y);
+        let here = grid.key_at(car);
+        for key in here.around(1) {
+            let c = grid.corner(key);
+            let s = grid.size();
+            let corners = [(0.0, 0.0), (s, 0.0), (s, s), (0.0, s), (0.0, 0.0)];
+            let line: Vec<_> = corners
+                .iter()
+                .map(|(dx, dy)| to(Point::new(c.x + dx, c.y + dy)))
+                .collect();
+            let colour = if key == here {
+                egui::Color32::from_rgb(120, 160, 255)
+            } else {
+                egui::Color32::from_rgb(60, 80, 140)
+            };
+            painter.add(egui::Shape::line(line, egui::Stroke::new(1.0, colour)));
+            painter.text(
+                to(Point::new(c.x + 1.0, c.y + s - 1.0)),
+                egui::Align2::LEFT_TOP,
+                key.to_string(),
+                egui::FontId::proportional(11.0),
+                colour,
             );
         }
     }

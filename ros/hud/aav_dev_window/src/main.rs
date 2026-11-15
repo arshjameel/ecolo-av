@@ -70,6 +70,7 @@ struct Options {
     developer: bool,
     ndt_map: Option<String>,
     lanes: Option<String>,
+    chunks: Option<String>,
     click_goal: Option<[f64; 2]>,
     cubes: u32,
     all_layers: bool,
@@ -84,6 +85,7 @@ impl Options {
             developer: false,
             ndt_map: None,
             lanes: None,
+            chunks: None,
             click_goal: None,
             cubes: 20_000,
             all_layers: false,
@@ -98,6 +100,7 @@ impl Options {
                 "--developer" => options.developer = true,
                 "--ndt-map" => options.ndt_map = Some(value()?),
                 "--lanes" => options.lanes = Some(value()?),
+                "--chunks" => options.chunks = Some(value()?),
                 "--click-goal" => {
                     let text = value()?;
                     let parsed = text
@@ -251,6 +254,17 @@ fn main() -> AppExit {
                     .world
                     .note(format!("{path}: {} lane lines", lines.len()));
                 ui_state.world.lanes = lines;
+            }
+            Err(why) => ui_state.world.note(format!("{path}: {why}")),
+        }
+    }
+    if let Some(path) = options.chunks.as_deref() {
+        match map_chunks::files::read_grid(std::path::Path::new(path)) {
+            Ok(grid) => {
+                ui_state
+                    .world
+                    .note(format!("{path}: {} m chunks", grid.size()));
+                ui_state.world.chunks = Some(grid);
             }
             Err(why) => ui_state.world.note(format!("{path}: {why}")),
         }

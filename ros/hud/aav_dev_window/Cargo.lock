@@ -2653,6 +2653,7 @@ dependencies = [
  "debug-core",
  "hud-core",
  "lanelet-map",
+ "map-chunks",
  "map-core",
  "rclrs",
  "ros-env",

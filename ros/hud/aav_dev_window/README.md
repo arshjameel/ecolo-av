@@ -42,6 +42,7 @@ pixi run dev-window --watch                        # listens to the network it's
 pixi run dev-window --all-layers --seconds 12      # the speed test: prints the frame rate
 pixi run dev-window --cubes 60000 --seconds 8 --screenshot /tmp/window.png
 pixi run dev-window --live --lanes maps/campus/campus.osm   # the lane map's lines (pixi run campus)
+pixi run dev-window --live --chunks maps/campus/chunks     # the 3 x 3 chunks round the car
 ```
 
 | Key | Does | Key | Does |
