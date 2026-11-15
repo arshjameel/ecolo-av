@@ -374,7 +374,7 @@ topics:
   /vehicle/steering:
     type: aav_interfaces/msg/ActuatorState
     pub: [spine_bridge, gazebo_adapter, turtlesim_adapter, carla_adapter, legacy_uart_bridge]
-    sub: [actuator_test, hw_panel]
+    sub: [actuator_test, hw_panel, sensor_watchdog]
     live: [turtle, sim, bench]
     note: The steering, the virtual centre wheel (rad, + left) - command (from /ego/actuator_cmd) and measured. In Gazebo, measured is the actuator model's angle (its speed, lag, offset and deadband). For plots and the actuator tests; /vehicle/status keeps it too. legacy_uart_bridge (uplink true, 50 Hz) - command ego's steering_angle while fresh (else NaN), measured the steering Jrk's scaled feedback in rad (NaN when the Jrk has no feedback set up).
   /vehicle/steering_actuator/raw:

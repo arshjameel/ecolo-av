@@ -36,6 +36,7 @@ The watchdog works through a twist_mux lock (priority 30, in `aav_command_mux`).
 | `FROZEN` | the same values for `frozen_after` s (a camera only while the car moves) |
 | `JUMP` | two GPS fixes too far apart for the car. Latched |
 | `DISAGREE` | the wheels' speed or turn against the IMU and the GPS (`wheel_check.py`). Latched |
+| `STUCK` | an actuator (`/vehicle/steering`) more than `follow_tolerance` off its command for `follow_persist` s (TODO 207). Latched; NaN on a side is no check, not a fault |
 | `LOST` | a `latch` input (the HUD) dropped out after its start-up. Latched |
 
 A person clears latched faults: `pixi run clear watchdog`. More in
@@ -140,6 +141,7 @@ it starts the mux; the bench always; Gazebo with `geofence:=true` (the default).
 | `camera` | `/sensors/camera/front_left/image_raw` | image | 1.0 s | yes |
 | `front_left_stream`, `front_right_stream` | `/perception/detections` (by `frame_id`) | detections | 1.0 s | yes |
 | `hud` | `/hud/heartbeat` | heartbeat, latched | 1.0 s | yes |
+| `steering` | `/vehicle/steering` | actuator (STUCK: 0.15 rad for 1 s) | 1.0 s | yes; the sim only so far (not with `esp32:=true`), the car's uplink has no measured angle |
 | `radar` | `/sensors/radar/points` | cloud | 1.0 s | no (collision_monitor stops Nav2 itself) |
 | `node_costmap`, `node_planner`, `node_navigator`, `node_mppi_lag`, `node_smoother`, `node_behaviour`, `node_voxels`, `node_things`, `node_ego`, `node_look_ahead` | the node's full name (`/planner`...), looked for in the ROS graph | node | 3.0 s | no: warn only (Ben, 14 Nov). The sim watches the ones it starts |
 
@@ -147,7 +149,7 @@ Per input parameters: `topic`, `kind`, `max_age` (s), `stop`, `frozen_after` (s)
 `max_jump_speed` (m/s), `jump_margin` (m), `frame_id`, `latch`, `latch_grace` (s);
 for odom, `cross_check`, `cross_window` (s), `cross_speed_tolerance` (m/s),
 `cross_yaw_tolerance` (rad/s), `cross_persist` (s), `cross_gps_window` (s),
-`cross_gps_tolerance` (m/s). Global: `inputs`, `rate_hz` (10).
+`cross_gps_tolerance` (m/s); for actuator, `follow_tolerance` and `follow_persist` (s). Global: `inputs`, `rate_hz` (10).
 
 ### Launch and modules
 

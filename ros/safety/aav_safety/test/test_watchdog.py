@@ -322,3 +322,60 @@ def test_a_node_input_may_not_stop_the_car():
         Rule('planner', '/planner', 'node', max_age=3.0)
     with pytest.raises(ValueError, match='full name'):
         Rule('planner', 'planner', 'node', max_age=3.0, stop=False)
+
+
+# TODO 207: an actuator that doesn't follow its command (steering stuck in a bend).
+STEERING = Rule('steering', '/vehicle/steering', 'actuator', max_age=1.0,
+                follow_tolerance=0.15, follow_persist=1.0)
+
+
+def steer(dog, now, command, measured):
+    dog.watches['steering'].arrived(now, (command, measured))
+
+
+def test_steering_that_follows_its_command_is_ok_even_while_it_catches_up():
+    dog = Watchdog([STEERING])
+    steer(dog, 0.0, 0.0, 0.0)
+    # A step to 0.4 rad, caught up in 0.5 s (under follow_persist): never stuck.
+    for i in range(1, 11):
+        steer(dog, i * 0.1, 0.4, min(0.4, i * 0.08))
+    assert state(dog, 'steering', 1.0) == OK
+    assert not dog.locked(1.0)
+
+
+def test_steering_stuck_off_its_command_latches_stuck_and_stops_the_drivers():
+    dog = Watchdog([STEERING])
+    for i in range(0, 16):
+        steer(dog, i * 0.1, 0.4, 0.05)       # asked 0.4, stays at 0.05
+    s, words = dog.watches['steering'].state(1.5)
+    assert s == watchdog.STUCK and 'asked +0.40, did +0.05' in words
+    assert dog.locked(1.5)
+    # It latches: following again doesn't undo it, a person's clear does.
+    steer(dog, 1.6, 0.05, 0.05)
+    assert state(dog, 'steering', 1.6) == watchdog.STUCK
+    dog.clear()
+    steer(dog, 1.7, 0.05, 0.05)
+    assert state(dog, 'steering', 1.7) == OK
+
+
+def test_a_short_miss_resets_and_nan_is_no_fault():
+    dog = Watchdog([STEERING])
+    steer(dog, 0.0, 0.4, 0.0)
+    steer(dog, 0.9, 0.4, 0.0)                # off 0.9 s
+    steer(dog, 1.0, 0.4, 0.38)               # back within: the clock restarts
+    steer(dog, 1.5, 0.4, 0.0)
+    steer(dog, 2.2, 0.4, 0.0)                # off 0.7 s only
+    assert state(dog, 'steering', 2.2) == OK
+    # The car today: the command side is known, the measured side NaN. No check, no fault.
+    for i in range(30):
+        steer(dog, 3.0 + i * 0.1, 0.4, math.nan)
+    assert state(dog, 'steering', 5.9) == OK
+    # Silence is still STALE.
+    assert state(dog, 'steering', 8.0) == STALE
+
+
+def test_only_an_actuator_input_has_a_follow_check():
+    with pytest.raises(ValueError, match='actuator'):
+        Rule('odom', '/vehicle/odom', 'odom', max_age=0.5, follow_tolerance=0.1)
+    with pytest.raises(ValueError, match='follow_persist'):
+        Rule('steering', '/vehicle/steering', 'actuator', max_age=1.0, follow_persist=0.0)

@@ -14,6 +14,8 @@ Subscribes  each input's topic, as config/sensor_watchdog.yaml says (the launch 
             perception/detections     vision_msgs/Detection2DArray: a streamed camera
                                       (camera_stream, on the car), one message a
                                       picture; only its own frame_id's count
+            vehicle/steering          aav_interfaces/ActuatorState: kind actuator, the
+                                      command against the measured angle (STUCK, TODO 207)
             hud/heartbeat             std_msgs/UInt64: the HUD's screen is alive (the
                                       frames it has drawn, 10 Hz), where the launch
                                       expects a HUD
@@ -49,13 +51,15 @@ Parameters  inputs (the names to watch), rate_hz (10), and for each name: topic,
             cross_check (bool: the wheels against the IMU, wheel_check.py), cross_window
             (s), cross_speed_tolerance (m/s), cross_yaw_tolerance (rad/s), cross_persist (s),
             cross_gps_window (s), cross_gps_tolerance (m/s): the GPS's fixes join the check
-            where a gps input is watched
+            where a gps input is watched; for an actuator input, follow_tolerance (its
+            units, 0 off) and follow_persist (s): STUCK
 """
 
 import signal
 import time
 import zlib
 
+from aav_interfaces.msg import ActuatorState
 from aav_safety.watchdog import NEVER, OK, Rule, Watchdog
 from aav_safety.wheel_check import CrossCheck
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
@@ -71,7 +75,7 @@ from vision_msgs.msg import Detection2DArray
 
 IMU_TOPIC = '/sensors/imu/data'     # what the odom input's cross check reads
 TYPES = {'odom': Odometry, 'imu': Imu, 'gps': NavSatFix, 'image': Image, 'cloud': PointCloud2,
-         'heartbeat': UInt64, 'detections': Detection2DArray}
+         'heartbeat': UInt64, 'detections': Detection2DArray, 'actuator': ActuatorState}
 
 
 def odom_values(msg):
@@ -121,7 +125,9 @@ class SensorWatchdog(Node):
                               float(param('max_jump_speed', 0.0)),
                               float(param('jump_margin', 5.0)), cross,
                               str(param('frame_id', '')), bool(param('latch', False)),
-                              float(param('latch_grace', 5.0))))
+                              float(param('latch_grace', 5.0)),
+                              float(param('follow_tolerance', 0.0)),
+                              float(param('follow_persist', 1.0))))
         # Five ticks' time without one, on a steady clock: the watchdog itself was stopped,
         # so nothing latches for 3 s after.
         self.dog = Watchdog(rules, stall=max(0.5, 5.0 / rate))
@@ -191,6 +197,9 @@ class SensorWatchdog(Node):
             # Every stream shares the topic: only this camera's messages count.
             if rule.counts(msg.header.frame_id):
                 watch.arrived(now, box_values(msg))
+        elif rule.kind == 'actuator':
+            # What it was told and what it did: STUCK when they part too long (TODO 207).
+            watch.arrived(now, (msg.command, msg.measured))
         elif rule.kind == 'heartbeat':
             # The count must keep rising: the same count again is a screen that stopped.
             watch.arrived(now, digest=msg.data)

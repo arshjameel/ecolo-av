@@ -88,6 +88,17 @@ sensor_watchdog:
       # dropout within 5 s of its first beat is forgiven: the window starting up.
       latch: true
       latch_grace: 5.0          # s
+    steering:                   # the steering asked against the steering measured (TODO 207)
+      topic: /vehicle/steering
+      kind: actuator
+      max_age: 1.0
+      stop: true
+      # Stuck: more than 0.15 rad (8.6 degrees) off its command for 1 s, latched until a
+      # person clears it. Ego ramps the command at the steering motor's rate, so a working
+      # motor stays within a few hundredths. NaN on a side (the car's legacy uplink) means
+      # no check, not a fault. Tuned in the sim only (TODO 159's stuck steering).
+      follow_tolerance: 0.15    # rad
+      follow_persist: 1.0       # s
     radar:                      # collision_monitor stops Nav2 itself when it goes quiet
       topic: /sensors/radar/points
       kind: cloud

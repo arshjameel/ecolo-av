@@ -9,6 +9,7 @@
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>aav_description</exec_depend>
+  <exec_depend>aav_interfaces</exec_depend>
   <!-- the geofence's launch reads their configs: ego's limits, the backends' timeouts, the datum -->
   <exec_depend>aav_ego</exec_depend>
   <exec_depend>aav_spine</exec_depend>

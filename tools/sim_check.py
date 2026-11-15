@@ -612,6 +612,7 @@ class Probe(Node):
         self.hud_beat = self.create_publisher(UInt64, '/hud/heartbeat', 10)
         threading.Thread(target=self.beat_for_the_hud, daemon=True).start()
         self.disagreed = False      # the wheels' cross check ever said DISAGREE
+        self.steer_stuck_at = None  # when the watchdog first said steering STUCK (TODO 207)
         self.gaps = {}              # its worst gaps, from /diagnostics
         self.create_subscription(DiagnosticArray, '/diagnostics', self.on_diagnostics, 10)
         # The car's status (the spine's, with spine:=true), and the actuators' demands as
@@ -730,6 +731,8 @@ class Probe(Node):
     def on_state(self, msg):
         self.state = msg.data
         self.disagreed = self.disagreed or 'DISAGREE' in msg.data
+        if self.steer_stuck_at is None and 'steering STUCK' in msg.data:
+            self.steer_stuck_at = self.now()
 
     def on_diagnostics(self, msg):
         for status in msg.status:
@@ -2106,6 +2109,7 @@ def check_actuator_faults(probe, react=40.0):
         return
     turning = probe.spin_for(60.0, lambda: abs(probe.truth.twist.twist.angular.z) > TURNING
                              and probe.speed() > 0.3)
+    probe.steer_stuck_at = None
     if not turning or not set_fault(probe, 'steer', 'stuck'):
         result(name, False, 'the car never turned' if not turning else 'refused the fault')
         probe.goal.cancel_goal_async()
@@ -2134,10 +2138,18 @@ def check_actuator_faults(probe, react=40.0):
     why = ('the goal ended (status {})'.format(status) if status is not None
            else 'nothing ended the goal')
     still = f'stood still {stood:.0f} s after it' if stood is not None else 'never stood 3 s'
-    result(name, True,
-           f'stuck turning at {rate:+.2f} rad/s: {still} (watched {react:.0f} s); drove '
-           f'{driven:.1f} m, {street_check.turns(run)} changes of direction, up to {off:.1f} m '
-           f'off the straight to the goal; {why}')
+    # TODO 207: the watchdog must notice (steering STUCK, latched), then a person clears it.
+    noticed = probe.steer_stuck_at
+    seen = (f'the watchdog said steering STUCK {noticed - t0:.1f} s after it'
+            if noticed is not None else 'the watchdog never said steering STUCK')
+    clear = probe.create_client(Trigger, '/safety/sensor_watchdog/clear')
+    if noticed is not None and clear.wait_for_service(timeout_sec=5.0):
+        cleared = clear.call_async(Trigger.Request())
+        probe.spin_for(10.0, cleared.done)
+    result(name, noticed is not None,
+           f'stuck turning at {rate:+.2f} rad/s: {seen}; {still} (watched {react:.0f} s); '
+           f'drove {driven:.1f} m, {street_check.turns(run)} changes of direction, up to '
+           f'{off:.1f} m off the straight to the goal; {why}')
 
 
 def check_not_armed(probe):

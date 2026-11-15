@@ -49,7 +49,7 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 | 4 | The e-stop | `/safety/estop`; Kar-Tech; red button | brake within 2-12 ms (spine) | sim | ❌ |
 | 5 | A dead or frozen node | sensor watchdog; mux timeouts; respawn | 13 faults stop within 6 s | sim | ❌ |
 | 6 | Commands to the spine lost | the firmware's 100 ms timeout | brakes 111-120 ms after | QEMU | ❌ |
-| 7 | Steering stuck or off centre | driver-fault brake; calibration | stuck in a bend: **nothing noticed**, 3.1 m off | sim | ❌ |
+| 7 | Steering stuck or off centre | driver-fault brake; calibration | stuck in a bend: the watchdog's STUCK after 3.6 s, stood after 5 s (was: nothing noticed, 3.1 m off) | sim | 🟡 |
 | 8 | A weak brake | the adaptive brake (a trial) | 0.87 → 0.21 m past, 150 kg; a dead brake: 9.7 m | sim | ❌ |
 | 9 | Leaving the area | the geofence | stopped 1.06 m after the lock | bench | ❌ |
 | 10 | A GPS jump, bad localization | watchdog; geofence LOST, JUMP | stops within 6 s | sim | ❌ |
@@ -191,15 +191,17 @@ brake does with no power ([ESP32 safety](esp32-safety.md), row 7; tests 3.5, 3.8
 | Boot self-test | nothing arms until both Jrks and the DAC answer | `spine-core` (Arsh) |
 | Driver fault | a Jrk error: full brake, latched | `esp32-umod`, `spine-core` |
 | Calibration | the steering actuator's ends and centre, `steering_limits` | [actuator tests](actuator-tests.md#find-the-steering-actuators-ends-and-centre) |
+| Watchdog (STUCK) | the steering asked against measured: over 0.15 rad apart for 1 s latches STUCK and holds the programs (TODO 207) | `aav_safety` `watchdog.py`, input `steering` |
 
 | Number | Where, when | Who |
 |---|---|---|
 | the centre (test 3.12: under 1°) | **not measured**: the car pulls right (TODO 67) | |
 | stuck in a bend (`--actuator-faults`): mppi_lag backed and turned 3 times, drove 19.3 m, up to 3.1 m off the straight to the goal, stood after 16 s; **nothing reported a fault**, the goal kept running | sim (ours), 15 Nov, 1 run | Ben |
+| the same with the watchdog's STUCK (TODO 207): **noticed 3.6 s after**, the car stood 5 s after; drove 3.9 m, up to 1.3 m off | sim (ours), 15 Nov, 1 run | Ben |
 
-**Gap:** nothing in ROS notices a steering actuator that doesn't follow its command: the
-follower just tries again. `/vehicle/steering` carries both the command and the measured
-angle, so a watchdog could compare them (not built).
+**Gap:** on the car today the measured side is NaN (the 2025-26 uplink has no steering
+feedback, Q2), so the check stays silent there until the steering's position is read;
+its 0.15 rad and 1 s are the sim's, not tuned on the car.
 
 ## 8. A weak brake
 
@@ -288,7 +290,7 @@ measurement.
 | Today's ESP32 has no command timeout; the Rust one is unflashed | 6 | 45, 158 |
 | What the Kar-Tech and the red button cut | 4 | S1, S2 |
 | The steering's centre, and the brake's limits | 7, 8 | 67, A7 |
-| Nothing notices a steering actuator that doesn't follow; nothing but the e-stop and the drag stops a dead brake | 7, 8 | 159 |
+| A steering actuator that doesn't follow is noticed in the sim only (no feedback on the car yet); nothing but the e-stop and the drag stops a dead brake | 7, 8 | 159 |
 | The car runs 14 % over its command in the sim | 3 | 163 |
 | Obstacles stop only Nav2 and the AI slot | 1 | |
 

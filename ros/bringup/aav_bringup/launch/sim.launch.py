@@ -514,6 +514,9 @@ def launch_setup(context):
                               or lane_pose or flag['faults'])
         inputs = (['odom', 'imu', 'gps', 'local', 'global'] + (['camera'] if camera else [])
                   + (['radar'] if radar else [])
+                  # The steering asked against measured (TODO 207): the adapter or
+                  # spine_bridge publishes it; not checked yet with the ESP32 in the loop.
+                  + ([] if arg('esp32').lower() == 'true' else ['steering'])
                   + (['hud'] if flag['hud'] or flag['watch_hud'] else [])
                   + our_nodes(nav=flag['nav'], costmap=vehicle.check_costmap(arg('costmap')),
                               planner=planner, tracker=tracker,
