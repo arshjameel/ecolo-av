@@ -7,7 +7,7 @@
 <!-- Generated from docs/trials.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Trials: new path followers and localizers beside the main ones</h1>
-<div class="meta">80 min read · 19 sections</div></header>
+<div class="meta">86 min read · 20 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -115,7 +115,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#what-is-on-trial">What is on trial</a><a href="#where-a-tracker-sits">Where a tracker sits</a><a href="#fair-rules">Fair rules</a><a href="#run-it">Run it</a><a href="#results">Results</a><a href="#ndt-into-the-global-ekf-30-oct">NDT into the global EKF (30 Oct)</a><a href="#kiss-icp-into-the-local-ekf-1-nov">KISS-ICP into the local EKF (1 Nov)</a><a href="#scoring-a-localizer-fairly">Scoring a localizer fairly</a><a href="#scoring-an-odometry-fairly-kiss-icp-ekf_local">Scoring an odometry fairly (KISS-ICP, ekf_local)</a><a href="#before-a-winner-goes-on-the-car">Before a winner goes on the car</a><a href="#results-29-october">Results, 29 October</a><a href="#results-29-october-afternoon-lqr-rebuilt-and-mpc_full">Results, 29 October (afternoon): LQR rebuilt, and mpc_full</a><a href="#lag-aware-mpc-7-nov-mpc_lag">Lag-aware MPC, 7 Nov (mpc_lag)</a><a href="#planners-29-oct-hybrid-lattice-and-smac2d">Planners, 29 Oct: hybrid, lattice and smac2d</a><a href="#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">Planners, 30 Oct: reversing on, hybrid, lattice and lattice32</a><a href="#diffusion-2-nov-a-model-draws-the-lattice-guards">Diffusion, 2 Nov: a model draws, the lattice guards</a><a href="#diffusion-7-8-nov-the-u-turn-the-orin-the-car">Diffusion, 7-8 Nov: the U-turn, the Orin, the car</a><a href="#voxels-30-oct-the-lidar-as-cubes">Voxels, 30 Oct: the lidar as cubes</a><a href="#3-nov-everything-for-02">3 Nov: everything, for 0.2</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#what-is-on-trial">What is on trial</a><a href="#where-a-tracker-sits">Where a tracker sits</a><a href="#fair-rules">Fair rules</a><a href="#run-it">Run it</a><a href="#results">Results</a><a href="#ndt-into-the-global-ekf-30-oct">NDT into the global EKF (30 Oct)</a><a href="#kiss-icp-into-the-local-ekf-1-nov">KISS-ICP into the local EKF (1 Nov)</a><a href="#scoring-a-localizer-fairly">Scoring a localizer fairly</a><a href="#scoring-an-odometry-fairly-kiss-icp-ekf_local">Scoring an odometry fairly (KISS-ICP, ekf_local)</a><a href="#before-a-winner-goes-on-the-car">Before a winner goes on the car</a><a href="#results-29-october">Results, 29 October</a><a href="#results-29-october-afternoon-lqr-rebuilt-and-mpc_full">Results, 29 October (afternoon): LQR rebuilt, and mpc_full</a><a href="#lag-aware-mpc-7-nov-mpc_lag">Lag-aware MPC, 7 Nov (mpc_lag)</a><a href="#planners-29-oct-hybrid-lattice-and-smac2d">Planners, 29 Oct: hybrid, lattice and smac2d</a><a href="#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">Planners, 30 Oct: reversing on, hybrid, lattice and lattice32</a><a href="#diffusion-2-nov-a-model-draws-the-lattice-guards">Diffusion, 2 Nov: a model draws, the lattice guards</a><a href="#diffusion-7-8-nov-the-u-turn-the-orin-the-car">Diffusion, 7-8 Nov: the U-turn, the Orin, the car</a><a href="#voxels-30-oct-the-lidar-as-cubes">Voxels, 30 Oct: the lidar as cubes</a><a href="#3-nov-everything-for-02">3 Nov: everything, for 0.2</a><a href="#the-wiggle-14-nov-todo-124-149">The wiggle, 14 Nov (TODO 124, 149)</a></nav>
 <div class="lead"><p>Ben, 29 Oct: "We want to make other nodes or plugins that we can test and then replace
 the main ones if they work." Each trial runs <strong>beside</strong> today's default, chosen at launch,
 and is <strong>scored on the same routes</strong>. It becomes the default only once it wins.</p>
@@ -141,6 +141,7 @@ and is <strong>scored on the same routes</strong>. It becomes the default only o
 <li><strong>3 Nov, everything for 0.2</strong> (Gazebo, 3 runs each): every switch drives a leg; diffusion every leg, <strong>73 %</strong> of plans from the model; NDT into the EKF <strong>17 → 1.8 cm</strong>, every leg; voxels slower, and once drove through the post. <strong>No default changed.</strong> <a href="#3-nov-everything-for-02">Results</a>.</li>
 <li><strong>7 Nov, the lag-aware MPC</strong> (<code>tracker:=mpc_lag</code>): plans steering and speed through the car's own lags (the shared car model); tells ego to keep its lead off. Pretend car: no speed overshoot (others 14 %), and with the lags doubled the U-turn at 2 m/s off by <strong>0.17 m</strong> (MPC 0.36, LQR 0.27). <strong>Our simulator, 3 runs: 6 of 12 legs</strong> (MPPI 8, RPP 9, the Rust <code>mppi_lag</code> 11): best on the legs it drives, but it never made the U-turn by the building: it doesn't read the costmap. <a href="#lag-aware-mpc-7-nov-mpc_lag">Results</a>.</li>
 <li><strong>7-8 Nov, our own Rust pieces</strong> (each has its page; all trials, Nav2's stay the default and on the car): MPPI with lag (<code>tracker:=mppi_lag</code>, <a href="mppi-lag.html">page</a>), the costmap (<a href="own-costmap.html">page</a>), the planner (<a href="own-planner.html">page</a>), the navigator (<a href="own-navigator.html">page</a>), the velocity smoother (<a href="own-smoother.html">page</a>); the behaviour planner and the adaptive brake (<a href="stopping.html">how the car stops</a>). What is the default today: <a href="switches.html#the-defaults-what-runs-if-you-say-nothing">Switches</a>.</li>
+<li><strong>14 Nov, the wiggle</strong> (TODO 149): three tests on the campus road. A new plan every second moved Pure Pursuit and <code>mppi_lag</code>; the GPS's jitter moves Pure Pursuit; the smoother nothing; MPPI's 6-8 cm is its own. The trees now keep a valid path: RPP's swing <strong>0.12-0.13 → 0.09 m</strong>, <code>mppi_lag</code>'s <strong>0.14-0.17 → 0.10 m</strong>, no more loops at the goal. <a href="#the-wiggle-14-nov-todo-124-149">Results</a>.</li>
 <li>The design: <code>docs/designs/2026-10-29_trials.md</code>.</li>
 </ul>
 </blockquote></div>
@@ -3107,7 +3108,195 @@ the home leg 61-65 s).</p>
   already need the map, with a plain message when it's missing.</li>
 <li>Find why the cubes let the car through the post once (<code>sim-check --lidar-obstacle
   --voxels</code>, run 1 of 3: <code>log/sim-all/check-lidar-obstacle-voxels.log</code>).</li>
-</ul></section>
+</ul>
+</section>
+<section class="card"><h2 id="the-wiggle-14-nov-todo-124-149">The wiggle, 14 Nov (TODO 124, 149)</h2>
+<p><strong>The question:</strong> under Nav2 the car's turn flips from side to side. Why?</p>
+<p><strong>The road:</strong> the campus, lot P4 along the road, one goal, about 305 m
+(<code>pixi run measure controllers --tours wiggle --series</code>). Our simulator, 2.5 m/s, 2 runs each.</p>
+<p><strong>The numbers</strong> (<code>drive_metrics.wiggle</code>, also on every scorecard):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>swing (m)</td>
+<td>how far the car goes side to side about its own smoothed track (RMS)</td>
+</tr>
+<tr>
+<td>flips a second</td>
+<td>how often the steering, or the turn rate, changes side while moving</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-three-tests">The three tests</h3>
+<p>Each switch takes one suspect away. Swing in metres, flips of ego's steering a second.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Test</th>
+<th>MPPI</th>
+<th>Pure Pursuit (RPP)</th>
+<th>What it says</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Baseline</td>
+<td>0.054-0.065 m, 0.23-0.27</td>
+<td>0.119-0.131 m, 0.54-0.56</td>
+<td></td>
+</tr>
+<tr>
+<td>1. The simulator's truth as the pose (<code>truth_pose:=true</code>)</td>
+<td>0.062-0.063 m, 0.21-0.22</td>
+<td>0.083-0.113 m, <strong>0.29-0.36</strong></td>
+<td>the GPS's jitter: half of RPP's flips; none of MPPI's</td>
+</tr>
+<tr>
+<td>2. One plan a goal (<code>replan_hz:=0</code>)</td>
+<td>0.062-0.074 m, 0.26</td>
+<td><strong>0.082-0.087 m</strong>, 0.45</td>
+<td>the replanning: a third of RPP's swing; none of MPPI's</td>
+</tr>
+<tr>
+<td>3. Before and after the smoother</td>
+<td>flips 0.24-0.27 before, the same after</td>
+<td>0.62-0.63 before, 0.60-0.62 after</td>
+<td>the smoother adds nothing (<code>mppi_lag</code> too: 0.88-1.06 before, 0.79-0.87 after)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The global EKF's sideways error jumps by <strong>0.09 m RMS every 0.2 s</strong> (the sim's GPS: 0.5 m
+noise, 5 fixes a second), and its heading by about 1°. With the truth as the pose, both go.</p>
+<p><strong>The replanning also made loops:</strong> with a new plan every second the car drove 9-16 new
+routes a goal and 40-130 m more than the route, mostly circling the goal. With one plan: 0.</p>
+<h3 id="the-causes">The causes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Cause</th>
+<th>Who it moves</th>
+<th>Fixed?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A new plan every second</strong> (the to-pose tree's 1 Hz)</td>
+<td>RPP, <code>mppi_lag</code>; the loops for all</td>
+<td><strong>yes</strong>: the tree keeps a valid path</td>
+</tr>
+<tr>
+<td><strong>The GPS's jitter through the global EKF</strong></td>
+<td>RPP (half its flips)</td>
+<td>no: next, below</td>
+</tr>
+<tr>
+<td><strong>MPPI's own sampling</strong></td>
+<td>MPPI: 0.06-0.08 m, a flip every 4 s; <code>mppi_lag</code>: a flip a second</td>
+<td>no: the follower itself</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-fix-keep-a-valid-path">The fix: keep a valid path</h3>
+<p>The to-pose trees (<code>navigate_to_pose_car*.xml</code>) now plan again only when they must, as
+Nav2's own <code>nav_to_pose_with_consistent_replanning_and_if_path_becomes_invalid.xml</code>: the
+path is kept while it still ends at this goal, nothing blocks it (<code>IsPathValid</code>) and it is
+under 10 s old. The final approach keeps its 20 s (TODO 17). A config change: Nav2's
+servers are the same.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Follower</th>
+<th>Swing before → after (m)</th>
+<th>Steering flips a second</th>
+<th>Time (s)</th>
+<th>Driven (m)</th>
+<th>New routes</th>
+<th>Reached</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MPPI</td>
+<td>0.054, 0.065 → 0.065, 0.080</td>
+<td>0.27, 0.23 → 0.22, 0.26</td>
+<td>189, 211 → <strong>146, 142</strong></td>
+<td>343, 371 → <strong>302, 304</strong></td>
+<td>9, 12 → <strong>0</strong></td>
+<td>2/2 → 2/2</td>
+</tr>
+<tr>
+<td>RPP</td>
+<td>0.119, 0.131 → <strong>0.089, 0.094</strong></td>
+<td>0.54, 0.56 → <strong>0.42, 0.47</strong></td>
+<td>288, 145 → <strong>125, 126</strong></td>
+<td>315, 350 → 302, 305</td>
+<td>4, 4 → <strong>0</strong></td>
+<td>1/2 → <strong>2/2</strong></td>
+</tr>
+<tr>
+<td><code>mppi_lag</code></td>
+<td>0.170, 0.137 → <strong>0.100, 0.100</strong></td>
+<td>0.68, 0.71 → 1.04, 1.15</td>
+<td>210, 210 → 137, 232</td>
+<td>431, 93 → 301, 158</td>
+<td>16, 0 → <strong>0</strong></td>
+<td>1/2 → 1/2</td>
+</tr>
+</tbody>
+</table></div>
+<p>The same, from a recorded drive (<code>tools/record.sh</code>, then <code>tools/score_drive.py</code>; RPP, one
+run each, the old tree put back for "before"):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Scorecard row</th>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>wiggle: side to side, RMS / worst</td>
+<td>0.139 m / 0.50 m</td>
+<td><strong>0.084 m / 0.22 m</strong></td>
+</tr>
+<tr>
+<td>wiggle: steering changed side</td>
+<td>0.43 a second</td>
+<td>0.43 a second</td>
+</tr>
+<tr>
+<td>distance, time</td>
+<td>524 m, 242 s</td>
+<td><strong>305 m, 134 s</strong></td>
+</tr>
+<tr>
+<td>off the plan, mean</td>
+<td>0.30 m</td>
+<td><strong>0.17 m</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>What it shows:</strong> RPP's and <code>mppi_lag</code>'s swing is 25-40 % smaller, and no follower loops
+at the end any more. MPPI's swing (6-8 cm) didn't change: it never came from the plan.
+<code>mppi_lag</code>'s flips went up because it now spends the whole drive on the road at speed
+(before, half of it was slow circling); its swing still fell.</p>
+<h3 id="next">Next</h3>
+<ul>
+<li><strong>The GPS's jitter:</strong> follow in <code>odom</code> and apply the map's corrections slowly (the
+  whole-car design's idea), or trust each fix less in <code>ekf_global</code>. Test 1 says it halves
+  RPP's flips.</li>
+<li><strong><code>mppi_lag</code>'s flip a second:</strong> its own sampling; tune its noise and smoothing.</li>
+<li><strong>Our navigator</strong> (<code>aav_navigator</code>) still plans every second: port <code>KeepAValidPath</code>.</li>
+<li>Not yet on the car, nor in Gazebo (our simulator only); 2 runs each.</li>
+</ul>
+<p>Raw runs (not in git): <code>log/wiggle/a-base</code>, <code>a-truth</code>, <code>a-once</code>, <code>b-after</code>.</p></section>
 <nav class="prevnext"><a class="prev" href="switches.html"><small>Previous</small>← Switches</a>
 <a class="next" href="league.html"><small>Next</small>The league →</a></nav>
 </main>

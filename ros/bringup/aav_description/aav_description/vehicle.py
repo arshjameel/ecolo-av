@@ -282,6 +282,30 @@ def final_approach(v):
     return s_bend_length(r, 2.0 * r)
 
 
+# How often the navigate-to-pose trees plan again (Hz): Nav2's own tree's 1 Hz. The wiggle's
+# second test (TODO 149) plans once per goal: REPLAN_ONCE_HZ, once in about three hours.
+REPLAN_HZ = 1.0
+REPLAN_ONCE_HZ = 1e-4
+REPLAN_TAG = 'RateController hz="1.0"'
+
+
+def replan_tree(xml, hz):
+    """
+    Return a behaviour tree's text with its replanning rate set to hz (0: plan once).
+
+    The car's trees hold one RateController, at REPLAN_HZ, round the planning (the final
+    approach's Fallback inside it stays). A tree without exactly one is refused.
+    """
+    if xml.count(REPLAN_TAG) != 1:
+        raise ValueError(f'the tree needs exactly one {REPLAN_TAG}')
+    hz = float(hz)
+    if hz < 0.0:
+        raise ValueError(f'replan_hz:={hz:g}: 0 (plan once) or more')
+    if hz == REPLAN_HZ:
+        return xml
+    return xml.replace(REPLAN_TAG, f'RateController hz="{hz if hz > 0.0 else REPLAN_ONCE_HZ:g}"')
+
+
 # Nav2's path followers (docs/path-followers.md): rpp, Regulated Pure Pursuit, chases a point
 # ahead on the path; mppi samples thousands of futures through its Ackermann model. MPPI is
 # the default since 22 Oct: in Gazebo it did at least as well in every run, and it turns to
@@ -406,7 +430,8 @@ def navigator_params(v, reversing, waypoints='pass_through'):
     """
     Return aav_navigator's settings (navigator:=own) as a dict, for its JSON parameter.
 
-    The trees' numbers (behavior_trees/*_car*.xml): replanning at 1 Hz (through-poses
+    The trees' numbers (behavior_trees/*_car*.xml) until 14 Nov: replanning at 1 Hz (the
+    to-pose trees now keep a valid path up to 10 s, TODO 149; not yet here) (through-poses
     0.333 Hz), the final approach (final_approach(v), TODO 17), 6 recoveries, Wait 5 s,
     BackUp 1 m at half max_reverse_speed only with reversing, RemovePassedGoals' 1 m.
     waypoints: pass_through (ours: one through-poses goal, TODO 140) or stop_at_each

@@ -7,7 +7,7 @@ Nav2 as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out to tw
       [reversing:=false] [max_speed:=] [controller:=mppi] [planner:=lattice]
       [diffusion_model:=] [diffusion_provider:=CPUExecutionProvider] [diffusion_record:=]
       [diffusion_python:=] [diffusion_smoothing:=gear]
-      [plan_around:=true] [behaviour:=false] [things:=false]
+      [plan_around:=true] [behaviour:=false] [things:=false] [replan_hz:=1.0]
       [tracker:=none] [costmap:=nav2] [navigator:=nav2] [smoother:=nav2] [live_swap:=false]
       [amcl:=false]
       [amcl_x:=0.0] [amcl_y:=0.0] [amcl_yaw:=0.0] [amcl_map:=]
@@ -119,6 +119,9 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           seconds unseen, on /world/things (and /world/things/markers); the
                           radar's speed too with radar:=true. voxels runs for it. Nothing
                           reads the list yet (docs/designs/2026-11-14_the-whole-car.md)
+  replan_hz:=0            the navigate-to-pose tree plans once a goal, not every second
+                          (a test, the wiggle: TODO 149); any other number, that rate. A
+                          copy of the tree, removed when the launch ends
   amcl_map:=<yaml>        AMCL's own map (finer, obstacles as outlines: maps/README.md),
                           from amcl_map_server on /localization/amcl/map; empty: Nav2's /map
 
@@ -197,6 +200,17 @@ def tuned_copy(source, v, reversing, max_speed, radar, lidar, ghost=False,
     with out:
         yaml.safe_dump(cfg, out)
     # The nodes read it as they start; gone when the launch ends (1000 were left, 22 Oct).
+    atexit.register(os.remove, out.name)
+    return out.name
+
+
+def replanning_copy(tree, hz):
+    """Return a temporary copy of a to-pose tree that plans again at hz (0: once a goal)."""
+    with open(tree) as f:
+        text = vehicle.replan_tree(f.read(), hz)
+    out = tempfile.NamedTemporaryFile('w', prefix='tree_', suffix='.xml', delete=False)
+    with out:
+        out.write(text)
     atexit.register(os.remove, out.name)
     return out.name
 
@@ -294,9 +308,13 @@ def nodes(context):
         # our own simulator: every goal refused). 15 s; a server that's gone still fails a
         # goal within default_server_timeout.
         rewrites['wait_for_service_timeout'] = str(DIFFUSION_WAIT_MS)
+    to_pose = f'{share}/behavior_trees/navigate_to_pose{trees}'
+    replan_hz = float(LaunchConfiguration('replan_hz').perform(context) or vehicle.REPLAN_HZ)
+    if replan_hz != vehicle.REPLAN_HZ:
+        to_pose = replanning_copy(to_pose, replan_hz)
     rewrites.update({
         'yaml_filename': map_yaml,
-        'default_nav_to_pose_bt_xml': f'{share}/behavior_trees/navigate_to_pose{trees}',
+        'default_nav_to_pose_bt_xml': to_pose,
         'default_nav_through_poses_bt_xml':
             f'{share}/behavior_trees/navigate_through_poses{trees}',
         LOCAL + 'obstacle_layer.enabled': str(radar).lower(),
@@ -682,6 +700,10 @@ def generate_launch_description():
                               description='true: the planner sees the radar and lidar too, '
                                           'and plans round what they see; false: the map '
                                           'only, so the car stops for it (the stop tests)'),
+        DeclareLaunchArgument('replan_hz', default_value=str(vehicle.REPLAN_HZ),
+                              description=('how often the navigate-to-pose tree plans again '
+                                           "(Hz; Nav2's own 1.0); 0: once a goal, a test "
+                                           '(the wiggle, TODO 149)')),
         DeclareLaunchArgument('behaviour', default_value='false',
                               description='true: aav_behaviour, the behaviour states and a '
                                           'speed cap on Nav2 (a trial, docs/stopping.md)'),

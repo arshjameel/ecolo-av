@@ -21,7 +21,7 @@ rewritten as one plain state machine in Rust's own style (enums, no plugins, no 
 | Ours | Nav2's |
 |---|---|
 | plan every `replan_period` (1 s; through-poses 3 s) | `RateController hz="1.0"` / `"0.333"` |
-| keep the path within `final_approach` of the goal, while it ends there and is under 20 s old | our trees' `PlanUnlessOnTheFinalApproach` (TODO 17) |
+| keep the path within `final_approach` of the goal, while it ends there and is under 20 s old | our trees' `OnTheFinalApproach` in `PlanOnlyWhenNeeded` (TODO 17). Not yet ported: the trees' `KeepAValidPath` (14 Nov, TODO 149), so ours still plans every second away from the goal |
 | a failed plan: clear the global costmap, plan once more | the inner `RecoveryNode` with `WouldAPlannerRecoveryHelp` |
 | a failed follow: clear the local costmap, follow once more | the inner `RecoveryNode` with `WouldAControllerRecoveryHelp` |
 | then, 6 times at most: clear both, wait 5 s, back up 1 m (reversing), in turn | the outer `RecoveryNode` and `RoundRobin` |

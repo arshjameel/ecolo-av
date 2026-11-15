@@ -33,7 +33,7 @@ exec tools/ros.sh ros2 bag record -o "$out" --include-hidden-topics --topics \
   /sensors/imu/data_raw /sensors/imu/data /sensors/imu/mag /sensors/gps/fix /sensors/gps/fix_velocity /vehicle/battery \
   /drivers/joy/joy /safety/estop /control/cmd_vel /drivers/joy/cmd_vel /drivers/keyboard/cmd_vel /drivers/scripted/cmd_vel /drivers/nav/cmd_vel \
   /drivers/point/cmd_vel /drivers/rc/cmd_vel /drivers/tests/cmd_vel /drive_to_point/_action/feedback /drive_to_point/_action/status \
-  /ego/actuator_cmd /can/tx /can/rx /control/car/link_frame /vehicle/esp32/uplink_health \
+  /cmd_vel_nav /ego/actuator_cmd /can/tx /can/rx /control/car/link_frame /vehicle/esp32/uplink_health \
   /localization/odom/local /localization/odom/global /localization/gps/odom /localization/gps/fix /localization/gps/heading \
   /tf /tf_static /robot_description /plan /goal_pose /clock \
   /sensors/camera/front_left/image_raw/compressed /sensors/camera/front_left/camera_info \

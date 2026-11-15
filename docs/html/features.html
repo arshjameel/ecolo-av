@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">66 min read · 14 sections</div></header>
+<div class="meta">67 min read · 14 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -1266,6 +1266,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben: the car should follow a line "that doesn't make you want to throw up". A new score, sway, measures the sideways swing a passenger feels, over Carleton's roads; the report ranks the followers by it</td>
 <td>Ben</td>
 <td>2026-11-05</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="trials.html#the-wiggle-14-nov-todo-124-149">The wiggle, measured and tested</a> (<code>measure controllers --tours wiggle</code>; the scorecard's wiggle rows; <code>truth_pose:=true</code>, <code>replan_hz:=0</code>)</td>
+<td>Ben, 14 Nov: "resolve any issues we have like the oscillating steering". The swing in metres and the flips a second, on every scorecard; two sim-only switches take the GPS and the replanning away. They found the 1 Hz replanning: the to-pose trees now keep a valid path (Pure Pursuit's swing 0.12-0.13 → 0.09 m, no loops at the goal)</td>
+<td>Ben</td>
+<td>2026-11-14</td>
 <td>sim</td>
 </tr>
 <tr>

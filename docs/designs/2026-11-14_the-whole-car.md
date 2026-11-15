@@ -135,12 +135,12 @@ Each row merges parts we already have with a known method. All proposed.
 | Idea | Merges | Why it should help |
 |---|---|---|
 | **The lane finder corrects the pose** | `aav_lane_finder` + the lane map + the EKF | GPS is weakest sideways (1-3 m), and NDT slips *along* a road, not across. The camera measures the car's offset in the lane to centimetres (4 cm mean in our simulator, 8 Nov). Three sensors, each strong where the others are weak |
-| **Follow in `odom`, correct slowly** | the trackers already do it (`aav_track`: map to odom once per path) | a GPS step turns the map by up to 4° (11 Oct) and swings the whole path. Limit how fast the correction is applied |
-| **Keep the plan unless a new one is clearly better** | weak links 4.5, never built | the single-goal tree replans at 1 Hz, the wiggle's rate |
+| **Follow in `odom`, correct slowly** | the trackers already do it (`aav_track`: map to odom once per path) | a GPS step turns the map by up to 4° (11 Oct) and swings the whole path. Limit how fast the correction is applied. 14 Nov: the sim's EKF jumps 0.09 m sideways every 0.2 s; with the truth as the pose Pure Pursuit flips half as often. Next to build |
+| **Keep the plan unless a new one is clearly better** | weak links 4.5; **built 14 Nov** as Nav2's own consistent-replanning tree: keep a valid path up to 10 s | measured: Pure Pursuit's swing 0.12-0.13 → 0.09 m, `mppi_lag`'s 0.14-0.17 → 0.10 m, no loops at the goal ([trials](../trials.md#the-wiggle-14-nov-todo-124-149)) |
 | **Trust NDT only where it is sure** | research C (Zhang 2016) | NDT slipped 0.4 m along a wall in Gazebo |
 | **Stops reset the drift** | research idea 12 | a parked car's speed is exactly zero: free information |
 
-The three wiggle tests (TODO 149) still come first: they say which of the first three to build.
+The three wiggle tests (TODO 149) ran on 14 Nov: the replanning and the GPS's jitter move Pure Pursuit and `mppi_lag`; the smoother nothing; MPPI's 6-8 cm swing is its own sampling. The plan is now kept; the slow map correction is next.
 
 ### Seeing: things, not just points
 

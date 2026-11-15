@@ -59,6 +59,7 @@ aboard), `adaptive_brake`.
 | `gazebo_radar` | `/gazebo/radar/points` (best effort), `/gazebo/odom` | `/sensors/radar/points` (best effort, `radar_link`, the TI driver's fields); only with `radar:=true` (the default) in a world that renders sensors |
 | `gazebo_esp32` | TCP 127.0.0.1:47000 + the ROS domain: `legacy_uart_bridge`'s frames; only with `esp32:=true` | `/vehicle/sim/esp32_outputs` (SpineOutputs, 50 Hz) |
 | `gazebo_camera` | `/gazebo/camera/front_left/image_raw` | `/sensors/camera/front_left/image_raw`; only with `faults:=true` in a world that renders sensors |
+| `truth_localizer` | `/vehicle/sim/truth`, TF `odom → base_link`; only with `sim.launch.py truth_pose:=true` (a test: the wiggle, TODO 149) | `/localization/odom/global` (the truth), TF `map → odom` so that `map → base_link` is the truth; `ekf_global` doesn't run |
 | `gz_bridge`, `gz_road_bridge`, `gz_lidar_bridge` | (stock `ros_gz_bridge`, `config/bridge*.yaml`) | `/clock`, `/joint_states`, `/vehicle/sim/truth`, the cameras, `/sensors/lidar/points` |
 
 ### Parameters
@@ -87,6 +88,7 @@ aboard), `adaptive_brake`.
 | `wheels.py` | each wheel's speed from joint states | no |
 | `sources.py` | what `/system/source` announces | no |
 | `worlds.py` | which world renders which sensors (`has_sensors`) | no |
+| `pose_frames.py` | `map_to_odom`: the `map → odom` that puts the car on the truth (`truth_localizer`) | no |
 | `relay.py` | what the sensor nodes share: fault parameter, clean start and stop | yes |
 | `gazebo_*.py` | the six nodes | yes |
 
@@ -105,7 +107,8 @@ lidar's obstacle check in `tools/sim_check.py`), `stop_sign`.
   `actuators:` section.
 - Each sensor node is its own process, so a slow one can't make another late.
 - Gazebo's truth (`/vehicle/sim/truth`) is for checks and the GPS's velocity only;
-  it never reaches localization.
+  it never reaches localization, except in one test that asks for it by name
+  (`truth_pose:=true`: `truth_localizer` in `ekf_global`'s place).
 - Units: m, m/s, rad, s. Positive steering turns left. Throttle and brake are 0 to 1.
 
 ## Side Effects

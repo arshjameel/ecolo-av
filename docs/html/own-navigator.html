@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-navigator.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own navigator</h1>
-<div class="meta">8 min read · 5 sections</div></header>
+<div class="meta">9 min read · 5 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -456,9 +456,13 @@ again. A goal a few metres past the exit would avoid it.</p>
 <li>
 <p><strong>On the car:</strong> untested; <code>car.launch.py</code> always passes <code>navigator:=nav2</code>.</p>
 </li>
-<li><strong>No <code>IsPathValid</code></strong> on the final approach: the navigator reads no costmap.</li>
-<li><strong>Back up</strong> still calls Nav2's <code>behavior_server</code> (reversing only); all ours runs none, so
-  it has no BackUp recovery, though <code>mppi_lag</code> itself now follows reversing paths.</li>
+<li><strong><code>IsPathValid</code></strong> on the final approach (14 Nov): once a second it asks the planner
+  (planner_server's, or ours, <code>aav_planner</code>, where none runs); a blocked path is planned
+  again. Not yet seen in a sim run.</li>
+<li><strong>Back up</strong> calls Nav2's <code>behavior_server</code> where it runs (reversing only). All ours runs
+  none: since 14 Nov the navigator then backs up through the follower, <code>mppi_lag</code>, on a
+  straight line 1 m behind the car (it checks the costmap as it goes). Not yet seen in a
+  sim run.</li>
 </ul></section>
 <nav class="prevnext"><a class="prev" href="own-planner.html"><small>Previous</small>← Our own planner</a>
 <a class="next" href="own-smoother.html"><small>Next</small>Our own velocity smoother →</a></nav>

@@ -124,6 +124,13 @@ bench's argument names:
                       takes its twist (vx, vyaw) beside the wheels and the IMU
                       (aav_localization config/ekf_local_kiss.yaml; docs/trials.md).
                       Default false: the local EKF on the wheels and the IMU alone
+  truth_pose:=true    a test (the wiggle, TODO 149): the simulator's truth is the car's pose.
+                      No ekf_global; aav_gazebo's truth_localizer publishes
+                      /localization/odom/global and map -> odom so that map -> base_link
+                      is the truth. ekf_local still gives odom -> base_link. Never the car
+  replan_hz:=1.0      how often Nav2's navigate-to-pose tree plans again (navigation.launch.py;
+                      1.0 as Nav2's own tree). replan_hz:=0: plan once per goal, the wiggle's
+                      second test
   plan_around:=false  Nav2's planner sees only the map, not the radar and lidar: the car
                       stops for an obstacle instead of planning round it (the stop tests)
   watchdog:=true      the sensor watchdog (aav_safety): twist_mux's sensors lock stops Nav2
@@ -254,6 +261,9 @@ def launch_setup(context):
     # ndt_ekf: ekf_global takes NDT's pose, so NDT runs too.
     ndt_ekf = arg('ndt_ekf').lower() == 'true'
     ndt = arg('ndt').lower() == 'true' or ndt_ekf
+    truth_pose = arg('truth_pose').lower() == 'true'
+    if truth_pose and ndt_ekf:
+        raise ValueError('truth_pose:=true has no ekf_global for ndt_ekf:=true to feed')
     # kiss_ekf: ekf_local takes KISS-ICP's twist, so KISS-ICP runs too.
     kiss_ekf = arg('kiss_ekf').lower() == 'true'
     kiss_icp = arg('kiss_icp').lower() == 'true' or kiss_ekf
@@ -329,8 +339,13 @@ def launch_setup(context):
              remappings=[('imu/data_raw', '/sensors/imu/data_raw'),
                          ('imu/data', '/sensors/imu/data')]),
         include(context, 'aav_localization', 'localization.launch.py', use_sim_time='true',
-                ndt_ekf=str(ndt_ekf).lower(), kiss_ekf=str(kiss_ekf).lower()),
+                ndt_ekf=str(ndt_ekf).lower(), kiss_ekf=str(kiss_ekf).lower(),
+                global_ekf=str(not truth_pose).lower()),
     ]
+    if truth_pose:
+        # The wiggle's first test: the truth as the pose, in ekf_global's place.
+        actions.append(Node(package='aav_gazebo', executable='truth_localizer',
+                            name='truth_localizer', parameters=[{'use_sim_time': True}]))
     # What this run uses, in words, for the cockpit's Algorithms table (aav_run_info).
     profile = f'sim world:={world}' + (
         f' simulator:={simulator}' if simulator != worlds.DEFAULT_SIMULATOR else '')
@@ -382,6 +397,7 @@ def launch_setup(context):
                                                       'example_lot_amcl.yaml')
                                          if amcl else ''),
                                plan_around=str(flag['plan_around']).lower(),
+                               replan_hz=arg('replan_hz'),
                                behaviour=str(flag['behaviour']).lower(),
                                things=str(flag['things']).lower()))
     if ndt:
@@ -642,6 +658,12 @@ def generate_launch_description():
                               description="true: Nav2's planner plans round what the radar "
                                           'and lidar see; false: the map only, so the car '
                                           'stops for it'),
+        DeclareLaunchArgument('truth_pose', default_value='false',
+                              description="a test: the simulator's truth as the pose, in "
+                                          "ekf_global's place (aav_gazebo truth_localizer)"),
+        DeclareLaunchArgument('replan_hz', default_value='1.0',
+                              description="how often Nav2's navigate-to-pose tree plans "
+                                          'again; 0: once per goal (a test)'),
         DeclareLaunchArgument('simulator', default_value=worlds.DEFAULT_SIMULATOR,
                               description="gazebo, or own: our Rust simulator in gz sim's "
                                           'place (aav_simulator, aav_sim_cameras)'),

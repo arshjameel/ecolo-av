@@ -39,6 +39,7 @@ setup(
             'gazebo_radar = aav_gazebo.gazebo_radar:main',
             'gazebo_camera = aav_gazebo.gazebo_camera:main',
             'gazebo_esp32 = aav_gazebo.gazebo_esp32:main',
+            'truth_localizer = aav_gazebo.truth_localizer:main',
         ],
     },
 )
