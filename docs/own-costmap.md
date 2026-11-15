@@ -16,6 +16,8 @@ This page is the first piece. Nav2 stays the default, and stays on the car.
 >   at first; **3 of 3 once the recovery cleared ours too** ([scores](#the-scores-8-nov)).
 >   Nav2's: 3 of 3 each.
 > - **Fast:** 0.4 ms an update without ROS; about 0.5 ms in the sim.
+> - **Big maps:** each costmap has its own thread, and the global one is worked out once
+>   per map, so the campus never makes the local one late ([threads](#threads-and-bounds-14-nov)).
 > - **With `tracker:=mppi_lag`**, MPPI reads ours instead of Nav2's.
 
 ## How it fits
@@ -58,6 +60,45 @@ reads. The global clear stays Nav2's under Nav2's navigator; our navigator
 - **One change from Nav2:** the inflation finds the nearest obstacle exactly (a distance
   transform), not by Nav2's brushfire. The costs are the same.
 - **Not ported:** Nav2's 3D voxel layer, range sensors, filters. `nav2.yaml` uses none.
+
+## Threads and bounds (14 Nov)
+
+**The problem.** On the campus map (6400 × 6400 cells, 41 million) every leg with
+`costmap:=own tracker:=mppi_lag` failed: "the costmap on .../local_raw: 0.84 s old
+(limit 0.80 s)". Both costmaps ran on one thread, and the global one rebuilt the whole
+map each second. While it did, the local one waited.
+
+**The fix, Nav2's way:**
+
+| Nav2 does | Ours now |
+|---|---|
+| each costmap has its own update thread (`mapUpdateLoop`) | each costmap has its own thread; the ROS worker only gathers the inputs and hands them over |
+| each update redoes only the bounds the layers touched (`updateBounds`, `updateCosts`) | the global one is worked out **once per map**; after that only the cells the sensors touched, plus the inflation's reach |
+| a late update loop is skipped and logged | a busy thread skips to the newest inputs (`skipped` on the status) |
+
+```
+ROS worker: messages, timers ──▶ local thread:  update + publish (5 Hz, 0.4 ms)
+                             └─▶ global thread: map once (0.5 s) + publish (1 Hz)
+```
+
+**Before and after**, without ROS (`examples/timing.rs`, campus size, this Mac with the
+simulator running beside it):
+
+| What | Before | After |
+|---|---|---|
+| global update, every second | **477-539 ms** | 0.000 ms (nothing changed) |
+| global update when the map comes | the same | 477 ms, once, on its own thread |
+| global with a lidar layer on it | the whole map again | 0.25 ms (the scan's area) |
+| making the two messages' cells | 26 ms each publish | only after a change |
+| local waits for the global | yes | **never** |
+
+- **Still sent in full, once a second:** the global grid (41 MB as 0-255, 41 MB as
+  0-100). Our planner checks its age (2 s limit), so it must keep coming. It goes out
+  on the global thread, so the local one never waits for it. Not timed with ROS yet.
+- **The same cells:** a test checks an area update against a whole one, cell for cell.
+- **The local one** still rebuilds its whole 200 × 200 window: it moves every update,
+  and that takes 0.4 ms.
+- **New status values:** `publish_ms` (the last publish) and `skipped`.
 
 ## Try it
 
@@ -141,7 +182,7 @@ Our local update: **0.50-0.55 ms** on average, 0.58 ms at the 95th percentile.
 
 ## Without ROS
 
-`cargo test -p costmap`: 31 tests.
+`cargo test -p costmap`: 40 tests.
 
 | Test | Checks |
 |---|---|
@@ -152,14 +193,17 @@ Our local update: **0.50-0.55 ms** on average, 0.58 ms at the 95th percentile.
 | the map through map → odom | a wall lands in the right cells |
 | the global costmap | the map's own cells, unknown kept, 3 m of gentle inflation (119 at 1 m) |
 | the distance transform | exact against brute force |
+| an area update | the same cells as a whole one, as the car drives with a lidar layer |
+| a map without sensors | worked out once, again only after a clear |
 
 ## What's missing
 
 - **The planner** reads Nav2's global costmap (`planner_server`). Our planner
   ([page](own-planner.md), `planner:=own`) reads `/drivers/nav/costmap/global_raw` when
   `costmap:=own` is on too.
-- **The global costmap's size:** the campus map is large; ours rebuilds it all each second
-  (27 ms for 500 m × 500 m without ROS). Fine now; only the changed part if it grows.
+- **The global costmap's size:** fixed 14 Nov ([threads](#threads-and-bounds-14-nov)).
+  Untested in the simulator on the campus. Sending it in full each second is left;
+  partial updates (Nav2's `_updates`) only if that proves slow.
 - **The global clear:** ours serves it. Our navigator calls it (8 Nov); Nav2's trees
   still clear Nav2's global costmap.
 - **Radar, cubes and cameras** (point clouds, placed by `/tf_static`'s mounts): built,

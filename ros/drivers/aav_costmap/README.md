@@ -40,6 +40,9 @@ pixi run sim-check --costmap own --tracker mppi_lag --lidar-obstacle --plan-arou
 - The same input as Nav2's: the launch file builds both from the same tuned nav2.yaml.
 - Nav2's cost codes and its 0-100 table; Nav2's message types on `*_raw`.
 - No ROS in `crates/costmap`; no maths in the node.
+- Each costmap updates and publishes on its own thread, so the local one never waits
+  for the global one. The global one is worked out whole only when its map comes or it is
+  cleared; after that only the area the sensors touched (Nav2's bounds).
 - `cargo fmt` and `cargo clippy` clean.
 
 ## Side Effects
@@ -50,6 +53,6 @@ pixi run sim-check --costmap own --tracker mppi_lag --lidar-obstacle --plan-arou
 
 ```sh
 cargo test -p costmap                                  # the layers and hand-made scenes
-cargo run --release -p costmap --example timing        # how long an update takes
+cargo run --release -p costmap --example timing        # how long an update takes (local; global at the campus's size)
 pixi run build && colcon test --packages-select aav_costmap
 ```

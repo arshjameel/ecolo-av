@@ -4,7 +4,7 @@
 
 use crate::cost::{FREE, LETHAL, NO_INFORMATION};
 use crate::footprint;
-use crate::grid::Grid;
+use crate::grid::{self, Bounds, Grid};
 
 /// One observation source's settings: Nav2's names, from nav2.yaml.
 #[derive(Debug, Clone, PartialEq)]
@@ -122,8 +122,15 @@ impl ObstacleLayer {
     /// Take what the sensors saw: `observations[i]` is source i's (its newest, or those
     /// within its persistence; none if it is silent). Clears along every clearing source's
     /// rays first, then marks, then clears under `outline` (the car, in the costmap's
-    /// frame), as Nav2 does.
-    pub fn update(&mut self, observations: &[Vec<&Observation>], outline: &[(f64, f64)]) {
+    /// frame), as Nav2 does. Returns the cells it touched (Nav2's `updateBounds`): every
+    /// cell a ray cleared, a point marked or the car stood on, whether its cost changed or
+    /// not; `None` if none.
+    pub fn update(
+        &mut self,
+        observations: &[Vec<&Observation>],
+        outline: &[(f64, f64)],
+    ) -> Option<Bounds> {
+        let mut touched = None;
         let sources = &self.sources;
         let seen = || {
             sources
@@ -133,7 +140,7 @@ impl ObstacleLayer {
         };
         let clears: Vec<_> = seen().filter(|(s, _)| s.clearing).collect();
         for (source, obs) in clears {
-            raytrace_free(&mut self.grid, source, obs);
+            touched = grid::union(touched, raytrace_free(&mut self.grid, source, obs));
         }
         let marks: Vec<_> = seen().filter(|(s, _)| s.marking).collect();
         for (source, obs) in marks {
@@ -150,23 +157,41 @@ impl ObstacleLayer {
                 }
                 if let Some((cx, cy)) = self.grid.cell(p[0], p[1]) {
                     self.grid.set(cx, cy, LETHAL);
+                    touched = grid::union(touched, Some(Bounds::cell(cx, cy)));
                 }
             }
         }
         if self.footprint_clearing {
-            for i in footprint::cells_under(&self.grid, outline) {
+            let under = footprint::cells_under(&self.grid, outline);
+            for &i in &under {
                 self.grid.data[i] = FREE;
             }
+            touched = grid::union(touched, Bounds::of_indices(under, self.grid.width));
         }
+        touched
     }
 
     /// Into the master grid, keeping the higher cost; this layer's unknown cells add
     /// nothing (Nav2's `updateWithMax`).
     pub fn combine_into(&self, master: &mut Grid) {
-        for (m, &c) in master.data.iter_mut().zip(&self.grid.data) {
-            if c != NO_INFORMATION && (*m == NO_INFORMATION || *m < c) {
-                *m = c;
-            }
+        combine(&mut master.data, &self.grid.data);
+    }
+
+    /// The same, for the cells in `b` only, into `part`: a crop of the master at `b`'s
+    /// corner (Grid::crop).
+    pub fn combine_area(&self, part: &mut Grid, b: Bounds) {
+        let w = self.grid.width;
+        for (y, row) in (b.y0..b.y1).zip(part.data.chunks_exact_mut(b.width().max(1))) {
+            combine(row, &self.grid.data[y * w + b.x0..y * w + b.x1]);
+        }
+    }
+}
+
+/// Nav2's `updateWithMax`, cell by cell.
+fn combine(master: &mut [u8], layer: &[u8]) {
+    for (m, &c) in master.iter_mut().zip(layer) {
+        if c != NO_INFORMATION && (*m == NO_INFORMATION || *m < c) {
+            *m = c;
         }
     }
 }
@@ -177,11 +202,10 @@ fn keeps(source: &Source, p: &[f64; 3]) -> bool {
 }
 
 /// Nav2's `raytraceFreespace`: each ray from the sensor, cut at the grid's edge, clears.
-fn raytrace_free(grid: &mut Grid, source: &Source, obs: &Observation) {
+/// Returns the cells it cleared.
+fn raytrace_free(grid: &mut Grid, source: &Source, obs: &Observation) -> Option<Bounds> {
     let (ox, oy) = (obs.origin[0], obs.origin[1]);
-    let Some(start) = grid.cell(ox, oy) else {
-        return;
-    };
+    let start = grid.cell(ox, oy)?;
     let (gx, gy) = (grid.origin_x, grid.origin_y);
     let (ex, ey) = grid.end();
     let max_cells = grid.cell_distance(source.raytrace_max_range);
@@ -214,9 +238,10 @@ fn raytrace_free(grid: &mut Grid, source: &Source, obs: &Observation) {
             grid.raytrace(start, end, max_cells, min_cells, |i| cleared.push(i));
         }
     }
-    for i in cleared {
+    for &i in &cleared {
         grid.data[i] = FREE;
     }
+    Bounds::of_indices(cleared, grid.width)
 }
 
 #[cfg(test)]

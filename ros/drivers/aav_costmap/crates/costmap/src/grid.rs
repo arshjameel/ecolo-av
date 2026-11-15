@@ -20,6 +20,78 @@ pub struct Grid {
     pub data: Vec<u8>,
 }
 
+/// A rectangle of cells, `x0..x1` by `y0..y1` (ends excluded): the area an update changed
+/// (Nav2's `updateBounds`, in cells).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Bounds {
+    /// The first column.
+    pub x0: usize,
+    /// The first row.
+    pub y0: usize,
+    /// One past the last column.
+    pub x1: usize,
+    /// One past the last row.
+    pub y1: usize,
+}
+
+impl Bounds {
+    /// One cell.
+    pub fn cell(cx: usize, cy: usize) -> Self {
+        Self {
+            x0: cx,
+            y0: cy,
+            x1: cx + 1,
+            y1: cy + 1,
+        }
+    }
+
+    /// The smallest rectangle holding both.
+    pub fn union(self, other: Self) -> Self {
+        Self {
+            x0: self.x0.min(other.x0),
+            y0: self.y0.min(other.y0),
+            x1: self.x1.max(other.x1),
+            y1: self.y1.max(other.y1),
+        }
+    }
+
+    /// Grown by `cells` on every side, cut to a `width` x `height` grid.
+    pub fn grown(self, cells: usize, width: usize, height: usize) -> Self {
+        Self {
+            x0: self.x0.saturating_sub(cells),
+            y0: self.y0.saturating_sub(cells),
+            x1: (self.x1 + cells).min(width),
+            y1: (self.y1 + cells).min(height),
+        }
+    }
+
+    /// Columns.
+    pub fn width(&self) -> usize {
+        self.x1.saturating_sub(self.x0)
+    }
+
+    /// Rows.
+    pub fn height(&self) -> usize {
+        self.y1.saturating_sub(self.y0)
+    }
+
+    /// The bounds of the cells at these indices of a grid `width` cells wide.
+    pub fn of_indices(indices: impl IntoIterator<Item = usize>, width: usize) -> Option<Self> {
+        indices
+            .into_iter()
+            .map(|i| Self::cell(i % width, i / width))
+            .reduce(Self::union)
+    }
+}
+
+/// The union of two optional areas.
+pub fn union(a: Option<Bounds>, b: Option<Bounds>) -> Option<Bounds> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(a.union(b)),
+        (a, b) => a.or(b),
+    }
+}
+
 impl Grid {
     /// A grid with every cell `fill`.
     pub fn new(origin: (f64, f64), resolution: f64, width: usize, height: usize, fill: u8) -> Self {
@@ -76,6 +148,37 @@ impl Grid {
             self.origin_x + (cx as f64 + 0.5) * self.resolution,
             self.origin_y + (cy as f64 + 0.5) * self.resolution,
         )
+    }
+
+    /// The cells in `b`, as a grid of their own (its corner on the same ground).
+    pub fn crop(&self, b: Bounds) -> Self {
+        let mut data = Vec::with_capacity(b.width() * b.height());
+        for row in self
+            .data
+            .chunks_exact(self.width.max(1))
+            .take(b.y1)
+            .skip(b.y0)
+        {
+            data.extend_from_slice(&row[b.x0..b.x1]);
+        }
+        Self {
+            origin_x: self.origin_x + b.x0 as f64 * self.resolution,
+            origin_y: self.origin_y + b.y0 as f64 * self.resolution,
+            resolution: self.resolution,
+            width: b.width(),
+            height: b.height(),
+            data,
+        }
+    }
+
+    /// Write `part`'s cells in `b` back, `part` being a crop at `at` (its first column
+    /// and row in this grid).
+    pub fn paste(&mut self, part: &Grid, at: (usize, usize), b: Bounds) {
+        for y in b.y0..b.y1 {
+            let from = (y - at.1) * part.width + (b.x0 - at.0);
+            let to = y * self.width + b.x0;
+            self.data[to..to + b.width()].copy_from_slice(&part.data[from..from + b.width()]);
+        }
     }
 
     /// The cost at (x, y); `outside` off the grid.
@@ -268,6 +371,43 @@ mod tests {
         // What came into the window is the fill.
         assert_eq!(g.cost_at(6.5, 0.5, 0), 7);
         assert_eq!(g.data.iter().filter(|&&c| c == 254).count(), 1);
+    }
+
+    #[test]
+    fn a_crop_sits_on_the_same_ground_and_pastes_back() {
+        let mut g = Grid::new((-1.0, -2.0), 0.5, 8, 6, 0);
+        g.set(3, 2, 9);
+        let read = Bounds::cell(3, 2).grown(2, g.width, g.height);
+        assert_eq!(
+            read,
+            Bounds {
+                x0: 1,
+                y0: 0,
+                x1: 6,
+                y1: 5
+            }
+        );
+        let mut part = g.crop(read);
+        assert_eq!((part.width, part.height), (5, 5));
+        assert_eq!(part.cost_at(0.8, -0.8, 0), 9);
+        part.data.fill(4);
+        g.paste(
+            &part,
+            (read.x0, read.y0),
+            Bounds::cell(3, 2).grown(1, g.width, g.height),
+        );
+        assert_eq!(g.data.iter().filter(|&&c| c == 4).count(), 9);
+        assert_eq!(g.get(3, 2), 4);
+        assert_eq!(g.get(5, 2), 0);
+        assert_eq!(
+            Bounds::of_indices([g.index(7, 1), g.index(2, 4)], g.width),
+            Some(Bounds {
+                x0: 2,
+                y0: 1,
+                x1: 8,
+                y1: 5
+            })
+        );
     }
 
     #[test]

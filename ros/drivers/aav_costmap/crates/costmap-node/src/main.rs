@@ -34,19 +34,30 @@
 //!
 //! navigation.launch.py costmap:=own starts it. Nav2's own costmaps keep running. The
 //! maths is the `costmap` crate; this file only moves messages.
+//!
+//! Threads, as Nav2's (each Costmap2DROS has its own map update thread): one rclrs worker
+//! takes every message and, on each costmap's timer, gathers its inputs and hands them to
+//! that costmap's own thread, which updates and publishes it. So the global costmap's
+//! slow work (a new map on the campus: half a second) never holds up the local one. A
+//! thread still busy when its next inputs come skips to the newest (`skipped` on the
+//! status). A clear is handed over the same way and done before the next update.
 
 use std::{
     any::Any,
     collections::{HashMap, VecDeque},
-    sync::Arc,
+    sync::{
+        mpsc::{self, Receiver, Sender},
+        Arc,
+    },
+    thread::JoinHandle,
     time::{Duration, Instant},
 };
 
 use anyhow::{anyhow, bail, Context as _, Result};
 use costmap::{
     cost::{occupancy, LETHAL},
-    footprint, Arrival, Costmap, Observation, ObstacleLayer, Pose2, PoseHistory, Settings, Source,
-    StaticMap, Transform3,
+    footprint, Arrival, Changed, Costmap, Observation, ObstacleLayer, Pose2, PoseHistory, Settings,
+    Source, StaticMap, Transform3,
 };
 use rclrs::*;
 use ros_env::builtin_interfaces::msg::Time;
@@ -93,7 +104,9 @@ fn main() -> Result<()> {
     let status_topic = text_param("status_topic", "/drivers/nav/costmap/status")?;
     let clear_prefix = text_param("clear_prefix", "/drivers/nav/costmap/clear_entirely_")?;
 
+    let status: Publisher<DiagnosticStatus> = node.create_publisher(status_topic.as_str())?;
     let mut maps = Vec::new();
+    let mut threads = Vec::new();
     for (name, json, topic) in [
         ("local", &local_json, &local_topic),
         ("global", &global_json, &global_topic),
@@ -105,17 +118,29 @@ fn main() -> Result<()> {
             serde_json::from_str(json).with_context(|| format!("parameter {name}: JSON"))?;
         let spec = Spec::build(name, &block).with_context(|| format!("the {name} costmap"))?;
         log_info!(node.logger(), "{}", spec.describe());
-        maps.push(One {
-            spec,
-            last_publish: None,
-            update_ms: 0.0,
-            worst_ms: 0.0,
-            updates: 0,
-            clears: 0,
-            waiting: String::new(),
-            grid_pub: node.create_publisher(topic.as_str())?,
-            raw_pub: node.create_publisher(format!("{topic}_raw").as_str())?,
+        let (jobs, inbox) = mpsc::channel();
+        maps.push(Handle {
+            name,
+            in_map: spec.frame == "map",
+            inputs: spec.inputs.clone(),
+            update_hz: spec.update_hz,
+            transform_tolerance: spec.transform_tolerance,
+            jobs,
         });
+        let one = One::new(
+            spec,
+            node.create_publisher(topic.as_str())?,
+            node.create_publisher(format!("{topic}_raw").as_str())?,
+            Arc::clone(&status),
+            node.get_clock(),
+            node.logger().clone(),
+        );
+        threads.push(
+            std::thread::Builder::new()
+                .name(format!("costmap-{name}"))
+                .spawn(move || one.run(&inbox))
+                .with_context(|| format!("starting the {name} costmap's thread"))?,
+        );
     }
     if maps.is_empty() {
         bail!("neither local nor global is set: nothing to do");
@@ -123,17 +148,17 @@ fn main() -> Result<()> {
 
     // Every topic any source reads, once, and its kind.
     let mut topics: Vec<(String, Kind)> = Vec::new();
-    for input in maps.iter().flat_map(|m| m.spec.inputs.iter().flatten()) {
+    for input in maps.iter().flat_map(|m| m.inputs.iter().flatten()) {
         if !topics.iter().any(|(name, _)| *name == input.topic) {
             topics.push((input.topic.clone(), input.kind));
         }
     }
-    let rates: Vec<f64> = maps.iter().map(|m| m.spec.update_hz).collect();
-    let names: Vec<&'static str> = maps.iter().map(|m| m.spec.name).collect();
+    let rates: Vec<f64> = maps.iter().map(|m| m.update_hz).collect();
+    let names: Vec<&'static str> = maps.iter().map(|m| m.name).collect();
 
     let core = Core {
         maps,
-        status: node.create_publisher(status_topic.as_str())?,
+        halt: Arc::clone(executor.commands()),
         clock: node.get_clock(),
         logger: node.logger().clone(),
         base_frame,
@@ -149,7 +174,7 @@ fn main() -> Result<()> {
     let mut keep: Vec<Box<dyn Any>> = vec![
         Box::new(worker.create_subscription(
             map_topic.as_str().keep_last(1).reliable().transient_local(),
-            |s: &mut Core, msg: OccupancyGrid| s.on_map(&msg),
+            |s: &mut Core, msg: OccupancyGrid| s.on_map(msg),
         )?),
         Box::new(
             worker.create_subscription(odom_topic.as_str(), |s: &mut Core, msg: Odometry| {
@@ -197,6 +222,13 @@ fn main() -> Result<()> {
     ctrlc::set_handler(move || commands.halt_spinning())?;
     executor.spin(SpinOptions::default()).first_error()?;
     drop((keep, handles));
+    // A costmap's thread only ends on a panic while the node runs (its inbox stays open).
+    if let Some(t) = threads.iter().find(|t: &&JoinHandle<()>| t.is_finished()) {
+        bail!(
+            "{} stopped",
+            t.thread().name().unwrap_or("a costmap's thread")
+        );
+    }
     Ok(())
 }
 
@@ -214,6 +246,8 @@ struct Input {
     kind: Kind,
     /// s: messages older than the newest by more than this are left out (0: newest only).
     persistence: f64,
+    /// A scan's inf rays count (its source's `inf_is_valid`).
+    inf_is_valid: bool,
 }
 
 /// One message from a sensor, in its own frame.
@@ -301,6 +335,7 @@ impl Spec {
                     topic: text(s, "topic")?,
                     kind,
                     persistence: num(s, "observation_persistence")?,
+                    inf_is_valid: flag(s, "inf_is_valid")?,
                 });
                 sources.push(Source {
                     name: text(s, "name")?,
@@ -368,23 +403,314 @@ impl Spec {
     }
 }
 
-/// One costmap, its publishers, and how its updates went.
+/// What the worker hands a costmap's thread.
+enum Job {
+    /// A new map: each thread reads it into its own costs.
+    Map(Arc<MapData>),
+    /// A recovery asked: forget every mark.
+    Clear,
+    /// The timer: update now with these inputs, or say why it can't.
+    Tick(Tick),
+}
+
+enum Tick {
+    Update(Inputs),
+    Stalled(String),
+}
+
+/// One update's inputs, gathered on the worker.
+struct Inputs {
+    /// The car in the costmap's frame.
+    robot: Pose2,
+    /// The costmap's frame in map, if known.
+    map_from_frame: Option<Pose2>,
+    /// observations[layer][source]: each a list.
+    observations: Vec<Vec<Vec<Observation>>>,
+    /// The inputs that were missing (empty: none).
+    waiting: String,
+}
+
+/// /map, as it came.
+struct MapData {
+    origin: (f64, f64),
+    resolution: f64,
+    width: usize,
+    height: usize,
+    values: Vec<i8>,
+}
+
+/// One costmap as the worker sees it: what to gather for it, and its thread's inbox.
+struct Handle {
+    name: &'static str,
+    /// Its frame is map (else odom).
+    in_map: bool,
+    inputs: Vec<Vec<Input>>,
+    update_hz: f64,
+    transform_tolerance: f64,
+    jobs: Sender<Job>,
+}
+
+/// One costmap on its own thread: its layers, its messages, how its updates went.
 struct One {
     spec: Spec,
     last_publish: Option<Instant>,
     update_ms: f64,
     worst_ms: f64,
+    /// ms: the last publish (the messages made and sent).
+    publish_ms: f64,
     updates: u64,
+    /// Inputs left out because the thread was still busy with older ones.
+    skipped: u64,
     /// How often a recovery cleared it.
     clears: u64,
     waiting: String,
+    /// The grid changed since the messages were last made.
+    dirty: bool,
+    /// The grid's lethal cells, counted when the messages were made.
+    lethal: usize,
+    raw_msg: CostmapMsg,
+    grid_msg: OccupancyGrid,
     grid_pub: Publisher<OccupancyGrid>,
     raw_pub: Publisher<CostmapMsg>,
+    status: Publisher<DiagnosticStatus>,
+    clock: Clock,
+    logger: Logger,
+}
+
+impl One {
+    fn new(
+        spec: Spec,
+        grid_pub: Publisher<OccupancyGrid>,
+        raw_pub: Publisher<CostmapMsg>,
+        status: Publisher<DiagnosticStatus>,
+        clock: Clock,
+        logger: Logger,
+    ) -> Self {
+        let header = Header {
+            stamp: Time::default(),
+            frame_id: spec.frame.clone(),
+        };
+        Self {
+            last_publish: None,
+            update_ms: 0.0,
+            worst_ms: 0.0,
+            publish_ms: 0.0,
+            updates: 0,
+            skipped: 0,
+            clears: 0,
+            waiting: String::new(),
+            dirty: true,
+            lethal: 0,
+            raw_msg: CostmapMsg {
+                header: header.clone(),
+                ..CostmapMsg::default()
+            },
+            grid_msg: OccupancyGrid {
+                header,
+                ..OccupancyGrid::default()
+            },
+            spec,
+            grid_pub,
+            raw_pub,
+            status,
+            clock,
+            logger,
+        }
+    }
+
+    /// Take jobs until the node ends. When it falls behind, the maps and clears are all
+    /// done, in order, and only the newest tick.
+    fn run(mut self, inbox: &Receiver<Job>) {
+        while let Ok(first) = inbox.recv() {
+            let mut tick = None;
+            for job in std::iter::once(first).chain(inbox.try_iter()) {
+                match job {
+                    Job::Map(map) => self.set_map(&map),
+                    Job::Clear => self.clear(),
+                    Job::Tick(t) => {
+                        if let Some(Tick::Update(_)) = tick.replace(t) {
+                            self.skipped += 1;
+                        }
+                    }
+                }
+            }
+            match tick {
+                Some(Tick::Update(inputs)) => self.update(inputs),
+                Some(Tick::Stalled(why)) => self.stalled(why),
+                None => {}
+            }
+        }
+    }
+
+    fn stamp(&self) -> Time {
+        self.clock.now().to_ros_msg().unwrap_or_default()
+    }
+
+    fn set_map(&mut self, m: &MapData) {
+        let track = self.spec.costmap.settings().track_unknown;
+        match StaticMap::from_occupancy(m.origin, m.resolution, m.width, m.height, &m.values, track)
+        {
+            Some(map) => self.spec.costmap.set_map(map),
+            None => log_warn!(&self.logger, "the map's size and data disagree: ignored"),
+        }
+    }
+
+    /// A recovery asked: forget the marks (the next update recomputes every cell).
+    fn clear(&mut self) {
+        self.spec.costmap.clear();
+        self.clears += 1;
+        log_info!(&self.logger, "{} costmap cleared (asked)", self.spec.name);
+    }
+
+    fn due(&self) -> bool {
+        self.last_publish.is_none_or(|t| {
+            t.elapsed().as_secs_f64() >= 1.0 / self.spec.publish_hz.max(0.01) - 1e-3
+        })
+    }
+
+    /// One update, and its publish when due.
+    fn update(&mut self, inputs: Inputs) {
+        if !self.spec.costmap.ready() {
+            return self.stalled("the map".to_owned());
+        }
+        let started = Instant::now();
+        let observations: Vec<Vec<Vec<&Observation>>> = inputs
+            .observations
+            .iter()
+            .map(|l| l.iter().map(|s| s.iter().collect()).collect())
+            .collect();
+        let changed =
+            self.spec
+                .costmap
+                .update(&inputs.robot, inputs.map_from_frame.as_ref(), &observations);
+        self.dirty |= changed != Changed::Nothing;
+        let ms = started.elapsed().as_secs_f64() * 1e3;
+        self.update_ms = ms;
+        self.worst_ms = self.worst_ms.max(ms);
+        self.updates += 1;
+        self.waiting = inputs.waiting;
+        if self.due() {
+            self.last_publish = Some(Instant::now());
+            if let Err(e) = self.publish() {
+                log_warn!(
+                    self.logger.throttle(Duration::from_secs(5)),
+                    "publishing the {} costmap: {e}",
+                    self.spec.name
+                );
+            }
+        }
+    }
+
+    /// It can't update: say why on its status, at its publish rate; no grid.
+    fn stalled(&mut self, why: String) {
+        self.waiting = why;
+        if self.due() {
+            self.last_publish = Some(Instant::now());
+            if let Err(e) = self.publish_status() {
+                log_warn!(
+                    self.logger.throttle(Duration::from_secs(5)),
+                    "publishing the {} costmap's status: {e}",
+                    self.spec.name
+                );
+            }
+        }
+    }
+
+    /// The two messages' cells, sizes and corner, from the grid: only after it changed
+    /// (on the campus, 41 million cells a message).
+    fn refresh(&mut self) {
+        let g = self.spec.costmap.grid();
+        let origin = PoseMsg {
+            position: Point {
+                x: g.origin_x,
+                y: g.origin_y,
+                z: 0.0,
+            },
+            orientation: Quaternion {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                w: 1.0,
+            },
+        };
+        self.raw_msg.metadata = CostmapMetaData {
+            layer: "master".to_owned(),
+            resolution: g.resolution as f32,
+            size_x: g.width as u32,
+            size_y: g.height as u32,
+            origin: origin.clone(),
+            ..CostmapMetaData::default()
+        };
+        self.raw_msg.data.clone_from(&g.data);
+        self.grid_msg.info = MapMetaData {
+            resolution: g.resolution as f32,
+            width: g.width as u32,
+            height: g.height as u32,
+            origin,
+            ..MapMetaData::default()
+        };
+        self.grid_msg.data.clear();
+        self.grid_msg
+            .data
+            .extend(g.data.iter().map(|&c| occupancy(c)));
+        self.lethal = g.data.iter().filter(|&&c| c == LETHAL).count();
+        self.dirty = false;
+    }
+
+    /// Both grids, stamped now, every publish period: the readers check their age (the
+    /// planner, mppi_lag), so an unchanged grid is sent again, its cells not made again.
+    fn publish(&mut self) -> Result<()> {
+        let started = Instant::now();
+        if self.dirty {
+            self.refresh();
+        }
+        let stamp = self.stamp();
+        self.raw_msg.header.stamp = stamp.clone();
+        self.raw_msg.metadata.map_load_time = stamp.clone();
+        self.raw_msg.metadata.update_time = stamp.clone();
+        self.grid_msg.header.stamp = stamp.clone();
+        self.grid_msg.info.map_load_time = stamp;
+        self.raw_pub.publish(&self.raw_msg)?;
+        self.grid_pub.publish(&self.grid_msg)?;
+        self.publish_ms = started.elapsed().as_secs_f64() * 1e3;
+        self.publish_status()
+    }
+
+    /// Its status line: its update times, its lethal cells, what it waits for.
+    fn publish_status(&self) -> Result<()> {
+        let g = self.spec.costmap.grid();
+        let name = self.spec.name;
+        let values = vec![
+            kv("costmap", name),
+            kv("update_ms", &format!("{:.2}", self.update_ms)),
+            kv("worst_ms", &format!("{:.2}", self.worst_ms)),
+            kv("publish_ms", &format!("{:.2}", self.publish_ms)),
+            kv("updates", &self.updates.to_string()),
+            kv("skipped", &self.skipped.to_string()),
+            kv("clears", &self.clears.to_string()),
+            kv("lethal_cells", &self.lethal.to_string()),
+            kv("cells", &format!("{}x{}", g.width, g.height)),
+            kv("waiting_for", &self.waiting),
+        ];
+        self.status.publish(DiagnosticStatus {
+            level: if self.waiting.is_empty() { 0 } else { 1 },
+            name: format!("costmap {name}"),
+            message: if self.waiting.is_empty() {
+                format!("{name} costmap: {:.2} ms an update", self.update_ms)
+            } else {
+                format!("{name} costmap: waiting for {}", self.waiting)
+            },
+            hardware_id: String::new(),
+            values,
+        })?;
+        Ok(())
+    }
 }
 
 struct Core {
-    maps: Vec<One>,
-    status: Publisher<DiagnosticStatus>,
+    maps: Vec<Handle>,
+    /// Stops the node if a costmap's thread has gone (a panic), so the launch restarts it.
+    halt: Arc<ExecutorCommands>,
     clock: Clock,
     logger: Logger,
     base_frame: String,
@@ -414,33 +740,41 @@ fn bare(frame: &str) -> &str {
 }
 
 impl Core {
-    fn stamp(&self) -> Time {
-        self.clock.now().to_ros_msg().unwrap_or_default()
+    /// Hand costmap i's thread a job; if the thread has gone, stop the node.
+    fn send(&self, i: usize, job: Job) {
+        let one = &self.maps[i];
+        if one.jobs.send(job).is_err() {
+            log_error!(
+                &self.logger,
+                "the {} costmap's thread has stopped: the node stops",
+                one.name
+            );
+            self.halt.halt_spinning();
+        }
     }
 
-    /// A recovery asked: forget costmap i's marks.
+    /// A recovery asked: costmap i forgets its marks, before its next update.
     fn clear(&mut self, i: usize) {
-        let one = &mut self.maps[i];
-        one.spec.costmap.clear();
-        one.clears += 1;
-        log_info!(&self.logger, "{} costmap cleared (asked)", one.spec.name);
+        self.send(i, Job::Clear);
     }
 
-    fn on_map(&mut self, msg: &OccupancyGrid) {
+    /// The map, to every costmap's thread: each reads it there, not on this worker.
+    fn on_map(&mut self, msg: OccupancyGrid) {
         let i = &msg.info;
-        for one in &mut self.maps {
-            let track = one.spec.costmap.settings().track_unknown;
-            match StaticMap::from_occupancy(
-                (i.origin.position.x, i.origin.position.y),
-                f64::from(i.resolution),
-                i.width as usize,
-                i.height as usize,
-                &msg.data,
-                track,
-            ) {
-                Some(map) => one.spec.costmap.set_map(map),
-                None => log_warn!(&self.logger, "the map's size and data disagree: ignored"),
-            }
+        let (origin, resolution) = (
+            (i.origin.position.x, i.origin.position.y),
+            f64::from(i.resolution),
+        );
+        let (width, height) = (i.width as usize, i.height as usize);
+        let map = Arc::new(MapData {
+            origin,
+            resolution,
+            width,
+            height,
+            values: msg.data,
+        });
+        for k in 0..self.maps.len() {
+            self.send(k, Job::Map(Arc::clone(&map)));
         }
     }
 
@@ -580,12 +914,11 @@ impl Core {
         self.keep_raw(topic, raw);
     }
 
-    /// One update of costmap i, and its publish when due.
+    /// Costmap i's timer: its inputs gathered here, its update and publish on its thread.
     fn tick(&mut self, i: usize) {
-        let started = Instant::now();
-        let in_map = self.maps[i].spec.frame == "map";
+        let in_map = self.maps[i].in_map;
         let now = self.now();
-        let tolerance = self.maps[i].spec.transform_tolerance;
+        let tolerance = self.maps[i].transform_tolerance;
         // Stale odometry (or map -> odom): no scan placed, nothing published, so a reader
         // checking the costmap's age stops too. The status says why.
         let Some((_, odom_pose)) = self.odom.latest() else {
@@ -607,83 +940,41 @@ impl Core {
         } else {
             odom_pose
         };
-        if !self.maps[i].spec.costmap.ready() {
-            return self.stalled(i, "the map".to_owned());
-        }
         // Each source's observations, in this costmap's frame.
         let mut missing = Vec::new();
-        let mut owned: Vec<Vec<Vec<Observation>>> = Vec::new();
-        for (layer, inputs) in self.maps[i]
-            .spec
-            .costmap
-            .layers()
+        let observations = self.maps[i]
+            .inputs
             .iter()
-            .zip(&self.maps[i].spec.inputs)
-        {
-            let mut per_source = Vec::new();
-            for (source, input) in layer.sources.iter().zip(inputs) {
-                let list = self.observations(input, source, in_map, tolerance, &mut missing);
-                per_source.push(list);
-            }
-            owned.push(per_source);
-        }
-        let observations: Vec<Vec<Vec<&Observation>>> = owned
-            .iter()
-            .map(|l| l.iter().map(|s| s.iter().collect()).collect())
+            .map(|layer| {
+                layer
+                    .iter()
+                    .map(|input| self.observations(input, in_map, tolerance, &mut missing))
+                    .collect()
+            })
             .collect();
         let map_from_frame = if in_map {
             Some(Pose2::IDENTITY)
         } else {
             self.map_from_odom
         };
-        let one = &mut self.maps[i];
-        one.spec
-            .costmap
-            .update(&robot, map_from_frame.as_ref(), &observations);
-        let ms = started.elapsed().as_secs_f64() * 1e3;
-        one.update_ms = ms;
-        one.worst_ms = one.worst_ms.max(ms);
-        one.updates += 1;
-        one.waiting = missing.join(", ");
-        let due = one.last_publish.is_none_or(|t| {
-            t.elapsed().as_secs_f64() >= 1.0 / one.spec.publish_hz.max(0.01) - 1e-3
-        });
-        if due {
-            one.last_publish = Some(Instant::now());
-            if let Err(e) = self.publish(i) {
-                log_warn!(
-                    self.logger.throttle(Duration::from_secs(5)),
-                    "publishing the {} costmap: {e}",
-                    self.maps[i].spec.name
-                );
-            }
-        }
+        let inputs = Inputs {
+            robot,
+            map_from_frame,
+            observations,
+            waiting: missing.join(", "),
+        };
+        self.send(i, Job::Tick(Tick::Update(inputs)));
     }
 
-    /// Costmap i can't update: say why on its status, at its publish rate; no grid.
+    /// Costmap i can't update: its thread says why on its status; no grid.
     fn stalled(&mut self, i: usize, why: String) {
-        let one = &mut self.maps[i];
-        one.waiting = why;
-        let due = one.last_publish.is_none_or(|t| {
-            t.elapsed().as_secs_f64() >= 1.0 / one.spec.publish_hz.max(0.01) - 1e-3
-        });
-        if due {
-            one.last_publish = Some(Instant::now());
-            if let Err(e) = self.publish_status(i) {
-                log_warn!(
-                    self.logger.throttle(Duration::from_secs(5)),
-                    "publishing the {} costmap's status: {e}",
-                    self.maps[i].spec.name
-                );
-            }
-        }
+        self.send(i, Job::Tick(Tick::Stalled(why)));
     }
 
     /// A source's messages within its persistence, in this costmap's frame.
     fn observations(
         &self,
         input: &Input,
-        source: &Source,
         in_map: bool,
         tolerance: f64,
         missing: &mut Vec<String>,
@@ -717,7 +1008,7 @@ impl Core {
                 (true, None) => continue,
             };
             let whole = Transform3::from_pose2(&base).then(&mount);
-            let infs = if source.inf_is_valid {
+            let infs = if input.inf_is_valid {
                 raw.inf_points.as_slice()
             } else {
                 &[]
@@ -734,86 +1025,6 @@ impl Core {
             });
         }
         out
-    }
-
-    fn publish(&self, i: usize) -> Result<()> {
-        let one = &self.maps[i];
-        let g = one.spec.costmap.grid();
-        let stamp = self.stamp();
-        let header = Header {
-            stamp: stamp.clone(),
-            frame_id: one.spec.frame.clone(),
-        };
-        let origin = PoseMsg {
-            position: Point {
-                x: g.origin_x,
-                y: g.origin_y,
-                z: 0.0,
-            },
-            orientation: Quaternion {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-                w: 1.0,
-            },
-        };
-        one.raw_pub.publish(CostmapMsg {
-            header: header.clone(),
-            metadata: CostmapMetaData {
-                map_load_time: stamp.clone(),
-                update_time: stamp.clone(),
-                layer: "master".to_owned(),
-                resolution: g.resolution as f32,
-                size_x: g.width as u32,
-                size_y: g.height as u32,
-                origin: origin.clone(),
-            },
-            data: g.data.clone(),
-        })?;
-        one.grid_pub.publish(OccupancyGrid {
-            header,
-            info: MapMetaData {
-                map_load_time: stamp,
-                resolution: g.resolution as f32,
-                width: g.width as u32,
-                height: g.height as u32,
-                origin,
-            },
-            data: g.data.iter().map(|&c| occupancy(c)).collect(),
-        })?;
-        self.publish_status(i)
-    }
-
-    /// Costmap i's status line: its update times, its lethal cells, what it waits for.
-    fn publish_status(&self, i: usize) -> Result<()> {
-        let one = &self.maps[i];
-        let g = one.spec.costmap.grid();
-        let lethal = g.data.iter().filter(|&&c| c == LETHAL).count();
-        let mut values = vec![
-            kv("costmap", one.spec.name),
-            kv("update_ms", &format!("{:.2}", one.update_ms)),
-            kv("worst_ms", &format!("{:.2}", one.worst_ms)),
-            kv("updates", &one.updates.to_string()),
-            kv("clears", &one.clears.to_string()),
-            kv("lethal_cells", &lethal.to_string()),
-            kv("cells", &format!("{}x{}", g.width, g.height)),
-        ];
-        values.push(kv("waiting_for", &one.waiting));
-        self.status.publish(DiagnosticStatus {
-            level: if one.waiting.is_empty() { 0 } else { 1 },
-            name: format!("costmap {}", one.spec.name),
-            message: if one.waiting.is_empty() {
-                format!(
-                    "{} costmap: {:.2} ms an update",
-                    one.spec.name, one.update_ms
-                )
-            } else {
-                format!("{} costmap: waiting for {}", one.spec.name, one.waiting)
-            },
-            hardware_id: String::new(),
-            values,
-        })?;
-        Ok(())
     }
 }
 
