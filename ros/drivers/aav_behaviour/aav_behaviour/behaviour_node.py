@@ -20,7 +20,7 @@ Subscribes  /perception/stop_sign/distance  geometry_msgs/PointStamped: a sign, 
                                      things_timeout s old (the stop zone still holds)
             /navigate_to_pose/_action/status  action_msgs/GoalStatusArray: a goal running,
                                      or aborted (goal_status_topics: each navigator
-                                     action's, Nav2's or ours, navigator:=)
+                                     action's; Nav2's and ours serve the same names)
             /tf, /tf_static          the sign's camera in odom
 Publishes   /drivers/nav/speed_limit   nav2_msgs/SpeedLimit, 20 Hz: absolute m/s, 0.0 = no
                                      limit (controller_server's speed_limit_topic with
@@ -94,8 +94,8 @@ class BehaviourNode(Node):
             # /world/things (aav_things): wait only for what moves, leave a parked thing to
             # the planner. False: anything in the lane slows the car (the scan's rule).
             ('things', False), ('things_timeout', 1.0),
-            # Each navigator action's status (navigation.launch.py: Nav2's or ours,
-            # navigator:=): a goal running on any of them.
+            # Each navigator action's status (navigation.launch.py; Nav2's and ours serve
+            # the same names): a goal running on any of them.
             ('goal_status_topics', ['/navigate_to_pose/_action/status']))}
         self.p = p
         if p['vehicle_yaml']:

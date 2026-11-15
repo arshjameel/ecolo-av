@@ -36,7 +36,9 @@ def render(spec):
         out += ['', f'## {section.capitalize()}', '', '| Name | Type | Server | Notes |',
                 '|---|---|---|---|']
         for name, s in spec[section].items():
-            out.append(f"| `{name}` | `{s['type']}` | `{s['server']}` | {s.get('note', '')} |")
+            # server: one node, or a list of drop-ins that serve the same name, one at a time.
+            servers = s['server'] if isinstance(s['server'], list) else [s['server']]
+            out.append(f"| `{name}` | `{s['type']}` | {cell(servers)} | {s.get('note', '')} |")
     out += ['', '## Frames', '', '| Frame | Parent | Published by | Notes |', '|---|---|---|---|']
     for name, f in spec['frames'].items():
         out.append(f"| `{name}` | {f.get('parent') or '-'} | {f.get('by', '-')} "

@@ -838,7 +838,7 @@ topics:
     type: nav_msgs/msg/Path
     pub: [planner_server, diffusion_planner, planner]
     sub: [map, debug_hud, dev_window, look_ahead, behaviour]
-    note: The planned path, for RViz/Foxglove, and the map window (map, aav_hud) - the line, the goal (its last point) and the distance left along it. Nav2 plans again every second while it drives. Which planner makes it is navigation.launch.py planner:= (docs/controllers.md, Planners) - hybrid (SmacPlannerHybrid, the default) or lattice (SmacPlannerLattice, our own primitives) keep to the car's turning radius; smac2d, navfn and theta_star, trials in sim and bench only, don't. Always the plugin GridBased, so the behaviour trees never change. With planner:=diffusion (aav_diffusion_planner, a trial) diffusion_planner publishes it - the path it returned, the model's or the lattice's - and planner_server's own goes to /drivers/nav/diffusion/lattice_plan. With planner:=own (aav_planner, a trial) our planner node publishes it - each path it returns - and planner_server's own goes to /drivers/nav/planner/nav2_plan.
+    note: The planned path, for RViz/Foxglove, and the map window (map, aav_hud) - the line, the goal (its last point) and the distance left along it. The dev window marks its last point as the goal while plans keep coming (within 5 s), whoever sent the goal. Nav2 plans again every second while it drives. Which planner makes it is navigation.launch.py planner:= (docs/controllers.md, Planners) - hybrid (SmacPlannerHybrid, the default) or lattice (SmacPlannerLattice, our own primitives) keep to the car's turning radius; smac2d, navfn and theta_star, trials in sim and bench only, don't. Always the plugin GridBased, so the behaviour trees never change. With planner:=diffusion (aav_diffusion_planner, a trial) diffusion_planner publishes it - the path it returned, the model's or the lattice's - and planner_server's own goes to /drivers/nav/diffusion/lattice_plan. With planner:=own (aav_planner, a trial) our planner node publishes it - each path it returns - and planner_server's own goes to /drivers/nav/planner/nav2_plan.
 
   # --- our own planner (aav_planner, a trial beside Nav2's: docs/own-planner.md) ---
   /drivers/nav/planner/nav2_plan:
@@ -1091,34 +1091,20 @@ actions:
     note: Only with planner:=own (aav_planner). One path through each goal in turn - a plan a leg, each leg from the last goal, joined - as planner_server does. bt_navigator's compute_path_through_poses is remapped here, and our navigator calls it for through-poses goals and waypoints. Error codes as Nav2's (303-309); the message names the leg that failed.
   /navigate_to_pose:
     type: nav2_msgs/action/NavigateToPose
-    server: bt_navigator
-    note: Drive to one map-frame pose. Nav2's (navigator:=nav2, the default); a goal sender reaches whichever runs through aav_description vehicle.navigator_action().
+    server: [bt_navigator, navigator]
+    note: Drive to one map-frame pose. Nav2's bt_navigator (navigator:=nav2, the car's), or our navigator in its place (navigator:=own - aav_navigator, the sim's default; docs/own-navigator.md) under the same name, so no goal sender knows which runs. Ours - our behaviour trees' logic in Rust - plans (the planner's ComputePathToPose), follows (FollowPath), replans every second except on the final approach, recovers (clear the local or global costmap, then in turn clear both, wait 5 s, back up 1 m when reversing; 6 times), else gives up with the step's Nav2 error code. A newer goal on any of its actions replaces this one (aborted, code 0). Feedback as Nav2's (distance along the path, recoveries).
   /navigate_through_poses:
     type: nav2_msgs/action/NavigateThroughPoses
-    server: bt_navigator
+    server: [bt_navigator, navigator]
+    note: One path through each pose. Ours (navigator:=own) - the planner's ComputePathThroughPoses, replanned every 3 s from the car through the poses not yet passed - passed within 1 m, or passed along the path.
   /follow_waypoints:
     type: nav2_msgs/action/FollowWaypoints
-    server: waypoint_follower
+    server: [waypoint_follower, navigator]
+    note: Map poses. Nav2's waypoint_follower stops at each; ours (navigator:=own) drives them as one through-poses goal (waypoints - pass_through, the default - no stop and no turn to face at each, TODO 140) or as Nav2's does (stop_at_each). missed_waypoints - those not reached when it ends.
   /follow_gps_waypoints:
     type: nav2_msgs/action/FollowGPSWaypoints
-    server: waypoint_follower
-    note: Lat/lon waypoints. street_router sends its street route here (asked on /drivers/nav/route/follow). Phase 2. language_drive (aav_language) sends one point for go_to_gps(), at most 200 m away. With navigator:=own both send to /drivers/nav/navigator/follow_gps_waypoints instead (their navigator parameter).
-  /drivers/nav/navigator/navigate_to_pose:
-    type: nav2_msgs/action/NavigateToPose
-    server: navigator
-    note: Only with navigator:=own (aav_navigator, a trial; docs/own-navigator.md), in bt_navigator's place - our behaviour trees' logic in Rust - plan (the planner's ComputePathToPose), follow (FollowPath), replan every second except on the final approach, recover (clear the local or global costmap, then in turn clear both, wait 5 s, back up 1 m when reversing; 6 times), else give up with the step's Nav2 error code. A newer goal on any of its actions replaces this one (aborted, code 0). Feedback as Nav2's (distance along the path, recoveries).
-  /drivers/nav/navigator/navigate_through_poses:
-    type: nav2_msgs/action/NavigateThroughPoses
-    server: navigator
-    note: Only with navigator:=own. One path through each pose (the planner's ComputePathThroughPoses), replanned every 3 s from the car through the poses not yet passed - passed within 1 m, or passed along the path.
-  /drivers/nav/navigator/follow_waypoints:
-    type: nav2_msgs/action/FollowWaypoints
-    server: navigator
-    note: Only with navigator:=own. Map poses, driven as one through-poses goal (waypoints - pass_through, the default - no stop and no turn to face at each, TODO 140) or as Nav2's waypoint_follower does (stop_at_each). missed_waypoints - those not reached when it ends.
-  /drivers/nav/navigator/follow_gps_waypoints:
-    type: nav2_msgs/action/FollowGPSWaypoints
-    server: navigator
-    note: Only with navigator:=own. Lat/lon waypoints, put on the map by navsat_transform's datum (aav_localization navsat.yaml - the same UTM steps as /fromLL, map-core's earth.rs), then as follow_waypoints. street_router (navigator - own) and language_drive send here.
+    server: [waypoint_follower, navigator]
+    note: Lat/lon waypoints. street_router sends its street route here (asked on /drivers/nav/route/follow). Phase 2. language_drive (aav_language) sends one point for go_to_gps(), at most 200 m away. Nav2's waypoint_follower puts them on the map through /fromLL; ours (navigator:=own) by navsat_transform's datum (aav_localization navsat.yaml - the same UTM steps as /fromLL, map-core's earth.rs), then as follow_waypoints.
 
 frames:
   map: {parent: null, by: "ekf_global (map -> odom)", note: "x east, y north; origin = the navsat datum"}

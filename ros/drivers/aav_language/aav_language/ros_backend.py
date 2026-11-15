@@ -18,9 +18,9 @@ Subscribes  /localization/odom/local  nav_msgs/Odometry (speed, odom pose)
 Publishes   /safety/estop             std_msgs/Bool: ONLY true, five times in 0.5 s (estop()).
                                       Never false: a person clears the e-stop
 Calls       /scripted_drive           aav_interfaces/action/ScriptedDrive (drive, turn, stop)
-            /follow_gps_waypoints     nav2_msgs/action/FollowGPSWaypoints (go_to_gps); with
-                                      the parameter navigator: own, aav_navigator's
-                                      /drivers/nav/navigator/follow_gps_waypoints
+            /follow_gps_waypoints     nav2_msgs/action/FollowGPSWaypoints (go_to_gps):
+                                      Nav2's waypoint_follower, or our navigator
+                                      (aav_navigator) in its place, under the same name
             /ego/get_parameters       ego's limits: max_speed, wheelbase, steering...
 
 The rules live in drive_tools.py and safety.py; this file only moves messages.
@@ -129,11 +129,8 @@ class RosBackend:
         try:
             from nav2_msgs.action import FollowGPSWaypoints
             self.gps_type = FollowGPSWaypoints
-            # navigator: nav2 (waypoint_follower) or own (aav_navigator, navigator:=own).
-            navigator = n.declare_parameter('navigator', 'nav2').value
-            name = ('/drivers/nav/navigator/follow_gps_waypoints' if navigator == 'own'
-                    else '/follow_gps_waypoints')
-            self.gps_action = ActionClient(n, FollowGPSWaypoints, name)
+            # Whichever navigator runs serves Nav2's name (navigator:=nav2 or own).
+            self.gps_action = ActionClient(n, FollowGPSWaypoints, '/follow_gps_waypoints')
         except ImportError:
             self.gps_type = None
         self.ego_params = n.create_client(GetParameters, '/ego/get_parameters')

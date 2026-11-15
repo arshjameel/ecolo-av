@@ -130,8 +130,8 @@ default (<code>stack:=ours</code>; Nav2's with <code>navigator:=nav2</code> or <
   <code>waypoint_follower</code> do for the car, as one state machine.</p>
 </li>
 <li>
-<p><strong>Drop-in:</strong> Nav2's four actions, under <code>/drivers/nav/navigator/</code>. Each goal sender
-  has a <code>navigator</code> switch.</p>
+<p><strong>Drop-in:</strong> Nav2's four actions, under Nav2's own names (<code>/navigate_to_pose</code>...),
+  in <code>bt_navigator</code>'s and <code>waypoint_follower</code>'s place. No goal sender knows which runs.</p>
 </li>
 <li>
 <p><strong>All ours:</strong> <code>navigator:=own planner:=own costmap:=own tracker:=mppi_lag</code>. Then no
@@ -155,37 +155,39 @@ default (<code>stack:=ours</code>; Nav2's with <code>navigator:=nav2</code> or <
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Action (ours)</th>
-<th>Nav2's</th>
+<th>Action (the same name for both)</th>
+<th>Nav2's server</th>
 <th>Used by</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>/drivers/nav/navigator/navigate_to_pose</code></td>
 <td><code>/navigate_to_pose</code></td>
-<td>the tools, sim-check, RViz (<code>/goal_pose</code>)</td>
+<td><code>bt_navigator</code></td>
+<td>the tools, sim-check, RViz and the screens (<code>/goal_pose</code>)</td>
 </tr>
 <tr>
-<td><code>/drivers/nav/navigator/navigate_through_poses</code></td>
 <td><code>/navigate_through_poses</code></td>
+<td><code>bt_navigator</code></td>
 <td>anyone with several poses</td>
 </tr>
 <tr>
-<td><code>/drivers/nav/navigator/follow_waypoints</code></td>
 <td><code>/follow_waypoints</code></td>
+<td><code>waypoint_follower</code></td>
 <td>map waypoints</td>
 </tr>
 <tr>
-<td><code>/drivers/nav/navigator/follow_gps_waypoints</code></td>
 <td><code>/follow_gps_waypoints</code></td>
+<td><code>waypoint_follower</code></td>
 <td>street_router, language_drive</td>
 </tr>
 </tbody>
 </table></div>
-<p><strong>Who sends to which.</strong> <code>vehicle.navigator_action(navigator, name)</code> gives the name.
-<code>street_router</code> and <code>language_drive</code> have a <code>navigator</code> parameter;
-<code>measure controllers --stacks</code> and <code>sim-check --navigator</code> choose by the switch.</p>
+<p><strong>Who sends to which.</strong> Nobody chooses (since 14 Nov). With <code>navigator:=own</code>, Nav2's
+two servers don't start, and ours serves their names. So <code>street_router</code>,
+<code>language_drive</code>, <code>sim-check</code>, <code>measure controllers</code>, <code>bench-check</code> and the screens
+send to the same place whichever runs. <code>/goal_pose</code> reaches ours too.
+<code>vehicle.navigator_action(name)</code> gives the full name.</p>
 </section>
 <section class="card"><h2 id="what-it-does">What it does</h2>
 <pre class="highlight"><code>goal ─▶ plan ─▶ follow ─▶ plan again every second

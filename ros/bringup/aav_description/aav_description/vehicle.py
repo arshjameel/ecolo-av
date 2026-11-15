@@ -354,13 +354,12 @@ def check_costmap(costmap):
 
 
 # Whose navigator (navigator:=, docs/own-navigator.md): nav2 (bt_navigator and
-# waypoint_follower: the car's) or own (aav_navigator: the sim's, stack:=ours). Each
-# one's actions, by Nav2's own short names: a goal sender asks navigator_action() for its.
+# waypoint_follower: the car's) or own (aav_navigator: the sim's, stack:=ours). Both serve
+# the same four actions under Nav2's own names, so no goal sender knows which one runs.
 NAVIGATORS = ('nav2', 'own')
 DEFAULT_NAVIGATOR = 'nav2'
 NAVIGATOR_ACTIONS = ('navigate_to_pose', 'navigate_through_poses', 'follow_waypoints',
                      'follow_gps_waypoints')
-OWN_NAVIGATOR_PREFIX = '/drivers/nav/navigator/'
 
 
 def check_navigator(navigator):
@@ -401,17 +400,15 @@ def smoother_params(cfg, ego, vehicle_yaml):
             'min_speed_for_steering': float((ego or {}).get('min_speed_for_steering', 0.05))}
 
 
-def navigator_action(navigator, action):
+def navigator_action(action):
     """
-    Return the action's full name for a navigator.
+    Return the action's full name, the same whichever navigator runs: '/navigate_to_pose'.
 
-    '/navigate_to_pose' for Nav2's, or '/drivers/nav/navigator/navigate_to_pose' for ours.
     action: one of NAVIGATOR_ACTIONS.
     """
     if action not in NAVIGATOR_ACTIONS:
         raise ValueError(f'{action}: one of {", ".join(NAVIGATOR_ACTIONS)}')
-    prefix = OWN_NAVIGATOR_PREFIX if check_navigator(navigator) == 'own' else '/'
-    return prefix + action
+    return '/' + action
 
 
 def all_ours(navigator, planner, costmap, tracker):

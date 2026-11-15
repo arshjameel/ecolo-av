@@ -1,14 +1,15 @@
 //! navigator: our own navigator (Nav2's bt_navigator and waypoint_follower, in Rust).
 //!
-//! Actions     drivers/nav/navigator/navigate_to_pose
-//!                                         nav2_msgs/action/NavigateToPose: to one map pose
-//!             drivers/nav/navigator/navigate_through_poses
+//! Actions     Nav2's own names, so it is a drop-in for bt_navigator and waypoint_follower:
+//!             no goal sender needs to know which navigator runs.
+//!             /navigate_to_pose           nav2_msgs/action/NavigateToPose: to one map pose
+//!             /navigate_through_poses
 //!                                         nav2_msgs/action/NavigateThroughPoses: one path
 //!                                         through each pose
-//!             drivers/nav/navigator/follow_waypoints
+//!             /follow_waypoints
 //!                                         nav2_msgs/action/FollowWaypoints: map poses,
 //!                                         passed without stopping (waypoints: pass_through)
-//!             drivers/nav/navigator/follow_gps_waypoints
+//!             /follow_gps_waypoints
 //!                                         nav2_msgs/action/FollowGPSWaypoints: lat/lon,
 //!                                         put on the map by navsat_transform's datum
 //!                                         (navsat.yaml), then as follow_waypoints
@@ -17,7 +18,7 @@
 //!             /tf                         tf2_msgs/TFMessage: map -> odom -> base_link;
 //!                                         older than TRANSFORM_TIMEOUT: no car pose (no
 //!                                         waypoint passed, no plan kept, no progress)
-//! Publishes   drivers/nav/navigator/status
+//! Publishes   /drivers/nav/navigator/status
 //!                                         diagnostic_msgs/DiagnosticStatus, 2 Hz and at
 //!                                         each goal's end: the goal, the step, recoveries
 //! Calls       the planner's ComputePathToPose and ComputePathThroughPoses
@@ -81,7 +82,8 @@ const BACK_UP_SPACING: f64 = 0.05;
 /// s: a /tf transform older than this is no car pose (robot_localization sends at 30 Hz).
 const TRANSFORM_TIMEOUT: f64 = 1.0;
 
-const PREFIX: &str = "/drivers/nav/navigator/";
+/// Nav2's action names: ours serves them in bt_navigator's and waypoint_follower's place.
+const PREFIX: &str = "/";
 const STATUS_TOPIC: &str = "/drivers/nav/navigator/status";
 const GOAL_TOPIC: &str = "/goal_pose";
 /// s between ticks, and between feedback and status messages.

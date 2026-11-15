@@ -14,7 +14,10 @@ Publishes   world/things                aav_interfaces/Things, odom, 10 Hz: ever
                                         thing, moved on its speed to the stamp
             world/things/markers        visualization_msgs/MarkerArray, odom: a box, a speed
                                         arrow and the id per thing, for RViz and the screens
-Uses TF     odom <- base_link at each cloud's stamp; odom <- the radar's frame
+Uses TF     odom <- base_link at each cloud's stamp; odom <- the radar's frame. A cloud
+            newer than /tf waits for it (tf_wait.py), never blocking: a hair newer (0.1 s)
+            uses the newest transform; one still waiting after 1.5 s is dropped, and the
+            drops are said at most once every 5 s, not per cloud
 
 The maths is in groups.py (Euclidean grouping) and tracker.py (a constant-velocity Kalman
 filter per thing, greedy nearest association, the memory). No stock ROS 2 Jazzy tracker
@@ -30,13 +33,13 @@ import signal
 
 from aav_interfaces.msg import Thing, Things
 from aav_things.groups import group, GroupShape, to_frame
+from aav_things.tf_wait import Step, Waiting
 from aav_things.tracker import ground_radial_speed, RadarCluster, Tracker, TrackerShape
 from builtin_interfaces.msg import Time as TimeMsg
 from geometry_msgs.msg import Point
 from nav_msgs.msg import Odometry
 import numpy
 import rclpy
-from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
@@ -79,6 +82,9 @@ class ThingsNode(Node):
         self.tf_listener = tf2_ros.TransformListener(self.tf, self)
         self.car = (0.0, 0.0)
         self.car_velocity = (0.0, 0.0)    # m/s, odom
+        # Each stream's clouds waiting for their transform, oldest first.
+        self.waiting = {'cubes': Waiting(), 'radar': Waiting()}
+        self.behind = 0.0       # s: the last waiting cloud's lead over the newest transform
         self.things_pub = self.create_publisher(Things, 'world/things', 10)
         self.markers_pub = self.create_publisher(MarkerArray, 'world/things/markers', 10)
         newest = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE)
@@ -94,16 +100,55 @@ class ThingsNode(Node):
             f'within {self.tracker.shape.blind_range:.1f} m); radar '
             f'{"on" if self.use_radar else "off"}')
 
-    def pose(self, frame, stamp):
-        """Return (x, y, yaw) of `frame` in odom at `stamp`, or None."""
+    def look(self, msg):
+        """
+        Return (found, newest) for tf_wait.decide().
+
+        found: the transform at msg's stamp is there; newest: the newest transform's time
+        (s), or None if there is none.
+        """
+        frame = msg.header.frame_id
+        if self.tf.can_transform(ODOM, frame, Time.from_msg(msg.header.stamp)):
+            return True, None
         try:
-            t = self.tf.lookup_transform(ODOM, frame, Time.from_msg(stamp),
-                                         timeout=Duration(seconds=0.05))
+            newest = seconds(self.tf.lookup_transform(ODOM, frame, Time()).header.stamp)
+        except tf2_ros.TransformException:
+            return False, None
+        self.behind = seconds(msg.header.stamp) - newest
+        return False, newest
+
+    def pose(self, msg, step):
+        """Return (x, y, yaw) of msg's frame in odom at its stamp, or the newest (NEWEST)."""
+        frame = msg.header.frame_id
+        at = Time() if step is Step.NEWEST else Time.from_msg(msg.header.stamp)
+        try:
+            t = self.tf.lookup_transform(ODOM, frame, at)
         except tf2_ros.TransformException as e:
             self.get_logger().warn(f'no {ODOM} <- {frame}: {e}', throttle_duration_sec=5.0)
             return None
         tr = t.transform.translation
         return tr.x, tr.y, yaw_of(t.transform.rotation)
+
+    def wait(self, stream, msg):
+        """Keep a cloud until its transform comes, then use what is ready."""
+        self.waiting[stream].add(seconds(msg.header.stamp), msg)
+        self.drain()
+
+    def drain(self):
+        """Use every waiting cloud whose transform has come, oldest first; say the drops."""
+        now = self.get_clock().now().nanoseconds * 1e-9
+        for stream, use in (('cubes', self.use_cubes), ('radar', self.use_clusters)):
+            waiting = self.waiting[stream]
+            for msg, step in waiting.take(lambda _stamp, m: self.look(m), now):
+                pose = self.pose(msg, step)
+                if pose is not None:
+                    use(msg, pose)
+            if waiting.dropped:
+                self.get_logger().warn(
+                    f'{stream}: {waiting.dropped} cloud(s) dropped, no {ODOM} transform at '
+                    f'their stamp (the newest was {self.behind:.2f} s behind)',
+                    throttle_duration_sec=5.0)
+                waiting.dropped = 0
 
     def on_odom(self, msg):
         # The local EKF's twist is in base_link: turn it into odom.
@@ -113,9 +158,9 @@ class ThingsNode(Node):
                              v.x * math.sin(yaw) + v.y * math.cos(yaw))
 
     def on_cubes(self, msg):
-        pose = self.pose(msg.header.frame_id, msg.header.stamp)
-        if pose is None:
-            return
+        self.wait('cubes', msg)
+
+    def use_cubes(self, msg, pose):
         xyz = point_cloud2.read_points_numpy(msg, field_names=('x', 'y', 'z'))
         found = to_frame(group(numpy.asarray(xyz, dtype=float).reshape(-1, 3),
                                self.group_shape), *pose)
@@ -123,9 +168,10 @@ class ThingsNode(Node):
         self.tracker.step(seconds(msg.header.stamp), found, self.car)
 
     def on_radar(self, msg):
-        pose = self.pose(msg.header.frame_id, msg.header.stamp)
-        if pose is None or msg.width * msg.height == 0:
-            return
+        if msg.width * msg.height:
+            self.wait('radar', msg)
+
+    def use_clusters(self, msg, pose):
         # Mixed types (cluster is uint32): read the structured array, then one column each.
         names = ('x', 'y', 'velocity', 'cluster')
         rows = point_cloud2.read_points(msg, field_names=names, skip_nans=True)
@@ -146,6 +192,7 @@ class ThingsNode(Node):
         self.tracker.radar(seconds(msg.header.stamp), clusters)
 
     def publish(self):
+        self.drain()
         now = self.get_clock().now()
         t = now.nanoseconds * 1e-9
         if self.tracker.time is None:
