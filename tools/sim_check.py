@@ -2628,10 +2628,11 @@ def check_moving_thing(probe, ahead=20.0, side=4.0, walk=0.8, goal=35.0, near=15
 
     They start walking left at `walk` m/s when the car, at its speed then, would reach
     their path as they reach the lane (3 to `near` m out), so they cross in front of it
-    whatever its speed. The car drives to a goal `goal`
-    m on. The behaviour must slow for them (APPROACH(obstacle) or STOP(obstacle): a moving
-    thing in the lane, TODO 170), the car keep at least 0.3 m from them, and reach the
-    goal once they are by. Our simulator only: Gazebo's models don't walk.
+    whatever its speed. The car drives to a goal `goal` m on. The behaviour must slow for
+    them (APPROACH(obstacle) or STOP(obstacle): a moving thing in the lane, TODO 170), the
+    car keep at least 0.3 m from them while it moves (the walker walks on into a car
+    standing for it), and reach the goal once they are by. Our simulator only: Gazebo's
+    models don't walk.
     """
     if SIMULATOR == 'gazebo':
         result('moving thing', None, "skipped: Gazebo's placed models don't walk")
@@ -2689,12 +2690,17 @@ def check_moving_thing(probe, ahead=20.0, side=4.0, walk=0.8, goal=35.0, near=15
         gaps.append(math.hypot(wx - x - k * ux, wy - y - k * uy) - body['width'] / 2.0 - 0.25)
     seen = behaviour_seen(probe, since)
     reached = done.done() and done.result().status == 4
-    clear = min(gaps) if gaps else float('nan')
-    at = speeds[gaps.index(clear)] if gaps else float('nan')
+    # The gap while the car moves: the simulator's walker never stops, so it walks into a
+    # car standing for it; that is not the car's doing. Standing, the gap isn't judged.
+    moving = [g for g, v in zip(gaps, speeds) if v > 0.05]
+    clear = min(moving) if moving else float('nan')
+    at = speeds[gaps.index(min(gaps))] if gaps else float('nan')
+    touched = min(gaps) if gaps else float('nan')
     slowed = 'APPROACH(obstacle)' in seen or 'STOP(obstacle)' in seen
     result('moving thing', reached and slowed and clear > 0.3,
            f'{"reached" if reached else "did not reach"} the goal, {clear:.2f} m from the '
-           f'walker at the closest, the car at {at:.2f} m/s then; states '
+           f'walker at the closest while moving ({touched:.2f} m in all, the car at '
+           f'{at:.2f} m/s then); states '
            f'{" > ".join(seen) or "none heard"}')
 
 
