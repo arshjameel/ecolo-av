@@ -57,6 +57,32 @@ The launch prints what it picked, such as
     stack's choice". Any value you give is yours, even one that matches the champion:
     `costmap:=nav2` wins over `stack:=ours`.
 
+## One switch per level (15 Nov)
+
+Fable's clean-up (one shape, "From 36 switches to 8"): pick a level's option by its name in
+`stacks.yaml`, not by the switches under it.
+
+| Switch | Options | Sets |
+|---|---|---|
+| `pose:=` | `ekf`, `ndt_ekf`, `kiss_ekf` | `ndt_ekf`, `kiss_ekf` |
+| `path:=` | `lattice`, `lattice_rs`, `lattice_smooth`, `lattice_rs_smooth`, `hybrid`, `hybrid_rs`, `lattice_rs_strong`, `diffusion` | `planner`, `planner_search`, `plan_smoothing`, `lattice_moves` |
+| `steer:=` | `mppi`, `mppi_lag`, `mppi_lag_calm`, `mpc_lag`, `rpp` | `controller`, `tracker`, `map_correction`, `mppi_lag_steer_gamma` |
+| `lanes:=` | `off`, `ramp` | `lane_costs` |
+
+```sh
+pixi run sim world:=campus path:=hybrid_rs       # all ours, but our Hybrid-A*
+pixi run sim stack:=stock steer:=mppi_lag_calm   # Nav2's, but our calm MPPI
+```
+
+| Who wins | Over |
+|---|---|
+| a single switch by hand (`planner_search:=lattice`) | everything |
+| a level switch (`path:=hybrid_rs`) | the stack's pick for that level: the level's other switches go back to their fallback (`plan_smoothing` to `nav2`) |
+| the stack (`stack:=ours`) | the fallback (Nav2's) |
+
+`costmap`, `navigator`, `smoother` and `behaviour` are switches already (by `own`, `true`...),
+so they stay as they are. The old switches keep working.
+
 ## How a challenger wins
 
 | Rule | Why |

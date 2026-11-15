@@ -134,3 +134,54 @@ def test_the_car_stack_keeps_to_the_car_planners():
 def test_describe_names_the_stack():
     assert stacks.describe(LEAGUE, 'ours').startswith('stack:=ours - pose ekf')
     assert 'no stack' in stacks.describe(LEAGUE, '')
+
+
+def test_a_level_switch_picks_its_option_over_the_stacks():
+    # path:=hybrid_rs: our planner's Hybrid-A*; ours' strong smoothing goes back to nav2.
+    out = stacks.resolve(LEAGUE, 'ours', NOT_GIVEN, DEFAULTS, {'path': 'hybrid_rs'})
+    assert (out['planner'], out['planner_search']) == ('own', 'hybrid')
+    assert out['plan_smoothing'] == 'nav2'
+    assert out['tracker'] == 'mppi_lag'  # the other levels stay the stack's
+    out = stacks.resolve(LEAGUE, 'ours', NOT_GIVEN, DEFAULTS, {'steer': 'mppi'})
+    assert (out['controller'], out['tracker']) == ('mppi', 'none')
+    assert (out['map_correction'], out['mppi_lag_steer_gamma']) == ('newest', '')
+    out = stacks.resolve(LEAGUE, 'stock', NOT_GIVEN, DEFAULTS, {'pose': 'ndt_ekf'})
+    assert (out['ndt_ekf'], out['kiss_ekf'], out['costmap']) == ('true', 'false', 'nav2')
+
+
+def test_a_switch_by_hand_still_beats_a_level_switch():
+    given = dict(NOT_GIVEN, planner_search='lattice')
+    out = stacks.resolve(LEAGUE, 'ours', given, DEFAULTS, {'path': 'hybrid_rs'})
+    assert (out['planner'], out['planner_search']) == ('own', 'lattice')
+
+
+def test_a_level_switch_works_with_no_stack_and_empty_means_the_stacks():
+    out = stacks.resolve(LEAGUE, '', NOT_GIVEN, DEFAULTS, {'lanes': 'ramp'})
+    assert out == dict(DEFAULTS, lane_costs='true')
+    empty = {level: stacks.CHOSEN for level in stacks.LEVEL_SWITCHES}
+    assert (stacks.resolve(LEAGUE, 'ours', NOT_GIVEN, DEFAULTS, empty)
+            == stacks.resolve(LEAGUE, 'ours', NOT_GIVEN, DEFAULTS))
+
+
+def test_a_level_switch_is_checked():
+    with pytest.raises(ValueError, match='pick one of'):
+        stacks.resolve(LEAGUE, 'ours', NOT_GIVEN, DEFAULTS, {'path': 'teleport'})
+    with pytest.raises(ValueError, match='not a level'):
+        stacks.resolve(LEAGUE, 'ours', NOT_GIVEN, DEFAULTS, {'wings': 'on'})
+
+
+def test_every_level_switch_is_a_level_and_an_argument_of_sim_launch():
+    with open(SIM_LAUNCH) as f:
+        launch = f.read()
+    for level in stacks.LEVEL_SWITCHES:
+        assert level in LEAGUE['levels']
+    # Declared in one loop over stacks.LEVEL_SWITCHES, and passed to resolve.
+    assert 'for level in stacks.LEVEL_SWITCHES' in launch
+    assert '*[DeclareLaunchArgument(level,' in launch
+    assert 'STACK_FALLBACK, levels)' in launch
+
+
+def test_describe_says_what_was_picked_by_hand():
+    line = stacks.describe(LEAGUE, 'ours', {'path': 'hybrid_rs', 'steer': ''})
+    assert 'path hybrid_rs' in line and line.endswith('(by hand: path:=hybrid_rs)')
+    assert stacks.describe(LEAGUE, '', {'lanes': 'ramp'}).endswith('; lanes:=ramp')

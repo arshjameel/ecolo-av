@@ -2,6 +2,7 @@
 The whole stack in a simulator: same nodes and configs as the car, simulated hardware.
 
   ros2 launch aav_bringup sim.launch.py [stack:=ours|stock|best|car|]
+      [pose:=] [path:=] [steer:=] [lanes:=]
       [world:=empty|test_lot|road|campus] [nav:=true]
       [teleop:=false] [gui:=true] [rviz:=true]
       [perception:=false] [lane:=false|true|fake] [camera_obstacles:=false] [hud:=false]
@@ -24,11 +25,15 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
   pixi run sim world:=campus                       Carleton, every level ours
   pixi run sim stack:=stock                        every level Nav2's (the yardstick)
   pixi run sim costmap:=nav2                       Nav2's costmaps, the rest ours
+  pixi run sim path:=hybrid_rs steer:=mpc_lag      one level's league option each (stacks.yaml)
 
 Ours is the default (Ben, 14 Nov: "Ours default now, then delete"): stack:=ours sets the
 planner, path follower, costmap, navigator, smoother, behaviour and pose at once
 (aav_description's config/stacks.yaml, docs/league.md). Those switches are empty by
 default, meaning "the stack's choice"; any value given by hand wins over the stack.
+One switch per level (one shape, "From 36 switches to 8"): pose:=, path:=, steer:= and
+lanes:= pick that level's option by its name in stacks.yaml (path:=lattice_rs_strong), over
+the stack's pick; a single switch given by hand (planner:=) still wins over both.
 stack:= (empty): no stack, each switch as given, else the champions' (Nav2's). The real
 car (car.launch.py) keeps its own choices until ours wins there too.
   pixi run -e ml sim world:=road perception:=true  adds the detector and the stop-sign watcher
@@ -265,6 +270,11 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'mppi_lag_steer_gamma': '', 'lane_costs': 'false'}
 
 
+# Each level switch's options, for its help text (config/stacks.yaml).
+LEVEL_OPTIONS = {level: tuple(stacks.load()['levels'][level]['options'])
+                 for level in stacks.LEVEL_SWITCHES}
+
+
 def launch_setup(context):
     def raw(name):
         return LaunchConfiguration(name).perform(context)
@@ -272,9 +282,10 @@ def launch_setup(context):
     # stack:= sets the switches in STACK_FALLBACK at once; one given by hand still wins.
     stack = raw('stack').strip().lower()
     league = stacks.load()
+    levels = {level: raw(level) for level in stacks.LEVEL_SWITCHES}
     picked = stacks.resolve(league, stack, {n: raw(n) for n in STACK_FALLBACK},
-                            STACK_FALLBACK)
-    print(f'[sim.launch.py] {stacks.describe(league, stack)}', flush=True)
+                            STACK_FALLBACK, levels)
+    print(f'[sim.launch.py] {stacks.describe(league, stack, levels)}', flush=True)
 
     def arg(name):
         return picked[name] if name in picked else raw(name)
@@ -608,6 +619,12 @@ def generate_launch_description():
                               'follower, costmap, navigator, smoother, behaviour and pose '
                               'at once; a switch given by hand still wins. Empty: every '
                               "switch as given, else the champions' (Nav2's)"),
+        *[DeclareLaunchArgument(level, default_value=stacks.CHOSEN,
+                                description=f'the {level} level by its league name '
+                                f'(config/stacks.yaml: {", ".join(options)}), over the '
+                                "stack's pick; a single switch given by hand still wins. "
+                                "Empty: the stack's choice")
+          for level, options in LEVEL_OPTIONS.items()],
         DeclareLaunchArgument('world', default_value='empty',
                               description='empty, test_lot or road'),
         DeclareLaunchArgument('nav', default_value='true'),

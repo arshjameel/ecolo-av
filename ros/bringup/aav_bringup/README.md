@@ -39,6 +39,7 @@ Each launch file's docstring lists all its arguments. The common ones:
 | `max_speed`; `sim_speed` | car; sim, carla | the top speed, m/s |
 | `start_y` (m), `start_yaw` (rad); the car and sim also `start_x` | car, sim, bench | where the car starts in the map frame. `world:=campus` starts in lot P4 unless told otherwise |
 | `arm` | sim (`spine:=true`), bench | `arm_when_open` arms the spine after 12 s |
+| `pose`, `path`, `steer`, `lanes` | sim | one level's option by its name in `stacks.yaml` (`path:=hybrid_rs`), over `stack:=`'s pick; a single switch given by hand still wins (`docs/league.md`) |
 | `watch_screens` | sim | screens whose heartbeat commands need, such as `dev_window,hw_panel`. A test: the real car refuses it (`docs/simulation.md`) |
 
 ### Machine files (`config/machines/`)

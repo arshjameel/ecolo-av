@@ -150,7 +150,8 @@ the simulator's stack since 14 Nov.
 | `load(path=None)`, `check(league)` | the file, checked: every champion and every stack's pick is a level's option |
 | `choices(league, stack)`, `switches(league, stack)` | each level's option; the launch switches they set |
 | `resolve(league, stack, given, fallback)` | the switches to use: each one given by hand, else the stack's, else its fallback. A switch not given is `CHOSEN` (empty): `sim.launch.py` declares them so |
-| `describe(league, stack)` | one line for the log |
+| `describe(league, stack, levels)` | one line for the log (and the levels picked by hand) |
+| `LEVEL_SWITCHES`, `picked(league, stack, levels)` | `pose`, `path`, `steer`, `lanes`: a level's own switch (`path:=hybrid_rs`), over the stack's pick; `resolve` and `switches` take the same `levels` |
 
 ### `aav_description.adaptive_brake` (no ROS): a heavier car
 
