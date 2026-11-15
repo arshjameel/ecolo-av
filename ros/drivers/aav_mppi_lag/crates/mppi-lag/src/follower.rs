@@ -272,6 +272,14 @@ impl<M: CarModel + Clone> Follower<M> {
         });
     }
 
+    /// Move the running path by `f` (the held map -> odom moved); its place on it, the
+    /// checks and MPPI's plan carry on.
+    pub fn move_path(&mut self, f: impl Fn(&Pose) -> Pose) {
+        if let Some(path) = self.path.as_mut() {
+            path.move_by(f);
+        }
+    }
+
     /// The lane to keep to (the road ahead's, in odom), or `None`: none known, or stale.
     /// Only `LaneCritic` reads it.
     pub fn set_lane(&mut self, lane: Option<Lane>) {

@@ -12,6 +12,7 @@
 //! | [`ideal`] | [`IdealModel`]: no lag, as Nav2's MPPI assumes; for comparison |
 //! | [`optimizer`] | MPPI itself: sample, roll out, score, weigh, smooth |
 //! | [`critics`] | Nav2's eight critics that nav2.yaml runs, and our `LaneCritic` |
+//! | [`map_correction`] | follow in odom, correct slowly: the held map -> odom, rate-limited |
 //! | [`lane`] | the road ahead's lane and its edges, for `LaneCritic` |
 //! | [`smoothing`] | Nav2's Savitzky-Golay filter |
 //! | [`path`] | the path window (Nav2's PathHandler) and the cross track |
@@ -29,6 +30,7 @@ pub mod follower;
 pub mod ideal;
 pub mod lag;
 pub mod lane;
+pub mod map_correction;
 pub mod model;
 pub mod optimizer;
 pub mod path;
@@ -45,6 +47,7 @@ pub use follower::{Follower, FollowerSettings, Outcome, Report, Tick};
 pub use ideal::IdealModel;
 pub use lag::{Actuators, Gear, LagModel, SpeedLoop};
 pub use lane::{Edges, Lane, LanePoint};
+pub use map_correction::{Correction, MapCorrection, Shift, SlewLimits};
 pub use model::{CarModel, Command, Observation, Pose};
 pub use optimizer::{Optimizer, Plan, Scene, Settings};
 pub use path::{GlobalPath, Inversion};

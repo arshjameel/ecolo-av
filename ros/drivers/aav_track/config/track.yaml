@@ -5,6 +5,16 @@ track:
   ros__parameters:
     lateral_accel: 1.0        # m/s^2 sideways: slow for a bend (line.turn_speed_limit)
     odom_timeout: 1.0         # s without /localization/odom/local: give up the path
+    # Follow in odom, correct slowly (TODO 186, slow_frame.py): the held map -> odom moves
+    # toward the global EKF's newest at most this fast, measured at the car. A map path
+    # stays in map; the car is brought there by the held one. The GPS's jitter (0.09 m
+    # every 0.2 s in the sim) then never jumps the path under the car. 0: the old way
+    # (each new path by the newest). navigation.launch.py map_correction:=newest gives the
+    # node map_correction: false, the same (a bool never set here: this file would win).
+    map_correction_speed: 0.1           # m/s: odometry drifts 1-2 % (0.05 m/s at 2.5 m/s)
+    map_correction_turn_rate: 0.01745   # rad/s (1 degree/s): a GPS step turns up to 4 degrees
+    map_correction_snap_distance: 2.0   # m: a bigger gap is a relocalisation: taken at once
+    map_correction_snap_angle: 0.1745   # rad (10 degrees): likewise
     stanley:
       gain: 1.0               # k in atan(k e / (v_soft + v)), 1/s
       soft_speed: 1.0         # m/s

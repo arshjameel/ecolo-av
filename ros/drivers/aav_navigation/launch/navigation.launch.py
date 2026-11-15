@@ -9,6 +9,7 @@ Nav2 as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out to tw
       [diffusion_python:=] [diffusion_smoothing:=gear]
       [plan_around:=true] [behaviour:=false] [things:=false] [replan_hz:=1.0]
       [tracker:=none] [costmap:=nav2] [navigator:=nav2] [smoother:=nav2] [live_swap:=false]
+      [map_correction:=slow]
       [amcl:=false]
       [amcl_x:=0.0] [amcl_y:=0.0] [amcl_yaw:=0.0] [amcl_map:=]
       [use_sim_time:=false]
@@ -107,6 +108,11 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           Not a lifecycle node (docs/own-smoother.md)
   live_swap:=true         the tracker can change while it runs (`ros2 param set /track
                           tracker lqr`); sim.launch.py sets it, the car never does
+  map_correction:=newest  (with a tracker) each new path into odom by the newest map ->
+                          odom, as until 15 Nov. slow (the default, TODO 186): by the
+                          follower's held map -> odom, moved toward the newest at most
+                          0.1 m/s and 1 degree/s at the car (the nodes' map_correction_*
+                          rates). Given to the follower as its bool map_correction
   amcl:=true              stock nav2_amcl on the map and /sensors/lidar/scan (so only with
                           lidar:=true), from amcl_x, amcl_y, amcl_yaw (map frame), with its
                           own lifecycle manager. tf_broadcast false: ekf_global keeps
@@ -611,6 +617,12 @@ def nodes(context):
         # keeps the car between them; aav_track keeps each path's points inside them
         # (TODO 169). Without one, the path as planned, as before.
         lane = behaviour and bool(LaunchConfiguration('lane_map').perform(context).strip())
+        # TODO 186: slow, the nodes' own rates; newest, the old way (no slew). A switch of
+        # its own, not a rate: the node's file would win over a rate set here.
+        correction = LaunchConfiguration('map_correction').perform(context)
+        if correction not in ('slow', 'newest'):
+            raise ValueError(f'map_correction:={correction}: slow or newest')
+        slew = {'map_correction': correction == 'slow'}
         if tracker == 'mppi_lag':
             # aav_mppi_lag (Rust): Nav2's MPPI with the actuators' lag in its model. nav2.yaml's
             # MPPI block and checks, vehicle.yaml's actuators, ego.yaml's ramps.
@@ -621,7 +633,7 @@ def nodes(context):
                 parameters=[own, vehicle.mppi_lag_params(nav2, cfg, ego, max_speed,
                                                          reversing, lane),
                             {'use_sim_time': use_sim_time,
-                             'costmap_topic': vehicle.COSTMAP_RAW_TOPICS[costmap]}]))
+                             'costmap_topic': vehicle.COSTMAP_RAW_TOPICS[costmap], **slew}]))
         else:
             own = FindPackageShare('aav_track').perform(context) + '/config/track.yaml'
             actions.append(Node(
@@ -631,7 +643,8 @@ def nodes(context):
                             {'tracker': tracker, 'use_sim_time': use_sim_time,
                              'road_ahead_topic': '/world/road_ahead' if lane else '',
                              'live_swap': IfCondition(
-                                 LaunchConfiguration('live_swap')).evaluate(context)}]))
+                                 LaunchConfiguration('live_swap')).evaluate(context),
+                             **slew}]))
     if diffusion:
         # Not a lifecycle node: it serves from the start, and falls back to the lattice
         # until the lattice answers. The guard's numbers from the car and Nav2's files.
@@ -838,6 +851,10 @@ def generate_launch_description():
                                           'place (aav_track; mppi_lag: aav_mppi_lag): ' +
                                           ', '.join(vehicle.TRACKERS) +
                                           '. docs/trials.md'),
+        DeclareLaunchArgument('map_correction', default_value='slow',
+                              description='with a tracker: slow (TODO 186), the held map -> '
+                                          'odom slewed toward the newest; newest: each new '
+                                          'path by the newest, as until 15 Nov'),
         DeclareLaunchArgument('live_swap', default_value='false',
                               description='true (sim.launch.py sets it): the tracker can be '
                                           'changed while it runs, `ros2 param set /track '

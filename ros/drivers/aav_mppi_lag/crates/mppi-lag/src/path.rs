@@ -98,6 +98,14 @@ impl GlobalPath {
         self
     }
 
+    /// Every pose moved by `f`, keeping how far along the car has got (the held map ->
+    /// odom moved: `map_correction`).
+    pub fn move_by(&mut self, f: impl Fn(&Pose) -> Pose) {
+        for p in &mut self.poses {
+            *p = f(p);
+        }
+    }
+
     /// The last pose: the goal.
     pub fn goal(&self) -> Pose {
         self.poses[self.poses.len() - 1]
