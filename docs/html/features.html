@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">68 min read · 14 sections</div></header>
+<div class="meta">69 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -115,7 +115,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#status-values">Status values</a><a href="#sensors">Sensors</a><a href="#localization">Localization</a><a href="#perception">Perception</a><a href="#drivers">Drivers</a><a href="#navigation">Navigation</a><a href="#control">Control</a><a href="#safety">Safety</a><a href="#backends">Backends</a><a href="#firmware">Firmware</a><a href="#simulation">Simulation</a><a href="#hud">HUD</a><a href="#tools">Tools</a><a href="#infrastructure">Infrastructure</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#status-values">Status values</a><a href="#sensors">Sensors</a><a href="#localization">Localization</a><a href="#perception">Perception</a><a href="#drivers">Drivers</a><a href="#navigation">Navigation</a><a href="#behaviour">Behaviour</a><a href="#control">Control</a><a href="#safety">Safety</a><a href="#backends">Backends</a><a href="#firmware">Firmware</a><a href="#simulation">Simulation</a><a href="#hud">HUD</a><a href="#tools">Tools</a><a href="#infrastructure">Infrastructure</a></nav>
 <div class="lead"><p>Every feature of the car's software, one row each, grouped by type.
 Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 "Why" says the reason for the feature, not how it works. "Who" is the person (or team) who built it.</p></div>
@@ -604,6 +604,22 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>2026-11-07</td>
 <td>built</td>
 </tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="behaviour">Behaviour</h2>
+<p>What the car decides to do on the road: when to slow, stop, wait and go, and what it may not pass (Ben, 14 Nov: "we need a know catergory for behaviour").</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Why</th>
+<th>Who</th>
+<th>Date</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
 <tr>
 <td><a href="stopping.html#2-the-behaviour-planner">The behaviour planner</a> (<code>aav_behaviour</code>, <code>behaviour:=true</code>, a trial): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK; a speed cap on Nav2 from the stopping law for a stop sign, an obstacle in the lane, the fence and the goal; <code>/drivers/nav/behaviour/state</code></td>
 <td>Ben, 7 Nov: "we can use that to say if we have turned enough or slowing down enough". Today the sign's lock fires at cruise speed and nothing says why the car waits: this slows the car before each stop, and the locks still make every stop</td>
@@ -617,6 +633,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben</td>
 <td>2026-11-14</td>
 <td>sim</td>
+</tr>
+<tr>
+<td><a href="stopping.html#1-the-stopping-law">One stopping law</a> (<code>aav_description</code> <code>stop_law.py</code>: S(v), the cap v_cap(d), from the car model's brake, lags and speed loop)</td>
+<td>Five parts of the stack each had their own answer to "how far do I need to stop?", and they disagreed (the design, TODO 110). Now one curve: the trial trackers use it, ego logs it, the point driver can (<code>stop_law:=hybrid</code>), the behaviour planner caps Nav2 with it. The locks keep their own laws; a test checks the geofence lock always counts on more room than the car model needs</td>
+<td>Ben</td>
+<td>2026-11-07</td>
+<td>built</td>
 </tr>
 </tbody>
 </table></div>
@@ -699,13 +722,6 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tr>
 <td><a href="car-model.html#egos-trace">ego's trace</a> (<code>/ego/trace</code>, <code>aav_ego</code> <code>trace_ahead.py</code>): where the car goes over the next 2 s, from the car model and a copy of ego</td>
 <td>Ben's idea, 7 Nov: "a trace of where it's going (like a tail but in front)", so drivers can match it to their plan and correct</td>
-<td>Ben</td>
-<td>2026-11-07</td>
-<td>built</td>
-</tr>
-<tr>
-<td><a href="stopping.html#1-the-stopping-law">One stopping law</a> (<code>aav_description</code> <code>stop_law.py</code>: S(v), the cap v_cap(d), from the car model's brake, lags and speed loop)</td>
-<td>Five parts of the stack each had their own answer to "how far do I need to stop?", and they disagreed (the design, TODO 110). Now one curve: the trial trackers use it, ego logs it, the point driver can (<code>stop_law:=hybrid</code>), the behaviour planner caps Nav2 with it. The locks keep their own laws; a test checks the geofence lock always counts on more room than the car model needs</td>
 <td>Ben</td>
 <td>2026-11-07</td>
 <td>built</td>
