@@ -20,3 +20,7 @@ things:
     keep_tentative: 0.3     # s, a thing seen fewer than confirm times
     start_speed_sigma: 3.0  # m/s
     still_speed: 0.5        # m/s: slower, an unseen thing is taken as parked
+    # The saved map as background (background.py, TODO 175 step 5): cubes on /map's walls,
+    # grown by the slack for pose error, are not things. Off until it scores in the sim.
+    background: false
+    background_slack: 0.25  # m

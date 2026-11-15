@@ -17,6 +17,7 @@ a speed or a memory. `things` turns the lidar's cubes into one list:
 | Track | one constant-velocity Kalman filter per thing (x, y, vx, vy in odom); greedy nearest association inside a 2 m gate. AB3DMOT (Weng 2020): the simple tracker is a strong baseline |
 | Radar | where `radar:=true`, each cluster's mean radial speed, the car's own speed taken off, updates the nearest thing's speed along the ray |
 | Memory | a thing seen 3 times stays listed 3 s after it leaves view, moving on its speed (slower than 0.5 m/s: parked). Within 4 m of the car, 30 s: the roof lidar can't see a low box there, so not seeing it says nothing |
+| Background | `background: true` (off by default): cubes on the saved map's walls (`/map`, grown `background_slack`, 0.25 m) are dropped before grouping, so a wall seen again is not a new thing (`background.py`, TODO 175). Safety never relies on it |
 | Names | none yet: every `kind` is `unknown`. Naming needs camera-to-lidar calibration (Q22). The hook: `Tracker.name`, a function from a thing to a name |
 
 ### Stock or ours?

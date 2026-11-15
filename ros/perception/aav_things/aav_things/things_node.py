@@ -10,11 +10,16 @@ Subscribes  perception/voxels/cubes     sensor_msgs/PointCloud2 (aav_voxels), ba
                                         gives the nearest thing its speed along the ray
                                         (radar:=true only, best effort)
             localization/odom/local     nav_msgs/Odometry: the car's speed (for the radar)
+            /map                        nav_msgs/OccupancyGrid, transient local (background
+                                        true only): the saved map; cubes on its walls (with
+                                        background_slack m for pose error) are dropped
+                                        before grouping (background.py, TODO 175 step 5)
 Publishes   world/things                aav_interfaces/Things, odom, 10 Hz: every confirmed
                                         thing, moved on its speed to the stamp
             world/things/markers        visualization_msgs/MarkerArray, odom: a box, a speed
                                         arrow and the id per thing, for RViz and the screens
-Uses TF     odom <- base_link at each cloud's stamp; odom <- the radar's frame. A cloud
+Uses TF     odom <- base_link at each cloud's stamp; odom <- the radar's frame; with
+            background, map <- base_link (the newest: a cloud with none keeps every cube). A cloud
             newer than /tf waits for it (tf_wait.py), never blocking: a hair newer (0.1 s)
             uses the newest transform; one still waiting after 1.5 s is dropped, and the
             drops are said at most once every 5 s, not per cloud
@@ -32,17 +37,19 @@ import math
 import signal
 
 from aav_interfaces.msg import Thing, Things
+from aav_things.background import Background, new_only
 from aav_things.groups import group, GroupShape, to_frame
 from aav_things.tf_wait import Step, Waiting
 from aav_things.tracker import ground_radial_speed, RadarCluster, Tracker, TrackerShape
 from builtin_interfaces.msg import Time as TimeMsg
 from geometry_msgs.msg import Point
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import OccupancyGrid, Odometry
 import numpy
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
+from rclpy.qos import (DurabilityPolicy, qos_profile_sensor_data, QoSProfile,
+                       ReliabilityPolicy)
 from rclpy.time import Time
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
@@ -78,6 +85,10 @@ class ThingsNode(Node):
             for n in vars(t)}))
         self.use_radar = bool(self.declare_parameter('radar', False).value)
         rate = float(self.declare_parameter('rate', 10.0).value)
+        self.use_background = bool(self.declare_parameter('background', False).value)
+        self.background_slack = float(self.declare_parameter('background_slack', 0.25).value)
+        self.background = None
+        self.background_dropped = 0
         self.tf = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf, self)
         self.car = (0.0, 0.0)
@@ -93,12 +104,41 @@ class ThingsNode(Node):
         if self.use_radar:
             self.create_subscription(PointCloud2, 'perception/radar/clusters', self.on_radar,
                                      qos_profile_sensor_data)
+        if self.use_background:
+            latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                                 durability=DurabilityPolicy.TRANSIENT_LOCAL)
+            self.create_subscription(OccupancyGrid, '/map', self.on_map, latched)
         self.create_timer(1.0 / rate, self.publish)
         self.get_logger().info(
             f'things: cubes within {self.group_shape.gap:.2f} m make a thing; kept '
             f'{self.tracker.shape.keep:.0f} s unseen ({self.tracker.shape.keep_blind:.0f} s '
             f'within {self.tracker.shape.blind_range:.1f} m); radar '
-            f'{"on" if self.use_radar else "off"}')
+            f'{"on" if self.use_radar else "off"}; the saved map as background '
+            f'{"on" if self.use_background else "off"}')
+
+    def on_map(self, msg):
+        info = msg.info
+        self.background = Background.from_grid(
+            msg.data, info.width, info.height, info.resolution,
+            info.origin.position.x, info.origin.position.y, self.background_slack)
+        self.get_logger().info(
+            f'background: the saved map, {info.width} x {info.height} cells at '
+            f'{info.resolution:.2f} m; walls grown {self.background_slack:.2f} m')
+
+    def drop_background(self, points, msg):
+        """Return the cubes not on the saved map; all of them without a map or map pose."""
+        if self.background is None or len(points) == 0:
+            return points
+        try:
+            t = self.tf.lookup_transform('map', msg.header.frame_id, Time())
+        except tf2_ros.TransformException:
+            return points
+        tr = t.transform.translation
+        kept = new_only(points, (tr.x, tr.y, yaw_of(t.transform.rotation)), self.background)
+        self.background_dropped += len(points) - len(kept)
+        self.get_logger().info(f'background: {self.background_dropped} cubes on the saved map '
+                               'so far, not things', throttle_duration_sec=10.0)
+        return kept
 
     def look(self, msg):
         """
@@ -162,8 +202,8 @@ class ThingsNode(Node):
 
     def use_cubes(self, msg, pose):
         xyz = point_cloud2.read_points_numpy(msg, field_names=('x', 'y', 'z'))
-        found = to_frame(group(numpy.asarray(xyz, dtype=float).reshape(-1, 3),
-                               self.group_shape), *pose)
+        points = self.drop_background(numpy.asarray(xyz, dtype=float).reshape(-1, 3), msg)
+        found = to_frame(group(points, self.group_shape), *pose)
         self.car = pose[:2]
         self.tracker.step(seconds(msg.header.stamp), found, self.car)
 

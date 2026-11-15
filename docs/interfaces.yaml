@@ -815,9 +815,9 @@ topics:
   /map:
     type: nav_msgs/msg/OccupancyGrid
     pub: [map_server]
-    sub: [global_costmap, local_costmap, map, dev_window]
+    sub: [global_costmap, local_costmap, map, dev_window, things]
     live: [sim]
-    note: Transient local (latched). From aav_navigation/maps. AMCL reads it too when launched without amcl_map:= (the sim gives it /localization/amcl/map). The map window (map, aav_hud) draws it north up, for the big screen.
+    note: Transient local (latched). From aav_navigation/maps. things reads it only with background true (its walls are not things). AMCL reads it too when launched without amcl_map:= (the sim gives it /localization/amcl/map). The map window (map, aav_hud) draws it north up, for the big screen.
   /goal_pose:
     type: geometry_msgs/msg/PoseStamped
     pub: [rviz2, map, dev_window]
