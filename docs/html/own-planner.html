@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-planner.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own planner</h1>
-<div class="meta">8 min read · 6 sections</div></header>
+<div class="meta">12 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -116,7 +116,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#hand-made-maps-no-ros">Hand-made maps (no ROS)</a><a href="#in-our-simulator-8-nov">In our simulator (8 Nov)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#hand-made-maps-no-ros">Hand-made maps (no ROS)</a><a href="#in-our-simulator-8-nov">In our simulator (8 Nov)</a><a href="#hybrid-a-a-second-search-14-nov">Hybrid-A*: a second search (14 Nov)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
 <div class="lead"><p>Ben, 8 Nov: move off Nav2 <strong>one piece at a time</strong>, each beside Nav2 until it wins. The
 order: the costmap (<a href="own-costmap.html">done</a>), then <strong>the path planner</strong> (this page), then
 the navigator. Since 14 Nov ours is the simulator's default (<code>stack:=ours</code>; Nav2's
@@ -145,6 +145,8 @@ lattice with <code>planner:=lattice</code> or <code>stack:=stock</code>). Nav2 s
 <li>
 <p><strong>Not yet a winner:</strong> as good on the lot, a little slower on the campus.</p>
 </li>
+<li><strong>Hybrid-A* too (14 Nov):</strong> <code>planner_search:=hybrid</code> runs Nav2's Hybrid-A*
+  ported, on the same search (<a href="#hybrid-a-a-second-search-14-nov">below</a>). A challenger.</li>
 </ul>
 </blockquote></div>
 <section class="card"><h2 id="how-it-fits">How it fits</h2>
@@ -278,6 +280,18 @@ same with the clear service. Our navigator (<a href="own-navigator.html">page</a
 <tr>
 <td>Compare the moves offline</td>
 <td><code>cargo run --release -p lattice-planner --example moves</code> (the lot tour on <code>example_lot</code>)</td>
+</tr>
+<tr>
+<td>Run Hybrid-A* instead</td>
+<td><code>pixi run sim planner:=own planner_search:=hybrid</code> (or <code>stack:=ours</code> with the league's <code>hybrid_rs</code>)</td>
+</tr>
+<tr>
+<td>Hybrid-A* against the lattice offline</td>
+<td><code>cargo run --release -p lattice-planner --example hybrid</code></td>
+</tr>
+<tr>
+<td>... and in the simulator</td>
+<td><code>pixi run measure controllers --planners own own_hybrid --reversing --tours lot</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -432,10 +446,170 @@ Before each leg, both planners plan <strong>from the same spot on the same map</
   as Nav2 does, where it is safe), and Hybrid-A* for forward only.</li>
 </ul>
 </section>
+<section class="card"><h2 id="hybrid-a-a-second-search-14-nov">Hybrid-A*: a second search (14 Nov)</h2>
+<p>Ben, 14 Nov: "Hybrid-A<em> in our Rust planner: Now" (TODO 178). Nav2's
+SmacPlannerHybrid (Dolgov et al., 2010), ported into the same crate. </em><em>A challenger:</em>*
+the league's champion stays our lattice (<code>lattice_rs</code>); this is <code>hybrid_rs</code>.</p>
+<blockquote>
+<ul>
+<li>
+<p><strong>Switch:</strong> <code>planner:=own planner_search:=hybrid</code>. Nothing else changes: the same
+  node, actions, topics and costmap.</p>
+</li>
+<li>
+<p><strong>Settings:</strong> <code>nav2.yaml</code>'s own Hybrid-A* block (<code>GridBased</code>), as Nav2's gets it:
+  72 headings, the planning radius (3.57 m), Reeds-Shepp with <code>reversing:=true</code>,
+  else Dubins (forward only).</p>
+</li>
+</ul>
+</blockquote>
+<h3 id="what-is-shared-what-differs">What is shared, what differs</h3>
+<p>Nav2 runs both planners on one A*; only the node type differs. Ours too:</p>
+<pre class="highlight"><code>                  ┌── the lattice: the primitives file's moves, each swept
+search.rs (A*) ───┤
+                  └── Hybrid-A*: 3 short arcs (6 reversing), checked where they end
+  shared: the outline check, both estimates, the curve to the goal, the smoother</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>The lattice</th>
+<th>Hybrid-A*</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>moves from a heading</td>
+<td>6 from our file, 16 headings</td>
+<td>straight, full left, full right; 72 headings (5°)</td>
+</tr>
+<tr>
+<td>a move's length</td>
+<td>as the file draws it</td>
+<td>0.63 m: just over a cell's diagonal, a 10° turn</td>
+</tr>
+<tr>
+<td>backwards</td>
+<td>the same moves, driven backwards</td>
+<td>the same (Nav2's <code>REVERSE</code>, <code>REV_LEFT</code>, <code>REV_RIGHT</code>)</td>
+</tr>
+<tr>
+<td>does it fit?</td>
+<td>along the whole move</td>
+<td>at its end only</td>
+</tr>
+<tr>
+<td>a turn costs</td>
+<td>× 1.05, + 0.05 to change</td>
+<td>× 1.2 (no change penalty in nav2.yaml)</td>
+</tr>
+<tr>
+<td>round the obstacles</td>
+<td>every cell</td>
+<td>2 × 2 blocks (Nav2's default: a quarter of the work)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="offline-the-lot-tour-no-ros">Offline: the lot tour (no ROS)</h3>
+<p><code>cargo run --release -p lattice-planner --example hybrid</code>: <code>example_lot</code>, the four legs
+<code>measure controllers --tours lot</code> drives, our car, M4 Max, the best of 3.</p>
+<p><strong>Reversing (the car's setting):</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Leg</th>
+<th>Lattice: m, ms, cusps</th>
+<th>Hybrid-A*: m, ms, cusps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a left turn</td>
+<td>21.9, &lt; 1, 0</td>
+<td>22.5, &lt; 1, <strong>1</strong></td>
+</tr>
+<tr>
+<td>round the building</td>
+<td>40.9, 1, 0</td>
+<td>41.1, &lt; 1, 0</td>
+</tr>
+<tr>
+<td>turn back (35, 42, 0°) to (20, 42, 180°)</td>
+<td>20.8, 2, 1</td>
+<td>20.1, 8, <strong>3</strong></td>
+</tr>
+<tr>
+<td>home</td>
+<td>50.4, 14, 1</td>
+<td>50.7, 39, <strong>3</strong></td>
+</tr>
+<tr>
+<td><strong>whole tour</strong></td>
+<td><strong>133.9 m, 17 ms, 2 cusps</strong></td>
+<td><strong>134.3 m, 48 ms, 7 cusps</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Forward only (Dubins):</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Leg</th>
+<th>Lattice: m, ms</th>
+<th>Hybrid-A*: m, ms</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a left turn</td>
+<td>21.9, &lt; 1</td>
+<td>21.9, &lt; 1</td>
+</tr>
+<tr>
+<td>round the building</td>
+<td>40.9, 1</td>
+<td>40.8, &lt; 1</td>
+</tr>
+<tr>
+<td>turn back (a loop round)</td>
+<td>39.3, 8</td>
+<td><strong>36.4</strong>, 5</td>
+</tr>
+<tr>
+<td>home</td>
+<td>52.3, 27</td>
+<td>52.7, 44</td>
+</tr>
+<tr>
+<td><strong>whole tour</strong></td>
+<td><strong>154.4 m, 36 ms</strong></td>
+<td><strong>151.9 m, 50 ms</strong></td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Tightest turn:</strong> before smoothing, Hybrid-A* keeps to 3.57 m on every leg (its arcs
+  are exactly the radius); the lattice to 3.63 m. The shared smoother then tightens
+  some corners on both (3.12 m Hybrid, 3.33 m lattice), still wider than full lock
+  (2.86 m).</li>
+<li><strong>Cusps:</strong> Hybrid-A* finishes with a Reeds-Shepp curve from a 5° heading, so near
+  the goal it often backs up a little to line up (as Nav2's does). More changes of
+  direction for the follower.</li>
+<li><strong>Time:</strong> 2-3 times the lattice's on long legs (more, shorter moves); all well
+  inside the 5 s limit.</li>
+</ul>
+<h3 id="not-done-yet">Not done yet</h3>
+<ul>
+<li><strong>The simulator:</strong> not run. Next: <code>measure controllers --planners own own_hybrid
+  --reversing --tours lot</code>, 3 runs.</li>
+<li>No <code>use_quadratic_cost_penalty</code> or <code>cache_obstacle_heuristic</code> (nav2.yaml leaves both
+  off).</li>
+</ul>
+</section>
 <section class="card"><h2 id="whats-missing">What's missing</h2>
 <ul>
-<li><strong>Hybrid-A</strong>* (the forward-only default on the car): not ported. <code>planner:=own</code> with
-  <code>reversing:=false</code> plans Dubins moves on the lattice instead.</li>
+<li><strong>Hybrid-A</strong>* (the forward-only default on the car): ported 14 Nov
+  (<a href="#hybrid-a-a-second-search-14-nov">above</a>); not yet run in a simulator.</li>
 <li><strong><code>ComputePathThroughPoses</code></strong>: done 8 Nov (<code>/drivers/nav/planner/compute_path_through_poses</code>,
   a plan a leg, joined, as Nav2's planner_server does).</li>
 <li><strong>The navigator step</strong>: done 8 Nov (<a href="own-navigator.html">our own navigator</a>): it calls

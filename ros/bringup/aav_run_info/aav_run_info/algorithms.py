@@ -15,7 +15,7 @@ PLANNERS = {
     'navfn': 'NavFn (trial: ignores the turning radius)',
     'theta_star': 'Theta* (trial: ignores the turning radius)',
     'diffusion': 'diffusion model, the lattice as fallback (trial)',
-    'own': 'our lattice in Rust (aav_planner, trial)',
+    'own': 'ours in Rust (aav_planner: the lattice, or Hybrid-A* with planner_search:=hybrid)',
 }
 CONTROLLERS = {
     'mppi': 'MPPI (Nav2 controller_server)',

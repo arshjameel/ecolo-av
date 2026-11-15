@@ -501,6 +501,24 @@ LATTICE_HEADINGS = (16, 32)
 LATTICE_MOVES = ('nav2', 'smooth', 'smooth_fast')
 
 
+# Our planner's search (planner_search:=, with planner:=own; docs/own-planner.md): lattice,
+# Nav2's State Lattice ported (the default, the league's lattice_rs); hybrid, Nav2's
+# Hybrid-A* ported (SmacPlannerHybrid, a challenger: hybrid_rs), on nav2.yaml's GridBased
+# block. Both in aav_planner, sharing the search, the checks, the estimates and the smoother.
+PLANNER_SEARCHES = ('lattice', 'hybrid')
+
+
+def check_planner_search(search, planner='own'):
+    """Return planner_search:= checked (empty: lattice), or raise ValueError saying why."""
+    name = str(search).strip().lower() or PLANNER_SEARCHES[0]
+    if name not in PLANNER_SEARCHES:
+        raise ValueError(f'planner_search:={search}: pick one of {", ".join(PLANNER_SEARCHES)}')
+    if name != PLANNER_SEARCHES[0] and planner != 'own':
+        raise ValueError(f"planner_search:={name} is our planner's (planner:=own), "
+                         f"not planner:={planner}'s")
+    return name
+
+
 def check_lattice_moves(moves):
     """Return lattice_moves:= checked (empty: nav2), or raise ValueError saying what to pick."""
     name = str(moves).strip().lower() or LATTICE_MOVES[0]
@@ -800,7 +818,13 @@ OWN_PLANNER_KEYS = (
     'lookup_table_size', 'smooth_path')
 
 
-def planner_params(tuned, v, costmap='nav2'):
+# The Hybrid-A* block's keys our planner reads (planner_search:=hybrid), besides the shared
+# ones in OWN_PLANNER_KEYS; motion_model_for_search and minimum_turning_radius are written.
+OWN_HYBRID_KEYS = ('angle_quantization_bins', 'allow_primitive_interpolation',
+                   'downsample_obstacle_heuristic')
+
+
+def planner_params(tuned, v, costmap='nav2', search='lattice', nav2=None):
     """
     Return aav_planner's settings (planner:=own) as a dict, from the tuned nav2.yaml.
 
@@ -808,10 +832,27 @@ def planner_params(tuned, v, costmap='nav2'):
     reversing filled in, is planner_server's GridBased); v: vehicle.yaml's `vehicle`;
     costmap: which global costmap it plans on (nav2 or own). The same block, the car's
     outline and padding, and the global costmap's inflation, so ours plans as Nav2's does.
+    search (PLANNER_SEARCHES): hybrid plans with Hybrid-A* on nav2.yaml's own Hybrid-A*
+    block (`nav2`, the file as loaded: nav2_tuned keeps only the lattice's), as
+    nav2_rewrites writes it for planner:=hybrid: the planning radius
+    (plan_turning_radius), and REEDS_SHEPP when the lattice may reverse, else DUBIN; and
+    the global costmap's cells, which its moves are made for.
     """
+    search = check_planner_search(search)
     block = tuned['planner_server']['ros__parameters']['GridBased']
-    out = {k: block[k] for k in OWN_PLANNER_KEYS if k in block}
     gc = tuned['global_costmap']['global_costmap']['ros__parameters']
+    if search == 'hybrid':
+        if nav2 is None:
+            raise ValueError('planner_search:=hybrid needs nav2.yaml (nav2) for its block')
+        reversing = bool(block.get('allow_reverse_expansion', False))
+        hybrid = nav2['planner_server']['ros__parameters'][PLANNER_BLOCKS['hybrid']]
+        out = {k: hybrid[k] for k in OWN_PLANNER_KEYS + OWN_HYBRID_KEYS if k in hybrid}
+        out['search'] = 'hybrid'
+        out['motion_model_for_search'] = 'REEDS_SHEPP' if reversing else 'DUBIN'
+        out['minimum_turning_radius'] = round(plan_turning_radius(v), 3)
+        out['resolution'] = float(gc.get('resolution', 0.05))
+    else:
+        out = {k: block[k] for k in OWN_PLANNER_KEYS if k in block}
     out['footprint'] = footprint_points(v)
     out['footprint_padding'] = float(gc.get('footprint_padding', 0.01))
     out['costmap_timeout'] = costmap_timeout(tuned['planner_server']['ros__parameters'], gc)

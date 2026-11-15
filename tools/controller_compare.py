@@ -59,6 +59,9 @@ The trials (docs/trials.md):
                     our own planner (aav_planner, planner:=own: Nav2's lattice in Rust)
                     beside Nav2's: before each leg both plan from the same spot on the same
                     map, and the leg's note gives Nav2's length, time and tightest turn
+    pixi run measure controllers --planners own own_hybrid --reversing --tours lot
+                    our planner's two searches: the State Lattice (own) against Hybrid-A*
+                    (own_hybrid: planner_search:=hybrid; docs/own-planner.md)
     pixi run measure controllers --stacks nav2 own --tours lot obstacle --runs 3
                     all of Nav2 (bt_navigator, the lattice, Nav2's costmaps, MPPI) against
                     all of ours (navigator:=own planner:=own costmap:=own
@@ -851,10 +854,18 @@ PLANNER_VARIANTS = {f'lattice{h}': ('lattice', [f'lattice_headings:={h}'])
 # moves (lattice_moves:=, tools/lattice_smooth.py).
 PLANNER_VARIANTS.update({f'{p}_{m}': (p, [f'lattice_moves:={m}'])
                          for p in ('lattice', 'own') for m in vehicle.LATTICE_MOVES[1:]})
+# own_hybrid: our planner running Hybrid-A* (planner_search:=hybrid; the league's
+# hybrid_rs), against own, the lattice (lattice_rs).
+PLANNER_VARIANTS['own_hybrid'] = ('own', ['planner_search:=hybrid'])
 # diffusion_nomodel: the diffusion trial with no model file, so every plan must be the
 # lattice's (its guard's fallback test: docs/tests.md).
 PLANNER_VARIANTS['diffusion_nomodel'] = ('diffusion', ['diffusion_model:=/nonexistent.onnx'])
 PLANNER_WORDS = vehicle.PLANNERS + tuple(PLANNER_VARIANTS)
+
+
+def base_planner(word):
+    """Return the planner:= behind a --planners word (own for own_hybrid, own_smooth)."""
+    return PLANNER_VARIANTS.get(word, (word, []))[0]
 
 
 def planner_launch(word):
@@ -986,7 +997,7 @@ def session(tour, follower, args, out_dir, body, used, run=1):
                                        follower_process(kind, controller), args.amcl,
                                        args.ndt,
                                        lock if planner else None, args.kiss_icp,
-                                       planner == 'own', route)
+                                       base_planner(planner) == 'own', route)
                 row = drive_metrics.summary(leg)
                 # t, x, y, yaw: where the car was, and where the global EKF put it.
                 drawn = {'run': run, 'goal': [round(x, 2), round(y, 2)],

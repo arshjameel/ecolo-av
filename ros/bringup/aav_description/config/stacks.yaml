@@ -46,6 +46,9 @@ levels:
       lattice_smooth: {planner: lattice, lattice_moves: smooth}
       lattice_rs_smooth: {planner: own, lattice_moves: smooth}
       hybrid: {planner: hybrid}
+      # Nav2's Hybrid-A* ported into our planner, beside the lattice it shares the search
+      # with (planner_search:=hybrid, docs/own-planner.md). A challenger (14 Nov, TODO 178).
+      hybrid_rs: {planner: own, planner_search: hybrid}
       diffusion: {planner: diffusion}
     score: ''
   steer:

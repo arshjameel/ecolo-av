@@ -710,6 +710,36 @@ def test_our_planner_reads_the_lattice_block_the_car_and_the_inflation():
     assert set(vehicle.GLOBAL_COSTMAP_TOPICS) == set(vehicle.COSTMAPS)
 
 
+def test_our_hybrid_a_star_reads_nav2s_hybrid_block_the_radius_and_the_cells():
+    # planner_search:=hybrid: the GridBased block (Hybrid-A*), not the lattice's, as
+    # nav2_rewrites writes it for planner:=hybrid.
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+    v = vehicle.load(CONFIG)['vehicle']
+    hybrid = nav2['planner_server']['ros__parameters']['GridBased']
+    for reversing, model in ((False, 'DUBIN'), (True, 'REEDS_SHEPP')):
+        tuned = vehicle.nav2_tuned(nav2, v, reversing=reversing, planner='own',
+                                   lattice_file='/x/l.json')
+        p = vehicle.planner_params(tuned, v, search='hybrid', nav2=nav2)
+        assert p['search'] == 'hybrid'
+        assert p['motion_model_for_search'] == model
+        assert p['minimum_turning_radius'] == pytest.approx(vehicle.plan_turning_radius(v),
+                                                            abs=1e-3)
+        for key in ('reverse_penalty', 'change_penalty', 'non_straight_penalty',
+                    'cost_penalty', 'angle_quantization_bins', 'smooth_path', 'tolerance'):
+            assert p[key] == hybrid[key], key
+        assert 'lattice_filepath' not in p
+        assert p['resolution'] == nav2['global_costmap']['global_costmap'][
+            'ros__parameters']['resolution']
+        assert p['footprint'] == vehicle.footprint_points(v)
+    with pytest.raises(ValueError, match='needs nav2.yaml'):
+        vehicle.planner_params(tuned, v, search='hybrid')
+    assert vehicle.check_planner_search('') == 'lattice'
+    with pytest.raises(ValueError, match='planner:=own'):
+        vehicle.check_planner_search('hybrid', 'lattice')
+    with pytest.raises(ValueError, match='pick one of'):
+        vehicle.check_planner_search('rrt')
+
+
 def test_lattice_needs_its_file_and_reverses_only_with_reversing():
     nav2 = yaml.safe_load(NAV2_YAML.read_text())
     v = vehicle.load(CONFIG)['vehicle']
