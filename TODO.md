@@ -6,16 +6,19 @@ Ben's messages, word for word: `docs/history/messages-*.md`. What is finished:
 
 ## What is next
 
-| Area | Next step | Row |
+Ben, 14 Nov night: "chiping througth the list 166-173 and then the 155, 156, 157, etc".
+
+| Order | Next step | Row |
 |---|---|---|
-| The car | the seven blockers, with the hardware lead | 158 |
-| The wiggle (the steering's swing) | the map's corrections applied slowly; `mppi_lag`'s flip a second; our navigator keeps its path too | 165 |
-| The road ahead | Nav2's followers and ours reading the line and its edges | 154 |
-| The things | the tracker on `/world/things`, then into the behaviour planner | 156 |
-| The league | a sim run of each stack; `measure league` | 150 |
-| Our own stack | the CI job with our simulator; re-score "all ours" | 161, 164 |
-| The sim's speed | 14 % over its command: the speed loop | 163 |
-| The obstacle leg | what it should expect: stop and wait, or pass | 162 |
+| 1 | Every stack runs: stock and ours on Gazebo (ours on our simulator passes) | 166 |
+| 2 | Ours scores as well as stock: 3 runs each. First drive, 14 Nov: ours missed the lot's "turn back" (stuck at the cusp) | 167 |
+| 3 | The wiggle: each follower's own swing; the EKF change on the car | 168 |
+| 4 | The lane line for `aav_track`'s trackers and Nav2's MPPI (`mppi_lag` done) | 169 |
+| 5 | The things: a moving thing in the sim, then Gazebo | 170 |
+| 6 | The last gaps on the audit list | 171 |
+| 7 | The edges smoothed: one start command per job, errors, docs, a start page | 172 |
+| 8 | On the car, with the hardware lead | 173 |
+| then | The lane finder as a pose sensor; the things' camera and radar; record and score a car drive | 155, 156, 157 |
 
 ## Release candidate 1.0-rc1 (Ben, 14 Nov night)
 
