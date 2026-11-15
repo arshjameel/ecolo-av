@@ -103,6 +103,7 @@ and doesn't model `lqi` yet).
 | `smoother:=own` | our own velocity smoother (Rust) in Nav2's `velocity_smoother`'s place: Nav2's speed limits, and the turn rate from where the wheels can be (the steering's rate and full lock). 8 Nov, test lot: the same legs as Nav2's, ego clipped 0-0.1 % of the steering against 9-15 % ([page](own-smoother.md)) |
 
 | `behaviour:=true` | the behaviour planner: a speed cap on Nav2 before a stop sign, an obstacle, the fence and the goal (a trial, off by default: [page](stopping.md#2-the-behaviour-planner)) |
+| `lane_map:=world` | with `behaviour:=true`: the road ahead's line on the right lane's centre, with its edges, from the world's lane map (the road world's, or the campus's `maps/campus/lanes.yaml`); or a `lanes.yaml`'s path. Off by default: the line is `/plan`'s |
 | `payload:=150`, `adaptive_brake:=true` | kg aboard the modelled car; the brake that learns it stops too slowly (off by default; not with `spine` or `esp32`: [page](stopping.md#4-a-heavier-car-the-adaptive-brake)) |
 | `plan_around:=false` | the planner sees only the map, so the car stops for an obstacle (default `true`: it plans round) |
 | `obstacle:=true`, `ghost:=true` | a 1 m box 15 m ahead in the lane; a pretend person in Nav2's view ([page](ghost-obstacles.md)) |

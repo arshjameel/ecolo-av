@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">110 min read · 4 sections</div></header>
+<div class="meta">112 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -864,9 +864,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/perception/voxels/cubes</code></td>
 <td><code>sensor_msgs/msg/PointCloud2</code></td>
 <td><code>voxels</code></td>
-<td><code>local_costmap</code>, <code>collision_monitor</code>, <code>debug_hud</code>, <code>dev_window</code></td>
+<td><code>local_costmap</code>, <code>collision_monitor</code>, <code>debug_hud</code>, <code>dev_window</code>, <code>things</code></td>
 <td>-</td>
-<td>A trial (docs/designs/2026-10-30_voxels.md), only with navigation.launch.py voxels:=true (sim.launch.py and car.launch.py pass it on; needs the lidar) - the roof lidar's cloud as 0.25 m cubes (aav_voxels voxels), in base_link, the cloud's stamp, 10 Hz. Fields x, y, z (float32) - the centre of every cube holding a point between 0.3 m and the roof plus 0.5 m (vehicle.obstacle_heights) above the road, the road's plane fitted to each cloud (so a leaning car doesn't see the road as an obstacle); the car's own body left out; out to 30 m. Reliable, depth 1. Then the local costmap's lidar_layer marks with it and collision_monitor's voxels source stops for it, instead of /sensors/lidar/scan. The debug HUD draws it as red wireframes over its own cubes (key V), placed with the local EKF's pose at the cloud's stamp.</td>
+<td>A trial (docs/designs/2026-10-30_voxels.md), only with navigation.launch.py voxels:=true (or screen_cubes:=true, or things:=true - then only the developer window and aav_things read it) (sim.launch.py and car.launch.py pass it on; needs the lidar) - the roof lidar's cloud as 0.25 m cubes (aav_voxels voxels), in base_link, the cloud's stamp, 10 Hz. Fields x, y, z (float32) - the centre of every cube holding a point between 0.3 m and the roof plus 0.5 m (vehicle.obstacle_heights) above the road, the road's plane fitted to each cloud (so a leaning car doesn't see the road as an obstacle); the car's own body left out; out to 30 m. Reliable, depth 1. Then the local costmap's lidar_layer marks with it and collision_monitor's voxels source stops for it, instead of /sensors/lidar/scan. The debug HUD draws it as red wireframes over its own cubes (key V), placed with the local EKF's pose at the cloud's stamp.</td>
 </tr>
 <tr>
 <td><code>/perception/voxels/ground</code></td>
@@ -888,7 +888,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/perception/radar/clusters</code></td>
 <td><code>sensor_msgs/msg/PointCloud2</code></td>
 <td><code>radar_clusters</code></td>
-<td>-</td>
+<td><code>things</code></td>
 <td>bench, road</td>
 <td>The radar points DBSCAN grouped into objects (radar_clusters, aav_radar_clusters, Rust), coloured by cluster, with each point's cluster number in a cluster field; noise left out. The radar cloud's frame and time.</td>
 </tr>
@@ -1104,7 +1104,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/localization/odom/local</code></td>
 <td><code>nav_msgs/msg/Odometry</code></td>
 <td><code>ekf_local</code></td>
-<td><code>controller_server</code>, <code>bt_navigator</code>, <code>scripted_driver</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>sensor_watchdog</code>, <code>debug_hud</code>, <code>ndt</code>, <code>localization_health</code>, <code>dev_window</code>, <code>behaviour</code>, <code>ego</code></td>
+<td><code>controller_server</code>, <code>bt_navigator</code>, <code>scripted_driver</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>sensor_watchdog</code>, <code>debug_hud</code>, <code>ndt</code>, <code>localization_health</code>, <code>dev_window</code>, <code>behaviour</code>, <code>ego</code>, <code>things</code></td>
 <td>turtle, sim, car, replay, bench</td>
 <td>odom frame. Smooth; drifts.</td>
 </tr>
@@ -1346,7 +1346,23 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>behaviour</code></td>
 <td><code>ego</code>, <code>look_ahead</code>, <code>dev_window</code></td>
 <td>-</td>
-<td>Only with behaviour:=true, 10 Hz, frame map - the road ahead (docs/designs/2026-11-14_the-whole-car.md). The behaviour planner is its only writer. The line is /plan's next 40 m from the car's foot, a point every 0.5 m; stops (sign, obstacle WAIT; fence, goal FINAL) sit on it; the end is the nearest stop or the line's last point, and the car may not pass it (a movement authority - silence means the car runs out of road and stops, never carry on). speed_limit per point is the stopping law's cap for the room left to the end (aav_description stop_law.py), never above the base speed, 0 at the end. Edges are NaN until the lane map (W5). Made from /plan, or from /drivers/point/plan while a drive to a point runs. Readers use aav_description road_ahead.py (limit_at). ego (road_ahead:=true, set by behaviour:=true) holds Nav2's and the point driver's forward speed under it (people never trimmed); Nav2's controller still reads /drivers/nav/speed_limit too.</td>
+<td>Only with behaviour:=true, 10 Hz, frame map - the road ahead (docs/designs/2026-11-14_the-whole-car.md). The behaviour planner is its only writer. The line is /plan's next 40 m from the car's foot, a point every 0.5 m; stops (sign, obstacle WAIT; fence, goal FINAL) sit on it; the end is the nearest stop or the line's last point, and the car may not pass it (a movement authority - silence means the car runs out of road and stops, never carry on). speed_limit per point is the stopping law's cap for the room left to the end (aav_description stop_law.py), never above the base speed, 0 at the end. With a lane map (behaviour lane_map, sim.launch.py lane_map:=world - aav_description lane_map.py, a lanes.yaml) the line is the car's lane's centre along the route (the rightmost lane for the way the route runs) and the four edges are metres from each point to the lane's lines (soft) and the kerbs (hard), NaN where a point is on no road; without one the line is the plan's and the edges NaN. Made from /plan, or from /drivers/point/plan while a drive to a point runs. Readers use aav_description road_ahead.py (limit_at). ego (road_ahead:=true, set by behaviour:=true) holds Nav2's and the point driver's forward speed under it (people never trimmed); Nav2's controller still reads /drivers/nav/speed_limit too.</td>
+</tr>
+<tr>
+<td><code>/world/things</code></td>
+<td><code>aav_interfaces/msg/Things</code></td>
+<td><code>things</code></td>
+<td>-</td>
+<td>-</td>
+<td>Only with things:=true (navigation.launch.py, sim.launch.py; needs the lidar, and voxels runs for it), 10 Hz, frame odom - every thing near the car, one list (docs/designs/2026-11-14_the-whole-car.md, Seeing - things, not just points). aav_things groups /perception/voxels/cubes (cubes within 0.6 m make a thing; walls over 8 m left to the map), follows each with a constant-velocity Kalman filter (greedy nearest association, 2 m gate - AB3DMOT's simple baseline), and lists it once seen in 3 clouds. Each Thing - id (kept while listed), kind (unknown until camera-to-lidar calibration, Q22), x, y, vx, vy (m, m/s over the ground), length, width, height, position_sigma, confidence, last_seen, seen, radar (its speed along the radar's ray from /perception/radar/clusters too, radar:=true), coasting (not in the last cloud - moved on its speed; slower than 0.5 m/s taken as parked). Kept 3 s unseen, 30 s within 4 m of base_link (the blind zone before the bumper). Nobody reads it yet - the behaviour planner and the screens will.</td>
+</tr>
+<tr>
+<td><code>/world/things/markers</code></td>
+<td><code>visualization_msgs/msg/MarkerArray</code></td>
+<td><code>things</code></td>
+<td>-</td>
+<td>-</td>
+<td>Only with things:=true, 10 Hz, frame odom - for RViz and the screens. A DELETEALL first, then per thing a box (orange; grey while coasting), an arrow for its speed and its id and speed as text (R where the radar gave it).</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/behaviour/state</code></td>

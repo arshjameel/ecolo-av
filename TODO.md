@@ -10,7 +10,7 @@ Ben's messages, word for word: `docs/history/messages-*.md`. What is finished:
 |---|---|---|
 | The car | the seven blockers, with the hardware lead | 158 |
 | The wiggle (the steering's swing) | the map's corrections applied slowly; `mppi_lag`'s flip a second; our navigator keeps its path too | 165 |
-| The road ahead | the lane-centre line, from the lane map | 154 |
+| The road ahead | Nav2's followers and ours reading the line and its edges | 154 |
 | The things | the tracker on `/world/things`, then into the behaviour planner | 156 |
 | The league | a sim run of each stack; `measure league` | 150 |
 | Our own stack | the CI job with our simulator; re-score "all ours" | 161, 164 |
@@ -23,7 +23,7 @@ Ben, 13-14 Nov: "a review of everything with the plan of merging everything into
 
 | # | Task | Status |
 |---|---|---|
-| 154 | **The road ahead** (`/world/road_ahead`): the line to follow (the right lane's centre), hard and soft edges, the speed limit and stop points from `stop_law.py`, and an end the car may not pass; the boss (`aav_behaviour`) is its only writer; Nav2's followers and ours read it; in the sim first | 🔧 14 Nov: the message, the writer, ego holds Nav2 (and so our followers) to it; sim-check passed sign and goal with it on. The point driver (R5) too: its line A -> B makes the strip. The screens show it: the dev window, and the in-car HUD ("ROAD 0.6 m/s, SIGN IN 12 m", through look_ahead). Next: the lane line |
+| 154 | **The road ahead** (`/world/road_ahead`): the line to follow (the right lane's centre), hard and soft edges, the speed limit and stop points from `stop_law.py`, and an end the car may not pass; the boss (`aav_behaviour`) is its only writer; Nav2's followers and ours read it; in the sim first | 🔧 14 Nov: the message, the writer, ego holds Nav2 (and so our followers) to it; sim-check passed sign and goal with it on. The point driver (R5) too: its line A -> B makes the strip. The screens show it: the dev window, and the in-car HUD ("ROAD 0.6 m/s, SIGN IN 12 m", through look_ahead). The lane line, 14 Nov: with `lane_map:=world` the line is the right lane's centre and has edges (`lane_map.py`, a `lanes.yaml`: the road world's and the campus's; Lanelet2 doesn't import on a Mac). Seen in the road world: on the centre while /plan swung -0.6..1.9 m. Next: the followers (`mppi_lag`) reading the line and its edges; the campus untested live |
 | 155 | **The lane finder as a pose sensor**: its offset in the lane, against the lane map, into the EKF as a sideways correction; the lane driver stays as a challenger | ⬜ after W4, and the wiggle's tests (149) |
 | 156 | **The things** (`/world/things`): camera-to-lidar calibration; the cubes grouped; a small tracker (a stock one first, licence checked); names from the camera's boxes; the radar's speed per cluster; the list remembers what the lidar saw on the way in (TODO 93 and 103's Part B) | ⬜ |
 | 157 | **Record everything, score something**: `tools/record.sh` gains pictures (compressed), cubes, radar and the locks; one car drive scored; shadow mode's stage 1 (TODO 108) | 🔧 14 Nov: `record.sh` keeps what the stack saw and decided (the front camera as JPEG, boxes, sign, lanes, radar, cubes, locks, the road ahead, behaviour, ego, NDT); 28 s in the sim = 11 MB, 53 topics. `tools/score_drive.py` scores any bag (`scorecard.py`, tested): a 25 m point drive in the sim scored clean but for TODO 163. Next: score a car drive |

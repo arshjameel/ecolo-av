@@ -12,7 +12,8 @@ It makes, in maps/campus/ (not in git; this tool makes it again):
     meshes/, textures/    what the world draws, with bump maps
     campus.pgm, .yaml     one Nav2 map of the whole campus: only roads and lots are free
     place.yaml            where the car starts, what went in, the OpenStreetMap credit
-    lanes.yaml            the painted roads' centre lines and widths, to score lane keeping
+    lanes.yaml            the painted roads' centre lines and widths, to score lane keeping;
+                          also the lane map (aav_description lane_map.py)
 
 and maps/ndt/campus.pcd: NDT's map, **a guess** sampled from the same shapes. A real drive
 replaces it (pixi run ndt-map build); a drive suggests changes and a person accepts them.

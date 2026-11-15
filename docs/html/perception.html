@@ -181,7 +181,13 @@ a person can still look at it in RViz or Lichtblick.</p>
 <td>Radar</td>
 <td><code>radar_clusters</code></td>
 <td><code>/perception/radar/clusters</code>, <code>/cluster_boxes</code></td>
-<td><strong>nobody</strong>: for RViz only</td>
+<td><code>things</code> (<code>things:=true</code>, a trial: each cluster's speed); else <strong>nobody</strong>: for RViz only</td>
+</tr>
+<tr>
+<td>Roof lidar</td>
+<td><code>things</code> (<code>aav_things</code>), only with <code>things:=true</code></td>
+<td><code>/world/things</code>, <code>/markers</code></td>
+<td><strong>nobody</strong> yet: for RViz; the behaviour planner and the screens will</td>
 </tr>
 <tr>
 <td>Front cameras</td>
@@ -243,8 +249,9 @@ a person can still look at it in RViz or Lichtblick.</p>
 <li><strong>Labels:</strong> only "stop sign" does anything by default. People, cars and the rest reach
   Nav2 only through <code>camera_obstacles</code>, which is off everywhere until the cameras are
   calibrated (Q22).</li>
-<li><strong>Objects with an ID and a speed</strong> (a tracker for radar clusters and cubes) are not
-  built: TODO 103, paused. <code>aav_track</code> is something else: trial path followers.</li>
+<li><strong>Objects with an ID and a speed:</strong> a first form, 14 Nov (TODO 156, <code>aav_things</code>,
+  <code>things:=true</code>): the cubes grouped, one Kalman filter each, the radar's speed, a memory
+  for the blind zone. No names until Q22. <code>aav_track</code> is something else: trial path followers.</li>
 <li><strong>Lanes as costs for the planner</strong> are a proposal only
   (<a href="../designs/2026-11-13_one-shape.md">one shape</a>).</li>
 </ul>

@@ -375,6 +375,7 @@ and doesn't model <code>lqi</code> yet).</p>
 </tbody>
 </table></div>
 <p>| <code>behaviour:=true</code> | the behaviour planner: a speed cap on Nav2 before a stop sign, an obstacle, the fence and the goal (a trial, off by default: <a href="stopping.html#2-the-behaviour-planner">page</a>) |
+| <code>lane_map:=world</code> | with <code>behaviour:=true</code>: the road ahead's line on the right lane's centre, with its edges, from the world's lane map (the road world's, or the campus's <code>maps/campus/lanes.yaml</code>); or a <code>lanes.yaml</code>'s path. Off by default: the line is <code>/plan</code>'s |
 | <code>payload:=150</code>, <code>adaptive_brake:=true</code> | kg aboard the modelled car; the brake that learns it stops too slowly (off by default; not with <code>spine</code> or <code>esp32</code>: <a href="stopping.html#4-a-heavier-car-the-adaptive-brake">page</a>) |
 | <code>plan_around:=false</code> | the planner sees only the map, so the car stops for an obstacle (default <code>true</code>: it plans round) |
 | <code>obstacle:=true</code>, <code>ghost:=true</code> | a 1 m box 15 m ahead in the lane; a pretend person in Nav2's view (<a href="ghost-obstacles.html">page</a>) |</p>

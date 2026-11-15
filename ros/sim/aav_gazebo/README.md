@@ -20,7 +20,7 @@ Gazebo odometry, joints ─bridge─> gazebo_adapter ─> /vehicle/odom, wheels,
 |---|---|
 | `empty.sdf` | flat ground; renders nothing, runs headless anywhere |
 | `test_lot.sdf` | the walls, building and parked cars of `aav_navigation`'s example lot map; renders the sensors too |
-| `road.sdf` | a road with a stop sign; renders the cameras, the radar stand-in and the roof lidar |
+| `road.sdf` | a road with a stop sign; renders the cameras, the radar stand-in and the roof lidar. Its lane map: `road.lanes.yaml` (`sim.launch.py lane_map:=world`) |
 | `campus` | Carleton, from OpenStreetMap; made by `pixi run campus` into `maps/campus/`, not kept in git (`docs/campus.md`) |
 
 A world renders sensors only if it loads Gazebo's Sensors system (`worlds.has_sensors`).
@@ -87,7 +87,7 @@ aboard), `adaptive_brake`.
 | `radar.py` | Gazebo's lidar cloud as the TI radar's | no |
 | `wheels.py` | each wheel's speed from joint states | no |
 | `sources.py` | what `/system/source` announces | no |
-| `worlds.py` | which world renders which sensors (`has_sensors`) | no |
+| `worlds.py` | which world renders which sensors (`has_sensors`); each world's lane map (`lane_map_file`) | no |
 | `pose_frames.py` | `map_to_odom`: the `map → odom` that puts the car on the truth (`truth_localizer`) | no |
 | `relay.py` | what the sensor nodes share: fault parameter, clean start and stop | yes |
 | `gazebo_*.py` | the six nodes | yes |

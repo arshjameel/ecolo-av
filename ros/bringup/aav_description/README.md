@@ -108,6 +108,33 @@ The strip every level shares (`/world/road_ahead`; [the whole car](../../../docs
 | `Strip`, `StopOnLine`, `resample`; `WAIT`, `FINAL` | the strip; a stop on it; the plan cut into points |
 | `road_ahead_ros.py`: `to_msg`, `from_msg` | `Strip` and `aav_interfaces/RoadAhead` (this one imports ROS messages) |
 
+### `aav_description.lane_map` (no ROS): the lane map
+
+Which lane the car drives in, so the road ahead's line is the lane's centre (W3, W5).
+
+```text
+   ══════════════ left kerb ══════════════   ┐ left_hard
+   ── ── ── ──    centre line   ── ── ──     ┤ left_soft
+   ● ─────── the car's lane centre ──────►
+   ────────────── edge line ──────────────   ┤ right_soft
+   ══════════════ right kerb ═════════════   ┘ right_hard
+```
+
+| Item | What |
+|---|---|
+| `load(path)`, `from_dict(data)` | a `lanes.yaml`: each road's centre line, `width` (kerb to kerb), `lanes` (all, both ways; default width / 3.5), `oneway`, `edge_inset` (0.5 m) |
+| `LaneMap.lane_at(x, y, heading)` | the car's lane there: the rightmost for the way it drives, its centre and edges; None off every road |
+| `lane_line(lanes, route, car)` | the route ahead moved onto its lane's centre; off every road it stays; eased over 3 m where roads change |
+| `with_edges(strip, lanes)` | a `Strip` with its four edges from the map (NaN off every road) |
+
+| Lane map | Where | Covers |
+|---|---|---|
+| the road world | `aav_gazebo` `worlds/road.lanes.yaml` (in git) | one lane, 3.5 m between the lines, either way |
+| the campus | `maps/campus/lanes.yaml` (made by `pixi run campus`, not in git) | 129 painted roads; a right lane each way on two-way roads |
+
+Lanelet2 was tried first (14 Nov): its Python modules don't import on a Mac, so this format
+for now (`docs/decisions.md`).
+
 ### `aav_description.stacks` (no ROS): the league
 
 `config/stacks.yaml`: each level's champion and challengers, and the stacks `best`, `car`,

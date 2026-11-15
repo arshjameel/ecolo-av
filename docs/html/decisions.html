@@ -826,6 +826,11 @@ answer.</p>
 <td>The adaptive brake, a sim trial: brake harder when the car slows too little, never past the brake's safe maximum</td>
 <td>Ben</td>
 </tr>
+<tr>
+<td>14 Nov</td>
+<td><strong>The lane map is a plain <code>lanes.yaml</code></strong> (W5), the campus's own format: each road's centre line, width, lanes, one way. Lanelet2 (RoboStack 1.2.3, BSD-3-Clause) was tried first: it installs, but on a Mac its Python modules are <code>.dylib</code> files that don't import, and loading them by hand hangs (a second libpython). Not added to <code>pixi.toml</code>; try again with a newer build</td>
+<td>Ben, W5: "try it; else grow <code>lanes.yaml</code>"</td>
+</tr>
 </tbody>
 </table></div>
 </section>

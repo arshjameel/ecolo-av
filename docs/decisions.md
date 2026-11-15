@@ -195,6 +195,7 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 8 Nov | **Off Nav2 one piece at a time** (costmap, planner, navigator, smoother), each beside Nav2 until it wins; **Nav2 stays the default and on the car** | Ben |
 | 8 Nov | **On the car, 0.3 keeps the defaults:** the new pieces are off or simulator-only ([Rolling out](rollout.md)) | Ben |
 | 8 Nov | The adaptive brake, a sim trial: brake harder when the car slows too little, never past the brake's safe maximum | Ben |
+| 14 Nov | **The lane map is a plain `lanes.yaml`** (W5), the campus's own format: each road's centre line, width, lanes, one way. Lanelet2 (RoboStack 1.2.3, BSD-3-Clause) was tried first: it installs, but on a Mac its Python modules are `.dylib` files that don't import, and loading them by hand hangs (a second libpython). Not added to `pixi.toml`; try again with a newer build | Ben, W5: "try it; else grow `lanes.yaml`" |
 
 ## Proposed in November: Ben's to decide
 

@@ -46,7 +46,7 @@ That also sets controller_server's `speed_limit_topic` to `/drivers/nav/speed_li
 | in | `/navigate_to_pose/_action/status` | `action_msgs/GoalStatusArray` |
 | out | `/drivers/nav/speed_limit` | `nav2_msgs/SpeedLimit`, 20 Hz, absolute m/s |
 | out | `/drivers/nav/behaviour/state` | `diagnostic_msgs/DiagnosticStatus`, 5 Hz: state, reason, cap, left, warnings |
-| out | `/world/road_ahead` | `aav_interfaces/RoadAhead` (map), 10 Hz: `/plan`'s next 40 m from the car, its stops, its end, the speed limit by the stopping law ([the whole car](../../../docs/designs/2026-11-14_the-whole-car.md#the-road-ahead)) |
+| out | `/world/road_ahead` | `aav_interfaces/RoadAhead` (map), 10 Hz: `/plan`'s next 40 m from the car, its stops, its end, the speed limit by the stopping law ([the whole car](../../../docs/designs/2026-11-14_the-whole-car.md#the-road-ahead)). With `lane_map`: the line is the car's lane's centre along the route, with its edges |
 
 Parameters (from `vehicle.behaviour_params`: nav2.yaml, vehicle.yaml, ego.yaml):
 
@@ -59,11 +59,12 @@ Parameters (from `vehicle.behaviour_params`: nav2.yaml, vehicle.yaml, ego.yaml):
 | `front`, `half_width`, `stop_gap` | the body and the stop zone | the lane ahead |
 | `stop_distance_m`, `near_depth`, `plan_timeout` | 4.7 m, 2.5 m, 25 s | the to-pose tree keeps a path up to 20 s near the goal |
 | `road_rate_hz`, `road_length`, `road_spacing` | 10 Hz, 40 m, 0.5 m | the road ahead: how often, how far, how fine |
+| `lane_map` | empty | a `lanes.yaml` (`aav_description` `lane_map.py`): the road ahead's line on the right lane's centre, with its hard and soft edges. Empty: the line is `/plan`'s, edges NaN. `sim.launch.py lane_map:=world` gives the world's own |
 
 | Module | No ROS? | Holds |
 |---|---|---|
 | `behaviour.py` | yes | `Behaviour.step(World) -> Decision`, `Settings`, `Stop`; `active_plan`, `path_left`, `along_until`, `lane_ahead`, `diagnostic` |
-| `behaviour_node.py` | no | the node; the road ahead's maths is `aav_description`'s `road_ahead.py` |
+| `behaviour_node.py` | no | the node; the road ahead's maths is `aav_description`'s `road_ahead.py`, the lane's is `lane_map.py` |
 
 ## Invariants
 
