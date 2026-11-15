@@ -196,6 +196,13 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 8 Nov | **On the car, 0.3 keeps the defaults:** the new pieces are off or simulator-only ([Rolling out](rollout.md)) | Ben |
 | 8 Nov | The adaptive brake, a sim trial: brake harder when the car slows too little, never past the brake's safe maximum | Ben |
 | 14 Nov | **The lane map is a plain `lanes.yaml`** (W5), the campus's own format: each road's centre line, width, lanes, one way. Lanelet2 (RoboStack 1.2.3, BSD-3-Clause) was tried first: it installs, but on a Mac its Python modules are `.dylib` files that don't import, and loading them by hand hangs (a second libpython). Not added to `pixi.toml`; try again with a newer build | Ben, W5: "try it; else grow `lanes.yaml`" |
+| 14 Nov | **The release is 0.4-rc1**, not 1.0: "We are still in beta stages". Must-haves: reverse, and no oscillation | Ben |
+| 14 Nov | **Three levels with fixed map chunks**: the route planner (zoomed out), the path planner (middle), the local planner (close up), the behaviour planner across all three; the saved voxel map as the background for tracking (TODO 175) | Ben |
+| 14 Nov | **Behaviour is a feature type of its own** | Ben |
+| 14 Nov | The sensor watchdog **warns only** about our own nodes; respawn and the age checks stop the car | Ben |
+| 14 Nov | Our simulator's wheels get **noise and slip, seeded, off by default** | Ben |
+| 14 Nov | **Steering-rate-aware lattice moves**, a trial beside today's lattice (no oscillation) | Ben |
+| 14 Nov | **Hybrid-A\* in our Rust planner now**, another option beside the lattice | Ben |
 
 ## Proposed in November: Ben's to decide
 

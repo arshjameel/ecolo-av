@@ -19,7 +19,12 @@ Ben, 14 Nov night: "chiping througth the list 166-173 and then the 155, 156, 157
 | 8 | On the car, with the hardware lead | 173 |
 | 9 | Reverse everywhere; the costmap in tiles (design first) | 174, 175 |
 | then | The lane finder as a pose sensor; the things' camera and radar; record and score a car drive | 155, 156, 157 |
+| 10 | Steering-rate lattice moves, Hybrid-A*, wheel noise, the watchdog's warning | 177-180 |
 | last | The Rust made more Rust-like, once feature complete | 176 |
+| 177 | **Steering-rate-aware lattice moves** (Ben, 14 Nov: a trial now): moves whose curvature changes no faster than the steering can, from the car model ego uses; beside today's lattice until it wins (no oscillation, 168) | ⬜ next after the junction |
+| 178 | **Hybrid-A\* in our Rust planner** (Ben, 14 Nov: "Now"): a port of Nav2's, another `path` option in the league | ⬜ |
+| 179 | **Wheel noise and slip in our simulator** (Ben, 14 Nov): seeded, off by default | ⬜ |
+| 180 | **The sensor watchdog warns about our own nodes** (Ben, 14 Nov: warn only, no lock) | ⬜ |
 
 ## Release candidate 0.4-rc1 (Ben, 14 Nov night)
 
