@@ -7,9 +7,10 @@
 <!-- Generated from docs/simulation.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Simulation: Gazebo, replay, and when nothing moves</h1>
-<div class="meta">50 min read · 8 sections</div></header>
+<div class="meta">51 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -31,8 +32,8 @@
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
-<a href="tests.html">Every test</a>
 <span class="sep">Learn:</span>
+<a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
@@ -47,8 +48,8 @@
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
 <a href="learn-control.html">Learn: control</a>
-<a href="controllers.html">Controllers</a>
 <span class="sep">Reference:</span>
+<a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
 <a href="learn-nav2.html">Learn: Nav2</a>
@@ -1268,6 +1269,12 @@ the camera), on the map window (a banner across the map), in the log and on
 <td><code>/hud/heartbeat</code> (the <a href="hud.html#the-heartbeat">HUD's</a> screen is alive)</td>
 <td>quiet 1 s; the count stuck for 1 s; after its first 5 s, <strong>latched</strong> as <code>hud LOST</code> until cleared (24 Oct)</td>
 <td>stop (only where a HUD is expected: the car, <code>hud:=true</code>, <code>watch_hud:=true</code>)</td>
+</tr>
+<tr>
+<td>our nodes (<code>node_*</code>)</td>
+<td>our own nodes in the ROS graph: costmap, planner, navigator, mppi_lag, smoother, behaviour, voxels, things, ego, look_ahead (TODO 180)</td>
+<td>gone 3 s (each respawns after 1 s, so this is one that keeps dying or hangs)</td>
+<td>warn only (Ben, 14 Nov): the costmap's age checks and twist_mux's timeout already stop the car. The sim watches the ones it starts</td>
 </tr>
 </tbody>
 </table></div>

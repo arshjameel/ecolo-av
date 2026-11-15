@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.4-rc1: start here · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/release-0.4.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>0.4-rc1: start here</h1>
+<div class="meta">3 min read · 5 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a class="here" href="release-0.4.html">0.4-rc1</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<span class="sep">Learn:</span>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<span class="sep">Reference:</span>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#what-04-means">What 0.4 means</a><a href="#one-command-per-job">One command per job</a><a href="#how-ours-compares-14-nov-3-runs-each-reversing-on">How ours compares (14 Nov, 3 runs each, reversing on)</a><a href="#whats-new-since-03">What&#x27;s new since 0.3</a><a href="#not-in-04-rc1">Not in 0.4-rc1</a></nav>
+<div class="lead"><p>The first release candidate of 0.4. <strong>Beta, not 1.0</strong> (Ben, 14 Nov: "We are still in beta
+stages"). It is about refining what we have, not adding more.</p></div>
+<section class="card"><h2 id="what-04-means">What 0.4 means</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Must-have</th>
+<th>Where it stands</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Our own stack</strong> drives by default (<code>stack:=ours</code>)</td>
+<td>✅ since 14 Nov: our costmap, planner, navigator, follower, behaviour, all in Rust where it is heavy</td>
+</tr>
+<tr>
+<td><strong>Reverse</strong> everywhere the plan says</td>
+<td>✅ on the lot and the campus; a three-point turn in a narrow street still to test (TODO 174)</td>
+</tr>
+<tr>
+<td><strong>No oscillation</strong> (no swaying)</td>
+<td>🔧 ours sways 3-5 times more than Nav2: being fixed (TODO 168)</td>
+</tr>
+<tr>
+<td>Nav2 and Gazebo only as yardsticks</td>
+<td>✅ <code>stack:=stock</code>, <code>simulator:=gazebo</code>; deleted after 0.4-rc1 is scored (TODO 184)</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="one-command-per-job">One command per job</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>I want to</th>
+<th>Run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>set up a new laptop</td>
+<td><a href="getting-started.html">Getting started</a> (30 minutes)</td>
+</tr>
+<tr>
+<td>drive the simulated car</td>
+<td><code>pixi run sim</code>, then <code>pixi run dev-window --live</code></td>
+</tr>
+<tr>
+<td>see everything at once</td>
+<td><code>pixi run demo</code> (<code>--debug</code> adds the seeing screen)</td>
+</tr>
+<tr>
+<td>check it all works</td>
+<td><code>pixi run sim-check</code> (2 min)</td>
+</tr>
+<tr>
+<td>compare our stack with Nav2</td>
+<td><code>pixi run measure controllers --stacks nav2 own --reversing</code></td>
+</tr>
+<tr>
+<td>drive Carleton's campus</td>
+<td><code>pixi run campus</code>, then <code>pixi run sim world:=campus</code> (<a href="campus.html">Campus</a>)</td>
+</tr>
+<tr>
+<td>run every test</td>
+<td><code>pixi run test</code></td>
+</tr>
+<tr>
+<td>go to the car</td>
+<td><a href="car-day.html">Car day</a></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="how-ours-compares-14-nov-3-runs-each-reversing-on">How ours compares (14 Nov, 3 runs each, reversing on)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Ours</th>
+<th>Nav2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Legs reached, lot + campus</td>
+<td><strong>21 of 21</strong></td>
+<td>16 of 21</td>
+</tr>
+<tr>
+<td>Off the path, on average</td>
+<td><strong>0.12 m</strong></td>
+<td>0.31-0.44 m</td>
+</tr>
+<tr>
+<td>Sway (side-to-side), campus</td>
+<td>0.66 m/s²</td>
+<td><strong>0.12 m/s²</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>Ours wins on reaching goals and tracking; Nav2 still drives more smoothly. The details:
+<code>TODO.md</code> rows 167 and 168.</p>
+</section>
+<section class="card"><h2 id="whats-new-since-03">What's new since 0.3</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Area</th>
+<th>New</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Driving</td>
+<td>our stack is the default; our navigator serves Nav2's action names, so no goal sender knows which runs</td>
+</tr>
+<tr>
+<td>Planning</td>
+<td>Hybrid-A* in our planner (<code>planner_search:=hybrid</code>), a challenger; smooth lattice moves tried (no win)</td>
+</tr>
+<tr>
+<td>Behaviour</td>
+<td>a new feature type: the behaviour planner, the road ahead, the stopping law (<a href="features.html#behaviour">Features</a>)</td>
+</tr>
+<tr>
+<td>Safety</td>
+<td>the watchdog warns when one of our own nodes stops (never stops the car for it)</td>
+</tr>
+<tr>
+<td>Simulator</td>
+<td><code>/clock</code> rate (<code>clock_hz:=</code>), seeded wheel noise and slip (<code>wheel_noise:=</code>, <code>wheel_slip:=</code>), the campus widens its fence itself</td>
+</tr>
+<tr>
+<td>Credit</td>
+<td><a href="acknowledgements.html">Acknowledgements</a>: every project and paper we built on</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="not-in-04-rc1">Not in 0.4-rc1</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Left</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The real car</td>
+<td>needs the hardware lead's go-ahead (TODO 173)</td>
+</tr>
+<tr>
+<td>Lanelet2 maps and the three map levels</td>
+<td>designed, not built (TODO 175)</td>
+</tr>
+<tr>
+<td>Heavy Python nodes in Rust</td>
+<td>voxels first (TODO 185)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The whole list: <code>TODO.md</code>. What works today: <a href="status.html">Status</a>.</p></section>
+<nav class="prevnext"><a class="prev" href="overview.html"><small>Previous</small>← Overview</a>
+<a class="next" href="release-notes.html"><small>Next</small>Release notes →</a></nav>
+</main>
+<footer>Source: <code>docs/release-0.4.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>
