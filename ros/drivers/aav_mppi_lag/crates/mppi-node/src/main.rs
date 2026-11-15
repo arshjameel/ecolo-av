@@ -5,8 +5,12 @@
 //!                                         replaces the last without a stop)
 //! Subscribes  localization/odom/local     nav_msgs/Odometry (odom_topic): the pose in odom
 //!                                         and the speed
-//!             /tf                         tf2_msgs/TFMessage: map -> odom, to move each new
-//!                                         path into odom
+//!             /tf                         tf2_msgs/TFMessage: map -> odom. Held, and moved
+//!                                         toward the newest at most map_correction_speed m/s
+//!                                         and map_correction_turn_rate rad/s (TODO 186:
+//!                                         follow in odom, correct slowly); each new path
+//!                                         comes into odom by the held one, and the running
+//!                                         path moves with it. Rates 0: the newest, once a path
 //!             vehicle/steering, vehicle/throttle, vehicle/brake
 //!                                         aav_interfaces/ActuatorState: the measured levels,
 //!                                         while fresh (measured_timeout); else the model's own
@@ -15,7 +19,7 @@
 //!                                         than costmap_timeout: zero, and the path fails
 //!             /world/road_ahead            aav_interfaces/RoadAhead (road_ahead_topic; empty: off), map:
 //!                                         the lane's line and edges, moved into odom by the
-//!                                         latest map -> odom, for LaneCritic while fresh
+//!                                         held map -> odom, for LaneCritic while fresh
 //!                                         (road_ahead_timeout); NaN edges or stale: no lane
 //! Publishes   cmd_vel_nav                 geometry_msgs/TwistStamped, at rate_hz while a path
 //!                                         runs: (v, v tan(steer) / wheelbase), to Nav2's
@@ -48,11 +52,13 @@ use std::{
 
 use anyhow::{bail, Context as _, Result};
 use futures::channel::oneshot;
+use mppi_lag::map_correction::{into_map, into_odom, Correction};
 use mppi_lag::{
     critics::{inflation_cost, Critic},
     lag::Actuators,
     Arrival, Costmap, Edges, Ego, Follower, FollowerSettings, GlobalPath, IdealModel, Inversion,
-    LagModel, Lane, LanePoint, Observation, Outcome, PathAngleMode, Pose, Report, Settings, Tick,
+    LagModel, Lane, LanePoint, MapCorrection, Observation, Outcome, PathAngleMode, Pose, Report,
+    Settings, SlewLimits, Tick,
 };
 use rclrs::*;
 use ros_env::aav_interfaces::msg::{ActuatorState, RoadAhead};
@@ -106,6 +112,8 @@ fn main() -> Result<()> {
         throttle: None,
         brake: None,
         map_to_odom: None,
+        correction: MapCorrection::new(config.map_correction),
+        corrected: None,
         costmap: None,
         costmap_heard: Arrival::new(),
         road_ahead: None,
@@ -262,6 +270,8 @@ struct Job {
     done: oneshot::Sender<Finish>,
     feedback: FeedbackPublisher<FollowPath>,
     started: f64,
+    /// The path came in map: it moves as the held map -> odom moves.
+    in_map: bool,
 }
 
 /// The worker's payload: the follower, what it has heard, and what it publishes with.
@@ -285,6 +295,10 @@ struct Core {
     brake: Option<(f64, f64)>,
     /// map -> odom: odom's pose in map, and when.
     map_to_odom: Option<(Pose, f64)>,
+    /// The held map -> odom (TODO 186), slewed toward `map_to_odom`.
+    correction: MapCorrection,
+    /// When the held map -> odom last moved on (this node's clock).
+    corrected: Option<f64>,
     costmap: Option<Costmap>,
     /// When the costmap last arrived (this node's clock).
     costmap_heard: Arrival,
@@ -305,17 +319,6 @@ fn yaw_of(q: &Quaternion) -> f64 {
 
 fn seconds(t: &Time) -> f64 {
     f64::from(t.sec) + f64::from(t.nanosec) * 1e-9
-}
-
-/// A pose in map into odom, given odom's pose in map (the map -> odom transform).
-fn into_odom(p: &Pose, odom_in_map: &Pose) -> Pose {
-    let (s, c) = odom_in_map.yaw.sin_cos();
-    let (dx, dy) = (p.x - odom_in_map.x, p.y - odom_in_map.y);
-    Pose::new(
-        c * dx + s * dy,
-        -s * dx + c * dy,
-        mppi_lag::model::wrap(p.yaw - odom_in_map.yaw),
-    )
 }
 
 impl Core {
@@ -431,10 +434,15 @@ impl Core {
             );
             return None;
         }
-        let (odom_in_map, stamp) = self.map_to_odom?;
+        let (newest, stamp) = self.map_to_odom?;
         if now - stamp > self.config.transform_tolerance + 1.0 {
             return None;
         }
+        // The held one while a map path runs, so the lane and the path move together.
+        let odom_in_map = match (&self.job, self.correction.held()) {
+            (Some(job), Some(held)) if job.in_map && self.config.map_correction.on() => held,
+            _ => newest,
+        };
         Some(lane.moved(|x, y| {
             let p = into_odom(&Pose::new(x, y, 0.0), &odom_in_map);
             (p.x, p.y)
@@ -450,8 +458,8 @@ impl Core {
     ) -> u64 {
         let id = self.next_id;
         self.next_id += 1;
-        let path = match self.path_in_odom(msg) {
-            Ok(path) => path,
+        let (path, in_map) = match self.path_in_odom(msg) {
+            Ok(found) => found,
             Err((code, why)) => {
                 log_warn!(&self.logger, "FollowPath refused: {why}");
                 let _ = done.send(Finish::Aborted(code));
@@ -467,6 +475,7 @@ impl Core {
             self.loop_max = 0.0;
             self.last_tick = None;
         }
+        self.corrected = Some(self.now());
         self.follower.follow(path, replacing);
         self.set_lag_aware(true);
         self.job = Some(Job {
@@ -474,11 +483,14 @@ impl Core {
             done,
             feedback,
             started: self.now(),
+            in_map,
         });
         id
     }
 
-    fn path_in_odom(&self, msg: &Path) -> Result<GlobalPath, (u16, String)> {
+    /// The goal's path in odom, and whether it came in map. A map path comes by the held map
+    /// -> odom while one runs (none: the newest, which is then held).
+    fn path_in_odom(&mut self, msg: &Path) -> Result<(GlobalPath, bool), (u16, String)> {
         let mut poses: Vec<Pose> = msg
             .poses
             .iter()
@@ -488,7 +500,8 @@ impl Core {
             })
             .collect();
         let frame = msg.header.frame_id.trim_start_matches('/');
-        if !frame.is_empty() && frame != self.config.odom_frame {
+        let in_map = !frame.is_empty() && frame != self.config.odom_frame;
+        if in_map {
             if frame != self.config.map_frame {
                 return Err((
                     FollowPath_Result::TF_ERROR,
@@ -508,9 +521,11 @@ impl Core {
                     format!("map -> odom is {age:.1} s old"),
                 ));
             }
-            poses = poses.iter().map(|p| into_odom(p, &odom_in_map)).collect();
+            let driving = self.job.as_ref().is_some_and(|j| j.in_map);
+            let frame = self.correction.for_new_path(odom_in_map, driving);
+            poses = poses.iter().map(|p| into_odom(p, &frame)).collect();
         }
-        GlobalPath::new(poses).ok_or((
+        GlobalPath::new(poses).map(|p| (p, in_map)).ok_or((
             FollowPath_Result::INVALID_PATH,
             "the path is empty, or not all numbers".into(),
         ))
@@ -593,6 +608,7 @@ impl Core {
                 );
             }
         }
+        self.correct(now);
         let costmap = if self.config.use_costmap {
             self.costmap.as_ref()
         } else {
@@ -640,6 +656,32 @@ impl Core {
                 self.publish_local_plan(&report.plan.poses);
             }
         }
+    }
+
+    /// Move the held map -> odom toward the newest (fresh only), and the running map path
+    /// with it (TODO 186). A snap (a relocalisation) is logged.
+    fn correct(&mut self, now: f64) {
+        let in_map = self.job.as_ref().is_some_and(|j| j.in_map);
+        let since = self.corrected.replace(now);
+        let (Some((newest, stamp)), Some((car, _, _))) = (self.map_to_odom, self.odom) else {
+            return;
+        };
+        if !in_map || now - stamp > self.config.transform_tolerance + 1.0 {
+            return;
+        }
+        let dt = since.map_or(1.0 / self.config.rate_hz, |t| now - t);
+        let Some((correction, shift)) = self.correction.update(newest, &car, dt) else {
+            return;
+        };
+        if let Correction::Snapped { distance, angle } = correction {
+            log_warn!(
+                &self.logger,
+                "map -> odom moved {distance:.2} m and {:.1} degrees at the car: a \
+                 relocalisation, taken at once",
+                angle.to_degrees()
+            );
+        }
+        each!(&mut self.follower, f => f.move_path(|p| shift.apply(p)));
     }
 
     /// MPPI's chosen future, in odom, stamped now.
@@ -694,6 +736,17 @@ impl Core {
         }
     }
 
+    /// m: how far the held map -> odom puts the car from where the newest puts it (0 with
+    /// the correction off, or before both are known).
+    fn map_gap(&self) -> f64 {
+        let (Some(held), Some((newest, _)), Some((car, _, _))) =
+            (self.correction.held(), self.map_to_odom, self.odom)
+        else {
+            return 0.0;
+        };
+        into_map(&car, &held).distance(&into_map(&car, &newest))
+    }
+
     fn report(&self, loop_ms: f64, r: &Report) {
         let period_ms = 1000.0 / self.config.rate_hz;
         let values = [
@@ -711,6 +764,7 @@ impl Core {
             ("best_cost", format!("{:.4}", r.plan.best_cost)),
             ("collided_share", format!("{:.3}", r.plan.collided)),
             ("lane", self.lane_known.to_string()),
+            ("map_gap_m", format!("{:.3}", self.map_gap())),
         ];
         let msg = DiagnosticStatus {
             level: if loop_ms > period_ms {
@@ -765,6 +819,8 @@ struct Config {
     follower: FollowerSettings,
     critics: Vec<Critic>,
     footprint: Vec<(f64, f64)>,
+    /// How fast the held map -> odom follows the newest (TODO 186).
+    map_correction: SlewLimits,
 }
 
 /// Declares the parameters; hold the handles as long as the node (rclrs undeclares a
@@ -1115,6 +1171,13 @@ impl Config {
             critics.push(critic);
         }
 
+        let m = SlewLimits::default();
+        let map_correction = SlewLimits {
+            speed: d.number("map_correction_speed", m.speed)?,
+            turn_rate: d.number("map_correction_turn_rate", m.turn_rate)?,
+            snap_distance: d.number("map_correction_snap_distance", m.snap_distance)?,
+            snap_angle: d.number("map_correction_snap_angle", m.snap_angle)?,
+        };
         let config = Self {
             model: d.text("model", "lag")?,
             rate_hz,
@@ -1141,6 +1204,7 @@ impl Config {
             follower,
             critics,
             footprint,
+            map_correction,
         };
         Ok((
             config,

@@ -42,8 +42,8 @@ pixi run measure controllers --trackers mppi_lag --controllers mppi --tours lot
 | Item | What |
 |---|---|
 | Action server | `/follow_path` (`nav2_msgs/action/FollowPath`): the newest path replaces the last without a stop |
-| Subscribes | `/localization/odom/local` (Odometry); `/tf` (map -> odom, and for the road ahead each tick); `/vehicle/steering`, `/vehicle/throttle`, `/vehicle/brake` (ActuatorState, measured, while fresh); `/local_costmap/costmap_raw`, or ours `/drivers/nav/costmap/local_raw` with `costmap:=own` (nav2_msgs/Costmap; the launch file chooses: `config/mppi_lag.yaml` must not, `aav_navigation` `test_launch_params.py`); `/world/road_ahead` (aav_interfaces/RoadAhead, map: the lane's line and edges for `LaneCritic`, while 0.5 s fresh), only with `behaviour:=true` and a lane map (`road_ahead_topic`, empty: off) |
-| Publishes | `/cmd_vel_nav` (TwistStamped); `/drivers/nav/track/status` (DiagnosticStatus, aav_track's keys and more); `/drivers/nav/local_plan` (Path, odom: MPPI's chosen future, the screens' faint line); `/drivers/nav/lag_aware` (Bool, latched) |
+| Subscribes | `/localization/odom/local` (Odometry); `/tf` (map -> odom: held, and moved toward the newest at most 0.1 m/s and 1°/s at the car; each new path comes into odom by the held one and the running path moves with it, TODO 186 [Follow in odom](../../../docs/mppi-lag.md#follow-in-odom-correct-slowly); the road ahead by the same); `/vehicle/steering`, `/vehicle/throttle`, `/vehicle/brake` (ActuatorState, measured, while fresh); `/local_costmap/costmap_raw`, or ours `/drivers/nav/costmap/local_raw` with `costmap:=own` (nav2_msgs/Costmap; the launch file chooses: `config/mppi_lag.yaml` must not, `aav_navigation` `test_launch_params.py`); `/world/road_ahead` (aav_interfaces/RoadAhead, map: the lane's line and edges for `LaneCritic`, while 0.5 s fresh), only with `behaviour:=true` and a lane map (`road_ahead_topic`, empty: off) |
+| Publishes | `/cmd_vel_nav` (TwistStamped); `/drivers/nav/track/status` (DiagnosticStatus, aav_track's keys and more; `map_gap_m`: how far the held map -> odom is from the newest, at the car); `/drivers/nav/local_plan` (Path, odom: MPPI's chosen future, the screens' faint line); `/drivers/nav/lag_aware` (Bool, latched) |
 
 Results: succeeded; aborted with `FAILED_TO_MAKE_PROGRESS`, `NO_VALID_CONTROL`,
 `CONTROLLER_TIMED_OUT` (a costmap older than `costmap_timeout`, 0.8 s: zero first),
@@ -81,7 +81,12 @@ From `navigation.launch.py` (`vehicle.mppi_lag_params`; nothing copied):
 
 From `config/mppi_lag.yaml`: `model` (lag or ideal), `steer_std`, `steer_std_speed` (above it
 the steering noise shrinks as 1 / speed², TODO 168), `steer_std_min` (never under it: 0.024 rad), `noise_correlation`,
-`threads`, `seed`, `use_costmap`, the topics and timeouts (`road_ahead_timeout` 0.5 s). All read once at start.
+`threads`, `seed`, `use_costmap`, the topics and timeouts (`road_ahead_timeout` 0.5 s),
+and the map correction (TODO 186): `map_correction_speed` (0.1 m/s; 0: off, each new path by
+the newest map -> odom, as before), `map_correction_turn_rate` (1°/s),
+`map_correction_snap_distance` (2 m) and `map_correction_snap_angle` (10°: a bigger gap is a
+relocalisation, taken at once and logged). `navigation.launch.py map_correction:=newest`
+sets the speed to 0. All read once at start.
 
 ### Crate `mppi-lag`
 
@@ -97,6 +102,7 @@ the steering noise shrinks as 1 / speed², TODO 168), `steer_std_min` (never und
 | `lane.rs` | the road ahead's lane: its line, its four edges (`None` for NaN), where a point lies beside it |
 | `path.rs`, `costmap.rs`, `smoothing.rs`, `rng.rs` | the path window, the costmap and outline, the filter, random numbers |
 | `age.rs` | the costmap's age (Nav2's `costmap_update_timeout`) |
+| `map_correction.rs` | follow in odom, correct slowly: the held map -> odom, slewed toward the newest within `SlewLimits`, measured at the car; snaps past 2 m or 10° |
 | `follower.rs` | one path: Nav2's goal and progress checks, the state estimate, MPPI |
 
 ## Invariants
@@ -135,5 +141,6 @@ cargo run --release -p mppi-lag --example wiggle                         # the w
 | `critics.rs`, `path.rs` | each critic on hand-made samples, PathAngle's modes on a reversing path, `LaneCritic` inside, over a line, over a kerb, without a lane; the cusps; `lane.rs`: the side, the search, NaN edges |
 | `optimizer.rs`, `smoothing.rs` | the limits, the filter, a straight path, a turn, the same seed the same plan; the control cost against a brute-force covariance inverse; the steering noise's spread by speed |
 | `tests/closed_loop.rs` | a pretend car (ego + the lag model at 100 Hz): the model predicts it; circle and S-curve at vehicle.yaml's lags; a corner and an S on very slow actuators: the lag-aware one closer on the corner, the only one to keep the S; 8 m straight back; 6 m ahead, a stop at the cusp, a quarter circle (r 5 m and the planner's 3.6 m) back; the test lot's turn back (back, cusp, forward), from a stop and arriving rolling 0.5 m off; the campus's "round the bend" junction, on the planner's own path from the sim (`campus_junction_round_the_bend`); a path drawn 1 m off a lane's centre, kept within 0.1 m of the line by `LaneCritic` (0.41 m over without); the wiggle (TODO 168), set up as the launch file sets it (2000 samples, 8.4 m of path): no side to side on a straight and a bend at 2.5 m/s, less with a sim-like pose, none backing up |
+| `tests/map_correction.rs` | the node's frames rebuilt (odometry in odom, the path in map again every 1 or 10 s, a global EKF jumping 5 times a second): the held map -> odom sways the car less than the newest, on a straight and a bend; a real 0.5 m offset is still taken out within 8 s; a 3 m relocalisation snaps. `explore` (ignored) prints every case |
 
 `colcon test --packages-select aav_mppi_lag` runs the same; `pixi run test` everything.

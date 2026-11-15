@@ -47,6 +47,7 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 |---|---|---|---|
 | **robot_localization** (T. Moore, D. Stouch, "A Generalized Extended Kalman Filter Implementation for the Robot Operating System", IAS-13, 2014) | Apache-2.0 | runs | the two EKFs, `navsat_transform` |
 | The Kalman filter: R. E. Kalman, 1960 | paper | idea | the EKFs; the things tracker (`aav_things`) |
+| **Complementary filter**: W. T. Higgins, "A Comparison of Complementary and Kalman Filtering", IEEE Trans. Aerospace and Electronic Systems, 1975 | paper | idea | follow in odom, correct slowly (TODO 186): the followers take the fast part of the pose from odometry and the slow part from the map, the map -> odom correction rate-limited (`aav_mppi_lag` `map_correction.rs`, `aav_track` `slow_frame.py`) |
 | **NDT**: P. Biber, W. Straßer, IROS 2003; M. Magnusson, PhD thesis, Örebro, 2009 | paper | idea | `aav_ndt` (its `PROVENANCE.md` lists the rest) |
 | **KISS-ICP**: I. Vizzo et al., RA-L, 2023 | MIT | runs | `kiss_icp:=true`, scored beside the EKF |
 | AMCL (Nav2) | LGPL-2.1 | runs | `amcl:=true`, a trial |

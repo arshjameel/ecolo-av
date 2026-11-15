@@ -155,6 +155,9 @@ bench's argument names:
   replan_hz:=1.0      how often Nav2's navigate-to-pose tree plans again (navigation.launch.py;
                       1.0 as Nav2's own tree). replan_hz:=0: plan once per goal, the wiggle's
                       second test
+  map_correction:=slow  with a trial tracker (mppi_lag, aav_track): the follower's held map -> odom,
+                      moved toward the newest slowly (TODO 186); newest: each new path by the
+                      newest map -> odom, as until 15 Nov (navigation.launch.py)
   plan_around:=false  Nav2's planner sees only the map, not the radar and lidar: the car
                       stops for an obstacle instead of planning round it (the stop tests)
   watchdog:=true      the sensor watchdog (aav_safety): twist_mux's sensors lock stops Nav2
@@ -431,6 +434,7 @@ def launch_setup(context):
                                          if amcl else ''),
                                plan_around=str(flag['plan_around']).lower(),
                                replan_hz=arg('replan_hz'),
+                               map_correction=arg('map_correction'),
                                behaviour=str(flag['behaviour']).lower(),
                                things=str(flag['things']).lower(),
                                lane_map=lane_map))
@@ -761,6 +765,9 @@ def generate_launch_description():
         DeclareLaunchArgument('truth_pose', default_value='false',
                               description="a test: the simulator's truth as the pose, in "
                                           "ekf_global's place (aav_gazebo truth_localizer)"),
+        DeclareLaunchArgument('map_correction', default_value='slow',
+                              description='with a trial tracker: slow (the held map -> odom, '
+                                          'TODO 186) or newest (as until 15 Nov)'),
         DeclareLaunchArgument('replan_hz', default_value='1.0',
                               description="how often Nav2's navigate-to-pose tree plans "
                                           'again; 0: once per goal (a test)'),
