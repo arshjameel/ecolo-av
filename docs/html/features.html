@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">71 min read · 15 sections</div></header>
+<div class="meta">72 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -531,7 +531,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="trials.html">Trial path followers</a> (<code>aav_track</code>, <code>tracker:=</code>; in sim, swapped live: <code>ros2 param set /track tracker lqr</code>)</td>
-<td>To see what Stanley, LQR and MPC gain over pure pursuit on the same routes, beside MPPI and in Nav2's own chain, before any of them replaces the default; the live swap compares them on the same drive, watched in the debug HUD. LQR now linearised about the bend with a preview of the bends ahead (it lost the forward U-turn); <code>mpc_full</code> plans speed and steering together within the throttle, brake and steering limits, to drive the whole A-to-B itself</td>
+<td>To see what Stanley, LQR and MPC gain over pure pursuit on the same routes, beside MPPI and in Nav2's own chain, before any of them replaces the default; the live swap compares them on the same drive, watched in the debug HUD. LQR now linearised about the bend with a preview of the bends ahead (it lost the forward U-turn); <code>mpc_full</code> plans speed and steering together within the throttle, brake and steering limits, to drive the whole A-to-B itself. Since 15 Nov, with a lane map, each path is kept inside the lane (TODO 169)</td>
 <td>Ben</td>
 <td>2026-10-29</td>
 <td>built</td>
