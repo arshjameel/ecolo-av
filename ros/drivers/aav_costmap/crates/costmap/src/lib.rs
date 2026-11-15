@@ -8,6 +8,7 @@
 //! | [`static_layer`] | `StaticLayer`: the map's cells, read as free, lethal or unknown |
 //! | [`obstacle`] | `ObstacleLayer`: marks the sensors' points, clears along each ray |
 //! | [`inflation`] | `InflationLayer`: the cost falling away from each lethal cell |
+//! | [`lanes`] | none: ours, the roads as a soft cost, lowest at the right lane's centre |
 //! | [`layered`] | `LayeredCostmap`: the layers in order, into one grid |
 //! | [`age`] | `isCurrent` and `transform_tolerance`: how old an input is, poses by stamp |
 //!
@@ -20,6 +21,7 @@ pub mod cost;
 pub mod footprint;
 pub mod grid;
 pub mod inflation;
+pub mod lanes;
 pub mod layered;
 pub mod obstacle;
 pub mod static_layer;
@@ -28,6 +30,7 @@ pub mod transform;
 pub use age::{Arrival, PoseHistory, Stale};
 pub use grid::{Bounds, Grid};
 pub use inflation::Inflation;
+pub use lanes::{LaneError, Lanes, Ramp, Road, Way};
 pub use layered::{Changed, Costmap, Settings};
 pub use obstacle::{Observation, ObstacleLayer, Source};
 pub use static_layer::StaticMap;

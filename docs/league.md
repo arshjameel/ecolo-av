@@ -16,6 +16,7 @@ waiting to beat it.
   │            │           │ hybrid_rs, diffusion         │
   │ steer      │ mppi      │ mppi_lag, mpc_lag, rpp       │
   │ smoother   │ nav2      │ ours                         │
+  │ lanes      │ off       │ ramp (lane costs, ours only) │
   │ behaviour  │ off       │ on (the road ahead)          │
   └────────────┴───────────┴──────────────────────────────┘
           │

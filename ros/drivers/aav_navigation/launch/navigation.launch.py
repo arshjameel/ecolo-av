@@ -138,6 +138,11 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           lane_map.py); empty (the default): the line is /plan's
                           With tracker:=mppi_lag, mppi_lag reads the road ahead too and
                           keeps the car inside its lane (its LaneCritic, docs/mppi-lag.md)
+  lane_costs:=<lanes.yaml>  with costmap:=own: the lanes layer, a challenger (TODO 148, D2):
+                          our global costmap draws each road of the lane map as a soft
+                          cost, lowest at the right lane's centre, so the planner keeps
+                          right and crosses a line only when it pays. Which lane is right
+                          comes from /plan. Empty (the default): off
   things:=true            (with lidar:=true) aav_things' things node: voxels' cubes grouped
                           into things, each followed by a Kalman filter and remembered a few
                           seconds unseen, on /world/things (and /world/things/markers); the
@@ -196,7 +201,7 @@ import json
 import os
 import tempfile
 
-from aav_description import vehicle
+from aav_description import lane_map, vehicle
 from aav_lidar.scan import body_box
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
@@ -397,6 +402,11 @@ def nodes(context):
     # costmap:=own: aav_costmap beside Nav2's costmaps; own_local: the follower reads ours.
     costmap = vehicle.check_costmap(LaunchConfiguration('costmap').perform(context))
     own_local = costmap == 'own' and tracker == 'mppi_lag'
+    # lane_costs:=<lanes.yaml>: the lanes layer in our global costmap (TODO 148).
+    lane_costs = LaunchConfiguration('lane_costs').perform(context).strip()
+    if lane_costs and costmap != 'own':
+        raise ValueError(f'lane_costs:={lane_costs}: the lanes layer is in our costmap only: '
+                         'add costmap:=own')
     # navigator:=own: aav_navigator in place of bt_navigator and waypoint_follower. Each
     # Nav2 server it no longer needs stays off: planner_server when our planner plans on
     # our global costmap, controller_server (and its local costmap) when mppi_lag reads
@@ -542,6 +552,8 @@ def nodes(context):
         # same tuned nav2.yaml (the same layers and sources). Not a lifecycle node.
         with open(source) as f:
             blocks = vehicle.costmap_params(yaml.safe_load(f), v, radar, camera)
+        if lane_costs:
+            blocks['global']['lanes'] = lane_map.costmap_block(lane_map.load(lane_costs))
         actions.append(Node(
             package='aav_costmap', executable='costmap', name='costmap', output='screen',
             respawn=True, respawn_delay=RESPAWN_DELAY,
@@ -829,6 +841,11 @@ def generate_launch_description():
         DeclareLaunchArgument('lane_map', default_value='',
                               description="with behaviour: a lanes.yaml, so the road ahead's "
                                           "line is the lane's centre; empty: /plan's line"),
+        DeclareLaunchArgument('lane_costs', default_value='',
+                              description='with costmap:=own: a lanes.yaml, drawn into our '
+                                          'global costmap as soft costs, lowest at the right '
+
+                                          "lane's centre (TODO 148); empty: off"),
         DeclareLaunchArgument('things', default_value='false',
                               description='true (with lidar:=true): aav_things, the cubes as '
                                           'tracked things on /world/things (voxels runs too)'),

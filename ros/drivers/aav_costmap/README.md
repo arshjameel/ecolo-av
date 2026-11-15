@@ -9,13 +9,14 @@ The page: [docs/own-costmap.md](../../../docs/own-costmap.md).
   -> costmap -> /drivers/nav/costmap/local (+ _raw)   odom, 20 m window, 5 Hz
              -> /drivers/nav/costmap/global (+ _raw)  map, the map's size, 1 Hz
   local_raw -> mppi_lag (tracker:=mppi_lag), instead of Nav2's /local_costmap/costmap_raw
+lane_costs:= a lanes.yaml, and /plan -> the lanes layer on the global one (a challenger)
 ```
 
 ## Overview
 
 | Part | What it is |
 |---|---|
-| `crates/costmap` | the maths, no ROS: grid, static map, obstacle layers, inflation, the layered costmap |
+| `crates/costmap` | the maths, no ROS: grid, static map, obstacle layers, inflation, the layered costmap; `lanes.rs`, the lanes layer (ours, TODO 148) |
 | `crates/costmap-node` | the ROS node, binary `costmap` (rclrs): messages in and out only |
 
 ```sh
@@ -30,15 +31,33 @@ pixi run sim-check --costmap own --tracker mppi_lag --lidar-obstacle --plan-arou
 
 | Item | What |
 |---|---|
-| Subscribes | `/map` (transient local); `/localization/odom/local`; `/tf` (map -> odom); `/tf_static` (sensor mounts); each layer's sources from nav2.yaml (`/sensors/lidar/scan`; the radar, cubes, camera points and ghost where they run), best effort |
+| Subscribes | `/map` (transient local); `/localization/odom/local`; `/tf` (map -> odom); `/tf_static` (sensor mounts); each layer's sources from nav2.yaml (`/sensors/lidar/scan`; the radar, cubes, camera points and ghost where they run), best effort; `/plan` (`route_topic`) only with a lanes block |
 | Publishes | `/drivers/nav/costmap/local`, `/global` (OccupancyGrid); `/drivers/nav/costmap/local_raw`, `/global_raw` (nav2_msgs/Costmap); `/drivers/nav/costmap/status` (DiagnosticStatus) |
 | Serves | `/drivers/nav/costmap/clear_entirely_local`, `_global` (nav2_msgs/srv/ClearEntireCostmap): forget every mark. With `tracker:=mppi_lag`, `bt_navigator`'s local clear is remapped here |
-| Parameters | `local`, `global`: one JSON block each, made by `aav_description`'s `vehicle.costmap_params` from the tuned nav2.yaml; `odom_topic`, `map_topic`, `base_frame`, the topic names |
+| Parameters | `local`, `global`: one JSON block each, made by `aav_description`'s `vehicle.costmap_params` from the tuned nav2.yaml; the global one may hold `lanes` (`lane_map.costmap_block`, from `navigation.launch.py lane_costs:=<lanes.yaml>`); `odom_topic`, `map_topic`, `base_frame`, `route_topic`, the topic names |
+
+### The lanes layer (`lane_costs`, a challenger, TODO 148)
+
+Each road of the lane map as a soft cost over the inflation, global costmap only:
+
+| Where (the way the route drives) | Cost (0-252) |
+|---|---|
+| the right lane's centre | 0, rising straight to... |
+| its own lines | 50 (`line`) |
+| over the centre line (two-way) | 100 (`wrong_lane`) |
+| the kerb | 150 (`kerb`), rising from the edge line |
+| 1 m past the kerb | 150 (`off_road`), then nothing |
+
+Which lane is right comes from `/plan`: each road segment the newest route runs along.
+Until a route says, a two-way road's two lane centres are both 0. Never as high as
+inscribed: the planner may cross a line when it pays. The obstacles and unknown cells
+are never lowered.
 
 ## Invariants
 
 - The same input as Nav2's: the launch file builds both from the same tuned nav2.yaml.
 - Nav2's cost codes and its 0-100 table; Nav2's message types on `*_raw`.
+- The lanes layer only raises free and inflated cells, and never to inscribed.
 - No ROS in `crates/costmap`; no maths in the node.
 - Each costmap updates and publishes on its own thread, so the local one never waits
   for the global one. The global one is worked out whole only when its map comes or it is

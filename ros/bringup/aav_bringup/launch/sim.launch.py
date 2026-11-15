@@ -123,6 +123,11 @@ bench's argument names:
                       the world's lane map (road: aav_gazebo worlds/road.lanes.yaml; campus:
                       maps/campus/lanes.yaml), with its edges; or a lanes.yaml's path.
                       Empty (the default): the line is /plan's
+  lane_costs:=true    the lanes layer, a challenger (TODO 148, D2): our global costmap
+                      (costmap:=own) draws the lane map (lane_map:='s, else the world's
+                      own) as soft costs, lowest at the right lane's centre, so our planner
+                      keeps right. A world with no lane map (the test lot): nothing drawn.
+                      Empty: the stack's choice (off)
   things:=true        the lidar's cubes as things with an id, a speed and a memory, on
                       /world/things (aav_things; voxels runs for it): only with nav:=true
                       and the lidar. Nothing reads the list yet
@@ -250,7 +255,7 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'navigator': vehicle.DEFAULT_NAVIGATOR, 'smoother': vehicle.DEFAULT_SMOOTHER,
                   'behaviour': 'false', 'ndt_ekf': 'false', 'kiss_ekf': 'false',
                   'lattice_moves': vehicle.LATTICE_MOVES[0],
-                  'planner_search': vehicle.PLANNER_SEARCHES[0]}
+                  'planner_search': vehicle.PLANNER_SEARCHES[0], 'lane_costs': 'false'}
 
 
 def launch_setup(context):
@@ -316,6 +321,13 @@ def launch_setup(context):
                          'lag_scale yet)')
     world_path = worlds.world_file(gazebo_share, world)
     lane_map = worlds.lane_map_file(gazebo_share, world, arg('lane_map').strip())
+    # lane_costs: the lane map lane_map:= names, else the world's own, if it has one.
+    lane_costs = ''
+    if arg('lane_costs').lower() == 'true':
+        try:
+            lane_costs = lane_map or worlds.lane_map_file(gazebo_share, world, 'world')
+        except ValueError as e:
+            print(f'[sim.launch.py] lane_costs:=true, but no lane map here: {e}', flush=True)
     # lane_pose: the lane map lane_map:= names, else the world's own.
     pose_map = ((lane_map or worlds.lane_map_file(gazebo_share, world, 'world'))
                 if lane_pose else '')
@@ -456,7 +468,7 @@ def launch_setup(context):
                                map_correction=arg('map_correction'),
                                behaviour=str(flag['behaviour']).lower(),
                                things=str(flag['things']).lower(),
-                               lane_map=lane_map))
+                               lane_map=lane_map, lane_costs=lane_costs))
     if ndt:
         # Scored only (measure controllers --ndt), unless ndt_ekf:=true: then ekf_global
         # reads its pose (measure controllers --ndt-ekf scores the difference).
@@ -759,6 +771,11 @@ def generate_launch_description():
                               description="with behaviour:=true: world (the world's lane "
                                           "map) or a lanes.yaml: the road ahead's line on "
                                           "the lane's centre; empty: /plan's line"),
+        DeclareLaunchArgument('lane_costs', default_value=stacks.CHOSEN,
+                              description='true: the lanes layer in our global costmap, '
+
+                                          "lowest at the right lane's centre (TODO 148); "
+                                          "false: none. Empty: the stack's choice (off)"),
         DeclareLaunchArgument('navigator', default_value=stacks.CHOSEN,
                               description="own (aav_navigator, in bt_navigator's place; "
                                           'docs/own-navigator.md) or nav2. Empty: the '

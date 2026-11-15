@@ -11,6 +11,7 @@ use crate::cost::{FREE, NO_INFORMATION};
 use crate::footprint;
 use crate::grid::{self, Bounds, Grid};
 use crate::inflation::Inflation;
+use crate::lanes::{self, Lanes};
 use crate::obstacle::{Observation, ObstacleLayer};
 use crate::static_layer::StaticMap;
 use crate::transform::Pose2;
@@ -46,6 +47,11 @@ pub struct Costmap {
     inflation: Option<Inflation>,
     /// The next update recomputes every cell (a new map, a clear, the first update).
     whole: bool,
+    /// The lanes layer (a fixed costmap only; TODO 148), and its costs on the master's
+    /// cells, drawn when the map comes and again where a new route changes them.
+    lanes: Option<(Lanes, Grid)>,
+    /// The cells a new route redrew, for the next update.
+    lanes_touched: Option<Bounds>,
 }
 
 /// What an update changed in the grid.
@@ -88,9 +94,59 @@ impl Costmap {
             layers,
             inflation,
             whole: true,
+            lanes: None,
+            lanes_touched: None,
         };
         c.resize_layers();
         c
+    }
+
+    /// The lanes layer on: the roads' costs go over the inflation (TODO 148). A rolling
+    /// costmap ignores it: the lanes are the planner's, on the global costmap.
+    pub fn set_lanes(&mut self, lanes: Lanes) {
+        if self.settings.rolling {
+            return;
+        }
+        let mut grid = self.master.like(0);
+        let all = everything(&grid);
+        lanes.draw(&mut grid, all);
+        self.lanes = Some((lanes, grid));
+        self.whole = true;
+    }
+
+    /// The lanes layer, if on.
+    pub fn lanes(&self) -> Option<&Lanes> {
+        self.lanes.as_ref().map(|(l, _)| l)
+    }
+
+    /// A new route (map frame, in driving order): the lanes it drives are drawn its way,
+    /// in the next update. Returns true if any cost changed.
+    pub fn set_route(&mut self, route: &[(f64, f64)]) -> bool {
+        let Some((lanes, grid)) = self.lanes.as_mut() else {
+            return false;
+        };
+        let Some((x0, y0, x1, y1)) = lanes.set_route(route) else {
+            return false;
+        };
+        let cell = |v: f64, origin: f64, n: usize| {
+            (((v - origin) / grid.resolution).floor().max(0.0) as usize).min(n)
+        };
+        let area = Bounds {
+            x0: cell(x0, grid.origin_x, grid.width),
+            y0: cell(y0, grid.origin_y, grid.height),
+            x1: cell(x1, grid.origin_x, grid.width)
+                .saturating_add(1)
+                .min(grid.width),
+            y1: cell(y1, grid.origin_y, grid.height)
+                .saturating_add(1)
+                .min(grid.height),
+        };
+        if area.width() == 0 || area.height() == 0 {
+            return false;
+        }
+        lanes.draw(grid, area);
+        self.lanes_touched = grid::union(self.lanes_touched, Some(area));
+        true
     }
 
     /// The settings.
@@ -126,6 +182,11 @@ impl Costmap {
                 default(&self.settings),
             );
             self.resize_layers();
+            if let Some((lanes, grid)) = self.lanes.as_mut() {
+                *grid = self.master.like(0);
+                let all = everything(grid);
+                lanes.draw(grid, all);
+            }
         }
         self.map = Some(map);
         self.whole = true;
@@ -186,6 +247,7 @@ impl Costmap {
             seen.resize(layer.sources.len(), Vec::new());
             touched = grid::union(touched, layer.update(&seen, &outline));
         }
+        touched = grid::union(touched, self.lanes_touched.take());
         if self.settings.rolling || self.whole {
             self.whole = false;
             self.compose_all(map_from_frame);
@@ -216,6 +278,9 @@ impl Costmap {
         if let Some(inflation) = &self.inflation {
             inflation.apply(&mut self.master);
         }
+        if let Some((_, grid)) = &self.lanes {
+            lanes::combine(&mut self.master.data, &grid.data);
+        }
     }
 
     /// A fixed costmap's cells near `touched` only, as compose_all gives them: the touched
@@ -242,6 +307,9 @@ impl Costmap {
         if let Some(inflation) = &self.inflation {
             inflation.apply(&mut part);
         }
+        if let Some((_, grid)) = &self.lanes {
+            lanes::combine(&mut part.data, &grid.crop(read).data);
+        }
         self.master.paste(&part, (read.x0, read.y0), changed);
         changed
     }
@@ -249,6 +317,16 @@ impl Costmap {
     /// The map, if the static layer is on and it has come.
     fn static_map(&self) -> Option<&StaticMap> {
         self.map.as_ref().filter(|_| self.settings.static_layer)
+    }
+}
+
+/// Every cell of a grid.
+fn everything(g: &Grid) -> Bounds {
+    Bounds {
+        x0: 0,
+        y0: 0,
+        x1: g.width,
+        y1: g.height,
     }
 }
 
@@ -386,5 +464,39 @@ mod tests {
         let cells = |m: f64| (m / 0.25) as usize;
         assert!(b.width() >= cells(2.0 * 18.0) && b.width() < 240, "{b:?}");
         assert!(b.height() < 160, "{b:?}");
+    }
+
+    #[test]
+    fn a_new_route_redraws_its_lanes_as_a_whole_update_would() {
+        use crate::lanes::{Ramp, Road};
+        let mut c = global(false);
+        let road = Road {
+            name: "east".to_owned(),
+            points: vec![(-25.0, -10.0), (25.0, -10.0)],
+            width: 7.0,
+            lanes: 0,
+            oneway: false,
+            edge_inset: 0.5,
+        };
+        c.set_lanes(Lanes::new(vec![road], Ramp::default()).expect("a good road"));
+        assert_eq!(c.update(&Pose2::IDENTITY, None, &[]), Changed::All);
+        // No route yet: both lanes' centres free.
+        let cost = |c: &Costmap, y: f64| c.grid().cost_at(0.0, y, 0);
+        assert!(cost(&c, -11.5) <= 7 && cost(&c, -8.5) <= 7);
+        // Driving east: the north lane is the oncoming one.
+        assert!(c.set_route(&[(-20.0, -11.5), (20.0, -11.5)]));
+        let changed = c.update(&Pose2::IDENTITY, None, &[]);
+        assert!(matches!(changed, Changed::Area(_)), "{changed:?}");
+        assert!(cost(&c, -11.5) <= 7);
+        assert_eq!(cost(&c, -8.5), Ramp::default().wrong_lane);
+        let mut whole = c.clone();
+        whole.compose_all(None);
+        assert_eq!(c.grid(), whole.grid());
+        // The map's walls stay walls.
+        assert_eq!(c.grid().cost_at(-20.0, 0.1, 0), crate::cost::LETHAL);
+        assert!(
+            !c.set_route(&[(-20.0, -11.5), (20.0, -11.5)]),
+            "the same route again"
+        );
     }
 }

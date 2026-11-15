@@ -67,6 +67,15 @@ levels:
       nav2: {smoother: nav2}
       ours: {smoother: own}
     score: ''
+  lanes:
+    what: the lanes as soft costs in our global costmap (TODO 148, D2; needs costmap ours)
+    champion: 'off'
+    options:
+      'off': {lane_costs: 'false'}
+      # The lane map's roads drawn as a ramp, lowest at the right lane's centre: a
+      # challenger (15 Nov), beside the road ahead's lane line (behaviour, lane_map:=).
+      ramp: {lane_costs: 'true'}
+    score: ''
   behaviour:
     what: the behaviour planner and the road ahead (stop sign, obstacle, fence, goal)
     champion: 'off'

@@ -8,6 +8,9 @@
 //!                                         for the global one): no update, no grid
 //!             /tf                         tf2_msgs/TFMessage: map -> odom
 //!             /tf_static                  tf2_msgs/TFMessage: each sensor's mount
+//!             /plan                       nav_msgs/Path (route_topic), only with a lanes
+//!                                         block: the newest route, so the lanes layer
+//!                                         knows which way each road is driven
 //!             each source's topic         sensor_msgs/LaserScan or PointCloud2, best
 //!                                         effort, as nav2.yaml's layers name them (the
 //!                                         lidar scan; the radar, the cubes, the cameras'
@@ -21,7 +24,8 @@
 //!                                         map frame, the map's size
 //!             drivers/nav/costmap/status  diagnostic_msgs/DiagnosticStatus, at each
 //!                                         publish: the update times (ms), the lethal
-//!                                         cells, what it is waiting for
+//!                                         cells, what it is waiting for, the routes
+//!                                         that redrew the lanes
 //! Serves      drivers/nav/costmap/clear_entirely_local, .../clear_entirely_global
 //!                                         nav2_msgs/srv/ClearEntireCostmap: forget every
 //!                                         mark, as Nav2's clear_entirely_* do. With
@@ -30,6 +34,8 @@
 //! Calls       nothing.
 //! Parameters  local, global: each a JSON block (aav_description's
 //!             vehicle.costmap_params, from nav2.yaml); empty: that costmap doesn't run.
+//!             A global block with "lanes" (navigation.launch.py lane_costs:=) adds the
+//!             lanes layer: the roads as a soft cost (costmap::lanes, TODO 148).
 //!             odom_topic, map_topic, base_frame, and the topic names above.
 //!
 //! navigation.launch.py costmap:=own starts it. Nav2's own costmaps keep running. The
@@ -56,8 +62,8 @@ use std::{
 use anyhow::{anyhow, bail, Context as _, Result};
 use costmap::{
     cost::{occupancy, LETHAL},
-    footprint, Arrival, Changed, Costmap, Observation, ObstacleLayer, Pose2, PoseHistory, Settings,
-    Source, StaticMap, Transform3,
+    footprint, Arrival, Changed, Costmap, Lanes, Observation, ObstacleLayer, Pose2, PoseHistory,
+    Ramp, Road, Settings, Source, StaticMap, Transform3,
 };
 use rclrs::*;
 use ros_env::builtin_interfaces::msg::Time;
@@ -67,7 +73,7 @@ use ros_env::nav2_msgs::msg::{Costmap as CostmapMsg, CostmapMetaData};
 use ros_env::nav2_msgs::srv::{
     ClearEntireCostmap, ClearEntireCostmap_Request, ClearEntireCostmap_Response,
 };
-use ros_env::nav_msgs::msg::{MapMetaData, OccupancyGrid, Odometry};
+use ros_env::nav_msgs::msg::{MapMetaData, OccupancyGrid, Odometry, Path};
 use ros_env::sensor_msgs::msg::{LaserScan, PointCloud2};
 use ros_env::std_msgs::msg::Header;
 use ros_env::tf2_msgs::msg::TFMessage;
@@ -103,6 +109,7 @@ fn main() -> Result<()> {
     let global_topic = text_param("global_topic", "/drivers/nav/costmap/global")?;
     let status_topic = text_param("status_topic", "/drivers/nav/costmap/status")?;
     let clear_prefix = text_param("clear_prefix", "/drivers/nav/costmap/clear_entirely_")?;
+    let route_topic = text_param("route_topic", "/plan")?;
 
     let status: Publisher<DiagnosticStatus> = node.create_publisher(status_topic.as_str())?;
     let mut maps = Vec::new();
@@ -122,6 +129,7 @@ fn main() -> Result<()> {
         maps.push(Handle {
             name,
             in_map: spec.frame == "map",
+            lanes: spec.costmap.lanes().is_some(),
             inputs: spec.inputs.clone(),
             update_hz: spec.update_hz,
             transform_tolerance: spec.transform_tolerance,
@@ -154,6 +162,7 @@ fn main() -> Result<()> {
         }
     }
     let rates: Vec<f64> = maps.iter().map(|m| m.update_hz).collect();
+    let lanes = maps.iter().any(|m| m.lanes);
     let names: Vec<&'static str> = maps.iter().map(|m| m.name).collect();
 
     let core = Core {
@@ -187,6 +196,12 @@ fn main() -> Result<()> {
             |s: &mut Core, msg: TFMessage| s.on_tf_static(&msg),
         )?),
     ];
+    if lanes {
+        keep.push(Box::new(worker.create_subscription(
+            route_topic.as_str(),
+            |s: &mut Core, msg: Path| s.on_route(&msg),
+        )?));
+    }
     for (topic, kind) in topics {
         let name = topic.clone();
         match kind {
@@ -298,6 +313,53 @@ fn text(v: &Value, key: &str) -> Result<String> {
         .ok_or_else(|| anyhow!("{key}: text is needed"))
 }
 
+/// The lanes block: {"roads": [{name, points: [[x, y]...], width, lanes, oneway,
+/// edge_inset}], "ramp": {line, wrong_lane, kerb, off_road, off_road_band}} (the ramp and
+/// each of its keys optional: costmap::Ramp's defaults).
+fn lanes_from(v: &Value) -> Result<Lanes> {
+    let roads = v["roads"]
+        .as_array()
+        .ok_or_else(|| anyhow!("roads: a list is needed"))?
+        .iter()
+        .map(|r| {
+            let points = r["points"]
+                .as_array()
+                .and_then(|ps| {
+                    ps.iter()
+                        .map(|p| Some((p[0].as_f64()?, p[1].as_f64()?)))
+                        .collect()
+                })
+                .ok_or_else(|| anyhow!("points: a list of [x, y] is needed"))?;
+            Ok(Road {
+                name: r["name"].as_str().unwrap_or_default().to_owned(),
+                points,
+                width: num(r, "width")?,
+                lanes: r["lanes"].as_u64().unwrap_or(0) as u32,
+                oneway: r["oneway"].as_bool().unwrap_or(false),
+                edge_inset: r["edge_inset"]
+                    .as_f64()
+                    .unwrap_or(costmap::lanes::EDGE_INSET),
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let d = Ramp::default();
+    let r = &v["ramp"];
+    let cost = |key: &str, default: u8| -> Result<u8> {
+        match r[key].as_u64() {
+            None => Ok(default),
+            Some(c) => u8::try_from(c).map_err(|_| anyhow!("ramp {key}: 0 to 252")),
+        }
+    };
+    let ramp = Ramp {
+        line: cost("line", d.line)?,
+        wrong_lane: cost("wrong_lane", d.wrong_lane)?,
+        kerb: cost("kerb", d.kerb)?,
+        off_road: cost("off_road", d.off_road)?,
+        off_road_band: r["off_road_band"].as_f64().unwrap_or(d.off_road_band),
+    };
+    Ok(Lanes::new(roads, ramp)?)
+}
+
 impl Spec {
     /// From vehicle.costmap_params' block.
     fn build(name: &'static str, spec: &Value) -> Result<Self> {
@@ -370,10 +432,15 @@ impl Spec {
             layers.push(layer);
             inputs.push(ins);
         }
+        let mut costmap = Costmap::new(settings, layers);
+        match &spec["lanes"] {
+            Value::Null => {}
+            l => costmap.set_lanes(lanes_from(l).context("lanes")?),
+        }
         Ok(Spec {
             name,
             frame: text(spec, "global_frame")?,
-            costmap: Costmap::new(settings, layers),
+            costmap,
             inputs,
             update_hz: num(spec, "update_frequency")?,
             publish_hz: num(spec, "publish_frequency")?,
@@ -397,9 +464,13 @@ impl Spec {
             .iter()
             .map(|l| l.name.as_str())
             .collect();
+        let lanes = self.costmap.lanes().map_or_else(
+            || "off".to_owned(),
+            |l| format!("{} roads, {:?}", l.roads().len(), l.ramp()),
+        );
         format!(
             "{} costmap in {}: {size}; static map {}; obstacle layers [{}]; inflation {:?}; \
-             update {} Hz, publish {} Hz",
+             lanes {lanes}; update {} Hz, publish {} Hz",
             self.name,
             self.frame,
             s.static_layer,
@@ -417,6 +488,8 @@ enum Job {
     Map(Arc<MapData>),
     /// A recovery asked: forget every mark.
     Clear,
+    /// A new route (map frame), for the lanes layer.
+    Route(Arc<Vec<(f64, f64)>>),
     /// The timer: update now with these inputs, or say why it can't.
     Tick(Tick),
 }
@@ -452,6 +525,8 @@ struct Handle {
     name: &'static str,
     /// Its frame is map (else odom).
     in_map: bool,
+    /// It has a lanes layer: it takes the routes.
+    lanes: bool,
     inputs: Vec<Vec<Input>>,
     update_hz: f64,
     transform_tolerance: f64,
@@ -471,6 +546,8 @@ struct One {
     skipped: u64,
     /// How often a recovery cleared it.
     clears: u64,
+    /// The routes that changed the lanes' costs.
+    lane_routes: u64,
     waiting: String,
     /// The grid changed since the messages were last made.
     dirty: bool,
@@ -506,6 +583,7 @@ impl One {
             updates: 0,
             skipped: 0,
             clears: 0,
+            lane_routes: 0,
             waiting: String::new(),
             dirty: true,
             lethal: 0,
@@ -535,6 +613,11 @@ impl One {
                 match job {
                     Job::Map(map) => self.set_map(&map),
                     Job::Clear => self.clear(),
+                    Job::Route(route) => {
+                        if self.spec.costmap.set_route(&route) {
+                            self.lane_routes += 1;
+                        }
+                    }
                     Job::Tick(t) => {
                         if let Some(Tick::Update(_)) = tick.replace(t) {
                             self.skipped += 1;
@@ -696,6 +779,7 @@ impl One {
             kv("updates", &self.updates.to_string()),
             kv("skipped", &self.skipped.to_string()),
             kv("clears", &self.clears.to_string()),
+            kv("lane_routes", &self.lane_routes.to_string()),
             kv("lethal_cells", &self.lethal.to_string()),
             kv("cells", &format!("{}x{}", g.width, g.height)),
             kv("waiting_for", &self.waiting),
@@ -783,6 +867,30 @@ impl Core {
         });
         for k in 0..self.maps.len() {
             self.send(k, Job::Map(Arc::clone(&map)));
+        }
+    }
+
+    /// A new route: to each costmap with lanes. Only a route in map is drawn.
+    fn on_route(&mut self, msg: &Path) {
+        if bare(&msg.header.frame_id) != "map" {
+            log_warn!(
+                self.logger.throttle(Duration::from_secs(10)),
+                "a route in {:?}, not map: the lanes ignore it",
+                msg.header.frame_id
+            );
+            return;
+        }
+        let route: Arc<Vec<(f64, f64)>> = Arc::new(
+            msg.poses
+                .iter()
+                .map(|p| (p.pose.position.x, p.pose.position.y))
+                .filter(|p| p.0.is_finite() && p.1.is_finite())
+                .collect(),
+        );
+        for k in 0..self.maps.len() {
+            if self.maps[k].lanes {
+                self.send(k, Job::Route(Arc::clone(&route)));
+            }
         }
     }
 
