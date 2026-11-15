@@ -33,6 +33,8 @@ very long along it. So the global EKF takes only the sideways part.
 | `lane_map` | (needed) | a `lanes.yaml` (`aav_description` `lane_map.py`) |
 | `min_confidence` | 0.5 | the surest line must reach it |
 | `max_heading` | 0.3 rad | the car turned further from the lane: refused |
+| `max_heading_gap` | 0.05 rad | the lines' angle against the filter's (its yaw less the lane's) |
+| `max_bend_gap` | 0.003 1/m | the lines' bend against the map lane's |
 | `width_tolerance` | 0.6 m | both lines' gap against the map lane's width |
 | `max_jump`, `jump_window` | 0.4 m, 1 s | a jump in the offset this soon: refused |
 | `max_innovation` | 1.5 m | further than this from the filter's own: refused |

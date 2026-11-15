@@ -33,9 +33,18 @@ The gates (each refused picture is counted by its reason):
 | `turned` | the car more than `max_heading` from the lane (changing lanes, a junction) |
 | `off road` | the filter's pose is on no road of the map |
 | `junction` | another road, or the road's end, from `behind` m behind to `ahead` m ahead |
+| `heading` | `psi` off the filter's own angle to the lane by over `max_heading_gap` |
+| `bend` | the lines' bend off the map lane's by over `max_bend_gap` (1/m) |
 | `width` | both lines seen, their gap off the map lane's width by over `width_tolerance` |
 | `jump` | `d` moved more than `max_jump` from the last one taken, under `jump_window` s ago |
 | `innovation` | `d` over `max_innovation` from where the filter has the car (the other lane?) |
+
+Why the last two (15 Nov, the campus in our simulator, against the truth): the finder's
+`d` comes from its fitted lines carried back from 4-16 m to the car. A wrong slope or a
+bend that isn't there (dashed centre lines, a junction's paint) moves `d` by 0.2-0.4 m
+for seconds at a time. Kept only when the lines' angle and bend agree with the filter and
+the map, `d` was 4.8 cm RMS from the truth (10 cm 95 %, 45 % of pictures kept), against
+48 cm RMS for every picture.
 
 Signs as REP-103 and lane_lines.py: x forward, y left, `d` + when the car is left of the
 centre, `psi` + when the car points left of the lane. Units: m, rad, s. The map frame.
@@ -58,6 +67,8 @@ class Settings:
 
     min_confidence: float = 0.5     # 0-1: the surest line must reach it
     max_heading: float = 0.3        # rad: the car against the lane
+    max_heading_gap: float = 0.05   # rad: psi against the filter's yaw less the lane's
+    max_bend_gap: float = 0.003     # 1/m: the lines' curvature against the map lane's
     width_tolerance: float = 0.6    # m: both lines' gap against the map lane's width
     max_jump: float = 0.4           # m: d against the last one taken ...
     jump_window: float = 1.0        # s: ... under this long ago
@@ -89,6 +100,7 @@ class Seen:
     width: float        # m: between the lines (the finder's guess with one line)
     lines: int          # 1 or 2
     confidence: float   # 0-1: the surest line's
+    curvature: float = 0.0   # 1/m: the centre line's bend at the car, + = bends left
 
 
 @dataclass(frozen=True)
@@ -117,14 +129,14 @@ def seen_from(left: Optional[Line], right: Optional[Line], width: float,
         c, b = (left.c + right.c) / 2.0, (left.b + right.b) / 2.0
         psi = -math.atan(b)
         return Seen(-c * math.cos(psi), psi, (left.c - right.c) * math.cos(psi), 2,
-                    max(left_confidence, right_confidence))
+                    max(left_confidence, right_confidence), left.a + right.a)
     line, side, confidence = ((left, -1.0, left_confidence) if left
                               else (right, 1.0, right_confidence) if right else (None, 0, 0))
     if line is None:
         return None
     c = line.c + side * width / 2.0 * math.sqrt(1.0 + line.b ** 2)
     psi = -math.atan(line.b)
-    return Seen(-c * math.cos(psi), psi, width, 1, confidence)
+    return Seen(-c * math.cos(psi), psi, width, 1, confidence, 2.0 * line.a)
 
 
 def _wrap(angle: float) -> float:
@@ -178,8 +190,13 @@ class LanePose:
         lane = self.lanes.lane_at(x, y, yaw)
         if lane is None:
             return None, 'off road'
-        if not self._clear(lane):
+        bend = self._bend(lane)
+        if bend is None:
             return None, 'junction'
+        if abs(seen.heading - _wrap(yaw - lane.heading)) > s.max_heading_gap:
+            return None, 'heading'
+        if abs(seen.curvature - bend) > s.max_bend_gap:
+            return None, 'bend'
         if seen.lines == 2 and abs(seen.width - (lane.left_soft + lane.right_soft)) \
                 > s.width_tolerance:
             return None, 'width'
@@ -198,17 +215,25 @@ class LanePose:
                    covariance=across_covariance(lane.heading, across, s.sigma_along, sigma_yaw),
                    offset=seen.offset, road=lane.road), 'ok'
 
-    def _clear(self, lane: Lane) -> bool:
-        """Return True if one road, and no other's tarmac, runs from `behind` to `ahead` m."""
+    def _bend(self, lane: Lane) -> Optional[float]:
+        """
+        Return the lane's curvature ahead (1/m, + = left), or None near a junction.
+
+        None unless one road, and no other's tarmac, runs from `behind` to `ahead` m. The
+        curvature: the lane's turn over the first `ahead` / 2 m (the camera's near half).
+        """
         s = self.s
+        bend = 0.0
         for sign, reach in ((-1.0, s.behind), (1.0, s.ahead)):
             here = lane
             gone = 0.0
             while True:
                 if [r.name for r in self.lanes.roads_at(here.x, here.y)] != [lane.road]:
-                    return False
+                    return None
                 if gone >= reach:
                     break
+                if sign > 0.0 and gone >= s.ahead / 2.0 and bend == 0.0:
+                    bend = _wrap(here.heading - lane.heading) / gone
                 step = min(s.step, reach - gone)
                 gone += step
                 nxt = self.lanes.lane_at(here.x + sign * step * math.cos(here.heading),
@@ -218,9 +243,9 @@ class LanePose:
                 # little (on a bend the chord still moves nearly a whole step).
                 if (nxt is None or nxt.road != lane.road
                         or math.hypot(nxt.x - here.x, nxt.y - here.y) < 0.8 * step):
-                    return False
+                    return None
                 here = nxt
-        return True
+        return bend
 
     def summary(self) -> str:
         """Return the counts by reason, as one line, and start counting again."""
