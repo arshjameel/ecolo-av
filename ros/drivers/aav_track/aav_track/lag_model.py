@@ -72,7 +72,7 @@ def without_dead_times(car: CarParams) -> CarParams:
 
 
 def speed_loop(name: str) -> car_model.SpeedLoopConfig:
-    """Return the spine's speed loop profile by name: its PIs ('default', 'smooth', 'firm') only."""
+    """Return the spine's speed loop profile by name: its PIs (default, smooth, firm) only."""
     loop = car_model.speed_loop_profile(name)
     if loop.lqi is not None:
         raise ValueError(f"the speed loop {name!r} (the LQI) isn't modelled here yet: "
