@@ -16,4 +16,6 @@ serde = { version = "1", features = ["derive"] }
 serde_yaml_ng = "0.10"
 
 [dev-dependencies]
+# MIT/Apache-2.0 (TODO 204): the car model's rules on random states.
+proptest = "1"
 serde_json = "1"

@@ -15,3 +15,7 @@ serde = { version = "1", features = ["derive"] }
 serde_yaml_ng = "0.10"
 # MIT/Apache-2.0 (TODO 195): each chunk loaded and built on its own core.
 rayon = "1"
+
+[dev-dependencies]
+# MIT/Apache-2.0 (TODO 204): the chunks' rules checked on random cars and routes.
+proptest = "1"

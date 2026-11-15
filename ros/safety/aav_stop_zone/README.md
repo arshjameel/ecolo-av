@@ -40,4 +40,4 @@ or pitch.
 
 ## Testing
 
-`cargo test` here (`tools/test.sh` runs it, with `cargo fmt` and `cargo clippy`).
+`cargo test` here (`tools/test.sh` runs it, with `cargo fmt` and `cargo clippy`). `crates/stop-zone/tests/props.rs` checks the lock's rules on thousands of random points and commands (proptest): it only passes or stops, 3 points in the box always stop, points outside never do, more points never clear a stop, a silent sensor always stops, NaN points are dropped.

@@ -7,3 +7,7 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+
+[dev-dependencies]
+# MIT/Apache-2.0 (TODO 204): the rules checked on thousands of random points.
+proptest = "1"
