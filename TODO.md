@@ -187,6 +187,7 @@ needs the car, a part, or an answer. 157, 158 and 173 are in "What is next".
 | numpy above 2.3.5 in the `ml` environment | when coremltools passes 9.0 |
 | "Two drive paths": the bridge refuses when a second mux or heartbeat appears | later |
 | The little robot's eyes on the HUD | later |
+| A stop sign seen stays on the map (the whole car, "cheap things never tried") | needs two rules first (15 Nov): behaviour only slows for a sign, the watcher's lock stops the car once the camera sees it; a remembered sign the camera never confirms needs its own stop-and-go, and a sign taken away needs forgetting. Today a sign is kept 5 s in odom after the last sight |
 
 ## Closed on 15 Nov
 
