@@ -2678,8 +2678,9 @@ def check_moving_thing(probe, ahead=20.0, side=4.0, walk=0.8, goal=35.0, near=15
     if not walking:
         result('moving thing', False, f'the simulator would not walk it: {SERVICE_SAID[0]}')
         return
-    gaps = []
-    for t, x, y, yaw, _ in probe.track[start:]:
+    gaps, speeds = [], []
+    for t, x, y, yaw, v in probe.track[start:]:
+        speeds.append(abs(v))      # to tell a hit from being walked into while standing
         k_t = max(0.0, t - t0)                   # standing at its start until it walks
         wx, wy = px + vx * k_t, py + vy * k_t
         ux, uy = math.cos(yaw), math.sin(yaw)
@@ -2689,10 +2690,12 @@ def check_moving_thing(probe, ahead=20.0, side=4.0, walk=0.8, goal=35.0, near=15
     seen = behaviour_seen(probe, since)
     reached = done.done() and done.result().status == 4
     clear = min(gaps) if gaps else float('nan')
+    at = speeds[gaps.index(clear)] if gaps else float('nan')
     slowed = 'APPROACH(obstacle)' in seen or 'STOP(obstacle)' in seen
     result('moving thing', reached and slowed and clear > 0.3,
            f'{"reached" if reached else "did not reach"} the goal, {clear:.2f} m from the '
-           f'walker at the closest; states {" > ".join(seen) or "none heard"}')
+           f'walker at the closest, the car at {at:.2f} m/s then; states '
+           f'{" > ".join(seen) or "none heard"}')
 
 
 def lowest_cap(probe, since):
