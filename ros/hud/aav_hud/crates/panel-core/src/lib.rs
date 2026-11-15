@@ -18,6 +18,7 @@
 //! | [`steering_limits`] | equal limits from the marks: `aav_legacy`'s `steering_limits.py`, on shared vectors |
 //! | [`sweep`] | the lock-to-lock check: a state machine that stops and holds on resistance |
 //! | [`graphs`] | the GRAPHS page: 60 s of what the Pi wrote and the ESP32 got, now / avg / low / high, each hop's verdict, FREEZE |
+//! | [`measure`] | the MEASURE page: speed and distance since RESET, a tape run typed in, the wheel diameter's check |
 //! | [`esp32`] | the ESP32's JSON status lines (`firmware/status/`), read only |
 //! | [`ws`] | just enough of a WebSocket client to read them: the address, the opening, the frames |
 //! | [`easter_egg`] | when the little robot may show: still, no warning, nothing changed; a check just PASSED |
@@ -32,6 +33,7 @@ pub mod easter_egg;
 pub mod esp32;
 pub mod gate;
 pub mod graphs;
+pub mod measure;
 pub mod rules;
 pub mod state;
 pub mod steering_limits;

@@ -28,6 +28,7 @@
 
 mod calibration;
 mod graphs;
+mod measure;
 
 use std::time::{Duration, Instant};
 
@@ -42,6 +43,7 @@ use panel_core::{
     calibration::{Allowance, CalPage, CalPress},
     gate::Gate,
     graphs::Freezer,
+    measure::{Entry, Odometer},
     state::{PanelState, Row},
     steering_limits::Mark,
 };
@@ -66,6 +68,8 @@ pub enum Page {
     Drive,
     Calibration,
     Graphs,
+    /// Speed and distance, a tape run, the wheel diameter's check (TODO 71).
+    Measure,
 }
 
 impl Page {
@@ -74,17 +78,19 @@ impl Page {
             Self::Drive => "DRIVE",
             Self::Calibration => "STEERING CAL",
             Self::Graphs => "GRAPHS",
+            Self::Measure => "MEASURE",
         }
     }
 
-    pub const ALL: [Page; 3] = [Page::Drive, Page::Calibration, Page::Graphs];
+    pub const ALL: [Page; 4] = [Page::Drive, Page::Calibration, Page::Graphs, Page::Measure];
 
     /// The next page (Tab).
     pub fn next(self) -> Self {
         match self {
             Self::Drive => Self::Calibration,
             Self::Calibration => Self::Graphs,
-            Self::Graphs => Self::Drive,
+            Self::Graphs => Self::Measure,
+            Self::Measure => Self::Drive,
         }
     }
 }
@@ -104,6 +110,8 @@ pub enum Button {
     Save,
     /// The graphs page: freeze them, or go live again.
     Freeze,
+    /// The measure page: the odometer and the tape back to zero.
+    Reset,
 }
 
 impl Button {
@@ -123,6 +131,7 @@ impl Button {
             Self::Cal(CalPress::ConfirmStill) => "ON STANDS, STILL",
             Self::Save => "SAVE",
             Self::Freeze => "FREEZE (P)",
+            Self::Reset => "RESET (R)",
             Self::Press(Press::SpeedUp) => "SPEED +",
             Self::Press(Press::SpeedDown) => "SPEED -",
             Self::Press(Press::Left) => "< LEFT",
@@ -141,8 +150,8 @@ pub fn layout(w: f32, page: Page) -> Vec<(Button, Rectangle)> {
         Button::Estop,
         Rectangle::new(w - MARGIN - 240.0, 14.0, 240.0, 84.0),
     )];
-    let tab_w = 160.0;
-    let tab_x = w - MARGIN - 240.0 - 16.0 - 3.0 * tab_w - 16.0;
+    let tab_w = 140.0;
+    let tab_x = w - MARGIN - 240.0 - 16.0 - Page::ALL.len() as f32 * tab_w - 16.0;
     for (i, p) in Page::ALL.into_iter().enumerate() {
         let x = tab_x + i as f32 * (tab_w + 8.0);
         buttons.push((Button::Tab(p), Rectangle::new(x, 58.0, tab_w, 36.0)));
@@ -151,6 +160,7 @@ pub fn layout(w: f32, page: Page) -> Vec<(Button, Rectangle)> {
         Page::Drive => buttons.extend(drive_layout(w)),
         Page::Calibration => buttons.extend(calibration::layout(w)),
         Page::Graphs => buttons.extend(graphs::layout(w)),
+        Page::Measure => buttons.extend(measure::layout(w)),
     }
     buttons
 }
@@ -241,6 +251,12 @@ pub struct Frame<'a> {
     pub freezer: &'a Freezer,
     /// A topic this quiet is STALE (the hops too).
     pub stale_after: Duration,
+    /// The measure page: distance since RESET, the tape typed in, vehicle.yaml's
+    /// wheel diameter, and its file once saved.
+    pub odometer: &'a Odometer,
+    pub tape: &'a Entry,
+    pub wheel_diameter: Option<f64>,
+    pub measure_saved: Option<&'a str>,
 }
 
 /// The little robot's room (the easter egg): where nothing else is drawn this frame.
@@ -372,6 +388,7 @@ impl Ui {
         match f.page {
             Page::Calibration => return self.draw_calibration(d, state, f, &buttons[header..]),
             Page::Graphs => return self.draw_graphs(d, state, f, &buttons[header..]),
+            Page::Measure => return self.draw_measure(d, state, f, &buttons[header..]),
             Page::Drive => {}
         }
 
@@ -604,7 +621,7 @@ impl Ui {
         let size = match b {
             Button::Estop => 34.0,
             Button::Tab(_) => 18.0,
-            Button::Cal(_) | Button::Save | Button::Freeze => 21.0,
+            Button::Cal(_) | Button::Save | Button::Freeze | Button::Reset => 21.0,
             _ => 26.0,
         };
         let label = b.label();
@@ -687,7 +704,7 @@ mod tests {
                 }
             }
         }
-        assert_eq!(layout(1280.0, Page::Drive).len(), 11);
+        assert_eq!(layout(1280.0, Page::Drive).len(), 12);
     }
 
     #[test]
@@ -715,7 +732,9 @@ mod tests {
         let room = Room::new(1280.0, 860.0, 850.0, 800.0, &wide);
         assert_eq!(room.corner, None);
         assert_eq!(room.lane, None);
-        assert_eq!(layout(1280.0, Page::Calibration).len(), 4 + 12);
-        assert_eq!(layout(1280.0, Page::Graphs).len(), 4 + 1);
+        // The E-STOP and four tabs, then each page's own.
+        assert_eq!(layout(1280.0, Page::Calibration).len(), 5 + 12);
+        assert_eq!(layout(1280.0, Page::Graphs).len(), 5 + 1);
+        assert_eq!(layout(1280.0, Page::Measure).len(), 5 + 2);
     }
 }

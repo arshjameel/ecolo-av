@@ -65,6 +65,9 @@ pub struct Vehicle {
     /// Which wheels `/vehicle/odom` measures; None if vehicle.yaml doesn't say.
     #[serde(default)]
     pub speed_wheels: Option<SpeedWheels>,
+    /// The wheels' diameter, metres (the MEASURE page's check); None if unset.
+    #[serde(default)]
+    pub wheel_diameter: Option<f64>,
 }
 
 #[derive(Deserialize)]
@@ -98,6 +101,7 @@ mod tests {
         assert!(v.max_steering_angle > 0.1 && v.max_steering_angle < 1.0);
         // Today the wheel sensors are on the front (TODO 49b): not the driven wheels.
         assert_eq!(v.speed_wheels, Some(SpeedWheels::Front));
+        assert!(v.wheel_diameter.is_some_and(|d| d > 0.1 && d < 1.0));
         assert!(!SpeedWheels::Front.are_driven() && SpeedWheels::Rear.are_driven());
     }
 

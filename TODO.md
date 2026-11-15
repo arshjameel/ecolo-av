@@ -130,7 +130,7 @@ history: [todo-done](docs/history/todo-done.md#the-old-lists-as-they-were-on-15-
 | 116 | **Does the car stop if the Mac drops off?** The LLM on the Mac sends goals; check, then a heartbeat | ✅ 15 Nov: checked by reading: both goals run on the car (`/scripted_drive`, `/follow_gps_waypoints`) and a ROS action carries on without its client, so yes, the car kept driving. Now the goal leash (`aav_safety` `goal_leash`): the laptop beats at 5 Hz, 1 s quiet cancels its goals (a normal stop), goodbye on a clean close; on the car, in the sim and on the bench; 4 + 2 tests. Not yet tried with a real laptop dropping off |
 | 119 | **Foot-tall kerbs**: are they seen? Test a 0.3 m kerb in our simulator | ⬜ before autonomy near a kerb |
 | 121 | **NDT's score floor on the campus** (1.5 there, 2.3 in the lot): how high does a wrong pose score? | ⬜ |
-| 71 | **The hardware panel's pages**: actuators off, measure, direct control, typed-in measurements | ⬜ |
+| 71 | **The hardware panel's pages**: actuators off, measure, direct control, typed-in measurements | 🔧 15 Nov: **MEASURE** built (speed and distance since RESET, a tape run typed in, the wheel diameter's check, know-the-car test 3; SAVE to a file; 9 laptop tests, the demo's screenshot looked at). Left: actuators off and direct control need the two-way ESP32 link (`docs/designs/2026-11-06_bench-link.md`, the Rust firmware), so they wait for it |
 | 22o | **Ackermann, the rest**: both front wheels' real angles and the steering curve from `Ackermann.m` (Q2) | ⬜ |
 | 0b | **The spine's state machine, follow-up** (Arsh's #15): the test mode without a wheel speed; a real self-test | ⬜ Arsh |
 | 23 | **sim-check in the nightly CI**: drop `continue-on-error` once it passes a few nights (with 151) | 👀 |

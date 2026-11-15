@@ -26,7 +26,9 @@ node (rclrs):
   of hops (ego, mux, Pi wrote, ESP32 got), each OK, DIFFERENT, STALE, NO DATA or NOT
   TESTED; 60 s graphs of steering, brake and throttle (what the Pi wrote, what the ESP32
   got), FREEZE, and the counts that prove the wire. `--esp32 ws://...` reads the ESP32's
-  own status lines, read only.
+  own status lines, read only. Its fourth, **MEASURE** (TODO 71), counts speed and
+  distance since RESET; type a tape run's metres and it checks `wheel_diameter`
+  (know-the-car test 3: within 1 %, or the diameter to copy). SAVE writes a file.
 
 It was called `aav_hud_raylib` until 25 Oct, when the 2025-26 Flutter app and its Flask
 back end (then `aav_hud`) went to `archive/2026-27-flutter-hud/` and this package took
@@ -153,7 +155,7 @@ the calibration page's `jog_step` (25 counts), `jog_min`, `jog_max` (400, 3500),
 `easter_egg` (true: the little robot peeks when all is quiet, and drives across at
 start-up and after a check passes) and `easter_egg_after` (60 s).
 SAVE writes `~/.local/share/aav/steering-calibration/steering-<time>.txt` (a person copies
-it; never vehicle.yaml).
+it; never vehicle.yaml); the MEASURE page's SAVE, `~/.local/share/aav/measurements/measure-<time>.txt`.
 
 ### Launch and commands
 
@@ -169,6 +171,7 @@ it; never vehicle.yaml).
 | `hw_panel --self-test 0.3:8` | for checks: Speed + to 0.3 m/s, GO held 8 s, through the same buttons and rules; prints asked and seen |
 | `map`, `hw_panel`, `debug_hud` `--demo --robot-now` | the little robot (the easter egg) at once, for screenshots (docs/hud.md, "The little robot") |
 | `hw_panel --demo --page graphs [--esp32 ws://HOST:81/]` | the GRAPHS page with a pretend path (every hop OK); with `--esp32`, the real board's lines instead of the pretend ones |
+| `hw_panel --demo --page measure` | the MEASURE page (speed and distance, the tape, the wheel diameter's check) |
 | `hw_panel --demo --page calibration [--demo-bind 2800] [--cal-self-test]` | the steering calibration page with a pretend steering actuator; the self-test limps, marks, holds and runs the lock-to-lock check (with a stiff spot it must stop) |
 
 `sim.launch.py hud:=true` and `map:=true` start them too. On the car,
