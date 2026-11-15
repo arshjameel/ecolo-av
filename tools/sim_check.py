@@ -2630,9 +2630,9 @@ def check_moving_thing(probe, ahead=20.0, side=4.0, walk=0.8, goal=35.0, near=15
     their path as they reach the lane (3 to `near` m out), so they cross in front of it
     whatever its speed. The car drives to a goal `goal` m on. The behaviour must slow for
     them (APPROACH(obstacle) or STOP(obstacle): a moving thing in the lane, TODO 170), the
-    car keep at least 0.3 m from them while it moves (the walker walks on into a car
-    standing for it), and reach the goal once they are by. Our simulator only: Gazebo's
-    models don't walk.
+    car keep at least 0.3 m from them ahead of its bumper while it moves (the walker walks
+    on through a car standing for it), and reach the goal once they are by. Our simulator
+    only: Gazebo's models don't walk.
     """
     if SIMULATOR == 'gazebo':
         result('moving thing', None, "skipped: Gazebo's placed models don't walk")
@@ -2679,27 +2679,30 @@ def check_moving_thing(probe, ahead=20.0, side=4.0, walk=0.8, goal=35.0, near=15
     if not walking:
         result('moving thing', False, f'the simulator would not walk it: {SERVICE_SAID[0]}')
         return
-    gaps, speeds = [], []
+    gaps, speeds, ahead_of = [], [], []
     for t, x, y, yaw, v in probe.track[start:]:
         speeds.append(abs(v))      # to tell a hit from being walked into while standing
         k_t = max(0.0, t - t0)                   # standing at its start until it walks
         wx, wy = px + vx * k_t, py + vy * k_t
         ux, uy = math.cos(yaw), math.sin(yaw)
-        k = max(-body['rear_overhang'], min(front, (wx - x) * ux + (wy - y) * uy))
+        along_car = (wx - x) * ux + (wy - y) * uy
+        ahead_of.append(along_car >= front)
+        k = max(-body['rear_overhang'], min(front, along_car))
         # The car's centre line against the post's centre: less half the car, half the post.
         gaps.append(math.hypot(wx - x - k * ux, wy - y - k * uy) - body['width'] / 2.0 - 0.25)
     seen = behaviour_seen(probe, since)
     reached = done.done() and done.result().status == 4
-    # The gap while the car moves: the simulator's walker never stops, so it walks into a
-    # car standing for it; that is not the car's doing. Standing, the gap isn't judged.
-    moving = [g for g, v in zip(gaps, speeds) if v > 0.05]
+    # The gap ahead of the bumper while the car moves: the simulator's walker never stops
+    # and passes through the car like a ghost, so beside or inside the car (walked into it
+    # while it stood) is not the car's doing. Only driving at someone in front is judged.
+    moving = [g for g, v, a in zip(gaps, speeds, ahead_of) if v > 0.05 and a]
     clear = min(moving) if moving else float('nan')
     at = speeds[gaps.index(min(gaps))] if gaps else float('nan')
     touched = min(gaps) if gaps else float('nan')
     slowed = 'APPROACH(obstacle)' in seen or 'STOP(obstacle)' in seen
     result('moving thing', reached and slowed and clear > 0.3,
            f'{"reached" if reached else "did not reach"} the goal, {clear:.2f} m from the '
-           f'walker at the closest while moving ({touched:.2f} m in all, the car at '
+           f'walker ahead of the moving car ({touched:.2f} m in all, the car at '
            f'{at:.2f} m/s then); states '
            f'{" > ".join(seen) or "none heard"}')
 
