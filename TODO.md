@@ -17,6 +17,21 @@ Ben's messages, word for word: `docs/history/messages-*.md`. What is finished:
 | The sim's speed | 14 % over its command: the speed loop | 163 |
 | The obstacle leg | what it should expect: stop and wait, or pass | 162 |
 
+## Release candidate 1.0-rc1 (Ben, 14 Nov night)
+
+Ben: "refining the project towards a release candidate. Something that is fully function and complete and having the edges smoothed out." The candidate's stack is ours (`stack:=ours`, Rust from planner to follower), with Nav2 one switch away. It passes when every row is ✅:
+
+| # | Gate | Status |
+|---|---|---|
+| 166 | **Every stack runs**: `sim-check` passes on `stack:=stock` and `stack:=ours`, on our simulator and Gazebo | ⬜ |
+| 167 | **Ours scores at least as well as stock** on the lot and campus tours, 3 runs each (`measure controllers --stacks`; TODO 164) | ⬜ |
+| 168 | **The wiggle under 5 cm** on the campus road, both stacks (TODO 165: the GPS noise in the pose, our navigator keeps its path) | ⬜ |
+| 169 | **The followers steer along the road ahead's line** (the lane centre), not only its speed | ⬜ |
+| 170 | **The things in the behaviour planner**: wait for what moves, go round what's parked (decides TODO 162) | ⬜ |
+| 171 | **No switch leaves a gap**: reversing everywhere, BackUp, IsPathValid, respawn, age checks, `cameras:=false` in nightly CI | 🔧 most done 14 Nov |
+| 172 | **The edges smoothed**: one start command per job, clear errors, the docs pages shrunk, a "start here" page for the release | ⬜ |
+| 173 | **On the car** (with the hardware lead): the seven blockers (158), then ours driven, recorded and scored | ⬜ |
+
 ## The whole car: every design merged (14 Nov)
 
 Ben, 13-14 Nov: "a review of everything with the plan of merging everything into the best version possible ... what am I missing". The page: [the whole car](docs/designs/2026-11-14_the-whole-car.md). His words: `docs/history/messages-2026-11-14.md`.
