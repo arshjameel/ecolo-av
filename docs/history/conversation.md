@@ -1675,13 +1675,14 @@ with the graphs in `hw_panel`: `docs/designs/2026-11-07_esp32-debug-link_brief.m
 
 Checked 13 Nov against the code, `TODO.md`, the audits and the pull requests. **Closed**, **Folded** and **Dead** threads keep their old text, with what ended them.
 
+- **The night of 14-15 Nov:** two stalls fixed in the simulator (TODO 193: the radar's costmap marks never cleared; 194: the behaviour missed a walker 1 time in 3); camera names for things, the stop zone in Rust (shadow), map chunks, Lanelet2 in Rust, software cameras, the lane finder as a pose sensor: all trials, off by default. Open: the screens' new layers never looked at (192), Linux for 183, slow map correction in the league (186).
 - **One shape (13 Nov):** the design is proposed and Fable reviewed it (go, with changes). Open for Ben: D1-D7. Nothing built: the lane ramp, the league, placeholder cameras, the planner and MPPI fixes (TODO 147-152).
 - **The drive of 13 Nov:** Ben: the car "drove and stopped well", with only the localization update installed. No audit, no bag and no notes are in the repo: what drove it, and which commit was installed, are unwritten. Open: his question on Alpamayo in place of the detector has no written answer.
 - **Car day, 9 Nov:** no record in the repo of what ran. The messages files stop at 7 Nov and start again at 11 Nov.
-- **Pull requests #28 and #29 (13 Nov):** both open. #28 (the install fix found on the localization Pi) has changes requested; #29 (the mux tests) has green CI, and GitHub still shows changes requested.
+- **Pull requests #28 and #29 (13 Nov):** **Closed 15 Nov** in our code: both merged into the fork's `main` (and on to the team's with the next pull request); Ben closes them on the team repo. Was: both open. #28 (the install fix found on the localization Pi) has changes requested; #29 (the mux tests) has green CI, and GitHub still shows changes requested.
 - **Off Nav2 (8 Nov):** our costmap, planner, navigator and smoother are built and scored in our simulator; none is the default. Open: the campus at 2.5 m/s, `mppi_lag`'s overshoot and CPU, `map_server` and `collision_monitor` not written, nothing timed on the Orin (TODO 143-146, 152).
 - **The adaptive brake (8 Nov):** built, simulator only. Open: the brake's real limits (car day A7), then the car (TODO 145).
-- **Our own simulator (7-8 Nov):** the default since 8 Nov. Open: one stop-sign miss in 8, no path without a GPU (TODO 141, 151).
+- **Our own simulator (7-8 Nov):** the default since 8 Nov. Open: one stop-sign miss in 8. Without a GPU: software cameras (lavapipe) work on a Mac, 15 Nov; Linux untested (TODO 183).
 - **Diffusion on the car (7-8 Nov):** 88 % of plans from the model in the simulator. Open: the Orin's timing, the car trial A12 (TODO 133).
 - **Directions on the campus (7 Nov):** P4 to the Fieldhouse reached 1 of 2 with our navigator, 0 of 2 with Nav2's. Open: bends, real drop-off points, a screen to pick a place (TODO 140).
 - **The record itself:** `TODO.md` quotes Ben on 27 and 30 Oct and 8 Nov, and eight more requests on 7 Nov, with no `messages-*.md` holding the words. `status.md` and `decisions.md` were last changed on 1 Nov.

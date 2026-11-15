@@ -7,7 +7,7 @@
 <!-- Generated from docs/status.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Status: what works and what doesn&#x27;t yet</h1>
-<div class="meta">32 min read · 6 sections</div></header>
+<div class="meta">33 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -527,6 +527,16 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <td><span class="badge b-works">works</span> in Gazebo, 30 Oct: stopped 0.44 m before the post. <strong>Open:</strong> 3 Nov, 1 of 3 runs drove 1.30 m into it (TODO 93). Off</td>
 </tr>
 <tr>
+<td>The lane finder as a pose sensor (15 Nov)</td>
+<td><code>aav_lane_pose</code>, <code>lane_pose:=true</code></td>
+<td><span class="badge b-works">works</span> in our simulator: the global EKF's sideways error 9.5 → 2 cm (road world), 9.9 → 5.4 cm (campus). No effect on the wiggle yet (little paint on that tour). Off; not wired on the car (<a href="trials.html">Trials</a>)</td>
+</tr>
+<tr>
+<td>Things: the lidar's cubes with an id, a speed, a memory (14 Nov)</td>
+<td><code>aav_things</code>, <code>things:=true</code></td>
+<td><span class="badge b-works">works</span> in our simulator, 15 Nov: the behaviour slows for a walker crossing, 5 of 5 (0.5-1.0 m clear). Names from the camera (<code>things_names:=true</code>) and the stop sign's distance from the lidar: built, not yet run with the detector. Off</td>
+</tr>
+<tr>
 <td>Lane drives, scored (8 Nov)</td>
 <td><code>pixi run measure lane</code></td>
 <td><span class="badge b-works">works</span> in our simulator: Library Road, 171 m at 1.4 m/s, mean error 4 cm. In Gazebo on the campus the lane was lost in 68 % of pictures (not diagnosed) (<a href="perception.html#in-the-simulators-8-nov">Perception</a>)</td>
@@ -587,6 +597,11 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <td><span class="badge b-works">works</span> without ROS. P4 to the Fieldhouse (453 m), 8 Nov: Nav2's waypoint follower 0 of 2, our navigator 1 of 2 (<a href="routes.html#on-the-campus">Routes</a>)</td>
 </tr>
 <tr>
+<td>Map chunks, NDT by chunk, Lanelet2 in Rust (15 Nov)</td>
+<td><code>aav_description</code> <code>map-chunks</code>, <code>lanelet-map</code>; <code>ndt_chunks:=</code>; <code>global_window:=</code></td>
+<td><span class="badge b-works">works</span> in their tests; the campus cut in 1.5 s; <code>global_window:=192</code> passes <code>sim-check</code>. Nothing uses the chunks yet (<a href="../designs/2026-11-15_three-levels.md">Three levels</a>)</td>
+</tr>
+<tr>
 <td><strong>Control and safety</strong></td>
 <td></td>
 <td></td>
@@ -612,6 +627,11 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <td><span class="badge b-works">works</span> on the bench, 29 Oct: a scripted drive at 1 m/s stopped 1.06 m after the lock closed, inside a 12 m fence. Not yet run in a simulator with a fence you can reach (<a href="geofence.html">Geofence</a>)</td>
 </tr>
 <tr>
+<td>Our stop zone in Rust, in shadow (15 Nov)</td>
+<td><code>aav_stop_zone</code>, <code>stop_zone_shadow:=true</code></td>
+<td><span class="badge b-works">works</span> in our simulator: agrees with Nav2's collision_monitor 100 % of the time, stops at the same instant. Never drives the car yet</td>
+</tr>
+<tr>
 <td>Stop hold (29 Oct); the no-timeout lock (26 Oct)</td>
 <td><code>aav_safety</code> <code>stop_hold</code> (21); <code>legacy_uart_bridge</code>'s lock (60)</td>
 <td><span class="badge b-works">works</span> in their tests; <code>bench-check --zone-edge</code></td>
@@ -634,7 +654,7 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <tr>
 <td>Our own simulator: <strong>the default</strong> since 8 Nov</td>
 <td><code>aav_simulator</code> (Rust) and its cameras, <code>aav_sim_cameras</code> (Bevy; a crate, not a ROS package)</td>
-<td><span class="badge b-works">works</span> on a Mac, 8 Nov: every <code>sim-check</code> leg; <code>--perception</code>, <code>--faults</code> and <code>--drive-to-point-only</code> 3 of 3. Its cameras need a GPU. <strong>Open:</strong> one stop-sign miss in 8 (<a href="own-simulator.html">page</a>)</td>
+<td><span class="badge b-works">works</span> on a Mac, 8 Nov: every <code>sim-check</code> leg; <code>--perception</code>, <code>--faults</code> and <code>--drive-to-point-only</code> 3 of 3. Without a GPU its cameras draw in software (<code>tools/software_gl.sh</code>, 15 Nov): the road world at 27 rounds a second on a Mac; the campus needs a GPU; <span class="badge b-untested">untested</span> on Linux. <strong>Open:</strong> one stop-sign miss in 8 (<a href="own-simulator.html">page</a>)</td>
 </tr>
 <tr>
 <td>The campus world (5-8 Nov)</td>
@@ -664,7 +684,7 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <tr>
 <td>Developer window (5 Nov)</td>
 <td><code>ros/hud/aav_dev_window</code> (Bevy; a crate, not a ROS package), <code>pixi run dev-window</code></td>
-<td><span class="badge b-works">works</span> live on Gazebo, with goals through its gates (5 Nov). Left: the algorithm list, SWAP</td>
+<td><span class="badge b-works">works</span> live on Gazebo, with goals through its gates (5 Nov). 15 Nov: the things with their names (key K), the lanes and the chunks: built, never looked at on a screen. Left: the algorithm list, SWAP</td>
 </tr>
 <tr>
 <td>The Drive screen's algorithms table (3 Nov)</td>
@@ -704,7 +724,7 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 </tr>
 <tr>
 <td><code>pixi run test</code>: build, tests, lint, <code>colcon test</code></td>
-<td><span class="badge b-works">works</span> 25 Oct: 1110 tests, 0 failures, 4 skipped, 37 packages. 3 Nov (0.2): 1575 tests, 0 failures. 0.3 has no count written down. CI runs it on Linux (x86_64 and 64-bit ARM) for every pull request and every push to <code>main</code></td>
+<td><span class="badge b-works">works</span> 25 Oct: 1110 tests, 0 failures, 4 skipped, 37 packages. 3 Nov (0.2): 1575 tests, 0 failures. 15 Nov: 1934 tests, 0 failures, 6 skipped, 54 packages. CI runs it on Linux (x86_64 and 64-bit ARM) for every pull request and every push to <code>main</code></td>
 </tr>
 <tr>
 <td>Live graph vs <code>docs/interfaces.yaml</code>: turtle, sim, road, replay and bench</td>
@@ -756,9 +776,9 @@ small: clean shutdowns, Nav2 on simulated time, and the simulated GPS noise. The
 are in <code>docs/history/audit-2026-10-10-*.md</code>.</p>
 </section>
 <section class="card"><h2 id="next">Next</h2>
-<p>From the top of <code>TODO.md</code> (14 Nov). Two designs are <strong>proposed</strong>, nothing of them built:
-<a href="../designs/2026-11-13_one-shape.md">one shape</a> and
-<a href="../designs/2026-11-14_the-whole-car.md">the whole car</a>.</p>
+<p>From the top of <code>TODO.md</code> (15 Nov). The night of 14-15 Nov fixed two stalls in the
+simulator (TODO 193: the car stood still after an obstacle was taken away; 194: the
+behaviour missed a walker 1 time in 3) and built the trials above.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -770,38 +790,33 @@ are in <code>docs/history/audit-2026-10-10-*.md</code>.</p>
 <tbody>
 <tr>
 <td>1</td>
-<td>Ben's decisions on the two designs (D1-D7, W1-W7)</td>
-<td>147, 153</td>
+<td>Look at the screens' new layers (HUD <code>--demo</code>, <code>pixi run dev-window</code>); a sim with the detector and <code>things_names:=true</code></td>
+<td>192</td>
 </tr>
 <tr>
 <td>2</td>
-<td>Write down the 13 Nov drive: what was installed, a recording, what it showed</td>
-<td>157</td>
+<td>Our simulator's software cameras on Linux (oirp-spss, CI's nightly job)</td>
+<td>183</td>
 </tr>
 <tr>
 <td>3</td>
-<td>The car's blockers, with the hardware lead: the firmware timeout, a driven-wheel speed, the steering's centre, the brake's limits</td>
-<td>158</td>
+<td>The slow map correction against the default in the league</td>
+<td>186</td>
 </tr>
 <tr>
 <td>4</td>
-<td>The rest of the suite onto the car, in <a href="rollout.html">Rolling out</a>'s order: the ESP32 and the Motor Pi first</td>
-<td><a href="car-day.html">Car day</a></td>
+<td>The planner's sideways swing on a replan, near things it can't see</td>
+<td>177, 193</td>
 </tr>
 <tr>
 <td>5</td>
-<td>Measure the car: the "Know the car" tests replace the guesses in <code>vehicle.yaml</code></td>
-<td>60, 61</td>
+<td>The car's blockers, with the hardware lead</td>
+<td>157, 158, 173</td>
 </tr>
 <tr>
 <td>6</td>
-<td>The wiggle under Nav2 in the simulator, tested alone</td>
-<td>149</td>
-</tr>
-<tr>
-<td>7</td>
-<td>Our planner faster; MPPI with lag's overshoot and CPU</td>
-<td>152</td>
+<td>Measure the car: the "Know the car" tests replace the guesses in <code>vehicle.yaml</code></td>
+<td>60, 61</td>
 </tr>
 </tbody>
 </table></div></section>

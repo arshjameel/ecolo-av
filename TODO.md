@@ -6,23 +6,25 @@ Ben's messages, word for word: `docs/history/messages-*.md`. What is finished:
 
 ## What is next
 
-Ben, 14 Nov night: "chiping througth the list 166-173 and then the 155, 156, 157, etc".
+Ben, 15 Nov morning: "Lets clean up all the documentation and stuff and check all the code in to my repo".
 
 | Order | Next step | Row |
 |---|---|---|
-| 2 | Ours scores as well as stock: 3 runs each. 14 Nov: ours 4/4 on the lot after the cusp fix; the campus waits on the costmap fix | 167 | | 🔧 15 Nov, 3 runs each, reversing on, the corrected campus goals: ours reached every leg (lot 12/12, campus 9/9; Nav2 11/12 and 5/9) and kept closer to the path (mean 0.12 and 0.13 m against Nav2's 0.31 and 0.44; worst 0.8 and 1.1 m against 4.5 and 6.2). But ours sways 3 to 5 times more (lot 0.055 against 0.017 m/s², campus 0.66 against 0.12; 29 to 32 left-right changes per 100 m against 11 to 12): that is 168. Results kept in /tmp/ra/keep/drive-j-167 (the morning's notes). Left: the sway |
-| 3 | The wiggle: each follower's own swing; the EKF change on the car | 168 |
-| 4 | The lane line for `aav_track`'s trackers and Nav2's MPPI (`mppi_lag` done) | 169 |
-| 5 | The things: a moving thing in the sim, then Gazebo | 170 |
-| 6 | The last gaps on the audit list | 171 |
-| 7 | The edges smoothed: one start command per job, errors, docs, a start page | 172 |
-| 8 | On the car, with the hardware lead | 173 |
-| 9 | Reverse everywhere; the costmap in tiles (design first) | 174, 175 |
-| then | The lane finder as a pose sensor; the things' camera and radar; record and score a car drive | 155, 156, 157 |
-| 10 | Steering-rate lattice moves, Hybrid-A*, wheel noise, the watchdog's warning | 177-180 |
-| 11 | Ours the default; the last Nav2 pieces; Gazebo's CI job; then Nav2 and Gazebo deleted | 181-184 |
-| 12 | Heavy Python to Rust: voxels, ego + look_ahead, behaviour; the clock at 250 Hz | 185 |
-| last | The Rust made more Rust-like, once feature complete | 176 |
+| 1 | Look at the screens' new layers (HUD `--demo`, `pixi run dev-window`); a sim with the detector and `things_names:=true` | 192 |
+| 2 | Our simulator's software cameras on Linux (oirp-spss, CI's nightly job) | 183 |
+| 3 | The slow map correction against the default in the league | 186 |
+| 4 | The sway (ours sways 3-5 times Nav2's); the planner's sideways swing on a replan | 167, 168, 177 |
+| 5 | On the car, with the hardware lead | 157, 173 |
+| 6 | Ours the default; the last Nav2 pieces; then Nav2 and Gazebo deleted | 181-184 |
+| 7 | Heavy Python to Rust; then the Rust made more Rust-like | 185, 176 |
+
+## The night of 14-15 November
+
+Ben, 14 Nov night: "chiping througth the list 166-173 and then the 155, 156, 157, etc".
+
+| # | Task | Status |
+|---|---|---|
+| 167 | Ours scores as well as stock: 3 runs each. 14 Nov: ours 4/4 on the lot after the cusp fix; the campus waits on the costmap fix | 🔧 15 Nov, 3 runs each, reversing on, the corrected campus goals: ours reached every leg (lot 12/12, campus 9/9; Nav2 11/12 and 5/9) and kept closer to the path (mean 0.12 and 0.13 m against Nav2's 0.31 and 0.44; worst 0.8 and 1.1 m against 4.5 and 6.2). But ours sways 3 to 5 times more (lot 0.055 against 0.017 m/s², campus 0.66 against 0.12; 29 to 32 left-right changes per 100 m against 11 to 12): that is 168. Results kept in /tmp/ra/keep/drive-j-167 (the morning's notes). Left: the sway |
 | 186 | **Follow in odom, correct slowly** (the whole-car design, "Localization and the wiggle"; 165, 168): the GPS moves map -> odom ~9 cm a fix at 5 Hz, and the followers read each jump as a tracking error **15 Nov: a challenger, not the default:** it won offline only; a new one becomes the default once it wins in the simulator (CLAUDE.md). At first slow looked guilty of TODO 193's stall (2 fails with slow, 1 pass with newest), but newest then failed the same check: the stall isn't slow's. Next: score slow against newest in the league | 🔧 |
 | 177 | **Steering-rate-aware lattice moves** (Ben, 14 Nov: a trial now): moves whose curvature changes no faster than the steering can, from the car model ego uses; beside today's lattice until it wins (no oscillation, 168) | 🟡 built; sim, 14 Nov night (the lot, 2 runs each, Nav2's MPPI following, reversing on): every version 8/8 legs. Our planner with today's moves swayed least (0.019 m/s², 11.7 left-right changes per 100 m), smooth moves 0.021 and 13.2, Nav2's lattice smooth 0.025 and 14.2; Nav2's lattice smooth was closest to the path (0.23 m against 0.26). No win: the champion stays; smooth moves stay a trial. Its gain: no plan tighter than the car's lock (Nav2's lattice planned 2.61 m and 3.19 m with today's moves). The oscillation's cause is elsewhere (168) |
 | 178 | **Hybrid-A\* in our Rust planner** (Ben, 14 Nov: "Now"): a port of Nav2's, another `path` option in the league | 🟡 built (planner:=own planner_search:=hybrid). Sim, 15 Nov (the lot, 2 runs, Nav2's MPPI following, reversing on): 7/8 legs against our lattice's 8/8, 585 s against 393, sway 0.015 against 0.018 but 16.1 left-right changes per 100 m against 13.7; one turn back missed. A challenger; the lattice stays the champion |

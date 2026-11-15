@@ -209,6 +209,10 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 15 Nov | **The order**: the 0.4-rc1 list first (the sway, 170, 174, 182-185), then the whole-car design's gaps (the planner inside the road ahead's edges, the soft edge to pass, following at a gap, the things' critic), then 155 and 156 | Ben |
 | 15 Nov | **Lanelet2 in Rust** (our own reader, TODO 175) now, after the sway work | Ben |
 | 15 Nov | The old `wip/` branches (7 Nov): checked against `next`, anything useful taken, then archived | Ben |
+| 15 Nov | **Map correction stays `newest`**; `slow` (TODO 186) is a challenger: it won offline, not yet in the simulator | Ben's rule (5 Nov), applied at night |
+| 15 Nov | **The radar clears our costmap inside its view** where it sees nothing (TODO 193), so a thing taken away is forgotten | Ben's night orders |
+| 15 Nov | **32 lattice headings: no win**; 16 stays (TODO 190) | Ben's night orders |
+| 15 Nov | The fork's branches (`one-shape`, `review-13nov`, `setup-localization`, `whole-car`) merged into its `main`, then deleted; their last commits: 0f0a1094, b7ed1837, 566ef0c0, 726bff44 | Ben |
 
 ## Proposed in November: Ben's to decide
 
