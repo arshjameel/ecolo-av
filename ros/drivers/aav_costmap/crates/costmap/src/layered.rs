@@ -1,10 +1,15 @@
 //! Nav2's `LayeredCostmap`: the static map, then each obstacle layer, then the inflation,
 //! into one grid. Rolling (the local costmap: a window round the car, in odom) or fixed
 //! to the map (the global costmap, in map).
+//!
+//! A fixed costmap recomputes every cell only when its map arrives or it is cleared;
+//! otherwise only the cells its obstacle layers touched, grown by the inflation's reach
+//! (Nav2's `updateBounds` and `updateCosts`). A rolling one moves every update, so it is
+//! recomputed whole (a 200 x 200 window: well under a millisecond).
 
 use crate::cost::{FREE, NO_INFORMATION};
 use crate::footprint;
-use crate::grid::Grid;
+use crate::grid::{self, Bounds, Grid};
 use crate::inflation::Inflation;
 use crate::obstacle::{Observation, ObstacleLayer};
 use crate::static_layer::StaticMap;
@@ -39,6 +44,19 @@ pub struct Costmap {
     map: Option<StaticMap>,
     layers: Vec<ObstacleLayer>,
     inflation: Option<Inflation>,
+    /// The next update recomputes every cell (a new map, a clear, the first update).
+    whole: bool,
+}
+
+/// What an update changed in the grid.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Changed {
+    /// Nothing: the grid is as it was.
+    Nothing,
+    /// Only the cells in this rectangle.
+    Area(Bounds),
+    /// Any cell.
+    All,
 }
 
 impl Costmap {
@@ -69,6 +87,7 @@ impl Costmap {
             map: None,
             layers,
             inflation,
+            whole: true,
         };
         c.resize_layers();
         c
@@ -109,6 +128,7 @@ impl Costmap {
             self.resize_layers();
         }
         self.map = Some(map);
+        self.whole = true;
     }
 
     /// Has it a map (or needs none)?
@@ -123,6 +143,7 @@ impl Costmap {
             layer.grid.data.fill(layer.default);
         }
         self.master.data.fill(default(&self.settings));
+        self.whole = true;
     }
 
     fn resize_layers(&mut self) {
@@ -135,15 +156,16 @@ impl Costmap {
     /// this costmap's frame), then the master starts from nothing, the map is written in
     /// (`map_from_frame`: this frame's pose in the map frame; without it the map is left
     /// out), each obstacle layer takes `observations[layer][source]` (a list) and adds its grid,
-    /// and the inflation goes last.
+    /// and the inflation goes last. Returns what changed: a fixed costmap redoes only the
+    /// area its layers touched, grown by the inflation's reach.
     pub fn update(
         &mut self,
         robot: &Pose2,
         map_from_frame: Option<&Pose2>,
         observations: &[Vec<Vec<&Observation>>],
-    ) {
+    ) -> Changed {
         if !self.ready() {
-            return;
+            return Changed::Nothing;
         }
         if self.settings.rolling {
             // Nav2's getSizeInMetersX: (cells - 1 + 0.5) x resolution, half a cell short.
@@ -157,7 +179,28 @@ impl Costmap {
                 layer.grid.move_origin(x, y, layer.default);
             }
         }
+        let outline = footprint::placed(&self.settings.footprint, robot);
+        let mut touched = None;
+        for (i, layer) in self.layers.iter_mut().enumerate() {
+            let mut seen = observations.get(i).cloned().unwrap_or_default();
+            seen.resize(layer.sources.len(), Vec::new());
+            touched = grid::union(touched, layer.update(&seen, &outline));
+        }
+        if self.settings.rolling || self.whole {
+            self.whole = false;
+            self.compose_all(map_from_frame);
+            return Changed::All;
+        }
+        match touched {
+            Some(touched) => Changed::Area(self.compose_area(touched)),
+            None => Changed::Nothing,
+        }
+    }
+
+    /// Every cell: the map, each layer, then the inflation.
+    fn compose_all(&mut self, map_from_frame: Option<&Pose2>) {
         self.master.data.fill(default(&self.settings));
+        // Not static_map(): it would borrow all of self, the master too.
         if let Some(map) = self.map.as_ref().filter(|_| self.settings.static_layer) {
             if self.settings.rolling {
                 if let Some(t) = map_from_frame {
@@ -167,16 +210,45 @@ impl Costmap {
                 self.master.data.copy_from_slice(&map.grid.data);
             }
         }
-        let outline = footprint::placed(&self.settings.footprint, robot);
-        for (i, layer) in self.layers.iter_mut().enumerate() {
-            let mut seen = observations.get(i).cloned().unwrap_or_default();
-            seen.resize(layer.sources.len(), Vec::new());
-            layer.update(&seen, &outline);
+        for layer in &self.layers {
             layer.combine_into(&mut self.master);
         }
         if let Some(inflation) = &self.inflation {
             inflation.apply(&mut self.master);
         }
+    }
+
+    /// A fixed costmap's cells near `touched` only, as compose_all gives them: the touched
+    /// cells grown by the inflation's reach can change, and they are worked out from the
+    /// cells a reach further out (an obstacle further away inflates none of them).
+    /// Returns the cells written.
+    fn compose_area(&mut self, touched: Bounds) -> Bounds {
+        let (w, h) = (self.master.width, self.master.height);
+        // In cells, and one more: Inflation::apply's cut-off is cell_distance(radius).
+        let reach = self
+            .inflation
+            .as_ref()
+            .map_or(0, |i| self.master.cell_distance(i.inflation_radius) + 1);
+        let changed = touched.grown(reach, w, h);
+        let read = changed.grown(reach, w, h);
+        let mut part = self.master.crop(read);
+        match self.static_map() {
+            Some(map) => part.data.copy_from_slice(&map.grid.crop(read).data),
+            None => part.data.fill(default(&self.settings)),
+        }
+        for layer in &self.layers {
+            layer.combine_area(&mut part, read);
+        }
+        if let Some(inflation) = &self.inflation {
+            inflation.apply(&mut part);
+        }
+        self.master.paste(&part, (read.x0, read.y0), changed);
+        changed
+    }
+
+    /// The map, if the static layer is on and it has come.
+    fn static_map(&self) -> Option<&StaticMap> {
+        self.map.as_ref().filter(|_| self.settings.static_layer)
     }
 }
 
@@ -185,5 +257,134 @@ fn default(s: &Settings) -> u8 {
         NO_INFORMATION
     } else {
         FREE
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::obstacle::{scan_points, Source};
+
+    /// A fixed costmap on a 60 m x 40 m map at 0.25 m (walls, unknown corners), the global
+    /// costmap's inflation, and a lidar layer.
+    fn global(track_unknown: bool) -> Costmap {
+        let (w, h) = (240usize, 160usize);
+        let values: Vec<i8> = (0..w * h)
+            .map(|i| {
+                let (x, y) = (i % w, i / w);
+                if x < 20 && y < 20 {
+                    -1
+                } else if y == 80 && !(100..140).contains(&x) || x == 60 && y > 100 {
+                    100
+                } else {
+                    0
+                }
+            })
+            .collect();
+        let settings = Settings {
+            rolling: false,
+            width: 0.0,
+            height: 0.0,
+            resolution: 0.25,
+            track_unknown,
+            footprint: footprint::padded(
+                &[(1.8, 0.5), (1.8, -0.5), (-0.2, -0.5), (-0.2, 0.5)],
+                0.05,
+            ),
+            inflation: Some((3.0, 1.0)),
+            static_layer: true,
+        };
+        let empty = Grid::new((0.0, 0.0), 0.25, 0, 0, FREE);
+        let source = Source {
+            clearing: true,
+            min_obstacle_height: -0.5,
+            max_obstacle_height: 0.5,
+            obstacle_max_range: 12.0,
+            raytrace_max_range: 15.0,
+            inf_is_valid: true,
+            ..Source::named("lidar")
+        };
+        let layer = ObstacleLayer::new("lidar_layer", vec![source], &empty, track_unknown);
+        let mut c = Costmap::new(settings, vec![layer]);
+        let map = StaticMap::from_occupancy((-30.0, -20.0), 0.25, w, h, &values, track_unknown);
+        c.set_map(map.expect("the map's size and data agree"));
+        c
+    }
+
+    /// A post 5 m ahead of `pose` (or none), the scan's other rays inf: in the map frame.
+    fn seen(pose: &Pose2, post: bool) -> Observation {
+        let n = 360;
+        let step = std::f64::consts::TAU / n as f64;
+        let ranges: Vec<f32> = (0..n)
+            .map(|i| {
+                if post && (178..182).contains(&i) {
+                    5.0
+                } else {
+                    f32::INFINITY
+                }
+            })
+            .collect();
+        let (s, c) = pose.yaw.sin_cos();
+        let points = scan_points(-std::f64::consts::PI, step, 0.2, 30.0, &ranges, true)
+            .into_iter()
+            .map(|[x, y, z]| [pose.x + c * x - s * y, pose.y + s * x + c * y, z])
+            .collect();
+        Observation {
+            origin: [pose.x, pose.y, 0.0],
+            points,
+        }
+    }
+
+    #[test]
+    fn an_area_update_gives_the_same_cells_as_a_whole_one() {
+        for track_unknown in [false, true] {
+            let mut c = global(track_unknown);
+            assert_eq!(c.update(&Pose2::IDENTITY, None, &[]), Changed::All);
+            // The car drives along the map, a post ahead every other scan, its marks
+            // staying where no ray clears them.
+            for k in 0..12 {
+                let pose = Pose2::new(
+                    -20.0 + 3.5 * k as f64,
+                    -5.0 + 0.4 * k as f64,
+                    0.1 * k as f64,
+                );
+                let obs = seen(&pose, k % 2 == 0);
+                let changed = c.update(&pose, None, &[vec![vec![&obs]]]);
+                assert!(matches!(changed, Changed::Area(_)), "{changed:?}");
+                let mut whole = c.clone();
+                whole.compose_all(None);
+                assert_eq!(
+                    c.grid(),
+                    whole.grid(),
+                    "update {k}, track_unknown {track_unknown}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_fixed_costmap_without_sensors_is_worked_out_once() {
+        let mut c = global(true);
+        c.layers.clear();
+        assert_eq!(c.update(&Pose2::IDENTITY, None, &[]), Changed::All);
+        let first = c.grid().clone();
+        assert_eq!(c.update(&Pose2::IDENTITY, None, &[]), Changed::Nothing);
+        c.clear();
+        assert_eq!(c.update(&Pose2::IDENTITY, None, &[]), Changed::All);
+        assert_eq!(c.grid(), &first);
+    }
+
+    #[test]
+    fn the_area_reaches_the_inflation_round_what_was_touched() {
+        let mut c = global(false);
+        c.update(&Pose2::IDENTITY, None, &[]);
+        let pose = Pose2::new(0.0, -10.0, 0.0);
+        let Changed::Area(b) = c.update(&pose, None, &[vec![vec![&seen(&pose, true)]]]) else {
+            panic!("an area was expected");
+        };
+        // The rays clear 15 m round the car, plus the 3 m inflation: well short of the map.
+        let cells = |m: f64| (m / 0.25) as usize;
+        assert!(b.width() >= cells(2.0 * 18.0) && b.width() < 240, "{b:?}");
+        assert!(b.height() < 160, "{b:?}");
     }
 }

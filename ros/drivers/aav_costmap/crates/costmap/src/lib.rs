@@ -26,9 +26,9 @@ pub mod static_layer;
 pub mod transform;
 
 pub use age::{Arrival, PoseHistory, Stale};
-pub use grid::Grid;
+pub use grid::{Bounds, Grid};
 pub use inflation::Inflation;
-pub use layered::{Costmap, Settings};
+pub use layered::{Changed, Costmap, Settings};
 pub use obstacle::{Observation, ObstacleLayer, Source};
 pub use static_layer::StaticMap;
 pub use transform::{Pose2, Transform3};
