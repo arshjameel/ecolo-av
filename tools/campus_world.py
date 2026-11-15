@@ -39,6 +39,7 @@ import hashlib
 import math
 from pathlib import Path
 import random
+import shutil
 import subprocess
 import sys
 from xml.etree import ElementTree
@@ -1099,6 +1100,17 @@ def main():
         + yaml.safe_dump({'roads': lanes}, default_flow_style=None))
     print(f'{args.out}: {report}')
     print(f'start at {start}')
+    chunk_map(args.out / 'campus.yaml', args.out / 'chunks')
+
+
+def chunk_map(map_yaml: Path, out: Path):
+    """Cut the map into 64 m chunk files (map-chunks' chunk-map, TODO 175); skip without cargo."""
+    crate = ROOT / 'ros' / 'bringup' / 'aav_description' / 'map-chunks'
+    if shutil.which('cargo') is None:
+        print('chunks: skipped (no cargo here); the whole map is written')
+        return
+    subprocess.run(['cargo', 'run', '-q', '--release', '--locked', '--bin', 'chunk-map', '--',
+                    str(map_yaml), str(out)], cwd=crate, check=True)
 
 
 if __name__ == '__main__':
