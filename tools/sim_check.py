@@ -32,6 +32,9 @@ Sim check: start Gazebo's road world headless, then test the car's whole graph i
     pixi run sim-check --navigator own     (every run with our own navigator, navigator:=own,
                                             aav_navigator; with --planner own --costmap own
                                             --tracker mppi_lag, no Nav2 server navigates)
+    pixi run sim-check --stack ours        (every run with a named stack from stacks.yaml,
+                                            stack:=, docs/league.md: stock, ours, best,
+                                            car; a flag above still wins over it)
     pixi run sim-check --legs-only --lidar-obstacle --plan-around
                                            (only the extra runs named, not the road
                                             world's first run: the costmap's scoring)
@@ -2723,6 +2726,21 @@ def main():
             if flag_name == '--navigator':
                 NAVIGATOR = args[at + 1]
             chosen[flag_name[2:]] = args[at + 1]
+    if '--stack' in args:
+        # A named stack from stacks.yaml (docs/league.md): the launch sets its switches, and
+        # a switch a run or a flag above sets by hand still wins, as on the command line.
+        from aav_description import stacks
+        league = stacks.load()
+        at = args.index('--stack')
+        if at + 1 >= len(args) or args[at + 1] not in stacks.names(league):
+            print(f'--stack takes {", ".join(stacks.names(league))}', file=sys.stderr)
+            return 2
+        EVERY_RUN.append(f'stack:={args[at + 1]}')
+        picked = stacks.switches(league, args[at + 1])
+        for level in ('costmap', 'tracker', 'navigator', 'planner'):
+            chosen.setdefault(level, picked.get(level))
+        COSTMAP = chosen['costmap'] or COSTMAP
+        NAVIGATOR = chosen['navigator'] or NAVIGATOR
     ALL_OURS = vehicle.all_ours(chosen.get('navigator'), chosen.get('planner'),
                                 chosen.get('costmap'), chosen.get('tracker'))
     log = os.environ.get('AAV_SIM_LOG', '/tmp/aav-sim-check.log')
