@@ -113,8 +113,8 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           most 0.1 m/s and 1 degree/s at the car (the nodes'
                           map_correction_* rates). newest (the default): by the newest
                           map -> odom. Given to the follower as its bool map_correction.
-                          slow is not the default: in sim-check --obstacle the car never
-                          drove on after the box was taken away (15 Nov)
+                          slow is a challenger: it won offline, not yet in the
+                          simulator (15 Nov)
   amcl:=true              stock nav2_amcl on the map and /sensors/lidar/scan (so only with
                           lidar:=true), from amcl_x, amcl_y, amcl_yaw (map frame), with its
                           own lifecycle manager. tf_broadcast false: ekf_global keeps
