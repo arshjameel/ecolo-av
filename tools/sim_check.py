@@ -496,13 +496,18 @@ def remove_model(name='obstacle'):
                        f'{{entity: "{name}"}}')
 
 
+SERVICE_SAID = ['']     # the last service call's answer, for a failure's message
+
+
 def ros_service(service, kind, request):
     """Call a ROS service by `ros2 service call`; True if its Result says RESULT_OK (1)."""
     try:
         done = subprocess.run(['ros2', 'service', 'call', service, kind, request],
                               capture_output=True, text=True, timeout=60)
     except subprocess.TimeoutExpired:
+        SERVICE_SAID[0] = f'{service}: no answer in 60 s'
         return False
+    SERVICE_SAID[0] = ' '.join((done.stdout + done.stderr).split())[-300:]
     return done.returncode == 0 and re.search(r'result=1\b', done.stdout) is not None
 
 
@@ -1321,7 +1326,7 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
             wx = x0 + along * c - side * offset * s
             wy = y0 + along * s + side * offset * c
             if not place_model(WALL, wx, wy, h, name=name):
-                result('three-point turn', False, f'could not place {name}')
+                result('three-point turn', False, f'could not place {name}: {SERVICE_SAID[0]}')
                 for placed in names:
                     remove_model(placed)
                 return
@@ -2560,15 +2565,15 @@ def walk_model(name, x, y, yaw, vx, vy):
         f'w: {math.cos(yaw / 2.0)}}}}}, twist: {{linear: {{x: {vx}, y: {vy}}}}}}}}}')
 
 
-def check_moving_thing(probe, ahead=14.0, side=5.0, walk=1.0, goal=35.0):
+def check_moving_thing(probe, ahead=20.0, side=4.0, walk=0.8, goal=35.0, near=15.0):
     """
     Check the car lets a person cross: `ahead` m before the bumper, from `side` m right.
 
-    They walk left at `walk` m/s.
-    The car drives to a goal `goal` m on as they start. The behaviour must slow for them
-    (APPROACH(obstacle): a moving thing in the lane, TODO 170), the car keep at least
-    0.3 m from them, and reach the goal once they are by. Our simulator only: Gazebo's
-    models don't walk.
+    They start walking left at `walk` m/s once the car's bumper is `near` m from their
+    path, so they cross in front of it whatever its speed. The car drives to a goal `goal`
+    m on. The behaviour must slow for them (APPROACH(obstacle) or STOP(obstacle): a moving
+    thing in the lane, TODO 170), the car keep at least 0.3 m from them, and reach the
+    goal once they are by. Our simulator only: Gazebo's models don't walk.
     """
     if SIMULATOR == 'gazebo':
         result('moving thing', None, "skipped: Gazebo's placed models don't walk")
@@ -2582,27 +2587,35 @@ def check_moving_thing(probe, ahead=14.0, side=5.0, walk=1.0, goal=35.0):
     px, py = x0 + along * c + side * s, y0 + along * s - side * c     # to the right
     vx, vy = -walk * s, walk * c                                         # walking left
     if not place_model(POST, px, py, h, name='walker'):
-        result('moving thing', False, 'could not place the walker')
+        result('moving thing', False, f'could not place the walker: {SERVICE_SAID[0]}')
         return
     since = probe.now()
-    if not walk_model('walker', px, py, h, vx, vy):
-        remove_model('walker')
-        result('moving thing', False, 'the simulator would not walk the walker')
-        return
-    t0 = seconds(probe.truth.header.stamp)
     start = len(probe.track)
     done = probe.go_to(x0 + goal * c, y0 + goal * s, h)
-    if done is not None:
-        probe.spin_for(240.0, done.done)
-        if not done.done():
-            probe.goal.cancel_goal_async()
-    remove_model('walker')
     if done is None:
+        remove_model('walker')
         result('moving thing', False, 'no navigator, or it refused the goal')
+        return
+
+    def bumper_near():
+        x, y = probe.xy(probe.truth)
+        return (x - x0) * c + (y - y0) * s + front >= along - near
+
+    probe.spin_for(120.0, lambda: bumper_near() or done.done())
+    t0 = seconds(probe.truth.header.stamp)
+    walking = walk_model('walker', px, py, h, vx, vy)
+    if walking:
+        probe.spin_for(240.0, done.done)
+    if not done.done():
+        probe.goal.cancel_goal_async()
+    remove_model('walker')
+    if not walking:
+        result('moving thing', False, f'the simulator would not walk it: {SERVICE_SAID[0]}')
         return
     gaps = []
     for t, x, y, yaw, _ in probe.track[start:]:
-        wx, wy = px + vx * (t - t0), py + vy * (t - t0)
+        k_t = max(0.0, t - t0)                   # standing at its start until it walks
+        wx, wy = px + vx * k_t, py + vy * k_t
         ux, uy = math.cos(yaw), math.sin(yaw)
         k = max(-body['rear_overhang'], min(front, (wx - x) * ux + (wy - y) * uy))
         # The car's centre line against the post's centre: less half the car, half the post.
