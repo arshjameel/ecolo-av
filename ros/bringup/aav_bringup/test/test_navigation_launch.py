@@ -667,3 +667,38 @@ def test_the_sim_and_the_car_pass_voxels_on():
     # No lidar on the car: no cubes either, rather than a launch that refuses.
     car = sent_to_navigation(CAR, machine='all', voxels='true', lidar='false')
     assert car['voxels'] == 'false'
+
+
+def test_the_python_voxels_unless_rust_is_asked_for():
+    for args in ({'voxels': 'true'}, {'screen_cubes': 'true'}):
+        python = nav_nodes(lidar='true', **args)['voxels']
+        assert python._Node__package == 'aav_voxels'
+        assert 'lidar_xyz' not in given(python)       # it reads vehicle.yaml itself
+        rust = nav_nodes(lidar='true', voxels_impl='rust', **args)['voxels']
+        assert (rust._Node__package, rust._Node__node_executable) == ('aav_voxels_rs', 'voxels')
+        # The same nav2.yaml block, and the car's numbers the Python works out for itself.
+        assert any(isinstance(x, ParameterFile) for x in rust._Node__parameters)
+        cfg = vehicle.load()
+        p = given(rust)
+        assert list(p['lidar_xyz']) == pytest.approx(cfg['sensors']['lidar_link']['xyz'])
+        assert list(p['lidar_rpy']) == pytest.approx(cfg['sensors']['lidar_link']['rpy'])
+        v = cfg['vehicle']
+        back, front, half = p['body']
+        # aav_lidar scan.body_box: the outline, 0.3 m behind and beside, 0.1 m ahead.
+        assert back == pytest.approx(-v['body']['rear_overhang'] - 0.3)
+        assert front == pytest.approx(v['body']['length'] - v['body']['rear_overhang'] + 0.1)
+        assert half == pytest.approx(v['body']['width'] / 2 + 0.3)
+    assert 'voxels' not in nav_nodes(lidar='true', voxels_impl='rust')   # no cubes asked for
+    with pytest.raises(ValueError, match='voxels_impl'):
+        nav_nodes(lidar='true', voxels='true', voxels_impl='c++')
+
+
+def test_the_sim_and_the_car_pass_voxels_impl_on():
+    assert sent_to_navigation(SIM)['voxels_impl'] == 'python'
+    assert sent_to_navigation(SIM, world='road', voxels='true',
+                              voxels_impl='Rust')['voxels_impl'] == 'rust'
+    assert sent_to_navigation(CAR, machine='all')['voxels_impl'] == 'python'
+    assert sent_to_navigation(CAR, machine='all', voxels='true',
+                              voxels_impl='rust')['voxels_impl'] == 'rust'
+    with pytest.raises(ValueError, match='voxels_impl'):
+        sent_to_navigation(SIM, voxels_impl='go')

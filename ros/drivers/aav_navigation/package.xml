@@ -30,6 +30,7 @@
   <exec_depend>aav_lidar</exec_depend>
   <exec_depend>aav_voxels</exec_depend>
   <exec_depend>aav_things</exec_depend>
+  <exec_depend>aav_voxels_rs</exec_depend>
   <exec_depend>aav_ghost</exec_depend>
   <exec_depend>aav_safety</exec_depend>
   <exec_depend>aav_track</exec_depend>

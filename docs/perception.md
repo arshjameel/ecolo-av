@@ -69,6 +69,7 @@ a person can still look at it in RViz or Lichtblick.
 | `aav_lane_geometry` | 2025-26 `Lane_Detection_ROS2` | lane keeping's steering half, as a driver on `/drivers/ai/cmd_vel` | [[works]] on the bench |
 | `aav_lidar` | ours | the roof lidar's points into a scan for Nav2 ([below](#the-roof-lidar)) | [[works]] against a fake lidar |
 | `aav_voxels` | ours | a trial (`voxels:=true`): the lidar's cloud as 0.25 m cubes over the fitted road, for Nav2 instead of the scan ([design](designs/2026-10-30_voxels.md)) | a trial, off by default |
+| `aav_voxels_rs` | ours (Rust): a port of `aav_voxels`' Python node | the lidar as 0.25 m cubes over the fitted road, the same as the Python's, 8 times faster (`voxels_impl:=rust`) | [[works]] against the Python's recorded clouds |
 | `aav_sensors` `cameras.launch.py` | 2024-25 `cameras` (the calibrations) | `usb_cam` with `left.ini` and `right.ini`: for a USB camera only, not the front ribbon cameras | [[untested]] Linux only |
 
 ## Stop signs

@@ -385,6 +385,21 @@ def check_smoother(smoother):
     return name
 
 
+# Which voxels node cuts the lidar into cubes (voxels:= or screen_cubes:=, voxels_impl:=):
+# python (aav_voxels, the default) or rust (aav_voxels_rs, its port: the same node name,
+# topics and answers, about 8 times faster). Each one's package.
+VOXELS_IMPLS = {'python': 'aav_voxels', 'rust': 'aav_voxels_rs'}
+DEFAULT_VOXELS_IMPL = 'python'
+
+
+def check_voxels_impl(impl):
+    """Return the voxels node's language (lower case), or raise ValueError saying what to pick."""
+    name = str(impl).strip().lower()
+    if name not in VOXELS_IMPLS:
+        raise ValueError(f'voxels_impl:={impl}: pick one of {", ".join(VOXELS_IMPLS)}')
+    return name
+
+
 def smoother_params(cfg, ego, vehicle_yaml):
     """
     Return car_smoother's car parameters (smoother:=own), beside nav2.yaml's own block.

@@ -34,6 +34,7 @@ Launch: `ros2 launch aav_navigation navigation.launch.py [args]`
 | `radar` | false | the local costmap's obstacle layer reads `/sensors/radar/points` |
 | `lidar` | false | `lidar_scan` (aav_lidar) flattens `/sensors/lidar/points` to `/sensors/lidar/scan`, for the costmap and collision_monitor |
 | `voxels` | false | with `lidar`: a trial, `aav_voxels`' `voxels` cuts the cloud into 0.25 m cubes; the costmap's lidar_layer and collision_monitor read those instead of the scan, and `lidar_scan` runs only for `amcl` ([design](../../../docs/designs/2026-10-30_voxels.md)) |
+| `voxels_impl` | `python` | with `voxels` or `screen_cubes`: `python` (`aav_voxels`) or `rust` (`aav_voxels_rs`: the same node, topics and cubes; the launch file passes it `vehicle.yaml`'s lidar mount and the car's outline) |
 | `collision_monitor` | empty | empty: on wherever radar, lidar, ghost or camera guard runs |
 | `camera_obstacles` | false | the costmap's camera layer reads `/perception/camera_obstacles` (off until Q22) |
 | `camera_guard` | false | with `camera_obstacles`: collision_monitor stops for them too |
@@ -66,7 +67,7 @@ Nodes started:
 | `velocity_smoother` | `cmd_vel_nav` -> `/drivers/nav/cmd_vel`, or -> `/control/cmd_vel_smoothed` |
 | `collision_monitor` | `/control/cmd_vel_smoothed` -> `/drivers/nav/cmd_vel`; publishes `/safety/collision_monitor/state`, `stop_zone`, `collision_points_marker` |
 | `lidar_scan`, `ghost_obstacle` | with `lidar:=true`, `ghost:=true` |
-| `voxels` (`aav_voxels`) | with `voxels:=true` |
+| `voxels` (`aav_voxels`, or `aav_voxels_rs` with `voxels_impl:=rust`) | with `voxels:=true` or `screen_cubes:=true` |
 | `track` (`aav_track`), or `mppi_lag` (`aav_mppi_lag`) with `tracker:=mppi_lag` | with `tracker:=` on: `follow_path` -> `cmd_vel_nav`, in controller_server's place |
 | `amcl`, `lifecycle_manager_localization` | with `amcl:=true`: AMCL and its own lifecycle manager; with `amcl_map:=`, also `amcl_map_server` |
 | `lifecycle_manager_navigation` | brings the servers up |

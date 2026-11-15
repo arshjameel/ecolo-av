@@ -335,6 +335,12 @@ a person can still look at it in RViz or Lichtblick.</p>
 <td>a trial, off by default</td>
 </tr>
 <tr>
+<td><code>aav_voxels_rs</code></td>
+<td>ours (Rust): a port of <code>aav_voxels</code>' Python node</td>
+<td>the lidar as 0.25 m cubes over the fitted road, the same as the Python's, 8 times faster (<code>voxels_impl:=rust</code>)</td>
+<td><span class="badge b-works">works</span> against the Python's recorded clouds</td>
+</tr>
+<tr>
 <td><code>aav_sensors</code> <code>cameras.launch.py</code></td>
 <td>2024-25 <code>cameras</code> (the calibrations)</td>
 <td><code>usb_cam</code> with <code>left.ini</code> and <code>right.ini</code>: for a USB camera only, not the front ribbon cameras</td>

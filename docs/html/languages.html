@@ -167,6 +167,11 @@ programs only meet through messages.</p></div>
 <td>A rewrite of the 2025-26 C++ node, which it replaced on 15 Oct</td>
 </tr>
 <tr>
+<td>The lidar's cubes, <code>aav_voxels_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>A port of <code>aav_voxels</code>' Python node (TODO 185, 15 Nov): the same cubes, 8 times faster. Picked with <code>voxels_impl:=rust</code>; the Python stays the default until the Rust one has run on the car</td>
+</tr>
+<tr>
 <td>The CAN bridge, <code>aav_spine_bridge</code></td>
 <td>Rust (<code>rclrs</code>)</td>
 <td>A port of <code>aav_spine</code>'s Python node (T1.8), on the firmware's own CAN code. The default since 23 Oct; the Python one stays until the Rust one has run on the car (no record of that yet)</td>

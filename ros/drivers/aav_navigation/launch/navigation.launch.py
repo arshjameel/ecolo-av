@@ -3,7 +3,7 @@ Nav2 as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out to tw
 
   ros2 launch aav_navigation navigation.launch.py [map:=<path to map yaml>]
       [radar:=false] [lidar:=false] [collision_monitor:=<radar or lidar>]
-      [camera_obstacles:=false] [ghost:=false] [voxels:=false]
+      [camera_obstacles:=false] [ghost:=false] [voxels:=false] [voxels_impl:=python]
       [reversing:=false] [max_speed:=] [controller:=mppi] [planner:=lattice]
       [diffusion_model:=] [diffusion_provider:=CPUExecutionProvider] [diffusion_record:=]
       [diffusion_python:=] [diffusion_smoothing:=gear]
@@ -117,6 +117,9 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           local costmap's lidar_layer and collision_monitor read those
                           instead of /sensors/lidar/scan. lidar_scan then runs only for
                           amcl:=true (docs/designs/2026-10-30_voxels.md)
+  voxels_impl:=rust       (with voxels:=true or screen_cubes:=true) the Rust voxels node
+                          (aav_voxels_rs) in the Python one's place: the same name, topics
+                          and answers, about 8 times faster. python (aav_voxels): the default
   behaviour:=true         aav_behaviour's behaviour node (a trial, docs/stopping.md): the
                           behaviour states, and a speed cap on Nav2 from the stopping law for
                           a stop sign, an obstacle in the lane, the fence and the goal.
@@ -181,6 +184,7 @@ import os
 import tempfile
 
 from aav_description import vehicle
+from aav_lidar.scan import body_box
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.conditions import IfCondition
@@ -199,6 +203,19 @@ LOCAL = 'local_costmap.local_costmap.ros__parameters.'
 
 def flag(context, name):
     return LaunchConfiguration(name).perform(context).lower() == 'true'
+
+
+def voxels_car(cfg):
+    """
+    Return the Rust voxels node's car parameters, from vehicle.yaml (cfg: vehicle.load()).
+
+    The Python node reads them itself: where the lidar sits (lidar_link), and the car's own
+    outline, whose points never count (aav_lidar scan.body_box: x from, x to, half width).
+    """
+    lidar = cfg['sensors']['lidar_link']
+    return {'lidar_xyz': [float(x) for x in lidar['xyz']],
+            'lidar_rpy': [float(x) for x in lidar['rpy']],
+            'body': [float(x) for x in body_box(vehicle.footprint_points(cfg['vehicle']))]}
 
 
 def tuned_copy(source, v, reversing, max_speed, radar, lidar, ghost=False,
@@ -293,6 +310,7 @@ def nodes(context):
     amcl = flag(context, 'amcl')
     voxels = flag(context, 'voxels')
     screen_cubes = flag(context, 'screen_cubes')
+    voxels_impl = vehicle.check_voxels_impl(LaunchConfiguration('voxels_impl').perform(context))
     things = flag(context, 'things')
     if (voxels or screen_cubes or things) and not lidar:
         raise ValueError('voxels:=true (and things:=true) needs lidar:=true: the cubes come '
@@ -469,9 +487,12 @@ def nodes(context):
         # The cubes, for the costmap and collision_monitor (voxels:=true), or only for the
         # developer window (screen_cubes:=true) or the things (things:=true): Nav2 then
         # stays on the flat scan. Not a lifecycle node.
-        actions.append(Node(package='aav_voxels', executable='voxels', name='voxels',
-                            output='screen',
-                            parameters=[params, {'use_sim_time': use_sim_time}]))
+        # voxels_impl:=rust: the Rust port, the same name and topics; it reads no
+        # vehicle.yaml, so the car's numbers come with it.
+        car = voxels_car(cfg) if voxels_impl == 'rust' else {}
+        actions.append(Node(package=vehicle.VOXELS_IMPLS[voxels_impl], executable='voxels',
+                            name='voxels', output='screen',
+                            parameters=[params, {'use_sim_time': use_sim_time, **car}]))
     if things:
         # The cubes as things, on /world/things (aav_things). Not a lifecycle node; reads
         # nothing of Nav2's, and nothing of Nav2's reads it yet.
@@ -692,6 +713,10 @@ def generate_launch_description():
                               description='true (with lidar:=true): the trial, aav_voxels: '
                                           "the costmap's lidar_layer and collision_monitor "
                                           'read 0.25 m cubes instead of the flat scan'),
+        DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
+                              description='python (aav_voxels) or rust (aav_voxels_rs, the '
+                                          'same node in Rust): which voxels node runs, with '
+                                          'voxels:=true or screen_cubes:=true'),
         DeclareLaunchArgument('max_speed', default_value='',
                               description="m/s: Nav2's top speed, if not nav2.yaml's 1.0 "
                                           '(sim.launch.py sim_speed:=)'),

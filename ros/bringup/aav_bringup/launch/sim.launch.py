@@ -11,7 +11,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [payload:=0] [adaptive_brake:=false]
       [reversing:=true] [controller:=] [planner:=] [tracker:=] [costmap:=] [navigator:=]
       [smoother:=] [behaviour:=]
-      [amcl:=false] [voxels:=false]
+      [amcl:=false] [voxels:=false] [voxels_impl:=python]
       [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
       [kiss_ekf:=false]
       [plan_around:=true] [things:=false]
@@ -131,6 +131,8 @@ bench's argument names:
   voxels:=true        Nav2's local costmap and collision_monitor read the lidar as 0.25 m
                       cubes (aav_voxels, a trial: docs/designs/2026-10-30_voxels.md)
                       instead of the flat scan; only with the lidar
+  voxels_impl:=rust   the Rust voxels node (aav_voxels_rs) in the Python one's place, for
+                      voxels:=true or screen_cubes:=true: the same topics and answers
   ndt:=true           NDT on the saved lidar map (aav_ndt, Rust), scored only, never TF
                       (docs/designs/2026-10-29_ndt.md): only in world:=test_lot with the
                       lidar, from the start pose, and only once ndt_map (pixi run ndt-map
@@ -398,6 +400,7 @@ def launch_setup(context):
                                radar=radar, lidar=lidar, ghost=flag['ghost'],
                                voxels=flag['voxels'],
                                screen_cubes=flag['screen_cubes'],
+                               voxels_impl=vehicle.check_voxels_impl(arg('voxels_impl')),
                                full_costmap=world != worlds.CAMPUS,
                                cube_floor=(worlds.CAMPUS_CUBE_FLOOR
                                            if world == worlds.CAMPUS and not flag['voxels']
@@ -659,6 +662,9 @@ def generate_launch_description():
         DeclareLaunchArgument('voxels', default_value='false',
                               description='true: Nav2 reads the lidar as 0.25 m cubes '
                                           '(aav_voxels, a trial) instead of the flat scan'),
+        DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
+                              description='python or rust: which voxels node cuts the '
+                                          'cubes (aav_voxels, or aav_voxels_rs)'),
         DeclareLaunchArgument('ghost', default_value='false',
                               description="a pretend person in Nav2's view (aav_ghost); "
                                           'place it with pixi run ghost ahead 10'),

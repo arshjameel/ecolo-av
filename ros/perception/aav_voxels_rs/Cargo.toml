@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+# voxels: the road fit and the cubes, the lidar's mount, and PointCloud2's bytes. No ROS:
+#   cargo test -p voxels
+#   cargo run --release -p voxels --example timing -- <cloud.f32>   (ms per cloud)
+# voxels-node: the ROS node (rclrs), binary voxels. colcon builds it through CMakeLists.txt.
+members = ["crates/voxels", "crates/voxels-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# The parity tests read whole clouds: build them optimised.
+[profile.test]
+opt-level = 3

@@ -60,6 +60,7 @@ each one's README has its topics.
 | `aav_radar_clusters` | perception | radar clustering (DBSCAN), with a box round each object (Rust) | [[works]] on the bench and in Gazebo | new: a rewrite of the 2025-26 `Nav_Radar` C++ node |
 | `aav_lidar` | perception | `lidar_scan`: the roof lidar's cloud as a 2D scan for Nav2 | [[works]] in Gazebo and the bench | new |
 | `aav_voxels` | perception | a trial beside `aav_lidar` (`voxels:=true`): the lidar's cloud as 0.25 m cubes for Nav2 | built 30 Oct; a trial, off by default | new |
+| `aav_voxels_rs` | perception | `voxels` in Rust: the lidar as 0.25 m cubes, a drop-in for `aav_voxels`' (`voxels_impl:=rust`) | [[works]] against the Python's answers | new: a port of `aav_voxels` |
 | `aav_lane_finder` | perception | the lane lines in the camera's pictures, as `/perception/lane/geometry` (OpenCV) | [[works]] on the bench | new |
 | `aav_lane_geometry` | perception | lane keeping: a driver on `/drivers/ai/cmd_vel` | [[works]] on the bench, with `aav_lane_finder` | 2025-26 `Lane_Detection_ROS2` |
 | `aav_hud` | hud | the in-car screens in Rust (raylib): the HUD (node `hud`) and the map window (node `map`) | [[works]] on a Mac: `--demo`, fed topics, bench mode. [[untested]] on a Pi and on the car | new |

@@ -1,0 +1,8 @@
+[package]
+name = "voxels"
+description = "The roof lidar's cloud as coarse cubes over a fitted road, in plain Rust (no ROS): aav_voxels' cubes.py, ported"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]

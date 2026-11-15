@@ -27,6 +27,7 @@ The real car. One launch file for every machine; a machine file picks the parts.
       [lidar:=true]       (false: no lidar anywhere, whatever the machine file says)
       [voxels:=false]     (true: Nav2 reads the lidar as 0.25 m cubes, aav_voxels, a trial
                            not yet tried on the car: docs/designs/2026-10-30_voxels.md)
+      [voxels_impl:=python] (rust: the same cubes from aav_voxels_rs, the Rust port)
       [ghost:=false]      (true: a pretend person in Nav2's view, where Nav2 runs, for
                            stopping tests with nothing real to hit: pixi run ghost ahead 10)
       [geofence_radius:=30.0] [geofence_site:=] [stands:=false]
@@ -574,6 +575,7 @@ def launch_setup(context):
                                map=arg('map') or empty_map, radar=on('radar'), planner=planner,
                                lidar=on('lidar'), ghost=flag('ghost'),
                                voxels=bool(flag('voxels') and on('lidar')),
+                               voxels_impl=vehicle.check_voxels_impl(arg('voxels_impl')),
                                collision_monitor=(on('radar') or on('lidar') or flag('ghost')
                                                   or rear_camera),
                                camera_obstacles=on('camera_obstacles'),
@@ -663,6 +665,9 @@ def generate_launch_description():
         DeclareLaunchArgument('voxels', default_value='false',
                               description='true (with the lidar): Nav2 reads the lidar as '
                                           '0.25 m cubes (aav_voxels) instead of the flat scan'),
+        DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
+                              description='python or rust: which voxels node cuts the '
+                                          'cubes (aav_voxels, or aav_voxels_rs)'),
         DeclareLaunchArgument('ghost', default_value='false',
                               description="true: a pretend person in Nav2's view, placed "
                                           'with pixi run ghost ahead 10 (it only adds)'),

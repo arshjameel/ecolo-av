@@ -42,6 +42,8 @@ if command -v cargo >/dev/null; then
   (cd ros/sources/aav_imu_yahboom && cargo test -q -p yahboom-protocol)
   echo "== ros/perception/aav_radar_clusters: DBSCAN, the boxes, the C++ node's answers"
   (cd ros/perception/aav_radar_clusters && cargo test -q --locked -p radar-clustering)
+  echo "== ros/perception/aav_voxels_rs: the cubes in Rust, the Python's answers"
+  (cd ros/perception/aav_voxels_rs && cargo test -q --locked -p voxels)
   echo "== ros/can_bridge/aav_spine_bridge: the Rust CAN bridge's logic, the shared CAN vectors"
   (cd ros/can_bridge/aav_spine_bridge && cargo test -q --locked -p spine-bridge)
   echo "== ros/bringup/aav_description/car-model: the car model's Rust twin, the shared vectors"

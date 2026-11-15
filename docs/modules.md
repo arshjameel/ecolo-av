@@ -35,7 +35,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | [drivers](#drivers) | `aav_teleop`, `aav_actuator_tests`, `aav_scripted`, `aav_drive_to_point`, `aav_language`, `aav_navigation`; `aav_rc`, `aav_routes`, `aav_track`, `aav_mppi_lag`, `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother`, `aav_diffusion_planner`, `aav_behaviour` ([one line](#more-packages-see-their-readmes)) |
 | [command_mux, io_mux, ego](#mux-and-ego) | `aav_command_mux`, `aav_io_mux`, `aav_ego` |
 | [can_bridge, sim](#backends) | `aav_spine`, `aav_legacy`, `aav_turtlesim`, `aav_gazebo`, `aav_carla`; `aav_spine_bridge`, `aav_simulator`, `aav_sim_cameras` ([one line](#more-packages-see-their-readmes)) |
-| [perception](#perception) | `aav_detector`, `aav_radar_clusters`, `aav_lane_finder`, `aav_lane_geometry`; `aav_lidar`, `aav_voxels` ([one line](#more-packages-see-their-readmes)) |
+| [perception](#perception) | `aav_detector`, `aav_radar_clusters`, `aav_lane_finder`, `aav_lane_geometry`; `aav_lidar`, `aav_voxels`, `aav_voxels_rs` ([one line](#more-packages-see-their-readmes)) |
 | [hud](#hud) | `aav_hud`; `aav_dev_window` ([one line](#more-packages-see-their-readmes)) |
 | [sim: bench mode](#bench) | `aav_spine_sim`, `aav_bench` |
 | [ecolo_msgs, bringup](#messages-and-bringup) | `aav_interfaces`, `aav_bringup` |
@@ -503,6 +503,7 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_routes` | street routes (Valhalla) as GPS waypoints for Nav2 | `ros/drivers/aav_routes/README.md`, then [Routes](routes.md) |
 | `aav_spine_bridge` | `spine_bridge` in Rust, the default; the same node as `aav_spine`'s Python one | `ros/can_bridge/aav_spine_bridge/README.md` |
 | `aav_lidar` | `lidar_scan`: the roof lidar's cloud as a 2D scan for Nav2 | `ros/perception/aav_lidar/README.md` |
+| `aav_voxels_rs` | `voxels` in Rust: the lidar's cubes, the Python node's drop-in (`voxels_impl:=rust`) | `ros/perception/aav_voxels_rs/README.md` |
 | `aav_safety` | the sensor watchdog: a twist_mux lock (30) when a sensor fails | `ros/safety/aav_safety/README.md`, then [Simulation](simulation.md#the-sensor-watchdog) |
 | `aav_ghost` | ghost obstacles: a pretend person only Nav2 sees | `ros/safety/aav_ghost/README.md`, then [Ghost obstacles](ghost-obstacles.md) |
 | `aav_run_info` | `run_info`: which algorithms this run uses, on `/system/algorithms`, for the screens | `ros/bringup/aav_run_info/README.md` |
