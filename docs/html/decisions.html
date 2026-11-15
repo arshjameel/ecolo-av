@@ -900,7 +900,7 @@ answer.</p>
 </tr>
 <tr>
 <td>15 Nov</td>
-<td><strong>Map correction stays <code>newest</code></strong>; <code>slow</code> (TODO 186) is a challenger: it won offline, not yet in the simulator</td>
+<td><strong>Map correction stays <code>newest</code></strong>; <code>slow</code> (TODO 186) is a challenger: it won offline, not yet in the simulator (later that day it won in the sim: the <code>ours</code> stack takes it, below)</td>
 <td>Ben's rule (5 Nov), applied at night</td>
 </tr>
 <tr>
@@ -932,6 +932,11 @@ answer.</p>
 <td>15 Nov</td>
 <td>The fork's branches (<code>one-shape</code>, <code>review-13nov</code>, <code>setup-localization</code>, <code>whole-car</code>) merged into its <code>main</code>, then deleted; their last commits: 0f0a1094, b7ed1837, 566ef0c0, 726bff44</td>
 <td>Ben</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>The sim's <code>ours</code> stack takes the three sway fixes</strong> (TODO 168): <code>plan_smoothing:=strong</code> (path <code>lattice_rs_strong</code>), and <code>map_correction:=slow</code> with <code>mppi_lag_steer_gamma:=0.05</code> (steer <code>mppi_lag_calm</code>). Scored in the sim, 2 runs each: sway at Nav2's on the lot (0.021 against 0.018 m/s²) and under it on the campus (0.099 against 0.131), every leg, closer to the path. The champions, the car and <code>stack:=stock</code> are unchanged; each old setting stays a switch (<a href="mppi-lag.html#the-sway-that-was-left">why</a>)</td>
+<td>Ben's rule (5 Nov): a challenger that wins on the same routes</td>
 </tr>
 </tbody>
 </table></div>

@@ -73,6 +73,12 @@ The trials (docs/trials.md):
                     graph's GPS waypoints, as street_router makes them, sent to each
                     navigator's follow_gps_waypoints. Nav2's waypoint_follower stops and
                     faces each one; ours passes them as one through-poses goal
+    pixi run measure controllers --stacks nav2 own own_calm --tours lot campus --reversing --runs 2
+                    TODO 168, the sway: own is ours as it was until 15 Nov; own_calm is the
+                    sim's ours stack now (plan_smoothing:=strong, map_correction:=slow,
+                    mppi_lag_steer_gamma:=0.05); own_slow and own_strong(_slow) each step;
+                    own_nav2mppi and nav2_mppilag swap only the follower (which stage
+                    sways?). --series keeps each leg's raw series for it
     pixi run measure controllers --stacks own --smoothers nav2 own --tours lot campus --runs 3
                     Nav2's velocity smoother against ours (smoother:=own, aav_smoother: the
                     turn rate from where the wheels can be), behind each follower; the
@@ -204,8 +210,35 @@ STACKS = {
     # staircase (the sway's third source, 15 Nov). A trial against own.
     'own32': ('tracker', 'mppi_lag',
               ['planner:=own', 'costmap:=own', 'navigator:=own', 'lattice_headings:=32']),
+    # All ours, the follower taking the GPS's map corrections slowly (TODO 186): a
+    # challenger against own, scored in the same runs.
+    'own_slow': ('tracker', 'mppi_lag',
+                 ['planner:=own', 'costmap:=own', 'navigator:=own', 'map_correction:=slow']),
+    # The planner's smoother pulling harder (plan_smoothing:=strong, TODO 168): no
+    # staircase on a road at an angle. Alone, and with the slow map correction.
+    'own_strong': ('tracker', 'mppi_lag',
+                   ['planner:=own', 'costmap:=own', 'navigator:=own',
+                    'plan_smoothing:=strong']),
+    'own_strong_slow': ('tracker', 'mppi_lag',
+                        ['planner:=own', 'costmap:=own', 'navigator:=own',
+                         'plan_smoothing:=strong', 'map_correction:=slow']),
+    # And mppi_lag's control cost on its steering 3 times nav2.yaml's gamma
+    # (mppi_lag_steer_gamma:=0.05): less sampling jitter (TODO 168).
+    'own_calm': ('tracker', 'mppi_lag',
+                 ['planner:=own', 'costmap:=own', 'navigator:=own',
+                  'plan_smoothing:=strong', 'map_correction:=slow',
+                  'mppi_lag_steer_gamma:=0.05']),
+    # One stage swapped (TODO 168, which stage sways?): ours with Nav2's MPPI following,
+    # and Nav2's with mppi_lag following. Beside own and nav2, the follower's share.
+    'own_nav2mppi': ('controller', 'mppi',
+                     ['planner:=own', 'costmap:=own', 'navigator:=own']),
+    'nav2_mppilag': ('tracker', 'mppi_lag',
+                     ['planner:=lattice', 'costmap:=nav2', 'navigator:=nav2']),
 }
-STACK_LABELS = {'nav2': 'all-nav2', 'own': 'all-ours', 'own32': 'all-ours-32'}
+STACK_LABELS = {'nav2': 'all-nav2', 'own': 'all-ours', 'own32': 'all-ours-32',
+                'own_slow': 'all-ours-slow', 'own_nav2mppi': 'ours+nav2-mppi',
+                'nav2_mppilag': 'nav2+mppi_lag', 'own_strong': 'all-ours-strong',
+                'own_strong_slow': 'all-ours-strong-slow', 'own_calm': 'all-ours-calm'}
 BOX = 1.0               # m: the bench's obstacle, a cube (aav_gazebo models/obstacle)
 UP_TIME = 150.0         # s for Gazebo, the EKF, then Nav2, to come up
 SETTLE = 5.0            # s after that, before the first goal
@@ -224,7 +257,10 @@ COLOURS = {'rpp': '#1f6fb4', 'mppi': '#e8590c', 'pure_pursuit': '#2b8a3e', 'stan
            'hybrid': '#e8590c', 'lattice': '#1f6fb4', 'smac2d': '#2b8a3e',
            'navfn': '#862e9c', 'theta_star': '#c92a2a', 'lattice32': '#5f3dc4',
            'own': '#0b7285', 'all-nav2': '#1f6fb4', 'all-ours': '#0b7285',
-           'all-ours-32': '#5f3dc4'}
+           'all-ours-32': '#5f3dc4', 'all-ours-slow': '#e67700',
+           'ours+nav2-mppi': '#862e9c', 'nav2+mppi_lag': '#2b8a3e',
+           'all-ours-strong': '#c92a2a', 'all-ours-strong-slow': '#e8590c',
+           'all-ours-calm': '#2f9e44'}
 # --smoothers: Nav2's smoother keeps the follower's colour; ours is red.
 COLOURS.update({f'{k}+{w}-smoother': (c if w == 'nav2' else '#c92a2a')
                 for k, c in list(COLOURS.items()) for w in vehicle.SMOOTHERS})
@@ -1248,7 +1284,11 @@ def main():
     parser.add_argument('--stacks', nargs='+', choices=list(STACKS), default=None,
                         help="every navigation piece Nav2's (nav2) or ours (own: "
                              'navigator, planner, costmap, mppi_lag; own32: the same on the '
-                             "lattice's 32 headings)")
+                             "lattice's 32 headings; own_slow: map_correction:=slow; "
+                             "own_nav2mppi: ours with Nav2's MPPI following; nav2_mppilag: "
+                             "Nav2's with mppi_lag following; own_strong: plan_smoothing:=strong; "
+                             'own_strong_slow: both; own_calm: both and '
+                             'mppi_lag_steer_gamma:=0.05)')
     parser.add_argument('--smoothers', nargs='+', choices=list(vehicle.SMOOTHERS),
                         default=None,
                         help="each follower behind Nav2's velocity smoother (nav2) and/or "

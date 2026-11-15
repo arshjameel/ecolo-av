@@ -28,6 +28,10 @@ Nav2 still plans the path; ours follows it. It is a **trial**, beside Nav2's MPP
 > - **No wiggle at speed** (15 Nov, TODO 168): at 2.5 m/s the steering noise sized for
 >   1 m/s made the steering jump side to side; it now shrinks with the speed
 >   ([Oscillation](#oscillation-the-cause)).
+> - **Sways no more than Nav2** (15 Nov, the `ours` stack): the plan's staircase
+>   smoothed out, a steering control cost, the map's corrections taken slowly. Lot
+>   0.021 m/s² (Nav2 0.018), campus 0.099 (Nav2 0.131), every leg
+>   ([The sway that was left](#the-sway-that-was-left)).
 
 ## How it fits
 
@@ -389,12 +393,141 @@ straight and a bend at 2.5 m/s, less with a sim-like pose, none backing up.
 
 | Left | Numbers |
 |---|---|
-| **The simulator** must confirm: the campus tour, all ours | without ROS: swing 0.18 to 0.11 m, sway 0.59 to 0.26 m/s² |
+| **The simulator** must confirm: the campus tour, all ours | without ROS: swing 0.18 to 0.11 m, sway 0.59 to 0.26 m/s². Done 15 Nov: 0.66 to 0.21-0.23 m/s²; the rest in [The sway that was left](#the-sway-that-was-left) |
 | The target (drive-j, 15 Nov, before both fixes): Nav2's sway | campus at 2.5 m/s: ours 0.662, Nav2 0.123 m/s²; the lot: ours 0.055, Nav2 0.017 m/s². Keep ours' 100% legs and its off-path (0.13 m campus, 0.12 m lot) |
 | The planner's jogs: 16 lattice headings make a road at an angle a staircase (±8° every ~10 m) | the plan itself swings 0.13 m at 2.4 m/s, both stacks; most of what is left |
 | **Fixed too:** our navigator planned again every second; each new plan moved a little. Now it keeps a clear to-pose path up to 10 s, as the trees' KeepAValidPath (`keep_path_age`, [own navigator](own-navigator.md)) | without ROS, the lot's left turn at 1 m/s: sway 0.075 (the sim's, ours) to 0.038 m/s²; a plan kept all the way, 0.025; Nav2 in the sim 0.017 |
 | The lot at 1 m/s: still above Nav2's | less steering noise at 1 m/s helps the model (sway 0.022 to 0.013 with a sim-like pose) but fails the very slow actuators' S-curve test: not taken |
 | Backing up at 0.5 m/s, the wheels dither about 1° | the car itself doesn't move sideways (0.3 mm) |
+
+## The sway that was left
+
+TODO 165, 167, 168, 186. 15 Nov, after the steering noise fix. Ben: **"no oscillation"**.
+
+> **The short version**
+> - **Where it starts:** the follower, `mppi_lag`. Swap it and the sway goes with it.
+> - **Two causes:** the plan's **staircase** on roads at an angle, which `mppi_lag`
+>   follows faithfully; and MPPI's own **sampling jitter**, at 1 m/s too.
+> - **Two fixes**, both in the `ours` stack now: `plan_smoothing:=strong` (the
+>   planner's smoother pulls harder) and `mppi_lag_steer_gamma:=0.05` (a steering
+>   control cost), with `map_correction:=slow` (TODO 186).
+> - **Result:** sway at or under Nav2's on both tours, closer to the path, every leg.
+
+### Which stage? Swap one at a time
+
+Our simulator, reversing on, 2 runs each, the same build. Sway (m/s²), the mean of the legs
+reached:
+
+| Stack | Lot | Campus | Campus speed (m/s) |
+|---|---|---|---|
+| all Nav2 | 0.018 | 0.131 | 1.60 |
+| all ours | 0.032 | 0.231 | 2.18 |
+| ours, **Nav2's MPPI** following | **0.020** | 0.099 (2 legs of 6) | 1.17 |
+| Nav2's, **`mppi_lag`** following | **0.029** | **0.239** | 2.17 |
+
+The sway follows the follower. Our navigator, planner and costmap add nothing.
+
+```text
+ navigator ─▶ planner ─▶ path ─▶ follower ─▶ smoother ─▶ ego ─▶ car
+   (same)      (same)      │      mppi_lag      (same)    (same)
+                           │         │
+                staircase ─┘         └─ sampling jitter
+```
+
+The smoother and ego add no flips: the follower's turn changes side as often before the
+smoother as after it (lot 0.27 a second, ours; 0.12, Nav2's).
+
+### Cause 1: the plan's staircase
+
+The lattice has 16 headings, 22.5° apart. A road at 8° comes out as steps: 0°, then
+17°, then 0°, about every 9 m, 0.2 m high. Nav2's smoother weights (w_data 0.2,
+w_smooth 0.3) only take out wiggles shorter than about 2 m, so the steps stay.
+
+`mppi_lag` keeps to the path (0.13-0.23 m off; Nav2's MPPI 0.3-0.5 m), so it drives
+the steps. At 2.2 m/s a 9 m step is a 0.25 Hz swing: just where ours had 3 times
+Nav2's steering (0.3-0.5 Hz, the campus).
+
+Without ROS (`cargo run --release -p lattice-planner --example staircase`), a 6.5 m
+road, the plan's own swing at 2.2 m/s:
+
+| Road at | Nav2's weights | w_data 0.02 |
+|---|---|---|
+| 5° | 0.148 m | 0.070 m |
+| 8° | 0.160 m | 0.042 m |
+| 11.25° | 0.110 m | 0.020 m |
+| 15° | 0.128 m | 0.033 m |
+| 30° | 0.084 m | 0.023 m |
+| the lot's corners | tightest 3.33-4.10 m | 3.08-4.79 m (the car: 2.86 m) |
+
+Fix: **`plan_smoothing:=strong`** writes w_data 0.02 into the planner block's
+`smoother`. Nav2's lattice and ours both read it. Alone, in the sim, it took the
+campus from 0.210 to 0.175 m/s² (with `map_correction:=slow`).
+
+### Cause 2: the sampling jitter
+
+Each tick MPPI averages 2000 random futures. Each tick a few different ones win, so
+the steering jumps a little. Nav2's MPPI does the same, but its white noise averages
+out; our correlated noise (needed for the lag) doesn't.
+
+Without ROS (`examples/wiggle.rs`), a straight with a sim-like pose, 3 runs:
+
+| Tried | 1 m/s sway | 2.5 m/s sway | Corner r 5 m off the path (2.5 m/s) |
+|---|---|---|---|
+| as it was | 0.023 | 0.120 | 0.085 m |
+| 8000 samples | 0.019 | | |
+| temperature 0.3 | 0.021 | | |
+| correlation 0.6 or 0.9 | 0.021-0.022 | | |
+| gamma 0.05 (speed and steering) | 0.014 | 0.069 | 0.138 m; slower |
+| **steering gamma 0.05** | **0.015** | **0.068** | 0.160 m; speed kept |
+
+The control cost (gamma) leans each sample toward a smaller command. On the speed
+too it slowed the car on the campus (2.0 to 1.6 m/s) and dithered at a cusp (23
+stops on one leg). On the steering alone the speed stays.
+
+Fix: **`mppi_lag_steer_gamma:=0.05`** (the node's `steer_gamma`). Below 1 m/s
+(`steer_gamma_speed`) it eases back to gamma, as speed², so the cusps steer as before:
+at 0.05 everywhere, three cusp tests failed (0.61 m off the turn back); eased, all pass.
+
+### The result
+
+The simulator, reversing on, 2 runs each. All Nav2 and all ours: the same runs (15 Nov,
+midday); ours today: the `ours` stack now (`measure controllers --stacks own_calm`).
+
+| | Nav2 | Ours, before | **Ours, today** |
+|---|---|---|---|
+| **Lot** sway (m/s²) | 0.018 | 0.032 | **0.021** |
+| Lot left-right changes per 100 m | 10.3 | 11.7 | 5.7 |
+| Lot off the path, mean (m) | 0.25 | 0.19 | 0.15 |
+| Lot legs | 8/8 | 8/8 | 8/8 |
+| **Campus** sway (m/s²) | 0.131 | 0.231 | **0.099** |
+| Campus left-right changes per 100 m | 11.3 | 11.8 | 8.3 |
+| Campus off the path, mean (m) | 0.50 | 0.23 | 0.18 |
+| Campus legs | 4/6 | 6/6 | 6/6 |
+| Campus speed (m/s) | 1.60 | 2.18 | 1.98 |
+
+The price: the campus's "along the road" takes 135-144 s, not 111-116: its
+three-point turn at the start is slower (a stop, 2-4 reversals), and its worst moment
+off the path is there (2.1 m, against 1.1). The lot's turn back is as quick as before
+(30-33 s; Nav2's 53). Sway is speed x turn rate: ours drives the campus a quarter
+faster than Nav2 (1.98 against 1.60 m/s) and still sways less.
+
+| Stage | Share (sim) |
+|---|---|
+| `map_correction:=slow` alone | campus 0.231 to 0.213; off the path 0.23 to 0.13 m; the lot the same |
+| + `plan_smoothing:=strong` | campus to 0.175; the lot 0.030 |
+| + `mppi_lag_steer_gamma:=0.05` | campus to 0.099; the lot to 0.021 |
+
+Every switch stays: `plan_smoothing:=nav2`, `map_correction:=newest` and
+`mppi_lag_steer_gamma:=` (empty) give the old ours; `stack:=stock` is unchanged.
+
+### Still open
+
+| Open | Next |
+|---|---|
+| Ours' sway on the lot | at Nav2's per speed²; the lot's 3-point turn sways most |
+| The car | none of this has been on the car: the GPS, the lags and the Orin's tick are the sim's |
+| Nav2 with the strong smoother | not scored: it may help Nav2's MPPI too (`--stacks nav2` with `--launch plan_smoothing:=strong`) |
+| A smoother that knows the costmap | Dolgov et al. 2010's (Nav2's Constrained Smoother) pulls away from obstacles too; ours only stops at them |
 
 ## Follow in odom, correct slowly
 
@@ -425,7 +558,7 @@ to 9 cm beside the car. The follower sees a cross-track error and steers at it.
 | Measured at the car | a 1° turn about odom's origin 100 m away is 1.7 m there, but 0 at the car |
 | The snap | past `map_correction_snap_distance` (2 m) or `_snap_angle` (10°): taken at once |
 | Off | `map_correction:=newest` (the launch's default): each new path by the newest. On: `map_correction:=slow` |
-| Status | **a challenger, off by default** (15 Nov): it won offline, not yet in the simulator. The obstacle check's stall (TODO 193) happens with `newest` too |
+| Status | **the sim's `ours` stack takes it** (15 Nov, with the [two fixes above](#the-sway-that-was-left)); `navigation.launch.py`, the car and `stack:=stock` keep `newest`. The obstacle check's stall (TODO 193) happens with `newest` too |
 | Watch it | `map_gap_m` on `/drivers/nav/track/status`: the held one's gap at the car |
 
 Why 0.1 m/s: odometry drifts 1-2 % of the distance (0.05 m/s at 2.5 m/s), so the held
@@ -448,7 +581,10 @@ again every second, a global EKF jumping 5 times a second), at 2.5 m/s, 2 runs e
 `explore` (ignored) prints every case: also an EKF error that wanders over 2 s, and new
 paths every 10 s (the straight, wandering, every 10 s: sway 0.111 to 0.050 m/s²).
 
-**In the simulator:** untested. The main session runs it.
+**In the simulator** (15 Nov, all ours, reversing, 2 runs each, the same runs as newest):
+the campus sway 0.231 to 0.213 m/s², off the path 0.23 to **0.13 m** (worst 1.11 to 0.76 m);
+the lot sway the same (0.032), off the path 0.19 to 0.13 m; every leg either way. A small
+win on sway, a clear one on keeping to the path.
 
 ## The lane
 

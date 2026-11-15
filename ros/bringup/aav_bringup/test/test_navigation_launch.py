@@ -323,8 +323,29 @@ def test_map_correction_newest_turns_the_followers_slew_off():
         assert p['map_correction'] is True
     with pytest.raises(ValueError, match='slow or newest'):
         nav_nodes(tracker='lqr', map_correction='fast')
-    assert sent_to_navigation(SIM)['map_correction'] == 'newest'
-    assert sent_to_navigation(SIM, map_correction='slow')['map_correction'] == 'slow'
+    # The sim's stack picks it (15 Nov, TODO 168): ours slow, stock newest; by hand wins.
+    assert sent_to_navigation(SIM)['map_correction'] == 'slow'
+    assert sent_to_navigation(SIM, stack='stock')['map_correction'] == 'newest'
+    assert sent_to_navigation(SIM, map_correction='newest')['map_correction'] == 'newest'
+    assert sent_to_navigation(SIM, stack='stock',
+                              map_correction='slow')['map_correction'] == 'slow'
+
+
+def test_the_steering_gamma_and_the_strong_smoother_reach_their_nodes():
+    # TODO 168: mppi_lag_steer_gamma:= gives mppi_lag its steer_gamma (none: gamma's);
+    # plan_smoothing:=strong gives our planner the smoother's weights.
+    assert 'steer_gamma' not in given(nav_nodes(tracker='mppi_lag')['mppi_lag'])
+    p = given(nav_nodes(tracker='mppi_lag', mppi_lag_steer_gamma='0.05')['mppi_lag'])
+    assert p['steer_gamma'] == pytest.approx(0.05)
+    with pytest.raises(ValueError, match='mppi_lag_steer_gamma'):
+        nav_nodes(tracker='mppi_lag', mppi_lag_steer_gamma='-1')
+    s = json.loads(given(nav_nodes(planner='own')['planner'])['settings'])
+    assert 'smoother' not in s
+    s = json.loads(given(nav_nodes(planner='own', plan_smoothing='strong')['planner'])[
+        'settings'])
+    assert s['smoother'] == vehicle.PLAN_SMOOTHINGS['strong']
+    with pytest.raises(ValueError, match='plan_smoothing'):
+        nav_nodes(planner='own', plan_smoothing='soft')
 
 
 def test_amcl_needs_the_lidar_and_never_publishes_map_to_odom():

@@ -828,7 +828,7 @@ OWN_PLANNER_KEYS = (
     'non_straight_penalty', 'cost_penalty', 'retrospective_penalty', 'rotation_penalty',
     'analytic_expansion_ratio', 'analytic_expansion_max_length',
     'analytic_expansion_max_cost', 'analytic_expansion_max_cost_override',
-    'lookup_table_size', 'smooth_path')
+    'lookup_table_size', 'smooth_path', 'smoother')
 
 
 # The Hybrid-A* block's keys our planner reads (planner_search:=hybrid), besides the shared
@@ -1076,6 +1076,52 @@ def with_global_window(cfg, metres):
     if metres > 0.0:
         block = cfg['global_costmap']['global_costmap']['ros__parameters']
         block.update(rolling_window=True, width=float(metres), height=float(metres))
+    return cfg
+
+
+# How hard the planner's smoother pulls its path straight (plan_smoothing:=; TODO 168).
+# nav2: Nav2's own weights (w_data 0.2, w_smooth 0.3), the default. strong, a challenger:
+# w_data 0.02, so the smoother also takes out the lattice's staircase. A road at an angle
+# between two of its 16 headings comes out as steps about 9 m long and 0.2 m high; Nav2's
+# weights only take out wiggles shorter than about 2 m, so the follower drove the steps:
+# the sway on the campus roads. Offline (aav_planner's example staircase, 2.2 m/s) the
+# plan's own swing 0.08-0.16 m -> 0.02-0.07 m. Both planners read it (Nav2's lattice and
+# ours, planner:=own), from the GridBased block's `smoother`.
+PLAN_SMOOTHINGS = {'nav2': None, 'strong': {'w_data': 0.02, 'w_smooth': 0.3}}
+
+
+def check_steer_gamma(gamma):
+    """Return mppi_lag_steer_gamma:= as a float (0 or more), or raise ValueError saying why."""
+    try:
+        value = float(gamma)
+    except (TypeError, ValueError):
+        raise ValueError(f'mppi_lag_steer_gamma:={gamma}: a number, such as 0.05') from None
+    if not (math.isfinite(value) and value >= 0.0):
+        raise ValueError(f'mppi_lag_steer_gamma:={gamma}: 0 or more')
+    return value
+
+
+def check_plan_smoothing(smoothing):
+    """Return plan_smoothing:= checked (empty: nav2), or raise ValueError saying what to pick."""
+    name = str(smoothing).strip().lower() or 'nav2'
+    if name not in PLAN_SMOOTHINGS:
+        raise ValueError(f'plan_smoothing:={smoothing}: pick one of '
+                         f'{", ".join(PLAN_SMOOTHINGS)}')
+    return name
+
+
+def with_plan_smoothing(cfg, smoothing):
+    """
+    Return nav2.yaml's dict (tuned) with the planner's smoother weights for plan_smoothing:=.
+
+    nav2 leaves the file's (Nav2's defaults); strong writes PLAN_SMOOTHINGS' weights into
+    the GridBased block's `smoother`, which Nav2's Smac planners and ours
+    (planner_params) both read.
+    """
+    weights = PLAN_SMOOTHINGS[check_plan_smoothing(smoothing)]
+    plans = cfg.get('planner_server', {}).get('ros__parameters', {})
+    if weights and 'GridBased' in plans:
+        plans['GridBased'].setdefault('smoother', {}).update(weights)
     return cfg
 
 

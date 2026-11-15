@@ -209,7 +209,7 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 15 Nov | **The order**: the 0.4-rc1 list first (the sway, 170, 174, 182-185), then the whole-car design's gaps (the planner inside the road ahead's edges, the soft edge to pass, following at a gap, the things' critic), then 155 and 156 | Ben |
 | 15 Nov | **Lanelet2 in Rust** (our own reader, TODO 175) now, after the sway work | Ben |
 | 15 Nov | The old `wip/` branches (7 Nov): checked against `next`, anything useful taken, then archived | Ben |
-| 15 Nov | **Map correction stays `newest`**; `slow` (TODO 186) is a challenger: it won offline, not yet in the simulator | Ben's rule (5 Nov), applied at night |
+| 15 Nov | **Map correction stays `newest`**; `slow` (TODO 186) is a challenger: it won offline, not yet in the simulator (later that day it won in the sim: the `ours` stack takes it, below) | Ben's rule (5 Nov), applied at night |
 | 15 Nov | **The radar clears our costmap inside its view** where it sees nothing (TODO 193), so a thing taken away is forgotten | Ben's night orders |
 | 15 Nov | **32 lattice headings: no win**; 16 stays (TODO 190) | Ben's night orders |
 | 15 Nov | **D2, lane costs**: the one-shape design's proposal taken (a ramp, lowest at the right lane's centre, against `path:=lane`); the go-ahead to finish Fable's designs and the rc1 list | Ben: "lets try to get all of these things finished and merged and tested" |
@@ -217,6 +217,7 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 15 Nov | **One folder on Ben's Mac**, `~/Code/ecolo-av` on `main`: the night's worktrees (`ecolo-next`, `ecolo-night`) merged and removed; the old `~/Code/aav` and `aav-wt` deleted (its one uncommitted edit kept in `docs/history/leftovers/`) | Ben |
 | 15 Nov | The fork's branches (`one-shape`, `review-13nov`, `setup-localization`, `whole-car`) merged into its `main`, then deleted; their last commits: 0f0a1094, b7ed1837, 566ef0c0, 726bff44 | Ben |
 | 15 Nov | **The pedal in ego** for people (joy, rc, keyboard): the stick's position sets how hard ego slows (let go: 1.0 m/s²; full back: 2.0 m/s²), then reverses at 0. Computer drivers keep plain speeds; the AI may join as a challenger | Ben (asked "Everyone", and "a similar concept for the ai too? what do you think?"; advised: people only, since a planner's own slowing must be followed at once, or the car rolls past its stop line) |
+| 15 Nov | **The sim's `ours` stack takes the three sway fixes** (TODO 168): `plan_smoothing:=strong` (path `lattice_rs_strong`), and `map_correction:=slow` with `mppi_lag_steer_gamma:=0.05` (steer `mppi_lag_calm`). Scored in the sim, 2 runs each: sway at Nav2's on the lot (0.021 against 0.018 m/s²) and under it on the campus (0.099 against 0.131), every leg, closer to the path. The champions, the car and `stack:=stock` are unchanged; each old setting stays a switch ([why](mppi-lag.md#the-sway-that-was-left)) | Ben's rule (5 Nov): a challenger that wins on the same routes |
 
 ## Proposed in November: Ben's to decide
 

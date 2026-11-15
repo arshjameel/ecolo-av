@@ -218,6 +218,27 @@ search.rs (A*) ───┤
 - No `use_quadratic_cost_penalty` or `cache_obstacle_heuristic` (nav2.yaml leaves both
   off).
 
+## The staircase and the strong smoother (15 Nov)
+
+TODO 168. The lattice has 16 headings. A road at 8° is planned as steps (0°, 17°,
+0°... every ~9 m, 0.2 m high). Nav2's smoother weights (w_data 0.2, w_smooth 0.3) only
+take out wiggles shorter than ~2 m, so the steps stay, and the follower drives them.
+
+| Switch | What |
+|---|---|
+| `plan_smoothing:=nav2` | Nav2's weights (`navigation.launch.py`'s default; `stack:=stock`; the car) |
+| `plan_smoothing:=strong` | w_data 0.02 in the GridBased block's `smoother`: Nav2's lattice and ours both read it. The sim's `ours` stack picks it |
+
+```sh
+W_DATA=0.02 cargo run --release -p lattice-planner --example staircase   # no ROS
+```
+
+The plan's own swing on a 6.5 m road at 2.2 m/s: 0.08-0.16 m with Nav2's weights,
+0.02-0.07 m strong. The lot's corners keep to the car (tightest 3.08 m; the car turns at
+2.86 m). In the sim it took a share of the campus's sway off; the rest, and the
+numbers: [mppi-lag.md, The sway that was left](mppi-lag.md#the-sway-that-was-left).
+`tests/scenes.rs` checks the steps go (8°: under half the swing).
+
 ## What's missing
 
 - **Hybrid-A*** (the forward-only default on the car): ported 14 Nov

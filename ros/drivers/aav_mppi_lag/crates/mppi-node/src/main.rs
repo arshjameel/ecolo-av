@@ -1069,6 +1069,9 @@ impl Config {
             iteration_count: d.count("iteration_count", s.iteration_count)?,
             temperature: d.number("temperature", s.temperature)?,
             gamma: d.number("gamma", s.gamma)?,
+            // Below 0 (the default): the steering's control cost is gamma's, as Nav2's.
+            steer_gamma: Some(d.number("steer_gamma", -1.0)?).filter(|g| *g >= 0.0),
+            steer_gamma_speed: d.number("steer_gamma_speed", s.steer_gamma_speed)?,
             speed_std: d.number("vx_std", s.speed_std)?,
             steer_std: d.number("steer_std", s.steer_std)?,
             steer_std_speed: d.number("steer_std_speed", s.steer_std_speed)?,

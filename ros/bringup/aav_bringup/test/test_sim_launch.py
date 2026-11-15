@@ -129,17 +129,21 @@ def stack_of(**args):
             'ndt_ekf': sent['localization.launch.py']['ndt_ekf'],
             'kiss_ekf': sent['localization.launch.py']['kiss_ekf'],
             'lattice_moves': nav['lattice_moves'],
-            'planner_search': nav['planner_search']}
+            'planner_search': nav['planner_search'],
+            'plan_smoothing': nav['plan_smoothing'], 'map_correction': nav['map_correction'],
+            'mppi_lag_steer_gamma': nav['mppi_lag_steer_gamma']}
 
 
 OURS = {'planner': 'own', 'controller': 'mppi', 'tracker': 'mppi_lag', 'costmap': 'own',
         'navigator': 'own', 'smoother': 'nav2', 'behaviour': 'true', 'road_ahead': 'true',
         'ndt_ekf': 'false', 'kiss_ekf': 'false', 'lattice_moves': 'nav2',
-        'planner_search': 'lattice'}
+        'planner_search': 'lattice', 'plan_smoothing': 'strong', 'map_correction': 'slow',
+        'mppi_lag_steer_gamma': '0.05'}
 STOCK = {'planner': 'lattice', 'controller': 'mppi', 'tracker': 'none', 'costmap': 'nav2',
          'navigator': 'nav2', 'smoother': 'nav2', 'behaviour': 'false', 'road_ahead': 'false',
          'ndt_ekf': 'false', 'kiss_ekf': 'false', 'lattice_moves': 'nav2',
-         'planner_search': 'lattice'}
+         'planner_search': 'lattice', 'plan_smoothing': 'nav2', 'map_correction': 'newest',
+         'mppi_lag_steer_gamma': ''}
 
 
 def test_the_default_stack_is_ours():

@@ -128,6 +128,28 @@ pub fn map(name: &str) -> Result<Grid, String> {
     Ok(grid)
 }
 
+/// m: a narrow campus street's width, kerb to kerb (`angled_road`).
+pub const ROAD_WIDTH: f64 = 6.5;
+
+/// A straight road `length` m long, `ROAD_WIDTH` wide, at `angle` (rad) from (10, 10): walls
+/// everywhere further than half the width from its centre line, inflated. At an angle
+/// between two of the lattice's headings its plan is a staircase (TODO 168).
+pub fn angled_road(angle: f64, length: f64) -> Grid {
+    let (w, h) = (length + 20.0, length * angle.sin().abs() + 30.0);
+    let r = RESOLUTION;
+    let mut grid = Grid::new((0.0, 0.0), r, (w / r) as usize, (h / r) as usize, 0);
+    let (c, s) = (angle.cos(), angle.sin());
+    for cy in 0..grid.height {
+        for cx in 0..grid.width {
+            let (x, y) = ((cx as f64 + 0.5) * r - 10.0, (cy as f64 + 0.5) * r - 10.0);
+            if (-x * s + y * c).abs() > ROAD_WIDTH / 2.0 {
+                grid.set(cx, cy, LETHAL);
+            }
+        }
+    }
+    inflated(grid)
+}
+
 /// One scene: a map, a start, a goal, and whether a path must exist with and without
 /// reversing.
 pub struct Scene {

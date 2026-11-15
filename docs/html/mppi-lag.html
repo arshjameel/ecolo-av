@@ -7,7 +7,7 @@
 <!-- Generated from docs/mppi-lag.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>MPPI that knows the lag</h1>
-<div class="meta">33 min read · 15 sections</div></header>
+<div class="meta">41 min read · 16 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -117,7 +117,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-model">The model</a><a href="#what-differs-from-nav2s-mppi">What differs from Nav2&#x27;s MPPI</a><a href="#results-without-ros">Results without ROS</a><a href="#speed">Speed</a><a href="#in-gazebo">In Gazebo</a><a href="#reversing">Reversing</a><a href="#cusps">Cusps</a><a href="#the-campus-junction-the-geofence-not-mppi">The campus junction: the geofence, not MPPI</a><a href="#oscillation-the-cause">Oscillation: the cause</a><a href="#follow-in-odom-correct-slowly">Follow in odom, correct slowly</a><a href="#the-lane">The lane</a><a href="#lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn&#x27;t cancel the lag twice</a><a href="#run-it">Run it</a><a href="#what-is-missing">What is missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-model">The model</a><a href="#what-differs-from-nav2s-mppi">What differs from Nav2&#x27;s MPPI</a><a href="#results-without-ros">Results without ROS</a><a href="#speed">Speed</a><a href="#in-gazebo">In Gazebo</a><a href="#reversing">Reversing</a><a href="#cusps">Cusps</a><a href="#the-campus-junction-the-geofence-not-mppi">The campus junction: the geofence, not MPPI</a><a href="#oscillation-the-cause">Oscillation: the cause</a><a href="#the-sway-that-was-left">The sway that was left</a><a href="#follow-in-odom-correct-slowly">Follow in odom, correct slowly</a><a href="#the-lane">The lane</a><a href="#lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn&#x27;t cancel the lag twice</a><a href="#run-it">Run it</a><a href="#what-is-missing">What is missing</a></nav>
 <div class="lead"><p>Ben, 7 Nov (0.3): <strong>"have the algorithms know about lag"</strong>.</p>
 <p>Nav2's MPPI plans as if the car obeys at once. It can't take our lag model without a C++
 plugin, and we write no C++. So MPPI is <strong>ported to Rust</strong>, with the lag in its model.
@@ -153,9 +153,17 @@ Nav2 still plans the path; ours follows it. It is a <strong>trial</strong>, besi
 <li>
 <p><strong>Costmap:</strong> Nav2's local costmap, or ours with <code>costmap:=own</code> (<a href="own-costmap.html">page</a>).</p>
 </li>
-<li><strong>No wiggle at speed</strong> (15 Nov, TODO 168): at 2.5 m/s the steering noise sized for
+<li>
+<p><strong>No wiggle at speed</strong> (15 Nov, TODO 168): at 2.5 m/s the steering noise sized for
   1 m/s made the steering jump side to side; it now shrinks with the speed
-  (<a href="#oscillation-the-cause">Oscillation</a>).</li>
+  (<a href="#oscillation-the-cause">Oscillation</a>).</p>
+</li>
+<li>
+<p><strong>Sways no more than Nav2</strong> (15 Nov, the <code>ours</code> stack): the plan's staircase
+  smoothed out, a steering control cost, the map's corrections taken slowly. Lot
+  0.021 m/s² (Nav2 0.018), campus 0.099 (Nav2 0.131), every leg
+  (<a href="#the-sway-that-was-left">The sway that was left</a>).</p>
+</li>
 </ul>
 </blockquote></div>
 <section class="card"><h2 id="how-it-fits">How it fits</h2>
@@ -976,7 +984,7 @@ straight and a bend at 2.5 m/s, less with a sim-like pose, none backing up.</p>
 <tbody>
 <tr>
 <td><strong>The simulator</strong> must confirm: the campus tour, all ours</td>
-<td>without ROS: swing 0.18 to 0.11 m, sway 0.59 to 0.26 m/s²</td>
+<td>without ROS: swing 0.18 to 0.11 m, sway 0.59 to 0.26 m/s². Done 15 Nov: 0.66 to 0.21-0.23 m/s²; the rest in <a href="#the-sway-that-was-left">The sway that was left</a></td>
 </tr>
 <tr>
 <td>The target (drive-j, 15 Nov, before both fixes): Nav2's sway</td>
@@ -997,6 +1005,310 @@ straight and a bend at 2.5 m/s, less with a sim-like pose, none backing up.</p>
 <tr>
 <td>Backing up at 0.5 m/s, the wheels dither about 1°</td>
 <td>the car itself doesn't move sideways (0.3 mm)</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-sway-that-was-left">The sway that was left</h2>
+<p>TODO 165, 167, 168, 186. 15 Nov, after the steering noise fix. Ben: <strong>"no oscillation"</strong>.</p>
+<blockquote>
+<p><strong>The short version</strong></p>
+<ul>
+<li><strong>Where it starts:</strong> the follower, <code>mppi_lag</code>. Swap it and the sway goes with it.</li>
+<li>
+<p><strong>Two causes:</strong> the plan's <strong>staircase</strong> on roads at an angle, which <code>mppi_lag</code>
+  follows faithfully; and MPPI's own <strong>sampling jitter</strong>, at 1 m/s too.</p>
+</li>
+<li>
+<p><strong>Two fixes</strong>, both in the <code>ours</code> stack now: <code>plan_smoothing:=strong</code> (the
+  planner's smoother pulls harder) and <code>mppi_lag_steer_gamma:=0.05</code> (a steering
+  control cost), with <code>map_correction:=slow</code> (TODO 186).</p>
+</li>
+<li>
+<p><strong>Result:</strong> sway at or under Nav2's on both tours, closer to the path, every leg.</p>
+</li>
+</ul>
+</blockquote>
+<h3 id="which-stage-swap-one-at-a-time">Which stage? Swap one at a time</h3>
+<p>Our simulator, reversing on, 2 runs each, the same build. Sway (m/s²), the mean of the legs
+reached:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Stack</th>
+<th>Lot</th>
+<th>Campus</th>
+<th>Campus speed (m/s)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>all Nav2</td>
+<td>0.018</td>
+<td>0.131</td>
+<td>1.60</td>
+</tr>
+<tr>
+<td>all ours</td>
+<td>0.032</td>
+<td>0.231</td>
+<td>2.18</td>
+</tr>
+<tr>
+<td>ours, <strong>Nav2's MPPI</strong> following</td>
+<td><strong>0.020</strong></td>
+<td>0.099 (2 legs of 6)</td>
+<td>1.17</td>
+</tr>
+<tr>
+<td>Nav2's, <strong><code>mppi_lag</code></strong> following</td>
+<td><strong>0.029</strong></td>
+<td><strong>0.239</strong></td>
+<td>2.17</td>
+</tr>
+</tbody>
+</table></div>
+<p>The sway follows the follower. Our navigator, planner and costmap add nothing.</p>
+<pre class="highlight"><code class="language-text"> navigator ─▶ planner ─▶ path ─▶ follower ─▶ smoother ─▶ ego ─▶ car
+   (same)      (same)      │      mppi_lag      (same)    (same)
+                           │         │
+                staircase ─┘         └─ sampling jitter</code></pre>
+<p>The smoother and ego add no flips: the follower's turn changes side as often before the
+smoother as after it (lot 0.27 a second, ours; 0.12, Nav2's).</p>
+<h3 id="cause-1-the-plans-staircase">Cause 1: the plan's staircase</h3>
+<p>The lattice has 16 headings, 22.5° apart. A road at 8° comes out as steps: 0°, then
+17°, then 0°, about every 9 m, 0.2 m high. Nav2's smoother weights (w_data 0.2,
+w_smooth 0.3) only take out wiggles shorter than about 2 m, so the steps stay.</p>
+<p><code>mppi_lag</code> keeps to the path (0.13-0.23 m off; Nav2's MPPI 0.3-0.5 m), so it drives
+the steps. At 2.2 m/s a 9 m step is a 0.25 Hz swing: just where ours had 3 times
+Nav2's steering (0.3-0.5 Hz, the campus).</p>
+<p>Without ROS (<code>cargo run --release -p lattice-planner --example staircase</code>), a 6.5 m
+road, the plan's own swing at 2.2 m/s:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Road at</th>
+<th>Nav2's weights</th>
+<th>w_data 0.02</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5°</td>
+<td>0.148 m</td>
+<td>0.070 m</td>
+</tr>
+<tr>
+<td>8°</td>
+<td>0.160 m</td>
+<td>0.042 m</td>
+</tr>
+<tr>
+<td>11.25°</td>
+<td>0.110 m</td>
+<td>0.020 m</td>
+</tr>
+<tr>
+<td>15°</td>
+<td>0.128 m</td>
+<td>0.033 m</td>
+</tr>
+<tr>
+<td>30°</td>
+<td>0.084 m</td>
+<td>0.023 m</td>
+</tr>
+<tr>
+<td>the lot's corners</td>
+<td>tightest 3.33-4.10 m</td>
+<td>3.08-4.79 m (the car: 2.86 m)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Fix: <strong><code>plan_smoothing:=strong</code></strong> writes w_data 0.02 into the planner block's
+<code>smoother</code>. Nav2's lattice and ours both read it. Alone, in the sim, it took the
+campus from 0.210 to 0.175 m/s² (with <code>map_correction:=slow</code>).</p>
+<h3 id="cause-2-the-sampling-jitter">Cause 2: the sampling jitter</h3>
+<p>Each tick MPPI averages 2000 random futures. Each tick a few different ones win, so
+the steering jumps a little. Nav2's MPPI does the same, but its white noise averages
+out; our correlated noise (needed for the lag) doesn't.</p>
+<p>Without ROS (<code>examples/wiggle.rs</code>), a straight with a sim-like pose, 3 runs:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tried</th>
+<th>1 m/s sway</th>
+<th>2.5 m/s sway</th>
+<th>Corner r 5 m off the path (2.5 m/s)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>as it was</td>
+<td>0.023</td>
+<td>0.120</td>
+<td>0.085 m</td>
+</tr>
+<tr>
+<td>8000 samples</td>
+<td>0.019</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>temperature 0.3</td>
+<td>0.021</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>correlation 0.6 or 0.9</td>
+<td>0.021-0.022</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>gamma 0.05 (speed and steering)</td>
+<td>0.014</td>
+<td>0.069</td>
+<td>0.138 m; slower</td>
+</tr>
+<tr>
+<td><strong>steering gamma 0.05</strong></td>
+<td><strong>0.015</strong></td>
+<td><strong>0.068</strong></td>
+<td>0.160 m; speed kept</td>
+</tr>
+</tbody>
+</table></div>
+<p>The control cost (gamma) leans each sample toward a smaller command. On the speed
+too it slowed the car on the campus (2.0 to 1.6 m/s) and dithered at a cusp (23
+stops on one leg). On the steering alone the speed stays.</p>
+<p>Fix: <strong><code>mppi_lag_steer_gamma:=0.05</code></strong> (the node's <code>steer_gamma</code>). Below 1 m/s
+(<code>steer_gamma_speed</code>) it eases back to gamma, as speed², so the cusps steer as before:
+at 0.05 everywhere, three cusp tests failed (0.61 m off the turn back); eased, all pass.</p>
+<h3 id="the-result">The result</h3>
+<p>The simulator, reversing on, 2 runs each. All Nav2 and all ours: the same runs (15 Nov,
+midday); ours today: the <code>ours</code> stack now (<code>measure controllers --stacks own_calm</code>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Nav2</th>
+<th>Ours, before</th>
+<th><strong>Ours, today</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Lot</strong> sway (m/s²)</td>
+<td>0.018</td>
+<td>0.032</td>
+<td><strong>0.021</strong></td>
+</tr>
+<tr>
+<td>Lot left-right changes per 100 m</td>
+<td>10.3</td>
+<td>11.7</td>
+<td>5.7</td>
+</tr>
+<tr>
+<td>Lot off the path, mean (m)</td>
+<td>0.25</td>
+<td>0.19</td>
+<td>0.15</td>
+</tr>
+<tr>
+<td>Lot legs</td>
+<td>8/8</td>
+<td>8/8</td>
+<td>8/8</td>
+</tr>
+<tr>
+<td><strong>Campus</strong> sway (m/s²)</td>
+<td>0.131</td>
+<td>0.231</td>
+<td><strong>0.099</strong></td>
+</tr>
+<tr>
+<td>Campus left-right changes per 100 m</td>
+<td>11.3</td>
+<td>11.8</td>
+<td>8.3</td>
+</tr>
+<tr>
+<td>Campus off the path, mean (m)</td>
+<td>0.50</td>
+<td>0.23</td>
+<td>0.18</td>
+</tr>
+<tr>
+<td>Campus legs</td>
+<td>4/6</td>
+<td>6/6</td>
+<td>6/6</td>
+</tr>
+<tr>
+<td>Campus speed (m/s)</td>
+<td>1.60</td>
+<td>2.18</td>
+<td>1.98</td>
+</tr>
+</tbody>
+</table></div>
+<p>The price: the campus's "along the road" takes 135-144 s, not 111-116: its
+three-point turn at the start is slower (a stop, 2-4 reversals), and its worst moment
+off the path is there (2.1 m, against 1.1). The lot's turn back is as quick as before
+(30-33 s; Nav2's 53). Sway is speed x turn rate: ours drives the campus a quarter
+faster than Nav2 (1.98 against 1.60 m/s) and still sways less.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Share (sim)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>map_correction:=slow</code> alone</td>
+<td>campus 0.231 to 0.213; off the path 0.23 to 0.13 m; the lot the same</td>
+</tr>
+<tr>
+<td>+ <code>plan_smoothing:=strong</code></td>
+<td>campus to 0.175; the lot 0.030</td>
+</tr>
+<tr>
+<td>+ <code>mppi_lag_steer_gamma:=0.05</code></td>
+<td>campus to 0.099; the lot to 0.021</td>
+</tr>
+</tbody>
+</table></div>
+<p>Every switch stays: <code>plan_smoothing:=nav2</code>, <code>map_correction:=newest</code> and
+<code>mppi_lag_steer_gamma:=</code> (empty) give the old ours; <code>stack:=stock</code> is unchanged.</p>
+<h3 id="still-open">Still open</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Open</th>
+<th>Next</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ours' sway on the lot</td>
+<td>at Nav2's per speed²; the lot's 3-point turn sways most</td>
+</tr>
+<tr>
+<td>The car</td>
+<td>none of this has been on the car: the GPS, the lags and the Orin's tick are the sim's</td>
+</tr>
+<tr>
+<td>Nav2 with the strong smoother</td>
+<td>not scored: it may help Nav2's MPPI too (<code>--stacks nav2</code> with <code>--launch plan_smoothing:=strong</code>)</td>
+</tr>
+<tr>
+<td>A smoother that knows the costmap</td>
+<td>Dolgov et al. 2010's (Nav2's Constrained Smoother) pulls away from obstacles too; ours only stops at them</td>
 </tr>
 </tbody>
 </table></div>
@@ -1045,7 +1357,7 @@ to 9 cm beside the car. The follower sees a cross-track error and steers at it.<
 </tr>
 <tr>
 <td>Status</td>
-<td><strong>a challenger, off by default</strong> (15 Nov): it won offline, not yet in the simulator. The obstacle check's stall (TODO 193) happens with <code>newest</code> too</td>
+<td><strong>the sim's <code>ours</code> stack takes it</strong> (15 Nov, with the <a href="#the-sway-that-was-left">two fixes above</a>); <code>navigation.launch.py</code>, the car and <code>stack:=stock</code> keep <code>newest</code>. The obstacle check's stall (TODO 193) happens with <code>newest</code> too</td>
 </tr>
 <tr>
 <td>Watch it</td>
@@ -1093,7 +1405,10 @@ again every second, a global EKF jumping 5 times a second), at 2.5 m/s, 2 runs e
 </table></div>
 <p><code>explore</code> (ignored) prints every case: also an EKF error that wanders over 2 s, and new
 paths every 10 s (the straight, wandering, every 10 s: sway 0.111 to 0.050 m/s²).</p>
-<p><strong>In the simulator:</strong> untested. The main session runs it.</p>
+<p><strong>In the simulator</strong> (15 Nov, all ours, reversing, 2 runs each, the same runs as newest):
+the campus sway 0.231 to 0.213 m/s², off the path 0.23 to <strong>0.13 m</strong> (worst 1.11 to 0.76 m);
+the lot sway the same (0.032), off the path 0.19 to 0.13 m; every leg either way. A small
+win on sway, a clear one on keeping to the path.</p>
 </section>
 <section class="card"><h2 id="the-lane">The lane</h2>
 <p>TODO 169. With a lane map, the road ahead (<code>/world/road_ahead</code>, the behaviour planner's)

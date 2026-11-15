@@ -14,6 +14,10 @@ mppi_lag:
                                 # wide, MPPI's average rested on a handful of them and the
                                 # steering wiggled (TODO 168, docs/mppi-lag.md "Oscillation")
     steer_std_min: 0.024        # rad: but never less, so above 2.5 m/s the futures still spread
+    steer_gamma_speed: 1.0      # m/s: with a steer_gamma (the launch's mppi_lag_steer_gamma:=,
+                                # TODO 168), the steering's control cost is steer_gamma from
+                                # this speed up and eases to gamma at a stop (x (speed / 1.0)²),
+                                # so the cusps and backing turns steer as before
     noise_correlation: 0.8      # each step's noise keeps 0.8 of the last step's (AR(1), about
                                 # 0.25 s). Nav2's is white (0): through a lagging steering
                                 # white noise averages away, every sample drives alike, and

@@ -50,7 +50,9 @@ use std::time::Duration;
 use anyhow::{anyhow, bail, Context as _, Result};
 use costmap::{footprint, Arrival, Grid, Inflation};
 use futures::channel::oneshot;
-use lattice_planner::{cusps, length, Hybrid, Lattice, Plan, PlanError, Planner, Pose, Settings};
+use lattice_planner::{
+    cusps, length, Hybrid, Lattice, Plan, PlanError, Planner, Pose, Settings, SmootherSettings,
+};
 use rclrs::*;
 use ros_env::builtin_interfaces::msg::{Duration as DurationMsg, Time};
 use ros_env::diagnostic_msgs::msg::{DiagnosticStatus, KeyValue};
@@ -317,6 +319,39 @@ fn main() -> Result<()> {
 
 /// The planner from vehicle.planner_params' JSON: the State Lattice, or Hybrid-A* when
 /// `search` is "hybrid".
+/// Nav2's smoother block (`<planner>.smoother`: w_data, w_smooth, max_iterations,
+/// tolerance, do_refinement, refinement_num); a key left out keeps `d`'s. The launch's
+/// plan_smoothing:=strong lowers w_data (vehicle.with_plan_smoothing, TODO 168).
+fn smoother(block: &Value, d: SmootherSettings) -> Result<SmootherSettings> {
+    if block.is_null() {
+        return Ok(d);
+    }
+    let number = |key: &str, default: f64| -> Result<f64> {
+        match &block[key] {
+            Value::Null => Ok(default),
+            v => v
+                .as_f64()
+                .ok_or_else(|| anyhow!("smoother.{key}: a number is needed")),
+        }
+    };
+    let flag = |key: &str, default: bool| -> Result<bool> {
+        match &block[key] {
+            Value::Null => Ok(default),
+            v => v
+                .as_bool()
+                .ok_or_else(|| anyhow!("smoother.{key}: true or false")),
+        }
+    };
+    Ok(SmootherSettings {
+        tolerance: number("tolerance", d.tolerance)?,
+        max_iterations: number("max_iterations", d.max_iterations as f64)?.max(0.0) as usize,
+        w_data: number("w_data", d.w_data)?,
+        w_smooth: number("w_smooth", d.w_smooth)?,
+        do_refinement: flag("do_refinement", d.do_refinement)?,
+        refinement_num: number("refinement_num", d.refinement_num as f64)?.max(0.0) as usize,
+    })
+}
+
 fn build(spec: &Value) -> Result<Planner> {
     let hybrid = match spec["search"].as_str().unwrap_or("lattice") {
         "lattice" => false,
@@ -389,7 +424,7 @@ fn build(spec: &Value) -> Result<Planner> {
         )?,
         lookup_table_size: number("lookup_table_size", d.lookup_table_size)?,
         smooth_path: flag("smooth_path", d.smooth_path)?,
-        smoother: d.smoother,
+        smoother: smoother(&spec["smoother"], d.smoother)?,
     };
     let corners: Vec<(f64, f64)> = spec["footprint"]
         .as_array()
