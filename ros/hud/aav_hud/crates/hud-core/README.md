@@ -22,7 +22,8 @@ keeps. `map-core` shares its health, origin, watchdog and formatting code.
 | `heartbeat` | `Heartbeat::poll(now, Frames)`: a beat every 100 ms while frames rise |
 | `watchdog` | the sensor watchdog's verdict, as a banner |
 | `gate` | `verdict(...)`: GO / WAIT / STOP and the main reason (e-stop, output mux, watchdog); `Gate::parse`, `Sensors::parse` |
-| `state` | `HudState::new`, `apply(Update, now)`, `estop_pressed`, `take_new_picture` |
+| `things` | the things near the car (`/world/things`, odom), named by the camera: `Thing` (`label`: `person 3`; `colour`; `in_base`, `corners_in_base`), `Kind` (person, vehicle, stop sign, other, unknown), `named_ahead` (nearest first). Colours in `theme::thing_colour`, the same as aav_things' markers |
+| `state` | `HudState::new`, `apply(Update, now)`, `estop_pressed`, `take_new_picture`, `things_now` (the things and the car's pose, while both are fresh) |
 | `format` | numbers as short text for the screen |
 | `screen` | which monitor a window opens on (`--monitor HDMI-1`) |
 | `theme` | every colour of the four screens (HUD, map, debug screen, hardware panel): `Theme`, `ThemeName` (`initial_d`, the default; `mocha`, `latte`, `calm`), `Style` (glass or arcade; `corner`), `Rgba` with `contrast` (WCAG); Catppuccin's palettes (MIT) |

@@ -20,7 +20,9 @@
 //! - `/system/source`: reliable, transient local, depth 1, so the HUD gets each
 //!   announcer's one message even when it starts later;
 //! - the squiggly line (`/ego/trace`, `/ego/plan_ahead`, `/ego/stop_point`, `/ego/ahead`):
-//!   best effort, as the small messages; all base_link, so the HUD needs no TF.
+//!   best effort, as the small messages; all base_link, so the HUD needs no TF;
+//! - the things (`/world/things`, odom) and the car's pose (`/localization/odom/local`,
+//!   odom): best effort; the pose places the things in AHEAD, so still no TF.
 
 use std::{
     sync::{
@@ -42,14 +44,15 @@ use hud_core::{
     origin::{Announcement, Entry, Origin},
     picture::Picture,
     state::{Battery, EstopReport, Update},
+    things::Thing,
     units::{Fraction, MetresPerSecond, Radians},
     vehicle::{Faults, Mode, VehicleStatus},
 };
 use rclrs::*;
-use ros_env::aav_interfaces::msg::{DataSource, VehicleStatus as VehicleStatusMsg};
+use ros_env::aav_interfaces::msg::{DataSource, Things, VehicleStatus as VehicleStatusMsg};
 use ros_env::diagnostic_msgs::msg::DiagnosticStatus;
 use ros_env::geometry_msgs::msg::{PoseStamped, Quaternion};
-use ros_env::nav_msgs::msg::Path;
+use ros_env::nav_msgs::msg::{Odometry, Path};
 use ros_env::sensor_msgs::msg::{BatteryState, Image, NavSatFix};
 use ros_env::std_msgs::msg::{Bool, String as StringMsg, UInt64};
 
@@ -285,6 +288,18 @@ fn spin(
             )
         }
     })?;
+    let _things = node.create_subscription(config.topic(Topic::Things).sensor_data_qos(), {
+        let tx = tx.clone();
+        move |m: Things| send(&tx, Update::Things(m.things.iter().map(thing).collect()))
+    })?;
+    let _odom = node.create_subscription(config.topic(Topic::Odom).sensor_data_qos(), {
+        let tx = tx.clone();
+        move |m: Odometry| {
+            let p = &m.pose.pose;
+            let pose = (p.position.x, p.position.y, yaw_of(&p.orientation));
+            send(&tx, Update::CarPose(pose))
+        }
+    })?;
 
     let latched = QoSProfile::topics_default()
         .reliable()
@@ -454,6 +469,22 @@ fn points(m: &Path) -> Vec<Point> {
         .collect()
 }
 
+/// One thing, from its message (odom).
+fn thing(t: &ros_env::aav_interfaces::msg::Thing) -> Thing {
+    Thing {
+        id: t.id,
+        name: t.kind.clone(),
+        x: f64::from(t.x),
+        y: f64::from(t.y),
+        vx: f64::from(t.vx),
+        vy: f64::from(t.vy),
+        length: f64::from(t.length),
+        width: f64::from(t.width),
+        height: f64::from(t.height),
+        coasting: t.coasting,
+    }
+}
+
 /// A quaternion's yaw (rad).
 fn yaw_of(q: &Quaternion) -> f64 {
     (2.0 * (q.w * q.z + q.x * q.y)).atan2(1.0 - 2.0 * (q.y * q.y + q.z * q.z))
@@ -521,6 +552,9 @@ mod tests {
         config.set_topic(Topic::Heartbeat, heartbeat.clone());
         let gate = format!("{prefix}/output_mux_state");
         config.set_topic(Topic::OutputMux, gate.clone());
+        let (things, odom) = (format!("{prefix}/things"), format!("{prefix}/odom"));
+        config.set_topic(Topic::Things, things.clone());
+        config.set_topic(Topic::Odom, odom.clone());
         let (mut hud, _) = RosSource::start(vec!["hud".into()], config)?;
 
         let context = Context::default_from_env()?;
@@ -606,6 +640,44 @@ mod tests {
             );
         }
         assert!(matches!(heard.first(), Some(Update::OutputMux(l)) if l == line));
+
+        // A named stop sign and the car's pose (TODO 192): AHEAD gets both.
+        let things_pub: Publisher<Things> =
+            listener.create_publisher(things.as_str().reliable().keep_last(10))?;
+        let odom_pub: Publisher<Odometry> =
+            listener.create_publisher(odom.as_str().reliable().keep_last(10))?;
+        let sign = ros_env::aav_interfaces::msg::Thing {
+            id: 7,
+            kind: "stop sign".into(),
+            x: 9.0,
+            y: -2.5,
+            length: 0.3,
+            width: 0.3,
+            height: 2.1,
+            ..Default::default()
+        };
+        let mut car = Odometry::default();
+        car.pose.pose.position.x = 1.0;
+        car.pose.pose.orientation.w = 1.0;
+        let (mut named, mut posed) = (None, None);
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while (named.is_none() || posed.is_none()) && Instant::now() < deadline {
+            things_pub.publish(Things {
+                things: vec![sign.clone()],
+                ..Default::default()
+            })?;
+            odom_pub.publish(car.clone())?;
+            spin(&mut executor, 200);
+            for u in hud.drain(Instant::now()) {
+                match u {
+                    Update::Things(t) => named = t.first().map(|t| t.label()),
+                    Update::CarPose(p) => posed = Some(p),
+                    _ => {}
+                }
+            }
+        }
+        assert_eq!(named.as_deref(), Some("stop sign 7"));
+        assert_eq!(posed, Some((1.0, 0.0, 0.0)));
         Ok(())
     }
 }

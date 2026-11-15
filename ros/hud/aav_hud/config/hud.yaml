@@ -17,6 +17,8 @@ hud:
     plan_ahead_topic: /ego/plan_ahead                     # nav_msgs/msg/Path, base_link: its faint line (what the planner WANTS)
     stop_point_topic: /ego/stop_point                     # geometry_msgs/msg/PoseStamped, base_link: where a full brake now stops the car
     ahead_topic: /ego/ahead                               # diagnostic_msgs/msg/DiagnosticStatus: the gap, the room, the goal (aav_ego look_ahead)
+    things_topic: /world/things                           # aav_interfaces/msg/Things, odom: the things near the car, named by the camera (aav_things), drawn in AHEAD
+    odom_topic: /localization/odom/local                  # nav_msgs/msg/Odometry, odom: the car's pose, to place the things in AHEAD
     heartbeat_topic: /hud/heartbeat                       # std_msgs/msg/UInt64: published, 10 Hz while the screen draws (frames drawn)
     stale_after: 1.0                                      # s: a topic this quiet shows STALE
     max_speed: 1.0                                        # m/s: ego's forward cap (aav_ego config/ego.yaml); the gauge's redline starts here. hud.launch.py copies ego.yaml's

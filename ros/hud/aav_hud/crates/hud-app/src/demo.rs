@@ -7,7 +7,8 @@
 //! mux waits, then latches a stop for a simulated camera. The e-stop button stops the
 //! pretend car; a pretend laptop clears it 10 s later, so the demo keeps going. The
 //! squiggly line plays hud_core::ahead::pretend's 12 s loop: it grows, bends, goes amber
-//! and shrinks to a stop.
+//! and shrinks to a stop. In AHEAD, the camera's named things: a person crossing, a stop
+//! sign by the road, a car further on and a box no camera has named.
 
 use std::{
     f32::consts::TAU,
@@ -20,6 +21,7 @@ use hud_core::{
     gps::{Fix, RawFix},
     picture::Picture,
     state::{Battery, EstopReport, Update},
+    things::Thing,
     units::{Fraction, MetresPerSecond, Radians},
     vehicle::{Faults, Mode, VehicleStatus},
 };
@@ -49,10 +51,12 @@ enum Stream {
     PlanAhead,
     StopPoint,
     Ahead,
+    Things,
+    CarPose,
 }
 
 impl Stream {
-    const ALL: [Stream; 12] = [
+    const ALL: [Stream; 14] = [
         Stream::Vehicle,
         Stream::Gps,
         Stream::GpsFiltered,
@@ -65,6 +69,8 @@ impl Stream {
         Stream::PlanAhead,
         Stream::StopPoint,
         Stream::Ahead,
+        Stream::Things,
+        Stream::CarPose,
     ];
 
     fn period(self) -> Duration {
@@ -77,6 +83,7 @@ impl Stream {
             Self::Watchdog => 100,
             Self::OutputMux => 500,
             Self::Trace | Self::PlanAhead | Self::StopPoint | Self::Ahead => 100,
+            Self::Things | Self::CarPose => 100,
         })
     }
 }
@@ -84,7 +91,7 @@ impl Stream {
 /// The demo source.
 pub struct Demo {
     start: Instant,
-    due: [Instant; 12],
+    due: [Instant; 14],
     button: EstopButton,
     estop_since: Option<Instant>,
     /// The pretend car's speed when the e-stop came, to brake from.
@@ -96,7 +103,7 @@ impl Demo {
     pub fn new(now: Instant) -> Self {
         Self {
             start: now,
-            due: [now; 12],
+            due: [now; 14],
             button: EstopButton::default(),
             estop_since: None,
             speed_at_estop: 0.0,
@@ -126,6 +133,9 @@ impl Demo {
             ),
             Stream::Watchdog => Some(Update::Watchdog(watchdog(t).into())),
             Stream::OutputMux => Some(Update::OutputMux(output_mux(t).into())),
+            Stream::Things => Some(Update::Things(things(t))),
+            // The pretend car stays at odom's origin: the things move instead.
+            Stream::CarPose => Some(Update::CarPose((0.0, 0.0, 0.0))),
             Stream::Trace | Stream::PlanAhead | Stream::StopPoint | Stream::Ahead => {
                 let a = ahead::pretend(now.saturating_duration_since(self.start));
                 match stream {
@@ -308,6 +318,29 @@ fn road(t: f32) -> Vec<u8> {
         }
     }
     px
+}
+
+/// The pretend things (odom, the car at the origin facing +x): a person crossing 4 m
+/// ahead, back and forth every 12 s; a stop sign by the road; a car further on; a box
+/// no camera has named.
+fn things(t: f32) -> Vec<Thing> {
+    let thing = |id, name: &str, (x, y): (f64, f64), (length, width, height)| Thing {
+        id,
+        name: name.into(),
+        x,
+        y,
+        length,
+        width,
+        height,
+        ..Thing::default()
+    };
+    let walk = f64::from((t / 12.0 * TAU).sin()) * 3.0;
+    vec![
+        thing(3, "person", (4.0, walk), (0.5, 0.5, 1.7)),
+        thing(7, "stop sign", (5.2, -2.2), (0.3, 0.3, 2.1)),
+        thing(9, "car", (14.0, 1.0), (4.0, 1.8, 1.5)),
+        thing(4, "unknown", (2.5, 2.4), (0.6, 0.6, 0.5)),
+    ]
 }
 
 #[cfg(test)]

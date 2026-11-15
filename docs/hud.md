@@ -72,6 +72,8 @@ HUD and on the developer window.
 | ON PLAN / OFF PLAN / FAR OFF | how far the bold line strays from the grey one: "have we turned enough, slowed enough?" | gap_m |
 | GOAL: SHORT / PAST, OBSTACLE, HITS | room left between the stop and the goal (along the plan), or the obstacle; HITS in red when a full brake now still reaches it | goal_m, room_m |
 | ROAD 0.6 m/s, SIGN IN 12 m | with `behaviour:=true`: the road ahead's speed here and its end (the nearest stop: sign, obstacle, fence, goal). It takes the third line, unless an obstacle is within 1 m of the stop point; `ROAD: STOP` in amber at the end | road_mps, road_m, road_why |
+| coloured boxes, PERSON 3 | with `things:=true`: each thing near the car, its box in its kind's colour (person yellow, car blue, stop sign red, other names green, unknown orange, grey unseen now); a named one has its name over it (TODO 192) | `/world/things`, placed with `/localization/odom/local` |
+| STOP SIGN 12 m (top right) | the nearest two named things ahead past the 6 m drawing, within 30 m | the same |
 
 The road line, on Ben's Mac (14 Nov, `pixi run hud --demo`): "ROAD 1.0 m/s, GOAL IN 3.2 m" under STOPS IN and ON PLAN:
 

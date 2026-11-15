@@ -827,6 +827,24 @@ pub const LATTE: Theme = {
 /// only this constant: the tests check its contrast the same way.
 pub const CALM: Theme = MOCHA;
 
+/// The things' colours (`hud_core::things`, TODO 192): the same in every theme, and the
+/// same as the RViz markers' (aav_things `looks.py`): person yellow, vehicle blue, stop
+/// sign red, any other name green, unknown orange. Their words are drawn in the theme's
+/// own ink, so these only colour shapes.
+pub fn thing_colour(kind: crate::things::Kind) -> Rgba {
+    use crate::things::Kind;
+    match kind {
+        Kind::Person => Rgba::hex(0xffd91a),
+        Kind::Vehicle => Rgba::hex(0x408cff),
+        Kind::StopSign => Rgba::hex(0xe61a1a),
+        Kind::Other => Rgba::hex(0x4dd966),
+        Kind::Unknown => Rgba::hex(0xff9900),
+    }
+}
+
+/// A thing not seen in the last cloud (coasting): grey, in every theme.
+pub const THING_COASTING: Rgba = Rgba::hex(0x999999);
+
 /// Carleton's red: the "Red" swatch, RGB 233, 28, 36, in the RGB logo files of
 /// Carleton's Logo Guide 2023
 /// (<https://carleton.ca/brand/wp-content/uploads/sites/155/22-307-Carleton-Logo-Guide-2023.pdf>).

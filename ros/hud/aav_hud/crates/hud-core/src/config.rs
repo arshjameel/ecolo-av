@@ -49,6 +49,11 @@ pub enum Topic {
     StopPoint,
     /// Its numbers: the gap, the room, the goal.
     Ahead,
+    /// The things near the car (`/world/things`, odom), named by the camera: drawn in
+    /// AHEAD (hud_core::things).
+    Things,
+    /// The car's pose in odom (the local EKF), to place the things in AHEAD.
+    Odom,
 }
 
 impl Topic {
@@ -64,8 +69,8 @@ impl Topic {
 
     /// The topics that aren't listed: the e-stop and the heartbeat (sent), the source
     /// (latched), the watchdog (a banner of its own) and the output mux (its own panel).
-    /// The squiggly line's four have their own panel, AHEAD.
-    pub const UNLISTED: [Topic; 9] = [
+    /// The squiggly line's four, the things and the car's pose have their own panel, AHEAD.
+    pub const UNLISTED: [Topic; 11] = [
         Topic::Estop,
         Topic::Source,
         Topic::Watchdog,
@@ -75,6 +80,8 @@ impl Topic {
         Topic::PlanAhead,
         Topic::StopPoint,
         Topic::Ahead,
+        Topic::Things,
+        Topic::Odom,
     ];
 
     /// The ROS parameter that holds this topic's name.
@@ -95,6 +102,8 @@ impl Topic {
             Self::PlanAhead => "plan_ahead_topic",
             Self::StopPoint => "stop_point_topic",
             Self::Ahead => "ahead_topic",
+            Self::Things => "things_topic",
+            Self::Odom => "odom_topic",
         }
     }
 }
@@ -117,6 +126,8 @@ pub struct HudConfig {
     pub plan_ahead_topic: String,
     pub stop_point_topic: String,
     pub ahead_topic: String,
+    pub things_topic: String,
+    pub odom_topic: String,
     /// Seconds without a message before a topic shows STALE.
     pub stale_after: f64,
     /// m/s: the car's forward cap, ego's `max_speed`. The arcade gauge's redline starts
@@ -195,6 +206,8 @@ impl HudConfig {
             Topic::PlanAhead => &self.plan_ahead_topic,
             Topic::StopPoint => &self.stop_point_topic,
             Topic::Ahead => &self.ahead_topic,
+            Topic::Things => &self.things_topic,
+            Topic::Odom => &self.odom_topic,
         }
     }
 
@@ -216,6 +229,8 @@ impl HudConfig {
             Topic::PlanAhead => &mut self.plan_ahead_topic,
             Topic::StopPoint => &mut self.stop_point_topic,
             Topic::Ahead => &mut self.ahead_topic,
+            Topic::Things => &mut self.things_topic,
+            Topic::Odom => &mut self.odom_topic,
         };
         *slot = name;
     }

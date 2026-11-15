@@ -7,7 +7,7 @@
 <!-- Generated from docs/hud.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The HUD (in-car screen)</h1>
-<div class="meta">75 min read · 8 sections</div></header>
+<div class="meta">76 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -287,6 +287,16 @@ HUD and on the developer window.</p>
 <td>ROAD 0.6 m/s, SIGN IN 12 m</td>
 <td>with <code>behaviour:=true</code>: the road ahead's speed here and its end (the nearest stop: sign, obstacle, fence, goal). It takes the third line, unless an obstacle is within 1 m of the stop point; <code>ROAD: STOP</code> in amber at the end</td>
 <td>road_mps, road_m, road_why</td>
+</tr>
+<tr>
+<td>coloured boxes, PERSON 3</td>
+<td>with <code>things:=true</code>: each thing near the car, its box in its kind's colour (person yellow, car blue, stop sign red, other names green, unknown orange, grey unseen now); a named one has its name over it (TODO 192)</td>
+<td><code>/world/things</code>, placed with <code>/localization/odom/local</code></td>
+</tr>
+<tr>
+<td>STOP SIGN 12 m (top right)</td>
+<td>the nearest two named things ahead past the 6 m drawing, within 30 m</td>
+<td>the same</td>
 </tr>
 </tbody>
 </table></div>

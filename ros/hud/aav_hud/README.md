@@ -7,7 +7,8 @@ node (rclrs):
 
 - `hud`, the in-car screen: speed, mode, the e-stop button, GO / STOP, steering,
   throttle and brake, the GPS fix, topic health, the stop-sign alert, the camera and
-  AHEAD, the squiggly line (ego's trace, the plan, the stop bar; docs/hud.md);
+  AHEAD, the squiggly line (ego's trace, the plan, the stop bar; docs/hud.md), and the
+  things near the car with their names (person, car, stop sign; TODO 192);
 - `map`, the big screen's map window: Nav2's map over an offline street map, the car,
   the plan, the goal, the distance left, and a place search;
 - `debug_hud`, the debug screen, which opens as the **seeing screen**: the lidar's cubes
@@ -75,6 +76,8 @@ blue, global green, AMCL orange, NDT purple). docs/hud.md, "Themes".
 | sub | `trace_topic`: `/ego/trace`; `plan_ahead_topic`: `/ego/plan_ahead` (base_link) | nav_msgs/Path |
 | sub | `stop_point_topic`: `/ego/stop_point` (base_link) | geometry_msgs/PoseStamped |
 | sub | `ahead_topic`: `/ego/ahead` (the gap, the room, the body) | diagnostic_msgs/DiagnosticStatus |
+| sub | `things_topic`: `/world/things` (odom; AHEAD draws each box in its kind's colour with its name, and lists named things past the drawing: STOP SIGN 12 m) | aav_interfaces/Things |
+| sub | `odom_topic`: `/localization/odom/local` (the car's pose, to place the things) | nav_msgs/Odometry |
 | pub | `estop_topic`: `/safety/estop` (only `true`) | std_msgs/Bool |
 | pub | `heartbeat_topic`: `/hud/heartbeat` (10 Hz while it draws) | std_msgs/UInt64 |
 

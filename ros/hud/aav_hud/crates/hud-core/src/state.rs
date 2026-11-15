@@ -16,6 +16,7 @@ use crate::{
     health::{Health, LastSeen},
     origin::{Announcement, Origins},
     picture::Picture,
+    things::{CarPose, Thing},
     vehicle::VehicleStatus,
     watchdog,
 };
@@ -78,6 +79,10 @@ pub enum Update {
     StopPoint(ahead::StopMark),
     /// Its numbers.
     Ahead(ahead::Summary),
+    /// The things near the car (odom), named by the camera.
+    Things(Vec<Thing>),
+    /// The car's pose in odom: x, y (m), yaw (rad).
+    CarPose(CarPose),
 }
 
 impl Update {
@@ -96,6 +101,8 @@ impl Update {
             Self::PlanAhead(_) => Some(Topic::PlanAhead),
             Self::StopPoint(_) => Some(Topic::StopPoint),
             Self::Ahead(_) => Some(Topic::Ahead),
+            Self::Things(_) => Some(Topic::Things),
+            Self::CarPose(_) => Some(Topic::Odom),
             // Latched, sent once: its age says nothing about the data.
             Self::Estop(_) | Self::Source(_) => None,
         }
@@ -123,6 +130,10 @@ pub struct HudState {
     pub output_mux: Option<String>,
     /// The squiggly line, as last heard (hud_core::ahead).
     pub ahead: ahead::Ahead,
+    /// The things near the car, as last heard (odom).
+    pub things: Vec<Thing>,
+    /// The car's pose in odom, as last heard: x, y, yaw.
+    pub car_pose: Option<CarPose>,
     new_picture: Option<Picture>,
     last_seen: HashMap<Topic, LastSeen>,
 }
@@ -160,7 +171,19 @@ impl HudState {
             Update::PlanAhead(p) => self.ahead.plan = p,
             Update::StopPoint(s) => self.ahead.stop = Some(s),
             Update::Ahead(s) => self.ahead.summary = Some(s),
+            Update::Things(t) => self.things = t,
+            Update::CarPose(p) => self.car_pose = Some(p),
         }
+    }
+
+    /// The things to draw and the car's pose to place them, both fresh; None if either
+    /// is quiet (old things would sit where the car no longer is).
+    pub fn things_now(&self, now: Instant) -> Option<(&[Thing], CarPose)> {
+        let fresh =
+            self.health(Topic::Things, now).is_ok() && self.health(Topic::Odom, now).is_ok();
+        self.car_pose
+            .filter(|_| fresh)
+            .map(|pose| (self.things.as_slice(), pose))
     }
 
     /// The e-stop button was pressed: forget the last press's report.
@@ -241,6 +264,25 @@ mod tests {
             Health::Stale(_)
         ));
         assert_eq!(s.health(Topic::Gps, later), Health::Never);
+    }
+
+    #[test]
+    fn things_show_only_while_they_and_the_car_pose_are_fresh() {
+        let start = Instant::now();
+        let mut s = HudState::new(HudConfig::default());
+        let person = Thing {
+            id: 3,
+            name: "person".into(),
+            x: 4.0,
+            ..Thing::default()
+        };
+        s.apply(Update::Things(vec![person]), start);
+        assert!(s.things_now(start).is_none(), "no car pose yet");
+        s.apply(Update::CarPose((0.0, 0.0, 0.0)), start);
+        let (things, pose) = s.things_now(start).expect("both fresh");
+        assert_eq!(things[0].label(), "person 3");
+        assert_eq!(pose, (0.0, 0.0, 0.0));
+        assert!(s.things_now(start + Duration::from_secs(2)).is_none());
     }
 
     #[test]
