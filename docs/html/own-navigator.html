@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-navigator.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own navigator</h1>
-<div class="meta">9 min read · 5 sections</div></header>
+<div class="meta">10 min read · 5 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -190,8 +190,8 @@ send to the same place whichever runs. <code>/goal_pose</code> reaches ours too.
 <code>vehicle.navigator_action(name)</code> gives the full name.</p>
 </section>
 <section class="card"><h2 id="what-it-does">What it does</h2>
-<pre class="highlight"><code>goal ─▶ plan ─▶ follow ─▶ plan again every second
-          │        │        (near the goal: keep the path, TODO 17)
+<pre class="highlight"><code>goal ─▶ plan ─▶ follow ─▶ plan again: at most every second, but keep
+          │        │        a clear path up to 10 s (near the goal: 20 s, TODO 17)
           ▼        ▼
    clear global  clear local      ◀── a failure a recovery can fix
           └────────┴─▶ in turn: clear both ─▶ wait 5 s ─▶ back up 1 m (reversing only)
@@ -207,8 +207,8 @@ send to the same place whichever runs. <code>/goal_pose</code> reaches ours too.
 <tbody>
 <tr>
 <td>plan</td>
-<td>every 1 s (through-poses 3 s)</td>
-<td>the same</td>
+<td>every 1 s (through-poses 3 s); a to-pose path kept up to 10 s while it ends at the goal and IsPathValid says it is clear (15 Nov, TODO 168: planning every second moved the path a few cm each time, and the car swayed twice as much)</td>
+<td>the same (the trees' KeepAValidPath, 14 Nov)</td>
 </tr>
 <tr>
 <td>the final approach</td>

@@ -25,6 +25,9 @@ Nav2 still plans the path; ours follows it. It is a **trial**, beside Nav2's MPP
 >   Nav2's MPPI's CPU (33-39 % against 17-18 %: [our navigator](own-navigator.md#the-verdict)).
 >   Open: TODO 152 (slow earlier near the goal, fewer futures, time it on the Orin).
 > - **Costmap:** Nav2's local costmap, or ours with `costmap:=own` ([page](own-costmap.md)).
+> - **No wiggle at speed** (15 Nov, TODO 168): at 2.5 m/s the steering noise sized for
+>   1 m/s made the steering jump side to side; it now shrinks with the speed
+>   ([Oscillation](#oscillation-the-cause)).
 
 ## How it fits
 
@@ -89,6 +92,7 @@ pub trait CarModel: Sync {
 |---|---|---|---|
 | Samples | (vx, wz), each step clipped to ax, az | (speed, steering), clipped to the range only | ego's ramps are in the model; Nav2's clipping drifts samples slower |
 | Noise | white | **correlated**, AR(1) 0.8 | see below |
+| Steering noise at speed | `wz_std`: the angle's shrinks as 1 / speed | 0.15 rad up to 1 m/s, then x (1 / speed)² | the same sideways spread at every speed ([Oscillation](#oscillation-the-cause)) |
 | Control cost | gamma / std² x Σ u e | gamma x u' Σ⁻¹ e, Σ the AR(1) noise's covariance; Nav2's for white noise | Nav2's form on correlated noise stopped the car ([Cusps](#cusps)) |
 | Sent | element 1 | element 0 | the dead times already hold what was sent |
 | Critics | the eight in nav2.yaml | the same eight, same weights; PathAngle's three modes; and our `LaneCritic` with a lane map ([below](#the-lane)) | Nav2 has no critic for a lane |
@@ -301,6 +305,96 @@ the car" when it did.
 | backing up | none |
 
 **In the simulator:** not yet run with the 600 m fence.
+
+## Oscillation: the cause
+
+TODO 168. Ben: **"don't forget reverse and no occelation"**.
+
+**Seen 14 Nov**, the campus tour, all ours (the saved runs, about 2.4 m/s):
+
+| | All ours | All Nav2 |
+|---|---|---|
+| swing: side to side about its own track | **0.18-0.26 m** | 0.04-0.08 m |
+| sway: the sideways push a passenger feels | **0.58-0.76 m/s²** | 0.04-0.16 m/s² |
+| steering changes side | **0.7-1.1 a second** | 0.15-0.4 a second |
+
+At 1 m/s on the test lot, all ours swung only 0.02 m. The swing is real: the true
+track swings as much as the EKF's (0.22 against 0.23 m). The EKF's own error (0.08 m
+RMS) changes side only 0.2 times a second.
+
+### Rebuilt without ROS
+
+`cargo run --release -p mppi-lag --example wiggle`. The closed-loop tests above saw only
+nav2.yaml's 3 m of path; MPPI then holds the car near 1.2 m/s. The launch file shows it
+2.8 s of path at the top speed (8.4 m at 2.5 m/s). With that, the model wiggles as the
+sim did: on the sim's own campus path, with a sim-like pose, 0.18 m, 0.59 m/s², 0.76
+changes a second (the sim: 0.20, 0.70, 0.77).
+
+Each suspect, alone, on 100 m straight at 2.5 m/s (2 runs each):
+
+| Suspect | Sway m/s² | Steering changes side /s | Says |
+|---|---|---|---|
+| as on 14 Nov, the true pose | 0.166 | 1.89 | wiggles with nothing wrong |
+| + an EKF-like pose error (8 cm, 1.2°) | 0.209 | 1.45 | adds a little |
+| + the pose 0.15 s old | 0.189 | 1.38 | adds a little |
+| + 0.2 s steering dead time the model doesn't know | 0.194 | 1.53 | adds a little |
+| no lag at all, and the model knows it | 0.229 | 2.31 | not the lag |
+| no speed overshoot | 0.063 | 1.63 | less, but it drove slower (1.9 m/s) |
+| 8000 samples, not 2000 | 0.092 | 1.31 | **less: it is sampling noise** |
+| temperature 0.5, not 0.15 | 0.082 | 1.25 | less: more samples count |
+| white noise (Nav2's) | 0.034 | 0.70 | less, but 6 tests of reversing and slow actuators fail |
+| **after the fix** | **0.022** | **0.00** | |
+
+### The cause
+
+```
+ steering noise 0.15 rad ──▶ a future's end moves v² x the angle
+   1 m/s:   futures 2.8 s long spread ~0.2 m sideways ──▶ many samples count
+   2.5 m/s: they spread ~1 m (6 x as wide) ──▶ the softmax rests on a handful
+            each tick a different handful ──▶ the steering jumps ──▶ the wiggle
+```
+
+The noise was sized for 1 m/s (Nav2's `wz_std` 0.1 rad/s at 1 m/s). The critics
+(PathFollow, PathAlign) score where a future ends, sharply, so at 2.5 m/s only the few
+futures that end near the path count, and each tick's few are different ones. Pose
+noise, delays and unknown lag only add to it.
+
+### The fix
+
+`steer_std_speed: 1.0` (`config/mppi_lag.yaml`, `Settings::steer_std_at`): above 1 m/s
+the steering noise is 0.15 x (1 / speed)², 0.024 rad at 2.5 m/s, so the futures spread as
+far sideways as at 1 m/s. It never goes under `steer_std_min`, 0.024 rad, so above
+2.5 m/s the futures still spread. At 1 m/s and below (the lot, the cusps, backing up)
+nothing changes. The recommended option of the ones tried: more samples cost CPU, a warmer
+softmax blurs the path, white noise breaks reversing.
+
+At 2.5 m/s, swing m / sway m/s² / steering changes a second, 2 runs each:
+
+| Path | Before | After |
+|---|---|---|
+| 100 m straight, true pose | 0.010 / 0.166 / 1.89 | **0.003 / 0.022 / 0.00** |
+| 100 m straight, sim-like pose (EKF-like, 0.15 s old) | 0.054 / 0.289 / 1.17 | **0.038 / 0.117 / 0.48** |
+| bend r 30 m, true pose | sway 0.152, 0.49 a second | **sway 0.024, 0.00** |
+| the sim's campus path ("along the road"), true pose | 0.141 / 0.409 / 0.86 | **0.090 / 0.194 / 0.30** |
+| the same, sim-like pose | 0.182 / 0.590 / 0.76 | **0.112 / 0.262 / 0.37** |
+
+The price: a little further off the path on tight bends (corner r 5 m: 0.014 to
+0.049 m; S 2 x 30 m: 0.013 to 0.025 m). On the campus path, 0.026 to 0.090 m: it cuts
+the plan's jogs (below) instead of following them.
+
+Tests (`tests/closed_loop.rs`, as the launch file sets the node up): no wiggle on a
+straight and a bend at 2.5 m/s, less with a sim-like pose, none backing up.
+
+### What is left
+
+| Left | Numbers |
+|---|---|
+| **The simulator** must confirm: the campus tour, all ours | without ROS: swing 0.18 to 0.11 m, sway 0.59 to 0.26 m/s² |
+| The target (drive-j, 15 Nov, before both fixes): Nav2's sway | campus at 2.5 m/s: ours 0.662, Nav2 0.123 m/s²; the lot: ours 0.055, Nav2 0.017 m/s². Keep ours' 100% legs and its off-path (0.13 m campus, 0.12 m lot) |
+| The planner's jogs: 16 lattice headings make a road at an angle a staircase (±8° every ~10 m) | the plan itself swings 0.13 m at 2.4 m/s, both stacks; most of what is left |
+| **Fixed too:** our navigator planned again every second; each new plan moved a little. Now it keeps a clear to-pose path up to 10 s, as the trees' KeepAValidPath (`keep_path_age`, [own navigator](own-navigator.md)) | without ROS, the lot's left turn at 1 m/s: sway 0.075 (the sim's, ours) to 0.038 m/s²; a plan kept all the way, 0.025; Nav2 in the sim 0.017 |
+| The lot at 1 m/s: still above Nav2's | less steering noise at 1 m/s helps the model (sway 0.022 to 0.013 with a sim-like pose) but fails the very slow actuators' S-curve test: not taken |
+| Backing up at 0.5 m/s, the wheels dither about 1° | the car itself doesn't move sideways (0.3 mm) |
 
 ## The lane
 
