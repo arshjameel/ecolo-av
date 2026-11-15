@@ -24,6 +24,7 @@ left camera's picture, only with faults:=true, which routes it through gazebo_ca
 """
 
 import copy
+from dataclasses import replace
 from typing import Optional
 
 SENSORS = {
@@ -91,6 +92,66 @@ class Fault:
         out = copy.deepcopy(msg)
         (nan if self.mode == 'nan' else jump)(out)
         return out
+
+
+# Actuator faults on purpose (TODO 159): the car's own actuators, in gazebo_adapter, between
+# the speed loop and the car model. What each stands for on the car:
+#   steer     stuck: the steering actuator holds the angle it was asked for when it failed
+#             (a jammed linkage, a Jrk that stopped following: hazard 7)
+#   throttle  stuck: the throttle holds its level from the moment it failed, whatever the
+#             speed loop asks; the brake still works against it (a stuck DAC: hazard 3)
+#   brake     weak: WEAK_BRAKE of what the loop asks; dead: none (a slipping or unpowered
+#             brake actuator: hazard 8)
+ACTUATORS = {
+    'steer': ('ok', 'stuck'),
+    'throttle': ('ok', 'stuck'),
+    'brake': ('ok', 'weak', 'dead'),
+}
+WEAK_BRAKE = 0.3    # the share of the asked brake a weak one gives
+ACTUATOR_NODE = 'gazebo_adapter'    # the car's node takes every actuator's fault
+
+
+def check_actuator(actuator: str, mode: str) -> Optional[str]:
+    """Return why this actuator can't have this fault, or None if it can."""
+    if actuator not in ACTUATORS:
+        return f'no actuator {actuator!r}: pick one of {", ".join(ACTUATORS)}'
+    if mode not in ACTUATORS[actuator]:
+        return (f'{actuator} has no {mode!r} fault: pick one of '
+                f'{", ".join(ACTUATORS[actuator])}')
+    return None
+
+
+class ActuatorFaults:
+    """
+    The actuators' faults on purpose: what reaches the car in place of the loop's demand.
+
+    apply(demand, steer) takes the speed loop's Demand (car_model's) and the steering
+    target, and returns what the faulty actuators really do. A stuck one holds what it
+    was asked for at the first apply after the fault was set.
+    """
+
+    def __init__(self):
+        self.modes = dict.fromkeys(ACTUATORS, 'ok')
+        self.held = {}          # actuator -> the value it is stuck at
+
+    def switch(self, actuator: str, mode: str):
+        why = check_actuator(actuator, mode)
+        if why is not None:
+            raise ValueError(why)
+        self.modes[actuator] = mode
+        self.held.pop(actuator, None)
+
+    def apply(self, demand, steer: float):
+        """Return (demand, steer) as the faulty actuators give them."""
+        if self.modes['steer'] == 'stuck':
+            steer = self.held.setdefault('steer', steer)
+        if self.modes['throttle'] == 'stuck':
+            demand = replace(demand, throttle=self.held.setdefault('throttle', demand.throttle))
+        brake = self.modes['brake']
+        if brake != 'ok':
+            share = WEAK_BRAKE if brake == 'weak' else 0.0
+            demand = replace(demand, brake=demand.brake * share)
+        return demand, steer
 
 
 CAMERA = '/sensors/camera/front_left/image_raw'

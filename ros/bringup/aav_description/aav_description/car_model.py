@@ -464,15 +464,25 @@ class Actuators:
     setpoint = property(lambda self: self.state.steer_setpoint)
     wheels = property(lambda self: self.state.steer_linkage)
 
-    def step(self, speed_command, steer_command, dt):
-        """Step ego's speed and angle: the speed loop (ours, in Python), then the actuators."""
+    def step(self, speed_command, steer_command, dt, fault=None):
+        """
+        Step ego's speed and angle: the speed loop (ours, in Python), then the actuators.
+
+        fault: an actuator fault on purpose (aav_gazebo faults.ActuatorFaults.apply), a
+        function (Demand, steer) -> (Demand, steer) between the loop and the actuators. The
+        State's commands stay what was asked, its levels and angle what the car did.
+        """
         if dt <= 0.0:
             raise ValueError(f'dt must be positive, not {dt}')
         d = self.loop.update(speed_command, self.speed, dt)
         if self.brake_loop is not None:
             sent = self.brake_loop.update(d.throttle, d.brake, self.speed, dt)
             d = Demand(d.throttle, sent.brake, d.reverse)
-        return self.drive(d, steer_command, dt)
+        if fault is None:
+            return self.drive(d, steer_command, dt)
+        out = self.drive(*fault(d, steer_command), dt)
+        return replace(out, steer_command=steer_command, throttle_command=d.throttle,
+                       brake_command=d.brake)
 
     def drive(self, d, steer_command, dt):
         """Drive the actuators alone: a throttle, brake and gear Demand, and a steering target."""

@@ -7,7 +7,7 @@
 <!-- Generated from docs/decisions.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Decisions and open questions</h1>
-<div class="meta">53 min read · 16 sections</div></header>
+<div class="meta">54 min read · 16 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -932,6 +932,11 @@ answer.</p>
 <td>15 Nov</td>
 <td>The fork's branches (<code>one-shape</code>, <code>review-13nov</code>, <code>setup-localization</code>, <code>whole-car</code>) merged into its <code>main</code>, then deleted; their last commits: 0f0a1094, b7ed1837, 566ef0c0, 726bff44</td>
 <td>Ben</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>The pedal in ego</strong> for people (joy, rc, keyboard): the stick's position sets how hard ego slows (let go: 1.0 m/s²; full back: 2.0 m/s²), then reverses at 0. Computer drivers keep plain speeds; the AI may join as a challenger</td>
+<td>Ben (asked "Everyone", and "a similar concept for the ai too? what do you think?"; advised: people only, since a planner's own slowing must be followed at once, or the car rolls past its stop line)</td>
 </tr>
 </tbody>
 </table></div>

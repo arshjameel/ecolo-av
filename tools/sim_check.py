@@ -130,6 +130,12 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             the bumper, the radar off; the car must go round
                                             it clear. Two runs: lidar_memory:=0, then 3 s;
                                             --low-box-only skips the road world's run)
+    pixi run sim-check --actuator-faults  (TODO 159, the empty world: the e-stop from 1 m/s
+                                            healthy, with a weak brake, a dead one and a
+                                            stuck throttle: metres to stand; the steering
+                                            stuck in a turn: does anything stop the car.
+                                            Evidence for docs/safety-case.md; one more run,
+                                            --actuator-faults-only skips the road world's)
     pixi run sim-check --three-point      (reverse, TODO 174: a 6.5 m street of walls, a
                                             goal behind the car facing back; the car must
                                             turn in it, backing at least once, without
@@ -270,7 +276,7 @@ os.environ['GZ_IP'] = '127.0.0.1'
 os.environ['GZ_PARTITION'] = os.environ.get('AAV_SIM_PARTITION', f'sim_check_{DOMAIN}')
 
 from aav_description import vehicle  # noqa: E402
-from aav_gazebo.faults import NODES as FAULT_NODES  # noqa: E402
+from aav_gazebo.faults import ACTUATOR_NODE, NODES as FAULT_NODES  # noqa: E402
 from aav_interfaces.action import DriveToPoint, ScriptedDrive  # noqa: E402
 from aav_interfaces.msg import ActuatorState, SpineOutputs, VehicleStatus  # noqa: E402
 from aav_lane_geometry.msg import LaneGeometry  # noqa: E402
@@ -1671,7 +1677,7 @@ def signal_watchdog(mode):
 def fault_client(probe, sensor):
     """Return a parameter client for the node that takes this sensor's fault."""
     clients = probe.__dict__.setdefault('fault_clients', {})
-    node = FAULT_NODES[sensor]
+    node = FAULT_NODES.get(sensor, ACTUATOR_NODE)     # an actuator's: gazebo_adapter
     if node not in clients:
         clients[node] = AsyncParameterClient(probe, node)
     return clients[node]
@@ -1992,6 +1998,127 @@ def check_estop(probe, spine, hardware=False):
         held(probe, 1.0, press=publisher)
     STOPS[(stop, 'spine' if spine else 'direct')] = (brake, stood, v0)
     result(name, ok, detail)
+
+
+def roll_out(probe, x0, y0, press, limit=30.0):
+    """
+    Press the e-stop until the car stands, at most `limit` s of the sim's time.
+
+    Return (metres from (x0, y0) to where it stood or was at the end, s, standing).
+    """
+    t0 = probe.now()
+
+    def still():
+        press.publish(Bool(data=True))
+        return probe.now() > t0 + 0.2 and abs(probe.speed()) < STILL
+
+    standing = probe.spin_for(limit, still)
+    x, y = probe.xy(probe.truth)
+    return math.hypot(x - x0, y - y0), probe.now() - t0, standing
+
+
+def actuator_stop(probe, fault):
+    """
+    One e-stop from about 1 m/s with an actuator fault (None: healthy): its result line.
+
+    The fault goes on 0.5 s before the press, so a stuck throttle holds the cruise's.
+    Mended afterwards, the e-stop let go and the drive ended.
+    """
+    name = f'actuator {" ".join(fault)}: the e-stop' if fault else 'actuator healthy: the e-stop'
+    handle = get_going(probe, False)
+    if handle is None:
+        result(name, False, 'the car would not get going')
+        return None
+    if fault and not set_fault(probe, *fault):
+        result(name, False, f'gazebo_adapter refused {" ".join(fault)}')
+        finish(probe, handle)
+        return None
+    probe.spin_for(0.5)
+    v0 = abs(probe.speed())
+    x0, y0 = probe.xy(probe.truth)
+    metres, took, standing = roll_out(probe, x0, y0, probe.estop)
+    v_end = abs(probe.speed())
+    if fault:
+        set_fault(probe, fault[0], 'ok')
+    probe.spin_for(10.0, lambda: abs(probe.speed()) < STILL)
+    held(probe, 1.0, press=probe.estop)
+    finish(probe, handle)
+    return name, v0, metres, took, standing, v_end
+
+
+TURNING = 0.06     # rad/s: the car is in the bend (check_actuator_faults)
+
+
+def check_actuator_faults(probe, react=40.0):
+    """
+    Actuator faults on purpose (TODO 159, faults.ACTUATORS): what each does, as evidence.
+
+    The e-stop from about 1 m/s, healthy, then with a weak brake, a dead one and a stuck
+    throttle: how far the car rolls and whether it stands within 30 s. Then the steering
+    stuck in a turn, Nav2 driving to a goal round the corner: does anything stop the car
+    in `react` s, and how far off the straight to the goal it gets. Each line is evidence
+    for docs/safety-case.md; none fails because a layer is missing (the safety case says
+    which are), only when the fault could not be set or the car would not drive.
+    """
+    if not fault_client(probe, 'steer').wait_for_services(timeout_sec=20.0):
+        result('actuator faults', False, "no gazebo_adapter parameters: can't set a fault")
+        return
+    base = None
+    for fault in (None, ('brake', 'weak'), ('brake', 'dead'), ('throttle', 'stuck')):
+        out = actuator_stop(probe, fault)
+        if out is None:
+            continue
+        name, v0, metres, took, standing, v_end = out
+        base = metres if fault is None else base
+        than = f' ({metres / base:.1f} x the healthy {base:.2f} m)' if base and fault else ''
+        ended = (f'stood still after {took:.1f} s' if standing
+                 else f'still at {v_end:.2f} m/s after {took:.0f} s')
+        result(name, True, f'from {v0:.2f} m/s: {metres:.2f} m{than}, {ended}')
+    # The steering stuck in a turn: a goal 10 m on and 10 m left, facing left (a bend of
+    # about 10 m radius: 0.1 rad/s at 1 m/s), stuck once the car turns at TURNING.
+    x0, y0 = probe.xy(probe.truth)
+    h = yaw_of(probe.truth)
+    c, s = math.cos(h), math.sin(h)
+    gx, gy = x0 + 10.0 * c - 10.0 * s, y0 + 10.0 * s + 10.0 * c
+    done = probe.go_to(gx, gy, h + math.pi / 2.0)
+    name = 'actuator steer stuck: in a turn'
+    if done is None:
+        result(name, False, 'no navigator, or it refused the goal')
+        return
+    turning = probe.spin_for(60.0, lambda: abs(probe.truth.twist.twist.angular.z) > TURNING
+                             and probe.speed() > 0.3)
+    if not turning or not set_fault(probe, 'steer', 'stuck'):
+        result(name, False, 'the car never turned' if not turning else 'refused the fault')
+        probe.goal.cancel_goal_async()
+        return
+    t0, start = probe.now(), len(probe.track)
+    rate = probe.truth.twist.twist.angular.z
+    probe.spin_for(react)
+    run = probe.track[start:]
+    # Standing still for 3 s or more (a change of direction passes through 0 too).
+    stood, since = None, None
+    for t, *_, v in run:
+        since = (since if since is not None else t) if abs(v) < STILL else None
+        if since is not None and t - since >= 3.0:
+            stood = since - t0
+            break
+    # How far it went from the straight line to the goal, and how far it drove.
+    dx, dy = gx - x0, gy - y0
+    length = math.hypot(dx, dy)
+    off = max((abs((x - x0) * dy - (y - y0) * dx) / length for _, x, y, *_ in run), default=0.0)
+    driven = sum(math.hypot(b[1] - a[1], b[2] - a[2]) for a, b in zip(run, run[1:]))
+    status = done.result().status if done.done() else None
+    set_fault(probe, 'steer', 'ok')
+    if not done.done():
+        probe.goal.cancel_goal_async()
+    probe.spin_for(10.0, lambda: abs(probe.speed()) < STILL)
+    why = ('the goal ended (status {})'.format(status) if status is not None
+           else 'nothing ended the goal')
+    still = f'stood still {stood:.0f} s after it' if stood is not None else 'never stood 3 s'
+    result(name, True,
+           f'stuck turning at {rate:+.2f} rad/s: {still} (watched {react:.0f} s); drove '
+           f'{driven:.1f} m, {street_check.turns(run)} changes of direction, up to {off:.1f} m '
+           f'off the straight to the goal; {why}')
 
 
 def check_not_armed(probe):
@@ -3081,7 +3208,8 @@ def main():
             '--stop-point-only', '--loaded-stop-only', '--behaviour-only', '--lane-only',
             '--things-only', '--behaviour-things-only', '--legs-only',
             '--three-point-only', '--moving-only', '--low-box-only',
-            '--stop-zone-shadow-only', '--thing-names-only'} & set(args):
+            '--stop-zone-shadow-only', '--thing-names-only',
+            '--actuator-faults-only'} & set(args):
         # With --obstacle the planner is blind to the box, so the stop zone must stop the car.
         session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}']
                 + (['plan_around:=false'] if '--obstacle' in args else []),
@@ -3113,6 +3241,13 @@ def main():
         logs.append(f'{stem}-ghost{ext}')
         session(['ghost:=true', f'lidar:={str(lidar).lower()}'], [check_ghost], logs[-1],
                 'ghost')
+    if {'--actuator-faults', '--actuator-faults-only'} & set(args):
+        # Its own run, the empty world (room to roll and to circle): the actuators' faults
+        # on purpose (TODO 159), gazebo_adapter's. No lidar or radar: a lighter run.
+        stem, ext = os.path.splitext(log)
+        logs.append(f'{stem}-actuator-faults{ext}')
+        session(['lidar:=false', 'radar:=false'], [check_actuator_faults], logs[-1],
+                'actuator faults', world='empty')
     if '--faults' in args:
         # Its own run: a fault spoils the car's software for a while, and the camera's
         # picture goes through gazebo_adapter (faults:=true). No lidar: a lighter run.

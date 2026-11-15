@@ -162,7 +162,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/joy/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>teleop_twist_joy_node</code></td>
-<td><code>twist_mux</code>, <code>language_drive</code></td>
+<td><code>twist_mux</code>, <code>language_drive</code>, <code>ego</code></td>
 <td>-</td>
 <td>Priority 100. Only while the deadman (trigger) is held.</td>
 </tr>
@@ -170,7 +170,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/keyboard/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>teleop_twist_keyboard</code></td>
-<td><code>twist_mux</code>, <code>language_drive</code></td>
+<td><code>twist_mux</code>, <code>language_drive</code>, <code>ego</code></td>
 <td>-</td>
 <td>Priority 90 (twist_mux's keyboard slot). A person driving from a laptop - teleop_twist_keyboard in the namespace /drivers/keyboard (tools/keyboard.sh, stamped:=true), or the Foxglove teleop panel set to this topic - on the stand-ins only, as the car's bridge only watches (foxglove.launch.py).</td>
 </tr>
@@ -178,7 +178,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/rc/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>rc_driver</code></td>
-<td><code>twist_mux</code>, <code>language_drive</code></td>
+<td><code>twist_mux</code>, <code>language_drive</code>, <code>ego</code></td>
 <td>-</td>
 <td>Priority 95 (proposed, TODO 48) - a person with the RC transmitter, below the joystick's deadman (100), above the keyboard (90). rc_driver (aav_rc) turns /vehicle/rc into a command only while the transmitter's mode switch is on RC via ROS - throttle stick x max_speed (1.0 m/s; reverse 0.5), steering stick x the steering limit, as a turn rate by the bicycle model - at the uplink's 50 Hz, zeros included, so nothing below it drives. It publishes one zero when the switch leaves RC via ROS; if /vehicle/rc goes quiet while on RC via ROS it keeps publishing zeros (a stop) until the uplink comes back. RC direct never comes here - the ESP32 drives from the sticks itself.</td>
 </tr>
@@ -426,9 +426,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/safety/estop</code></td>
 <td><code>std_msgs/msg/Bool</code></td>
 <td><code>joy_teleop</code>, <code>hud</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>hw_panel</code>, <code>dev_window</code></td>
-<td><code>twist_mux</code>, <code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>carla_adapter</code>, <code>point_driver</code>, <code>hw_panel</code>, <code>behaviour</code></td>
+<td><code>twist_mux</code>, <code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>carla_adapter</code>, <code>point_driver</code>, <code>hw_panel</code>, <code>behaviour</code>, <code>ego</code></td>
 <td>-</td>
-<td>true = stop. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop. None of them ever publishes false.</td>
+<td>true = stop. ego turns the pedal off (full braking) while true. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop. None of them ever publishes false.</td>
 </tr>
 <tr>
 <td><code>/control/cmd_vel</code></td>

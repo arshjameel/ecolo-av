@@ -1226,6 +1226,37 @@ pixi run sim-fault clear                  # after a GPS jump or a lost HUD: a pe
 parameter, <code>fault.&lt;sensor&gt;</code>, of that sensor's node (<code>gazebo_gps</code>, <code>gazebo_imu</code>,
 <code>gazebo_radar</code>, <code>gazebo_camera</code>; the wheels' is <code>gazebo_adapter</code>'s). The logic is
 <code>aav_gazebo/faults.py</code>.</p>
+<h3 id="actuator-failures-on-purpose-15-nov-todo-159">Actuator failures on purpose (15 Nov, TODO 159)</h3>
+<p>The actuators break too, in <code>gazebo_adapter</code>, between the speed loop and the car:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Actuator</th>
+<th>Faults</th>
+<th>Stands for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>steer</code></td>
+<td><code>stuck</code>: holds the angle it was asked for when it failed</td>
+<td>a jammed linkage, a steering actuator that stopped following</td>
+</tr>
+<tr>
+<td><code>throttle</code></td>
+<td><code>stuck</code>: holds its level; the brake still works against it</td>
+<td>a stuck DAC</td>
+</tr>
+<tr>
+<td><code>brake</code></td>
+<td><code>weak</code> (30 % of what is asked), <code>dead</code> (none)</td>
+<td>a slipping or unpowered brake actuator</td>
+</tr>
+</tbody>
+</table></div>
+<pre class="highlight"><code class="language-bash">pixi run sim-fault brake weak             # then: pixi run sim-fault brake ok
+pixi run sim-check --actuator-faults-only # each one measured: the safety case's numbers</code></pre>
+<p>What each did: <a href="safety-case.html">the safety case</a>, hazards 3, 7 and 8.</p>
 <h3 id="the-sensor-watchdog">The sensor watchdog</h3>
 <p><code>aav_safety</code>'s <code>sensor_watchdog</code> watches what Nav2 and the AI slot need. While one isn't
 right, its twist_mux lock (priority 30, as the stop sign) holds them; people and tests

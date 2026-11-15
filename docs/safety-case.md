@@ -49,8 +49,8 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 | 4 | The e-stop | `/safety/estop`; Kar-Tech; red button | brake within 2-12 ms (spine) | sim | ❌ |
 | 5 | A dead or frozen node | sensor watchdog; mux timeouts; respawn | 13 faults stop within 6 s | sim | ❌ |
 | 6 | Commands to the spine lost | the firmware's 100 ms timeout | brakes 111-120 ms after | QEMU | ❌ |
-| 7 | Steering stuck or off centre | driver-fault brake; calibration | not measured | tests | ❌ |
-| 8 | A weak brake | the adaptive brake (a trial) | 0.87 → 0.21 m past, 150 kg | sim | ❌ |
+| 7 | Steering stuck or off centre | driver-fault brake; calibration | stuck in a bend: **nothing noticed**, 3.1 m off | sim | ❌ |
+| 8 | A weak brake | the adaptive brake (a trial) | 0.87 → 0.21 m past, 150 kg; a dead brake: 9.7 m | sim | ❌ |
 | 9 | Leaving the area | the geofence | stopped 1.06 m after the lock | bench | ❌ |
 | 10 | A GPS jump, bad localization | watchdog; geofence LOST, JUMP | stops within 6 s | sim | ❌ |
 | 11 | A stop sign missed | RF-DETR + the stop-sign lock | missed 1 in 8 runs | sim | ❌ |
@@ -112,6 +112,8 @@ command's.
 | 9-14 % over at 1 m/s, the spine in the loop | sim (Gazebo), 29 Oct ([controllers](controllers.md#2a-lqi-against-the-pi-results-29-oct)) | Ben |
 | `smooth` loop: 1.00 m/s, no overshoot | sim (ours), 14 Nov | Ben |
 | the overspeed rule | tests only (`spine-core`) | Arsh |
+| the throttle stuck at its cruise level, then the e-stop from 0.9 m/s: 1.48-1.50 m (healthy 1.18-1.20), stood in 2.2 s: the brake beats it | sim (ours), 15 Nov, 3 runs | Ben |
+| stuck wide open | not measured | |
 | the car | not measured | |
 
 **Gap:** the speed rules are **off on the car**: the ESP32 gets no wheel speed yet, so it
@@ -190,10 +192,11 @@ brake does with no power ([ESP32 safety](esp32-safety.md), row 7; tests 3.5, 3.8
 | Number | Where, when | Who |
 |---|---|---|
 | the centre (test 3.12: under 1°) | **not measured**: the car pulls right (TODO 67) | |
-| a stuck steering actuator | **not measured**: no fault on purpose for actuators yet | |
+| stuck in a bend (`--actuator-faults`): mppi_lag backed and turned 3 times, drove 19.3 m, up to 3.1 m off the straight to the goal, stood after 16 s; **nothing reported a fault**, the goal kept running | sim (ours), 15 Nov, 1 run | Ben |
 
-**Gap:** nothing in ROS notices a steering actuator that doesn't follow its command. Faults
-on purpose cover sensors only (TODO 159, its second half).
+**Gap:** nothing in ROS notices a steering actuator that doesn't follow its command: the
+follower just tries again. `/vehicle/steering` carries both the command and the measured
+angle, so a watchdog could compare them (not built).
 
 ## 8. A weak brake
 
@@ -207,6 +210,7 @@ on purpose cover sensors only (TODO 159, its second half).
 |---|---|---|
 | 150 kg aboard: +0.58 m past → +0.04 m with it | the car model, 8 Nov | Ben |
 | 150 kg: +0.87 m past → +0.21 m; the next stop +0.05 m | sim (ours), 8 Nov | Ben |
+| the e-stop from 0.9 m/s (`--actuator-faults`): healthy 1.18-1.20 m; a weak brake (30 %) 2.05-2.08 m, 3.6 s; a dead brake 9.7 m, still rolling at 0.05 m/s after 30 s | sim (ours), 15 Nov, 3 runs | Ben |
 | the brake's limits (`released`, `full`, `safe_max`) | **placeholders** until car day A7 | |
 
 **Gap:** refused with today's ESP32. Today's car brakes only below `stop_speed`;
@@ -281,7 +285,7 @@ measurement.
 | Today's ESP32 has no command timeout; the Rust one is unflashed | 6 | 45, 158 |
 | What the Kar-Tech and the red button cut | 4 | S1, S2 |
 | The steering's centre, and the brake's limits | 7, 8 | 67, A7 |
-| No faults on purpose for actuators (stuck steering, weak brake, stuck throttle) | 7, 8, 3 | 159 |
+| Nothing notices a steering actuator that doesn't follow; nothing but the e-stop and the drag stops a dead brake | 7, 8 | 159 |
 | The car runs 14 % over its command in the sim | 3 | 163 |
 | Obstacles stop only Nav2 and the AI slot | 1 | |
 

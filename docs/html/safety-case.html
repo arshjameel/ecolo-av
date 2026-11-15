@@ -7,7 +7,7 @@
 <!-- Generated from docs/safety-case.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The safety case</h1>
-<div class="meta">16 min read · 17 sections</div></header>
+<div class="meta">17 min read · 17 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -242,15 +242,15 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
 <td>7</td>
 <td>Steering stuck or off centre</td>
 <td>driver-fault brake; calibration</td>
-<td>not measured</td>
-<td>tests</td>
+<td>stuck in a bend: <strong>nothing noticed</strong>, 3.1 m off</td>
+<td>sim</td>
 <td>❌</td>
 </tr>
 <tr>
 <td>8</td>
 <td>A weak brake</td>
 <td>the adaptive brake (a trial)</td>
-<td>0.87 → 0.21 m past, 150 kg</td>
+<td>0.87 → 0.21 m past, 150 kg; a dead brake: 9.7 m</td>
 <td>sim</td>
 <td>❌</td>
 </tr>
@@ -488,6 +488,16 @@ command's.</p>
 <td>the overspeed rule</td>
 <td>tests only (<code>spine-core</code>)</td>
 <td>Arsh</td>
+</tr>
+<tr>
+<td>the throttle stuck at its cruise level, then the e-stop from 0.9 m/s: 1.48-1.50 m (healthy 1.18-1.20), stood in 2.2 s: the brake beats it</td>
+<td>sim (ours), 15 Nov, 3 runs</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>stuck wide open</td>
+<td>not measured</td>
+<td></td>
 </tr>
 <tr>
 <td>the car</td>
@@ -768,14 +778,15 @@ brake does with no power (<a href="esp32-safety.html">ESP32 safety</a>, row 7; t
 <td></td>
 </tr>
 <tr>
-<td>a stuck steering actuator</td>
-<td><strong>not measured</strong>: no fault on purpose for actuators yet</td>
-<td></td>
+<td>stuck in a bend (<code>--actuator-faults</code>): mppi_lag backed and turned 3 times, drove 19.3 m, up to 3.1 m off the straight to the goal, stood after 16 s; <strong>nothing reported a fault</strong>, the goal kept running</td>
+<td>sim (ours), 15 Nov, 1 run</td>
+<td>Ben</td>
 </tr>
 </tbody>
 </table></div>
-<p><strong>Gap:</strong> nothing in ROS notices a steering actuator that doesn't follow its command. Faults
-on purpose cover sensors only (TODO 159, its second half).</p>
+<p><strong>Gap:</strong> nothing in ROS notices a steering actuator that doesn't follow its command: the
+follower just tries again. <code>/vehicle/steering</code> carries both the command and the measured
+angle, so a watchdog could compare them (not built).</p>
 </section>
 <section class="card"><h2 id="8-a-weak-brake">8. A weak brake</h2>
 <div class="table-wrap"><table>
@@ -821,6 +832,11 @@ on purpose cover sensors only (TODO 159, its second half).</p>
 <tr>
 <td>150 kg: +0.87 m past → +0.21 m; the next stop +0.05 m</td>
 <td>sim (ours), 8 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the e-stop from 0.9 m/s (<code>--actuator-faults</code>): healthy 1.18-1.20 m; a weak brake (30 %) 2.05-2.08 m, 3.6 s; a dead brake 9.7 m, still rolling at 0.05 m/s after 30 s</td>
+<td>sim (ours), 15 Nov, 3 runs</td>
 <td>Ben</td>
 </tr>
 <tr>
@@ -1083,8 +1099,8 @@ measurement.</p>
 <td>67, A7</td>
 </tr>
 <tr>
-<td>No faults on purpose for actuators (stuck steering, weak brake, stuck throttle)</td>
-<td>7, 8, 3</td>
+<td>Nothing notices a steering actuator that doesn't follow; nothing but the e-stop and the drag stops a dead brake</td>
+<td>7, 8</td>
 <td>159</td>
 </tr>
 <tr>
