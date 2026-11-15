@@ -472,7 +472,7 @@ def test_ndt_needs_the_test_lot_the_lidar_and_its_map(tmp_path):
                             start_y='4.0', start_yaw='1.0'))['ndt.launch.py']
     # The start pose is the car's, as AMCL's; on simulated time.
     assert sent == {'use_sim_time': 'true', 'ndt_map': str(map_file), 'ndt_x': '0.0',
-                    'ndt_y': '4.0', 'ndt_yaw': '1.0'}
+                    'ndt_y': '4.0', 'ndt_yaw': '1.0', 'ndt_chunks': ''}
 
 
 def campus_files(folder):
