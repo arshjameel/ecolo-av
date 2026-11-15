@@ -9,6 +9,7 @@ use debug_core::{
     cubes::CubeScan,
     ndt::{MapCells, NdtStatus},
     orbit::Orbit,
+    swap::Tracker,
 };
 use hud_core::{
     ahead::{self, Ahead, PlanSource, Summary, Tone},
@@ -577,7 +578,7 @@ pub fn draw(
         ahead_inset(&root, cubes_rect, &state.world, now);
     }
     panel(&mut root, map_rect, |ui| map_panel(ui, state, feed));
-    panel(&mut root, corner_rect, |ui| corner_panel(ui, state));
+    panel(&mut root, corner_rect, |ui| corner_panel(ui, state, feed));
 
     let scale = window.scale_factor();
     let inner = cubes_rect.shrink(1.0);
@@ -1333,13 +1334,29 @@ fn goal_buttons(
                 }
             }
             Goal::Driving(_) => {
+                if ui.button("CANCEL THE GOAL").clicked() {
+                    cancel(state, feed);
+                }
                 if ui.button("Clear the marker").clicked() {
                     state.goal = Goal::None;
                 }
-                ui.label("cancelling Nav2's goal isn't built yet");
             }
         });
     });
+}
+
+/// CANCEL THE GOAL: the navigator's goals cancelled, through the same gates as a goal.
+fn cancel(state: &mut UiState, feed: &mut dyn feed::Feed) {
+    let world = &mut state.world;
+    match feed::command_allowed(feed.may_command(), &world.origins)
+        .and_then(|()| feed.cancel_goal())
+    {
+        Ok(()) => {
+            world.note("cancel sent: the navigator answers in the console".to_owned());
+            state.goal = Goal::None;
+        }
+        Err(why) => world.push_line(Level::Error, format!("goal not cancelled: {why}")),
+    }
 }
 
 /// A click and the two presses at once, for `--click-goal`.
@@ -1369,7 +1386,7 @@ fn confirm(state: &mut UiState, feed: &mut dyn feed::Feed, at: Point) -> Goal {
     }
 }
 
-fn corner_panel(ui: &mut egui::Ui, state: &mut UiState) {
+fn corner_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) {
     ui.horizontal(|ui| {
         ui.selectable_value(&mut state.tab, Tab::Keys, "KEYS");
         ui.selectable_value(&mut state.tab, Tab::Algorithms, "ALGORITHMS");
@@ -1379,7 +1396,7 @@ fn corner_panel(ui: &mut egui::Ui, state: &mut UiState) {
         .auto_shrink(false)
         .show(ui, |ui| match state.tab {
             Tab::Keys => keys_tab(ui, state),
-            Tab::Algorithms => algorithms_tab(ui, state),
+            Tab::Algorithms => algorithms_tab(ui, state, feed),
         });
 }
 
@@ -1419,7 +1436,15 @@ fn keys_tab(ui: &mut egui::Ui, state: &UiState) {
         });
 }
 
-fn algorithms_tab(ui: &mut egui::Ui, state: &mut UiState) {
+/// The follower row's place in `ALGORITHMS`: the one row that swaps live.
+const FOLLOWER_ROW: usize = 1;
+
+/// Whether `pick` is one of aav_track's followers, which swap live (`tracker` parameter).
+fn live_tracker(pick: &str) -> Option<&'static str> {
+    Tracker::ALL.iter().map(|t| t.name()).find(|n| *n == pick)
+}
+
+fn algorithms_tab(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) {
     egui::Grid::new("algorithms").num_columns(2).show(ui, |ui| {
         for (row, (name, choices)) in ALGORITHMS.iter().enumerate() {
             ui.label(*name);
@@ -1432,7 +1457,34 @@ fn algorithms_tab(ui: &mut egui::Ui, state: &mut UiState) {
             ui.end_row();
         }
     });
-    ui.add_enabled(false, egui::Button::new("SWAP (not built yet)"));
+    let pick = ALGORITHMS[FOLLOWER_ROW]
+        .1
+        .get(state.picks[FOLLOWER_ROW])
+        .copied()
+        .unwrap_or("");
+    match live_tracker(pick) {
+        Some(name) => {
+            if ui.button(format!("SWAP THE FOLLOWER TO {name}")).clicked() {
+                let world = &mut state.world;
+                let asked = feed::command_allowed(feed.may_command(), &world.origins)
+                    .and_then(|()| feed.swap_tracker(name));
+                match asked {
+                    Ok(()) => world.note(format!(
+                        "swap to {name} asked: the answer comes in the console"
+                    )),
+                    Err(why) => world.push_line(Level::Error, format!("not swapped: {why}")),
+                }
+            }
+        }
+        None => {
+            ui.add_enabled(false, egui::Button::new("SWAP"));
+        }
+    }
+    ui.label(
+        "Live, in the simulator: aav_track's followers (pure_pursuit, stanley, lqr, mpc), when the \
+         sim runs one (tracker:=pure_pursuit). The rest are chosen at launch: planner:=, \
+         planner_search:=, tracker:=, ndt:=, ndt_ekf:=, voxels:=, speed_loop:= (docs/trials.md).",
+    );
 }
 
 /// The things' names in the 3D scene: each named thing's words over its top, in a dark
@@ -1544,5 +1596,19 @@ mod tests {
             None,
             "an empty plan has no end"
         );
+    }
+
+    #[test]
+    fn every_live_tracker_is_on_the_follower_row_and_only_they_swap() {
+        let (name, choices) = ALGORITHMS[FOLLOWER_ROW];
+        assert_eq!(name, "Follower");
+        for t in Tracker::ALL {
+            assert!(choices.contains(&t.name()), "{} missing", t.name());
+            assert_eq!(live_tracker(t.name()), Some(t.name()));
+        }
+        // Chosen at launch, never swapped live.
+        for launch_only in ["mppi", "rpp", "mpc_full"] {
+            assert_eq!(live_tracker(launch_only), None);
+        }
     }
 }

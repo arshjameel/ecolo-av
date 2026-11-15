@@ -18,6 +18,8 @@ watchdog: /safety/sensor_watchdog/state          # String: the sensor watchdog
 goal: /goal_pose                                 # PoseStamped, out: only in developer mode
 screen_alive: /hud/dev_window/heartbeat         # UInt64, out: only in developer mode, frames drawn
 estop: /safety/estop                             # Bool, out: only ever true, developer mode
+cancel_goal: /navigate_to_pose/_action/cancel_goal   # CancelGoal, called: developer mode, SIM only: the navigator's goals
+track_parameters: /track/set_parameters          # SetParameters, called: developer mode, SIM only: aav_track's tracker (SWAP)
 trace: /ego/trace                                # Path, base_link: ego's trace, the squiggly line's bold line
 plan_ahead: /ego/plan_ahead                      # Path, base_link: what the planner wants, its faint line
 stop_point: /ego/stop_point                      # PoseStamped, base_link: where a full brake now stops

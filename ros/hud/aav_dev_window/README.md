@@ -3,7 +3,8 @@
 ## Overview
 
 The developer window, in Bevy and egui: one screen for laptops. Pretend data and live ROS
-are drop-ins for each other, behind one `Feed`. SWAP isn't built yet. The plan:
+are drop-ins for each other, behind one `Feed`. SWAP (15 Nov) swaps `aav_track`'s follower live in the
+simulator; the other choices are made at launch. The plan:
 [our own simulator](../../../docs/designs/2026-11-05_own-simulator.md).
 
 ```text
@@ -115,8 +116,11 @@ right-drag moves, wheel zooms.
 - `--live` also publishes `/hud/dev_window/heartbeat`: frames drawn, 10 Hz. Only sim's
   `watch_screens:=` reads it.
 - Opens a window. `--live` publishes `/goal_pose` and `/safety/estop` (only ever true), after
-  every gate: developer mode, ROS kept on this computer, every sensor SIM. `--watch` and pretend
-  data have no publishers. Cancelling a Nav2 goal isn't built yet.
+  every gate: developer mode, ROS kept on this computer, every sensor SIM. Behind the same
+  gates it calls `/navigate_to_pose/_action/cancel_goal` (CANCEL THE GOAL: every goal, Nav2's or
+  our navigator's) and `/track/set_parameters` (SWAP: `tracker`, which the track node takes only
+  with `live_swap:=true`); the answers go to the console. `--watch` and pretend data have no
+  publishers and call nothing.
 
 ## Verification
 

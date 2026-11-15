@@ -182,6 +182,17 @@ pub trait Feed: Send + Sync {
     /// Sets the e-stop. Only ever sets it: clearing is `pixi run clear estop`.
     fn press_estop(&mut self) -> Result<(), String>;
 
+    /// Cancels the navigator's goal (TODO 114): Nav2's, or ours under the same action name.
+    fn cancel_goal(&mut self) -> Result<(), String> {
+        Err("this feed can't cancel a goal".to_owned())
+    }
+
+    /// Swaps `aav_track`'s follower while it drives (TODO 114): `tracker := name` on the
+    /// track node, which refuses unless started with `live_swap:=true` (the simulator).
+    fn swap_tracker(&mut self, name: &'static str) -> Result<(), String> {
+        Err(format!("this feed can't swap to {name}"))
+    }
+
     /// A frame reached the screen. A live feed's heartbeat says so, while frames keep coming.
     fn frame_drawn(&self) {}
 }

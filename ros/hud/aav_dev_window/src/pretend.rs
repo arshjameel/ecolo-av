@@ -402,6 +402,15 @@ impl Feed for PretendFeed {
     fn press_estop(&mut self) -> Result<(), String> {
         Err("pretend data: there is no e-stop to set".to_owned())
     }
+
+    fn cancel_goal(&mut self) -> Result<(), String> {
+        self.plan = None;
+        Ok(())
+    }
+
+    fn swap_tracker(&mut self, name: &'static str) -> Result<(), String> {
+        Err(format!("pretend data: no track node to swap to {name}"))
+    }
 }
 
 #[cfg(test)]
