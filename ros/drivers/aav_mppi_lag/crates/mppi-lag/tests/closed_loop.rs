@@ -10,8 +10,8 @@
 use mppi_lag::lag::Actuators;
 use mppi_lag::{
     CarModel, Command, Critic, Driven, Edges, Ego, Follower, FollowerSettings, GlobalPath,
-    IdealModel, Inversion, LagModel, Lane, LanePoint, Observation, PathAngleMode, Pose, Settings,
-    Tick,
+    IdealModel, Inversion, LagModel, Lane, LanePoint, Observation, Outcome, PathAngleMode, Pose,
+    Settings, Tick,
 };
 
 const PERIOD: f64 = 0.05;
@@ -122,6 +122,8 @@ struct Run {
     poses: Vec<Pose>,
     /// Where it stood once stopped after the follower said done (ego ramping it down).
     rest: Pose,
+    /// How the follower ended the path (`None`: still going at the time limit).
+    outcome: Option<Outcome>,
 }
 
 /// How a run may drive: forward only (nav2.yaml as it is), or reversing as
@@ -145,6 +147,19 @@ fn drive_way<M: CarModel + Clone>(
     poses: &[Pose],
     speed: f64,
     way: Way,
+) -> Run {
+    drive_from(controller, truth, poses, speed, way, poses[0], 0.0)
+}
+
+/// As [`drive_way`], with the car starting at `start`, rolling at `rolling` m/s.
+fn drive_from<M: CarModel + Clone>(
+    controller: M,
+    truth: LagModel,
+    poses: &[Pose],
+    speed: f64,
+    way: Way,
+    start: Pose,
+    rolling: f64,
 ) -> Run {
     let ego = Ego::default();
     let plant = Driven { ego, car: truth };
@@ -173,8 +188,7 @@ fn drive_way<M: CarModel + Clone>(
         ),
     };
     let mut follower = Follower::new(controller, ego, mppi, critics, follow, Vec::new());
-    let start = poses[0];
-    let mut car = plant.at_rest(start, 0.0);
+    let mut car = plant.at_rest(start, rolling);
     let path = GlobalPath::new(poses.to_vec()).expect("a path");
     let judge = path.clone();
     let mut command = Command::default();
@@ -206,14 +220,9 @@ fn drive_way<M: CarModel + Clone>(
                 for _ in 0..(8.0 / PHYSICS) as usize {
                     plant.step(&mut car, stop, PHYSICS);
                 }
-                let mut run = finish(
-                    outcome == mppi_lag::Outcome::Succeeded,
-                    t,
-                    &crosses,
-                    speeds,
-                    trace,
-                );
+                let mut run = finish(outcome == Outcome::Succeeded, t, &crosses, speeds, trace);
                 run.rest = plant.pose(&car);
+                run.outcome = Some(outcome);
                 return run;
             }
             None => {}
@@ -241,6 +250,7 @@ fn finish(reached: bool, time: f64, crosses: &[f64], speeds: Vec<f64>, poses: Ve
         rest: poses.last().copied().unwrap_or_default(),
         speeds,
         poses,
+        outcome: None,
     }
 }
 
@@ -507,6 +517,57 @@ fn forward_stop_reverse_through_a_cusp() {
     );
 }
 
+/// The test lot's turn back (14 Nov), as our lattice planner draws it with reversing on:
+/// from (35, 42) facing east, back round the planner's 3.572 m radius until facing
+/// 63 degrees (a lattice heading), a cusp, then forward round the same radius to face
+/// west, and 8 m on. A pose every 0.25 m, as the lattice's primitives give them (the
+/// paths above have one every 0.05 m).
+fn turn_back() -> Vec<Pose> {
+    const R: f64 = 3.572;
+    const STEP: f64 = 0.25;
+    const CUSP_YAW: f64 = 1.1071;
+    let pi = std::f64::consts::PI;
+    let arc = |from: f64, to: f64| {
+        let n = ((to - from) * R / STEP).ceil() as usize;
+        (1..=n).map(move |i| from + (to - from) * i as f64 / n as f64)
+    };
+    // Backwards, steering right: the centre is on the car's right.
+    let (bx, by) = (35.0, 42.0 - R);
+    let mut poses = vec![Pose::new(35.0, 42.0, 0.0)];
+    poses.extend(arc(0.0, CUSP_YAW).map(|a| Pose::new(bx - R * a.sin(), by + R * a.cos(), a)));
+    // Forwards, steering left: the centre is on the car's left.
+    let cusp = poses[poses.len() - 1];
+    let (fx, fy) = (cusp.x - R * CUSP_YAW.sin(), cusp.y + R * CUSP_YAW.cos());
+    poses.extend(arc(CUSP_YAW, pi).map(|a| Pose::new(fx + R * a.sin(), fy - R * a.cos(), a)));
+    let turned = poses[poses.len() - 1];
+    poses.extend((1..=32).map(|i| Pose::new(turned.x - f64::from(i) * STEP, turned.y, pi)));
+    poses
+}
+
+/// The turn back from a stop on the path's start (TODO 174). Before the control cost
+/// knew the noise was correlated, MPPI steered too little backwards, stopped beside the
+/// cusp and gave up there (Stuck), as `mppi_lag` did in the simulator.
+#[test]
+fn turn_back_through_a_cusp() {
+    let truth = LagModel::default();
+    let run = drive_way(truth, truth, &turn_back(), 1.0, Way::Reversing);
+    let backed = run.speeds.iter().copied().fold(0.0, f64::min);
+    println!(
+        "turn back: {:?} in {:.1} s, {:.3} m mean, {:.3} m worst, backed at {backed:.2} m/s",
+        run.outcome, run.time, run.mean_cross, run.max_cross
+    );
+    assert_eq!(run.outcome, Some(Outcome::Succeeded), "{:?}", run.rest);
+    assert!(run.time < 40.0, "{:.1} s", run.time);
+    // Backwards first (never forward before the cusp), then forwards.
+    let first_forward = run
+        .speeds
+        .iter()
+        .position(|&v| v > 0.05)
+        .expect("forward after the cusp");
+    assert!(run.speeds[..first_forward].iter().any(|&v| v < -0.3));
+    assert!(run.mean_cross < 0.3 && run.max_cross < 0.8, "{run:?}");
+}
+
 /// The goal at speed (TODO 152): 80 m straight, asked for 2.5 m/s. The follower says done
 /// within xy_goal_tolerance (1 m); the car must then stop near the goal, not run on past
 /// it. The lag model's car tops out near 1.4 m/s at full throttle, so this is the goal at
@@ -589,7 +650,7 @@ fn drive_in_lane(poses: &[Pose], lane: Option<Lane>) -> Run {
         match follower.tick(t, None) {
             Some(Tick::Drive(report)) => command = report.command,
             Some(Tick::Done(outcome)) => {
-                let reached = outcome == mppi_lag::Outcome::Succeeded;
+                let reached = outcome == Outcome::Succeeded;
                 return finish(reached, t, &[], Vec::new(), trace);
             }
             None => {}
