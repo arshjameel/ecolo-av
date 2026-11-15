@@ -19,7 +19,10 @@ mppi_lag:
     # No costmap_topic here: navigation.launch.py picks Nav2's or ours (costmap:=), and an
     # entry under this node's name would beat it (as ego.launch.py found). Until 14 Nov it
     # was here, so with costmap:=own this node read Nav2's topic, which nobody published.
-    measured_timeout: 0.5       # s: a measured steering, throttle or brake older than this is
+    # No road_ahead_topic here either: navigation.launch.py names /world/road_ahead (and adds
+    # LaneCritic to the critics) only with behaviour:=true and a lane map.
+    road_ahead_timeout: 0.5     # s: an older road ahead is dropped (it comes at 10 Hz): no lane
+    measured_timeout: 0.5      # s: a measured steering, throttle or brake older than this is
                                 # dropped; the model keeps its own
     odom_timeout: 1.0           # s without odometry: give up the path
     cmd_topic: cmd_vel_nav

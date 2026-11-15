@@ -7,7 +7,7 @@
 <!-- Generated from docs/mppi-lag.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>MPPI that knows the lag</h1>
-<div class="meta">15 min read · 10 sections</div></header>
+<div class="meta">18 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -115,7 +115,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-model">The model</a><a href="#what-differs-from-nav2s-mppi">What differs from Nav2&#x27;s MPPI</a><a href="#results-without-ros">Results without ROS</a><a href="#speed">Speed</a><a href="#in-gazebo">In Gazebo</a><a href="#reversing">Reversing</a><a href="#lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn&#x27;t cancel the lag twice</a><a href="#run-it">Run it</a><a href="#what-is-missing">What is missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-model">The model</a><a href="#what-differs-from-nav2s-mppi">What differs from Nav2&#x27;s MPPI</a><a href="#results-without-ros">Results without ROS</a><a href="#speed">Speed</a><a href="#in-gazebo">In Gazebo</a><a href="#reversing">Reversing</a><a href="#the-lane">The lane</a><a href="#lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn&#x27;t cancel the lag twice</a><a href="#run-it">Run it</a><a href="#what-is-missing">What is missing</a></nav>
 <div class="lead"><p>Ben, 7 Nov (0.3): <strong>"have the algorithms know about lag"</strong>.</p>
 <p>Nav2's MPPI plans as if the car obeys at once. It can't take our lag model without a C++
 plugin, and we write no C++. So MPPI is <strong>ported to Rust</strong>, with the lag in its model.
@@ -286,8 +286,8 @@ feature <code>shared</code> (<code>src/shared.rs</code>, tested against <code>La
 <tr>
 <td>Critics</td>
 <td>the eight in nav2.yaml</td>
-<td>the same eight, same weights; PathAngle's three modes</td>
-<td></td>
+<td>the same eight, same weights; PathAngle's three modes; and our <code>LaneCritic</code> with a lane map (<a href="#the-lane">below</a>)</td>
+<td>Nav2 has no critic for a lane</td>
 </tr>
 <tr>
 <td>At a cusp (reversing)</td>
@@ -624,6 +624,115 @@ replans, which may save it; not measured yet.</p>
 <p>Not yet seen in the simulator: a path with a cusp (a three-point turn). The lot tour
 with <code>measure controllers --stacks own --reversing</code> would show it.</p>
 </section>
+<section class="card"><h2 id="the-lane">The lane</h2>
+<p>TODO 169. With a lane map, the road ahead (<code>/world/road_ahead</code>, the behaviour planner's)
+has edges. <code>mppi_lag</code> reads them and keeps the car's outline inside its lane. Nav2 has no
+critic for this; <code>LaneCritic</code> is ours.</p>
+<pre class="highlight"><code>  ══════════ hard edge (kerb): past it costs 1000 a pose ═══════
+  ── ── ──── soft edge (line): past it costs 100 x m² ── ── ──
+  ●───────── the line (the lane's centre): free ──────────────►</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>On</td>
+<td><code>behaviour:=true</code> with <code>lane_map:=</code> (e.g. <code>world</code>) and <code>tracker:=mppi_lag</code>: the launch names the topic and adds <code>LaneCritic</code> to the critics (<code>vehicle.mppi_lag_params(..., lane=True)</code>)</td>
+</tr>
+<tr>
+<td>Off</td>
+<td>otherwise: Nav2's eight critics only, the topic not read, as before</td>
+</tr>
+<tr>
+<td>Reads</td>
+<td><code>/world/road_ahead</code> (map), moved into odom by the latest map -&gt; odom; dropped after 0.5 s (<code>road_ahead_timeout</code>); no lane: silent</td>
+</tr>
+<tr>
+<td>Scores</td>
+<td>every 2nd pose: each corner of the padded outline beside the lane; the furthest past a soft edge, squared, x 100; past a hard edge, (1 + m) x 1000; both averaged over the poses</td>
+</tr>
+<tr>
+<td>Not</td>
+<td>a collision: a car already over a kerb (a lane map off by a metre) still gets a plan back in</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><code>lane</code> (true / false) on <code>/drivers/nav/track/status</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Inside the lines it costs nothing, so the path still decides where in the lane the car
+drives; at a line it pushes back smoothly.</p>
+<p><strong>Closed loop, no ROS</strong> (vehicle.yaml's lags, 1 m/s): a path drawn 1 m left of a 2.6 m
+lane's centre (lines 1.3 m, kerbs 1.8 m), so its outline would be 0.25 m over the line:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Outline, furthest left</th>
+<th>Settles at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Without <code>LaneCritic</code></td>
+<td>1.71 m: 0.41 over the line</td>
+<td>y 1.00 (on the path)</td>
+</tr>
+<tr>
+<td>With it</td>
+<td><strong>1.36 m: 0.06 over</strong></td>
+<td>y 0.78</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Our simulator, 14 Nov</strong> (<code>simulator:=own world:=road behaviour:=true tracker:=mppi_lag
+cameras:=false</code>, a busy Mac, load 9-11): one goal 40 m on, <strong>1.5 m left of the lane's
+centre</strong>, so at the goal the body would be 0.25 m over the line. The road: lines 1.75 m,
+kerbs 2.25 m either side. The body (2 x 1 m, unpadded) against the edges, all the way:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Run</th>
+<th>Reached</th>
+<th>Car's y, widest</th>
+<th>Body past the line, worst</th>
+<th>Room to the kerb, least</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>no lane map (Nav2's critics only)</td>
+<td>yes, 44 s</td>
+<td>1.98 m</td>
+<td><strong>0.95 m</strong></td>
+<td><strong>-0.45 m: over the kerb</strong></td>
+</tr>
+<tr>
+<td><code>lane_map:=world</code>, run 1</td>
+<td>yes, 44 s</td>
+<td>1.23 m</td>
+<td>0.05 m</td>
+<td>0.45 m</td>
+</tr>
+<tr>
+<td><code>lane_map:=world</code>, run 2</td>
+<td>yes, 45 s</td>
+<td>1.28 m</td>
+<td>0.13 m</td>
+<td>0.37 m</td>
+</tr>
+</tbody>
+</table></div>
+<p>The status said <code>lane true</code> on every tick but the first one or two. The soft edge gives a
+little where the goal itself lies over it (GoalCritic pulls); the kerb never came close.</p>
+<p><strong>Speed:</strong> 4.3 ms a tick on 4 threads with a 40 m lane, against 3.3 ms without (M4 Max,
+busy; <code>--example timing</code> prints both).</p>
+</section>
 <section class="card"><h2 id="lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn't cancel the lag twice</h2>
 <p>Ego's lead (0.3) cancels lag for drivers that don't know about it. It must turn off while
 a lag-aware driver drives.</p>
@@ -706,6 +815,10 @@ cd ros/drivers/aav_mppi_lag &amp;&amp; cargo test --release -p mppi-lag</code></
 <tr>
 <td>A live swap</td>
 <td>it is its own node: <code>tracker:=</code> at launch only</td>
+</tr>
+<tr>
+<td>The lane's soft edge, opened</td>
+<td>the behaviour planner will open a soft edge to pass a parked car; <code>LaneCritic</code> then reads the wider edge as sent</td>
 </tr>
 </tbody>
 </table></div>

@@ -13,12 +13,14 @@
 //! | `PathFollowCritic` | the end's distance to a path point 6 past the furthest reached | 5.0 |
 //! | `PathAngleCritic` | the end's heading error to a path point 4 past the furthest, when over 45 degrees; nose first (mode 0), either end (1), or the way the path faces, tail first on a reversing stretch (2) | 2.2 |
 //! | `PreferForwardCritic` | time spent reversing | 5.0 |
+//! | `LaneCritic` (ours) | the outline past the lane's soft edges (squared), and past its hard edges | 100 soft, 1000 hard |
 //!
 //! Where ours differs: the speeds and yaw rates are the model's (with lag), not the
 //! commands'. Reversing: as Nav2's, the path ends at its next change of direction
 //! ([`crate::path`]), so `PathAlignCritic` never matches across a cusp.
 
 use crate::costmap::{Costmap, INSCRIBED, LETHAL, NO_INFORMATION};
+use crate::lane::Lane;
 use crate::model::{wrap, Command, Pose};
 
 /// One sample: its commands and the future the model gave them.
@@ -79,6 +81,8 @@ pub struct CriticData<'a> {
     pub vx_min: f64,
     /// m: the tightest turn (wheelbase / tan(full lock)).
     pub min_turning_r: f64,
+    /// The road ahead's lane, in the same frame as the poses, if one is known.
+    pub lane: Option<&'a Lane>,
 }
 
 /// (raw x weight)^power, or raw x weight for power 1 (Nav2's every critic).
@@ -626,6 +630,103 @@ impl PreferForwardCritic {
     }
 }
 
+/// `LaneCritic` (ours; Nav2 has none): keep the car's outline inside the lane, from the
+/// road ahead's edges ([`crate::lane`]).
+///
+/// For every `trajectory_point_step`th pose, each corner of the outline is put beside the
+/// lane. The furthest any corner goes past a soft edge (a lane line), squared, and whether
+/// any goes past a hard edge (a kerb), averaged over the poses checked:
+///
+/// | Part | Adds |
+/// |---|---|
+/// | soft | (mean of past_soft² x `soft_weight`)^`power`: smooth, nothing inside the lines |
+/// | hard | mean of (1 + past_hard) x `hard_weight`: a sample over the kerb loses |
+///
+/// No lane (no road ahead, or all its edges NaN), or an edge not known: 0 for that edge.
+/// A kerb is not a collision: a car already over one (a lane map off by a metre) still
+/// gets a plan back in, rather than Nav2's NoValidControl.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LaneCritic {
+    /// Per m² past a soft edge (a pose 0.3 m over costs 9 at 100).
+    pub soft_weight: f64,
+    /// Per pose with the outline past a hard edge (plus per m past it).
+    pub hard_weight: f64,
+    /// cost_power, on the soft part.
+    pub power: u32,
+    /// Every nth pose is checked.
+    pub trajectory_point_step: usize,
+}
+
+impl Default for LaneCritic {
+    fn default() -> Self {
+        Self {
+            soft_weight: 100.0,
+            hard_weight: 1000.0,
+            power: 1,
+            trajectory_point_step: 2,
+        }
+    }
+}
+
+/// m past an edge `limit` m to the side, for a point `out` m out that way (0 inside, or
+/// not known).
+fn past(out: f64, limit: Option<f64>) -> f64 {
+    limit.map_or(0.0, |l| (out - l).max(0.0))
+}
+
+impl LaneCritic {
+    /// (m past a soft edge, m past a hard edge, or -1 if inside) for one pose's outline.
+    fn over(lane: &Lane, footprint: &[(f64, f64)], pose: &Pose, hint: usize) -> (f64, f64) {
+        let (s, c) = pose.yaw.sin_cos();
+        let centre = [(0.0, 0.0)];
+        let corners = if footprint.is_empty() {
+            &centre[..]
+        } else {
+            footprint
+        };
+        let mut soft = 0.0f64;
+        let mut hard = -1.0f64;
+        for &(fx, fy) in corners {
+            let b = lane.beside(pose.x + c * fx - s * fy, pose.y + s * fx + c * fy, hint);
+            let e = b.edges;
+            soft = soft
+                .max(past(b.lateral, e.left_soft))
+                .max(past(-b.lateral, e.right_soft));
+            for (out, limit) in [(b.lateral, e.left_hard), (-b.lateral, e.right_hard)] {
+                if let Some(l) = limit {
+                    if out > l {
+                        hard = hard.max(out - l);
+                    }
+                }
+            }
+        }
+        (soft, hard)
+    }
+
+    fn score(&self, d: &CriticData, start: usize, r: &Rollout) -> f64 {
+        let Some(lane) = d.lane else {
+            return 0.0;
+        };
+        let step = self.trajectory_point_step.max(1);
+        let mut hint = start;
+        let (mut soft, mut hard, mut n) = (0.0, 0.0, 0usize);
+        for pose in r.poses.iter().step_by(step) {
+            hint = lane.beside(pose.x, pose.y, hint).index;
+            let (s, h) = Self::over(lane, d.footprint, pose, hint);
+            soft += s * s;
+            if h >= 0.0 {
+                hard += 1.0 + h;
+            }
+            n += 1;
+        }
+        if n == 0 {
+            return 0.0;
+        }
+        let n = n as f64;
+        weighted(soft / n, self.soft_weight, self.power) + hard / n * self.hard_weight
+    }
+}
+
 /// One critic, by Nav2's name.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Critic {
@@ -645,9 +746,15 @@ pub enum Critic {
     PathAngle(PathAngleCritic),
     /// `PreferForwardCritic`.
     PreferForward(PreferForwardCritic),
+    /// `LaneCritic` (ours).
+    Lane(LaneCritic),
 }
 
-/// The names `Critic::by_name` knows: nav2.yaml's list.
+/// Our own critics, which Nav2 doesn't have: `Critic::by_name` knows them too, but they
+/// run only when the critics list names them.
+pub const OWN: [&str; 1] = ["LaneCritic"];
+
+/// Nav2's names `Critic::by_name` knows: nav2.yaml's list.
 pub const NAMES: [&str; 8] = [
     "ConstraintCritic",
     "CostCritic",
@@ -671,6 +778,7 @@ impl Critic {
             "PathFollowCritic" => Self::PathFollow(PathFollowCritic::default()),
             "PathAngleCritic" => Self::PathAngle(PathAngleCritic::default()),
             "PreferForwardCritic" => Self::PreferForward(PreferForwardCritic::default()),
+            "LaneCritic" => Self::Lane(LaneCritic::default()),
             _ => return None,
         })
     }
@@ -686,6 +794,7 @@ impl Critic {
             Self::PathFollow(_) => "PathFollowCritic",
             Self::PathAngle(_) => "PathAngleCritic",
             Self::PreferForward(_) => "PreferForwardCritic",
+            Self::Lane(_) => "LaneCritic",
         }
     }
 }
@@ -699,11 +808,13 @@ pub struct Prepared<'a> {
     align: bool,
     follow: Option<Pose>,
     angle: Option<Pose>,
+    /// The lane segment beside the car now: where each sample's search starts.
+    lane_start: usize,
 }
 
 impl<'a> Prepared<'a> {
     /// Work out the per-tick parts: PathAlign's distances along, PathFollow's and
-    /// PathAngle's targets.
+    /// PathAngle's targets, where the car is beside the lane.
     pub fn new(critics: &'a [Critic], data: CriticData<'a>) -> Self {
         let mut along = Vec::new();
         let mut align = false;
@@ -726,6 +837,9 @@ impl<'a> Prepared<'a> {
                 _ => {}
             }
         }
+        let lane_start = data
+            .lane
+            .map_or(0, |lane| lane.nearest(data.pose.x, data.pose.y));
         Self {
             critics,
             data,
@@ -733,6 +847,7 @@ impl<'a> Prepared<'a> {
             align,
             follow,
             angle,
+            lane_start,
         }
     }
 
@@ -753,6 +868,7 @@ impl<'a> Prepared<'a> {
                 Critic::PathFollow(c) => self.follow.map_or(0.0, |t| c.score(&t, r)).into(),
                 Critic::PathAngle(c) => self.angle.map_or(0.0, |t| c.score(d, &t, r)).into(),
                 Critic::PreferForward(c) => c.score(d, r).into(),
+                Critic::Lane(c) => c.score(d, self.lane_start, r).into(),
             };
             total.cost += s.cost;
             total.collided |= s.collided;
@@ -800,6 +916,7 @@ pub fn path_clear(path: &[Pose], costmap: Option<&Costmap>, tracking_unknown: bo
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::lane::{Edges, LanePoint};
 
     const DT: f64 = 0.05;
 
@@ -837,6 +954,7 @@ mod tests {
             vx_max: 1.0,
             vx_min: 0.0,
             min_turning_r: 2.86,
+            lane: None,
         }
     }
 
@@ -1068,9 +1186,88 @@ mod tests {
 
     #[test]
     fn every_name_builds_its_critic() {
-        for name in NAMES {
-            assert_eq!(Critic::by_name(name).map(|c| c.name()), Some(name));
+        for name in NAMES.iter().chain(&OWN) {
+            assert_eq!(Critic::by_name(name).map(|c| c.name()), Some(*name));
         }
         assert!(Critic::by_name("TwirlingCritic").is_none());
+    }
+
+    /// A straight lane along y = 0 from x = -5 to 35 m with these edges.
+    fn road_lane(edges: Edges) -> Lane {
+        Lane::new((0..=80).map(|i| LanePoint {
+            x: f64::from(i) * 0.5 - 5.0,
+            y: 0.0,
+            edges,
+        }))
+        .expect("a lane")
+    }
+
+    /// The road world's: lines 1.75 m either side, kerbs 2.25 m.
+    fn road_edges() -> Edges {
+        Edges::from_numbers(2.25, 2.25, 1.75, 1.75)
+    }
+
+    /// The car's outline, padded (vehicle.yaml's, as the node gets it).
+    const OUTLINE: [(f64, f64); 4] = [(1.85, 0.55), (1.85, -0.55), (-0.25, -0.55), (-0.25, 0.55)];
+
+    /// LaneCritic's cost for a sample driving straight along y = `y0`.
+    fn lane_cost(lane: Option<&Lane>, y0: f64) -> f64 {
+        let path = straight_path();
+        let valid = vec![true; path.len() - 1];
+        let mut d = data(&path, &valid, Pose::default(), Pose::new(30.0, 0.0, 0.0));
+        d.footprint = &OUTLINE;
+        d.lane = lane;
+        let critics = [Critic::Lane(LaneCritic::default())];
+        Prepared::new(&critics, d)
+            .score(&rollout(1.0, y0, 0.0, 56))
+            .cost
+    }
+
+    #[test]
+    fn lane_critic_is_silent_inside_the_lines() {
+        let lane = road_lane(road_edges());
+        assert_eq!(lane_cost(Some(&lane), 0.0), 0.0);
+        // The outline's side at 1.75 m: on the line, not over it.
+        assert_eq!(lane_cost(Some(&lane), 1.2), 0.0);
+        assert_eq!(lane_cost(Some(&lane), -1.2), 0.0);
+    }
+
+    #[test]
+    fn lane_critic_charges_the_soft_edge_smoothly() {
+        let lane = road_lane(road_edges());
+        // 0.2 m over the left line all along: 0.2² x 100.
+        let over = lane_cost(Some(&lane), 1.4);
+        assert!((over - 4.0).abs() < 1e-9, "{over}");
+        // Twice as far over, four times the cost (squared): smooth at the line.
+        let further = lane_cost(Some(&lane), 1.6);
+        assert!((further - 16.0).abs() < 1e-9, "{further}");
+        // The right side the same.
+        assert!((lane_cost(Some(&lane), -1.4) - 4.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn lane_critic_charges_the_hard_edge_far_more() {
+        let lane = road_lane(road_edges());
+        // 0.1 m over the kerb (the outline at 2.35 m): 0.6² x 100 soft, (1 + 0.1) x 1000 hard.
+        let kerb = lane_cost(Some(&lane), 1.8);
+        assert!((kerb - (36.0 + 1100.0)).abs() < 1e-6, "{kerb}");
+        // The outline counts, not the centre: the centre is 0.45 m inside the kerb.
+        assert!(kerb > 30.0 * lane_cost(Some(&lane), 1.6));
+    }
+
+    #[test]
+    fn lane_critic_is_silent_without_a_lane_or_its_edges() {
+        assert_eq!(lane_cost(None, 1.8), 0.0);
+        let nan = Edges::from_numbers(f64::NAN, f64::NAN, f64::NAN, f64::NAN);
+        let points = (0..10).map(|i| LanePoint {
+            x: f64::from(i),
+            y: 0.0,
+            edges: nan,
+        });
+        assert!(Lane::new(points).is_none(), "NaN edges: no lane to keep to");
+        // Only the kerbs known: the lines cost nothing, the kerb still does.
+        let kerbs = road_lane(Edges::from_numbers(2.25, 2.25, f64::NAN, f64::NAN));
+        assert_eq!(lane_cost(Some(&kerbs), 1.6), 0.0);
+        assert!(lane_cost(Some(&kerbs), 1.8) > 1000.0);
     }
 }

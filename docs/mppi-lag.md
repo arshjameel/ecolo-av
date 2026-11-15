@@ -89,7 +89,7 @@ pub trait CarModel: Sync {
 | Samples | (vx, wz), each step clipped to ax, az | (speed, steering), clipped to the range only | ego's ramps are in the model; Nav2's clipping drifts samples slower |
 | Noise | white | **correlated**, AR(1) 0.8 | see below |
 | Sent | element 1 | element 0 | the dead times already hold what was sent |
-| Critics | the eight in nav2.yaml | the same eight, same weights; PathAngle's three modes | |
+| Critics | the eight in nav2.yaml | the same eight, same weights; PathAngle's three modes; and our `LaneCritic` with a lane map ([below](#the-lane)) | Nav2 has no critic for a lane |
 | At a cusp (reversing) | the critics' goal is the path's end | the cusp, while one lies ahead; the goal check waits for the last stretch | the car stops there as at a goal; Nav2 stops only because the path ends |
 
 ### Why the noise is correlated
@@ -226,6 +226,55 @@ replans, which may save it; not measured yet.
 Not yet seen in the simulator: a path with a cusp (a three-point turn). The lot tour
 with `measure controllers --stacks own --reversing` would show it.
 
+## The lane
+
+TODO 169. With a lane map, the road ahead (`/world/road_ahead`, the behaviour planner's)
+has edges. `mppi_lag` reads them and keeps the car's outline inside its lane. Nav2 has no
+critic for this; `LaneCritic` is ours.
+
+```
+  ══════════ hard edge (kerb): past it costs 1000 a pose ═══════
+  ── ── ──── soft edge (line): past it costs 100 x m² ── ── ──
+  ●───────── the line (the lane's centre): free ──────────────►
+```
+
+| | |
+|---|---|
+| On | `behaviour:=true` with `lane_map:=` (e.g. `world`) and `tracker:=mppi_lag`: the launch names the topic and adds `LaneCritic` to the critics (`vehicle.mppi_lag_params(..., lane=True)`) |
+| Off | otherwise: Nav2's eight critics only, the topic not read, as before |
+| Reads | `/world/road_ahead` (map), moved into odom by the latest map -> odom; dropped after 0.5 s (`road_ahead_timeout`); no lane: silent |
+| Scores | every 2nd pose: each corner of the padded outline beside the lane; the furthest past a soft edge, squared, x 100; past a hard edge, (1 + m) x 1000; both averaged over the poses |
+| Not | a collision: a car already over a kerb (a lane map off by a metre) still gets a plan back in |
+| Status | `lane` (true / false) on `/drivers/nav/track/status` |
+
+Inside the lines it costs nothing, so the path still decides where in the lane the car
+drives; at a line it pushes back smoothly.
+
+**Closed loop, no ROS** (vehicle.yaml's lags, 1 m/s): a path drawn 1 m left of a 2.6 m
+lane's centre (lines 1.3 m, kerbs 1.8 m), so its outline would be 0.25 m over the line:
+
+| | Outline, furthest left | Settles at |
+|---|---|---|
+| Without `LaneCritic` | 1.71 m: 0.41 over the line | y 1.00 (on the path) |
+| With it | **1.36 m: 0.06 over** | y 0.78 |
+
+**Our simulator, 14 Nov** (`simulator:=own world:=road behaviour:=true tracker:=mppi_lag
+cameras:=false`, a busy Mac, load 9-11): one goal 40 m on, **1.5 m left of the lane's
+centre**, so at the goal the body would be 0.25 m over the line. The road: lines 1.75 m,
+kerbs 2.25 m either side. The body (2 x 1 m, unpadded) against the edges, all the way:
+
+| Run | Reached | Car's y, widest | Body past the line, worst | Room to the kerb, least |
+|---|---|---|---|---|
+| no lane map (Nav2's critics only) | yes, 44 s | 1.98 m | **0.95 m** | **-0.45 m: over the kerb** |
+| `lane_map:=world`, run 1 | yes, 44 s | 1.23 m | 0.05 m | 0.45 m |
+| `lane_map:=world`, run 2 | yes, 45 s | 1.28 m | 0.13 m | 0.37 m |
+
+The status said `lane true` on every tick but the first one or two. The soft edge gives a
+little where the goal itself lies over it (GoalCritic pulls); the kerb never came close.
+
+**Speed:** 4.3 ms a tick on 4 threads with a 40 m lane, against 3.3 ms without (M4 Max,
+busy; `--example timing` prints both).
+
 ## lag_aware: so ego doesn't cancel the lag twice
 
 Ego's lead (0.3) cancels lag for drivers that don't know about it. It must turn off while
@@ -263,6 +312,7 @@ cd ros/drivers/aav_mppi_lag && cargo test --release -p mppi-lag
 | The goal at speed, the CPU | passes a goal at 2.5 m/s; twice Nav2's MPPI's CPU (8 Nov; TODO 152) |
 | A gap in odometry | gives up after 1 s, as `aav_track`; Nav2's MPPI drives on: decide which is right |
 | A live swap | it is its own node: `tracker:=` at launch only |
+| The lane's soft edge, opened | the behaviour planner will open a soft edge to pass a parked car; `LaneCritic` then reads the wider edge as sent |
 
 Code: [`ros/drivers/aav_mppi_lag`](../ros/drivers/aav_mppi_lag/README.md). Ported from
 Nav2 (Apache-2.0): [PROVENANCE](../ros/drivers/aav_mppi_lag/PROVENANCE.md).

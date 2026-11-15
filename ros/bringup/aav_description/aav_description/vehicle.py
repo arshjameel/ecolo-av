@@ -17,7 +17,7 @@ The launch files use this so the car's measurements live in one file:
                        controller)                              # RewrittenYaml can't write
     vehicle.ego_params(vehicle.load())          # ego: the whole file (the actuators too)
     vehicle.track_params(nav2, cfg, ego, max_speed)  # aav_track: a trial tracker (tracker:=)
-    vehicle.mppi_lag_params(nav2, cfg, ego, max_speed, reversing)  # aav_mppi_lag's
+    vehicle.mppi_lag_params(nav2, cfg, ego, max_speed, reversing, lane)  # aav_mppi_lag's
     vehicle.centre_of_mass(v, front, rear, front_lifted, lift)   # from the scales (M7, M7b)
     vehicle.wheel_angles(v, centre)  # each front wheel's angle for a centre (bicycle) angle
     vehicle.centre_angle(v, inner, outer)       # the reverse: from M5's two measured angles
@@ -645,6 +645,13 @@ MPPI_LAG_ACTUATORS = ('max_accel', 'throttle_deadband', 'throttle_lag', 'max_bra
 MPPI_LAG_SAME = {'time_steps': int, 'model_dt': float, 'batch_size': int,
                  'iteration_count': int, 'temperature': float, 'gamma': float,
                  'vx_std': float, 'transform_tolerance': float, 'retry_attempt_limit': int}
+# The road ahead (aav_interfaces/RoadAhead, the behaviour planner's), which mppi_lag reads
+# for its LaneCritic when the lane map gives it edges.
+ROAD_AHEAD_TOPIC = '/world/road_ahead'
+# LaneCritic's settings (ours; aav_mppi_lag critics.rs, docs/mppi-lag.md): per m² past a
+# lane line, per pose past a kerb (plus per m), every 2nd pose checked.
+LANE_CRITIC = {'soft_weight': 100.0, 'hard_weight': 1000.0, 'cost_power': 1,
+               'trajectory_point_step': 2}
 # ego.yaml's limits it models in front of the car (as ego.<key>).
 MPPI_LAG_EGO = ('max_acceleration', 'max_deceleration', 'max_steering_rate',
                 'min_speed_for_steering')
@@ -670,7 +677,7 @@ def costmap_timeout(server, costmap):
     return round(wait + 1.0 / float(costmap.get('publish_frequency', 1.0)), 3)
 
 
-def mppi_lag_params(nav2, cfg, ego=None, max_speed=None, reversing=False):
+def mppi_lag_params(nav2, cfg, ego=None, max_speed=None, reversing=False, lane=False):
     """
     Return aav_mppi_lag's parameters: Nav2's MPPI block, its checks, and the car's lag.
 
@@ -683,6 +690,9 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None, reversing=False):
     MPPI: vx_min -max_reverse_speed (else 0), the path followed stretch by stretch at its
     cusps (enforce_path_inversion, nav2.yaml's tolerances), PathAngleCritic in mode 2,
     and no PreferForwardCritic.
+    `lane` (behaviour:=true with a lane map: the road ahead has edges) reads
+    `ROAD_AHEAD_TOPIC` and adds our LaneCritic (`LANE_CRITIC`) to the critics; without it
+    the topic is empty and the critics are Nav2's, as before.
     """
     server = nav2['controller_server']['ros__parameters']
     mppi = server['MPPI']
@@ -697,6 +707,8 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None, reversing=False):
     if reversing:
         # As nav2_tuned's: the planner decides when to reverse (reverse_penalty).
         critics = [c for c in critics if c != 'PreferForwardCritic']
+    if lane:
+        critics.append('LaneCritic')
     out.update({
         'rate_hz': float(server['controller_frequency']),
         'odom_topic': server['odom_topic'],
@@ -707,6 +719,7 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None, reversing=False):
         'inversion_yaw_tolerance': float(mppi.get('inversion_yaw_tolerance', 0.4)),
         'prune_distance': max(float(mppi.get('prune_distance', 1.5)), ahead * 1.2),
         'critics': critics,
+        'road_ahead_topic': ROAD_AHEAD_TOPIC if lane else '',
         'xy_goal_tolerance': float(goal['xy_goal_tolerance']),
         'yaw_goal_tolerance': float(goal['yaw_goal_tolerance']),
         'progress_radius': float(progress['required_movement_radius']),
@@ -733,6 +746,8 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None, reversing=False):
     for critic in critics:
         for key, value in (mppi.get(critic) or {}).items():
             out[f'{critic}.{key}'] = critic_value(key, value)
+    if lane:
+        out.update({f'LaneCritic.{k}': v for k, v in LANE_CRITIC.items()})
     if reversing and 'PathAngleCritic' in critics:
         # Mode 2, as nav2_tuned's: follow the path the way it faces, backwards too.
         out['PathAngleCritic.mode'] = 2

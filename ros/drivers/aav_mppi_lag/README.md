@@ -25,6 +25,7 @@ What it adds to Nav2's MPPI:
 | Model of the car | speed and turn rate obey at once (within ax, az limits) | ego's ramps, the spine's speed loop, throttle and brake lag, steering motor rate, linkage lag, deadbands, dead times |
 | State it starts from | pose and speed | pose, speed, ego's output, the actuators' levels, the commands still in their dead time |
 | Noise | white, on (v, w) | on (v, steering), correlated step to step (AR(1), 0.8) |
+| The lane | no critic for it | `LaneCritic`, with a lane map: the outline kept inside the road ahead's lines and kerbs |
 | Language | C++ plugin | Rust |
 
 ```sh
@@ -40,7 +41,7 @@ pixi run measure controllers --trackers mppi_lag --controllers mppi --tours lot
 | Item | What |
 |---|---|
 | Action server | `/follow_path` (`nav2_msgs/action/FollowPath`): the newest path replaces the last without a stop |
-| Subscribes | `/localization/odom/local` (Odometry); `/tf` (map -> odom, once per path); `/vehicle/steering`, `/vehicle/throttle`, `/vehicle/brake` (ActuatorState, measured, while fresh); `/local_costmap/costmap_raw`, or ours `/drivers/nav/costmap/local_raw` with `costmap:=own` (nav2_msgs/Costmap; the launch file chooses: `config/mppi_lag.yaml` must not, `aav_navigation` `test_launch_params.py`) |
+| Subscribes | `/localization/odom/local` (Odometry); `/tf` (map -> odom, and for the road ahead each tick); `/vehicle/steering`, `/vehicle/throttle`, `/vehicle/brake` (ActuatorState, measured, while fresh); `/local_costmap/costmap_raw`, or ours `/drivers/nav/costmap/local_raw` with `costmap:=own` (nav2_msgs/Costmap; the launch file chooses: `config/mppi_lag.yaml` must not, `aav_navigation` `test_launch_params.py`); `/world/road_ahead` (aav_interfaces/RoadAhead, map: the lane's line and edges for `LaneCritic`, while 0.5 s fresh), only with `behaviour:=true` and a lane map (`road_ahead_topic`, empty: off) |
 | Publishes | `/cmd_vel_nav` (TwistStamped); `/drivers/nav/track/status` (DiagnosticStatus, aav_track's keys and more); `/drivers/nav/local_plan` (Path, odom: MPPI's chosen future, the screens' faint line); `/drivers/nav/lag_aware` (Bool, latched) |
 
 Results: succeeded; aborted with `FAILED_TO_MAKE_PROGRESS`, `NO_VALID_CONTROL`,
@@ -69,6 +70,7 @@ From `navigation.launch.py` (`vehicle.mppi_lag_params`; nothing copied):
 | Name | From |
 |---|---|
 | `time_steps`, `model_dt`, `batch_size`, `iteration_count`, `temperature`, `gamma`, `vx_std`, `vx_max`, `critics`, `<Critic>.*`, `inversion_xy_tolerance`, `inversion_yaw_tolerance` | nav2.yaml's `MPPI` block (`vx_max`: `max_speed:=` if given) |
+| `road_ahead_topic`, `LaneCritic` in `critics`, `LaneCritic.*` | the launch's `behaviour:=true` with `lane_map:=`: `/world/road_ahead` and our critic; else empty and Nav2's critics only |
 | `vx_min`, `enforce_path_inversion`, `PathAngleCritic.mode`, no `PreferForwardCritic` | the launch's `reversing`, as `nav2_tuned` sets Nav2's MPPI: 0, false, 0 and kept forward only; -`max_reverse_speed`, true, 2 and dropped with `reversing:=true` |
 | `prune_distance` | MPPI's, stretched to fit 2.8 s at `vx_max` (as `nav2_tuned`) |
 | `rate_hz`, `odom_topic`, goal and progress checks | controller_server's |
@@ -77,7 +79,7 @@ From `navigation.launch.py` (`vehicle.mppi_lag_params`; nothing copied):
 | `ego.*` | ego.yaml's ramps |
 
 From `config/mppi_lag.yaml`: `model` (lag or ideal), `steer_std`, `noise_correlation`,
-`threads`, `seed`, `use_costmap`, the topics and timeouts. All read once at start.
+`threads`, `seed`, `use_costmap`, the topics and timeouts (`road_ahead_timeout` 0.5 s). All read once at start.
 
 ### Crate `mppi-lag`
 
@@ -89,7 +91,8 @@ From `config/mppi_lag.yaml`: `model` (lag or ideal), `steer_std`, `noise_correla
 | `ego.rs` | `Driven`: ego's ramps in front of any model |
 | `ideal.rs` | `IdealModel`: no lag, as Nav2's MPPI |
 | `optimizer.rs` | MPPI: sample, roll out (threads), score, softmax, Savitzky-Golay, shift |
-| `critics.rs` | Nav2's eight critics in nav2.yaml |
+| `critics.rs` | Nav2's eight critics in nav2.yaml, and our `LaneCritic` (the outline past the lane's lines, squared; past its kerbs, far more) |
+| `lane.rs` | the road ahead's lane: its line, its four edges (`None` for NaN), where a point lies beside it |
 | `path.rs`, `costmap.rs`, `smoothing.rs`, `rng.rs` | the path window, the costmap and outline, the filter, random numbers |
 | `age.rs` | the costmap's age (Nav2's `costmap_update_timeout`) |
 | `follower.rs` | one path: Nav2's goal and progress checks, the state estimate, MPPI |
@@ -125,8 +128,8 @@ cargo run --release -p mppi-lag --example timing                         # ms a 
 | Test | Covers |
 |---|---|
 | `lag.rs`, `ego.rs`, `ideal.rs` | each stage of the model: lags, rate, deadbands, dead times, offset; reversing, the gear changing only at a stop |
-| `critics.rs`, `path.rs` | each critic on hand-made samples, PathAngle's modes on a reversing path; the cusps |
+| `critics.rs`, `path.rs` | each critic on hand-made samples, PathAngle's modes on a reversing path, `LaneCritic` inside, over a line, over a kerb, without a lane; the cusps; `lane.rs`: the side, the search, NaN edges |
 | `optimizer.rs`, `smoothing.rs` | the limits, the filter, a straight path, a turn, the same seed the same plan |
-| `tests/closed_loop.rs` | a pretend car (ego + the lag model at 100 Hz): the model predicts it; circle and S-curve at vehicle.yaml's lags; a corner and an S on very slow actuators: the lag-aware one closer on the corner, the only one to keep the S; 8 m straight back; 6 m ahead, a stop at the cusp, a quarter circle (r 5 m) back |
+| `tests/closed_loop.rs` | a pretend car (ego + the lag model at 100 Hz): the model predicts it; circle and S-curve at vehicle.yaml's lags; a corner and an S on very slow actuators: the lag-aware one closer on the corner, the only one to keep the S; 8 m straight back; 6 m ahead, a stop at the cusp, a quarter circle (r 5 m) back; a path drawn 1 m off a lane's centre, kept within 0.1 m of the line by `LaneCritic` (0.41 m over without) |
 
 `colcon test --packages-select aav_mppi_lag` runs the same; `pixi run test` everything.

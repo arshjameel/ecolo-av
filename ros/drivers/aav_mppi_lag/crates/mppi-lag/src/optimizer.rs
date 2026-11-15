@@ -26,6 +26,7 @@
 
 use crate::costmap::Costmap;
 use crate::critics::{furthest_reached, path_clear, Critic, CriticData, Prepared, Rollout};
+use crate::lane::Lane;
 use crate::model::{CarModel, Command, Pose};
 use crate::rng::Rng;
 use crate::smoothing::{savitzky_golay, History};
@@ -128,6 +129,8 @@ pub struct Scene<'a> {
     pub footprint: &'a [(f64, f64)],
     /// Unknown cells are drivable.
     pub tracking_unknown: bool,
+    /// The road ahead's lane, in the poses' frame (odom), if one is known: for `LaneCritic`.
+    pub lane: Option<&'a Lane>,
 }
 
 /// MPPI over a car model.
@@ -253,6 +256,7 @@ impl<M: CarModel> Optimizer<M> {
             vx_max: settings.vx_max,
             vx_min: settings.vx_min,
             min_turning_r: model.wheelbase() / settings.max_steer.tan(),
+            lane: scene.lane,
         };
         let prepared = Prepared::new(&self.critics, data);
         let (gv, gs) = (
@@ -416,6 +420,7 @@ mod tests {
             costmap: None,
             footprint: &[],
             tracking_unknown: false,
+            lane: None,
         };
         let state = model.at_rest(Pose::default(), 0.5);
         opt.reset(Command::new(0.5, 0.0));
@@ -449,6 +454,7 @@ mod tests {
             costmap: None,
             footprint: &[],
             tracking_unknown: false,
+            lane: None,
         };
         let state = model.at_rest(Pose::default(), 1.0);
         opt.reset(Command::new(1.0, 0.0));
@@ -477,6 +483,7 @@ mod tests {
             costmap: None,
             footprint: &[],
             tracking_unknown: false,
+            lane: None,
         };
         let state = model.at_rest(Pose::default(), 0.5);
         let mut a = Optimizer::new(model, settings.clone(), critics());

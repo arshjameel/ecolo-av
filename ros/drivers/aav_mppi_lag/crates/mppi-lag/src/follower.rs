@@ -18,6 +18,7 @@
 use crate::costmap::Costmap;
 use crate::critics::Critic;
 use crate::ego::{Driven, DrivenState, Ego};
+use crate::lane::Lane;
 use crate::model::{wrap, CarModel, Command, Observation, Pose};
 use crate::optimizer::{NoValidControl, Optimizer, Plan, Scene, Settings};
 use crate::path::{Foot, GlobalPath, Inversion};
@@ -189,6 +190,8 @@ pub struct Follower<M: CarModel> {
     settings: FollowerSettings,
     footprint: Vec<(f64, f64)>,
     path: Option<GlobalPath>,
+    /// The road ahead's lane, in odom, while the node has a fresh one.
+    lane: Option<Lane>,
     estimate: Option<DrivenState<M::State>>,
     last: Command,
     goal: GoalCheck,
@@ -209,6 +212,7 @@ impl<M: CarModel + Clone> Follower<M> {
             optimizer: Optimizer::new(Driven { ego, car: model }, mppi, critics),
             footprint,
             path: None,
+            lane: None,
             estimate: None,
             last: Command::default(),
             goal: GoalCheck::new(settings.xy_goal_tolerance, settings.yaw_goal_tolerance),
@@ -258,6 +262,17 @@ impl<M: CarModel + Clone> Follower<M> {
             Some(tolerance) => path.with_inversion(tolerance),
             None => path,
         });
+    }
+
+    /// The lane to keep to (the road ahead's, in odom), or `None`: none known, or stale.
+    /// Only `LaneCritic` reads it.
+    pub fn set_lane(&mut self, lane: Option<Lane>) {
+        self.lane = lane;
+    }
+
+    /// The lane it keeps to, if any.
+    pub fn lane(&self) -> Option<&Lane> {
+        self.lane.as_ref()
     }
 
     /// Stop following (the path ended or was cancelled). The next command is a stop.
@@ -322,6 +337,7 @@ impl<M: CarModel + Clone> Follower<M> {
             costmap,
             footprint: &self.footprint,
             tracking_unknown: s.tracking_unknown,
+            lane: self.lane.as_ref(),
         };
         let plan = match self.optimizer.evaluate(&state, &scene) {
             Ok(plan) => plan,
