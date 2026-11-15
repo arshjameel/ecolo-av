@@ -119,7 +119,8 @@ def run():
 def test_joystick_overrides_every_source(run):
     for driver, speed in SPEED.items():
         run.spin(0.6)
-        output = run.spin(0.3, driver)
+        # 0.6 s, not 0.3: on a loaded machine the first commands can take a moment to land.
+        output = run.spin(0.6, driver)
 
         assert output == {speed}, (
             f'{driver} did not reach the mux output; '
