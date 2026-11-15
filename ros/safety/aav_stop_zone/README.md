@@ -1,0 +1,38 @@
+# aav_stop_zone
+
+## Overview
+
+The stop zone, a **safety lock**, in Rust: Nav2's `collision_monitor` stop decision ported
+with no ROS (TODO 182: "ours in Rust with its own tests first"). Only the logic so far
+(`crates/stop-zone`); Nav2's `collision_monitor` runs on the car until this one's node
+has scored the same on the same tests. Safety locks are never swapped casually.
+
+```text
+ command ─▶ the box for its direction ─▶ points in it (all sensors) ≥ min_points ─▶ zero
+ each sensor's newest reading older than source_timeout (or none) ──────────────▶ zero
+ after a stop: zeros for stop_pub_timeout s, then nothing (twist_mux's slot times out)
+```
+
+| Setting (nav2.yaml `collision_monitor`) | Ours |
+|---|---|
+| `velocity_polygons` forward / backward | `SpeedBand`s, the first that holds the command; none: the last |
+| `min_points` (3) | `Settings::min_points`, all sensors' points together |
+| `source_timeout` (1 s) | `Settings::source_timeout`: a silent sensor stops the car |
+| `stop_pub_timeout` (2 s) | `Settings::stop_pub_timeout` |
+| a source's `min_height`, `max_height`, `min_range` | `SourceKind::Cloud`, `Source::min_range` (scans: none) |
+
+## Interface
+
+| Item | What |
+|---|---|
+| `StopZone::new(Settings, sources)` | `SettingsError` for no box, a box under 3 corners, min_points 0 |
+| `StopZone::step(now, Command, readings)` | `Decision { out, stop, band }`: the command to send (or none), why it stopped |
+| `Polygon::contains` | the ray-crossing point test |
+
+Not yet: the ROS node (subscribing the sources, `/control/cmd_vel_smoothed` in,
+`/drivers/nav/cmd_vel` out, the state topic), the `slowdown`, `limit` and `approach`
+actions (our config uses none), sensors with roll or pitch.
+
+## Testing
+
+`cargo test` here (`tools/test.sh` runs it, with `cargo fmt` and `cargo clippy`).

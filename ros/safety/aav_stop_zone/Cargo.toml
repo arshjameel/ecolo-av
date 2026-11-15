@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+# stop-zone: the stop zone's decision, no ROS (TODO 182): cargo test -p stop-zone.
+# The node comes once the decision is proven; Nav2's collision_monitor runs until then.
+members = ["crates/stop-zone"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false

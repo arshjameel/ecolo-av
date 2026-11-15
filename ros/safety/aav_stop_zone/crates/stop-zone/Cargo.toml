@@ -1,0 +1,9 @@
+[package]
+name = "stop-zone"
+description = "The stop zone (a safety lock): Nav2's collision_monitor's stop decision in Rust, without ROS. A box ahead (or behind) by the command's direction; enough points in it, or a silent sensor, and the command becomes zero"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]

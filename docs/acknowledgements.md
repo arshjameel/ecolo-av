@@ -26,7 +26,7 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 
 | Source | Licence | Kind | Where we used it |
 |---|---|---|---|
-| **Nav2** (S. Macenski and the Nav2 authors; "The Marathon 2: A Navigation System", IROS 2020) | Apache-2.0 | ported, runs | our costmap (`aav_costmap`), planner (`aav_planner`), navigator (`aav_navigator`), smoother (`aav_smoother`) and follower (`aav_mppi_lag`) are Nav2's, in Rust; Nav2 itself runs as the yardstick until 0.4-rc1 |
+| **Nav2** (S. Macenski and the Nav2 authors; "The Marathon 2: A Navigation System", IROS 2020) | Apache-2.0 | ported, runs | our costmap (`aav_costmap`), planner (`aav_planner`), navigator (`aav_navigator`), smoother (`aav_smoother`) and follower (`aav_mppi_lag`) are Nav2's, in Rust; Nav2 itself runs as the yardstick until 0.4-rc1, the stop zone's decision (`aav_stop_zone`, from `collision_monitor`) |
 | ROS 1 `costmap_2d` (Willow Garage) | BSD | ported (through Nav2) | the costmap's layers |
 | **MPPI**: G. Williams, A. Aldrich, E. Theodorou, "Model Predictive Path Integral Control: From Theory to Parallel Computation", J. Guidance, Control, and Dynamics, 2017 | paper | idea | the local planner (`aav_mppi_lag`, and Nav2's) |
 | **State Lattice**: M. Pivtoraiko, R. Knepper, A. Kelly, "Differentially Constrained Mobile Robot Motion Planning in State Lattices", J. Field Robotics, 2009 | paper | idea | the path planner (`aav_planner`, Nav2's Smac Lattice) |
