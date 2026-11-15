@@ -79,6 +79,10 @@ so the stop bar sits at the car and the words say NO PLAN, STOPS IN 0.00 m.
 [The picture](../../../docs/img/dev-window-squiggly-live.png). The drive itself was caught
 by the HUD (`docs/hud.md`).
 
+**A goal sent elsewhere** (sim-check, the tools, RViz, the map window): while plans keep
+coming on `/plan` (within 5 s), the map marks the plan's end in gold and says "driving
+to a goal sent elsewhere". Nav2's navigator and ours both replan while they drive.
+
 Mouse on the cubes: drag turns the head and the wheel zooms. From behind, right-drag also moves. On the map: click picks a goal,
 right-drag moves, wheel zooms.
 

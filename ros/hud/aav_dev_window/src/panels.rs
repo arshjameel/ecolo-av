@@ -231,6 +231,8 @@ pub struct WorldNews {
     /// The squiggly line, in base_link, and when its trace and numbers were last heard.
     pub ahead: Ahead,
     trace_heard: Option<Instant>,
+    /// When the newest plan came: a navigator replans while it drives a goal.
+    plan_heard: Option<Instant>,
     summary_heard: Option<Instant>,
     map: GridLayer,
     costmap: GridLayer,
@@ -289,7 +291,10 @@ impl WorldNews {
             Update::Log(level, line) => self.push_line(level, line),
             Update::Ndt(status) => self.ndt_status = Some(status),
             Update::NdtPose(pose) => self.ndt_pose = Some(pose),
-            Update::Plan(points) => self.plan = points,
+            Update::Plan(points) => {
+                self.plan = points;
+                self.plan_heard = Some(now);
+            }
             Update::RoadAhead(road) => self.road_ahead = road,
             Update::Map(grid) => self.map.set(grid),
             Update::Costmap(grid) => self.costmap.set(grid),
@@ -310,6 +315,16 @@ impl WorldNews {
         }
     }
 
+    /// The goal someone else sent (sim-check, the tools, RViz, the map window): the end of a
+    /// plan heard within [`GOAL_PLAN_FRESH`]. Every navigator, Nav2's or ours, replans while
+    /// it drives (every 1 s to a pose, 3 s through poses) and stops when the goal ends.
+    pub fn goal_elsewhere(&self, now: Instant) -> Option<Point> {
+        let heard = self.plan_heard?;
+        (now.saturating_duration_since(heard) <= GOAL_PLAN_FRESH)
+            .then(|| self.plan.last().copied())
+            .flatten()
+    }
+
     /// The squiggly line while ego's trace is fresh, with its numbers while they are.
     pub fn ahead_now(&self, now: Instant) -> Option<Ahead> {
         let fresh = |at: Option<Instant>| {
@@ -325,6 +340,9 @@ impl WorldNews {
         Some(ahead)
     }
 }
+
+/// How long a plan says a goal is still being driven: more than the slowest replan (3 s).
+pub const GOAL_PLAN_FRESH: std::time::Duration = std::time::Duration::from_secs(5);
 
 /// The squiggly line's colours: the plan faint, the trace by how well it keeps to the plan.
 pub const AHEAD_PLAN_RGB: [u8; 3] = [150, 156, 164];
@@ -1135,6 +1153,8 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
     }
     if let Some(goal) = state.goal.point() {
         painter.circle_stroke(to(goal), 7.0, egui::Stroke::new(2.5, egui::Color32::YELLOW));
+    } else if let Some(goal) = world.goal_elsewhere(Instant::now()) {
+        painter.circle_stroke(to(goal), 7.0, egui::Stroke::new(2.5, egui::Color32::GOLD));
     }
     // The car as an arrow, big enough to find whatever the zoom.
     let (sin, cos) = car.yaw.sin_cos();
@@ -1152,7 +1172,8 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
         egui::Stroke::new(1.5, egui::Color32::WHITE),
     ));
 
-    goal_buttons(ui, rect, state, feed);
+    let world_goal = state.world.goal_elsewhere(Instant::now());
+    goal_buttons(ui, rect, state, feed, world_goal);
 }
 
 /// The two presses a goal needs, over the map's bottom edge. The gates are checked at the
@@ -1162,6 +1183,7 @@ fn goal_buttons(
     map: egui::Rect,
     state: &mut UiState,
     feed: &mut dyn feed::Feed,
+    world_goal: Option<Point>,
 ) {
     let row = egui::Rect::from_min_max(
         egui::pos2(map.left() + 6.0, map.bottom() - 34.0),
@@ -1169,9 +1191,17 @@ fn goal_buttons(
     );
     ui.scope_builder(egui::UiBuilder::new().max_rect(row), |ui| {
         ui.horizontal(|ui| match state.goal {
-            Goal::None => {
-                ui.label("no goal");
-            }
+            Goal::None => match world_goal {
+                Some(goal) => {
+                    ui.label(format!(
+                        "driving to a goal sent elsewhere: x {:.1}, y {:.1}",
+                        goal.x, goal.y
+                    ));
+                }
+                None => {
+                    ui.label("no goal");
+                }
+            },
             Goal::Picked(goal) => {
                 if ui.button("DRIVE HERE").clicked() {
                     state.goal = Goal::Armed(goal);
@@ -1299,4 +1329,33 @@ fn road_colour(limit: f64, top: f64) -> egui::Color32 {
         (40.0 * (1.0 - share) + 210.0 * share) as u8,
         60,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_fresh_plan_shows_a_goal_sent_elsewhere() {
+        let start = Instant::now();
+        let mut world = WorldNews::default();
+        assert_eq!(world.goal_elsewhere(start), None);
+        world.apply(
+            Update::Plan(vec![Point::new(0.0, 0.0), Point::new(14.0, 2.0)]),
+            start,
+        );
+        assert_eq!(world.goal_elsewhere(start), Some(Point::new(14.0, 2.0)));
+        let later = start + GOAL_PLAN_FRESH + std::time::Duration::from_millis(1);
+        assert_eq!(
+            world.goal_elsewhere(later),
+            None,
+            "a quiet plan: the goal has ended"
+        );
+        world.apply(Update::Plan(Vec::new()), later);
+        assert_eq!(
+            world.goal_elsewhere(later),
+            None,
+            "an empty plan has no end"
+        );
+    }
 }
