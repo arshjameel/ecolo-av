@@ -73,11 +73,13 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 | a ghost person: 0.21 m; 0.51 m before it | sim (Gazebo), 16 Oct; 3 Nov | Ben |
 | radar: 0.3-0.4 m; lidar: 0.88 m before a box | bench, Oct; 20 Oct | Ben |
 | the cubes trial: **1 of 3 drove 1.30 m into the post** | sim (Gazebo), 3 Nov | Ben |
+| a 0.3 m kerb across the road (`--kerb`): **not seen**, the car drove into it, lidar alone and with the radar | sim (ours), 15 Nov, TODO 119 | Ben |
 | the car | not measured | |
 
 **Gaps:** the stop zone and the stop hold hold only Nav2 and the AI slot. The point driver
 (25), scripts and replay are not stopped by an obstacle. The roof lidar can't see a 1 m
-box inside the stop zone: the radar's job ([perception](perception.md)). The ghost test on
+box inside the stop zone: the radar's job ([perception](perception.md)). Nothing sees a
+kerb 0.3 m high or lower: the lidar keeps only points above 0.3 m (TODO 119). The ghost test on
 the car is written down but not run ([ghost obstacles](ghost-obstacles.md#on-the-real-car)).
 
 ## 2. An obstacle behind, while reversing

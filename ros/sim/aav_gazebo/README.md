@@ -99,7 +99,7 @@ and `brake` still carry what was asked as `command`, and what the car did as `me
 | `gazebo_*.py` | the six nodes | yes |
 
 Models (`models/`): `obstacle` (the bench's 1 m box), `post` (person-sized, for the
-lidar's obstacle check in `tools/sim_check.py`), `stop_sign`.
+lidar's obstacle check in `tools/sim_check.py`), `kerb` (0.3 m high, `sim-check --kerb`), `stop_sign`.
 
 ## Invariants
 

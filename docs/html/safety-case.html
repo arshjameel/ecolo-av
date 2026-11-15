@@ -361,6 +361,11 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
 <td>Ben</td>
 </tr>
 <tr>
+<td>a 0.3 m kerb across the road (<code>--kerb</code>): <strong>not seen</strong>, the car drove into it, lidar alone and with the radar</td>
+<td>sim (ours), 15 Nov, TODO 119</td>
+<td>Ben</td>
+</tr>
+<tr>
 <td>the car</td>
 <td>not measured</td>
 <td></td>
@@ -369,7 +374,8 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
 </table></div>
 <p><strong>Gaps:</strong> the stop zone and the stop hold hold only Nav2 and the AI slot. The point driver
 (25), scripts and replay are not stopped by an obstacle. The roof lidar can't see a 1 m
-box inside the stop zone: the radar's job (<a href="perception.html">perception</a>). The ghost test on
+box inside the stop zone: the radar's job (<a href="perception.html">perception</a>). Nothing sees a
+kerb 0.3 m high or lower: the lidar keeps only points above 0.3 m (TODO 119). The ghost test on
 the car is written down but not run (<a href="ghost-obstacles.html#on-the-real-car">ghost obstacles</a>).</p>
 </section>
 <section class="card"><h2 id="2-an-obstacle-behind-while-reversing">2. An obstacle behind, while reversing</h2>

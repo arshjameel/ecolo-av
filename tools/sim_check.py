@@ -136,6 +136,11 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             stuck in a turn: does anything stop the car.
                                             Evidence for docs/safety-case.md; one more run,
                                             --actuator-faults-only skips the road world's)
+    pixi run sim-check --kerb             (TODO 119: a 0.3 m kerb across the road, the
+                                            planner blind to it; the stop zone must stop
+                                            the car before it and the local costmap mark
+                                            it. Two runs: the lidar alone, then with the
+                                            radar; --kerb-only skips the road world's run)
     pixi run sim-check --three-point      (reverse, TODO 174: a 6.5 m street of walls, a
                                             goal behind the car facing back; the car must
                                             turn in it, backing at least once, without
@@ -322,6 +327,7 @@ OBSTACLE = os.path.join(MODELS, 'obstacle', 'model.sdf')   # the bench's 1 m box
 POST = os.path.join(MODELS, 'post', 'model.sdf')           # 0.5 x 0.5 x 1.8 m: a person
 LOW_BOX = os.path.join(MODELS, 'low_box', 'model.sdf')     # 0.5 m: the lidar loses it close
 WALL = os.path.join(MODELS, 'wall', 'model.sdf')           # 10 x 0.3 x 2 m: a street's side
+KERB = os.path.join(MODELS, 'kerb', 'model.sdf')           # 10 x 0.3 x 0.3 m: a foot-tall kerb
 # What the radar adds to the road world's graph: absent with radar:=false.
 RADAR_TOPICS = ('/sensors/radar/points', '/perception/radar/clusters',
                 '/perception/radar/cluster_boxes')
@@ -1423,6 +1429,19 @@ def check_stop_zone_shadow(probe, delay_limit=0.3, missed_limit=0.2):
            f'agree {100 * c.agree:.1f} % of {end - start:.0f} s; first stop {delay}; '
            f'clear while Nav2 stopped {c.missed:.2f} s, stopped alone {c.extra:.2f} s; '
            f'stops: Nav2 {c.nav2_stops}, ours {c.our_stops}')
+
+
+def check_kerb(probe, sensors):
+    """
+    Lay a foot-tall kerb across the road (TODO 119), the planner blind to it: is it seen.
+
+    The lidar keeps only points 0.3 m or more above the road (GROUND_CLEARANCE), the
+    kerb's own height. It must stop the car before the kerb as check_obstacle's box, and
+    the local costmap must mark it; our simulator stops a car that drives into a step
+    over 0.1 m as at a wall. sensors: the words for which ran (the lidar, the radar).
+    """
+    check_obstacle(probe, model=KERB, depth=0.3, across=True, costmap=True,
+                   name=f'kerb, 0.3 m ({sensors})')
 
 
 def check_low_box(probe):
@@ -3209,7 +3228,7 @@ def main():
             '--things-only', '--behaviour-things-only', '--legs-only',
             '--three-point-only', '--moving-only', '--low-box-only',
             '--stop-zone-shadow-only', '--thing-names-only',
-            '--actuator-faults-only'} & set(args):
+            '--actuator-faults-only', '--kerb-only'} & set(args):
         # With --obstacle the planner is blind to the box, so the stop zone must stop the car.
         session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}']
                 + (['plan_around:=false'] if '--obstacle' in args else []),
@@ -3241,6 +3260,15 @@ def main():
         logs.append(f'{stem}-ghost{ext}')
         session(['ghost:=true', f'lidar:={str(lidar).lower()}'], [check_ghost], logs[-1],
                 'ghost')
+    if {'--kerb', '--kerb-only'} & set(args):
+        # Two runs (TODO 119): the lidar alone, then with the radar, as on the car. The
+        # planner is blind to the kerb (plan_around:=false): only seeing it stops the car.
+        stem, ext = os.path.splitext(log)
+        for radar_on, words in ((False, 'the lidar'), (True, 'the lidar and the radar')):
+            logs.append(f'{stem}-kerb-{"radar" if radar_on else "lidar"}{ext}')
+            session(['lidar:=true', f'radar:={str(radar_on).lower()}', 'plan_around:=false'],
+                    [lambda probe, w=words: check_kerb(probe, w)], logs[-1], f'kerb, {words}',
+                    ignore=() if radar_on else RADAR_TOPICS, radar=radar_on)
     if {'--actuator-faults', '--actuator-faults-only'} & set(args):
         # Its own run, the empty world (room to roll and to circle): the actuators' faults
         # on purpose (TODO 159), gazebo_adapter's. No lidar or radar: a lighter run.
