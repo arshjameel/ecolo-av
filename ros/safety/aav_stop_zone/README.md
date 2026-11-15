@@ -3,9 +3,13 @@
 ## Overview
 
 The stop zone, a **safety lock**, in Rust: Nav2's `collision_monitor` stop decision ported
-with no ROS (TODO 182: "ours in Rust with its own tests first"). Only the logic so far
-(`crates/stop-zone`); Nav2's `collision_monitor` runs on the car until this one's node
-has scored the same on the same tests. Safety locks are never swapped casually.
+with no ROS (TODO 182: "ours in Rust with its own tests first"): the decision
+(`crates/stop-zone`) and a node (`crates/stop-zone-node`, `stop_zone`) that runs **in
+shadow** with `stop_zone_shadow:=true`: the same settings and sensors as Nav2's
+`collision_monitor`, from the same tuned `nav2.yaml` (`vehicle.stop_zone_params`), but its
+own topics, `/safety/stop_zone/shadow/cmd_vel` and `.../state`. Nothing drives by it.
+Nav2's stays the lock until ours has scored the same. Safety locks are never swapped
+casually.
 
 ```text
  command ─▶ the box for its direction ─▶ points in it (all sensors) ≥ min_points ─▶ zero
@@ -29,9 +33,10 @@ has scored the same on the same tests. Safety locks are never swapped casually.
 | `StopZone::step(now, Command, readings)` | `Decision { out, stop, band }`: the command to send (or none), why it stopped |
 | `Polygon::contains` | the ray-crossing point test |
 
-Not yet: the ROS node (subscribing the sources, `/control/cmd_vel_smoothed` in,
-`/drivers/nav/cmd_vel` out, the state topic), the `slowdown`, `limit` and `approach`
-actions (our config uses none), sensors with roll or pitch.
+Not yet: a measure comparing the shadow with `collision_monitor` run by run; mounts from
+`/tf_static` (the launch gives the radar's from vehicle.yaml; the rest send base_link);
+the `slowdown`, `limit` and `approach` actions (our config uses none); sensors with roll
+or pitch.
 
 ## Testing
 

@@ -12,7 +12,7 @@ drivers; they never move the car, and they never hold back a person on a live jo
 |---|---|---|
 | [aav_safety](./aav_safety/README.md) | the sensor watchdog: stale, NaN, frozen, jumped or disagreeing inputs lock twist_mux; the stop hold: keeps collision_monitor's stops from flickering; the geofence: every program stops before the fence's edge; the joystick-alive check: a silent or frozen joystick stops | `/safety/sensor_watchdog/lock`, `/safety/stop_hold/lock`, `/safety/geofence/lock` |
 | [aav_ghost](./aav_ghost/README.md) | ghost obstacles: a pretend person only Nav2 sees, to test stopping | `/safety/ghost/scan` |
-| [aav_stop_zone](./aav_stop_zone/README.md) | the stop zone's decision in Rust (Nav2's collision_monitor ported; no node yet, TODO 182) | none yet |
+| [aav_stop_zone](./aav_stop_zone/README.md) | the stop zone in Rust, in shadow beside Nav2's collision_monitor (`stop_zone_shadow:=true`, TODO 182) | `/safety/stop_zone/shadow/cmd_vel`, `.../state` |
 
 ## Invariants
 

@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
 # stop-zone: the stop zone's decision, no ROS (TODO 182): cargo test -p stop-zone.
-# The node comes once the decision is proven; Nav2's collision_monitor runs until then.
-members = ["crates/stop-zone"]
+# stop-zone-node: the ROS node (rclrs), in shadow beside Nav2's collision_monitor.
+members = ["crates/stop-zone", "crates/stop-zone-node"]
 
 [workspace.package]
 version = "0.1.0"

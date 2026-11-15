@@ -786,7 +786,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </thead>
 <tbody>
 <tr>
-<td><a href="../../ros/safety/aav_stop_zone/README.md">The stop zone in Rust</a> (<code>aav_stop_zone</code> <code>stop-zone</code>, no ROS): Nav2's collision_monitor stop decision ported: the box by direction, points from every sensor, a silent sensor stops, zeros held</td>
+<td><a href="../../ros/safety/aav_stop_zone/README.md">The stop zone in Rust</a> (<code>aav_stop_zone</code> <code>stop-zone</code>, no ROS): Nav2's collision_monitor stop decision ported: the box by direction, points from every sensor, a silent sensor stops, zeros held; its node runs in shadow (<code>stop_zone_shadow:=true</code>, its own topics)</td>
 <td>Ben, 14 Nov: "We want to run everythign ourselves in rust"; a safety lock, so its own tests first (TODO 182). Nav2's runs until the node scores the same</td>
 <td>Ben</td>
 <td>2026-11-15</td>

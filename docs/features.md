@@ -128,7 +128,7 @@ What the car decides to do on the road: when to slow, stop, wait and go, and wha
 
 | Feature | Why | Who | Date | Status |
 |---|---|---|---|---|
-| [The stop zone in Rust](../ros/safety/aav_stop_zone/README.md) (`aav_stop_zone` `stop-zone`, no ROS): Nav2's collision_monitor stop decision ported: the box by direction, points from every sensor, a silent sensor stops, zeros held | Ben, 14 Nov: "We want to run everythign ourselves in rust"; a safety lock, so its own tests first (TODO 182). Nav2's runs until the node scores the same | Ben | 2026-11-15 | built |
+| [The stop zone in Rust](../ros/safety/aav_stop_zone/README.md) (`aav_stop_zone` `stop-zone`, no ROS): Nav2's collision_monitor stop decision ported: the box by direction, points from every sensor, a silent sensor stops, zeros held; its node runs in shadow (`stop_zone_shadow:=true`, its own topics) | Ben, 14 Nov: "We want to run everythign ourselves in rust"; a safety lock, so its own tests first (TODO 182). Nav2's runs until the node scores the same | Ben | 2026-11-15 | built |
 | Command mux and e-stop lock (`aav_command_mux`, twist_mux) | One command wins by priority, and the e-stop locks every driver out | Ben | 2026-10-09 | sim |
 | Four e-stops | The car's red button stays untouched; the joystick, `pixi run estop` and the HUD add three more | Ben | 2026-10-10 | sim |
 | [Sensor watchdog](simulation.md#sensor-failures-on-purpose) (`aav_safety`) | When a sensor fails or freezes, Nav2 stops loudly and says why, instead of driving blind; since 15 Nov it also warns (never stops) when one of our own nodes leaves the ROS graph | Ben | 2026-10-15 | sim |

@@ -854,3 +854,22 @@ def test_a_global_window_rolls_the_global_costmap_and_0_leaves_it():
     assert vehicle.with_global_window(cfg(), 0.0) == cfg()
     with pytest.raises(ValueError):
         vehicle.with_global_window(cfg(), -1.0)
+
+
+def test_the_stop_zone_shadow_reads_what_collision_monitor_reads():
+    """TODO 182: our stop zone's settings from the same tuned nav2.yaml and car."""
+    share = Path(__file__).resolve().parents[3] / 'drivers' / 'aav_navigation' / 'config'
+    car = vehicle.load()
+    tuned = vehicle.nav2_tuned(yaml.safe_load((share / 'nav2.yaml').read_text()),
+                               car['vehicle'], False, None, True, True)
+    p = vehicle.stop_zone_params(tuned, car)
+    assert [b['name'] for b in p['bands']] == ['forward', 'backward']
+    assert p['bands'][0]['points'] == vehicle.stop_zone_points(car['vehicle'])
+    assert p['bands'][0]['speed'] == [0.0, 10.0]
+    assert (p['min_points'], p['source_timeout'], p['stop_pub_timeout']) == (3, 1.0, 2.0)
+    names = [src['name'] for src in p['sources']]
+    assert names == ['radar', 'lidar']
+    radar = p['sources'][0]
+    assert radar['kind'] == 'pointcloud' and radar['min_range'] == 0.2
+    assert radar['mount'][:3] == [float(x) for x in car['sensors']['radar_link']['xyz']]
+    assert p['sources'][1]['kind'] == 'scan' and p['sources'][1]['mount'] == [0.0] * 4

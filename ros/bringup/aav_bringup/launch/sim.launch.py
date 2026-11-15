@@ -417,6 +417,7 @@ def launch_setup(context):
                                lattice_moves=arg('lattice_moves'),
                                lidar_memory=arg('lidar_memory'),
                                global_window=arg('global_window'),
+                               stop_zone_shadow=arg('stop_zone_shadow'),
                                things_background=arg('things_background'),
                                planner_search=arg('planner_search'),
                                diffusion_model=arg('diffusion_model'),
@@ -707,6 +708,9 @@ def generate_launch_description():
         DeclareLaunchArgument('lidar_memory', default_value='0.0',
                               description='s the local lidar layer keeps a mark after the '
                                           'lidar loses it (0: the newest scan only; TODO 188)'),
+        DeclareLaunchArgument('stop_zone_shadow', default_value='false',
+                              description='true: our stop zone in Rust beside '
+                                          'collision_monitor, never driving (TODO 182)'),
         DeclareLaunchArgument('global_window', default_value='0.0',
                               description='m: the global costmap a square rolling with the '
                                           'car (192: the 3 x 3 chunks; 0: the whole map)'),

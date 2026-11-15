@@ -1024,6 +1024,43 @@ def with_lidar_memory(cfg, seconds):
     return cfg
 
 
+def stop_zone_params(tuned, car):
+    """
+    Return our stop zone's settings (aav_stop_zone's JSON) from tuned nav2.yaml and the car.
+
+    The same as Nav2's collision_monitor reads, so the shadow decides on the same things:
+    the forward and backward boxes (stop_zone_points, rear_stop_zone_points) with their
+    speed ranges, min_points, the timeouts, and each observation source's topic, type,
+    heights and range. Each source's mount in base_link: the radar's from vehicle.yaml
+    (its points come in its own frame); every other source sends base_link already.
+    tuned: nav2_tuned's dict; car: vehicle.load().
+    """
+    v = car['vehicle']
+    monitor = tuned['collision_monitor']['ros__parameters']
+    zone = monitor['StopZone']
+    corners = {'forward': stop_zone_points(v), 'backward': rear_stop_zone_points(v)}
+    bands = [{'name': name, 'points': corners[name],
+              'speed': [float(zone[name]['linear_min']), float(zone[name]['linear_max'])],
+              'turn': [float(zone[name]['theta_min']), float(zone[name]['theta_max'])]}
+             for name in zone['velocity_polygons']]
+    radar = car['sensors']['radar_link']
+    mounts = {'radar': [*map(float, radar['xyz']), float(radar['rpy'][2])]}
+    sources = []
+    for name in monitor['observation_sources']:
+        block = monitor[name]
+        source = {'name': name, 'topic': block['topic'], 'kind': block['type'],
+                  'min_range': float(block.get('min_range', 0.0)),
+                  'mount': mounts.get(name, [0.0, 0.0, 0.0, 0.0])}
+        for bound in ('min_height', 'max_height'):
+            if bound in block:
+                source[bound] = float(block[bound])
+        sources.append(source)
+    return {'min_points': int(zone['min_points']),
+            'source_timeout': float(monitor['source_timeout']),
+            'stop_pub_timeout': float(monitor['stop_pub_timeout']),
+            'bands': bands, 'sources': sources}
+
+
 def with_global_window(cfg, metres):
     """
     Return nav2.yaml's dict with the global costmap a `metres` square rolling with the car.

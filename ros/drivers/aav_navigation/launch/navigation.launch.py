@@ -136,6 +136,8 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           radar's speed too with radar:=true. voxels runs for it. Nothing
                           reads the list yet (docs/designs/2026-11-14_the-whole-car.md)
   things_background:=true  with things: cubes on /map's walls are not things (TODO 175)
+  stop_zone_shadow:=true  our stop zone in Rust beside collision_monitor, never driving:
+                          /safety/stop_zone/shadow/cmd_vel and .../state (TODO 182)
   replan_hz:=0            the navigate-to-pose tree plans once a goal, not every second
                           (a test, the wiggle: TODO 149); any other number, that rate. A
                           copy of the tree, removed when the launch ends
@@ -507,6 +509,16 @@ def nodes(context):
                                                  'background': flag(context,
                                                                     'things_background'),
                                                  'use_sim_time': use_sim_time}]))
+    if flag(context, 'stop_zone_shadow'):
+        # Our stop zone in shadow (aav_stop_zone, TODO 182): the same settings and sensors
+        # as collision_monitor, from the same tuned file; its own topics, so it never
+        # drives. Nav2's stays the lock until ours scores the same.
+        with open(source) as f:
+            tuned = yaml.safe_load(f)
+        settings = json.dumps(vehicle.stop_zone_params(tuned, cfg))
+        actions.append(Node(package='aav_stop_zone', executable='stop_zone', name='stop_zone',
+                            output='screen',
+                            parameters=[{'settings': settings, 'use_sim_time': use_sim_time}]))
     if ghost:
         # Not a lifecycle node either. Its own file, then use_sim_time: the file doesn't
         # set it, so the dict adds it rather than losing to the file.
@@ -709,6 +721,9 @@ def generate_launch_description():
         DeclareLaunchArgument('lidar_memory', default_value='0.0',
                               description='s the local lidar layer keeps a mark after the '
                                           'lidar loses it (0: the newest scan only; TODO 188)'),
+        DeclareLaunchArgument('stop_zone_shadow', default_value='false',
+                              description='true: our stop zone (aav_stop_zone) beside '
+                                          'collision_monitor, on its own topics (TODO 182)'),
         DeclareLaunchArgument('global_window', default_value='0.0',
                               description='m: the global costmap a square rolling with the '
                                           'car (192: the 3 x 3 chunks; 0: the whole map)'),

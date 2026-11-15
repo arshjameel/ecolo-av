@@ -1,0 +1,23 @@
+[package]
+name = "stop-zone-node"
+description = "stop_zone: the stop zone as a ROS 2 node, in shadow beside Nav2's collision_monitor (its own output topic) until it scores the same"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "stop_zone"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"] }
+rclrs = "0.8"
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = "0.3"
+serde = { version = "1", features = ["derive"] }
+# The launch file hands the settings over as one JSON parameter (vehicle.stop_zone_params).
+serde_json = "1"
+stop-zone = { path = "../stop-zone" }
