@@ -7,6 +7,13 @@ TODO 192 (Ben, 15 Nov: "How the camera perception informs the lidar distance stu
     the detector's boxes (camera: what) ─► the one overlapping it most (IoU ≥ min_iou)
     ─► the thing takes that box's label: person, car, stop sign...; kept `hold` s
 
+The lidar's cubes stop at a ceiling (aav_voxels' max_height, 2 m): a thing reaching it has
+an unknown top. A stop sign's plate (1.6 to 2.4 m) sits mostly above it, so its lidar
+thing is the pole: thin, and short of the camera's box. Such a thing is matched on its
+bearing instead: the boxes overlap left to right by at least `min_side` of the narrower,
+and at all top to bottom. A thing seen whole keeps the strict IoU, so a person in front
+of a car still can't rename the car.
+
 The lidar says where and how far, the camera says what. A thing no camera sees keeps
 its last name for `hold` s, then goes back to unknown: never guessed. The pinhole maths is
 aav_detector's (ground.py: Lens, Mount), the same the camera's road points use. On the car
@@ -85,12 +92,28 @@ def iou(a: Box, b: Box) -> float:
     return inter / union if union > 0.0 else 0.0
 
 
-def best_label(box: Box, seen: Sequence[Seen], min_iou: float) -> Optional[str]:
-    """Return the label of the detector box overlapping `box` most, if any reaches min_iou."""
-    best, best_score = None, min_iou
+def side_overlap(a: Box, b: Box) -> float:
+    """Return how much two boxes overlap left to right, over the narrower's width, 0..1."""
+    w = min(a[2], b[2]) - max(a[0], b[0])
+    narrower = min(a[2] - a[0], b[2] - b[0])
+    return w / narrower if w > 0.0 and narrower > 0.0 else 0.0
+
+
+def best_label(box: Box, seen: Sequence[Seen], min_iou: float,
+               min_side: Optional[float] = None) -> Optional[str]:
+    """
+    Return the label of the detector box overlapping `box` most, if any matches.
+
+    A match has an IoU of at least min_iou; with min_side (a thing whose top the lidar
+    can't see), also a box overlapping it top to bottom and by min_side left to right.
+    The highest IoU wins.
+    """
+    best, best_score = None, -1.0
     for s in seen:
         overlap = iou(box, s.box)
-        if overlap >= best_score:
+        tall = (min_side is not None and side_overlap(box, s.box) >= min_side
+                and min(box[3], s.box[3]) > max(box[1], s.box[1]))
+        if (overlap >= min_iou or tall) and overlap > best_score:
             best, best_score = s.label, overlap
     return best
 
@@ -115,6 +138,8 @@ class Namer:
     """
 
     min_iou: float = 0.3
+    min_side: float = 0.5
+    ceiling: float = 2.0          # m: the lidar's cubes stop here (aav_voxels' max_height)
     hold: float = 3.0
     max_age: float = 0.5
     cameras: Dict[str, Camera] = field(default_factory=dict)
@@ -125,8 +150,10 @@ class Namer:
         for camera in self.cameras.values():
             if now - camera.stamp > self.max_age:
                 continue
+            open_top = height >= self.ceiling
             box = thing_box(camera.lens, camera.mount, x, y, length, width, height)
-            label = best_label(box, camera.seen, self.min_iou) if box else None
+            label = (best_label(box, camera.seen, self.min_iou,
+                                self.min_side if open_top else None) if box else None)
             if label is not None:
                 self.named[thing_id] = (label, now)
                 return label

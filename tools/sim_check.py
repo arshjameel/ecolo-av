@@ -115,6 +115,10 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             world's run)
     pixi run sim-check --with name:=value  (any sim.launch.py argument on every session,
                                             repeatable: an A/B of one setting)
+    pixi run -e ml sim-check --thing-names (TODO 192: the detector names the lidar's
+                                            things; the thing at the stop sign must be
+                                            named stop sign, nothing else so;
+                                            --thing-names-only skips the road world's run)
     pixi run sim-check --stop-zone-shadow (TODO 182: our stop zone in Rust in shadow beside
                                             collision_monitor through the obstacle check:
                                             both must stop, ours within 0.3 s of Nav2's,
@@ -304,6 +308,7 @@ with open(os.path.join(ROOT, 'ros', 'sim', 'aav_bench', 'config', 'bench.yaml'))
     BENCH = yaml.safe_load(f)['mock_camera']['ros__parameters']
 ROAD_Y = BENCH['road_y']                # m: the lane's centre line
 SIGN_X = BENCH['stop_signs'][0]         # m east: the stop sign
+SIGN_Y = BENCH['stop_signs'][1]         # m north: right of the road
 MODELS = os.path.join(ROOT, 'ros', 'sim', 'aav_gazebo', 'models')
 OBSTACLE = os.path.join(MODELS, 'obstacle', 'model.sdf')   # the bench's 1 m box
 POST = os.path.join(MODELS, 'post', 'model.sdf')           # 0.5 x 0.5 x 1.8 m: a person
@@ -2707,6 +2712,66 @@ def check_moving_thing(probe, ahead=20.0, side=4.0, walk=0.8, goal=35.0, near=15
            f'{" > ".join(seen) or "none heard"}')
 
 
+def check_thing_names(probe, near=1.5):
+    """
+    Check the things' names (things_names:=true, TODO 192).
+
+    The lidar's thing at the sign must be named stop sign by the camera's detector, and
+    nothing far from it.
+
+    The car drives past the sign as check_stop_sign does. A thing counts as the sign's when
+    it is within `near` m of it (truth, through the car's pose); a "stop sign" further
+    than 3 m from it is a wrong name.
+    """
+    from aav_interfaces.msg import Things
+    newest, odom = {}, {}
+    subs = [probe.create_subscription(Things, '/world/things',
+                                      lambda m: newest.update(things=m), 10),
+            probe.create_subscription(Odometry, '/localization/odom/local',
+                                      lambda m: odom.update(pose=m), 10)]
+    try:
+        done = probe.go_to(40.0, ROAD_Y, 0.0)
+        if done is None:
+            result('thing names', False, 'no navigator, or it refused the goal')
+            return
+        named_at, wrong, kinds, first = None, 0, set(), None
+        end = time.monotonic() + 120.0
+        while time.monotonic() < end and not done.done():
+            probe.spin_for(0.2)
+            if 'things' not in newest or 'pose' not in odom:
+                continue
+            p = odom['pose'].pose.pose
+            ox, oy, oh = p.position.x, p.position.y, yaw_of(odom['pose'])
+            tx, ty = probe.xy(probe.truth)
+            th = yaw_of(probe.truth)
+            for thing in newest['things'].things:
+                # The thing from the car (odom), then onto the truth's frame.
+                dx, dy = thing.x - ox, thing.y - oy
+                ax = dx * math.cos(oh) + dy * math.sin(oh)
+                ay = -dx * math.sin(oh) + dy * math.cos(oh)
+                wx = tx + ax * math.cos(th) - ay * math.sin(th)
+                wy = ty + ax * math.sin(th) + ay * math.cos(th)
+                off = math.hypot(wx - SIGN_X, wy - SIGN_Y)
+                is_sign = thing.kind.replace('_', ' ').strip().lower() == 'stop sign'
+                if off <= near:
+                    kinds.add(thing.kind)
+                    if first is None:
+                        first = tx
+                    if is_sign and named_at is None:
+                        named_at = (tx, off)
+                elif is_sign and off > 3.0:
+                    wrong += 1
+        ok = named_at is not None and wrong == 0
+        seen = (f'the lidar had a thing at the sign from x = {first:.1f} m'
+                if first is not None else 'the lidar never had a thing at the sign')
+        named = (f'named stop sign at x = {named_at[0]:.1f} m, {named_at[1]:.2f} m off it'
+                 if named_at else f'never named stop sign (its names: {sorted(kinds) or "none"})')
+        result('thing names', ok, f'{seen}; {named}; {wrong} wrong "stop sign" names elsewhere')
+    finally:
+        for sub in subs:
+            probe.destroy_subscription(sub)
+
+
 def lowest_cap(probe, since):
     caps = [cap for t, _, _, cap, _ in probe.behaviour if t >= since and cap > 0.0]
     return min(caps) if caps else None
@@ -2877,6 +2942,12 @@ def main():
         print(__doc__)
         return 0
     perception = '--perception' in args
+    if {'--thing-names', '--thing-names-only'} & set(args):
+        perception = perception or importlib.util.find_spec('rfdetr') is not None
+        if importlib.util.find_spec('rfdetr') is None:
+            print('--thing-names needs the detector: pixi run -e ml sim-check --thing-names',
+                  file=sys.stderr)
+            return 2
     if perception and importlib.util.find_spec('rfdetr') is None:   # the detector's default
         print('--perception needs the detector: pixi run -e ml sim-check --perception',
               file=sys.stderr)
@@ -2996,7 +3067,7 @@ def main():
             '--stop-point-only', '--loaded-stop-only', '--behaviour-only', '--lane-only',
             '--things-only', '--behaviour-things-only', '--legs-only',
             '--three-point-only', '--moving-only', '--low-box-only',
-            '--stop-zone-shadow-only'} & set(args):
+            '--stop-zone-shadow-only', '--thing-names-only'} & set(args):
         # With --obstacle the planner is blind to the box, so the stop zone must stop the car.
         session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}']
                 + (['plan_around:=false'] if '--obstacle' in args else []),
@@ -3113,6 +3184,12 @@ def main():
         logs.append(f'{stem}-moving{ext}')
         session(['behaviour:=true', 'things:=true', 'lidar:=true'],
                 [check_moving_thing], logs[-1], 'moving thing')
+    if {'--thing-names', '--thing-names-only'} & set(args):
+        # Its own run: the detector names the lidar's things (TODO 192; needs -e ml).
+        stem, ext = os.path.splitext(log)
+        logs.append(f'{stem}-thing-names{ext}')
+        session(['perception:=true', 'lidar:=true', 'things:=true', 'things_names:=true'],
+                [check_thing_names], logs[-1], 'thing names')
     if {'--stop-zone-shadow', '--stop-zone-shadow-only'} & set(args):
         # Its own run: our stop zone beside Nav2's, the planner blind to the box.
         stem, ext = os.path.splitext(log)

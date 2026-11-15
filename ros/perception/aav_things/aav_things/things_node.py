@@ -118,7 +118,10 @@ class ThingsNode(Node):
         # Names from the camera's boxes (naming.py, TODO 192): off until it scores.
         self.use_names = bool(self.declare_parameter('names', False).value)
         self.namer = Namer(min_iou=float(self.declare_parameter('name_min_iou', 0.3).value),
-                           hold=float(self.declare_parameter('name_hold', 3.0).value))
+                           hold=float(self.declare_parameter('name_hold', 3.0).value),
+                           min_side=float(self.declare_parameter('name_min_side', 0.5).value),
+                           # The voxels' max_height: a thing reaching it has an unseen top.
+                           ceiling=float(self.declare_parameter('name_ceiling', 2.0).value))
         self.name_min_score = float(self.declare_parameter('name_min_score', 0.5).value)
         self.lenses = {}
         if self.use_names:

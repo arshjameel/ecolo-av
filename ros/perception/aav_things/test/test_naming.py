@@ -54,3 +54,24 @@ def test_a_name_is_held_a_while_then_let_go():
     assert namer.name(7, 6.0, 0.0, 0.5, 0.5, 1.8, 13.5) == UNKNOWN
     # A thing off to the side never takes the person's name.
     assert namer.name(8, 6.0, 4.0, 0.5, 0.5, 1.8, 10.1) == UNKNOWN
+
+
+def test_a_stop_sign_over_the_lidars_ceiling_is_named_on_its_bearing():
+    # The lidar's thing is the pole (cubes stop at 2 m); the camera's box is the plate,
+    # 0.75 m wide, 1.6 to 2.4 m up, 10 m ahead and 2 m right.
+    pole = thing_box(LENS, FRONT, 10.0, -2.0, 0.25, 0.25, 2.125)
+    corners = [project(LENS, FRONT, (10.0, -2.0 + dy, z))
+               for dy in (-0.375, 0.375) for z in (1.6, 2.4)]
+    plate = (min(u for u, _ in corners), min(v for _, v in corners),
+             max(u for u, _ in corners), max(v for _, v in corners))
+    seen = [Seen('stop sign', 0.9, plate)]
+    assert iou(pole, plate) < 0.3                       # the strict match misses it
+    assert best_label(pole, seen, 0.3) is None
+    assert best_label(pole, seen, 0.3, min_side=0.5) == 'stop sign'
+    namer = Namer()
+    namer.cameras['front'] = Camera(LENS, FRONT, seen, stamp=10.0)
+    assert namer.name(1, 10.0, -2.0, 0.25, 0.25, 2.125, 10.1) == 'stop sign'
+    # A thing seen whole (under the ceiling) keeps the strict match: no name.
+    assert namer.name(2, 10.0, -2.0, 0.25, 0.25, 1.5, 10.1) == UNKNOWN
+    # Nor does an open-topped thing off to the side take it.
+    assert namer.name(3, 10.0, 1.0, 0.25, 0.25, 2.125, 10.1) == UNKNOWN
