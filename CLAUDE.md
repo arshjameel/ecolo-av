@@ -47,15 +47,16 @@ These are the conventions decided so far. They apply to people and to Claude ses
   `/<area>/<device or node>/<thing>`, such as `/sensors/gps/fix`, `/drivers/joy/cmd_vel`,
   `/safety/estop`. Only ROS's own global names (`/tf`, `/clock`...) and Nav2's stay
   outside. `tools/tests/test_topic_areas.py` checks `docs/interfaces.yaml`.
-- **Prefer stock packages**, and look for a better open-source one before keeping ours or
-  an inherited one (Ben, 15 Oct: "if there is better version of stuff that is open source
-  then lets look at that"). Check its licence:
-  1. stock ROS packages (robot_localization, Nav2, twist_mux, teleop_twist_*);
-  2. then code inherited from the previous teams;
-  3. then a reasonable stub.
+- **We run our own stack** (Ben, 14 Nov: "remove nav2 and gazeboo ... We want to run
+  everythign ourselves in rust and/or python"). Ours (`stack:=ours`, our simulator) is the
+  default. Nav2 and Gazebo stay installed only as yardsticks until 0.4-rc1 is scored, then
+  are deleted. Stock packages are a reference to learn from (read `vendor/`), not the
+  default. Kept for now, as small and proven: robot_localization, twist_mux,
+  teleop_twist_* (replace one only when it hits a real limit). Still look for better open
+  source to learn from, and check its licence (Ben, 15 Oct).
 - **Our own algorithms** (Ben, 5 Nov): for each area we build a new best hybrid from papers,
-  known algorithms and current implementations. Stock stays the default; ours runs beside
-  it as the challenger until it wins on the same routes and bags. Every algorithm stays.
+  known algorithms and current implementations. A new one runs beside the current default
+  as the challenger until it wins on the same routes and bags. Every algorithm stays.
 - **Everything is a drop-in replacement** (Ben, 5 Nov: "just swap out and test"). Gazebo, our
   simulator and the real sensors all produce the same topics; so does every algorithm for its
   job. `docs/interfaces.yaml` is what they must match. Nothing downstream may care which one

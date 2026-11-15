@@ -7,7 +7,7 @@
 <!-- Generated from docs/decisions.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Decisions and open questions</h1>
-<div class="meta">50 min read · 16 sections</div></header>
+<div class="meta">51 min read · 16 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-notes.html">Release notes</a>
@@ -864,6 +864,11 @@ answer.</p>
 <tr>
 <td>14 Nov</td>
 <td><strong>Hybrid-A* in our Rust planner now</strong>, another option beside the lattice</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>14 Nov</td>
+<td><strong>We run our own stack; Nav2 and Gazebo leave</strong>: "I would like to remove nav2 and gazeboo ... run everythign ourselves in rust and/or python". <code>stack:=ours</code> and our simulator become the default now; Nav2 and Gazebo stay only as yardsticks until 0.4-rc1 is scored, then are deleted. robot_localization, twist_mux and teleop_twist_* stay for now. CLAUDE.md's rules changed to match</td>
 <td>Ben</td>
 </tr>
 </tbody>

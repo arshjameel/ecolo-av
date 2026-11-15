@@ -203,6 +203,7 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 14 Nov | Our simulator's wheels get **noise and slip, seeded, off by default** | Ben |
 | 14 Nov | **Steering-rate-aware lattice moves**, a trial beside today's lattice (no oscillation) | Ben |
 | 14 Nov | **Hybrid-A\* in our Rust planner now**, another option beside the lattice | Ben |
+| 14 Nov | **We run our own stack; Nav2 and Gazebo leave**: "I would like to remove nav2 and gazeboo ... run everythign ourselves in rust and/or python". `stack:=ours` and our simulator become the default now; Nav2 and Gazebo stay only as yardsticks until 0.4-rc1 is scored, then are deleted. robot_localization, twist_mux and teleop_twist_* stay for now. CLAUDE.md's rules changed to match | Ben |
 
 ## Proposed in November: Ben's to decide
 

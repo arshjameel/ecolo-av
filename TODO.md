@@ -20,11 +20,16 @@ Ben, 14 Nov night: "chiping througth the list 166-173 and then the 155, 156, 157
 | 9 | Reverse everywhere; the costmap in tiles (design first) | 174, 175 |
 | then | The lane finder as a pose sensor; the things' camera and radar; record and score a car drive | 155, 156, 157 |
 | 10 | Steering-rate lattice moves, Hybrid-A*, wheel noise, the watchdog's warning | 177-180 |
+| 11 | Ours the default; the last Nav2 pieces; Gazebo's CI job; then Nav2 and Gazebo deleted | 181-184 |
 | last | The Rust made more Rust-like, once feature complete | 176 |
 | 177 | **Steering-rate-aware lattice moves** (Ben, 14 Nov: a trial now): moves whose curvature changes no faster than the steering can, from the car model ego uses; beside today's lattice until it wins (no oscillation, 168) | ⬜ next after the junction |
 | 178 | **Hybrid-A\* in our Rust planner** (Ben, 14 Nov: "Now"): a port of Nav2's, another `path` option in the league | ⬜ |
 | 179 | **Wheel noise and slip in our simulator** (Ben, 14 Nov): seeded, off by default | ⬜ |
 | 180 | **The sensor watchdog warns about our own nodes** (Ben, 14 Nov: warn only, no lock) | ⬜ |
+| 181 | **Ours is the default** (Ben, 14 Nov: "remove nav2 and gazeboo"): `stack:=ours` the simulator's default (to use Nav2: `stack:=stock`); the launch tests, sim-check, measure and docs follow | ⬜ next helper |
+| 182 | **The last Nav2 pieces replaced**: the velocity smoother (ours, `aav_smoother`, made champion once it scores), the stop zone (Nav2's collision_monitor: a safety lock, ours in Rust with its own tests first), the map server (becomes the map chunks, 175), the lattice file's generator; `nav2_msgs` types kept or ours | ⬜ |
+| 183 | **Gazebo's last job replaced**: our simulator's cameras on a computer with no GPU (software rendering, e.g. Mesa's lavapipe), so CI and oirp-spss run our simulator | ⬜ |
+| 184 | **Nav2 and Gazebo deleted**, once 0.4-rc1 is scored against them (their launch files, configs, trees, Gazebo worlds' plugins, the CI job), keeping their scores in the docs | ⬜ after 0.4-rc1 |
 
 ## Release candidate 0.4-rc1 (Ben, 14 Nov night)
 
