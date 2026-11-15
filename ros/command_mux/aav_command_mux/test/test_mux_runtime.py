@@ -119,8 +119,10 @@ def run():
 def test_joystick_overrides_every_source(run):
     for driver, speed in SPEED.items():
         run.spin(0.6)
-        # 0.6 s, not 0.3: on a loaded machine the first commands can take a moment to land.
-        output = run.spin(0.6, driver)
+        # Wait until it comes through (on a loaded machine the first commands take a
+        # moment), then check that it alone does.
+        assert run.until_mux_passes(driver, 5.0), f'{driver} never reached the mux output'
+        output = run.spin(0.3, driver)
 
         assert output == {speed}, (
             f'{driver} did not reach the mux output; '
@@ -133,9 +135,9 @@ def test_joystick_overrides_every_source(run):
 
 
 def test_silent_source_times_out(run):
-    # Both start at once after a silence: whichever message lands first passes for an
-    # instant (a race, not priority). Let both be heard, then check the priority.
-    run.spin(0.2, 'keyboard', 'scripted')
+    # The keyboard first, until it comes through; then both: the keyboard must win.
+    # (Both starting at once after a silence is a race: the first message to land passes.)
+    assert run.until_mux_passes('keyboard', 5.0), 'the keyboard never reached the output'
     output = run.spin(0.5, 'keyboard', 'scripted')
 
     assert output == {SPEED['keyboard']}
