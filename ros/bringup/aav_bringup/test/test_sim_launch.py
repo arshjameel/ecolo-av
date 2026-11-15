@@ -563,3 +563,10 @@ def test_the_local_ekf_reads_kiss_icp_only_with_kiss_ekf():
                         'ekf_local.yaml')
     with open(base) as f:
         assert 'odom1' not in yaml.safe_load(f)['ekf_local']['ros__parameters']
+
+
+def test_the_campus_widens_the_fence_by_itself():
+    # 200 m held the car at a campus junction 197 m from the start (15 Nov).
+    assert SIM.fence_radius('', 'campus') == '600.0'
+    assert SIM.fence_radius('', 'road') == '200.0'
+    assert SIM.fence_radius(' 350 ', 'campus') == '350'

@@ -15,7 +15,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
       [kiss_ekf:=false]
       [plan_around:=true] [things:=false]
-      [watchdog:=true] [geofence:=true] [geofence_radius:=200.0]
+      [watchdog:=true] [geofence:=true] [geofence_radius:=]
       [watch_hud:=false] [faults:=false] [spine:=false] [arm:=true]
       [esp32:=false] [esp32_loop:=pi]
       [bridge:=rust|python]
@@ -163,9 +163,10 @@ bench's argument names:
                       freezes or dies
   geofence:=true      the geofence (aav_safety): twist_mux's geofence lock holds every
                       program (scripted, point, Nav2, AI; never a person) before its
-                      stopping distance reaches a circle of geofence_radius m (200 here:
-                      past every sim check's drive; the car's is 30) round where the car
-                      starts (0, start_y), or while the global pose can't be trusted
+                      stopping distance reaches a circle of geofence_radius m (200 here,
+                      600 on the campus: past every sim check's drive; the car's is 30)
+                      round where the car starts (0, start_y), or while the global pose
+                      can't be trusted
   watch_hud:=true     the watchdog watches /hud/heartbeat without the HUD window: something
                       else beats (sim-check --faults stands in for the screen)
   faults:=true        the front left picture through gazebo_adapter, so its fault.camera
@@ -458,7 +459,8 @@ def launch_setup(context):
                                backend=('spine' if arg('spine').lower() == 'true' else
                                         'gazebo_esp32' if arg('esp32').lower() == 'true'
                                         else 'gazebo'),
-                               radius=arg('geofence_radius'), centre_x=start_x,
+                               radius=fence_radius(arg('geofence_radius'), world),
+                               centre_x=start_x,
                                centre_y=start_y, max_speed=sim_speed,
                                use_sim_time='true'))
     if flag['teleop']:
@@ -501,6 +503,19 @@ def launch_setup(context):
                                           'rviz', LAYOUTS.get(world, 'drive.rviz'))],
             parameters=[{'use_sim_time': True}]))
     return actions
+
+
+# m: the geofence's circle when geofence_radius is empty. On the campus 200 m held the car
+# at a junction 197 m from the start, half way round a tour (15 Nov).
+FENCE_RADIUS = 200.0
+CAMPUS_FENCE_RADIUS = 600.0
+
+
+def fence_radius(given, world):
+    """Return the geofence's radius as text: the one given, else by the world."""
+    if given.strip():
+        return given.strip()
+    return str(CAMPUS_FENCE_RADIUS if world == worlds.CAMPUS else FENCE_RADIUS)
 
 
 def generate_launch_description():
@@ -595,8 +610,10 @@ def generate_launch_description():
         DeclareLaunchArgument('geofence', default_value='true',
                               description='the geofence: holds every program near the edge of '
                                           'a circle round the start (aav_safety)'),
-        DeclareLaunchArgument('geofence_radius', default_value='200.0',
-                              description="m: the geofence's circle (the car's: 30)"),
+        DeclareLaunchArgument('geofence_radius', default_value='',
+                              description="m: the geofence's circle; empty: 600 on the "
+                                          'campus (its routes go 250 m and more from the '
+                                          "start), else 200 (the car's: 30)"),
         DeclareLaunchArgument('watch_hud', default_value='false',
                               description="the watchdog also wants the HUD's heartbeat, "
                                           'with no HUD window (hud:=true watches it anyway)'),

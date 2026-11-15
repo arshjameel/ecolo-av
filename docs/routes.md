@@ -82,18 +82,18 @@ pixi run campus-route Fieldhouse   # no ROS: 453 m from P4 ...
 pixi run campus-route --list       # every place it knows
 ```
 
-In Gazebo (the car starts in lot P4):
+In the simulator (the car starts in lot P4):
 
 ```bash
-pixi run sim world:=campus reversing:=false gui:=false rviz:=false geofence_radius:=600
+pixi run sim world:=campus gui:=false rviz:=false
 tools/ros.sh --local ros2 launch aav_routes street_router.launch.py \
   router:=campus use_sim_time:=true speed:=2.5
 tools/ros.sh --local ros2 topic pub --once /drivers/nav/route/place std_msgs/msg/String "{data: Fieldhouse}"
 tools/ros.sh --local ros2 service call /drivers/nav/route/follow std_srvs/srv/Trigger
 ```
 
-`geofence_radius:=600`: the fence is a circle round the start, 200 m by default; most of
-the campus is further.
+The fence is a circle round the start: on the campus it is 600 m by itself (200 m elsewhere),
+as most of the campus is further than 200 m.
 
 | Say where | How |
 |---|---|
