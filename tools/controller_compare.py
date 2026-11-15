@@ -200,8 +200,12 @@ STACKS = {
              ['planner:=lattice', 'costmap:=nav2', 'navigator:=nav2']),
     'own': ('tracker', 'mppi_lag',
             ['planner:=own', 'costmap:=own', 'navigator:=own']),
+    # All ours on the lattice's 32-heading file: a road at an angle is less of a
+    # staircase (the sway's third source, 15 Nov). A trial against own.
+    'own32': ('tracker', 'mppi_lag',
+              ['planner:=own', 'costmap:=own', 'navigator:=own', 'lattice_headings:=32']),
 }
-STACK_LABELS = {'nav2': 'all-nav2', 'own': 'all-ours'}
+STACK_LABELS = {'nav2': 'all-nav2', 'own': 'all-ours', 'own32': 'all-ours-32'}
 BOX = 1.0               # m: the bench's obstacle, a cube (aav_gazebo models/obstacle)
 UP_TIME = 150.0         # s for Gazebo, the EKF, then Nav2, to come up
 SETTLE = 5.0            # s after that, before the first goal
@@ -219,7 +223,8 @@ COLOURS = {'rpp': '#1f6fb4', 'mppi': '#e8590c', 'pure_pursuit': '#2b8a3e', 'stan
            # --planners: a column is a planner's name when one follower drives them all.
            'hybrid': '#e8590c', 'lattice': '#1f6fb4', 'smac2d': '#2b8a3e',
            'navfn': '#862e9c', 'theta_star': '#c92a2a', 'lattice32': '#5f3dc4',
-           'own': '#0b7285', 'all-nav2': '#1f6fb4', 'all-ours': '#0b7285'}
+           'own': '#0b7285', 'all-nav2': '#1f6fb4', 'all-ours': '#0b7285',
+           'all-ours-32': '#5f3dc4'}
 # --smoothers: Nav2's smoother keeps the follower's colour; ours is red.
 COLOURS.update({f'{k}+{w}-smoother': (c if w == 'nav2' else '#c92a2a')
                 for k, c in list(COLOURS.items()) for w in vehicle.SMOOTHERS})
@@ -1242,7 +1247,8 @@ def main():
                              'behind MPPI unless --controllers or --trackers say')
     parser.add_argument('--stacks', nargs='+', choices=list(STACKS), default=None,
                         help="every navigation piece Nav2's (nav2) or ours (own: "
-                             'navigator, planner, costmap, mppi_lag); forward only')
+                             'navigator, planner, costmap, mppi_lag; own32: the same on the '
+                             "lattice's 32 headings)")
     parser.add_argument('--smoothers', nargs='+', choices=list(vehicle.SMOOTHERS),
                         default=None,
                         help="each follower behind Nav2's velocity smoother (nav2) and/or "
