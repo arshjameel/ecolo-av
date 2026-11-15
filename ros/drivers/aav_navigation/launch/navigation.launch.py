@@ -117,6 +117,8 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
   lane_map:=<lanes.yaml>  with behaviour:=true: the road ahead's line is the car's lane's
                           centre along the route, with its edges (aav_description
                           lane_map.py); empty (the default): the line is /plan's
+                          With tracker:=mppi_lag, mppi_lag reads the road ahead too and
+                          keeps the car inside its lane (its LaneCritic, docs/mppi-lag.md)
   things:=true            (with lidar:=true) aav_things' things node: voxels' cubes grouped
                           into things, each followed by a Kalman filter and remembered a few
                           seconds unseen, on /world/things (and /world/things/markers); the
@@ -546,6 +548,9 @@ def nodes(context):
             ego = yaml.safe_load(f)['ego']['ros__parameters']
         max_speed = float(speed) if speed else None
         if tracker == 'mppi_lag':
+            # behaviour:=true with a lane map: the road ahead has edges, and LaneCritic
+            # keeps the car between them. Without one, Nav2's critics only, as before.
+            lane = behaviour and bool(LaunchConfiguration('lane_map').perform(context).strip())
             # aav_mppi_lag (Rust): Nav2's MPPI with the actuators' lag in its model. nav2.yaml's
             # MPPI block and checks, vehicle.yaml's actuators, ego.yaml's ramps.
             own = FindPackageShare('aav_mppi_lag').perform(context) + '/config/mppi_lag.yaml'
@@ -553,7 +558,7 @@ def nodes(context):
                 package='aav_mppi_lag', executable='mppi_lag', name='mppi_lag',
                 output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
                 parameters=[own, vehicle.mppi_lag_params(nav2, cfg, ego, max_speed,
-                                                         reversing),
+                                                         reversing, lane),
                             {'use_sim_time': use_sim_time,
                              'costmap_topic': vehicle.COSTMAP_RAW_TOPICS[costmap]}]))
         else:

@@ -563,6 +563,17 @@ def test_mppi_lag_params_are_nav2s_mppi_and_the_cars_lag():
     assert isinstance(back['PathAngleCritic.mode'], int)
     assert back['inversion_xy_tolerance'] == mppi['inversion_xy_tolerance']
     assert back['inversion_yaw_tolerance'] == mppi['inversion_yaw_tolerance']
+    # No lane map: Nav2's critics only, the road ahead not read.
+    assert 'LaneCritic' not in p['critics'] and p['road_ahead_topic'] == ''
+    assert not any(k.startswith('LaneCritic.') for k in p)
+    # With one (behaviour:=true lane_map:=...): our LaneCritic too, on the road ahead.
+    lane = vehicle.mppi_lag_params(nav2, cfg, ego, lane=True)
+    assert lane['critics'] == mppi['critics'] + ['LaneCritic']
+    assert lane['road_ahead_topic'] == '/world/road_ahead'
+    assert lane['LaneCritic.hard_weight'] > 5 * lane['LaneCritic.soft_weight']
+    assert isinstance(lane['LaneCritic.cost_power'], int)
+    both = vehicle.mppi_lag_params(nav2, cfg, ego, reversing=True, lane=True)
+    assert both['critics'] == back['critics'] + ['LaneCritic']
 
 
 def test_costmap_params_read_nav2s_costmaps_as_nav2_does():

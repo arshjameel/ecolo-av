@@ -13,6 +13,10 @@
 //!             local_costmap/costmap_raw   nav2_msgs/Costmap (costmap_topic): for CostCritic
 //!                                         and the path's clear points (use_costmap); older
 //!                                         than costmap_timeout: zero, and the path fails
+//!             /world/road_ahead            aav_interfaces/RoadAhead (road_ahead_topic; empty: off), map:
+//!                                         the lane's line and edges, moved into odom by the
+//!                                         latest map -> odom, for LaneCritic while fresh
+//!                                         (road_ahead_timeout); NaN edges or stale: no lane
 //! Publishes   cmd_vel_nav                 geometry_msgs/TwistStamped, at rate_hz while a path
 //!                                         runs: (v, v tan(steer) / wheelbase), to Nav2's
 //!                                         velocity smoother, collision_monitor, then
@@ -47,11 +51,11 @@ use futures::channel::oneshot;
 use mppi_lag::{
     critics::{inflation_cost, Critic},
     lag::Actuators,
-    Arrival, Costmap, Ego, Follower, FollowerSettings, GlobalPath, IdealModel, Inversion, LagModel,
-    Observation, Outcome, PathAngleMode, Pose, Report, Settings, Tick,
+    Arrival, Costmap, Edges, Ego, Follower, FollowerSettings, GlobalPath, IdealModel, Inversion,
+    LagModel, Lane, LanePoint, Observation, Outcome, PathAngleMode, Pose, Report, Settings, Tick,
 };
 use rclrs::*;
-use ros_env::aav_interfaces::msg::ActuatorState;
+use ros_env::aav_interfaces::msg::{ActuatorState, RoadAhead};
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::diagnostic_msgs::msg::{DiagnosticStatus, KeyValue};
 use ros_env::geometry_msgs::msg::{
@@ -104,6 +108,8 @@ fn main() -> Result<()> {
         map_to_odom: None,
         costmap: None,
         costmap_heard: Arrival::new(),
+        road_ahead: None,
+        lane_known: false,
         job: None,
         next_id: 0,
         last_tick: None,
@@ -147,6 +153,16 @@ fn main() -> Result<()> {
         )?)
     } else {
         None
+    };
+    // The road ahead's lane, for LaneCritic (navigation.launch.py names the topic only with
+    // behaviour:=true and a lane map).
+    let _road_ahead = if config.road_ahead_topic.is_empty() {
+        None
+    } else {
+        Some(worker.create_subscription(
+            config.road_ahead_topic.as_str(),
+            |s: &mut Core, msg: RoadAhead| s.on_road_ahead(&msg),
+        )?)
     };
     let period = Duration::from_secs_f64(1.0 / config.rate_hz);
     let _tick = worker.create_timer_repeating(period.node_time(), |s: &mut Core| s.tick())?;
@@ -235,6 +251,9 @@ impl AnyFollower {
     fn tick(&mut self, now: f64, costmap: Option<&Costmap>) -> Option<Tick> {
         each!(self, f => f.tick(now, costmap))
     }
+    fn set_lane(&mut self, lane: Option<Lane>) {
+        each!(self, f => f.set_lane(lane))
+    }
 }
 
 /// One FollowPath goal.
@@ -269,6 +288,10 @@ struct Core {
     costmap: Option<Costmap>,
     /// When the costmap last arrived (this node's clock).
     costmap_heard: Arrival,
+    /// The road ahead's lane in its own frame (map), its frame, and when it arrived.
+    road_ahead: Option<(Lane, String, f64)>,
+    /// The last tick had a fresh lane (the status's `lane`).
+    lane_known: bool,
     job: Option<Job>,
     next_id: u64,
     last_tick: Option<f64>,
@@ -366,6 +389,56 @@ impl Core {
         if self.costmap.is_some() {
             self.costmap_heard.mark(self.now());
         }
+    }
+
+    /// The road ahead: keep its lane (line and edges) as it came; `None` without edges.
+    fn on_road_ahead(&mut self, msg: &RoadAhead) {
+        let edge = |list: &[f32], i: usize| list.get(i).map_or(f64::NAN, |&v| f64::from(v));
+        let points = msg
+            .x
+            .iter()
+            .zip(&msg.y)
+            .enumerate()
+            .map(|(i, (&x, &y))| LanePoint {
+                x: f64::from(x),
+                y: f64::from(y),
+                edges: Edges::from_numbers(
+                    edge(&msg.left_hard, i),
+                    edge(&msg.right_hard, i),
+                    edge(&msg.left_soft, i),
+                    edge(&msg.right_soft, i),
+                ),
+            });
+        let frame = msg.header.frame_id.trim_start_matches('/').to_string();
+        self.road_ahead = Lane::new(points).map(|lane| (lane, frame, self.now()));
+    }
+
+    /// The road ahead's lane in odom, if it is fresh and map -> odom is known.
+    fn lane_in_odom(&self, now: f64) -> Option<Lane> {
+        let (lane, frame, heard) = self.road_ahead.as_ref()?;
+        if now - heard > self.config.road_ahead_timeout {
+            return None;
+        }
+        if frame.is_empty() || *frame == self.config.odom_frame {
+            return Some(lane.clone());
+        }
+        if *frame != self.config.map_frame {
+            log_warn!(
+                self.logger.throttle(Duration::from_secs(5)),
+                "the road ahead is in {frame}, not {} or {}: ignored",
+                self.config.map_frame,
+                self.config.odom_frame
+            );
+            return None;
+        }
+        let (odom_in_map, stamp) = self.map_to_odom?;
+        if now - stamp > self.config.transform_tolerance + 1.0 {
+            return None;
+        }
+        Some(lane.moved(|x, y| {
+            let p = into_odom(&Pose::new(x, y, 0.0), &odom_in_map);
+            (p.x, p.y)
+        }))
     }
 
     /// A new FollowPath goal: its path into odom, then follow it. Returns the job's id.
@@ -525,6 +598,9 @@ impl Core {
         } else {
             None
         };
+        let lane = self.lane_in_odom(now);
+        self.lane_known = lane.is_some();
+        self.follower.set_lane(lane);
         match self.follower.tick(now, costmap) {
             None => {}
             Some(Tick::Done(outcome)) => {
@@ -634,6 +710,7 @@ impl Core {
             ("est_steering_rad", format!("{:.4}", r.steering)),
             ("best_cost", format!("{:.4}", r.plan.best_cost)),
             ("collided_share", format!("{:.3}", r.plan.collided)),
+            ("lane", self.lane_known.to_string()),
         ];
         let msg = DiagnosticStatus {
             level: if loop_ms > period_ms {
@@ -673,6 +750,10 @@ struct Config {
     lag_aware_topic: String,
     costmap_topic: String,
     use_costmap: bool,
+    /// The road ahead (aav_interfaces/RoadAhead), for LaneCritic; empty: not read.
+    road_ahead_topic: String,
+    /// s: a road ahead older than this is dropped (it comes at 10 Hz).
+    road_ahead_timeout: f64,
     /// s: a costmap older than this stops the car and fails the path (Nav2's
     /// costmap_update_timeout, plus the local costmap's publish period).
     costmap_timeout: f64,
@@ -874,6 +955,16 @@ impl Declarer<'_> {
                 c.threshold = threshold(self, c.threshold)?;
                 Critic::PreferForward(c)
             }
+            Critic::Lane(mut c) => {
+                c.soft_weight = self.number(&format!("{n}.soft_weight"), c.soft_weight)?;
+                c.hard_weight = self.number(&format!("{n}.hard_weight"), c.hard_weight)?;
+                c.power = power(self, c.power)?;
+                c.trajectory_point_step = self.count(
+                    &format!("{n}.trajectory_point_step"),
+                    c.trajectory_point_step,
+                )?;
+                Critic::Lane(c)
+            }
         })
     }
 }
@@ -1006,8 +1097,9 @@ impl Config {
         for name in d.names("critics", &mppi_lag::critics::NAMES)? {
             let Some(critic) = Critic::by_name(&name) else {
                 bail!(
-                    "critics: {name} isn't one of ours ({})",
-                    mppi_lag::critics::NAMES.join(", ")
+                    "critics: {name} isn't one of ours ({}, {})",
+                    mppi_lag::critics::NAMES.join(", "),
+                    mppi_lag::critics::OWN.join(", ")
                 );
             };
             let critic = match d.critic(critic)? {
@@ -1036,6 +1128,8 @@ impl Config {
             lag_aware_topic: d.text("lag_aware_topic", "/drivers/nav/lag_aware")?,
             costmap_topic: d.text("costmap_topic", "/local_costmap/costmap_raw")?,
             use_costmap: d.flag("use_costmap", true)?,
+            road_ahead_topic: d.text("road_ahead_topic", "")?,
+            road_ahead_timeout: d.number("road_ahead_timeout", 0.5)?,
             costmap_timeout: d.number("costmap_timeout", 0.8)?,
             wheelbase,
             max_steering_angle,
