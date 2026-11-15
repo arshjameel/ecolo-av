@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-planner.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own planner</h1>
-<div class="meta">13 min read · 8 sections</div></header>
+<div class="meta">14 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -141,7 +141,10 @@ lattice with <code>planner:=lattice</code> or <code>stack:=stock</code>). Nav2 s
 </li>
 <li>
 <p><strong>Campus:</strong> both planners failed the same legs (MPPI gave up, not the planner);
-  ours took about <strong>20 % longer</strong> to plan the long legs (180 ms against 150 ms).</p>
+  ours took about <strong>20 % longer</strong> to plan the long legs (180 ms against 150 ms).
+  15 Nov: 11 % off without changing a path (<code>examples/campus.rs</code> times the legs on
+  the real map, no ROS; the outline's check no longer allocates). Splitting across cores
+  doesn't pay: one step of the search is about 1 µs.</p>
 </li>
 <li>
 <p><strong>Not yet a winner:</strong> as good on the lot, a little slower on the campus.</p>

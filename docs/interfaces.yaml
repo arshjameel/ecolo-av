@@ -860,8 +860,8 @@ topics:
   /plan:
     type: nav_msgs/msg/Path
     pub: [planner_server, diffusion_planner, planner]
-    sub: [map, debug_hud, dev_window, look_ahead, behaviour]
-    note: The planned path, for RViz/Foxglove, and the map window (map, aav_hud) - the line, the goal (its last point) and the distance left along it. The dev window marks its last point as the goal while plans keep coming (within 5 s), whoever sent the goal. Nav2 plans again every second while it drives. Which planner makes it is navigation.launch.py planner:= (docs/controllers.md, Planners) - hybrid (SmacPlannerHybrid, the default) or lattice (SmacPlannerLattice, our own primitives) keep to the car's turning radius; smac2d, navfn and theta_star, trials in sim and bench only, don't. Always the plugin GridBased, so the behaviour trees never change. With planner:=diffusion (aav_diffusion_planner, a trial) diffusion_planner publishes it - the path it returned, the model's or the lattice's - and planner_server's own goes to /drivers/nav/diffusion/lattice_plan. With planner:=own (aav_planner, a trial) our planner node publishes it - each path it returns - and planner_server's own goes to /drivers/nav/planner/nav2_plan.
+    sub: [map, debug_hud, dev_window, look_ahead, behaviour, costmap]
+    note: The planned path, for RViz/Foxglove, and the map window (map, aav_hud) - the line, the goal (its last point) and the distance left along it. The dev window marks its last point as the goal while plans keep coming (within 5 s), whoever sent the goal. Nav2 plans again every second while it drives. Which planner makes it is navigation.launch.py planner:= (docs/controllers.md, Planners) - hybrid (SmacPlannerHybrid, the default) or lattice (SmacPlannerLattice, our own primitives) keep to the car's turning radius; smac2d, navfn and theta_star, trials in sim and bench only, don't. Always the plugin GridBased, so the behaviour trees never change. With planner:=diffusion (aav_diffusion_planner, a trial) diffusion_planner publishes it - the path it returned, the model's or the lattice's - and planner_server's own goes to /drivers/nav/diffusion/lattice_plan. With planner:=own (aav_planner, a trial) our planner node publishes it - each path it returns - and planner_server's own goes to /drivers/nav/planner/nav2_plan. With lane_costs (costmap:=own, a challenger, TODO 148) our costmap reads it too - the way the route drives each road, so the lanes layer is lowest in the right lane.
 
   # --- our own planner (aav_planner, a trial beside Nav2's: docs/own-planner.md) ---
   /drivers/nav/planner/nav2_plan:
@@ -948,7 +948,7 @@ topics:
     type: nav_msgs/msg/OccupancyGrid
     pub: [costmap]
     sub: []
-    note: Only with costmap:=own. Our global costmap - map frame, the map's own size and cells, the static map (unknown kept), the radar and lidar layers when the planner sees them (plan_around), inflation (3 m, scaling 1.0). 1 Hz. Nav2's planner_server keeps its own; our planner (planner:=own) plans on this one when costmap:=own (docs/own-planner.md).
+    note: Only with costmap:=own. Our global costmap - map frame, the map's own size and cells, the static map (unknown kept), the radar and lidar layers when the planner sees them (plan_around), inflation (3 m, scaling 1.0). With lane_costs (navigation.launch.py lane_costs:=<lanes.yaml>, sim.launch.py lane_costs:=true; a challenger, TODO 148) the lanes layer goes over the inflation - each road of the lane map a soft ramp, 0 at the right lane's centre (by /plan's way along the road; both lanes until a plan says), the lane's lines 50, the oncoming lanes 100, the kerb 150, 150 for 1 m past it, never as high as inscribed. 1 Hz. Nav2's planner_server keeps its own; our planner (planner:=own) plans on this one when costmap:=own (docs/own-planner.md).
   /drivers/nav/costmap/global_raw:
     type: nav2_msgs/msg/Costmap
     pub: [costmap]
@@ -958,7 +958,7 @@ topics:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [costmap]
     sub: []
-    note: Only with costmap:=own. One message per costmap each time it is sent. name 'costmap local' or 'costmap global'; level OK (0), or WARN (1) while it waits for something; values costmap (local, global), update_ms (the last update's time, wall clock), worst_ms, updates, lethal_cells, cells (width x height), waiting_for (odometry, map -> odom, the map, a silent sensor topic, a sensor frame with no mount in /tf_static; empty when nothing is missing).
+    note: Only with costmap:=own. One message per costmap each time it is sent. name 'costmap local' or 'costmap global'; level OK (0), or WARN (1) while it waits for something; values costmap (local, global), update_ms (the last update's time, wall clock), worst_ms, updates, lethal_cells, cells (width x height), waiting_for (odometry, map -> odom, the map, a silent sensor topic, a sensor frame with no mount in /tf_static; empty when nothing is missing), lane_routes (the routes that changed the lanes layer's costs; 0 without lane_costs).
 
   # --- street routes (aav_routes, docs/routes.md): for real streets later, the lot first ---
   /drivers/nav/route/destination:

@@ -62,6 +62,7 @@ reads. The global clear stays Nav2's under Nav2's navigator; our navigator
   transform), not by Nav2's brushfire. The costs are the same.
 - **Not ported:** Nav2's 3D voxel layer, range sensors, filters. `nav2.yaml` uses none.
 - **One addition (15 Nov): the radar's view clears.** See below.
+- **A challenger (15 Nov): the lanes layer** (`lane_costs:=true`), off by default. See below.
 
 ## The radar forgets what has gone (15 Nov, TODO 193)
 
@@ -86,6 +87,75 @@ the radar's block in `nav2.yaml`, 120° (the TI radar's, and the simulator's sta
 - A real radar's sparse frames: a thing it misses in both frames of 0.2 s is cleared, and
   marked again at the next frame that sees it. collision_monitor still reads the radar
   itself, not the costmap.
+
+## The lanes layer (15 Nov, TODO 148, a challenger)
+
+**The idea** (D2 in the [one-shape design](designs/2026-11-13_one-shape.md)): the lane
+map's roads drawn into the global costmap as a soft cost, so the planner keeps right.
+Ben, 13 Nov: lane lines "it can cross but only if it needs to and to stay on the right side".
+
+```text
+ cost
+ 200 ┤█                                    █   kerb, and 1 m past it
+ 150 ┤ ████████████████                        the oncoming lane
+  80 ┤                 █         █             the lane's own lines
+   0 ┤                    ●                    the right lane's centre
+     └── left kerb ── centre line ── edge line ── right kerb ──
+```
+
+| Part | What |
+|---|---|
+| Turn it on | `pixi run sim lane_costs:=true` (needs `costmap:=own`; ours has it). Off by default |
+| The map | `lane_map:=`'s `lanes.yaml`, else the world's own (the campus's, the road world's). The test lot has none: nothing drawn |
+| Which lane is right | the newest `/plan`: each road segment it runs along. Until then a two-way road's two lane centres are both 0 |
+| How it adds | **added** to the inflation, up to 252: never a wall. Obstacles and unknown cells stay |
+| Where | the global costmap only (the planner's). The local one, and so MPPI, don't see it |
+| Code | `crates/costmap/src/lanes.rs` (no ROS, 9 tests); `lane_map.costmap_block`; `navigation.launch.py lane_costs:=` |
+
+**Why added, not the higher of the two.** On the campus the lidar marks both kerbs. The
+inflation from them is lowest in the road's **middle**: 59 at the right lane's centre
+(2 m from the kerb), about 10 at the centre line. With Nav2's rule (the higher of the
+two) the centre line (50) was cheaper than the lane's centre (59): the first runs kept to
+the middle. Added, the lane's centre is the cheapest place across the road (a test checks).
+
+### The scores (15 Nov, our simulator, the campus)
+
+`pixi run measure controllers --stacks own --tours campus --runs 2 --launch behaviour:=true`
+with nothing more, `lane_costs:=true`, or `lane_map:=world` (the road ahead on the lane's
+centre and mppi_lag's LaneCritic: today's nearest to `path:=lane`, which isn't built).
+Scored by `tools/lane_score.py` on the one leg every run drove: "along the road".
+
+| Run | Lanes | Reached | Time (s) | Sway (m/s²) | Off the lane's centre (m) | Over the centre line | Crossings |
+|---|---|---|---|---|---|---|---|
+| A1 | none | **no** (watchdog) | 221 | 0.12 | 0.93 | 0 % | 0 |
+| A2 | none | yes | 119 | 0.22 | 1.91 | 75 % | 4 |
+| B1 | ramp, the higher of two | yes | 121 | 0.26 | 1.27 | 25 % | 2 |
+| B2 | ramp, the higher of two | yes | 127 | 0.23 | 1.37 | 30 % | 2 |
+| B3 | ramp, **added** (kept) | yes | 122 | 0.26 | 1.10 | 27 % | 2 |
+| B4 | ramp, added | yes | 143 | 0.23 | 0.51 | 2 % | 1 |
+| C1 | lane line (`lane_map:=world`) | **no** (follower) | 221 | 0.23 | 1.17 | 30 % | 3 |
+| C2 | lane line | **no** (no path) | - | - | - | - | - |
+
+| | None | Ramp, added | Lane line |
+|---|---|---|---|
+| Reached "along the road" | 1 of 2 | 2 of 2 | 0 of 2 |
+| Over the centre line | 75 % | 2-27 % | 30 % |
+| Time | 119 s | 122-143 s (B4 took a 48 m longer way) | - |
+| Sway | 0.22 | 0.23-0.26 | 0.23 |
+
+**The verdict: a challenger, not in `ours`.** It keeps right more (the time over the
+centre line fell from 75 % to 2-27 %), but on 2 runs, 30 s of mapped road each, with no
+gain in time or sway. A third ramp run (the added one) is left out: three sims at once
+starved it, and the car never moved. The test lot has no lane map: the layer draws
+nothing there (1 run, 4 of 4 legs, as without).
+
+**Read with care.**
+
+- Only University Drive is in the lane map on this route: about 30 s of each 120 s leg.
+  The rest is roads OpenStreetMap doesn't paint.
+- "Over the centre line" counts a left turn across it too.
+- The runs are noisy: legs failed for reasons the lanes don't touch (the sensor
+  watchdog, "the car doesn't fit at the start", the follower giving up).
 
 ## Threads and bounds (14 Nov)
 
@@ -208,7 +278,7 @@ Our local update: **0.50-0.55 ms** on average, 0.58 ms at the 95th percentile.
 
 ## Without ROS
 
-`cargo test -p costmap`: 40 tests.
+`cargo test -p costmap`: 52 tests.
 
 | Test | Checks |
 |---|---|
@@ -221,6 +291,7 @@ Our local update: **0.50-0.55 ms** on average, 0.58 ms at the 95th percentile.
 | the distance transform | exact against brute force |
 | an area update | the same cells as a whole one, as the car drives with a lidar layer |
 | a map without sensors | worked out once, again only after a clear |
+| the lanes layer | lowest at the right lane's centre, the other way swaps the lanes, both low with no route, a route across a road says nothing, an area drawn as the whole, the lane's centre cheapest between two inflated kerbs, a new route's area update the same as a whole one |
 
 ## What's missing
 

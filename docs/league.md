@@ -18,6 +18,7 @@ waiting to beat it.
   │ steer      │ mppi      │ mppi_lag, mppi_lag_calm,     │
   │            │           │ mpc_lag, rpp                 │
   │ smoother   │ nav2      │ ours                         │
+  │ lanes      │ off       │ ramp (lane costs, ours only) │
   │ behaviour  │ off       │ on (the road ahead)          │
   └────────────┴───────────┴──────────────────────────────┘
           │

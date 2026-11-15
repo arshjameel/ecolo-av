@@ -156,6 +156,7 @@ Each lands outside git, checksum pinned where the script says.
 | `topic_load.py` | the numbers behind `measure bandwidth` (no ROS) | - |
 | `stalls.py` | the numbers behind `measure timing` (no ROS) | - |
 | `drive_metrics.py` | the numbers behind `measure controllers` (no ROS) | - |
+| `lane_score.py` | the numbers behind `measure lane` (no ROS); run alone on `measure controllers`' `results.json`: did each run keep right, by the lane map (off centre, in the lane, over the left line and how often, past the kerb) | - |
 | `scorecard.py` | the numbers behind `score_drive.py` (no ROS) | - |
 | `measure.sh` | picks one of the five measurements below and runs it (Gazebo ones `--local`) | `measure <controllers, timing, stream, atob, bandwidth>` |
 | `link_check.py` | did the Motor Pi's frames reach the ESP32? A bag (or the live topics) against the ESP32's status lines: PASS, FAIL, NOT TESTED (its maths without ROS) | `link-check` |

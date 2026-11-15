@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">80 min read · 15 sections</div></header>
+<div class="meta">83 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -375,7 +375,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="../designs/2026-11-14_the-whole-car.md">The things, a trial</a> (<code>aav_things</code> <code>things</code>, <code>things:=true</code>, <code>/world/things</code>)</td>
-<td>The whole car (14 Nov): nothing near the car had an id, a speed or a memory. The lidar's cubes grouped into things, one constant-velocity Kalman filter each (AB3DMOT: the simple tracker is a strong baseline; no stock tracker on RoboStack), the radar's speed along its ray, and a memory, so a box that goes into the blind zone before the bumper stays known. 15 Nov, names (<code>things_names:=true</code>, TODO 192): each thing's box drawn into the cameras' pictures takes the detector's label it overlaps (person, car, stop sign): the lidar says where, the camera says what; exact in the simulator, calibration first on the car (Q22); the stop sign watcher then takes a named stop sign's distance from the lidar, not its pixel height. 14 Nov: the behaviour planner reads it (<code>behaviour:=true things:=true</code>): it waits for what moves and leaves a parked thing to the planner to go round. 15 Nov, names on the screens (Ben: "object deteciton and display like a stop sign"): the markers say <code>person 3</code> and colour each box by kind (yellow person, blue vehicle, red stop sign); the developer window (3D and map, key K) and the HUD's AHEAD draw each thing with its name</td>
+<td>The whole car (14 Nov): nothing near the car had an id, a speed or a memory. The lidar's cubes grouped into things, one constant-velocity Kalman filter each (AB3DMOT: the simple tracker is a strong baseline; no stock tracker on RoboStack), the radar's speed along its ray, and a memory, so a box that goes into the blind zone before the bumper stays known. 15 Nov, names (<code>things_names:=true</code>, TODO 192): each thing's box drawn into the cameras' pictures takes the detector's label it overlaps (person, car, stop sign): the lidar says where, the camera says what (a thing over the lidar's 2 m ceiling, such as a stop sign's pole, is matched on its bearing; passed in the sim with the detector, <code>sim-check --thing-names</code>); exact in the simulator, calibration first on the car (Q22); the stop sign watcher then takes a named stop sign's distance from the lidar, not its pixel height. 14 Nov: the behaviour planner reads it (<code>behaviour:=true things:=true</code>): it waits for what moves and leaves a parked thing to the planner to go round. 15 Nov, names on the screens (Ben: "object deteciton and display like a stop sign"): the markers say <code>person 3</code> and colour each box by kind (yellow person, blue vehicle, red stop sign); the developer window (3D and map, key K) and the HUD's AHEAD draw each thing with its name</td>
 <td>Ben</td>
 <td>2026-11-14</td>
 <td>built</td>
@@ -545,7 +545,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="trials.html">Trial path followers</a> (<code>aav_track</code>, <code>tracker:=</code>; in sim, swapped live: <code>ros2 param set /track tracker lqr</code>)</td>
-<td>To see what Stanley, LQR and MPC gain over pure pursuit on the same routes, beside MPPI and in Nav2's own chain, before any of them replaces the default; the live swap compares them on the same drive, watched in the debug HUD. LQR now linearised about the bend with a preview of the bends ahead (it lost the forward U-turn); <code>mpc_full</code> plans speed and steering together within the throttle, brake and steering limits, to drive the whole A-to-B itself. Since 15 Nov, with a lane map, each path is kept inside the lane (TODO 169)</td>
+<td>To see what Stanley, LQR and MPC gain over pure pursuit on the same routes, beside MPPI and in Nav2's own chain, before any of them replaces the default; the live swap compares them on the same drive, watched in the debug HUD. LQR now linearised about the bend with a preview of the bends ahead (it lost the forward U-turn); <code>mpc_full</code> plans speed and steering together within the throttle, brake and steering limits, to drive the whole A-to-B itself. Since 15 Nov, with a lane map, each path is kept inside the lane (TODO 169); driven so on the campus 15 Nov (<code>mpc_lag</code>, 1 run: 79 % of University Drive in the right lane)</td>
 <td>Ben</td>
 <td>2026-10-29</td>
 <td>built</td>
@@ -572,8 +572,15 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
+<td><a href="own-costmap.html#the-lanes-layer-15-nov-todo-148-a-challenger">Lanes as soft costs</a> (<code>aav_costmap</code> <code>lanes.rs</code>, <code>lane_costs:=true</code>, a challenger; <code>tools/lane_score.py</code> scores keeping right)</td>
+<td>Ben, 13 Nov: lane lines "it can cross but only if it needs to and to stay on the right side"; D2, taken 15 Nov. The lane map's roads drawn into our global costmap as a ramp, 0 at the right lane's centre (which lane by /plan), up at the lines, the oncoming lane and the kerb, added to the inflation and never a wall, so the planner keeps right. Campus, 15 Nov, the leg on University Drive: over the centre line 2-27 % of the time against 75 % without (2 runs each); no gain in time or sway. Stays a challenger, off in every stack</td>
+<td>Ben</td>
+<td>2026-11-15</td>
+<td>sim</td>
+</tr>
+<tr>
 <td><a href="own-planner.html">Our own planner</a> (<code>aav_planner</code>, <code>planner:=own</code>)</td>
-<td>Ben, 8 Nov: move off Nav2 one piece at a time; the planner after the costmap. Nav2's State Lattice (our default) ported to Rust: the same primitives file, nav2.yaml's penalties, the Reeds-Shepp finish and the smoother, on Nav2's global costmap or ours. It answers Nav2's own ComputePathToPose, so the behaviour trees call it and nothing else changes. Test lot, 3 runs each: 12 of 12 legs as Nav2's lattice, the same paths and times; campus: about 20 % slower on 250 m legs (both lost the same legs to MPPI). Nav2 stays the default 14 Nov: a global costmap older than 2 s (planner_server's 1 s wait plus a publish period) is not planned on: TIMEOUT, as Nav2's PlannerTimedOut. 15 Nov (TODO 168): it reads the block's <code>smoother</code> weights; <code>plan_smoothing:=strong</code> (w_data 0.02, both planners) takes out the lattice's staircase on roads at an angle (the plan's own swing 0.08-0.16 to 0.02-0.07 m), which the follower drove as sway; the sim's <code>ours</code> stack takes it (<a href="own-planner.html#the-staircase-and-the-strong-smoother-15-nov">the staircase</a>)</td>
+<td>Ben, 8 Nov: move off Nav2 one piece at a time; the planner after the costmap. Nav2's State Lattice (our default) ported to Rust: the same primitives file, nav2.yaml's penalties, the Reeds-Shepp finish and the smoother, on Nav2's global costmap or ours. It answers Nav2's own ComputePathToPose, so the behaviour trees call it and nothing else changes. Test lot, 3 runs each: 12 of 12 legs as Nav2's lattice, the same paths and times; campus: about 20 % slower on 250 m legs (both lost the same legs to MPPI). Nav2 stays the default 14 Nov: a global costmap older than 2 s (planner_server's 1 s wait plus a publish period) is not planned on: TIMEOUT, as Nav2's PlannerTimedOut.</td>
 <td>Ben</td>
 <td>2026-11-08</td>
 <td>sim</td>
@@ -750,6 +757,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
+<td>The pedal (<code>aav_ego</code> <code>pedal.py</code>; <code>pedal_drivers</code>, <code>pedal_let_off</code>, <code>pedal_full</code> in <code>ego.yaml</code>)</td>
+<td>Ben, 15 Nov: on the test drive the driver had to switch between speeding up, braking and reversing. With the pedal, a person's stick is an accelerator and a brake: let off part way slows gently, let go slows at 1.0 m/s² (Ben's choice, like engine braking), pulled back brakes by how far (full back: 2.0 m/s²), then reverses at a standstill. People only (joy, rc, keyboard): a computer driver plans its own slowing (the stop law) and needs its speeds followed at once; the AI can join as a challenger in the sim. The e-stop, a stale command and a turn's cap still brake fully</td>
+<td>Ben</td>
+<td>2026-11-15</td>
+<td>built</td>
+</tr>
+<tr>
 <td><a href="vehicle-model.html">Linear model of the car</a> (<code>vehicle_model.py</code>)</td>
 <td>Transfer functions and state space, to tune the loops and write the report in SYSC 3600's terms</td>
 <td>Ben</td>
@@ -799,6 +813,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>The goal leash (<code>aav_safety</code> <code>goal_leash</code>, <code>leash.py</code>)</td>
+<td>TODO 116: the language driver runs on a laptop and sends goals to drivers on the car, and a ROS action carries on when its client vanishes: a laptop dropping off mid-drive left the car driving. The laptop beats 5 times a second; 1 s of quiet cancels its goals (a normal stop, not an e-stop); a clean close says goodbye</td>
+<td>Ben</td>
+<td>2026-11-15</td>
+<td>built</td>
+</tr>
 <tr>
 <td><a href="../../ros/safety/aav_stop_zone/README.md">The stop zone in Rust</a> (<code>aav_stop_zone</code> <code>stop-zone</code>, no ROS): Nav2's collision_monitor stop decision ported: the box by direction, points from every sensor, a silent sensor stops, zeros held; its node runs in shadow (<code>stop_zone_shadow:=true</code>, its own topics)</td>
 <td>Ben, 14 Nov: "We want to run everythign ourselves in rust"; a safety lock, so its own tests first (TODO 182). Nav2's runs until the node scores the same</td>
@@ -1110,8 +1131,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td>Speed loop's <code>smooth</code> profile</td>
-<td>Today's gains overshoot about 15%; this one starts smoother, ready to try on stands</td>
+<td>Speed loop's <code>smooth</code> and <code>firm</code> profiles</td>
+<td>Today's gains overshoot about 15%; <code>smooth</code> starts smoother, ready to try on stands. 15 Nov (TODO 163): every loop's P-only brake was weak past its 0.2 m/s coast band, so a stop ran 0.68-0.77 m past where the set speed reached 0 (the car model); <code>firm</code> is <code>smooth</code> with brake gain 2.0 past a 0.05 m/s band: 0.21 m. Both copies (spine-core, <code>car_model.py</code>) and the shared vectors; not the default until a car test</td>
 <td>Ben</td>
 <td>2026-10-25</td>
 <td>sim</td>

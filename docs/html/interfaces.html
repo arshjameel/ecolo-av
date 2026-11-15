@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">115 min read · 4 sections</div></header>
+<div class="meta">117 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -162,7 +162,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/joy/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>teleop_twist_joy_node</code></td>
-<td><code>twist_mux</code>, <code>language_drive</code></td>
+<td><code>twist_mux</code>, <code>language_drive</code>, <code>ego</code></td>
 <td>-</td>
 <td>Priority 100. Only while the deadman (trigger) is held.</td>
 </tr>
@@ -170,7 +170,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/keyboard/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>teleop_twist_keyboard</code></td>
-<td><code>twist_mux</code>, <code>language_drive</code></td>
+<td><code>twist_mux</code>, <code>language_drive</code>, <code>ego</code></td>
 <td>-</td>
 <td>Priority 90 (twist_mux's keyboard slot). A person driving from a laptop - teleop_twist_keyboard in the namespace /drivers/keyboard (tools/keyboard.sh, stamped:=true), or the Foxglove teleop panel set to this topic - on the stand-ins only, as the car's bridge only watches (foxglove.launch.py).</td>
 </tr>
@@ -178,7 +178,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/rc/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>rc_driver</code></td>
-<td><code>twist_mux</code>, <code>language_drive</code></td>
+<td><code>twist_mux</code>, <code>language_drive</code>, <code>ego</code></td>
 <td>-</td>
 <td>Priority 95 (proposed, TODO 48) - a person with the RC transmitter, below the joystick's deadman (100), above the keyboard (90). rc_driver (aav_rc) turns /vehicle/rc into a command only while the transmitter's mode switch is on RC via ROS - throttle stick x max_speed (1.0 m/s; reverse 0.5), steering stick x the steering limit, as a turn rate by the bicycle model - at the uplink's 50 Hz, zeros included, so nothing below it drives. It publishes one zero when the switch leaves RC via ROS; if /vehicle/rc goes quiet while on RC via ROS it keeps publishing zeros (a stop) until the uplink comes back. RC direct never comes here - the ESP32 drives from the sticks itself.</td>
 </tr>
@@ -327,6 +327,14 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td>true from collision_monitor's STOP until it has said anything else for 1 s without a break (aav_safety stop_hold, 10 Hz, wherever navigation.launch.py starts collision_monitor). A twist_mux lock at priority 21 - it holds Nav2 (20) and the AI slot (10) only, never the point driver, a person or a test. Timeout 0 - silence locks nothing (profiles without collision_monitor never publish it), and a stop_hold that dies while true keeps the stop. Without it, an obstacle at the stop zone's edge flickered the monitor between stop and go, and each go let the car creep on.</td>
 </tr>
 <tr>
+<td><code>/drivers/language/heartbeat</code></td>
+<td><code>std_msgs/msg/UInt64</code></td>
+<td><code>language_drive</code></td>
+<td><code>goal_leash</code></td>
+<td>-</td>
+<td>Reliable. 1, 2, 3... at 5 Hz while language_drive (aav_language, on a laptop) runs; 0 = goodbye when it closes cleanly (having cancelled its own goals). goal_leash (aav_safety, next to the mux on the car, in the sim and on the bench) cancels every goal on /scripted_drive and /follow_gps_waypoints once when the beats stop for 1 s, so a laptop dropping off mid-drive doesn't leave the car driving; a cancel, so the car slows to a stop the driver's own way, not an e-stop. Idle until a first beat (TODO 116).</td>
+</tr>
+<tr>
 <td><code>/safety/geofence/lock</code></td>
 <td><code>std_msgs/msg/Bool</code></td>
 <td><code>geofence</code></td>
@@ -426,9 +434,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/safety/estop</code></td>
 <td><code>std_msgs/msg/Bool</code></td>
 <td><code>joy_teleop</code>, <code>hud</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>hw_panel</code>, <code>dev_window</code></td>
-<td><code>twist_mux</code>, <code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>carla_adapter</code>, <code>point_driver</code>, <code>hw_panel</code>, <code>behaviour</code></td>
+<td><code>twist_mux</code>, <code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>carla_adapter</code>, <code>point_driver</code>, <code>hw_panel</code>, <code>behaviour</code>, <code>ego</code></td>
 <td>-</td>
-<td>true = stop. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop. None of them ever publishes false.</td>
+<td>true = stop. ego turns the pedal off (full braking) while true. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop. None of them ever publishes false.</td>
 </tr>
 <tr>
 <td><code>/control/cmd_vel</code></td>
@@ -1290,9 +1298,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/plan</code></td>
 <td><code>nav_msgs/msg/Path</code></td>
 <td><code>planner_server</code>, <code>diffusion_planner</code>, <code>planner</code></td>
-<td><code>map</code>, <code>debug_hud</code>, <code>dev_window</code>, <code>look_ahead</code>, <code>behaviour</code></td>
+<td><code>map</code>, <code>debug_hud</code>, <code>dev_window</code>, <code>look_ahead</code>, <code>behaviour</code>, <code>costmap</code></td>
 <td>-</td>
-<td>The planned path, for RViz/Foxglove, and the map window (map, aav_hud) - the line, the goal (its last point) and the distance left along it. The dev window marks its last point as the goal while plans keep coming (within 5 s), whoever sent the goal. Nav2 plans again every second while it drives. Which planner makes it is navigation.launch.py planner:= (docs/controllers.md, Planners) - hybrid (SmacPlannerHybrid, the default) or lattice (SmacPlannerLattice, our own primitives) keep to the car's turning radius; smac2d, navfn and theta_star, trials in sim and bench only, don't. Always the plugin GridBased, so the behaviour trees never change. With planner:=diffusion (aav_diffusion_planner, a trial) diffusion_planner publishes it - the path it returned, the model's or the lattice's - and planner_server's own goes to /drivers/nav/diffusion/lattice_plan. With planner:=own (aav_planner, a trial) our planner node publishes it - each path it returns - and planner_server's own goes to /drivers/nav/planner/nav2_plan.</td>
+<td>The planned path, for RViz/Foxglove, and the map window (map, aav_hud) - the line, the goal (its last point) and the distance left along it. The dev window marks its last point as the goal while plans keep coming (within 5 s), whoever sent the goal. Nav2 plans again every second while it drives. Which planner makes it is navigation.launch.py planner:= (docs/controllers.md, Planners) - hybrid (SmacPlannerHybrid, the default) or lattice (SmacPlannerLattice, our own primitives) keep to the car's turning radius; smac2d, navfn and theta_star, trials in sim and bench only, don't. Always the plugin GridBased, so the behaviour trees never change. With planner:=diffusion (aav_diffusion_planner, a trial) diffusion_planner publishes it - the path it returned, the model's or the lattice's - and planner_server's own goes to /drivers/nav/diffusion/lattice_plan. With planner:=own (aav_planner, a trial) our planner node publishes it - each path it returns - and planner_server's own goes to /drivers/nav/planner/nav2_plan. With lane_costs (costmap:=own, a challenger, TODO 148) our costmap reads it too - the way the route drives each road, so the lanes layer is lowest in the right lane.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/planner/nav2_plan</code></td>
@@ -1420,7 +1428,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>costmap</code></td>
 <td>-</td>
 <td>-</td>
-<td>Only with costmap:=own. Our global costmap - map frame, the map's own size and cells, the static map (unknown kept), the radar and lidar layers when the planner sees them (plan_around), inflation (3 m, scaling 1.0). 1 Hz. Nav2's planner_server keeps its own; our planner (planner:=own) plans on this one when costmap:=own (docs/own-planner.md).</td>
+<td>Only with costmap:=own. Our global costmap - map frame, the map's own size and cells, the static map (unknown kept), the radar and lidar layers when the planner sees them (plan_around), inflation (3 m, scaling 1.0). With lane_costs (navigation.launch.py lane_costs:=<lanes.yaml>, sim.launch.py lane_costs:=true; a challenger, TODO 148) the lanes layer goes over the inflation - each road of the lane map a soft ramp, 0 at the right lane's centre (by /plan's way along the road; both lanes until a plan says), the lane's lines 50, the oncoming lanes 100, the kerb 150, 150 for 1 m past it, never as high as inscribed. 1 Hz. Nav2's planner_server keeps its own; our planner (planner:=own) plans on this one when costmap:=own (docs/own-planner.md).</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/costmap/global_raw</code></td>
@@ -1436,7 +1444,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>costmap</code></td>
 <td>-</td>
 <td>-</td>
-<td>Only with costmap:=own. One message per costmap each time it is sent. name 'costmap local' or 'costmap global'; level OK (0), or WARN (1) while it waits for something; values costmap (local, global), update_ms (the last update's time, wall clock), worst_ms, updates, lethal_cells, cells (width x height), waiting_for (odometry, map -&gt; odom, the map, a silent sensor topic, a sensor frame with no mount in /tf_static; empty when nothing is missing).</td>
+<td>Only with costmap:=own. One message per costmap each time it is sent. name 'costmap local' or 'costmap global'; level OK (0), or WARN (1) while it waits for something; values costmap (local, global), update_ms (the last update's time, wall clock), worst_ms, updates, lethal_cells, cells (width x height), waiting_for (odometry, map -&gt; odom, the map, a silent sensor topic, a sensor frame with no mount in /tf_static; empty when nothing is missing), lane_routes (the routes that changed the lanes layer's costs; 0 without lane_costs).</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/route/destination</code></td>

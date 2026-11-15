@@ -208,6 +208,19 @@ def from_dict(data: dict) -> LaneMap:
                     for r in data.get('roads', []) or []])
 
 
+def costmap_block(lanes: LaneMap) -> dict:
+    """
+    Return the lanes block for aav_costmap's global costmap: {'roads': [...]}.
+
+    navigation.launch.py lane_costs:= puts it in the global block; the costmap draws each
+    road as a soft cost, lowest at the right lane's centre (costmap::lanes, TODO 148).
+    The ramp's costs are the costmap's own defaults.
+    """
+    return {'roads': [{'name': r.name, 'points': [list(p) for p in r.points],
+                       'width': r.width, 'lanes': r.lanes, 'oneway': r.oneway,
+                       'edge_inset': r.edge_inset} for r in lanes.roads]}
+
+
 def lane_line(lanes: LaneMap, route: Sequence[Tuple[float, float]],
               car: Tuple[float, float], spacing: float = 0.5, length: float = 40.0,
               smooth: float = SMOOTH) -> List[Tuple[float, float]]:

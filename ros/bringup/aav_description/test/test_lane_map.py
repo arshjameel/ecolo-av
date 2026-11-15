@@ -3,7 +3,8 @@
 from collections import namedtuple
 import math
 
-from aav_description.lane_map import from_dict, lane_line, lane_offset, LaneMap, Road, with_edges
+from aav_description.lane_map import costmap_block, from_dict, lane_line, lane_offset
+from aav_description.lane_map import LaneMap, Road, with_edges
 from aav_description.road_ahead import build
 from aav_description.stop_law import from_car_model
 import pytest
@@ -130,3 +131,16 @@ def test_roads_at_finds_each_road_under_a_point_once():
     assert sorted(r.name for r in lanes.roads_at(1.0, 1.0)) == ['across', 'street']
     assert [r.name for r in lanes.roads_at(10.0, 70.0)] == ['bent']   # two segments, once
     assert lanes.roads_at(30.0, 30.0) == []
+
+
+def test_the_costmap_block_carries_every_road_as_the_file_has_it():
+    # aav_costmap reads these keys (costmap-node's lanes_from).
+    lanes = from_dict({'roads': [
+        {'name': 'a', 'width': 7.0, 'points': [[0, 0], [10, 0]]},
+        {'kind': 'b', 'width': 4.5, 'lanes': 1, 'oneway': True, 'edge_inset': 0.4,
+         'points': [[0, 5], [10, 5], [20, 8]]}]})
+    block = costmap_block(lanes)
+    assert [r['name'] for r in block['roads']] == ['a', 'b']
+    assert block['roads'][1] == {'name': 'b', 'points': [[0.0, 5.0], [10.0, 5.0], [20.0, 8.0]],
+                                 'width': 4.5, 'lanes': 1, 'oneway': True, 'edge_inset': 0.4}
+    assert block['roads'][0]['lanes'] == 0

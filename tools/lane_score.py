@@ -5,6 +5,12 @@ How well the car kept its lane, by the simulator's truth. No ROS: tools/tests/ t
     roads = load_roads('maps/campus/lanes.yaml')  # the campus's painted roads
     error, road = lane_error(roads, x, y, yaw)    # m, + = left of the lane's centre
     print(score(samples, lanes))                  # the table's numbers
+    print(keep_right(lane_map.load(path), track).line())   # kept right? (TODO 148)
+
+Did each run of `measure controllers` keep right (the lanes scorecard: off-centre, in the
+lane, over the left line and how often, past the kerb), from its results.json:
+
+    pixi run python3 tools/lane_score.py log/controller-compare/<time>/results.json
 
 A lane's centre:
 
@@ -22,6 +28,7 @@ from __future__ import annotations
 import bisect
 from dataclasses import dataclass
 import math
+import sys
 from typing import List, Optional, Sequence, Tuple
 
 import yaml
@@ -231,3 +238,101 @@ def pose_error(track: Sequence[Tuple[float, float, float, float]],
         p95_across=ordered[int(0.95 * (n - 1))], max_across=ordered[-1],
         jitter=math.sqrt(sum(q * q for q in quick) / n),
         rms_along=math.sqrt(sum(e[2] ** 2 for e in errs) / n))
+
+
+@dataclass(frozen=True)
+class KeepRight:
+    """Did the car keep right: the lanes scorecard (TODO 148), by `lane_map.py`'s lanes."""
+
+    road_s: float            # s on a road (the rest: a lot, a junction's gap)
+    off_centre: float        # m, |offset from the right lane's centre|, mean on a road
+    in_lane: float           # share of road time inside the right lane's lines
+    two_way_s: float         # s of that on a two-way road
+    over_centre: float       # share of two-way road time over the centre line
+    crossings: int           # times it went over a two-way road's centre line
+    over_kerb: float         # share of road time with base_link past the right kerb
+
+    def line(self) -> str:
+        return (f'{self.road_s:.0f} s on a road: {100 * self.off_centre:.0f} cm off the '
+                f"right lane's centre, in it {100 * self.in_lane:.0f} %; on two-way roads "
+                f'{self.two_way_s:.0f} s, over the centre line {100 * self.over_centre:.0f} % '
+                f'({self.crossings} times); past the kerb '
+                f'{100 * self.over_kerb:.0f} %')
+
+
+def keep_right(lanes, track: Sequence[Tuple[float, ...]]) -> KeepRight:
+    """
+    Score a track (t, x, y, yaw, ...) against a lane map (aav_description lane_map.LaneMap).
+
+    Each sample's lane is lane_at's: the rightmost lane for the way the car faces. Its
+    offset (+ left) against that lane's lines and kerbs. On a two-way road the lane's left
+    line is the centre line: a crossing is each time the car goes over it. (On a one-way
+    road the left line is only the next lane's: in_lane counts it, crossings don't.)
+    """
+    road_s = two_way_s = 0.0
+    offs, in_lane, over, kerb = 0.0, 0.0, 0.0, 0.0
+    crossings = 0
+    was_over = False
+    for (t0, *_), (t1, x, y, yaw, *_) in zip(track, track[1:]):
+        dt = t1 - t0
+        lane = lanes.lane_at(x, y, yaw)
+        if lane is None:
+            was_over = False
+            continue
+        left = (x - lane.x) * -math.sin(lane.heading) + (y - lane.y) * math.cos(lane.heading)
+        road_s += dt
+        offs += abs(left) * dt
+        two_way = any(not r.oneway and r.lane_count() > 1 for r in lanes.roads_at(x, y)
+                      if r.name == lane.road)
+        if -lane.left_soft <= -left <= lane.right_soft:
+            in_lane += dt
+        now_over = two_way and left > lane.left_soft
+        two_way_s += dt if two_way else 0.0
+        if now_over:
+            over += dt
+            crossings += not was_over
+        if -left > lane.right_hard:
+            kerb += dt
+        was_over = now_over
+
+    def share(v, of=road_s):
+        return v / of if of > 0.0 else math.nan
+    return KeepRight(road_s=road_s, off_centre=share(offs), in_lane=share(in_lane),
+                     two_way_s=two_way_s, over_centre=share(over, two_way_s),
+                     crossings=crossings, over_kerb=share(kerb))
+
+
+def main(argv=None):
+    """Score measure controllers' results.json files by a lane map: did each run keep right."""
+    import argparse
+    import json
+    import os
+    here = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, os.path.join(os.path.dirname(here), 'ros', 'bringup', 'aav_description'))
+    from aav_description import lane_map
+    parser = argparse.ArgumentParser(description=main.__doc__)
+    parser.add_argument('results', nargs='+', help="measure controllers' results.json files")
+    parser.add_argument('--lanes', default=os.path.join('maps', 'campus', 'lanes.yaml'),
+                        help='the lane map (default: the campus)')
+    args = parser.parse_args(argv)
+    lanes = lane_map.load(args.lanes)
+    print('| results | follower | run | leg | reached | road s | off centre (m) | in lane | '
+          'two-way s | over the centre line | crossings | past the kerb |')
+    print('|---|---|---|---|---|---|---|---|---|---|---|---|')
+    for path in args.results:
+        with open(path) as f:
+            data = json.load(f)
+        for row in data:
+            if not row.get('track'):
+                continue
+            k = keep_right(lanes, row['track'])
+            reached = 'yes' if (row.get('row') or {}).get('reached') else 'no'
+            print(f'| {os.path.basename(os.path.dirname(path))} | {row.get("controller", "?")} | '
+                  f'{row.get("run", 1)} | {row.get("leg", "?")} | {reached} | '
+                  f'{k.road_s:.0f} | {k.off_centre:.2f} | {100 * k.in_lane:.0f} % | '
+                  f'{k.two_way_s:.0f} | {100 * k.over_centre:.0f} % | {k.crossings} | '
+                  f'{100 * k.over_kerb:.0f} % |')
+
+
+if __name__ == '__main__':
+    main()
