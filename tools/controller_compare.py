@@ -166,7 +166,9 @@ TOURS = {
     'campus': {'obstacle': False, 'world': worlds.CAMPUS, 'legs': [
         ('out of the lot', 73.0, -38.0, 45.0),
         ('along the road', 165.0, -111.0, -40.0),
-        ('round the bend', 139.0, -190.0, -100.0),
+        # Facing along the road (-71 deg, measured on campus.pgm, 14 Nov): -100 deg left the
+        # car 29 deg across a 4.5 m road, and both stacks stopped short of it.
+        ('round the bend', 139.0, -190.0, -71.0),
     ]},
     # TODO 149: the wiggle's road, in one goal from lot P4: out of the lot, then about 120 m
     # of gently bending road (the campus tour's second leg, without its stop in between,
