@@ -219,14 +219,22 @@ request. The nightly `mac` and `sim` runs stay in the team's repo.
 | `mac` | macOS 15, Apple Silicon | every night (team's repo) | `pixi run test`, the MCP server |
 | `car-kit` | Ubuntu 24.04, 64-bit ARM | the same as `linux` | `pixi run car-kit`, then `car_install.sh --all` with **no network** (its own network namespace), as on the car ([car install](car-install.md)): 6 min |
 | `car-kit-22.04` | Ubuntu **22.04**, 64-bit ARM: the car's own OS (JetPack 6) | the same | the same kit, installed offline on the car's Ubuntu. New 26 Oct: still allowed to fail (`continue-on-error`) |
-| `sim` | Ubuntu 24.04, x86_64 | every night (team's repo) | `sim-check --simulator gazebo --obstacle`, below |
+| `sim` | Ubuntu 24.04, x86_64 | every night (team's repo) | `sim-check --obstacle` on Gazebo, on ours with no cameras, and on ours with its cameras in software, below |
 
 Every job also runs from the Actions tab (Run workflow).
 
-Every night it also runs `sim-check --simulator gazebo --obstacle` (headless) on Linux:
-the job `sim`. Gazebo, because our own simulator's cameras need a GPU. New on 22 Oct and still on trial: GitHub's computers have no GPU, so the cameras
-render in software (Mesa's llvmpipe, through `tools/software_gl.sh`), and a failure there
-doesn't fail the night yet (`continue-on-error`).
+Every night the job `sim` runs `sim-check --obstacle` (headless) on Linux, three ways.
+GitHub's computers have no GPU, so the pictures are drawn in software, through
+`tools/software_gl.sh`. A failure there doesn't fail the night yet (`continue-on-error`).
+
+| Step | Simulator | Pictures drawn by | Since |
+|---|---|---|---|
+| 1 | Gazebo | Mesa's llvmpipe (OpenGL) | 22 Oct |
+| 2 | ours, `--no-cameras` | none | 14 Nov |
+| 3 | ours, with its cameras | Mesa's lavapipe (Vulkan): [no GPU](own-simulator-cameras.md) | 15 Nov, [[untested]] on GitHub yet |
+| 4 | the cameras' picture tests (`tests/render.rs`) | lavapipe | 15 Nov, [[untested]] on GitHub yet |
+
+Once step 3 passes a few nights, Gazebo's step goes (TODO 183, after 0.4-rc1).
 
 ### Reading a CI failure without signing in
 

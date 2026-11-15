@@ -763,15 +763,51 @@ request. The nightly <code>mac</code> and <code>sim</code> runs stay in the team
 <td><code>sim</code></td>
 <td>Ubuntu 24.04, x86_64</td>
 <td>every night (team's repo)</td>
-<td><code>sim-check --simulator gazebo --obstacle</code>, below</td>
+<td><code>sim-check --obstacle</code> on Gazebo, on ours with no cameras, and on ours with its cameras in software, below</td>
 </tr>
 </tbody>
 </table></div>
 <p>Every job also runs from the Actions tab (Run workflow).</p>
-<p>Every night it also runs <code>sim-check --simulator gazebo --obstacle</code> (headless) on Linux:
-the job <code>sim</code>. Gazebo, because our own simulator's cameras need a GPU. New on 22 Oct and still on trial: GitHub's computers have no GPU, so the cameras
-render in software (Mesa's llvmpipe, through <code>tools/software_gl.sh</code>), and a failure there
-doesn't fail the night yet (<code>continue-on-error</code>).</p>
+<p>Every night the job <code>sim</code> runs <code>sim-check --obstacle</code> (headless) on Linux, three ways.
+GitHub's computers have no GPU, so the pictures are drawn in software, through
+<code>tools/software_gl.sh</code>. A failure there doesn't fail the night yet (<code>continue-on-error</code>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Simulator</th>
+<th>Pictures drawn by</th>
+<th>Since</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Gazebo</td>
+<td>Mesa's llvmpipe (OpenGL)</td>
+<td>22 Oct</td>
+</tr>
+<tr>
+<td>2</td>
+<td>ours, <code>--no-cameras</code></td>
+<td>none</td>
+<td>14 Nov</td>
+</tr>
+<tr>
+<td>3</td>
+<td>ours, with its cameras</td>
+<td>Mesa's lavapipe (Vulkan): <a href="own-simulator-cameras.html">no GPU</a></td>
+<td>15 Nov, <span class="badge b-untested">untested</span> on GitHub yet</td>
+</tr>
+<tr>
+<td>4</td>
+<td>the cameras' picture tests (<code>tests/render.rs</code>)</td>
+<td>lavapipe</td>
+<td>15 Nov, <span class="badge b-untested">untested</span> on GitHub yet</td>
+</tr>
+</tbody>
+</table></div>
+<p>Once step 3 passes a few nights, Gazebo's step goes (TODO 183, after 0.4-rc1).</p>
 <h3 id="reading-a-ci-failure-without-signing-in">Reading a CI failure without signing in</h3>
 <p>A job's log needs a GitHub sign-in. Its <strong>annotations</strong> don't: when the test step fails,
 <code>tools/ci_annotate.py</code> prints one annotation per failing test, with its error message.</p>
