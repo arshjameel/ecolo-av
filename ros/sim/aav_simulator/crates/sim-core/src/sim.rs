@@ -123,7 +123,8 @@ impl Default for Rates {
     }
 }
 
-/// The IMU's and GPS's noise (aav.gazebo.xacro's, standard deviations).
+/// The IMU's, GPS's and wheels' noise (aav.gazebo.xacro's, standard deviations). The
+/// wheels' is ours (Gazebo's odometry has none), off by default (Ben, 14 Nov).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SensorNoise {
     /// rad/s.
@@ -134,6 +135,19 @@ pub struct SensorNoise {
     pub gps_horizontal_deg: f64,
     /// m.
     pub gps_vertical: f64,
+    /// m/s, on each wheel speed reading while the wheels turn (0: none). The odometry
+    /// then integrates the readings and drifts, as on the car.
+    pub wheel_speed: f64,
+    /// A fraction: the wheels read this much more than the ground moved (slip, worn
+    /// tyres, a wrong radius; 0: none, 0.02: 2 % too far).
+    pub wheel_slip: f64,
+}
+
+impl SensorNoise {
+    /// Whether the wheels' odometry is read from noisy wheels rather than the truth.
+    pub fn wheels_noisy(&self) -> bool {
+        self.wheel_speed > 0.0 || self.wheel_slip != 0.0
+    }
 }
 
 impl Default for SensorNoise {
@@ -143,6 +157,8 @@ impl Default for SensorNoise {
             accel: 0.2,
             gps_horizontal_deg: 4.5e-6,
             gps_vertical: 1.0,
+            wheel_speed: 0.0,
+            wheel_slip: 0.0,
         }
     }
 }
@@ -289,6 +305,10 @@ pub struct Simulator {
     gps_noise: Noise,
     lidar_noise: Noise,
     radar_noise: Noise,
+    wheel_noise: Noise,
+    /// m, m, rad: how far the wheels' odometry has drifted from the truth's (noisy
+    /// wheels only), in the odometry's frame.
+    drift: [f64; 3],
     /// When the car last pushed against something (ns): a new hit is one after a second
     /// clear of it, not each step it keeps pushing.
     last_contact_ns: Option<u64>,
@@ -312,6 +332,9 @@ impl Simulator {
             gps_noise: seed.fork(),
             lidar_noise: seed.fork(),
             radar_noise: seed.fork(),
+            // Forked last: the other sensors' noise stays as it was.
+            wheel_noise: seed.fork(),
+            drift: [0.0; 3],
             settings,
             world,
             car,
@@ -551,6 +574,9 @@ impl Simulator {
             roll: 0.0,
             pitch: 0.0,
         };
+        if self.settings.noise.wheels_noisy() {
+            self.read_wheels(s, dt);
+        }
         let g = self.settings.geometry;
         let half = g.track / 2.0;
         // Each wheel's ground speed along its own heading.
@@ -567,6 +593,35 @@ impl Simulator {
             self.joints.wheel_angle[i] = crate::math::wrap(self.joints.wheel_angle[i] + rate * dt);
         }
         self.joints.steering = wheel_angles(s.steering, g.wheelbase, g.track);
+    }
+
+    /// The wheels' odometry from noisy, slipping wheels: the truth's plus a drift that
+    /// grows from the gap between what the wheels read and how the car moved.
+    fn read_wheels(&mut self, s: &CarState, dt: f64) {
+        let n = self.settings.noise;
+        // A wheel that doesn't turn reads nothing: no noise standing still.
+        let turning = s.speed.abs() > 0.01;
+        let speed = if turning {
+            s.speed * (1.0 + n.wheel_slip) + self.wheel_noise.gauss(n.wheel_speed)
+        } else {
+            0.0
+        };
+        // Ackermann odometry turns by the wheels' speed and the steering: the same error.
+        let yaw_rate = if turning {
+            s.yaw_rate * speed / s.speed
+        } else {
+            s.yaw_rate
+        };
+        let true_yaw = self.odom.yaw;
+        let read_yaw = true_yaw + self.drift[2];
+        self.drift[0] += (speed * read_yaw.cos() - s.speed * true_yaw.cos()) * dt;
+        self.drift[1] += (speed * read_yaw.sin() - s.speed * true_yaw.sin()) * dt;
+        self.drift[2] += (yaw_rate - s.yaw_rate) * dt;
+        self.odom.x += self.drift[0];
+        self.odom.y += self.drift[1];
+        self.odom.yaw = crate::math::wrap(self.odom.yaw + self.drift[2]);
+        self.odom.speed = speed;
+        self.odom.yaw_rate = yaw_rate;
     }
 
     fn imu(&mut self) -> ImuReading {
@@ -836,6 +891,7 @@ mod tests {
             accel: 0.0,
             gps_horizontal_deg: 0.0,
             gps_vertical: 0.0,
+            ..SensorNoise::default()
         };
         let mut sim = Simulator::new(s, World::flat(400.0), car, (0.0, 0.0, 0.0));
         let imu = sim.imu();
@@ -875,6 +931,91 @@ mod tests {
         );
         let odom = last.expect("odometry");
         assert!((odom.x - (s.y - 3.0)).abs() < 1e-6 && odom.y.abs() < 1e-6);
+    }
+
+    /// Drive a curve for `secs` s; return the truth's distance and the last odometry.
+    fn drive_with_wheels(noise: SensorNoise, seed: u64, secs: usize) -> (f64, Odometry) {
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut s = settings();
+        s.noise = noise;
+        s.seed = seed;
+        let mut sim = Simulator::new(s, World::flat(400.0), car, (0.0, 0.0, 0.0));
+        let go = Command::Twist {
+            speed: 1.0,
+            yaw_rate: 0.1,
+        };
+        let mut last = None;
+        let mut travelled = 0.0;
+        for _ in 0..secs * 1000 {
+            for o in sim.step(&go) {
+                if let Output::Odom(odom) = o {
+                    last = Some(odom);
+                }
+            }
+            travelled += sim.car().speed.abs() * 0.001;
+        }
+        (travelled, last.expect("odometry"))
+    }
+
+    #[test]
+    fn slipping_wheels_read_too_far() {
+        let slip = SensorNoise {
+            wheel_slip: 0.05,
+            ..SensorNoise::default()
+        };
+        let (_, truth) = drive_with_wheels(SensorNoise::default(), 1, 10);
+        let (travelled, read) = drive_with_wheels(slip, 1, 10);
+        assert!(
+            read.speed > 1.04 && read.speed < 1.06,
+            "speed {}",
+            read.speed
+        );
+        let (dx, dy) = (read.x - truth.x, read.y - truth.y);
+        let gap = (dx * dx + dy * dy).sqrt();
+        // About 5 % of the way, give or take the turn's own error.
+        assert!(
+            gap > 0.03 * travelled && gap < 0.08 * travelled,
+            "drift {gap} m"
+        );
+    }
+
+    #[test]
+    fn noisy_wheels_drift_the_same_way_for_the_same_seed() {
+        let noisy = SensorNoise {
+            wheel_speed: 0.1,
+            ..SensorNoise::default()
+        };
+        let (_, truth) = drive_with_wheels(SensorNoise::default(), 1, 10);
+        let (_, a) = drive_with_wheels(noisy, 7, 10);
+        let (_, b) = drive_with_wheels(noisy, 7, 10);
+        let (_, c) = drive_with_wheels(noisy, 8, 10);
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+        assert!(a != truth, "noise on, the odometry is not the truth");
+    }
+
+    #[test]
+    fn wheels_standing_still_read_nothing() {
+        let noisy = SensorNoise {
+            wheel_speed: 0.1,
+            wheel_slip: 0.05,
+            ..SensorNoise::default()
+        };
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut s = settings();
+        s.noise = noisy;
+        let mut sim = Simulator::new(s, World::flat(400.0), car, (0.0, 0.0, 0.0));
+        let still = Command::Twist {
+            speed: 0.0,
+            yaw_rate: 0.0,
+        };
+        for _ in 0..1000 {
+            for o in sim.step(&still) {
+                if let Output::Odom(odom) = o {
+                    assert_eq!((odom.x, odom.y, odom.speed), (0.0, 0.0, 0.0));
+                }
+            }
+        }
     }
 
     #[test]

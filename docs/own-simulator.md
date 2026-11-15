@@ -34,7 +34,7 @@ It replaces `gz sim` **and** its bridges. Every node above them is the same one 
 | Topic | Rate | Same as Gazebo? |
 |---|---|---|
 | `/clock` | 1 kHz | yes: one per step |
-| `/gazebo/odom`, `/vehicle/sim/truth` | 50 Hz | yes |
+| `/gazebo/odom`, `/vehicle/sim/truth` | 50 Hz | yes; the wheels' odometry can also drift: `wheel_noise:=0.05` (m/s on each reading) and `wheel_slip:=0.02` (2 % too far), seeded by `noise_seed:=`, off by default (TODO 179) |
 | `/gazebo/imu` | 50 Hz, noise 0.02 rad/s, 0.2 m/s² | yes (the xacro's) |
 | `/gazebo/navsat` | 5 Hz, noise 4.5e-6° (0.5 m) | yes; exact WGS84 from the world's datum |
 | `/joint_states` | 100 Hz | Gazebo sends 1 kHz; the car's wheels 100 Hz |

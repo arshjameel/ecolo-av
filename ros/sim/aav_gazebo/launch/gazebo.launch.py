@@ -233,6 +233,12 @@ def own_simulator(context, share, world, car, lidar, radar):
                 output='screen',
                 parameters=[{'world': world, 'models': ':'.join(models), **start,
                              'clock_hz': float(LaunchConfiguration('clock_hz').perform(context)),
+                             # TODO 179: noisy, slipping wheels, seeded; off by default.
+                             'seed': int(LaunchConfiguration('noise_seed').perform(context)),
+                             'wheel_noise': float(
+                                 LaunchConfiguration('wheel_noise').perform(context)),
+                             'wheel_slip': float(
+                                 LaunchConfiguration('wheel_slip').perform(context)),
                              'wheelbase': float(v['wheelbase']), 'track': float(v['track']),
                              'wheel_radius': float(v['wheel_diameter']) / 2.0,
                              'max_steering': float(v['max_steering_angle']),
@@ -446,6 +452,15 @@ def generate_launch_description():
         DeclareLaunchArgument('bridge', default_value=bridges.DEFAULT,
                               description='with spine:=true: spine_bridge in rust '
                                           '(aav_spine_bridge) or python (aav_spine)'),
+        DeclareLaunchArgument('noise_seed', default_value='1',
+                              description='simulator:=own: the sensors\' noise seed; the same '
+                                          'seed, the same streams'),
+        DeclareLaunchArgument('wheel_noise', default_value='0',
+                              description='simulator:=own: m/s of noise on each wheel speed '
+                                          'reading (0: off); the odometry then drifts'),
+        DeclareLaunchArgument('wheel_slip', default_value='0',
+                              description='simulator:=own: the wheels read this fraction more '
+                                          'than the ground moved (0.02: 2 % too far; 0: off)'),
         DeclareLaunchArgument('clock_hz', default_value='1000',
                               description='simulator:=own: /clock a second (1000, as Gazebo). '
                                           'Every node on sim time wakes for each one: 250 '

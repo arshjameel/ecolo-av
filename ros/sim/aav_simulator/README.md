@@ -47,7 +47,7 @@ since 8 Nov**; `simulator:=gazebo` starts Gazebo instead.
 Parameters: `world`, `models`, `start_x`, `start_y`, `start_yaw`, the car's size and sensor
 mounts (`aav_gazebo`'s `gazebo.launch.py` passes `vehicle.yaml`'s), `lidar`, `radar`,
 `obstacle`, `body_length` (0: drives through things), `ground_step` (0.1 m: the highest step
-a wheel rolls up; 0: flat ground), `seed`, `step` (0.001 s), `clock_hz`
+a wheel rolls up; 0: flat ground), `seed`, `wheel_noise` (m/s on each wheel reading) and `wheel_slip` (a fraction: the wheels read that much too far), both 0, off, by default (the odometry then integrates the readings and drifts; `gazebo.launch.py` `wheel_noise:=`, `wheel_slip:=`, `noise_seed:=`), `step` (0.001 s), `clock_hz`
 (1000), `real_time_factor` (1.0; 0 = as fast as it can), `threads`. The node's docstring has
 them all.
 

@@ -45,7 +45,8 @@
 //!             body_width, rear_overhang, body_height (the car stops at what its outline
 //!             meets, as Gazebo's; body_length 0: it drives through), ground_step (m: the
 //!             highest step a wheel rolls up, 0.1; the car rides the world's ground, tilts on
-//!             slopes, stops at a higher kerb; 0: flat ground), seed, step (s),
+//!             slopes, stops at a higher kerb; 0: flat ground), seed, wheel_noise (m/s on
+//!             each wheel reading, 0: off), wheel_slip (a fraction, 0: off), step (s),
 //!             clock_hz, real_time_factor (1.0; 0: as fast as it can), threads
 //!
 //! The simulated time runs in a thread of its own, paced against the wall clock; the
@@ -128,6 +129,13 @@ fn main() -> Result<()> {
         started.elapsed().as_secs_f64()
     );
 
+    let (wheel_noise, wheel_slip) = (params.wheel_noise.get(), params.wheel_slip.get());
+    if !(0.0..=1.0).contains(&wheel_noise) {
+        bail!("wheel_noise:={wheel_noise}: between 0 and 1 m/s");
+    }
+    if !(-0.5..=0.5).contains(&wheel_slip) {
+        bail!("wheel_slip:={wheel_slip}: between -0.5 and 0.5 (a fraction)");
+    }
     let step = params.step.get();
     if !(step > 0.0 && step <= 0.01) {
         bail!("step:={step}: between 0 and 0.01 s");
@@ -149,7 +157,11 @@ fn main() -> Result<()> {
             clock: params.clock_hz.get(),
             ..Rates::default()
         },
-        noise: SensorNoise::default(),
+        noise: SensorNoise {
+            wheel_speed: wheel_noise,
+            wheel_slip,
+            ..SensorNoise::default()
+        },
         lidar: params.lidar.get().then_some(LidarSpec::ROOF),
         radar: params.radar.get().then_some(LidarSpec::RADAR),
         seed: params.seed.get() as u64,
@@ -758,6 +770,8 @@ struct Params {
     rear_overhang: ReadOnlyParameter<f64>,
     body_height: ReadOnlyParameter<f64>,
     seed: ReadOnlyParameter<i64>,
+    wheel_noise: ReadOnlyParameter<f64>,
+    wheel_slip: ReadOnlyParameter<f64>,
     step: ReadOnlyParameter<f64>,
     clock_hz: ReadOnlyParameter<f64>,
     real_time_factor: ReadOnlyParameter<f64>,
@@ -813,6 +827,8 @@ impl Params {
             rear_overhang: number("rear_overhang", 0.2)?,
             body_height: number("body_height", 1.5)?,
             seed: node.declare_parameter("seed").default(1).read_only()?,
+            wheel_noise: number("wheel_noise", 0.0)?,
+            wheel_slip: number("wheel_slip", 0.0)?,
             step: number("step", 0.001)?,
             clock_hz: number("clock_hz", 1000.0)?,
             real_time_factor: number("real_time_factor", 1.0)?,
