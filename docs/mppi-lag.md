@@ -396,6 +396,59 @@ straight and a bend at 2.5 m/s, less with a sim-like pose, none backing up.
 | The lot at 1 m/s: still above Nav2's | less steering noise at 1 m/s helps the model (sway 0.022 to 0.013 with a sim-like pose) but fails the very slow actuators' S-curve test: not taken |
 | Backing up at 0.5 m/s, the wheels dither about 1° | the car itself doesn't move sideways (0.3 mm) |
 
+## Follow in odom, correct slowly
+
+TODO 186. The GPS moves the map; the follower should not feel it.
+
+### The problem
+
+The follower drives in `odom`, on the smooth wheels and IMU. The path comes in `map`.
+The global EKF's map -> odom jumps with each GPS fix: in the sim about **0.09 m
+sideways, 5 times a second**. Moved by the newest map -> odom, each new path lands up
+to 9 cm beside the car. The follower sees a cross-track error and steers at it.
+
+### The fix
+
+```text
+  newest map -> odom ──(jumps 0.09 m at 5 Hz)──┐
+                                               ▼
+  held map -> odom ◄── at most 0.1 m/s and 1°/s, measured at the car
+       │               taken at once past 2 m or 10° (a relocalisation, logged)
+       ▼
+  path (map) ──► path (odom) ──► MPPI; the running path moves as the held one moves
+```
+
+| Part | What |
+|---|---|
+| The held map -> odom | the follower's own; each new path comes into odom by it |
+| The slew | toward the newest, at most `map_correction_speed` (0.1 m/s) and `map_correction_turn_rate` (1°/s) |
+| Measured at the car | a 1° turn about odom's origin 100 m away is 1.7 m there, but 0 at the car |
+| The snap | past `map_correction_snap_distance` (2 m) or `_snap_angle` (10°): taken at once |
+| Off | `map_correction:=newest` (the launch): each new path by the newest, as until 15 Nov |
+| Watch it | `map_gap_m` on `/drivers/nav/track/status`: the held one's gap at the car |
+
+Why 0.1 m/s: odometry drifts 1-2 % of the distance (0.05 m/s at 2.5 m/s), so the held
+one keeps up with real drift, but a 9 cm jump takes about a second to come in.
+A complementary filter (Higgins 1975): the fast part of the pose from odometry, the
+slow part from the map. `aav_track` runs the same rule (`slow_frame.py`).
+
+### Results without ROS
+
+`tests/map_correction.rs`: the node's frames rebuilt (odometry in odom, the path in map
+again every second, a global EKF jumping 5 times a second), at 2.5 m/s, 2 runs each.
+
+| Case | Newest (old) | Held (new) |
+|---|---|---|
+| straight: off the path m / sway m/s² / steering changes side a second | 0.042 / 0.101 / 0.52 | **0.019 / 0.040 / 0.19** |
+| bend r 30 m: off / sway | 0.042 / 0.102 | **0.015 / 0.041** |
+| a real 0.5 m offset taken out | | 5.6 s (0.05 m/s: 10 s; 0.2 m/s: 3.5 s) |
+| a 3 m relocalisation | | snapped, settled in 4.4 s |
+
+`explore` (ignored) prints every case: also an EKF error that wanders over 2 s, and new
+paths every 10 s (the straight, wandering, every 10 s: sway 0.111 to 0.050 m/s²).
+
+**In the simulator:** untested. The main session runs it.
+
 ## The lane
 
 TODO 169. With a lane map, the road ahead (`/world/road_ahead`, the behaviour planner's)

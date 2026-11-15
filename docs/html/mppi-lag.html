@@ -7,7 +7,7 @@
 <!-- Generated from docs/mppi-lag.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>MPPI that knows the lag</h1>
-<div class="meta">30 min read · 14 sections</div></header>
+<div class="meta">33 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -117,7 +117,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-model">The model</a><a href="#what-differs-from-nav2s-mppi">What differs from Nav2&#x27;s MPPI</a><a href="#results-without-ros">Results without ROS</a><a href="#speed">Speed</a><a href="#in-gazebo">In Gazebo</a><a href="#reversing">Reversing</a><a href="#cusps">Cusps</a><a href="#the-campus-junction-the-geofence-not-mppi">The campus junction: the geofence, not MPPI</a><a href="#oscillation-the-cause">Oscillation: the cause</a><a href="#the-lane">The lane</a><a href="#lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn&#x27;t cancel the lag twice</a><a href="#run-it">Run it</a><a href="#what-is-missing">What is missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-model">The model</a><a href="#what-differs-from-nav2s-mppi">What differs from Nav2&#x27;s MPPI</a><a href="#results-without-ros">Results without ROS</a><a href="#speed">Speed</a><a href="#in-gazebo">In Gazebo</a><a href="#reversing">Reversing</a><a href="#cusps">Cusps</a><a href="#the-campus-junction-the-geofence-not-mppi">The campus junction: the geofence, not MPPI</a><a href="#oscillation-the-cause">Oscillation: the cause</a><a href="#follow-in-odom-correct-slowly">Follow in odom, correct slowly</a><a href="#the-lane">The lane</a><a href="#lag_aware-so-ego-doesnt-cancel-the-lag-twice">lag_aware: so ego doesn&#x27;t cancel the lag twice</a><a href="#run-it">Run it</a><a href="#what-is-missing">What is missing</a></nav>
 <div class="lead"><p>Ben, 7 Nov (0.3): <strong>"have the algorithms know about lag"</strong>.</p>
 <p>Nav2's MPPI plans as if the car obeys at once. It can't take our lag model without a C++
 plugin, and we write no C++. So MPPI is <strong>ported to Rust</strong>, with the lag in its model.
@@ -1000,6 +1000,96 @@ straight and a bend at 2.5 m/s, less with a sim-like pose, none backing up.</p>
 </tr>
 </tbody>
 </table></div>
+</section>
+<section class="card"><h2 id="follow-in-odom-correct-slowly">Follow in odom, correct slowly</h2>
+<p>TODO 186. The GPS moves the map; the follower should not feel it.</p>
+<h3 id="the-problem">The problem</h3>
+<p>The follower drives in <code>odom</code>, on the smooth wheels and IMU. The path comes in <code>map</code>.
+The global EKF's map -&gt; odom jumps with each GPS fix: in the sim about <strong>0.09 m
+sideways, 5 times a second</strong>. Moved by the newest map -&gt; odom, each new path lands up
+to 9 cm beside the car. The follower sees a cross-track error and steers at it.</p>
+<h3 id="the-fix_1">The fix</h3>
+<pre class="highlight"><code class="language-text">  newest map -&gt; odom ──(jumps 0.09 m at 5 Hz)──┐
+                                               ▼
+  held map -&gt; odom ◄── at most 0.1 m/s and 1°/s, measured at the car
+       │               taken at once past 2 m or 10° (a relocalisation, logged)
+       ▼
+  path (map) ──► path (odom) ──► MPPI; the running path moves as the held one moves</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The held map -&gt; odom</td>
+<td>the follower's own; each new path comes into odom by it</td>
+</tr>
+<tr>
+<td>The slew</td>
+<td>toward the newest, at most <code>map_correction_speed</code> (0.1 m/s) and <code>map_correction_turn_rate</code> (1°/s)</td>
+</tr>
+<tr>
+<td>Measured at the car</td>
+<td>a 1° turn about odom's origin 100 m away is 1.7 m there, but 0 at the car</td>
+</tr>
+<tr>
+<td>The snap</td>
+<td>past <code>map_correction_snap_distance</code> (2 m) or <code>_snap_angle</code> (10°): taken at once</td>
+</tr>
+<tr>
+<td>Off</td>
+<td><code>map_correction:=newest</code> (the launch): each new path by the newest, as until 15 Nov</td>
+</tr>
+<tr>
+<td>Watch it</td>
+<td><code>map_gap_m</code> on <code>/drivers/nav/track/status</code>: the held one's gap at the car</td>
+</tr>
+</tbody>
+</table></div>
+<p>Why 0.1 m/s: odometry drifts 1-2 % of the distance (0.05 m/s at 2.5 m/s), so the held
+one keeps up with real drift, but a 9 cm jump takes about a second to come in.
+A complementary filter (Higgins 1975): the fast part of the pose from odometry, the
+slow part from the map. <code>aav_track</code> runs the same rule (<code>slow_frame.py</code>).</p>
+<h3 id="results-without-ros_1">Results without ROS</h3>
+<p><code>tests/map_correction.rs</code>: the node's frames rebuilt (odometry in odom, the path in map
+again every second, a global EKF jumping 5 times a second), at 2.5 m/s, 2 runs each.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Newest (old)</th>
+<th>Held (new)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>straight: off the path m / sway m/s² / steering changes side a second</td>
+<td>0.042 / 0.101 / 0.52</td>
+<td><strong>0.019 / 0.040 / 0.19</strong></td>
+</tr>
+<tr>
+<td>bend r 30 m: off / sway</td>
+<td>0.042 / 0.102</td>
+<td><strong>0.015 / 0.041</strong></td>
+</tr>
+<tr>
+<td>a real 0.5 m offset taken out</td>
+<td></td>
+<td>5.6 s (0.05 m/s: 10 s; 0.2 m/s: 3.5 s)</td>
+</tr>
+<tr>
+<td>a 3 m relocalisation</td>
+<td></td>
+<td>snapped, settled in 4.4 s</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>explore</code> (ignored) prints every case: also an EKF error that wanders over 2 s, and new
+paths every 10 s (the straight, wandering, every 10 s: sway 0.111 to 0.050 m/s²).</p>
+<p><strong>In the simulator:</strong> untested. The main session runs it.</p>
 </section>
 <section class="card"><h2 id="the-lane">The lane</h2>
 <p>TODO 169. With a lane map, the road ahead (<code>/world/road_ahead</code>, the behaviour planner's)

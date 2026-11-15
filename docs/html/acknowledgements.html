@@ -298,6 +298,12 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>the EKFs; the things tracker (<code>aav_things</code>)</td>
 </tr>
 <tr>
+<td><strong>Complementary filter</strong>: W. T. Higgins, "A Comparison of Complementary and Kalman Filtering", IEEE Trans. Aerospace and Electronic Systems, 1975</td>
+<td>paper</td>
+<td>idea</td>
+<td>follow in odom, correct slowly (TODO 186): the followers take the fast part of the pose from odometry and the slow part from the map, the map -&gt; odom correction rate-limited (<code>aav_mppi_lag</code> <code>map_correction.rs</code>, <code>aav_track</code> <code>slow_frame.py</code>)</td>
+</tr>
+<tr>
 <td><strong>NDT</strong>: P. Biber, W. Straßer, IROS 2003; M. Magnusson, PhD thesis, Örebro, 2009</td>
 <td>paper</td>
 <td>idea</td>
