@@ -743,3 +743,106 @@ fn a_path_off_centre_is_followed_inside_the_lane() {
     // Still on the path's side of the lane: the critic doesn't drag it to the centre.
     assert!(settled(&kept) > 0.5, "{}", settled(&kept));
 }
+
+/// The campus tour's "round the bend" junction (14 Nov night, TODO 167), in the map frame:
+/// our planner's path there, as the run saved it (about 1 m apart), from 75 m into the leg.
+/// East along the road, a right turn of about 4.5 m radius into the junction, south, a
+/// bend back west. In the simulator the car stood at (224.25, -160.90) for 70 s: not
+/// mppi_lag, but the geofence (200 m round the start; the car stood 196.9 m out, the path
+/// went on to 216 m) holding every program, forward and back.
+const JUNCTION: [(f64, f64); 51] = [
+    (211.82, -160.62),
+    (212.71, -161.13),
+    (213.68, -161.48),
+    (214.69, -161.63),
+    (215.69, -161.66),
+    (216.70, -161.67),
+    (217.70, -161.67),
+    (218.70, -161.67),
+    (219.70, -161.67),
+    (220.70, -161.67),
+    (221.70, -161.68),
+    (222.71, -161.76),
+    (223.70, -162.01),
+    (224.59, -162.48),
+    (225.33, -163.13),
+    (225.91, -163.92),
+    (226.37, -164.77),
+    (226.80, -165.63),
+    (227.23, -166.49),
+    (227.66, -167.35),
+    (228.09, -168.20),
+    (228.52, -169.06),
+    (228.93, -169.95),
+    (229.26, -170.90),
+    (229.45, -171.92),
+    (229.63, -172.93),
+    (229.96, -173.89),
+    (230.38, -174.77),
+    (230.80, -175.63),
+    (231.23, -176.49),
+    (231.66, -177.35),
+    (232.09, -178.20),
+    (232.52, -179.06),
+    (232.93, -179.95),
+    (233.26, -180.90),
+    (233.41, -181.91),
+    (233.42, -182.92),
+    (233.31, -183.93),
+    (233.00, -184.90),
+    (232.49, -185.76),
+    (231.80, -186.46),
+    (230.98, -187.00),
+    (230.12, -187.45),
+    (229.27, -187.88),
+    (228.41, -188.31),
+    (227.55, -188.74),
+    (226.70, -189.17),
+    (225.84, -189.60),
+    (224.98, -190.02),
+    (224.12, -190.45),
+    (223.27, -190.88),
+];
+
+/// `points` joined by straight lines, a pose every ~0.05 m (as the planner's).
+fn polyline(points: &[(f64, f64)]) -> Vec<Pose> {
+    let mut lengths = vec![0.0];
+    for w in points.windows(2) {
+        let step = (w[1].0 - w[0].0).hypot(w[1].1 - w[0].1);
+        lengths.push(lengths.last().copied().unwrap_or(0.0) + step);
+    }
+    let total = lengths.last().copied().unwrap_or(0.0);
+    path_through(
+        |u| {
+            let d = u * total;
+            let i = lengths
+                .partition_point(|&l| l <= d)
+                .clamp(1, points.len() - 1);
+            let (a, b) = (points[i - 1], points[i]);
+            let f = (d - lengths[i - 1]) / (lengths[i] - lengths[i - 1]).max(1e-9);
+            (a.0 + f * (b.0 - a.0), a.1 + f * (b.1 - a.1))
+        },
+        total,
+    )
+}
+
+/// mppi_lag takes the junction as the run had it: reversing on, asked for the campus's
+/// 2.5 m/s, the car arriving rolling, 0.6 m left of the path and 15 degrees across it (the
+/// sim's truth 3 s before the hold). It drives the turn and the bend to the end, without
+/// backing up, close to the path.
+#[test]
+fn campus_junction_round_the_bend() {
+    let truth = LagModel::default();
+    let poses = polyline(&JUNCTION);
+    let start = Pose::new(212.30, -160.70, -0.48);
+    let run = drive_from(truth, truth, &poses, 2.5, Way::Reversing, start, 1.2);
+    let backed = run.speeds.iter().filter(|&&v| v < -0.05).count() as f64 * PERIOD;
+    println!(
+        "campus junction: {:?} in {:.1} s, {:.3} m mean, {:.3} m worst, {backed:.1} s backing",
+        run.outcome, run.time, run.mean_cross, run.max_cross
+    );
+    assert_eq!(run.outcome, Some(Outcome::Succeeded), "{:?}", run.rest);
+    assert!(run.time < 60.0, "{:.1} s", run.time);
+    assert!(run.max_cross < 0.3, "{:.3} m", run.max_cross);
+    assert!(backed < 0.5, "backed for {backed:.1} s");
+}
