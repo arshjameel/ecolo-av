@@ -9,6 +9,9 @@
 #                  and vyaw. Each backend sets the covariance to what it knows: the spine
 #                  computes vyaw from the measured steering angle, the legacy encoder can't
 #                  (covariance 1e3, so the EKF ignores it), turtlesim and Gazebo report it.
+#                  Standing still (under 0.01 m/s), every backend sends vx, vy and vyaw
+#                  as a known 0 (variance 1e-6: aav_description standstill_covariance,
+#                  TODO 191), so a parked car's yaw doesn't creep on the gyro's bias.
 #   /sensors/imu/data      yaw rate only. No absolute yaw until the magnetometer works.
 #
 # Parameter names checked against the 3.8.3 ros_filter.cpp and the package's

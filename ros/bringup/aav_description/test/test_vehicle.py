@@ -829,3 +829,14 @@ def test_lidar_memory_sets_the_local_lidar_sources_only():
     assert layer['voxels_ground']['observation_persistence'] == 0.0     # clears only
     with pytest.raises(ValueError):
         vehicle.with_lidar_memory(cfg, -1.0)
+
+
+def test_a_still_car_sends_a_nearly_certain_zero_and_a_moving_one_unchanged():
+    # TODO 191: stops reset the drift.
+    cov = [0.0] * 36
+    cov[0], cov[7], cov[35] = 0.01, 1e-4, 1e3
+    still = vehicle.standstill_covariance(0.0, cov)
+    assert [still[i] for i in (0, 7, 35)] == [vehicle.STANDSTILL_VARIANCE] * 3
+    assert vehicle.standstill_covariance(0.5, cov) == cov
+    assert vehicle.standstill_covariance(math.nan, cov) == cov
+    assert cov[35] == 1e3                  # the caller's list is left alone

@@ -17,6 +17,7 @@ The Pico sends only to the Motor Pi (192.168.1.193), so run this node there.
 import signal
 import socket
 
+from aav_description import vehicle
 from aav_legacy.legacy_protocol import encoder_counts, EncoderSpeed, metres_per_count
 from nav_msgs.msg import Odometry
 import rclpy
@@ -73,7 +74,8 @@ class EncoderUdp(Node):
         cov[0] = self.speed_var
         cov[7] = 1e-4
         cov[14] = cov[21] = cov[28] = cov[35] = 1e3
-        odom.twist.covariance = cov
+        # Wheels that read nothing: the car stands, exactly (TODO 191).
+        odom.twist.covariance = vehicle.standstill_covariance(speed, cov)
         odom.pose.covariance = [1e3 if i % 7 == 0 else 0.0 for i in range(36)]
         self.pub.publish(odom)
 

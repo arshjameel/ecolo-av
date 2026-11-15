@@ -978,6 +978,30 @@ def behaviour_params(nav2, cfg, ego=None, max_speed=None, controller=DEFAULT_CON
     return out
 
 
+# Stops reset the drift (TODO 191; the whole-car design, research idea 12): wheels that
+# read nothing mean the car stands still, so its speed, sideways speed and turn rate are
+# exactly 0: free information. The backends then send them nearly certain, and the EKFs'
+# yaw stops creeping on the gyro's bias. Under STANDSTILL_SPEED the encoders can't tell
+# motion from noise (one pulse per window).
+STANDSTILL_SPEED = 0.01        # m/s
+STANDSTILL_VARIANCE = 1e-6     # (m/s)², (rad/s)²: the zero is known, not guessed
+TWIST_STILL = (0, 7, 35)       # vx, vy, vyaw on a 6 x 6 twist covariance's diagonal
+
+
+def standstill_covariance(speed, covariance):
+    """
+    Return the wheels' twist covariance, nearly certain while they read standing still.
+
+    speed: the wheels' speed (m/s); covariance: the 36 numbers the backend would send.
+    Moving (or NaN), the list comes back unchanged.
+    """
+    out = list(covariance)
+    if math.isfinite(speed) and abs(speed) < STANDSTILL_SPEED:
+        for i in TWIST_STILL:
+            out[i] = STANDSTILL_VARIANCE
+    return out
+
+
 LIDAR_MEMORY_SOURCES = ('lidar', 'voxels')    # the local lidar layer's marking sources
 
 

@@ -53,6 +53,7 @@ import math
 import signal
 import time
 
+from aav_description import vehicle
 from aav_interfaces.msg import ActuatorState, DataSource, SensorSource, VehicleStatus
 from aav_interfaces.msg import WheelSpeeds
 from aav_spine import bridges
@@ -292,7 +293,8 @@ class SpineBridge(Node):
         cov[7] = 1e-4                    # vy: a car doesn't slide sideways
         cov[14] = cov[21] = cov[28] = UNKNOWN  # vz, roll and pitch rates: not measured
         cov[35] = UNKNOWN if yaw_rate is None else self.yaw_rate_var
-        odom.twist.covariance = cov
+        # Wheels that read nothing: the car stands, exactly (TODO 191).
+        odom.twist.covariance = vehicle.standstill_covariance(speed, cov)
         odom.pose.covariance = [UNKNOWN if i % 7 == 0 else 0.0 for i in range(36)]
         self.odom_pub.publish(odom)
 

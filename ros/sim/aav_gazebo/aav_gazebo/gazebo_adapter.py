@@ -353,7 +353,8 @@ class GazeboAdapter(Node):
         cov[7] = 1e-4
         cov[14] = cov[21] = cov[28] = 1e3
         cov[35] = 0.02
-        odom.twist.covariance = cov
+        # Wheels that read nothing: the car stands, exactly (TODO 191).
+        odom.twist.covariance = vehicle.standstill_covariance(speed, cov)
         odom.pose.covariance = [1e3 if i % 7 == 0 else 0.0 for i in range(36)]
         odom = self.faulty('odom', odom, nan=odom_nan)
         if odom is not None:

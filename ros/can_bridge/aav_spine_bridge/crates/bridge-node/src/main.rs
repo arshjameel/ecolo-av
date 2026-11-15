@@ -72,8 +72,8 @@ use ros_env::sensor_msgs::msg::JointState;
 use ros_env::std_msgs::msg::{Bool, Header, String as StringMsg};
 use ros_env::std_srvs::srv::{SetBool, SetBool_Request, SetBool_Response};
 use spine_bridge::{
-    Bridge, Command, Drive, Geometry, Motion, Reading, Role, Settings, Status, Target, Update,
-    DRIVE_CMD_ID, ESTOP_CMD_ID,
+    wheels, Bridge, Command, Drive, Geometry, Motion, Reading, Role, Settings, Status, Target,
+    Update, DRIVE_CMD_ID, ESTOP_CMD_ID,
 };
 
 /// What this node publishes, for /system/source, in role spine.
@@ -508,7 +508,7 @@ impl State {
         odom.twist.twist.linear.x = speed;
         odom.twist.twist.angular.z = yaw_rate.unwrap_or(0.0);
         // vx, vy, vz, roll, pitch and yaw rates, on the diagonal.
-        let twist_diagonal = [
+        let mut twist_diagonal = [
             speed_variance,
             SIDEWAYS_VARIANCE,
             UNKNOWN,
@@ -516,6 +516,13 @@ impl State {
             UNKNOWN,
             yaw_rate.map_or(UNKNOWN, |_| yaw_rate_variance),
         ];
+        // Wheels that read nothing: the car stands, exactly (TODO 191, as aav_description's
+        // standstill_covariance): its speed, sideways speed and turn rate all known zero.
+        if wheels::is_standstill(speed) {
+            for i in [0, 1, 5] {
+                twist_diagonal[i] = wheels::STANDSTILL_VARIANCE;
+            }
+        }
         for (i, variance) in twist_diagonal.into_iter().enumerate() {
             odom.twist.covariance[i * 7] = variance;
         }

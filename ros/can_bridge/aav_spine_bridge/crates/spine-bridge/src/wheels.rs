@@ -9,6 +9,17 @@ use std::time::Duration;
 
 use spine_core::protocol::{Wheel, WheelSpeed};
 
+/// m/s: slower than this the wheel sensors can't tell motion from noise; the car stands
+/// (TODO 191: stops reset the drift; aav_description's `STANDSTILL_SPEED`).
+pub const STANDSTILL_SPEED: f64 = 0.01;
+/// (m/s)², (rad/s)²: a standing car's zero speed and turn rate, known rather than guessed.
+pub const STANDSTILL_VARIANCE: f64 = 1e-6;
+
+/// Whether base_link's speed says the car stands still (NaN: no).
+pub fn is_standstill(speed: f64) -> bool {
+    speed.is_finite() && speed.abs() < STANDSTILL_SPEED
+}
+
 /// Which way the car is going.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
@@ -186,6 +197,14 @@ impl FrontWheels {
 mod tests {
     //! The cases of aav_spine's test_wheel_speed.py.
     use super::*;
+
+    #[test]
+    fn wheels_that_read_nothing_mean_standing_still() {
+        assert!(is_standstill(0.0));
+        assert!(is_standstill(-0.005));
+        assert!(!is_standstill(0.02));
+        assert!(!is_standstill(f64::NAN));
+    }
 
     const TIMEOUT: Duration = Duration::from_millis(100);
 
