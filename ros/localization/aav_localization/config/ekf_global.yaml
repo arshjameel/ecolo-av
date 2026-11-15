@@ -85,7 +85,12 @@ ekf_global:
     # off by a median 2.6 deg (was 6.2-6.7), worst 14 (was 39-54); still under 10 s to
     # recover from a start 29 deg wrong; and better with a gyro biased 0.6 deg/s too
     # (median 3.8 against 7.1). Check again with the real IMU's bias.
-    process_noise_covariance: [0.05, 0.05, 0.06, 0.03, 0.03, 0.01, 0.025, 0.025, 0.04, 0.01, 0.01, 0.02, 0.01, 0.01, 0.015]
+    # x and y 0.005, not 0.05 (14 Nov, the wiggle, TODO 165): the filter jumped toward each
+    # 5 Hz GPS fix, and the jumps reached the steering. Our simulator, campus road, RPP,
+    # 2 runs each: steering changed side 0.30 a second (was 0.39), the worst EKF error
+    # 0.32 m (was 0.53). CHECK ON THE CAR: the sim's wheel odometry is perfect and the
+    # car's is 17 % off loaded, so it may now correct real drift more slowly.
+    process_noise_covariance: [0.005, 0.005, 0.06, 0.03, 0.03, 0.01, 0.025, 0.025, 0.04, 0.01, 0.01, 0.02, 0.01, 0.01, 0.015]
     # Heading is unsure at start (set by hand): yaw 0.1 rad ~ 18 degrees (1 sigma). x and
     # y are 1e4 m^2 (100 m, 1 sigma): the first GPS fix decides them, whatever the
     # rejection threshold above.
