@@ -12,7 +12,8 @@ Publishes   sensors/imu/data_raw  sensor_msgs/Imu, in imu_link, with covariances
 Parameters  gyro_stddev (0.02 rad/s), accel_stddev (0.2 m/s^2), imu_x (m ahead of
             base_link: vehicle.yaml's imu_link), fault.imu (ok; stop, freeze, nan),
             gyro_bias (rad/s added to the turn rate, 0: a real gyro's offset, for
-            tools/heading_check.py --gyro-bias; may change while running)
+            tools/heading_check.py --gyro-bias; may change while running), seed (3: the
+            acceleration's noise, so a run repeats)
 
 One process of its own (relay.py), so the IMU is never late behind another sensor.
 """
@@ -37,6 +38,7 @@ class GazeboImu(SensorRelay):
         self.gyro_var = self.declare_parameter('gyro_stddev', 0.02).value ** 2
         self.accel_std = self.declare_parameter('accel_stddev', 0.2).value
         self.accel_var = self.accel_std ** 2
+        self.rng = random.Random(self.declare_parameter('seed', 3).value)
         self.imu_x = self.declare_parameter('imu_x', 0.0).value
         self.declare_parameter('gyro_bias', 0.0)
         self.speedometer = imu.Speedometer()
@@ -55,8 +57,8 @@ class GazeboImu(SensorRelay):
             # Gazebo's IMU misses the car's own acceleration (imu.py): the car's, plus noise.
             fwd, left = imu.body_acceleration(s.accel, s.speed, msg.angular_velocity.z,
                                               x=self.imu_x)
-            msg.linear_acceleration.x = fwd + random.gauss(0.0, self.accel_std)
-            msg.linear_acceleration.y = left + random.gauss(0.0, self.accel_std)
+            msg.linear_acceleration.x = fwd + self.rng.gauss(0.0, self.accel_std)
+            msg.linear_acceleration.y = left + self.rng.gauss(0.0, self.accel_std)
         msg.angular_velocity.z += self.get_parameter('gyro_bias').value
         msg.orientation_covariance[0] = -1.0     # like the real IMU: no orientation
         for i in (0, 4, 8):

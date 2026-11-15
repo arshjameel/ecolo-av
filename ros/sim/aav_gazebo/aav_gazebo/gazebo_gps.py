@@ -15,12 +15,14 @@ Parameters  gps_stddev (0.5 m: GPS without RTK), gps_speed_stddev (0.05 m/s: a u
             speed accuracy), antenna_x, antenna_y (m from base_link: vehicle.yaml's
             gps_link), every (1: pass on every one of Gazebo's 5 Hz fixes; 5: one a
             second, as the car's receiver sends from the factory; may change while
-            running), fault.gps (ok; stop, freeze, nan, jump)
+            running), fault.gps (ok; stop, freeze, nan, jump), seed (5: the velocity's
+            noise, so a run repeats)
 
 One process of its own (relay.py).
 """
 
 import math
+import random
 
 from aav_gazebo import faults
 from aav_gazebo.gps import antenna_velocity, noisy
@@ -44,6 +46,7 @@ class GazeboGps(SensorRelay):
         super().__init__('gazebo_gps', 'gps')
         self.gps_var = self.declare_parameter('gps_stddev', 0.5).value ** 2
         self.speed_std = self.declare_parameter('gps_speed_stddev', 0.05).value
+        self.rng = random.Random(self.declare_parameter('seed', 5).value)
         self.antenna = (self.declare_parameter('antenna_x', 0.0).value,
                         self.declare_parameter('antenna_y', 0.0).value)
         self.truth = None
@@ -81,9 +84,9 @@ class GazeboGps(SensorRelay):
         out = TwistWithCovarianceStamped()
         out.header.stamp = stamp
         out.header.frame_id = 'gps_link'
-        out.twist.twist.linear.x = noisy(east, self.speed_std)
-        out.twist.twist.linear.y = noisy(north, self.speed_std)
-        out.twist.twist.linear.z = noisy(0.0, self.speed_std)
+        out.twist.twist.linear.x = noisy(east, self.speed_std, self.rng)
+        out.twist.twist.linear.y = noisy(north, self.speed_std, self.rng)
+        out.twist.twist.linear.z = noisy(0.0, self.speed_std, self.rng)
         for i in (0, 7, 14):
             out.twist.covariance[i] = self.speed_std ** 2
         out.twist.covariance[21] = -1.0      # no turn rate, as ublox_gps
