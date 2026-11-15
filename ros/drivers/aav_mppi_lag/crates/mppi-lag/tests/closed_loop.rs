@@ -37,8 +37,19 @@ fn critics() -> Vec<Critic> {
         .collect()
 }
 
+thread_local! {
+    /// The steering's control cost weight for this test's runs (`Settings::steer_gamma`):
+    /// None, gamma's (as nav2.yaml); the `ours` stack's 0.05 in the calm tests. Per test
+    /// thread, so tests running side by side don't see each other's.
+    static STEER_GAMMA: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
+}
+
+/// The `ours` stack's steering control cost (`mppi_lag_steer_gamma:=0.05`, TODO 168).
+const CALM: f64 = 0.05;
+
 fn settings(speed: f64) -> Settings {
     Settings {
+        steer_gamma: STEER_GAMMA.with(std::cell::Cell::get),
         batch_size: 1000,
         vx_max: speed,
         seed: 7,
@@ -933,6 +944,7 @@ fn wiggle(poses: &[Pose], speed: f64, way: Way, steer_std_speed: f64, sim_like: 
             batch_size: 2000,
             vx_max: speed,
             steer_std_speed,
+            steer_gamma: STEER_GAMMA.with(std::cell::Cell::get),
             seed: 7,
             threads: 4,
             ..Settings::default()
@@ -1079,4 +1091,32 @@ fn no_wiggle_backing_up() {
     assert!(now.swing < 0.01 && now.sway < 0.01, "{now:?}");
     assert!(now.mean_cross < 0.02, "{now:?}");
     assert!(now.steer_rms < 0.03 && now.flips < 1.2, "{now:?}");
+}
+
+/// The `ours` stack's calm steering (`mppi_lag_steer_gamma:=0.05`, TODO 168): less
+/// sway on a straight with a sim-like pose, at the lot's 1 m/s and the campus's 2.5 m/s,
+/// as close to the path.
+#[test]
+fn calm_steering_sways_less_with_a_sim_like_pose() {
+    let road = path_through(|u| (100.0 * u, 0.0), 100.0);
+    for speed in [1.0, 2.5] {
+        let nav2 = wiggle(&road, speed, Way::Forward, 1.0, true);
+        STEER_GAMMA.with(|g| g.set(Some(CALM)));
+        let calm = wiggle(&road, speed, Way::Forward, 1.0, true);
+        STEER_GAMMA.with(|g| g.set(None));
+        println!("{speed} m/s: calm {calm:?}\n  gamma's {nav2:?}");
+        assert!(calm.reached && calm.speed > 0.9 * nav2.speed, "{calm:?}");
+        assert!(calm.sway < 0.8 * nav2.sway, "{calm:?} against {nav2:?}");
+        assert!(calm.mean_cross < nav2.mean_cross + 0.02, "{calm:?}");
+    }
+}
+
+/// The calm steering eases back to gamma's as the car slows (`steer_gamma_speed`), so
+/// the lot's turn back still goes through its cusp, from a stop and arriving rolling.
+#[test]
+fn calm_steering_still_turns_back_through_the_cusp() {
+    STEER_GAMMA.with(|g| g.set(Some(CALM)));
+    turn_back_through_a_cusp();
+    turn_back_arriving_rolling_and_off_the_path();
+    forward_stop_reverse_through_a_cusp();
 }

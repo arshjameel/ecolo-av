@@ -53,6 +53,15 @@ pub struct Settings {
     pub temperature: f64,
     /// The control cost's weight.
     pub gamma: f64,
+    /// The steering's control cost weight, if not `gamma` (None: `gamma`, as Nav2). The
+    /// cost leans each sample toward smaller commands; on the steering alone it damps the
+    /// sampling jitter (TODO 168, docs/mppi-lag.md "The jitter that was left"), where a
+    /// larger `gamma` also slowed the car and dithered at cusps.
+    pub steer_gamma: Option<f64>,
+    /// m/s: `steer_gamma` holds from this speed up; slower, the weight eases back toward
+    /// `gamma` in proportion (at a stop, `gamma`), so a cusp and a backing turn steer as
+    /// before (0: `steer_gamma` at every speed).
+    pub steer_gamma_speed: f64,
     /// m/s: the speed noise's spread (Nav2's vx_std).
     pub speed_std: f64,
     /// rad: the steering noise's spread (Nav2 samples wz instead; ours samples the angle),
@@ -96,6 +105,8 @@ impl Default for Settings {
             iteration_count: 1,
             temperature: 0.15,
             gamma: 0.015,
+            steer_gamma: None,
+            steer_gamma_speed: 1.0,
             speed_std: 0.4,
             steer_std: 0.15,
             steer_std_speed: 1.0,
@@ -124,6 +135,21 @@ impl Settings {
             self.steer_std
         }
     }
+
+    /// The steering's control cost weight with the car at `speed` m/s (either way):
+    /// `steer_gamma` from `steer_gamma_speed` up, easing linearly to `gamma` at a stop;
+    /// `gamma` when there is no `steer_gamma`.
+    pub fn steer_gamma_at(&self, speed: f64) -> f64 {
+        let Some(steer) = self.steer_gamma else {
+            return self.gamma;
+        };
+        let share = if self.steer_gamma_speed > 0.0 {
+            (speed.abs() / self.steer_gamma_speed).min(1.0).powi(2)
+        } else {
+            1.0
+        };
+        self.gamma + (steer - self.gamma) * share
+    }
 }
 
 /// MPPI's control cost of one sample: gamma x u' Σ⁻¹ (sample - u), summed over speed and
@@ -143,7 +169,7 @@ pub fn control_cost(settings: &Settings, sequence: &[Command], sample: &[Command
     let a = settings.noise_correlation.clamp(0.0, 0.999);
     let fresh = 1.0 - a * a;
     let pairs = || sequence.iter().zip(sample);
-    let along = |part: fn(&Command) -> f64, std: f64| {
+    let along = |part: fn(&Command) -> f64, std: f64, gamma: f64| {
         let first = pairs()
             .next()
             .map_or(0.0, |(u, c)| fresh * part(u) * (part(c) - part(u)));
@@ -154,9 +180,14 @@ pub fn control_cost(settings: &Settings, sequence: &[Command], sample: &[Command
                 (part(u1) - a * part(u0)) * (e1 - a * e0)
             })
             .sum();
-        settings.gamma * (first + rest) / (std * std * fresh)
+        gamma * (first + rest) / (std * std * fresh)
     };
-    along(|c| c.speed, settings.speed_std) + along(|c| c.steer, settings.steer_std)
+    along(|c| c.speed, settings.speed_std, settings.gamma)
+        + along(
+            |c| c.steer,
+            settings.steer_std,
+            settings.steer_gamma.unwrap_or(settings.gamma),
+        )
 }
 
 /// Every sample ran into something, even after a reset (Nav2's NoValidControl).
@@ -278,8 +309,11 @@ impl<M: CarModel> Optimizer<M> {
         let seeds: Vec<u64> = (0..threads).map(|_| self.rng.next_u64()).collect();
         // This round's steering noise, for the car's speed now; the control cost weighs
         // the samples by the same spread they were drawn with.
+        // The steering's control cost weight, too, for the speed now.
+        let speed = self.model.speed(state);
         let now = Settings {
-            steer_std: self.settings.steer_std_at(self.model.speed(state)),
+            steer_std: self.settings.steer_std_at(speed),
+            steer_gamma: Some(self.settings.steer_gamma_at(speed)),
             ..self.settings.clone()
         };
         let (model, settings, sequence) = (&self.model, &now, &self.sequence);
@@ -500,6 +534,57 @@ mod tests {
         let nav2: f64 = u.iter().zip(&e).map(|(u, e)| u * e).sum::<f64>() * white.gamma
             / white.speed_std.powi(2);
         assert!((control_cost(&white, &sequence, &sample) - nav2).abs() < 1e-12);
+    }
+
+    #[test]
+    fn steer_gamma_holds_from_its_speed_and_eases_to_gamma_at_a_stop() {
+        let s = Settings {
+            steer_gamma: Some(0.05),
+            ..Settings::default()
+        };
+        for v in [1.0, -1.0, 2.5] {
+            assert!((s.steer_gamma_at(v) - 0.05).abs() < 1e-12, "{v}");
+        }
+        assert!((s.steer_gamma_at(0.0) - s.gamma).abs() < 1e-12);
+        // Half the speed, a quarter of the way.
+        let half = s.gamma + 0.25 * (0.05 - s.gamma);
+        assert!((s.steer_gamma_at(-0.5) - half).abs() < 1e-12);
+        // None: gamma at every speed; 0 m/s: steer_gamma at every speed.
+        assert_eq!(Settings::default().steer_gamma_at(2.0), s.gamma);
+        let flat = Settings {
+            steer_gamma_speed: 0.0,
+            ..s.clone()
+        };
+        assert!((flat.steer_gamma_at(0.1) - 0.05).abs() < 1e-12);
+    }
+
+    #[test]
+    fn steer_gamma_weighs_the_steering_alone() {
+        let u = [0.5, 0.6, 0.4, -0.2, 0.1];
+        let e = [0.1, -0.3, 0.2, 0.05, -0.1];
+        let sequence: Vec<Command> = u.iter().map(|&v| Command::new(v, 0.5 * v)).collect();
+        let sample: Vec<Command> = u
+            .iter()
+            .zip(&e)
+            .map(|(&v, &n)| Command::new(v + n, 0.5 * (v + n)))
+            .collect();
+        let nav2 = Settings::default();
+        let calm = Settings {
+            steer_gamma: Some(0.05),
+            ..Settings::default()
+        };
+        let a = nav2.noise_correlation;
+        let speed = nav2.gamma * brute_force(&u, &e, nav2.speed_std, a);
+        let half = |v: &[f64; 5]| v.map(|x| 0.5 * x);
+        let steer = brute_force(&half(&u), &half(&e), nav2.steer_std, a);
+        let got = control_cost(&calm, &sequence, &sample);
+        assert!((got - (speed + 0.05 * steer)).abs() < 1e-12, "{got}");
+        // None: the steering's weight is gamma, as Nav2's.
+        let same = control_cost(&nav2, &sequence, &sample);
+        assert!(
+            (same - (speed + nav2.gamma * steer)).abs() < 1e-12,
+            "{same}"
+        );
     }
 
     #[test]

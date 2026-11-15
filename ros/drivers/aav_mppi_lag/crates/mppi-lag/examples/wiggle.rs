@@ -21,7 +21,8 @@
 //! | m/s | the mean speed |
 //!
 //! Switches: `SPEED` (2.5 m/s), `SEEDS` (2), `ONLY` (rows whose name holds it), `REVERSE`
-//! (also 15 m straight back at 0.5 m/s).
+//! (also 15 m straight back at 0.5 m/s); for the "after" rows `STD_SPEED`, `BATCH`,
+//! `TEMP`, `CORR`, `STD`, `GAMMA` and `STEER_GAMMA` (the settings of those names).
 
 use mppi_lag::rng::Rng;
 use mppi_lag::{
@@ -353,6 +354,14 @@ fn main() {
         threads: 4,
         // STD_SPEED: try another steer_std_speed for "after".
         steer_std_speed: env("STD_SPEED").unwrap_or(Settings::default().steer_std_speed),
+        // BATCH, TEMP, CORR, STD, GAMMA, STEER_GAMMA: try other samples, temperature, noise correlation or
+        // steering noise for "after".
+        batch_size: env("BATCH").map_or(Settings::default().batch_size, |b| b as usize),
+        temperature: env("TEMP").unwrap_or(Settings::default().temperature),
+        noise_correlation: env("CORR").unwrap_or(Settings::default().noise_correlation),
+        steer_std: env("STD").unwrap_or(Settings::default().steer_std),
+        gamma: env("GAMMA").unwrap_or(Settings::default().gamma),
+        steer_gamma: env("STEER_GAMMA").or(Settings::default().steer_gamma),
         ..Settings::default()
     };
     let before_mppi = Settings {

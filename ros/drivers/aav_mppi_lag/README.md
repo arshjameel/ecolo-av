@@ -80,14 +80,17 @@ From `navigation.launch.py` (`vehicle.mppi_lag_params`; nothing copied):
 | `ego.*` | ego.yaml's ramps |
 
 From `config/mppi_lag.yaml`: `model` (lag or ideal), `steer_std`, `steer_std_speed` (above it
-the steering noise shrinks as 1 / speed², TODO 168), `steer_std_min` (never under it: 0.024 rad), `noise_correlation`,
+the steering noise shrinks as 1 / speed², TODO 168), `steer_std_min` (never under it: 0.024 rad),
+`steer_gamma_speed` (1 m/s: with a `steer_gamma`, it holds from here up and eases to gamma at a stop), `noise_correlation`,
 `threads`, `seed`, `use_costmap`, the topics and timeouts (`road_ahead_timeout` 0.5 s),
 and the map correction (TODO 186): `map_correction_speed` (0.1 m/s; 0: off, each new path by
 the newest map -> odom, as before), `map_correction_turn_rate` (1°/s),
 `map_correction_snap_distance` (2 m) and `map_correction_snap_angle` (10°: a bigger gap is a
-relocalisation, taken at once and logged). From the launch: `map_correction` (bool, false since 15 Nov: a challenger until it wins in the simulator; `map_correction:=slow` gives true;
+relocalisation, taken at once and logged). From the launch: `map_correction` (bool, false by default; `map_correction:=slow` gives true, as the sim's `ours` stack does since 15 Nov (it won there, TODO 168);
 `navigation.launch.py map_correction:=newest` gives false, the old way; never in the yaml,
-which would win). All read once at start.
+which would win); `steer_gamma` (the launch's `mppi_lag_steer_gamma:=`; below 0 or unset:
+gamma's, as Nav2: the steering's control cost weight, TODO 168, [the sway that was left](../../../docs/mppi-lag.md#the-sway-that-was-left)).
+All read once at start.
 
 ### Crate `mppi-lag`
 
@@ -134,14 +137,15 @@ cargo test --release -p mppi-lag --test closed_loop explore -- --ignored --nocap
 cargo run --release -p mppi-lag --example timing                         # ms a tick
 cargo run --release -p mppi-lag --example follow_plan -- paths/*.csv     # planned paths, followed (lattice-planner's moves example writes them)
 cargo run --release -p mppi-lag --example wiggle                         # the wiggle: each suspect at 2.5 m/s, before and after (docs/mppi-lag.md)
+STEER_GAMMA=0.05 SPEED=1.0 ONLY=after cargo run --release -p mppi-lag --example wiggle   # one setting tried (also BATCH, TEMP, CORR, STD, GAMMA)
 ```
 
 | Test | Covers |
 |---|---|
 | `lag.rs`, `ego.rs`, `ideal.rs` | each stage of the model: lags, rate, deadbands, dead times, offset; reversing, the gear changing only at a stop |
 | `critics.rs`, `path.rs` | each critic on hand-made samples, PathAngle's modes on a reversing path, `LaneCritic` inside, over a line, over a kerb, without a lane; the cusps; `lane.rs`: the side, the search, NaN edges |
-| `optimizer.rs`, `smoothing.rs` | the limits, the filter, a straight path, a turn, the same seed the same plan; the control cost against a brute-force covariance inverse; the steering noise's spread by speed |
-| `tests/closed_loop.rs` | a pretend car (ego + the lag model at 100 Hz): the model predicts it; circle and S-curve at vehicle.yaml's lags; a corner and an S on very slow actuators: the lag-aware one closer on the corner, the only one to keep the S; 8 m straight back; 6 m ahead, a stop at the cusp, a quarter circle (r 5 m and the planner's 3.6 m) back; the test lot's turn back (back, cusp, forward), from a stop and arriving rolling 0.5 m off; the campus's "round the bend" junction, on the planner's own path from the sim (`campus_junction_round_the_bend`); a path drawn 1 m off a lane's centre, kept within 0.1 m of the line by `LaneCritic` (0.41 m over without); the wiggle (TODO 168), set up as the launch file sets it (2000 samples, 8.4 m of path): no side to side on a straight and a bend at 2.5 m/s, less with a sim-like pose, none backing up |
+| `optimizer.rs`, `smoothing.rs` | the limits, the filter, a straight path, a turn, the same seed the same plan; the control cost against a brute-force covariance inverse, the steering's own weight (`steer_gamma`) and its ease by speed; the steering noise's spread by speed |
+| `tests/closed_loop.rs` | a pretend car (ego + the lag model at 100 Hz): the model predicts it; circle and S-curve at vehicle.yaml's lags; a corner and an S on very slow actuators: the lag-aware one closer on the corner, the only one to keep the S; 8 m straight back; 6 m ahead, a stop at the cusp, a quarter circle (r 5 m and the planner's 3.6 m) back; the test lot's turn back (back, cusp, forward), from a stop and arriving rolling 0.5 m off; the campus's "round the bend" junction, on the planner's own path from the sim (`campus_junction_round_the_bend`); a path drawn 1 m off a lane's centre, kept within 0.1 m of the line by `LaneCritic` (0.41 m over without); the wiggle (TODO 168), set up as the launch file sets it (2000 samples, 8.4 m of path): no side to side on a straight and a bend at 2.5 m/s, less with a sim-like pose, none backing up; the calm steering (`steer_gamma` 0.05): less sway at 1 and 2.5 m/s with a sim-like pose, and the turn back and cusp still pass |
 | `tests/map_correction.rs` | the node's frames rebuilt (odometry in odom, the path in map again every 1 or 10 s, a global EKF jumping 5 times a second): the held map -> odom sways the car less than the newest, on a straight and a bend; a real 0.5 m offset is still taken out within 8 s; a 3 m relocalisation snaps. `explore` (ignored) prints every case |
 
 `colcon test --packages-select aav_mppi_lag` runs the same; `pixi run test` everything.
