@@ -38,9 +38,17 @@ fn finished(out: &[Command]) -> Option<(u64, Outcome)> {
 
 const GOAL: Pose = Pose::new(30.0, 0.0, 0.0);
 
+/// The trees as until 15 Nov: a new path every second (no KeepAValidPath), to test the replans.
+fn replanning() -> Settings {
+    Settings {
+        keep_path_age: 0.0,
+        ..Settings::default()
+    }
+}
+
 #[test]
 fn plan_follow_arrive() {
-    let mut nav = Navigator::new(Settings::default());
+    let mut nav = Navigator::new(replanning());
     assert!(nav.start(1, Mission::ToPose(GOAL), 0.0).is_empty());
     let (t, goals) = plan_token(&nav.tick(0.0, Some(&Pose::default())));
     assert_eq!(goals, vec![GOAL]);
@@ -78,9 +86,52 @@ fn final_approach_keeps_the_path() {
     plan_token(&nav.tick(21.0, Some(&near)));
 }
 
+/// The trees' KeepAValidPath (TODO 168): far from the goal too, a path that still ends at
+/// the goal is kept up to 10 s while IsPathValid says it is clear; a blocked one, or an
+/// older one, is planned again. Planning every second moved the path a few cm each time
+/// and the car swayed twice as much (a left turn without ROS: 0.075 against 0.038 m/s²).
+#[test]
+fn a_valid_path_is_kept_for_10_s() {
+    let mut nav = Navigator::new(Settings::default());
+    nav.start(1, Mission::ToPose(GOAL), 0.0);
+    let (t, _) = plan_token(&nav.tick(0.0, Some(&Pose::default())));
+    nav.planned(t, Ok(straight(&GOAL)), 0.0);
+    let far = Pose::new(5.0, 0.0, 0.0);
+    for now in [1.0, 3.0, 6.0, 9.5] {
+        nav.follower_heard(now);
+        let (made, _) = nav
+            .path_to_check(now, Some(&far))
+            .expect("a kept path is checked");
+        nav.path_checked(made, true);
+        assert!(nav.tick(now, Some(&far)).is_empty(), "kept at {now} s");
+    }
+    // Ten seconds old: a new one.
+    nav.follower_heard(10.0);
+    let (t2, _) = plan_token(&nav.tick(10.0, Some(&far)));
+    nav.planned(t2, Ok(straight(&GOAL)), 10.1);
+    // Something on it: planned again at the next second.
+    nav.follower_heard(11.2);
+    let (made, _) = nav.path_to_check(11.2, Some(&far)).expect("checked");
+    nav.path_checked(made, false);
+    plan_token(&nav.tick(11.2, Some(&far)));
+}
+
+#[test]
+fn through_poses_plan_again_every_period() {
+    let mut nav = Navigator::new(Settings::default());
+    let via = Pose::new(15.0, 0.0, 0.0);
+    nav.start(1, Mission::ThroughPoses(vec![via, GOAL]), 0.0);
+    let (t, _) = plan_token(&nav.tick(0.0, Some(&Pose::default())));
+    nav.planned(t, Ok(straight(&GOAL)), 0.0);
+    let far = Pose::new(2.0, 0.0, 0.0);
+    nav.follower_heard(3.0);
+    assert!(nav.path_to_check(3.0, Some(&far)).is_none());
+    plan_token(&nav.tick(3.0, Some(&far)));
+}
+
 #[test]
 fn a_blocked_path_on_the_final_approach_is_planned_again() {
-    let mut nav = Navigator::new(Settings::default());
+    let mut nav = Navigator::new(replanning());
     nav.start(1, Mission::ToPose(GOAL), 0.0);
     let (t, _) = plan_token(&nav.tick(0.0, Some(&Pose::default())));
     nav.planned(t, Ok(straight(&GOAL)), 0.0);
@@ -110,7 +161,7 @@ fn a_blocked_path_on_the_final_approach_is_planned_again() {
 
 #[test]
 fn a_failed_replan_while_driving_keeps_going_then_recovers() {
-    let mut nav = Navigator::new(Settings::default());
+    let mut nav = Navigator::new(replanning());
     nav.start(1, Mission::ToPose(GOAL), 0.0);
     let (t, _) = plan_token(&nav.tick(0.0, None));
     nav.planned(t, Ok(straight(&GOAL)), 0.0);

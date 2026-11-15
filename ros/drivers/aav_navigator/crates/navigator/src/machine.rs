@@ -314,12 +314,12 @@ impl Navigator {
         vec![Command::Plan { token, goals }]
     }
 
-    /// The path to ask IsPathValid about, while the car is on the final approach (where
-    /// the path is kept, not replanned): its `made` time (to name it in the answer) and its
-    /// poses. `None` elsewhere: the second's replan already checks the way.
+    /// The path to ask IsPathValid about while it is kept, not replanned (the final
+    /// approach, or a to-pose path still young enough): its `made` time (to name it in the
+    /// answer) and its poses. `None` elsewhere: the second's replan already checks the way.
     pub fn path_to_check(&self, now: f64, car: Option<&Pose>) -> Option<(f64, &[Pose])> {
         let a = self.active.as_ref()?;
-        if !on_final_approach(a, car, now, &self.settings) {
+        if !holding(a, car, now, &self.settings) {
             return None;
         }
         a.path.as_ref().map(|h| (h.made, h.poses.as_slice()))
@@ -633,10 +633,31 @@ fn drop_passed(a: &mut Active, car: &Pose, settings: &Settings) {
     }
 }
 
-/// The final approach: near the goal, keep a path that still ends there and is young
-/// enough, instead of replanning (TODO 17: replans there made the car circle the goal).
+/// Keep the path instead of replanning, while nothing blocks it: on the final approach
+/// (TODO 17: replans there made the car circle the goal), or, for a to-pose goal, while
+/// it still ends at the goal and is young enough (the trees' KeepAValidPath, TODO 168).
 fn keep_path(a: &Active, car: Option<&Pose>, now: f64, settings: &Settings) -> bool {
-    on_final_approach(a, car, now, settings) && a.path.as_ref().is_some_and(|h| !h.blocked)
+    holding(a, car, now, settings) && a.path.as_ref().is_some_and(|h| !h.blocked)
+}
+
+/// The path is one to keep (if nothing blocks it), so IsPathValid is asked about it.
+fn holding(a: &Active, car: Option<&Pose>, now: f64, settings: &Settings) -> bool {
+    on_final_approach(a, car, now, settings) || valid_to_keep(a, now, settings)
+}
+
+/// The trees' KeepAValidPath: a to-pose goal (each waypoint too, as waypoint_follower
+/// sends them) keeps a path that still ends at its goal while it is younger than
+/// `keep_path_age`. Through-poses plan on (their tree has no such branch).
+fn valid_to_keep(a: &Active, now: f64, settings: &Settings) -> bool {
+    let (Some(held), Some(end)) = (&a.path, a.end()) else {
+        return false;
+    };
+    a.kind != Kind::Through
+        && held
+            .poses
+            .last()
+            .is_some_and(|p| p.distance(&end) <= settings.path_end_tolerance)
+        && now - held.made < settings.keep_path_age
 }
 
 /// The trees' final approach, but for IsPathValid: the last leg, near the goal, a path

@@ -406,6 +406,7 @@ fn settings_from(spec: &Value) -> Result<Settings> {
         final_approach: number("final_approach", d.final_approach)?,
         path_end_tolerance: number("path_end_tolerance", d.path_end_tolerance)?,
         path_max_age: number("path_max_age", d.path_max_age)?,
+        keep_path_age: number("keep_path_age", d.keep_path_age)?,
         retries: number("retries", f64::from(d.retries))? as u32,
         wait: number("wait", d.wait)?,
         backup,
@@ -1040,8 +1041,8 @@ impl Core {
         );
     }
 
-    /// On the final approach (where the path is kept, not replanned), ask the planner's
-    /// IsPathValid about it, as the trees do. No answer, or no server: nothing changes
+    /// While the path is kept, not replanned (the final approach, or a to-pose path up to
+    /// `keep_path_age`), ask the planner's IsPathValid about it, as the trees do. No answer, or no server: nothing changes
     /// (the follower's own costmap checks and collision_monitor still stop the car).
     fn check_path(&mut self, now: f64, car: Option<&Pose>) {
         if self.checking {
