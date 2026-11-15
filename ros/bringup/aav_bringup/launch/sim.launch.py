@@ -13,7 +13,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [smoother:=] [behaviour:=]
       [amcl:=false] [voxels:=false] [voxels_impl:=python]
       [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
-      [kiss_ekf:=false]
+      [kiss_ekf:=false] [lane_pose:=false]
       [plan_around:=true] [things:=false]
       [watchdog:=true] [geofence:=true] [geofence_radius:=]
       [watch_hud:=false] [faults:=false] [spine:=false] [arm:=true]
@@ -148,6 +148,12 @@ bench's argument names:
                       takes its twist (vx, vyaw) beside the wheels and the IMU
                       (aav_localization config/ekf_local_kiss.yaml; docs/trials.md).
                       Default false: the local EKF on the wheels and the IMU alone
+  lane_pose:=true     a trial (TODO 155): the lane finder as a pose sensor. lane_finder runs
+                      (as lane:=true, without the lane follower) and lane_pose
+                      (aav_lane_pose) turns its lines and the lane map (lane_map:=, else
+                      the world's own) into the car's place across its lane; ekf_global
+                      takes its x and y beside the GPS (aav_localization
+                      config/ekf_global_lane.yaml). Needs the camera. Default false
   truth_pose:=true    a test (the wiggle, TODO 149): the simulator's truth is the car's pose.
                       No ekf_global; aav_gazebo's truth_localizer publishes
                       /localization/odom/global and map -> odom so that map -> base_link
@@ -296,6 +302,9 @@ def launch_setup(context):
     truth_pose = arg('truth_pose').lower() == 'true'
     if truth_pose and ndt_ekf:
         raise ValueError('truth_pose:=true has no ekf_global for ndt_ekf:=true to feed')
+    lane_pose = arg('lane_pose').lower() == 'true'
+    if truth_pose and lane_pose:
+        raise ValueError('truth_pose:=true has no ekf_global for lane_pose:=true to feed')
     # kiss_ekf: ekf_local takes KISS-ICP's twist, so KISS-ICP runs too.
     kiss_ekf = arg('kiss_ekf').lower() == 'true'
     kiss_icp = arg('kiss_icp').lower() == 'true' or kiss_ekf
@@ -307,13 +316,17 @@ def launch_setup(context):
                          'lag_scale yet)')
     world_path = worlds.world_file(gazebo_share, world)
     lane_map = worlds.lane_map_file(gazebo_share, world, arg('lane_map').strip())
+    # lane_pose: the lane map lane_map:= names, else the world's own.
+    pose_map = ((lane_map or worlds.lane_map_file(gazebo_share, world, 'world'))
+                if lane_pose else '')
     # The lidar and radar where the world has them; the cameras only where they're drawn.
     sensors = worlds.has_sensors(world_path)
     cameras = worlds.has_cameras(world_path, simulator) and arg('cameras').lower() == 'true'
     # Each only where the world renders it, as gazebo.launch.py decides.
     radar = sensors and arg('radar').lower() == 'true'
     lidar = sensors and arg('lidar').lower() == 'true'
-    wanted = [n for n in CAMERA_PARTS if flag[n]] + (['lane'] if lane == 'true' else [])
+    wanted = ([n for n in CAMERA_PARTS if flag[n]] + (['lane'] if lane == 'true' else [])
+              + (['lane_pose'] if lane_pose else []))
     if amcl and not (world == 'test_lot' and flag['nav'] and lidar):
         raise ValueError('amcl:=true needs world:=test_lot nav:=true lidar:=true: the only '
                          'world with a real map, and AMCL reads the lidar')
@@ -373,7 +386,8 @@ def launch_setup(context):
                          ('imu/data', '/sensors/imu/data')]),
         include(context, 'aav_localization', 'localization.launch.py', use_sim_time='true',
                 ndt_ekf=str(ndt_ekf).lower(), kiss_ekf=str(kiss_ekf).lower(),
-                global_ekf=str(not truth_pose).lower()),
+                global_ekf=str(not truth_pose).lower(),
+                lane_pose=str(lane_pose).lower(), lane_map=pose_map),
     ]
     if truth_pose:
         # The wiggle's first test: the truth as the pose, in ekf_global's place.
@@ -461,7 +475,7 @@ def launch_setup(context):
         # What this world has, and the camera only where something reads it: watching it
         # costs one more stream of pictures.
         camera = cameras and (flag['perception'] or flag['camera_obstacles'] or lane != 'false'
-                              or flag['faults'])
+                              or lane_pose or flag['faults'])
         inputs = (['odom', 'imu', 'gps', 'local', 'global'] + (['camera'] if camera else [])
                   + (['radar'] if radar else [])
                   + (['hud'] if flag['hud'] or flag['watch_hud'] else [])
@@ -506,7 +520,7 @@ def launch_setup(context):
     if lane in ('true', 'fake'):
         actions.append(include(context, 'aav_lane_geometry', 'lane_follower.launch.py',
                                fake=lane == 'fake'))
-    if lane == 'true':
+    if lane == 'true' or lane_pose:
         actions.append(include(context, 'aav_lane_finder', 'lane_finder.launch.py'))
     if flag['hud']:
         actions.append(include(context, 'aav_hud', 'hud.launch.py'))
@@ -789,6 +803,9 @@ def generate_launch_description():
                               description="true: Nav2's planner plans round what the radar "
                                           'and lidar see; false: the map only, so the car '
                                           'stops for it'),
+        DeclareLaunchArgument('lane_pose', default_value='false',
+                              description='a trial: the lane finder as a pose sensor into '
+                                          'ekf_global (aav_lane_pose, TODO 155)'),
         DeclareLaunchArgument('truth_pose', default_value='false',
                               description="a test: the simulator's truth as the pose, in "
                                           "ekf_global's place (aav_gazebo truth_localizer)"),

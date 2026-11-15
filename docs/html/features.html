@@ -303,6 +303,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
+<td><a href="trials.html#the-lane-finder-as-a-pose-sensor-15-nov-todo-155">The lane finder as a pose sensor</a> (<code>aav_lane_pose</code>, <code>lane_pose:=true</code>, a trial)</td>
+<td>Ben, TODO 155: the painted lines say where the car is across the road better than the GPS; with the lane map they correct <code>ekf_global</code> sideways only, to take the GPS's jitter out of the pose. Gated so bad lines never reach the filter. Off by default until it wins: in our simulator the sideways error 9-10 → 2 cm (road world), 9.9 → 5.4 cm (campus)</td>
+<td>Ben</td>
+<td>2026-11-15</td>
+<td>sim</td>
+</tr>
+<tr>
 <td>KISS-ICP lidar odometry as a trial (<code>aav_kiss_icp</code>, <code>kiss_icp:=true</code>; stock KISS-ICP, MIT, from its PyPI wheel); <a href="trials.html#kiss-icp-into-the-local-ekf-1-nov">its twist into the local EKF</a> (<code>kiss_ekf:=true</code>, a trial)</td>
 <td>A third "how far did I move" beside the wheels and the IMU, from the lidar alone and with no map; with <code>kiss_ekf:=true</code> its twist (never its pose) feeds <code>ekf_local</code>, so wheels that slip are caught. Its covariance measured against Gazebo's truth, twists 5 sigma off refused, and ekf_local carries on when it stops. Later it builds the real lot's map for NDT</td>
 <td>Ben's idea; built by Ben</td>

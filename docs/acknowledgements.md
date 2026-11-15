@@ -51,6 +51,7 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **NDT**: P. Biber, W. Straßer, IROS 2003; M. Magnusson, PhD thesis, Örebro, 2009 | paper | idea | `aav_ndt` (its `PROVENANCE.md` lists the rest) |
 | **KISS-ICP**: I. Vizzo et al., RA-L, 2023 | MIT | runs | `kiss_icp:=true`, scored beside the EKF |
 | AMCL (Nav2) | LGPL-2.1 | runs | `amcl:=true`, a trial |
+| **Lane markings against a map**: Autoware's YabLoc (camera road markings matched to a vector map); D. Schreiber, B. Switkes, C. Stiller, "LaneLoc: Lane marking based localization using highly accurate maps", IEEE IV 2013 | Apache-2.0; paper | idea | the lane finder as a pose sensor (`aav_lane_pose`, TODO 155): the painted lines and the lane map give the car's place across the lane, a pose sure only sideways for `ekf_global`. Much simpler than either: one offset, no particle filter |
 | imu_tools (Madgwick filter) | BSD / GPL-3 | runs | the IMU's orientation |
 
 ## Seeing

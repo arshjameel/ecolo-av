@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">9 min read · 7 sections</div></header>
+<div class="meta">10 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -320,6 +320,12 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>LGPL-2.1</td>
 <td>runs</td>
 <td><code>amcl:=true</code>, a trial</td>
+</tr>
+<tr>
+<td><strong>Lane markings against a map</strong>: Autoware's YabLoc (camera road markings matched to a vector map); D. Schreiber, B. Switkes, C. Stiller, "LaneLoc: Lane marking based localization using highly accurate maps", IEEE IV 2013</td>
+<td>Apache-2.0; paper</td>
+<td>idea</td>
+<td>the lane finder as a pose sensor (<code>aav_lane_pose</code>, TODO 155): the painted lines and the lane map give the car's place across the lane, a pose sure only sideways for <code>ekf_global</code>. Much simpler than either: one offset, no particle filter</td>
 </tr>
 <tr>
 <td>imu_tools (Madgwick filter)</td>

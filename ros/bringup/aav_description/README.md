@@ -126,6 +126,7 @@ Which lane the car drives in, so the road ahead's line is the lane's centre (W3,
 |---|---|
 | `load(path)`, `from_dict(data)` | a `lanes.yaml`: each road's centre line, `width` (kerb to kerb), `lanes` (all, both ways; default width / 3.5), `oneway`, `edge_inset` (0.5 m) |
 | `LaneMap.lane_at(x, y, heading)` | the car's lane there: the rightmost for the way it drives, its centre and edges; None off every road |
+| `LaneMap.roads_at(x, y)` | every road whose tarmac holds the point, either way: two or more is a junction (the lane pose trial's gate) |
 | `lane_line(lanes, route, car)` | the route ahead moved onto its lane's centre; off every road it stays; eased over 3 m where roads change |
 | `with_edges(strip, lanes)` | a `Strip` with its four edges from the map (NaN off every road) |
 

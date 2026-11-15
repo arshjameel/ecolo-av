@@ -1,0 +1,27 @@
+# ekf_global with the lane pose (lane_pose:=true, a trial, TODO 155): read on top of
+# ekf_global.yaml (and ekf_global_ndt.yaml: then the launch file makes this pose1).
+#
+# lane_pose (aav_lane_pose) turns the lane finder's lines and the lane map into the car's
+# place across its lane, map frame: sure across the lane (0.15 m with both lines), 50 m
+# unsure along it. Its covariance is turned to the lane's heading, so the filter takes
+# only the sideways part. Only x and y: its yaw is in the message but not fused here.
+#
+# Order of the 15 numbers, as in ekf_global.yaml:
+#   x, y, z,  roll, pitch, yaw,  vx, vy, vz,  vroll, vpitch, vyaw,  ax, ay, az
+ekf_global:
+  ros__parameters:
+    pose0: /localization/lane/pose
+    pose0_config: [true,  true,  false,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false]
+    pose0_differential: false
+    pose0_relative: false
+    pose0_queue_size: 5
+    # Mahalanobis distance, with the pose's covariance and the filter's: more than 5 sigma
+    # away is refused (the other lane, a line mistaken). lane_pose gates first too.
+    pose0_rejection_threshold: 5.0
+    # The pose carries the picture's stamp, 30-100 ms late: put it in at its own time.
+    smooth_lagged_data: true
+    history_length: 1.0
