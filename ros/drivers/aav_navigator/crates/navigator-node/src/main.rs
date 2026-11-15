@@ -531,13 +531,6 @@ fn msg_of(p: &Pose) -> PoseMsg {
     }
 }
 
-/// b placed in a's frame: a ∘ b.
-fn compose(a: &Pose, b: &Pose) -> Pose {
-    let (s, c) = a.yaw.sin_cos();
-    let yaw = (a.yaw + b.yaw).sin().atan2((a.yaw + b.yaw).cos());
-    Pose::new(a.x + c * b.x - s * b.y, a.y + s * b.x + c * b.y, yaw)
-}
-
 fn seconds(d: f64) -> DurationMsg {
     let d = if d.is_finite() { d.max(0.0) } else { 0.0 };
     DurationMsg {
@@ -560,7 +553,7 @@ impl Core {
         let (a, a_at) = self.map_odom.as_ref()?;
         let (b, b_at) = self.odom_base.as_ref()?;
         let fresh = self.now() - a_at.min(*b_at) <= TRANSFORM_TIMEOUT;
-        fresh.then(|| compose(a, b))
+        fresh.then(|| a.compose(b))
     }
 
     fn on_tf(&mut self, msg: &TFMessage) {
@@ -577,9 +570,23 @@ impl Core {
         }
     }
 
+    /// A goal pose on the map: as it is in map (or with no frame); through map -> odom
+    /// from odom; through the car's pose from base_link (Nav2 turns goals from any frame
+    /// it has a transform for). `None` for another frame, or when /tf is stale. The latest
+    /// transforms, not those at the goal's stamp.
     fn in_map(&self, p: &PoseStamped) -> Option<Pose> {
         let f = p.header.frame_id.trim_start_matches('/');
-        (f.is_empty() || f == self.frames.map).then(|| pose_of(&p.pose))
+        let pose = pose_of(&p.pose);
+        if f.is_empty() || f == self.frames.map {
+            Some(pose)
+        } else if f == self.frames.odom {
+            let (map_odom, at) = self.map_odom.as_ref()?;
+            (self.now() - at <= TRANSFORM_TIMEOUT).then(|| map_odom.compose(&pose))
+        } else if f == self.frames.base {
+            self.car().map(|car| car.compose(&pose))
+        } else {
+            None
+        }
     }
 
     fn stamped(&self, poses: &[Pose]) -> Vec<PoseStamped> {
@@ -650,8 +657,8 @@ impl Core {
                 id,
                 Outcome::Aborted {
                     reason: Abort::InvalidGoal(format!(
-                        "a pose is not in the {} frame",
-                        self.frames.map
+                        "a pose is not in {}, {} or {} (or /tf is over {TRANSFORM_TIMEOUT} s old)",
+                        self.frames.map, self.frames.odom, self.frames.base
                     )),
                     missed: Vec::new(),
                 },
