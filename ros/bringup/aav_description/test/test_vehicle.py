@@ -859,7 +859,7 @@ def test_a_global_window_rolls_the_global_costmap_and_0_leaves_it():
 def test_the_stop_zone_shadow_reads_what_collision_monitor_reads():
     """TODO 182: our stop zone's settings from the same tuned nav2.yaml and car."""
     share = Path(__file__).resolve().parents[3] / 'drivers' / 'aav_navigation' / 'config'
-    car = vehicle.load()
+    car = vehicle.load(CONFIG)
     tuned = vehicle.nav2_tuned(yaml.safe_load((share / 'nav2.yaml').read_text()),
                                car['vehicle'], False, None, True, True)
     p = vehicle.stop_zone_params(tuned, car)

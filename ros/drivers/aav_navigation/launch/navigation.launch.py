@@ -136,6 +136,8 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           radar's speed too with radar:=true. voxels runs for it. Nothing
                           reads the list yet (docs/designs/2026-11-14_the-whole-car.md)
   things_background:=true  with things: cubes on /map's walls are not things (TODO 175)
+  things_names:=true  with things: each thing takes the detector's label (person, car,
+                          stop sign) where its box overlaps it in a camera (TODO 192)
   stop_zone_shadow:=true  our stop zone in Rust beside collision_monitor, never driving:
                           /safety/stop_zone/shadow/cmd_vel and .../state (TODO 182)
   replan_hz:=0            the navigate-to-pose tree plans once a goal, not every second
@@ -508,6 +510,7 @@ def nodes(context):
                             parameters=[config, {'radar': radar,
                                                  'background': flag(context,
                                                                     'things_background'),
+                                                 'names': flag(context, 'things_names'),
                                                  'use_sim_time': use_sim_time}]))
     if flag(context, 'stop_zone_shadow'):
         # Our stop zone in shadow (aav_stop_zone, TODO 182): the same settings and sensors
@@ -730,6 +733,9 @@ def generate_launch_description():
         DeclareLaunchArgument('things_background', default_value='false',
                               description='with things:=true: cubes on the saved map are '
                                           'not things (TODO 175 step 5)'),
+        DeclareLaunchArgument('things_names', default_value='false',
+                              description='with things:=true: things take the camera '
+                                          "detector's labels (TODO 192)"),
         DeclareLaunchArgument('cube_floor', default_value='',
                               description="m above the road: the cubes' floor (empty: the "
                                           "car's obstacle height)"),

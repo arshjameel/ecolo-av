@@ -18,7 +18,7 @@ a speed or a memory. `things` turns the lidar's cubes into one list:
 | Radar | where `radar:=true`, each cluster's mean radial speed, the car's own speed taken off, updates the nearest thing's speed along the ray |
 | Memory | a thing seen 3 times stays listed 3 s after it leaves view, moving on its speed (slower than 0.5 m/s: parked). Within 4 m of the car, 30 s: the roof lidar can't see a low box there, so not seeing it says nothing |
 | Background | `background: true` (off by default): cubes on the saved map's walls (`/map`, grown `background_slack`, 0.25 m) are dropped before grouping, so a wall seen again is not a new thing (`background.py`, TODO 175). Safety never relies on it |
-| Names | none yet: every `kind` is `unknown`. Naming needs camera-to-lidar calibration (Q22). The hook: `Tracker.name`, a function from a thing to a name |
+| Names | `names: true` (off by default, `things_names:=true`): each thing's box is drawn into every camera's picture; the detector's box overlapping it most (IoU ≥ 0.3, score ≥ 0.5) gives its `kind` (person, car, stop sign), held 3 s unseen (`naming.py`, TODO 192). The lidar says where, the camera says what. On the car it needs the cameras' mounts calibrated (Q22) |
 
 ### Stock or ours?
 

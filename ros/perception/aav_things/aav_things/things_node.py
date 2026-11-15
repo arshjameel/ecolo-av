@@ -10,6 +10,10 @@ Subscribes  perception/voxels/cubes     sensor_msgs/PointCloud2 (aav_voxels), ba
                                         gives the nearest thing its speed along the ray
                                         (radar:=true only, best effort)
             localization/odom/local     nav_msgs/Odometry: the car's speed (for the radar)
+            /perception/detections      vision_msgs/Detection2DArray (names true only): the
+                                        camera's boxes; a thing whose box in the picture
+                                        overlaps one takes its label (naming.py, TODO 192)
+            camera_info_topics          sensor_msgs/CameraInfo (names true only): each lens
             /map                        nav_msgs/OccupancyGrid, transient local (background
                                         true only): the saved map; cubes on its walls (with
                                         background_slack m for pose error) are dropped
@@ -26,8 +30,9 @@ Uses TF     odom <- base_link at each cloud's stamp; odom <- the radar's frame; 
 
 The maths is in groups.py (Euclidean grouping) and tracker.py (a constant-velocity Kalman
 filter per thing, greedy nearest association, the memory). No stock ROS 2 Jazzy tracker
-on RoboStack fits (README.md). Names: every thing is UNKNOWN until camera-to-lidar
-calibration (Q22); Tracker.name is the hook.
+on RoboStack fits (README.md). Names (names:=true, naming.py): the lidar says where, the
+camera says what; with names off, or on the car before camera calibration (Q22), every
+thing is UNKNOWN. Also uses TF base_link <- each camera's frame, and odom <- base_link.
 
 navigation.launch.py things:=true starts it (with voxels, which makes the cubes), and
 sim.launch.py passes it on. docs/designs/2026-11-14_the-whole-car.md, "Seeing: things".
@@ -36,9 +41,11 @@ sim.launch.py passes it on. docs/designs/2026-11-14_the-whole-car.md, "Seeing: t
 import math
 import signal
 
+from aav_detector import ground
 from aav_interfaces.msg import Thing, Things
 from aav_things.background import Background, new_only
 from aav_things.groups import group, GroupShape, to_frame
+from aav_things.naming import Camera, Namer, Seen
 from aav_things.tf_wait import Step, Waiting
 from aav_things.tracker import ground_radial_speed, RadarCluster, Tracker, TrackerShape
 from builtin_interfaces.msg import Time as TimeMsg
@@ -51,9 +58,10 @@ from rclpy.node import Node
 from rclpy.qos import (DurabilityPolicy, qos_profile_sensor_data, QoSProfile,
                        ReliabilityPolicy)
 from rclpy.time import Time
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import CameraInfo, PointCloud2
 from sensor_msgs_py import point_cloud2
 import tf2_ros
+from vision_msgs.msg import Detection2DArray
 from visualization_msgs.msg import Marker, MarkerArray
 
 ODOM = 'odom'
@@ -104,6 +112,22 @@ class ThingsNode(Node):
         if self.use_radar:
             self.create_subscription(PointCloud2, 'perception/radar/clusters', self.on_radar,
                                      qos_profile_sensor_data)
+        # Names from the camera's boxes (naming.py, TODO 192): off until it scores.
+        self.use_names = bool(self.declare_parameter('names', False).value)
+        self.namer = Namer(min_iou=float(self.declare_parameter('name_min_iou', 0.3).value),
+                           hold=float(self.declare_parameter('name_hold', 3.0).value))
+        self.name_min_score = float(self.declare_parameter('name_min_score', 0.5).value)
+        self.lenses = {}
+        if self.use_names:
+            topics = self.declare_parameter(
+                'camera_info_topics',
+                [f'/sensors/camera/{c}/camera_info' for c in ('front_left', 'front_right',
+                                                               'rear')]).value
+            for topic in topics:
+                self.create_subscription(CameraInfo, topic, self.on_camera_info, 10)
+            self.create_subscription(Detection2DArray, '/perception/detections',
+                                     self.on_detections, 10)
+            self.tracker.name = self.name_of
         if self.use_background:
             latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                                  durability=DurabilityPolicy.TRANSIENT_LOCAL)
@@ -115,6 +139,51 @@ class ThingsNode(Node):
             f'within {self.tracker.shape.blind_range:.1f} m); radar '
             f'{"on" if self.use_radar else "off"}; the saved map as background '
             f'{"on" if self.use_background else "off"}')
+
+    def on_camera_info(self, msg):
+        lens = ground.lens_from_k(msg.k, msg.width, msg.height)
+        if lens is not None:
+            self.lenses[msg.header.frame_id] = lens
+
+    def on_detections(self, msg):
+        """Keep each camera's newest boxes, with its lens and its mount on the car."""
+        frame = msg.header.frame_id
+        lens = self.lenses.get(frame)
+        if lens is None:
+            return
+        try:
+            t = self.tf.lookup_transform('base_link', frame, Time())
+        except tf2_ros.TransformException:
+            return
+        p, q = t.transform.translation, t.transform.rotation
+        mount = ground.Mount((p.x, p.y, p.z), ground.rotation(q.x, q.y, q.z, q.w),
+                             ground.is_optical(frame))
+        seen = []
+        for d in msg.detections:
+            if not d.results:
+                continue
+            best = max(d.results, key=lambda r: r.hypothesis.score).hypothesis
+            if best.score < self.name_min_score:
+                continue
+            cx, cy = d.bbox.center.position.x, d.bbox.center.position.y
+            hw, hh = d.bbox.size_x / 2.0, d.bbox.size_y / 2.0
+            seen.append(Seen(best.class_id, best.score, (cx - hw, cy - hh, cx + hw, cy + hh)))
+        now = self.get_clock().now().nanoseconds * 1e-9
+        self.namer.cameras[frame] = Camera(lens, mount, seen, now)
+
+    def name_of(self, track):
+        """Return a track's name from the cameras (Tracker.name's hook)."""
+        try:
+            t = self.tf.lookup_transform(ODOM, 'base_link', Time())
+        except tf2_ros.TransformException:
+            return track.kind
+        cx, cy = t.transform.translation.x, t.transform.translation.y
+        yaw = yaw_of(t.transform.rotation)
+        dx, dy = track.x[0] - cx, track.x[1] - cy
+        c, s = math.cos(yaw), math.sin(yaw)
+        now = self.get_clock().now().nanoseconds * 1e-9
+        return self.namer.name(track.id, c * dx + s * dy, -s * dx + c * dy, track.length,
+                               track.width, track.height, now)
 
     def on_map(self, msg):
         info = msg.info

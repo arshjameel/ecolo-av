@@ -419,6 +419,7 @@ def launch_setup(context):
                                global_window=arg('global_window'),
                                stop_zone_shadow=arg('stop_zone_shadow'),
                                things_background=arg('things_background'),
+                               things_names=arg('things_names'),
                                planner_search=arg('planner_search'),
                                diffusion_model=arg('diffusion_model'),
                                diffusion_record=arg('diffusion_record'),
@@ -717,6 +718,9 @@ def generate_launch_description():
         DeclareLaunchArgument('things_background', default_value='false',
                               description='with things:=true: cubes on the saved map are '
                                           'not things (TODO 175 step 5)'),
+        DeclareLaunchArgument('things_names', default_value='false',
+                              description='with things:=true: things take the camera '
+                                          "detector's labels (TODO 192)"),
         DeclareLaunchArgument('lattice_moves', default_value=stacks.CHOSEN,
                               description="with planner:=lattice (or own): nav2, Nav2's "
                                           'moves; smooth or smooth_fast, a trial '
