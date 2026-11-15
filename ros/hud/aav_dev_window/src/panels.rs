@@ -1444,29 +1444,50 @@ fn thing_names(
     place: impl Fn(Vec3) -> Option<Vec2>,
 ) {
     let painter = root.painter_at(rect);
-    for thing in world.things_now(Instant::now()) {
-        if !thing.is_named() {
-            continue;
-        }
-        let top = Vec3::new(thing.x as f32, thing.y as f32, thing.height as f32 + 0.4);
-        let Some(at) = place(top).map(|p| egui::pos2(p.x, p.y)) else {
-            continue;
-        };
-        if !rect.contains(at) {
-            continue;
-        }
+    // Below the panel's title, NDT line and legend; and never on a name already drawn
+    // (seen 15 Nov: three names in a pile on the header). The farthest first, from the
+    // top of the picture down, so a pushed name stays in depth order; a name moved off its
+    // thing gets a thin line to it.
+    let clear_top = rect.top() + NAMES_BELOW;
+    let mut labels: Vec<(egui::Pos2, &Thing)> = world
+        .things_now(Instant::now())
+        .iter()
+        .filter(|thing| thing.is_named())
+        .filter_map(|thing| {
+            let top = Vec3::new(thing.x as f32, thing.y as f32, thing.height as f32 + 0.4);
+            let at = place(top).map(|p| egui::pos2(p.x, p.y))?;
+            rect.contains(at).then_some((at, thing))
+        })
+        .collect();
+    labels.sort_by(|a, b| a.0.y.total_cmp(&b.0.y));
+    let mut placed: Vec<egui::Rect> = Vec::new();
+    for (at, thing) in labels {
         let galley = painter.layout_no_wrap(
             thing.label(),
             egui::FontId::proportional(16.0),
             egui::Color32::WHITE,
         );
         let size = galley.size() + egui::vec2(12.0, 6.0);
-        let back = egui::Rect::from_center_size(at - egui::vec2(0.0, size.y / 2.0), size);
+        let mut back = egui::Rect::from_center_size(at - egui::vec2(0.0, size.y / 2.0), size);
+        if back.top() < clear_top {
+            back = back.translate(egui::vec2(0.0, clear_top - back.top()));
+        }
+        while let Some(hit) = placed.iter().find(|r| r.intersects(back)) {
+            back = back.translate(egui::vec2(0.0, hit.bottom() + 2.0 - back.top()));
+        }
+        if !rect.contains_rect(back) {
+            continue;
+        }
+        let colour = rgba_colour(thing.colour());
+        if !back.expand(2.0).contains(at) {
+            let foot = egui::pos2(back.center().x, back.top());
+            painter.line_segment([foot, at], egui::Stroke::new(1.0, colour));
+        }
         painter.rect_filled(back, 3.0, egui::Color32::from_black_alpha(190));
         painter.rect_stroke(
             back,
             3.0,
-            egui::Stroke::new(2.0, rgba_colour(thing.colour())),
+            egui::Stroke::new(2.0, colour),
             egui::StrokeKind::Inside,
         );
         painter.galley(
@@ -1474,8 +1495,13 @@ fn thing_names(
             galley,
             egui::Color32::WHITE,
         );
+        placed.push(back);
     }
 }
+
+/// The 3D view's names start this far below its top: under its title, NDT line and
+/// legend (`ndt_line`, `cubes_panel`).
+const NAMES_BELOW: f32 = 74.0;
 
 /// A hud_core colour (the things' kinds) for egui.
 fn rgba_colour(c: hud_core::theme::Rgba) -> egui::Color32 {
