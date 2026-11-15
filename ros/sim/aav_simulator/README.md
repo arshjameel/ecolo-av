@@ -54,7 +54,7 @@ them all.
 ## Invariants
 
 - Same names, types, frames, rates and QoS as Gazebo's bridges: `pixi run drop-in` checks.
-- The same seed gives the same sensor streams.
+- The same seed gives the same sensor streams, on any number of `threads` (the lidar forks one noise stream per ring).
 - `sim-core` has no ROS and no Bevy, and its own tests.
 - Rust API Guidelines; `cargo fmt` and `cargo clippy` clean.
 
