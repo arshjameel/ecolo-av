@@ -38,3 +38,17 @@ def test_a_point_at_the_radar_itself_has_no_speed():
 
 def test_fields_are_the_ti_drivers():
     assert radar.FIELDS == ('x', 'y', 'z', 'intensity', 'velocity')
+
+
+def test_a_moving_point_adds_its_own_speed_along_the_line_of_sight():
+    # TODO 194: our simulator's cloud says what each ray hit moves (a person walking).
+    # Dead ahead, the car at 1 m/s and a person walking towards it at 0.5 m/s: -1.5 m/s.
+    points = radar.ti_points(np.array([[4.0, 0.0, 0.0], [3.0, 4.0, 0.0]]), speed=1.0,
+                             own=np.array([-0.5, 0.0]))
+    assert np.allclose(points[:, 4], [-1.5, -0.6])
+
+
+def test_the_hit_mask_keeps_the_rays_in_step_with_their_speeds():
+    inf = math.inf
+    xyz = np.array([[2.0, 0.0, 0.1], [inf, inf, inf], [8.0, 0.0, 0.0]])
+    assert radar.hit(xyz, 8.4).tolist() == [True, False, True]

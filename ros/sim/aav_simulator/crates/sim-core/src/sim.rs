@@ -602,27 +602,37 @@ impl Simulator {
         }
         let base = self.base_link();
         let threads = self.settings.threads;
+        // What a ray hits moving (a person walking) gives the radar its own speed (TODO 194).
+        let movers = &self.movers;
+        let motion = |name: &str| {
+            movers
+                .iter()
+                .find(|m| m.name == name)
+                .map(|m| Vec3::new(m.velocity.x, m.velocity.y, 0.0))
+        };
         if let Some(spec) = self.settings.lidar {
             if self.due(spec.rate) {
                 let pose = base.then(&self.settings.mounts.lidar);
-                out.push(Output::Lidar(Scan::cast(
+                out.push(Output::Lidar(Scan::cast_moving(
                     &spec,
                     &self.world.scene,
                     &pose,
                     &mut self.lidar_noise,
                     threads,
+                    &motion,
                 )));
             }
         }
         if let Some(spec) = self.settings.radar {
             if self.due(spec.rate) {
                 let pose = base.then(&self.settings.mounts.radar);
-                out.push(Output::Radar(Scan::cast(
+                out.push(Output::Radar(Scan::cast_moving(
                     &spec,
                     &self.world.scene,
                     &pose,
                     &mut self.radar_noise,
                     threads,
+                    &motion,
                 )));
             }
         }

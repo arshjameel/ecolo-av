@@ -39,7 +39,7 @@ since 8 Nov**; `simulator:=gazebo` starts Gazebo instead.
 | pub | `/gazebo/navsat` | NavSatFix, 5 Hz, `gps_link` |
 | pub | `/joint_states` | JointState, 100 Hz: four wheels, two steering joints |
 | pub | `/sensors/lidar/points` | PointCloud2, 10 Hz, `lidar_link`, 1800 x 16, reliable (`lidar`) |
-| pub | `/gazebo/radar/points` | PointCloud2, 10 Hz, `radar_link`, 61 x 3, best effort (`radar`) |
+| pub | `/gazebo/radar/points` | PointCloud2, 10 Hz, `radar_link`, 61 x 3, best effort (`radar`). Both clouds carry one field more than Gazebo's: `speed`, how fast what each ray hit moves along it (a person walking; 0 for the still world), so `gazebo_radar` gives a mover its own Doppler speed (TODO 194) |
 | pub | `/vehicle/sim/entities` | MarkerArray, latched: every placed model (its SDF file, its pose), for the cameras |
 | service | `/vehicle/sim/spawn_entity`, `/vehicle/sim/delete_entity` | `simulation_interfaces`: place or remove a model |
 | service | `/vehicle/sim/set_entity_state` | `simulation_interfaces/SetEntityState`: put the car (`aav`) at a pose, standing still (Gazebo's `set_pose`); or a placed model at a pose, then moving at the twist (map frame: x, y, turn), as a person walking (TODO 170; the cameras draw it where it was put) |

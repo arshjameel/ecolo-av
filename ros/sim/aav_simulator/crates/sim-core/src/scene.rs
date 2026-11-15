@@ -428,21 +428,27 @@ impl Scene {
 
     /// The distance to the nearest surface along the ray, if one is closer than `limit`.
     pub fn cast(&self, ray: &Ray, limit: f64) -> Option<f64> {
-        let mut best = self.fixed.cast(ray, limit);
+        self.cast_named(ray, limit).map(|(d, _)| d)
+    }
+
+    /// As [`Scene::cast`], with the placed object's name if the ray hit one (`None`: the
+    /// fixed world).
+    pub fn cast_named(&self, ray: &Ray, limit: f64) -> Option<(f64, Option<&str>)> {
+        let mut best = self.fixed.cast(ray, limit).map(|d| (d, None));
         let inverse = Vec3::new(
             1.0 / ray.direction.x,
             1.0 / ray.direction.y,
             1.0 / ray.direction.z,
         );
         for p in &self.placed {
-            let reach = best.unwrap_or(limit);
+            let reach = best.map_or(limit, |(d, _)| d);
             if p.bounds.entry(ray.origin, inverse, reach).is_none() {
                 continue;
             }
             for t in &p.triangles {
                 if let Some(d) = t.hit(ray) {
-                    if d < best.unwrap_or(limit) {
-                        best = Some(d);
+                    if d < best.map_or(limit, |(b, _)| b) {
+                        best = Some((d, Some(p.name.as_str())));
                     }
                 }
             }

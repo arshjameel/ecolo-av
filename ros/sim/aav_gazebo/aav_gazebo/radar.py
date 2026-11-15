@@ -11,28 +11,39 @@ same kind of cloud in Gazebo as on the car, and PCL finds every field it expects
 
 from __future__ import annotations
 
+from typing import Optional
+
 import numpy as np
 
 # The TI driver's fields, in its order (aav_radar_ti pc_publisher.py), all float32.
 FIELDS = ('x', 'y', 'z', 'intensity', 'velocity')
 
 
-def returns(xyz: np.ndarray, max_range: float) -> np.ndarray:
-    """Return the rays that hit something: the finite points no farther than max_range (m)."""
+def hit(xyz: np.ndarray, max_range: float) -> np.ndarray:
+    """Return which rays hit something: finite, no farther than max_range (m). A mask."""
     xyz = np.asarray(xyz, dtype=np.float32).reshape(-1, 3)
     finite = np.isfinite(xyz).all(axis=1)
     near = np.zeros(len(xyz), dtype=bool)
     near[finite] = np.linalg.norm(xyz[finite], axis=1) <= max_range
-    return xyz[near]
+    return near
 
 
-def ti_points(xyz: np.ndarray, speed: float, intensity: float = 1.0) -> np.ndarray:
+def returns(xyz: np.ndarray, max_range: float) -> np.ndarray:
+    """Return the rays that hit something: the finite points no farther than max_range (m)."""
+    xyz = np.asarray(xyz, dtype=np.float32).reshape(-1, 3)
+    return xyz[hit(xyz, max_range)]
+
+
+def ti_points(xyz: np.ndarray, speed: float, intensity: float = 1.0,
+              own: Optional[np.ndarray] = None) -> np.ndarray:
     """
     Return each point as the TI driver's x, y, z, intensity and velocity (N x 5, float32).
 
-    The world stands still, so a point's radial speed is the car's own, seen along the line
-    from the radar to it: negative while the car closes on it, as the TI radar reports.
-    The car's turning is left out, as the bench's pretend radar leaves it out.
+    A point's radial speed is the car's own, seen along the line from the radar to it:
+    negative while the car closes on it, as the TI radar reports; plus `own`, each point's
+    own speed along that line over the ground (+ away), where it moves: our simulator's
+    cloud carries it (a person walking, TODO 194); Gazebo's world stands still. The car's
+    turning is left out, as the bench's pretend radar leaves it out.
     """
     xyz = np.asarray(xyz, dtype=np.float32).reshape(-1, 3)
     distance = np.linalg.norm(xyz, axis=1)
@@ -41,4 +52,6 @@ def ti_points(xyz: np.ndarray, speed: float, intensity: float = 1.0) -> np.ndarr
     out[:, :3] = xyz
     out[:, 3] = intensity
     out[:, 4] = -speed * along
+    if own is not None:
+        out[:, 4] += np.asarray(own, dtype=np.float32).reshape(-1)
     return out

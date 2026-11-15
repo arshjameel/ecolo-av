@@ -22,7 +22,9 @@
 //!             sensors/lidar/points    sensor_msgs/PointCloud2, 10 Hz, lidar_link, reliable:
 //!                                     1800 x 16 rays, organised, packed as Gazebo's (lidar)
 //!             gazebo/radar/points     sensor_msgs/PointCloud2, 10 Hz, radar_link, best
-//!                                     effort: the radar stand-in's 61 x 3 rays (radar)
+//!                                     effort: the radar stand-in's 61 x 3 rays (radar).
+//!                                     Both clouds add `speed` (float32, at 20): what each
+//!                                     ray hit moves along it, for the radar's Doppler
 //!             vehicle/sim/entities    visualization_msgs/MarkerArray, latched: every model
 //!                                     placed while running (obstacle, spawn_entity), each a
 //!                                     MESH_RESOURCE marker: ns its name, mesh_resource its

@@ -84,7 +84,7 @@ aboard), `adaptive_brake`.
 | `faults.py` | the fault modes, `Fault` | no |
 | `imu.py` | the car's own acceleration, which Gazebo's IMU misses | no |
 | `gps.py` | the receiver's velocity from the truth | no |
-| `radar.py` | Gazebo's lidar cloud as the TI radar's | no |
+| `radar.py` | Gazebo's lidar cloud as the TI radar's; with our simulator's `speed` field, a moving thing's own Doppler speed (TODO 194) | no |
 | `wheels.py` | each wheel's speed from joint states | no |
 | `sources.py` | what `/system/source` announces | no |
 | `worlds.py` | which world renders which sensors (`has_sensors`); each world's lane map (`lane_map_file`) | no |

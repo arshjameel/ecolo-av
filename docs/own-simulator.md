@@ -39,7 +39,7 @@ It replaces `gz sim` **and** its bridges. Every node above them is the same one 
 | `/gazebo/navsat` | 5 Hz, noise 4.5e-6° (0.5 m) | yes; exact WGS84 from the world's datum |
 | `/joint_states` | 100 Hz | Gazebo sends 1 kHz; the car's wheels 100 Hz |
 | `/sensors/lidar/points` | 10 Hz, 1800 x 16, 0.5-100 m, 3 cm | yes: packed as Gazebo's, organised, `inf` misses |
-| `/gazebo/radar/points` | 10 Hz, 61 x 3, 0.3-8.4 m, 5 cm | yes |
+| `/gazebo/radar/points` | 10 Hz, 61 x 3, 0.3-8.4 m, 5 cm | yes; and better: a person walking gets their own Doppler speed (a `speed` field Gazebo's cloud lacks; `gazebo_radar` adds it). Gazebo's radar says everything stands still (TODO 194) |
 | the three car cameras, the chase camera | 10 Hz, 640 x 360 | yes: `aav_sim_cameras` draws the same world file |
 
 ## The worlds

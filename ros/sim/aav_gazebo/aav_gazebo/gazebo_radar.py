@@ -1,7 +1,8 @@
 """
 gazebo_radar: Gazebo's radar stand-in (a lidar shaped like the radar), as the TI radar.
 
-Subscribes  gazebo/radar/points   sensor_msgs/PointCloud2, best effort (bridged lidar)
+Subscribes  gazebo/radar/points   sensor_msgs/PointCloud2, best effort (bridged lidar; our
+                                  simulator's adds `speed`: what each ray hit moves)
             gazebo/odom           nav_msgs/Odometry: the car's speed, for each point's
                                   velocity
 Publishes   sensors/radar/points  sensor_msgs/PointCloud2, best effort, in radar_link: only
@@ -45,7 +46,12 @@ class GazeboRadar(SensorRelay):
 
     def on_radar(self, msg):
         xyz = point_cloud2.read_points_numpy(msg, field_names=('x', 'y', 'z'))
-        points = radar.ti_points(radar.returns(xyz, self.radar_range), self.speed)
+        kept = radar.hit(xyz, self.radar_range)
+        own = None
+        if any(f.name == 'speed' for f in msg.fields):
+            # Our simulator's: what each ray hit moves along it (a person walking).
+            own = point_cloud2.read_points_numpy(msg, field_names=('speed',)).reshape(-1)[kept]
+        points = radar.ti_points(xyz.reshape(-1, 3)[kept], self.speed, own=own)
         msg.header.frame_id = 'radar_link'
         out = self.faulty(point_cloud2.create_cloud(msg.header, RADAR_FIELDS, points))
         if out is not None:
