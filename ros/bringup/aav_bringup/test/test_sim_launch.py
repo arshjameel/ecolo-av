@@ -164,7 +164,11 @@ def test_the_defaults_start_what_pixi_run_sim_always_has():
     assert (nav['radar'], nav['lidar'], nav['collision_monitor'], nav['camera_obstacles']) == (
         'false', 'false', 'false', 'false')
     # The empty world renders no camera, radar or lidar: the watchdog watches the rest.
-    assert sent['watchdog.launch.py']['inputs'] == 'odom,imu,gps,local,global'
+    inputs = sent['watchdog.launch.py']['inputs'].split(',')
+    # The sensors, then our own nodes the stack starts (warn only: TODO 180).
+    sensors = [i for i in inputs if not i.startswith('node_')]
+    assert sensors == 'odom,imu,gps,local,global'.split(',')
+    assert {'node_ego', 'node_planner', 'node_mppi_lag'} <= set(inputs)
     assert nav['map'].endswith(os.path.join('maps', 'empty.yaml'))
     assert names(actions) == {'imu_filter_madgwick', 'run_info', 'rviz2'}
     assert arguments(node(actions, 'rviz2'))[1].endswith('drive.rviz')
@@ -202,7 +206,11 @@ def test_the_road_world_adds_the_radar_to_nav2_and_its_clusters():
     assert (nav['radar'], nav['lidar'], nav['collision_monitor']) == ('true', 'true', 'true')
     assert nav['map'].endswith(os.path.join('maps', 'empty.yaml'))
     # Nothing reads the camera by default, so the watchdog leaves it alone.
-    assert sent['watchdog.launch.py']['inputs'] == 'odom,imu,gps,local,global,radar'
+    inputs = sent['watchdog.launch.py']['inputs'].split(',')
+    # The sensors, then our own nodes the stack starts (warn only: TODO 180).
+    sensors = [i for i in inputs if not i.startswith('node_')]
+    assert sensors == 'odom,imu,gps,local,global,radar'.split(',')
+    assert {'node_ego', 'node_planner', 'node_mppi_lag'} <= set(inputs)
 
 
 def test_the_lidar_alone_guards_nav2_with_the_radar_off():
