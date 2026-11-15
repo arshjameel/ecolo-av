@@ -31,3 +31,25 @@ def clearance(track, x0, y0, heading, half_street, body):
             px, py = x + along * c - across * s, y + along * s + across * c
             least = min(least, half_street - abs((px - x0) * nx + (py - y0) * ny))
     return least
+
+
+WALL_THICK = 0.3    # m: aav_gazebo's wall model (10 x 0.3 x 2 m)
+
+
+def walls(x0, y0, heading, half_street, alongs):
+    """
+    Return where a street's walls go: (name, x, y), one a side for each centre in `alongs`.
+
+    The street runs along `heading` through (x0, y0); each wall's face is `half_street` m
+    from that line, so its centre is half a wall's thickness further out. alongs: each
+    wall's centre, m along the street from (x0, y0). Names: wall_l0, wall_l1... (left),
+    wall_r0... (right).
+    """
+    c, s = math.cos(heading), math.sin(heading)
+    offset = half_street + WALL_THICK / 2.0
+    out = []
+    for side, tag in ((1.0, 'l'), (-1.0, 'r')):
+        for k, along in enumerate(alongs):
+            out.append((f'wall_{tag}{k}', x0 + along * c - side * offset * s,
+                        y0 + along * s + side * offset * c))
+    return out

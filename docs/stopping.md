@@ -138,6 +138,26 @@ is in `/tf`), the lookup at the picture's stamp (220 of 220 found, parked), and 
 (the node keeps the sign in `odom`, so `left` keeps falling between pictures). A dropped
 picture now logs `stop sign dropped: <why>`.
 
+### The obstacle leg: a wall across the road (15 Nov, TODO 162)
+
+**Why it failed:** `plan_around:=false` hides the box only from the planner. The path
+follower's own local costmap (Nav2's MPPI, or `mppi_lag` on ours) still sees it, and
+steers round a 1 m box when there is room. At 1 m/s the stopping law's cap binds only in
+the last 2 m, so by then the car was already beside the box: no APPROACH(obstacle), no stop
+zone. It went round 2 of 4 runs on 8 Nov, and on 14 Nov; it stopped on 15 Nov. A coin toss.
+
+**What the leg expects now:** the design says a parked box is passed and a person is
+waited for. Passing a parked box is `--behaviour-things`' leg. So `--behaviour` puts a
+**wall across the road** (10 m wide): nothing to go round. The car must slow
+(APPROACH(obstacle)), the stop zone must stop it, and it drives on once the wall is gone.
+
+| Run (our simulator, 15 Nov) | Result |
+|---|---|
+| ours, the 1 m box (before) | passed: stop zone at 0.43 m/s, 0.91 m before it |
+| ours, a box in a walled lane (tried) | stopped at the box, but then stopped again for a wall it faced at an angle after rocking: goal aborted. Dropped |
+| ours, the wall across | **passed**: stop zone at 0.45 m/s, 0.94 m before it, goal reached |
+| stock (Nav2), the wall across | **passed**: stop zone at 0.33 m/s, 1.04 m before it, goal reached |
+
 At 1 m/s the law's cap binds only in the last 2 m, so the slowing is short.
 
 ### Not built yet

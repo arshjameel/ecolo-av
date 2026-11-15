@@ -97,8 +97,9 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             /world/things within 1 m, standing; taken away,
                                             still listed 1.5 s on, gone after 5 s. One more
                                             run; --things-only skips the road world's run)
-    pixi run sim-check --behaviour        (the behaviour trial, behaviour:=true: an
-                                            obstacle in the lane and a Nav2 goal, each
+    pixi run sim-check --behaviour        (the behaviour trial, behaviour:=true: a wall
+                                            across the road (nothing to go round) and a
+                                            Nav2 goal, each
                                             slowed by the speed cap, and with -e ml
                                             --perception the stop sign too; one more run.
                                             --behaviour-only skips the road world's run)
@@ -296,6 +297,7 @@ from std_srvs.srv import SetBool, Trigger  # noqa: E402
 import stop_points  # noqa: E402
 import stop_zone_compare  # noqa: E402
 import street_check  # noqa: E402
+from street_check import WALL_THICK  # noqa: E402
 import tf2_ros  # noqa: E402
 from vision_msgs.msg import Detection2DArray  # noqa: E402
 from visualization_msgs.msg import Marker  # noqa: E402
@@ -1126,14 +1128,15 @@ def costmap_peak(grid, x, y, radius):
 
 
 def check_obstacle(probe, ahead=15.0, goal=30.0, model=OBSTACLE, depth=1.0, name='obstacle',
-                   costmap=False, backwards=False):
+                   costmap=False, backwards=False, across=False):
     """
     Put a model `ahead` m in the lane: the stop zone must stop the car before it.
 
     model is the bench's box (1 m deep) unless given; the lidar's check uses the post
     (0.5 m). With costmap, the local costmap must also mark it while the car stands there.
     backwards: the model and the goal are behind the car, which must back up to them, and
-    the stop zone behind the rear bumper must stop it.
+    the stop zone behind the rear bumper must stop it. across: the model turned a quarter
+    turn (a wall across the road: nothing to go round).
     """
     body = vehicle.load()['vehicle']['body']
     # base_link to the bumper the car drives towards: the front one, or the rear one.
@@ -1149,7 +1152,7 @@ def check_obstacle(probe, ahead=15.0, goal=30.0, model=OBSTACLE, depth=1.0, name
 
     # Its near face `ahead` m past the bumper, on the car's line.
     bx, by = x0 + (front + ahead + depth / 2.0) * c, y0 + (front + ahead + depth / 2.0) * s
-    if not place_model(model, bx, by, h):
+    if not place_model(model, bx, by, h + (math.pi / 2.0 if across else 0.0)):
         result(name, False, "could not place the box (the simulator's create service)")
         return
     newest = {}     # the local costmap, in odom: on the world's origin, as the car started
@@ -1324,6 +1327,23 @@ def check_plan_around(probe, ahead=15.0, goal=30.0, depth=1.0, model=OBSTACLE,
            f'longest, stop zone fired: {stop_zone}')
 
 
+def place_street(x0, y0, h, half, alongs, name):
+    """
+    Put a street's walls in the world (street_check.walls): their names, or None.
+
+    If one can't be placed, the ones placed go again and the check `name` fails.
+    """
+    names = []
+    for wall, wx, wy in street_check.walls(x0, y0, h, half, alongs):
+        if not place_model(WALL, wx, wy, h, name=wall):
+            result(name, False, f'could not place {wall}: {SERVICE_SAID[0]}')
+            for placed in names:
+                remove_model(placed)
+            return None
+        names.append(wall)
+    return names
+
+
 def check_three_point_turn(probe, width=6.5, goal=5.0):
     """
     Turn round in a narrow street: walls `width` m apart, a goal `goal` m on, facing back.
@@ -1338,19 +1358,9 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
     c, s = math.cos(h), math.sin(h)
     half = width / 2.0
     # Four 10 m walls a side, from 15 m behind to 25 m ahead: too long to drive round.
-    names = []
-    for side in (1.0, -1.0):
-        offset = half + 0.15                       # the wall's centre: its face at `half`
-        for k, along in enumerate((-10.0, 0.0, 10.0, 20.0)):
-            name = f'wall_{"l" if side > 0 else "r"}{k}'
-            wx = x0 + along * c - side * offset * s
-            wy = y0 + along * s + side * offset * c
-            if not place_model(WALL, wx, wy, h, name=name):
-                result('three-point turn', False, f'could not place {name}: {SERVICE_SAID[0]}')
-                for placed in names:
-                    remove_model(placed)
-                return
-            names.append(name)
+    names = place_street(x0, y0, h, half, (-10.0, 0.0, 10.0, 20.0), 'three-point turn')
+    if names is None:
+        return
     probe.spin_for(3.0)          # the lidar sees the walls before the planner is asked
     start = len(probe.track)
     gx, gy, gyaw = x0 + goal * c, y0 + goal * s, math.atan2(-s, -c)
@@ -2814,8 +2824,12 @@ def check_behaviour(probe, sign=False):
             speed_at.append(abs(probe.speed()))
         return False
 
+    # A wall across the road (TODO 162): with room beside a box, the follower's own costmap
+    # steers round it before the cap binds (at 1 m/s only in the last 2 m), and there is
+    # no stop to score. A parked box to pass is --behaviour-things' leg.
     timer = probe.create_timer(0.05, watch)
-    check_obstacle(probe, name='behaviour: obstacle (the stop zone)')
+    check_obstacle(probe, model=WALL, depth=WALL_THICK, across=True,
+                   name='behaviour: obstacle (the stop zone)')
     probe.destroy_timer(timer)
     seen = behaviour_seen(probe, since)
     at = f'{speed_at[0]:.2f} m/s' if speed_at else 'never'
