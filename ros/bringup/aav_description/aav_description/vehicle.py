@@ -429,7 +429,8 @@ def navigator_params(v, reversing, waypoints='pass_through'):
 
     The trees' numbers (behavior_trees/*_car*.xml): replanning at 1 Hz, but a to-pose goal
     keeps a valid path up to 10 s (keep_path_age: the trees since 14 Nov, TODO 149; here
-    since 15 Nov, TODO 168) (through-poses 0.333 Hz), the final approach (final_approach(v), TODO 17), 6 recoveries, Wait 5 s,
+    since 15 Nov, TODO 168) (through-poses 0.333 Hz), the final approach
+    (final_approach(v), TODO 17), 6 recoveries, Wait 5 s,
     BackUp 1 m at half max_reverse_speed only with reversing, RemovePassedGoals' 1 m.
     waypoints: pass_through (ours: one through-poses goal, TODO 140) or stop_at_each
     (Nav2's waypoint_follower). The time limits, so a server that dies mid-goal fails it:
