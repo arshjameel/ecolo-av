@@ -73,6 +73,10 @@ HUD and on the developer window.
 | GOAL: SHORT / PAST, OBSTACLE, HITS | room left between the stop and the goal (along the plan), or the obstacle; HITS in red when a full brake now still reaches it | goal_m, room_m |
 | ROAD 0.6 m/s, SIGN IN 12 m | with `behaviour:=true`: the road ahead's speed here and its end (the nearest stop: sign, obstacle, fence, goal). It takes the third line, unless an obstacle is within 1 m of the stop point; `ROAD: STOP` in amber at the end | road_mps, road_m, road_why |
 
+The road line, on Ben's Mac (14 Nov, `pixi run hud --demo`): "ROAD 1.0 m/s, GOAL IN 3.2 m" under STOPS IN and ON PLAN:
+
+![The HUD with the road ahead's line, bottom right, pretend data](img/hud-road.png)
+
 While braking for the goal, the bold line shrinks to the bar and goes green:
 
 ![AHEAD braking for the goal: the line short, on the plan](img/hud-squiggly-braking.png)
