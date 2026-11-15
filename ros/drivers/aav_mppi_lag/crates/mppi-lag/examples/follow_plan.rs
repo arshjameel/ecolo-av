@@ -5,12 +5,18 @@
 //! cargo run --release -p mppi-lag --example follow_plan -- /tmp/moves/*.csv
 //! ```
 //!
+//! Or a recording (TODO 202): `-- bags/<drive>/<drive>_0.mcap` follows the plans it holds
+//! on `/plan` (`TOPIC` sets another), up to `LIMIT` of them (10) spread over the drive,
+//! each from its own first pose: the sim's or the car's own plans, driven again offline.
+//!
 //! Each CSV is one path (x,y,yaw a line, as the planner's `moves` example writes them).
 //! The car is ego plus the lag model (vehicle.yaml's guesses), stepped every 0.01 s; MPPI
 //! ticks at 20 Hz, lag-aware, as `tests/closed_loop.rs` drives it; at 1 m/s (`SPEED`
 //! sets another; `MODEL=ideal`: lag-free, as Nav2's MPPI), reversing set up as `reversing:=true` when the path has a cusp. Per path:
 //! reached, time, metres off the path (mean, worst), and the steering: how often it swings
 //! from left to right (flips a second) and how fast it moves on average (rad/s).
+
+mod bag;
 
 use mppi_lag::{
     CarModel, Command, Critic, Driven, Ego, Follower, FollowerSettings, GlobalPath, IdealModel,
@@ -174,6 +180,33 @@ fn observe<M: CarModel>(plant: &M, car: &M::State) -> Observation {
     }
 }
 
+/// The paths in `file`, each with its name: a CSV is one; an MCAP holds a drive's plans.
+fn paths(file: &str) -> Vec<(String, Vec<Pose>)> {
+    let stem = std::path::Path::new(file)
+        .file_stem()
+        .map_or(file.to_string(), |s| s.to_string_lossy().into_owned());
+    if !file.ends_with(".mcap") {
+        return vec![(stem, read(file))];
+    }
+    let topic = std::env::var("TOPIC").unwrap_or_else(|_| "/plan".into());
+    let limit: usize = std::env::var("LIMIT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(10)
+        .max(1);
+    let bytes = std::fs::read(file).expect("a recording");
+    let plans = bag::plans(&bytes, &topic).unwrap_or_else(|e| panic!("{file}: {e}"));
+    if plans.is_empty() {
+        eprintln!("{file}: no plans on {topic}");
+    }
+    let step = plans.len().div_ceil(limit).max(1);
+    plans
+        .into_iter()
+        .step_by(step)
+        .map(|p| (format!("{stem} {} at {:.1} s", p.frame, p.time), p.poses))
+        .collect()
+}
+
 fn main() {
     let speed: f64 = std::env::var("SPEED")
         .ok()
@@ -181,16 +214,12 @@ fn main() {
         .unwrap_or(1.0);
     println!("| path | outcome | time s | mean off m | worst off m | steering flips /s | steering rad/s |");
     println!("|---|---|---|---|---|---|---|");
-    for file in std::env::args().skip(1) {
-        let poses = read(&file);
+    for (name, poses) in std::env::args().skip(1).flat_map(|file| paths(&file)) {
         if poses.len() < 2 {
-            println!("| {file} | too short | | | | | |");
+            println!("| {name} | too short | | | | | |");
             continue;
         }
         let r = drive(&poses, speed);
-        let name = std::path::Path::new(&file)
-            .file_stem()
-            .map_or(file.clone(), |s| s.to_string_lossy().into_owned());
         println!(
             "| {name} | {} | {:.1} | {:.3} | {:.3} | {:.2} | {:.3} |",
             r.outcome
