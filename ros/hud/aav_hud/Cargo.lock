@@ -838,6 +838,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "map-chunks"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_yaml_ng",
+]
+
+[[package]]
 name = "map-core"
 version = "0.1.0"
 dependencies = [
@@ -919,6 +927,7 @@ dependencies = [
 name = "ndt-core"
 version = "0.1.0"
 dependencies = [
+ "map-chunks",
  "nalgebra",
 ]
 
