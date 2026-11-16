@@ -7,7 +7,7 @@
 <!-- Generated from docs/status.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Status: what works and what doesn&#x27;t yet</h1>
-<div class="meta">33 min read · 6 sections</div></header>
+<div class="meta">34 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -599,7 +599,7 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <tr>
 <td>Map chunks, NDT by chunk, Lanelet2 in Rust (15 Nov)</td>
 <td><code>aav_description</code> <code>map-chunks</code>, <code>lanelet-map</code>; <code>ndt_chunks:=</code>; <code>global_window:=</code></td>
-<td><span class="badge b-works">works</span> in their tests; the campus cut in 1.5 s; <code>global_window:=192</code> passes <code>sim-check</code>. Nothing uses the chunks yet (<a href="../designs/2026-11-15_three-levels.md">Three levels</a>)</td>
+<td><span class="badge b-works">works</span> in their tests; the campus cut in 1.5 s; <code>global_window:=192</code> passes <code>sim-check</code>. Scored 15 Nov: NDT by chunk as good as the whole map on the campus, so the default there with <code>ndt:=true</code>; <code>global_window:=192</code> reached 2 of 6 campus legs (the long roads leave the window), a challenger (<a href="../designs/2026-11-15_three-levels.md">Three levels</a>)</td>
 </tr>
 <tr>
 <td><strong>Control and safety</strong></td>

@@ -2,7 +2,7 @@
 
 * **Author:** Ben (the ask), written up 15 Nov 2026
 * **Date:** 2026-11-15
-* **Status:** Proposed. Nothing here is built yet except what "Today" says. TODO 175.
+* **Status:** Proposed; steps being built (the table below). TODO 175.
 * **Builds on:** [the whole car](2026-11-14_the-whole-car.md) (the road ahead, the things),
   [one shape](2026-11-13_one-shape.md) (the levels, the league).
 
@@ -99,8 +99,8 @@ New: `/maps/chunks/loaded` (which chunks are in memory, for the dev window and t
 |---|---|---|
 | 1 | **The chunk store** (Rust crate, no ROS): `(i, j)` from x, y; load and drop by distance; each chunk's layers | laptop tests: the right 15 chunks load along a campus route |
 | 2 | **Chunk files**: `chunk-map` cuts a map server's map into one `.pgm` per chunk; then `pixi run campus` and `ndt-map` call it | ✅ occupancy, 15 Nov: the campus in 625 chunks per detail, 1.5 s; read back cell for cell. NDT next |
-| 3 | **The middle planner on chunks**: our planner plans ~100 m ahead on the loaded chunks, then again as the car goes | 🔧 15 Nov, first form: `global_window:=192` rolls the global costmap with the car (the 3 x 3 chunks); the street router's 10-30 m legs fit. To score: campus tours, legs and time against the whole map. Later: a far goal planned via the lane route |
-| 4 | **NDT on chunks** | 🔧 15 Nov, `ndt-core` `chunks.rs`: the campus NDT map in 699 chunk files; the 3 x 3 round the start holds 10,354 cubes of 890,407 (1.2 %), built in 0.01 s against 0.9 s, cube for cube the same. The node: `ndt_chunks:=` (off by default) loads them as the car drives; builds, not yet run in a simulator |
+| 3 | **The middle planner on chunks**: our planner plans ~100 m ahead on the loaded chunks, then again as the car goes | 🔧 first form, `global_window:=192` (the global costmap rolls with the car, the 3 x 3 chunks): **scored 15 Nov, worse, stays a challenger**. Lot 8/8 either way (sway 0.022 against 0.021 m/s², 313 against 322 s); campus **2/6** against 6/6: a far goal's road leaves the window ("out of time or iterations"), or the goal is off it. It needs the next part first: a far goal planned via the lane route, in steps that fit |
+| 4 | **NDT on chunks** | ✅ 15 Nov, `ndt-core` `chunks.rs`; the campus NDT map in 699 chunk files. Scored on the campus tour (3 runs against 2 on the whole map): as good (off 0.058 / 0.014 / 0.011 m a leg against 0.051 / 0.014 / 0.011), ready in 0.02 s against 2.5 s, a new 3 x 3 read in 0-3 ms (rayon) and built in 8-22 ms. Fixed on the way: the chunks follow a restart from `ekf_global`. **On by default** with `ndt:=true` on the campus once `pixi run campus` made them (`ndt_chunks:=off`: the whole map) |
 | 5 | **The subtraction**: the things from new occupancies only | fewer things on a walled campus road; a person still found |
 | 6 | **Lanelet2 in Rust** as the route level's map (TODO 175) | a route by lanes, stop lines in the road ahead |
 | 7 | **The dev window** draws the chunks, the lanes, the static map | seen live |

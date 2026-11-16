@@ -154,6 +154,10 @@ bench's argument names:
                       (docs/designs/2026-10-29_ndt.md): only in world:=test_lot with the
                       lidar, from the start pose, and only once ndt_map (pixi run ndt-map
                       drive) is there
+  ndt_chunks:=        with ndt:=true, the map in 64 m chunks, only the 3 x 3 round the car
+                      held (TODO 175). Empty: on the campus, its chunks when pixi run
+                      campus made them (scored as good as the whole map, 15 Nov), else the
+                      whole map; off: the whole map; a folder: those chunks
   ndt_ekf:=true       a trial: NDT as above (ndt:=true is implied), and ekf_global takes
                       its pose (x, y, yaw) beside the GPS (aav_localization
                       config/ekf_global_ndt.yaml; docs/trials.md). Default false: the
@@ -245,6 +249,28 @@ from launch_ros.substitutions import FindPackageShare
 MAPS = {'empty': 'empty.yaml', 'test_lot': 'example_lot.yaml', 'road': 'empty.yaml',
         worlds.CAMPUS: os.path.abspath(worlds.CAMPUS_MAP)}
 DEFAULT_NDT_MAP = os.path.join('maps', 'ndt', 'test_lot.pcd')
+
+
+def campus_ndt_chunks(given, world, ndt_map):
+    """
+    Return ndt_chunks:= for NDT: '' for the whole map, else the chunks' folder.
+
+    Empty (the default): the campus's chunks when pixi run campus made them and NDT is on
+    the campus's own map (TODO 175: as good as the whole map, 15 Nov), else the whole map.
+    off: the whole map. Anything else: that folder.
+    """
+    if given == 'off':
+        return ''
+    if given:
+        return given
+    chunks = worlds.CAMPUS_NDT_CHUNKS
+    if (world == worlds.CAMPUS
+            and os.path.abspath(ndt_map) == os.path.abspath(worlds.CAMPUS_NDT)
+            and os.path.isfile(os.path.join(os.path.dirname(chunks), 'chunks.yaml'))):
+        return chunks
+    return ''
+
+
 # What each world shows in RViz: the road world adds the camera, the radar and the truth.
 LAYOUTS = {'road': 'road.rviz', 'test_lot': 'road.rviz', worlds.CAMPUS: 'road.rviz'}
 # The parts that read the camera, so need a world that renders it.
@@ -306,6 +332,7 @@ def launch_setup(context):
             start_x, start_y, start_yaw = str(x), str(y), str(yaw)
         if ndt_map == DEFAULT_NDT_MAP:
             ndt_map = worlds.CAMPUS_NDT
+    ndt_chunks = campus_ndt_chunks(arg('ndt_chunks'), world, ndt_map)
     sim_speed = arg('sim_speed') or (worlds.CAMPUS_SPEED if world == worlds.CAMPUS else '')
     flag = {n: arg(n).lower() == 'true'
             for n in ('nav', 'teleop', 'rviz', 'perception', 'camera_obstacles', 'hud',
@@ -502,7 +529,7 @@ def launch_setup(context):
         here = ({'ndt_min_score': worlds.CAMPUS_NDT_MIN_SCORE,
                  'ndt_min_height': worlds.CAMPUS_NDT_FLOOR} if world == worlds.CAMPUS else {})
         actions.append(include(context, 'aav_ndt', 'ndt.launch.py', use_sim_time='true',
-                               ndt_map=ndt_map, ndt_chunks=arg('ndt_chunks'),
+                               ndt_map=ndt_map, ndt_chunks=ndt_chunks,
                                ndt_x=start_x, ndt_y=start_y,
                                ndt_yaw=start_yaw, **here))
     if kiss_icp:
@@ -858,7 +885,9 @@ def generate_launch_description():
                                           'choice (false)'),
         DeclareLaunchArgument('ndt_chunks', default_value='',
                               description='with ndt:=true: the map in 64 m chunks from this '
-                                          'folder (maps/campus/chunks/ndt; TODO 175)'),
+                                          "folder (TODO 175). Empty: the campus's chunks "
+                                          'when pixi run campus made them, else the whole '
+                                          'map; off: the whole map'),
         DeclareLaunchArgument('ndt_map', default_value=DEFAULT_NDT_MAP,
                               description="NDT's map (pixi run ndt-map drive); relative to "
                                           'where the launch starts'),

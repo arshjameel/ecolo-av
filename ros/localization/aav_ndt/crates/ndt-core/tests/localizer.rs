@@ -97,6 +97,10 @@ fn five_poor_fits_make_it_lost_and_it_starts_again_from_the_global_ekf() {
         assert_eq!(report.tracking, expected, "cloud {i}");
     }
     assert_eq!(ndt.restarts(), 1);
+    // The next match starts at ekf_global's pose, not the last start: where the map's
+    // chunks must be loaded (TODO 175).
+    let guess = ndt.guess(at(0.6)).expect("a guess after the restart");
+    assert!(guess.distance(&Pose2::new(20.4, -0.3, 0.05)).0 < 1e-9);
     // From ekf_global's pose it fits again.
     let report = ndt.cloud(at(0.6), world.scan(&truth, 1800, 0.03, &mut rng));
     let Outcome::Pose(fit) = report.outcome else {

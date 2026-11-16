@@ -14,10 +14,20 @@ with `ndt_ekf:=true` (a trial) `ekf_global` takes it beside the GPS.
 /localization/odom/global ┘   maps/ndt/*.pcd   └─▶ /localization/ndt/status
 ```
 
-**Chunks** (TODO 175, step 4; `ndt_chunks:=maps/campus/chunks/ndt`, off by default, untested in a simulator): `ndt-core` `chunks.rs` cuts a map into
+**Chunks** (TODO 175, step 4): `ndt-core` `chunks.rs` cuts a map into
 one `.pcd` per 64 m chunk and builds only the 3 x 3 round the car (`ChunkedMap`), cube for
 cube the same as the whole map. `cargo run --release --bin ndt-chunks -- map.pcd out/ -900
 -900 [x y]` writes them and compares: on the campus, 1.2 % of the cubes, 0.01 s to build.
+
+| In the sim (15 Nov, campus tour) | Whole map | Chunks |
+|---|---|---|
+| Off the truth, mean, per leg (m) | 0.051 / 0.014 / 0.011 | 0.058 / 0.014 / 0.011 |
+| Ready at start-up | 2.5 s | 0.02 s |
+| A new 3 x 3 as the car drives | - | read 0-3 ms, built 8-22 ms |
+
+The chunks follow where the next match starts (`Localizer::guess`), so a restart from
+`ekf_global` after LOST finds its map. `sim.launch.py` uses the campus's chunks by default
+once `pixi run campus` made them; `ndt_chunks:=off` for the whole map.
 
 ## Interface
 
