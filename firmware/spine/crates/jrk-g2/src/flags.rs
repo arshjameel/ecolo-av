@@ -17,18 +17,25 @@ impl ErrorFlags {
     pub const MOTOR_DRIVER: u16 = 1 << 2;
     /// RC input mode only: the RC signal is bad.
     pub const INPUT_INVALID: u16 = 1 << 3;
+    /// Analog or RC input mode only: the input is disconnected.
     pub const INPUT_DISCONNECT: u16 = 1 << 4;
     /// The feedback sensor reads outside its error limits: a loose wire, say.
     pub const FEEDBACK_DISCONNECT: u16 = 1 << 5;
+    /// The current went over the soft limit.
     pub const SOFT_OVERCURRENT: u16 = 1 << 6;
+    /// Serial: a stop bit was missing (a framing error).
     pub const SERIAL_SIGNAL: u16 = 1 << 7;
+    /// Serial: a byte came before the last was read.
     pub const SERIAL_OVERRUN: u16 = 1 << 8;
+    /// Serial: the receive buffer filled up.
     pub const SERIAL_RX_BUFFER_FULL: u16 = 1 << 9;
+    /// Serial: a command's CRC was wrong.
     pub const SERIAL_CRC: u16 = 1 << 10;
     /// A badly formed command arrived, over serial or I2C.
     pub const SERIAL_PROTOCOL: u16 = 1 << 11;
     /// No command for longer than the Jrk's "serial timeout" setting.
     pub const SERIAL_TIMEOUT: u16 = 1 << 12;
+    /// The motor driver's own hard current limit tripped.
     pub const HARD_OVERCURRENT: u16 = 1 << 13;
 
     /// True if every bit in `bits` is set.

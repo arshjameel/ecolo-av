@@ -25,10 +25,15 @@ pub const MAX_TARGET: u16 = 4095;
 
 /// Where each variable sits (section 10).
 pub mod offset {
+    /// "Target": two bytes.
     pub const TARGET: u8 = 0x02;
+    /// "Feedback", raw: two bytes.
     pub const FEEDBACK: u8 = 0x04;
+    /// "Scaled feedback": two bytes.
     pub const SCALED_FEEDBACK: u8 = 0x06;
+    /// "Error flags halting": two bytes.
     pub const ERROR_FLAGS_HALTING: u8 = 0x12;
+    /// "Error flags occurred": two bytes.
     pub const ERROR_FLAGS_OCCURRED: u8 = 0x14;
 }
 

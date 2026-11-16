@@ -30,11 +30,15 @@
 //! dac.release().done();
 //! ```
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 use embedded_hal::i2c::I2c;
 
-/// The address with the A0 pin low (today's car), and high.
+/// The address with the A0 pin low (today's car).
 pub const ADDRESS_A0_LOW: u8 = 0x0C;
+/// The address with the A0 pin high.
 pub const ADDRESS_A0_HIGH: u8 = 0x0D;
 
 /// Full scale: 10 bits.
@@ -67,7 +71,9 @@ impl Mode {
 /// What the DAC holds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Register {
+    /// The 10-bit code, 0..=1023.
     pub code: u16,
+    /// What the output does.
     pub mode: Mode,
 }
 
@@ -113,10 +119,14 @@ impl<I2C: I2c> Ad5311<I2C> {
         }
     }
 
+    /// The bus address it was made with.
+    #[must_use]
     pub fn address(&self) -> u8 {
         self.address
     }
 
+    /// The highest code it will write.
+    #[must_use]
     pub fn limit(&self) -> u16 {
         self.limit
     }
@@ -127,6 +137,10 @@ impl<I2C: I2c> Ad5311<I2C> {
     }
 
     /// Set the output. Above the limit it writes the limit. Returns the code written.
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the write fails.
     pub fn set_code(&mut self, code: u16) -> Result<u16, I2C::Error> {
         let code = code.min(self.limit);
         self.i2c.write(self.address, &encode(code, Mode::Normal))?;
@@ -135,11 +149,19 @@ impl<I2C: I2c> Ad5311<I2C> {
 
     /// Turn the output off in one of the off modes, with code 0.
     /// `Mode::Normal` just sets 0 V.
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the write fails.
     pub fn power_down(&mut self, mode: Mode) -> Result<(), I2C::Error> {
         self.i2c.write(self.address, &encode(0, mode))
     }
 
     /// Read back the code and the mode. Also checks that the DAC answers.
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the read fails (no DAC at the address, say).
     pub fn read(&mut self) -> Result<Register, I2C::Error> {
         let mut buf = [0; 2];
         self.i2c.read(self.address, &mut buf)?;

@@ -9,6 +9,8 @@
 use crate::frame::Channels;
 use crate::parser::Parser;
 
+/// The receiver as a whole: bytes in, the latest good channels out, and whether
+/// they are too old to trust.
 #[derive(Debug, Clone)]
 pub struct Receiver {
     parser: Parser,

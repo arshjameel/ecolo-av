@@ -9,6 +9,9 @@
 //!
 //! Times use a free-running millisecond counter that may wrap.
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 /// A change of the cleaned-up level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,6 +106,7 @@ pub struct Lockout {
 }
 
 impl Lockout {
+    /// Starts at `initial`, free to change at once.
     #[must_use]
     pub const fn new(initial: bool, lockout_ms: u32) -> Self {
         Lockout {

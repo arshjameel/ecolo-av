@@ -8,7 +8,9 @@
 
 /// The receiver's serial speed: 115200 baud, 8 data bits, no parity, 1 stop bit.
 pub const BAUD: u32 = 115_200;
+/// Bytes in one servo frame.
 pub const FRAME_LEN: usize = 32;
+/// Channels in one servo frame.
 pub const CHANNELS: usize = 14;
 /// The first two bytes of every servo frame.
 pub const HEADER: [u8; 2] = [0x20, 0x40];

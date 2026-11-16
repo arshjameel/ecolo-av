@@ -27,6 +27,9 @@
 //! steering.release().done();
 //! ```
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod command;
 mod flags;
@@ -85,6 +88,8 @@ impl<I2C: I2c> JrkG2<I2C> {
         JrkG2 { i2c, address }
     }
 
+    /// The bus address it was made with.
+    #[must_use]
     pub fn address(&self) -> u8 {
         self.address
     }
@@ -97,28 +102,48 @@ impl<I2C: I2c> JrkG2<I2C> {
     /// Set the target, 0 to 4095. With analog feedback it is a position. Above 4095
     /// it is sent as 4095. It also clears "awaiting command" and restarts the Jrk's
     /// serial timeout (section 11).
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn set_target(&mut self, target: u16) -> Result<(), I2C::Error> {
         self.i2c.write(self.address, &command::set_target(target))
     }
 
     /// Stop the motor. The Jrk then waits for a new target ("awaiting command").
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn stop_motor(&mut self) -> Result<(), I2C::Error> {
         self.i2c.write(self.address, &[command::STOP_MOTOR])
     }
 
     /// The target the Jrk is working to.
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn target(&mut self) -> Result<u16, I2C::Error> {
         self.read_u16(command::GET_VARIABLE_16 + offset::TARGET)
     }
 
     /// The raw feedback reading: with analog feedback, 0 to about 4092 for 0 V to 5 V
     /// on the FBA pin (section 10).
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn feedback(&mut self) -> Result<u16, I2C::Error> {
         self.read_u16(command::GET_VARIABLE_16 + offset::FEEDBACK)
     }
 
     /// The feedback after the Jrk's own scaling: in the same units as the target,
     /// when the Jrk's feedback is calibrated (section 10).
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn scaled_feedback(&mut self) -> Result<u16, I2C::Error> {
         self.read_u16(command::GET_VARIABLE_16 + offset::SCALED_FEEDBACK)
     }
@@ -127,6 +152,10 @@ impl<I2C: I2c> JrkG2<I2C> {
     /// The 2024-25 firmware read the steering's position as the scaled feedback
     /// (`getScaledFeedback()`); that is a position only when this is
     /// [`FeedbackMode::Analog`].
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn feedback_mode(&mut self) -> Result<FeedbackMode, I2C::Error> {
         let mut buf = [0; 1];
         let cmd = [command::GET_RAM_SETTINGS, setting::FEEDBACK_MODE];
@@ -135,6 +164,10 @@ impl<I2C: I2c> JrkG2<I2C> {
     }
 
     /// What is stopping the motor now ("Error flags halting"). Clears nothing.
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn error_flags(&mut self) -> Result<ErrorFlags, I2C::Error> {
         let mut buf = [0; 2];
         let cmd = [command::GET_VARIABLES, offset::ERROR_FLAGS_HALTING];
@@ -145,16 +178,28 @@ impl<I2C: I2c> JrkG2<I2C> {
     /// What is stopping the motor now, and clear the latched errors (0xB3). This is
     /// what the 2025-26 firmware's `getErrorFlagsHalting()` did after every target.
     /// An error whose cause is still there is set again at once.
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn take_error_flags(&mut self) -> Result<ErrorFlags, I2C::Error> {
         self.read_u16(command::TAKE_ERRORS_HALTING).map(ErrorFlags)
     }
 
     /// Every error since the last call, enabled or not; then clear them (0xB5).
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn take_errors_occurred(&mut self) -> Result<ErrorFlags, I2C::Error> {
         self.read_u16(command::TAKE_ERRORS_OCCURRED).map(ErrorFlags)
     }
 
     /// Check that the Jrk answers, by reading its target. Has no side effects.
+    ///
+    /// # Errors
+    ///
+    /// The bus's error: no Jrk answers at the address, say.
     pub fn ping(&mut self) -> Result<(), I2C::Error> {
         self.target().map(|_| ())
     }
