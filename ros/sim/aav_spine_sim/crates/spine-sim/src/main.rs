@@ -117,7 +117,11 @@ fn main() -> Result<()> {
         speed_loop: profile.config(),
         ..SpineConfig::default()
     };
-    log_info!(node.logger(), "The speed loop's profile: {}", profile.name());
+    log_info!(
+        node.logger(),
+        "The speed loop's profile: {}",
+        profile.name()
+    );
     let mut wheels = BENCH_WHEELS;
     wheels.wheel_radius = param("wheel_radius", 0.15)? as f32;
     let bad_wheels = |e| anyhow!("bad wheel settings: {e:?}");
@@ -202,6 +206,9 @@ fn main() -> Result<()> {
 /// Subscriptions that must live as long as the node.
 type Keep = Vec<Box<dyn std::any::Any>>;
 
+/// A poisoned lock means the spine loop panicked while holding it: nothing to go on with.
+const POISONED: &str = "the bench's lock: the spine loop panicked while holding it";
+
 /// The bus and the bench's switches: the same for every car.
 fn switches<C: Car + Send + 'static>(node: &Node, bench: &Arc<Mutex<Bench<C>>>) -> Result<Keep> {
     let frames_in = {
@@ -209,20 +216,23 @@ fn switches<C: Car + Send + 'static>(node: &Node, bench: &Arc<Mutex<Bench<C>>>) 
         node.create_subscription::<Frame, _>("/can/tx", move |f: Frame| {
             if !f.is_extended && !f.is_rtr && !f.is_error && f.id <= 0x7FF {
                 let len = (f.dlc as usize).min(8);
-                bench.lock().unwrap().receive(f.id as u16, &f.data[..len]);
+                bench
+                    .lock()
+                    .expect(POISONED)
+                    .receive(f.id as u16, &f.data[..len]);
             }
         })?
     };
     let estop = {
         let bench = Arc::clone(bench);
         node.create_subscription::<Bool, _>("/vehicle/bench/hw_estop", move |m: Bool| {
-            bench.lock().unwrap().set_hw_estop(m.data);
+            bench.lock().expect(POISONED).set_hw_estop(m.data);
         })?
     };
     let faults = {
         let bench = Arc::clone(bench);
         node.create_subscription::<UInt16, _>("/vehicle/bench/driver_faults", move |m: UInt16| {
-            bench.lock().unwrap().set_driver_faults(m.data);
+            bench.lock().expect(POISONED).set_driver_faults(m.data);
         })?
     };
     Ok(vec![Box::new(frames_in), Box::new(estop), Box::new(faults)])
@@ -232,23 +242,24 @@ fn switches<C: Car + Send + 'static>(node: &Node, bench: &Arc<Mutex<Bench<C>>>) 
 fn measurements(node: &Node, bench: &Arc<Mutex<Bench<MeasuredCar>>>) -> Result<Keep> {
     let wheels = {
         let bench = Arc::clone(bench);
-        node.create_subscription::<WheelSpeeds, _>(
-            "/vehicle/sim/wheels",
-            move |w: WheelSpeeds| {
-                let mut b = bench.lock().unwrap();
-                let car = b.car_mut();
-                car.measure_front_wheels([w.front_left, w.front_right]);
-                // The rear axle's speed: what the motor's encoder sees.
-                car.measure_speed((w.rear_left + w.rear_right) / 2.0);
-            },
-        )?
+        node.create_subscription::<WheelSpeeds, _>("/vehicle/sim/wheels", move |w: WheelSpeeds| {
+            let mut b = bench.lock().expect(POISONED);
+            let car = b.car_mut();
+            car.measure_front_wheels([w.front_left, w.front_right]);
+            // The rear axle's speed: what the motor's encoder sees.
+            car.measure_speed((w.rear_left + w.rear_right) / 2.0);
+        })?
     };
     let steering = {
         let bench = Arc::clone(bench);
         node.create_subscription::<ActuatorState, _>(
             "/vehicle/sim/steering",
             move |s: ActuatorState| {
-                bench.lock().unwrap().car_mut().measure_steering(s.measured);
+                bench
+                    .lock()
+                    .expect(POISONED)
+                    .car_mut()
+                    .measure_steering(s.measured);
             },
         )?
     };
@@ -286,7 +297,7 @@ where
         let mut next = Instant::now() + period;
         let mut last_ns: Option<i64> = None;
         let mut tick = |stamp: Time| -> Result<()> {
-            let mut b = bench.lock().unwrap();
+            let mut b = bench.lock().expect(POISONED);
             for (id, data) in b.tick(TICK_MS) {
                 frames_out.publish(frame(id, data, stamp.clone()))?;
             }
