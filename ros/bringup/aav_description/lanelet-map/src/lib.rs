@@ -34,6 +34,9 @@
 //! assert_eq!(map.lanelets().count(), 1);
 //! assert_eq!(map.nearest(5.0, 1.0), Some(100));
 //! ```
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BinaryHeap, HashMap};
@@ -45,15 +48,21 @@ pub type Id = i64;
 /// A point on the map (m).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
+    /// m, east.
     pub x: f64,
+    /// m, north.
     pub y: f64,
 }
 
 impl Point {
+    /// The point (`x`, `y`).
+    #[must_use]
     pub const fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
 
+    /// The straight distance to `other` (m).
+    #[must_use]
     pub fn distance(self, other: Point) -> f64 {
         (self.x - other.x).hypot(self.y - other.y)
     }
@@ -62,7 +71,9 @@ impl Point {
 /// Where lat/lon points are put on the map: the map frame's origin (our GPS datum).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Origin {
+    /// Degrees north.
     pub lat: f64,
+    /// Degrees east.
     pub lon: f64,
 }
 
@@ -99,7 +110,10 @@ impl Origin {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LineKind {
     /// A painted line: dashed lets a car change lanes over it, solid doesn't.
-    Paint { dashed: bool },
+    Paint {
+        /// Dashed, not solid.
+        dashed: bool,
+    },
     /// A stop line.
     StopLine,
     /// A curb: never crossed.
@@ -124,6 +138,7 @@ impl LineKind {
     }
 
     /// May a car change lanes over this line?
+    #[must_use]
     pub fn crossable(&self) -> bool {
         matches!(self, Self::Paint { dashed: true } | Self::Virtual)
     }
@@ -132,9 +147,13 @@ impl LineKind {
 /// A line of points (a way).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Line {
+    /// The way's id.
     pub id: Id,
+    /// Its nodes' ids, in order.
     pub nodes: Vec<Id>,
+    /// Its nodes on the map, in order.
     pub points: Vec<Point>,
+    /// What it is.
     pub kind: LineKind,
     /// The `subtype` tag as written (a sign's kind, for a `traffic_sign` way).
     pub subtype: Option<String>,
@@ -143,8 +162,11 @@ pub struct Line {
 /// One stretch of one lane.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Lanelet {
+    /// The relation's id.
     pub id: Id,
+    /// Its left bound (a [`Line`]).
     pub left: Id,
+    /// Its right bound (a [`Line`]).
     pub right: Id,
     /// The middle of the lane, from start to end.
     pub centre: Vec<Point>,
@@ -156,6 +178,7 @@ pub struct Lanelet {
 
 impl Lanelet {
     /// The centre line's length (m).
+    #[must_use]
     pub fn length(&self) -> f64 {
         self.centre.windows(2).map(|w| w[0].distance(w[1])).sum()
     }
@@ -170,24 +193,30 @@ pub enum RuleKind {
     RightOfWay,
     /// Every way stops, the first to arrive goes first.
     AllWayStop,
+    /// Traffic lights.
     TrafficLight,
+    /// Another kind, by its subtype.
     Other(String),
 }
 
 /// A rule (a regulatory element) and where it binds.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Rule {
+    /// The relation's id.
     pub id: Id,
+    /// What it says.
     pub kind: RuleKind,
     /// The lines to stop at (`ref_line`).
     pub stop_lines: Vec<Id>,
     /// Right of way: the lanelets that go first, and those that yield to them.
     pub right_of_way: Vec<Id>,
+    /// The lanelets that yield.
     pub yields: Vec<Id>,
 }
 
 impl Rule {
     /// Does this rule make a car stop at its line?
+    #[must_use]
     pub fn is_stop(&self) -> bool {
         match &self.kind {
             RuleKind::Sign(sign) => {
@@ -203,17 +232,24 @@ impl Rule {
 /// Why a map couldn't be read.
 #[derive(Debug, Clone, PartialEq)]
 pub enum MapError {
+    /// The XML can't be read.
     Xml(String),
     /// An element lacks a part it must have (an id, a lat, a member).
     Missing {
+        /// `node`, `way` or `relation`.
         element: &'static str,
+        /// Its id.
         id: Id,
+        /// The part missing.
         what: &'static str,
     },
     /// A way or relation names an id the file doesn't have.
     Unknown {
+        /// `way` or `relation`.
         element: &'static str,
+        /// Its id.
         id: Id,
+        /// The id it names.
         refers: Id,
     },
 }
@@ -304,6 +340,10 @@ const LANE_CHANGE_COST: f64 = 10.0;
 
 impl LaneletMap {
     /// Read a Lanelet2 `.osm` file's text.
+    ///
+    /// # Errors
+    ///
+    /// [`MapError`]: bad XML, a part missing, or an id the file doesn't have.
     pub fn from_osm(text: &str, origin: Origin) -> Result<Self, MapError> {
         let doc = roxmltree::Document::parse(text).map_err(|e| MapError::Xml(e.to_string()))?;
         let root = doc.root_element();
@@ -517,24 +557,32 @@ impl LaneletMap {
         }
     }
 
+    /// Every lanelet.
     pub fn lanelets(&self) -> impl Iterator<Item = &Lanelet> {
         self.lanelets.values()
     }
 
+    /// The lanelet `id`.
+    #[must_use]
     pub fn lanelet(&self, id: Id) -> Option<&Lanelet> {
         self.lanelets.get(&id)
     }
 
+    /// The line `id`.
+    #[must_use]
     pub fn line(&self, id: Id) -> Option<&Line> {
         self.lines.get(&id)
     }
 
+    /// The rule `id`.
+    #[must_use]
     pub fn rule(&self, id: Id) -> Option<&Rule> {
         self.rules.get(&id)
     }
 
     /// The lines a screen draws: every lanelet's painted sides and every stop line, each
     /// once, in id order; virtual lines (only on the map) left out.
+    #[must_use]
     pub fn drawn_lines(&self) -> Vec<&Line> {
         let mut ids: Vec<Id> = self
             .lanelets
@@ -566,6 +614,7 @@ impl LaneletMap {
 
     /// The lanelet whose centre line passes nearest (x, y); of two as near (where one
     /// lane ends and the next begins), the smaller id.
+    #[must_use]
     pub fn nearest(&self, x: f64, y: f64) -> Option<Id> {
         let mut near = self.index.nearest_neighbor_iter_with_distance_2(&[x, y]);
         let (first, best) = near.next()?;
@@ -586,6 +635,7 @@ impl LaneletMap {
 
     /// The best way by lanes from lanelet `from` to lanelet `to` (A*: driving length, a
     /// lane change counted as `LANE_CHANGE_COST` m). `None` if there is no way.
+    #[must_use]
     pub fn route(&self, from: Id, to: Id) -> Option<Vec<Id>> {
         let goal = self.lanelets.get(&to)?.centre.last().copied()?;
         let estimate = |id: Id| {
@@ -632,6 +682,7 @@ impl LaneletMap {
     }
 
     /// The stop lines a route meets, in order: (lanelet, the rule, the line's middle).
+    #[must_use]
     pub fn stops_on(&self, route: &[Id]) -> Vec<(Id, Id, Point)> {
         route
             .iter()
