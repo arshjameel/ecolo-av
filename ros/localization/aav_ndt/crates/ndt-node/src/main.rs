@@ -227,6 +227,11 @@ impl State {
                 return;
             }
         };
+        // The chunks follow where this match starts: after a restart from ekf_global that
+        // can be far from the last good fit (15 Nov: 28 s with no pose on the campus).
+        if let Some(guess) = self.localizer.guess(stamp) {
+            self.near = Some((guess.x, guess.y));
+        }
         self.load_chunks();
         let started = Instant::now();
         let report = self.localizer.cloud(stamp, points);

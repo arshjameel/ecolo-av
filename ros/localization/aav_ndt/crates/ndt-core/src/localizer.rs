@@ -151,6 +151,16 @@ struct Anchor {
     fitted: bool,
 }
 
+impl Anchor {
+    /// The pose moved on by the odometry from then to `odom_now` (the pose itself without).
+    fn moved_on(&self, odom_now: Option<Pose2>) -> Pose2 {
+        match (self.odom, odom_now) {
+            (Some(then), Some(now)) => predict(&self.pose, &then, &now),
+            _ => self.pose,
+        }
+    }
+}
+
 /// NDT on a map, cloud after cloud.
 #[derive(Clone, Debug)]
 pub struct Localizer {
@@ -234,6 +244,23 @@ impl Localizer {
         self.poor_in_row = 0;
     }
 
+    /// Where the match for a cloud at `stamp` will start: the last fit, start or restart,
+    /// moved on by the odometry since; `None` before a start.
+    ///
+    /// The map's chunks follow this, not only the last good fit: after a restart from
+    /// `ekf_global` the car may be chunks away from where NDT last had it (TODO 175).
+    #[must_use]
+    pub fn guess(&self, stamp: Duration) -> Option<Pose2> {
+        self.anchor
+            .map(|anchor| anchor.moved_on(self.odom.at(stamp)))
+            .or_else(|| {
+                self.settings
+                    .start_from_global
+                    .then_some(self.global.map(|(_, pose)| pose))
+                    .flatten()
+            })
+    }
+
     /// One lidar cloud, its points in `lidar_link`, stamped `stamp`.
     pub fn cloud(&mut self, stamp: Duration, points: impl IntoIterator<Item = Point>) -> Report {
         let mount = self.settings.mount;
@@ -261,10 +288,7 @@ impl Localizer {
             return Outcome::Skipped(Skip::NoStart);
         };
         let odom_now = self.odom.at(stamp);
-        let guess = match (anchor.odom, odom_now) {
-            (Some(then), Some(now)) => predict(&anchor.pose, &then, &now),
-            _ => anchor.pose,
-        };
+        let guess = anchor.moved_on(odom_now);
         let fit = match self.matcher.align(scan, guess) {
             Ok(fit) => fit,
             Err(e) => {
