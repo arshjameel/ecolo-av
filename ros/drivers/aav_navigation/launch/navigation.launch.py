@@ -7,7 +7,8 @@ Nav2 as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out to tw
       [reversing:=false] [max_speed:=] [controller:=mppi] [planner:=lattice]
       [diffusion_model:=] [diffusion_provider:=CPUExecutionProvider] [diffusion_record:=]
       [diffusion_python:=] [diffusion_smoothing:=gear]
-      [plan_around:=true] [behaviour:=false] [things:=false] [replan_hz:=1.0]
+      [plan_around:=true] [behaviour:=false] [behaviour_impl:=python] [things:=false]
+      [replan_hz:=1.0]
       [tracker:=none] [costmap:=nav2] [navigator:=nav2] [smoother:=nav2] [live_swap:=false]
       [map_correction:=newest] [speed_loop:=default]
       [amcl:=false]
@@ -143,6 +144,9 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           a stop sign, an obstacle in the lane, the fence and the goal.
                           controller_server reads /drivers/nav/speed_limit; the locks still
                           make every stop. false (the default): the stock path, no cap
+  behaviour_impl:=rust    (with behaviour:=true) the Rust behaviour node (aav_behaviour_rs)
+                          in the Python one's place: the same name, topics and answers.
+                          python (aav_behaviour): the default
   lane_map:=<lanes.yaml>  with behaviour:=true: the road ahead's line is the car's lane's
                           centre along the route, with its edges (aav_description
                           lane_map.py); empty (the default): the line is /plan's
@@ -526,8 +530,12 @@ def nodes(context):
         ego_file = FindPackageShare('aav_ego').perform(context) + '/config/ego.yaml'
         with open(ego_file) as f:
             ego = yaml.safe_load(f)['ego']['ros__parameters']
+        # behaviour_impl:=rust: the Rust port, the same name, topics and parameters; it
+        # finds vehicle.yaml on AMENT_PREFIX_PATH itself (vehicle_yaml '').
+        impl = vehicle.check_behaviour_impl(
+            LaunchConfiguration('behaviour_impl').perform(context))
         actions.append(Node(
-            package='aav_behaviour', executable='behaviour', name='behaviour',
+            package=vehicle.BEHAVIOUR_IMPLS[impl], executable='behaviour', name='behaviour',
             output='screen', respawn=True, respawn_delay=1.0,
             parameters=[vehicle.behaviour_params(nav2, cfg, ego,
                                                  float(speed) if speed else None, controller,
@@ -863,6 +871,10 @@ def generate_launch_description():
                               description='true (with lidar:=true): the trial, aav_voxels: '
                                           "the costmap's lidar_layer and collision_monitor "
                                           'read 0.25 m cubes instead of the flat scan'),
+        DeclareLaunchArgument('behaviour_impl', default_value=vehicle.DEFAULT_BEHAVIOUR_IMPL,
+                              description='python (aav_behaviour) or rust (aav_behaviour_rs, '
+                                          'the same node in Rust): which behaviour node runs, '
+                                          'with behaviour:=true'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python (aav_voxels) or rust (aav_voxels_rs, the '
                                           'same node in Rust): which voxels node runs, with '

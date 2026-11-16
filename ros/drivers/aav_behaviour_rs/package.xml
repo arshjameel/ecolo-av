@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_behaviour_rs</name>
+  <version>0.1.0</version>
+  <description>The behaviour planner in Rust (rclrs): a challenger beside aav_behaviour's Python node (navigation.launch.py behaviour_impl:=rust). The same node name, topics, QoS and parameters: the locks, odometry, /plan, the scan or the things, a stop sign and the fence in; /drivers/nav/speed_limit, /drivers/nav/behaviour/state and /world/road_ahead out. The maths is the behaviour-core crate, with no ROS, checked against the Python modules' answers.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>nav2_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>action_msgs</depend>
+  <depend>unique_identifier_msgs</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>tf2_msgs</depend>
+  <depend>aav_interfaces</depend>
+  <!-- vehicle.yaml, found on AMENT_PREFIX_PATH when vehicle_yaml is empty. -->
+  <exec_depend>aav_description</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_cmake_test</test_depend>
+  <test_depend>launch_testing</test_depend>
+  <test_depend>launch_testing_ros</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

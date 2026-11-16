@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">121 min read · 4 sections</div></header>
+<div class="meta">122 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -252,7 +252,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>sensor_watchdog</code></td>
 <td><code>twist_mux</code>, <code>point_driver</code>, <code>behaviour</code></td>
 <td>sim</td>
-<td>true while a sensor Nav2 or the AI slot needs is stale, NaN, frozen, jumped, or (the wheels) disagrees with the IMU, or the steering is STUCK off its command, or the car runs over ego's speed (OVERSPEED - 0.2 m/s over for 2 s while not slowing, sim only so far, TODO 207); false otherwise (aav_safety sensor_watchdog, 10 Hz) - a heartbeat. A twist_mux lock at priority 30, as the stop sign - it holds Nav2 and the AI slot, never a person or a test. Fail-safe - the lock's 1 s timeout holds them too when the watchdog dies or hangs (aav_command_mux mux.launch.py sensor_lock, true wherever a watchdog runs - Gazebo with watchdog:=true, the bench, and the car next to the mux; false on the turtle).</td>
+<td>true while a sensor Nav2 or the AI slot needs is stale, NaN, frozen, jumped, or (the wheels) disagrees with the IMU, or the steering is STUCK off its command, or the car runs over ego's speed (OVERSPEED - 0.2 m/s over for 2 s while not slowing, sim only so far, TODO 207); false otherwise (aav_safety sensor_watchdog, 10 Hz) - a heartbeat. A twist_mux lock at priority 30, as the stop sign - it holds Nav2 and the AI slot, never a person or a test. Fail-safe - the lock's 1 s timeout holds them too when the watchdog dies or hangs (aav_command_mux mux.launch.py sensor_lock, true wherever a watchdog runs - Gazebo with watchdog:=true, the bench, and the car next to the mux; false on the turtle). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (a challenger, TODO 185; a safety lock, so the Python stays the default).</td>
 </tr>
 <tr>
 <td><code>/safety/legacy_uart_bridge/lock</code></td>
@@ -268,7 +268,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>sensor_watchdog</code></td>
 <td><code>hud</code>, <code>map</code>, <code>dev_window</code></td>
 <td>sim</td>
-<td>One line for people, 10 Hz - OK, or STOP (the lock is on) or WARN, then each input that isn't OK and why, those that stop first, such as "STOP - gps STALE (nothing for 2.3 s (more than 2 s))". The HUD and the map window show it as a banner, and the HUD the first input in its GO / STOP panel, red for STOP or when it goes silent (then twist_mux holds Nav2 too).</td>
+<td>One line for people, 10 Hz - OK, or STOP (the lock is on) or WARN, then each input that isn't OK and why, those that stop first, such as "STOP - gps STALE (nothing for 2.3 s (more than 2 s))". The HUD and the map window show it as a banner, and the HUD the first input in its GO / STOP panel, red for STOP or when it goes silent (then twist_mux holds Nav2 too). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (a challenger, TODO 185; a safety lock, so the Python stays the default).</td>
 </tr>
 <tr>
 <td><code>/hud/heartbeat</code></td>
@@ -1372,7 +1372,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>behaviour</code></td>
 <td><code>controller_server</code></td>
 <td>-</td>
-<td>Only with behaviour:=true (navigation.launch.py, a trial - aav_behaviour, docs/stopping.md), 20 Hz - Nav2's speed cap, absolute m/s (percentage false), from the stopping law (aav_description stop_law.py, v_cap of the metres left to a stop sign's line, an obstacle in the lane, the fence or the goal). 0.0 means no limit to Nav2, so a cap is 0.0 or between the floor (0.3 m/s) and Nav2's own top speed, never lower - the cap slows the car, the locks and Nav2's goal check stop it. controller_server reads it as its speed_limit_topic only with behaviour:=true; it keeps the last value for ever, so a dead node leaves the car slower, never faster (respawn brings it back in DRIVE, sending 0.0). Trial trackers (tracker:=) don't read it yet.</td>
+<td>Only with behaviour:=true (navigation.launch.py, a trial - aav_behaviour, docs/stopping.md), 20 Hz - Nav2's speed cap, absolute m/s (percentage false), from the stopping law (aav_description stop_law.py, v_cap of the metres left to a stop sign's line, an obstacle in the lane, the fence or the goal). 0.0 means no limit to Nav2, so a cap is 0.0 or between the floor (0.3 m/s) and Nav2's own top speed, never lower - the cap slows the car, the locks and Nav2's goal check stop it. controller_server reads it as its speed_limit_topic only with behaviour:=true; it keeps the last value for ever, so a dead node leaves the car slower, never faster (respawn brings it back in DRIVE, sending 0.0). Trial trackers (tracker:=) don't read it yet. With behaviour_impl:=rust (navigation.launch.py, sim.launch.py) aav_behaviour_rs publishes it instead, with the same node name, QoS and answers (a challenger, TODO 185).</td>
 </tr>
 <tr>
 <td><code>/drivers/point/plan</code></td>
@@ -1388,7 +1388,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>behaviour</code></td>
 <td><code>ego</code>, <code>look_ahead</code>, <code>dev_window</code>, <code>mppi_lag</code>, <code>track</code></td>
 <td>-</td>
-<td>Only with behaviour:=true, 10 Hz, frame map - the road ahead (docs/designs/2026-11-14_the-whole-car.md). The behaviour planner is its only writer. The line is /plan's next 40 m from the car's foot, a point every 0.5 m; stops (sign, obstacle WAIT; fence, goal FINAL) sit on it; the end is the nearest stop or the line's last point, and the car may not pass it (a movement authority - silence means the car runs out of road and stops, never carry on). speed_limit per point is the stopping law's cap for the room left to the end (aav_description stop_law.py), never above the base speed, 0 at the end. With a lane map (behaviour lane_map, sim.launch.py lane_map:=world - aav_description lane_map.py, a lanes.yaml) the line is the car's lane's centre along the route (the rightmost lane for the way the route runs) and the four edges are metres from each point to the lane's lines (soft) and the kerbs (hard), NaN where a point is on no road; without one the line is the plan's and the edges NaN. Made from /plan, or from /drivers/point/plan while a drive to a point runs. Readers use aav_description road_ahead.py (limit_at). ego (road_ahead:=true, set by behaviour:=true) holds Nav2's and the point driver's forward speed under it (people never trimmed); Nav2's controller still reads /drivers/nav/speed_limit too. mppi_lag (tracker:=mppi_lag with a lane map, navigation.launch.py) reads the line and edges, moved into odom, for its LaneCritic - the car's outline past a soft edge costs, past a hard edge far more (docs/mppi-lag.md, The lane). track (aav_track's followers, with a lane map) moves each new path's points sideways inside the soft edges, less half the car and a margin (aav_track lane.py, TODO 169).</td>
+<td>Only with behaviour:=true, 10 Hz, frame map - the road ahead (docs/designs/2026-11-14_the-whole-car.md). The behaviour planner is its only writer. The line is /plan's next 40 m from the car's foot, a point every 0.5 m; stops (sign, obstacle WAIT; fence, goal FINAL) sit on it; the end is the nearest stop or the line's last point, and the car may not pass it (a movement authority - silence means the car runs out of road and stops, never carry on). speed_limit per point is the stopping law's cap for the room left to the end (aav_description stop_law.py), never above the base speed, 0 at the end. With a lane map (behaviour lane_map, sim.launch.py lane_map:=world - aav_description lane_map.py, a lanes.yaml) the line is the car's lane's centre along the route (the rightmost lane for the way the route runs) and the four edges are metres from each point to the lane's lines (soft) and the kerbs (hard), NaN where a point is on no road; without one the line is the plan's and the edges NaN. Made from /plan, or from /drivers/point/plan while a drive to a point runs. Readers use aav_description road_ahead.py (limit_at). ego (road_ahead:=true, set by behaviour:=true) holds Nav2's and the point driver's forward speed under it (people never trimmed); Nav2's controller still reads /drivers/nav/speed_limit too. mppi_lag (tracker:=mppi_lag with a lane map, navigation.launch.py) reads the line and edges, moved into odom, for its LaneCritic - the car's outline past a soft edge costs, past a hard edge far more (docs/mppi-lag.md, The lane). track (aav_track's followers, with a lane map) moves each new path's points sideways inside the soft edges, less half the car and a margin (aav_track lane.py, TODO 169). With behaviour_impl:=rust (navigation.launch.py, sim.launch.py) aav_behaviour_rs publishes it instead, with the same node name, QoS and answers (a challenger, TODO 185).</td>
 </tr>
 <tr>
 <td><code>/world/things</code></td>
@@ -1412,7 +1412,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>behaviour</code></td>
 <td>-</td>
 <td>-</td>
-<td>Only with behaviour:=true, 5 Hz - for the screens. name behaviour; message STATE and why; level OK, or WARN with a warning or in ASK. values state (DRIVE, APPROACH, STOPPED, WAIT, GO, ASK), reason (sign, obstacle, fence, goal, a lock's name, the e-stop), cap_mps (what /drivers/nav/speed_limit carries), left_m (to the binding stop's final stop, inf for none), warnings (sign passed, no lock; sign lost; odometry stale).</td>
+<td>Only with behaviour:=true, 5 Hz - for the screens. name behaviour; message STATE and why; level OK, or WARN with a warning or in ASK. values state (DRIVE, APPROACH, STOPPED, WAIT, GO, ASK), reason (sign, obstacle, fence, goal, a lock's name, the e-stop), cap_mps (what /drivers/nav/speed_limit carries), left_m (to the binding stop's final stop, inf for none), warnings (sign passed, no lock; sign lost; odometry stale). With behaviour_impl:=rust (navigation.launch.py, sim.launch.py) aav_behaviour_rs publishes it instead, with the same node name, QoS and answers (a challenger, TODO 185).</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/costmap/local</code></td>
@@ -1614,7 +1614,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/safety/sensor_watchdog/clear</code></td>
 <td><code>std_srvs/srv/Trigger</code></td>
 <td><code>sensor_watchdog</code></td>
-<td>A person says all is right again after a fault the watchdog latches - a GPS jump, wheels that disagreed with the IMU and GPS, a HUD that dropped out (LOST). pixi run clear watchdog (pixi run sim-fault clear in Gazebo).</td>
+<td>A person says all is right again after a fault the watchdog latches - a GPS jump, wheels that disagreed with the IMU and GPS, a HUD that dropped out (LOST). pixi run clear watchdog (pixi run sim-fault clear in Gazebo). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs serves it instead, with the same node name, QoS and answers (a challenger, TODO 185; a safety lock, so the Python stays the default).</td>
 </tr>
 <tr>
 <td><code>/safety/geofence/clear</code></td>

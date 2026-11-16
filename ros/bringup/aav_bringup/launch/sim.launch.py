@@ -12,7 +12,8 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [payload:=0] [adaptive_brake:=false]
       [reversing:=true] [controller:=] [planner:=] [tracker:=] [costmap:=] [navigator:=]
       [smoother:=] [behaviour:=]
-      [amcl:=false] [voxels:=false] [voxels_impl:=python] [ego_impl:=python]
+      [amcl:=false] [voxels:=false] [voxels_impl:=python] [ego_impl:=rust]
+      [behaviour_impl:=rust] [watchdog_impl:=python]
       [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
       [kiss_ekf:=false] [lane_pose:=false]
       [plan_around:=true] [things:=false]
@@ -170,7 +171,14 @@ bench's argument names:
   voxels_impl:=rust   the Rust voxels node (aav_voxels_rs) in the Python one's place, for
                       voxels:=true or screen_cubes:=true: the same topics and answers
   ego_impl:=rust      ego and look_ahead in Rust, one process (aav_ego_rs), in the Python
-                      nodes' place: the same node names, topics and answers (TODO 185)
+                      nodes' place: the same node names, topics and answers (TODO 185);
+                      the simulator's default since 16 Nov (python: aav_ego's two nodes)
+  behaviour_impl:=rust  the behaviour node in Rust (aav_behaviour_rs), in the Python one's
+                      place, with behaviour on: the same topics and answers (TODO 185);
+                      the simulator's default since 16 Nov (python: aav_behaviour)
+  watchdog_impl:=rust  the sensor watchdog in Rust (aav_watchdog_rs), in the Python one's
+                      place: the same topics and answers; a safety lock, so a challenger
+                      until a person decides (TODO 185)
   ndt:=true           NDT on the saved lidar map (aav_ndt, Rust), scored only, never TF
                       (docs/designs/2026-10-29_ndt.md): only in world:=test_lot with the
                       lidar, from the start pose, and only once ndt_map (pixi run ndt-map
@@ -585,6 +593,8 @@ def launch_setup(context):
                                replan_hz=arg('replan_hz'),
                                map_correction=arg('map_correction'),
                                behaviour=str(flag['behaviour']).lower(),
+                               behaviour_impl=vehicle.check_behaviour_impl(
+                                   arg('behaviour_impl')),
                                things=str(flag['things']).lower(),
                                lane_map=lane_map, lane_costs=lane_costs,
                                # Every model of the car predicts the loop it runs (TODO 163).
@@ -626,7 +636,9 @@ def launch_setup(context):
                                      or flag['things']),
                               things=flag['things']))
         actions.append(include(context, 'aav_safety', 'watchdog.launch.py',
-                               inputs=','.join(inputs), use_sim_time='true'))
+                               inputs=','.join(inputs), use_sim_time='true',
+                               watchdog_impl=vehicle.check_watchdog_impl(
+                                   arg('watchdog_impl'))))
     # The goal leash (TODO 116): a laptop driver (aav_language) that goes quiet loses its
     # goals, as on the car. Does nothing until the language driver beats.
     actions.append(Node(package='aav_safety', executable='goal_leash', name='goal_leash',
@@ -841,7 +853,14 @@ def generate_launch_description():
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
                                           'cubes (aav_voxels, or aav_voxels_rs)'),
-        DeclareLaunchArgument('ego_impl', default_value=vehicle.DEFAULT_EGO_IMPL,
+        DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
+                              description='python or rust: which sensor watchdog runs '
+                                          '(aav_safety, or aav_watchdog_rs)'),
+        DeclareLaunchArgument('behaviour_impl',
+                              default_value=vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL,
+                              description='python or rust: which behaviour node runs, with '
+                                          'behaviour on (aav_behaviour, or aav_behaviour_rs)'),
+        DeclareLaunchArgument('ego_impl', default_value=vehicle.SIM_DEFAULT_EGO_IMPL,
                               description='python or rust: which ego runs (aav_ego, or '
                                           'aav_ego_rs: ego and look_ahead in one process)'),
         DeclareLaunchArgument('ghost', default_value='false',

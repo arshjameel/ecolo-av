@@ -416,6 +416,9 @@ def check_voxels_impl(impl):
 # names, topics and answers; a challenger, TODO 185). Each one's package.
 EGO_IMPLS = {'python': 'aav_ego', 'rust': 'aav_ego_rs'}
 DEFAULT_EGO_IMPL = 'python'
+# Our simulator's own default (sim.launch.py only; the car keeps DEFAULT_EGO_IMPL until
+# Rust has run on it): rust since 16 Nov, as sim-check and the scores were no worse.
+SIM_DEFAULT_EGO_IMPL = 'rust'
 
 
 def check_ego_impl(impl):
@@ -423,6 +426,39 @@ def check_ego_impl(impl):
     name = str(impl).strip().lower()
     if name not in EGO_IMPLS:
         raise ValueError(f'ego_impl:={impl}: pick one of {", ".join(EGO_IMPLS)}')
+    return name
+
+
+# Which behaviour node runs, with behaviour:=true (navigation.launch.py, sim.launch.py
+# behaviour_impl:=): python (aav_behaviour, the default) or rust (aav_behaviour_rs: the same
+# node name, topics and answers; a challenger, TODO 185). Each one's package.
+BEHAVIOUR_IMPLS = {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
+DEFAULT_BEHAVIOUR_IMPL = 'python'
+# Our simulator's own default (sim.launch.py only; navigation.launch.py on the car keeps
+# DEFAULT_BEHAVIOUR_IMPL): rust since 16 Nov, as sim-check and the scores were no worse.
+SIM_DEFAULT_BEHAVIOUR_IMPL = 'rust'
+
+
+# Which sensor watchdog runs (watchdog.launch.py, sim.launch.py watchdog_impl:=): python
+# (aav_safety's, the default) or rust (aav_watchdog_rs: the same node name, topics and
+# answers). A safety lock: the Python stays the default until a person decides (TODO 185).
+WATCHDOG_IMPLS = {'python': 'aav_safety', 'rust': 'aav_watchdog_rs'}
+DEFAULT_WATCHDOG_IMPL = 'python'
+
+
+def check_watchdog_impl(impl):
+    """Return the sensor watchdog's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in WATCHDOG_IMPLS:
+        raise ValueError(f'watchdog_impl:={impl}: pick one of {", ".join(WATCHDOG_IMPLS)}')
+    return name
+
+
+def check_behaviour_impl(impl):
+    """Return the behaviour node's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in BEHAVIOUR_IMPLS:
+        raise ValueError(f'behaviour_impl:={impl}: pick one of {", ".join(BEHAVIOUR_IMPLS)}')
     return name
 
 

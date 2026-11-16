@@ -326,6 +326,13 @@ each one's README has its topics.</p></div>
 <td>new</td>
 </tr>
 <tr>
+<td><code>aav_behaviour_rs</code></td>
+<td>drivers</td>
+<td><code>behaviour</code> in Rust, a challenger beside <code>aav_behaviour</code>'s (<code>behaviour_impl:=rust</code>): the same topics and answers</td>
+<td><span class="badge b-works">works</span> against the Python's answers, and in our simulator</td>
+<td>new: a port of <code>aav_behaviour</code></td>
+</tr>
+<tr>
 <td><code>aav_command_mux</code></td>
 <td>command_mux</td>
 <td>twist_mux: the priorities, the e-stop lock and the other locks</td>
@@ -422,6 +429,13 @@ each one's README has its topics.</p></div>
 <td>the sensor watchdog: a twist_mux lock (30) when a sensor is stale, NaN, frozen or jumps</td>
 <td><span class="badge b-works">works</span> Gazebo and the bench</td>
 <td>new</td>
+</tr>
+<tr>
+<td><code>aav_watchdog_rs</code></td>
+<td>safety</td>
+<td><code>sensor_watchdog</code> in Rust, a challenger beside <code>aav_safety</code>'s (<code>watchdog_impl:=rust</code>): the same topics and answers; a safety lock, so the Python stays the default</td>
+<td><span class="badge b-works">works</span> against the Python's answers, tick by tick</td>
+<td>new: a port of <code>aav_safety</code>'s watchdog</td>
 </tr>
 <tr>
 <td><code>aav_ghost</code></td>
