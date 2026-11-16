@@ -51,3 +51,10 @@ def test_the_walls_faces_are_half_the_street_from_its_line():
     (_, lx, ly), (_, _, ly1), (_, rx, _), _ = spots
     assert math.isclose(lx, 1.0 - 1.45) and math.isclose(rx, 1.0 + 1.45)
     assert math.isclose(ly, 2.0) and math.isclose(ly1, 12.0)
+
+
+def test_plan_cusps_counts_each_new_plan_once():
+    there_and_back = [(0.0, 0.0), (1.0, 0.0), (2.0, 0.0), (1.0, 0.1), (0.0, 0.2)]
+    straight = [(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)]
+    assert street_check.plan_cusps([there_and_back, there_and_back, straight]) == '1, 0'
+    assert street_check.plan_cusps([]) == ''

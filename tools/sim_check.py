@@ -256,6 +256,7 @@ on this computer uses now).
 import bisect
 import collections
 import importlib.util
+import json
 import math
 import os
 import re
@@ -294,7 +295,7 @@ from geometry_msgs.msg import PoseStamped, TwistStamped  # noqa: E402
 import gz_crash  # noqa: E402
 from nav2_msgs.action import NavigateToPose  # noqa: E402
 from nav2_msgs.msg import CollisionMonitorState, Costmap  # noqa: E402
-from nav_msgs.msg import OccupancyGrid, Odometry  # noqa: E402
+from nav_msgs.msg import OccupancyGrid, Odometry, Path  # noqa: E402
 import numpy  # noqa: E402
 import rclpy  # noqa: E402
 from rclpy.action import ActionClient  # noqa: E402
@@ -1386,12 +1387,19 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
         return
     probe.spin_for(3.0)          # the lidar sees the walls before the planner is asked
     start = len(probe.track)
+    # Every plan the car was given, to set its changes of direction against the plan's.
+    plans = []
+    sub = probe.create_subscription(
+        Path, '/plan', lambda m: plans.append(
+            (seconds(m.header.stamp), [(p.pose.position.x, p.pose.position.y)
+                                       for p in m.poses])), 10)
     gx, gy, gyaw = x0 + goal * c, y0 + goal * s, math.atan2(-s, -c)
     done = probe.go_to(gx, gy, gyaw)
     if done is not None:
         probe.spin_for(300.0, done.done)
         if not done.done():
             probe.goal.cancel_goal_async()
+    probe.destroy_subscription(sub)
     for name in names:
         remove_model(name)
     if done is None:
@@ -1404,11 +1412,18 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
     x1, y1 = probe.xy(probe.truth)
     turned = abs(math.remainder(yaw_of(probe.truth) - gyaw, math.tau))
     ok = reached and turns >= 2 and room > 0.0
+    planned = street_check.plan_cusps([path for _, path in plans])
     result('three-point turn', ok,
            f'{"reached" if reached else "did not reach"} the goal '
            f'({math.hypot(gx - x1, gy - y1):.2f} m, {math.degrees(turned):.0f} deg off), '
-           f'{turns} changes of direction, {room:.2f} m from a wall at the closest '
-           f'(street {width:g} m)')
+           f'{turns} changes of direction ({len(plans)} plans, their changes '
+           f'{planned or "-"}), {room:.2f} m from a wall at the closest (street {width:g} m)')
+    save = os.environ.get('AAV_THREE_POINT_SAVE')
+    if save:
+        # The run's raw data, to see where each change came from (TODO 174).
+        with open(save, 'w') as f:
+            json.dump({'track': drive, 'plans': plans, 'goal': (gx, gy, gyaw),
+                       'street': (x0, y0, h, half)}, f)
 
 
 def check_stop_zone_shadow(probe, delay_limit=0.3, missed_limit=0.2):

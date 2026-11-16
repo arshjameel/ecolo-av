@@ -7,11 +7,28 @@ under the rear axle, v signed (minus: backing).
 
 import math
 
+from drive_metrics import cusp_pieces
+
 
 def turns(track, flips=0.1):
     """Return how often a track changes between forward and back (moving faster than flips)."""
     signs = [1 if v > 0 else -1 for *_, v in track if abs(v) > flips]
     return sum(1 for a, b in zip(signs, signs[1:]) if a != b)
+
+
+def plan_cusps(paths):
+    """
+    Return each new plan's changes of direction, in order: '3' or '3, 2, 2'.
+
+    paths: every /plan seen, each [(x, y)]; a plan the same as the one before is counted
+    once (the navigator republishes it). '' if there were none.
+    """
+    counts, last = [], None
+    for path in paths:
+        if path and path != last:
+            counts.append(len(cusp_pieces(path)) - 1)
+        last = path
+    return ', '.join(str(n) for n in counts)
 
 
 def clearance(track, x0, y0, heading, half_street, body):
