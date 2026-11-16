@@ -87,9 +87,9 @@ ros/<area>/aav_<what>/
 
 The `#[must_use]` and doc comment rows are kept by the compiler (TODO 176, 15 Nov). A crate root says
 `#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]`, and
-clippy's `-D warnings` turns a miss into a failed `tools/test.sh`. Every crate has it
-except the HUD's four logic crates, `sim-core`, `camera-core` and `bench-car` (their
-docs are still to write: TODO 176) and the programs (boards, nodes, screens).
+clippy's `-D warnings` turns a miss into a failed `tools/test.sh`. Every library crate
+has it (the HUD's four logic crates, `sim-core`, `camera-core` and `bench-car` since
+15 Nov); the programs (boards, nodes, screens) don't.
 
 ### A launch override that silently loses
 
