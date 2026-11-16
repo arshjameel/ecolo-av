@@ -28,7 +28,9 @@ enum Kind {
 /// Exact filters need 1 to 6 IDs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FilterError {
+    /// No ID given.
     NoIds,
+    /// More IDs than the chip has filters.
     TooManyIds,
 }
 
@@ -55,6 +57,10 @@ impl Filters {
     /// RXB0 takes the first two IDs; RXB1 takes the rest, and the first ones again in its
     /// spare filters. Rollover moves a frame for RXB0 into RXB1 when RXB0 is full, so with
     /// two IDs, as the spine has, both buffers serve both.
+    ///
+    /// # Errors
+    ///
+    /// [`FilterError::NoIds`] for none, [`FilterError::TooManyIds`] for more than six.
     pub fn standard_ids(ids: &[StandardId]) -> Result<Filters, FilterError> {
         if ids.is_empty() {
             return Err(FilterError::NoIds);

@@ -19,14 +19,18 @@
 pub struct Crystal(u32);
 
 impl Crystal {
+    /// An 8 MHz crystal.
     pub const MHZ_8: Crystal = Crystal(8_000_000);
+    /// A 16 MHz crystal.
     pub const MHZ_16: Crystal = Crystal(16_000_000);
 
+    /// A crystal of `hz`.
     #[must_use]
     pub const fn from_hz(hz: u32) -> Crystal {
         Crystal(hz)
     }
 
+    /// Its frequency (Hz).
     #[must_use]
     pub const fn hz(self) -> u32 {
         self.0
@@ -38,17 +42,22 @@ impl Crystal {
 pub struct Bitrate(u32);
 
 impl Bitrate {
+    /// 125 kbit/s.
     pub const KBPS_125: Bitrate = Bitrate(125_000);
+    /// 250 kbit/s.
     pub const KBPS_250: Bitrate = Bitrate(250_000);
     /// The car's bus (`firmware/can/aav.dbc`).
     pub const KBPS_500: Bitrate = Bitrate(500_000);
+    /// 1 Mbit/s.
     pub const MBPS_1: Bitrate = Bitrate(1_000_000);
 
+    /// A bitrate of `bps` bits a second.
     #[must_use]
     pub const fn from_bps(bps: u32) -> Bitrate {
         Bitrate(bps)
     }
 
+    /// Bits a second.
     #[must_use]
     pub const fn bps(self) -> u32 {
         self.0
@@ -79,6 +88,10 @@ const BRP_MAX: u32 = 64;
 
 impl BitTiming {
     /// The timing for `bitrate` from `crystal`.
+    ///
+    /// # Errors
+    ///
+    /// [`TimingError`] if no setting gives exactly that bitrate.
     pub fn new(crystal: Crystal, bitrate: Bitrate) -> Result<BitTiming, TimingError> {
         let clock = crystal.hz() / 2; // the TQ clock before the prescaler
         let target = sample_point_target(bitrate);

@@ -52,9 +52,15 @@ pub enum ImageError {
     /// The first byte isn't 0xE9: not an app image (a merged flash image, an ELF, ...).
     NotAnImage,
     /// For another chip.
-    WrongChip { chip: u16 },
+    WrongChip {
+        /// The header's chip ID.
+        chip: u16,
+    },
     /// No segments, or more than the bootloader takes.
-    Segments { count: u8 },
+    Segments {
+        /// The header's segment count.
+        count: u8,
+    },
     /// A segment's length isn't a multiple of 4, or runs past the slot.
     BadSegment,
     /// The first segment doesn't start with the app descriptor.
@@ -64,9 +70,17 @@ pub enum ImageError {
     /// No SHA-256 appended (byte 23): the write can't be checked.
     NoHash,
     /// The XOR checksum doesn't match.
-    Checksum { want: u8, got: u8 },
+    Checksum {
+        /// The checksum the image carries.
+        want: u8,
+        /// The XOR of its segments.
+        got: u8,
+    },
     /// Bigger than the slot.
-    TooBig { slot_len: u32 },
+    TooBig {
+        /// The slot's size.
+        slot_len: u32,
+    },
     /// Bytes after the image's end.
     TrailingBytes,
     /// It ended early.
@@ -131,6 +145,7 @@ pub struct ImageCheck<'a> {
 }
 
 impl<'a> ImageCheck<'a> {
+    /// A check for an image of `expect`'s program, before any byte.
     #[must_use]
     pub fn new(expect: Expect<'a>) -> Self {
         ImageCheck {
@@ -150,6 +165,10 @@ impl<'a> ImageCheck<'a> {
     }
 
     /// The next bytes. The first error stops the check: every later push gives it again.
+    ///
+    /// # Errors
+    ///
+    /// The first [`ImageError`] found so far.
     pub fn push(&mut self, bytes: &[u8]) -> Result<(), ImageError> {
         for &b in bytes {
             self.byte(b)?;
@@ -170,12 +189,17 @@ impl<'a> ImageCheck<'a> {
         self.pos
     }
 
+    /// No byte taken yet.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.pos == 0
     }
 
     /// The upload ended: the image is whole and right, or why not.
+    ///
+    /// # Errors
+    ///
+    /// The first [`ImageError`]; [`ImageError::Truncated`] if it ended early.
     pub fn finish(&self) -> Result<ImageInfo, ImageError> {
         if self.part != Part::Done {
             return Err(ImageError::Truncated);
@@ -324,11 +348,13 @@ pub struct Crc32 {
 }
 
 impl Crc32 {
+    /// A CRC over no bytes yet.
     #[must_use]
     pub const fn new() -> Self {
         Crc32 { state: !0 }
     }
 
+    /// The next bytes.
     pub fn push(&mut self, bytes: &[u8]) {
         for &b in bytes {
             self.state ^= u32::from(b);
@@ -339,6 +365,7 @@ impl Crc32 {
         }
     }
 
+    /// The CRC of every byte pushed so far.
     #[must_use]
     pub const fn value(&self) -> u32 {
         !self.state

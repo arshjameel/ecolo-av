@@ -61,6 +61,7 @@ impl Frame {
         }
     }
 
+    /// The frame's ID, standard or extended.
     #[must_use]
     pub fn id(&self) -> Id {
         self.id
@@ -82,6 +83,7 @@ impl Frame {
         usize::from(self.dlc)
     }
 
+    /// A remote frame: a request, with no data.
     #[must_use]
     pub fn is_remote(&self) -> bool {
         self.remote

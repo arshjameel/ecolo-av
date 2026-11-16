@@ -16,6 +16,9 @@
 //!
 //! Times are a free-running microsecond clock that may wrap (every 71 minutes).
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 use core::f32::consts::TAU;
 
@@ -82,7 +85,9 @@ impl WheelConfig {
 /// Which way the wheel turns, when the board can tell (a second sensor, or the gear).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
+    /// The car rolls forward.
     Forward,
+    /// The car rolls backward.
     Reverse,
 }
 
@@ -98,6 +103,11 @@ pub struct WheelNode {
 }
 
 impl WheelNode {
+    /// A node for `wheel`, with no pulse yet.
+    ///
+    /// # Errors
+    ///
+    /// The config's error, if it can't give a speed (see [`ConfigError`]).
     pub fn new(wheel: Wheel, cfg: WheelConfig) -> Result<Self, ConfigError> {
         cfg.check()?;
         Ok(WheelNode {
@@ -113,11 +123,13 @@ impl WheelNode {
         })
     }
 
+    /// Which wheel this node is.
     #[must_use]
     pub fn wheel(&self) -> Wheel {
         self.wheel
     }
 
+    /// The config it was made with.
     #[must_use]
     pub fn config(&self) -> WheelConfig {
         self.cfg

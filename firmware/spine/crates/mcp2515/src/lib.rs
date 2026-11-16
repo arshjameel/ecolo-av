@@ -49,6 +49,9 @@
 //! can.release().done();
 //! ```
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 mod filter;
 mod frame;
@@ -111,7 +114,9 @@ impl Mode {
 pub struct Config {
     /// From the module's crystal and the bus's bitrate: [`BitTiming::new`].
     pub timing: BitTiming,
+    /// Which frames the chip keeps.
     pub filters: Filters,
+    /// The mode to leave the chip in.
     pub mode: Mode,
 }
 
@@ -177,9 +182,11 @@ impl ErrorState {
 /// What [`Mcp2515::bus_status`] found.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BusStatus {
+    /// Error active, passive or bus off.
     pub state: ErrorState,
     /// The transmit and receive error counters (TEC, REC).
     pub tx_errors: u8,
+    /// The receive error counter (REC).
     pub rx_errors: u8,
     /// A frame arrived with both receive buffers full, and was lost, since the last call.
     pub rx_overflow: bool,
@@ -209,6 +216,11 @@ impl<SPI: SpiDevice> Mcp2515<SPI> {
     /// received, then `config.mode`. `delay` spaces the polls while the chip changes mode.
     ///
     /// Until this succeeds, the chip sends nothing and acknowledges nothing.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::NoChip`] if no MCP2515 answers, [`Error::ModeTimeout`] if it won't
+    /// change mode, [`Error::Spi`] if a transfer fails.
     pub fn init(
         &mut self,
         config: &Config,
@@ -257,6 +269,11 @@ impl<SPI: SpiDevice> Mcp2515<SPI> {
 
     /// Put `frame` in a free transmit buffer, and ask the chip to send it. The chip keeps
     /// trying until another node acknowledges it.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::BusOff`] off the bus, [`Error::TxBusy`] with every buffer still
+    /// waiting, [`Error::Spi`] if a transfer fails.
     pub fn send(&mut self, frame: &Frame) -> Result<(), Error<SPI::Error>> {
         if self.read_byte(Register::Eflg)? & eflg::TXBO != 0 {
             return Err(Error::BusOff);
@@ -276,6 +293,10 @@ impl<SPI: SpiDevice> Mcp2515<SPI> {
 
     /// The next frame received, if there is one. RXB0 goes first: when both buffers are
     /// full, it holds the older frame.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Spi`] if a transfer fails.
     pub fn receive(&mut self) -> Result<Option<Frame>, Error<SPI::Error>> {
         let status = self.read_status()?;
         let Some(buffer) = RxBuffer::ALL
@@ -295,6 +316,10 @@ impl<SPI: SpiDevice> Mcp2515<SPI> {
 
     /// The error counters and state, the mode, and whether a frame was lost since the last
     /// call.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Spi`] if a transfer fails.
     pub fn bus_status(&mut self) -> Result<BusStatus, Error<SPI::Error>> {
         let mut r = [0; 3];
         self.read(Register::Tec, &mut r)?; // TEC, REC, and CANSTAT's copy at 0x1E

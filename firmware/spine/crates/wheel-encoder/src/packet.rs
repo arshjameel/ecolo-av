@@ -21,8 +21,11 @@ pub enum PacketError {
 /// Which way the wheel turned in one packet's time.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
+    /// More spokes forward than back.
     Forward,
+    /// More spokes back than forward.
     Reverse,
+    /// No net spoke.
     Stopped,
 }
 
@@ -37,6 +40,10 @@ impl SpokeDelta {
     }
 
     /// Read a packet, as the Motor Pi does.
+    ///
+    /// # Errors
+    ///
+    /// [`PacketError::Length`] unless `bytes` is exactly four bytes long.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, PacketError> {
         let four: [u8; Self::LEN] = bytes
             .try_into()
@@ -44,6 +51,7 @@ impl SpokeDelta {
         Ok(SpokeDelta(i32::from_be_bytes(four)))
     }
 
+    /// Which way the wheel turned: the count's sign.
     #[must_use]
     pub fn direction(self) -> Direction {
         match self.0 {
