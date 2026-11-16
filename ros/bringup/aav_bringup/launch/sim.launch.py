@@ -13,7 +13,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [reversing:=true] [controller:=] [planner:=] [tracker:=] [costmap:=] [navigator:=]
       [smoother:=] [behaviour:=]
       [amcl:=false] [voxels:=false] [voxels_impl:=python] [ego_impl:=rust]
-      [behaviour_impl:=rust] [watchdog_impl:=python]
+      [behaviour_impl:=rust] [watchdog_impl:=python] [localization_health_impl:=python]
       [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
       [kiss_ekf:=false] [lane_pose:=false]
       [plan_around:=true] [things:=false]
@@ -179,7 +179,10 @@ bench's argument names:
   watchdog_impl:=rust  the sensor watchdog in Rust (aav_watchdog_rs), in the Python one's
                       place: the same topics and answers; a safety lock, so a challenger
                       until a person decides (TODO 185)
-  ndt:=true           NDT on the saved lidar map (aav_ndt, Rust), scored only, never TF
+  localization_health_impl:=rust  localization_health in Rust
+                      (aav_localization_health_rs), in the Python one's place: the same
+                      topics and answers; warn only (TODO 185)
+  ndt:=true          NDT on the saved lidar map (aav_ndt, Rust), scored only, never TF
                       (docs/designs/2026-10-29_ndt.md): only in world:=test_lot with the
                       lidar, from the start pose, and only once ndt_map (pixi run ndt-map
                       drive) is there
@@ -516,7 +519,9 @@ def launch_setup(context):
         include(context, 'aav_localization', 'localization.launch.py', use_sim_time='true',
                 ndt_ekf=str(ndt_ekf).lower(), kiss_ekf=str(kiss_ekf).lower(),
                 global_ekf=str(not truth_pose).lower(),
-                lane_pose=str(lane_pose).lower(), lane_map=pose_map),
+                lane_pose=str(lane_pose).lower(), lane_map=pose_map,
+                localization_health_impl=vehicle.check_localization_health_impl(
+                    arg('localization_health_impl'))),
     ]
     if truth_pose:
         # The wiggle's first test: the truth as the pose, in ekf_global's place.
@@ -856,6 +861,10 @@ def generate_launch_description():
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
                               description='python or rust: which sensor watchdog runs '
                                           '(aav_safety, or aav_watchdog_rs)'),
+        DeclareLaunchArgument('localization_health_impl',
+                              default_value=vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL,
+                              description='python or rust: which localization_health runs '
+                                          '(aav_localization_health, or its _rs port)'),
         DeclareLaunchArgument('behaviour_impl',
                               default_value=vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL,
                               description='python or rust: which behaviour node runs, with '

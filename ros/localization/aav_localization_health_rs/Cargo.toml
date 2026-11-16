@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+# health-core: localization_health's checks and the TF tree's ages, with no ROS
+#   (aav_localization_health's health.py, ported): cargo test -p health-core
+# health-node: the ROS node (rclrs), binary `localization_health`. colcon builds it
+#   through CMakeLists.txt.
+members = ["crates/health-core", "crates/health-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false

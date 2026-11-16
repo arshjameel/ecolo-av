@@ -978,3 +978,13 @@ def test_watchdog_impl_is_python_or_rust():
     assert vehicle.WATCHDOG_IMPLS == {'python': 'aav_safety', 'rust': 'aav_watchdog_rs'}
     with pytest.raises(ValueError, match='watchdog_impl:=c'):
         vehicle.check_watchdog_impl('c')
+
+
+def test_localization_health_impl_is_python_or_rust():
+    assert vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL == 'python'
+    assert vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL in vehicle.LOCALIZATION_HEALTH_IMPLS
+    assert vehicle.check_localization_health_impl(' Rust ') == 'rust'
+    assert vehicle.LOCALIZATION_HEALTH_IMPLS == {'python': 'aav_localization_health',
+                                                 'rust': 'aav_localization_health_rs'}
+    with pytest.raises(ValueError, match='localization_health_impl:=c'):
+        vehicle.check_localization_health_impl('c')

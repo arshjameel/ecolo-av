@@ -454,6 +454,27 @@ def check_watchdog_impl(impl):
     return name
 
 
+# Which localization_health runs (localization.launch.py, sim.launch.py
+# localization_health_impl:=): python (aav_localization_health, the default) or rust
+# (aav_localization_health_rs: the same node name, topics and answers; TODO 185). Each
+# one's package. Warn only, so no safety lock.
+LOCALIZATION_HEALTH_IMPLS = {'python': 'aav_localization_health',
+                             'rust': 'aav_localization_health_rs'}
+DEFAULT_LOCALIZATION_HEALTH_IMPL = 'python'
+# Our simulator's own default (sim.launch.py only; the car keeps the Python until Rust has
+# run on it).
+SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL = 'python'
+
+
+def check_localization_health_impl(impl):
+    """Return localization_health's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in LOCALIZATION_HEALTH_IMPLS:
+        raise ValueError(f'localization_health_impl:={impl}: pick one of '
+                         f'{", ".join(LOCALIZATION_HEALTH_IMPLS)}')
+    return name
+
+
 def check_behaviour_impl(impl):
     """Return the behaviour node's language (lower case), or raise ValueError: what to pick."""
     name = str(impl).strip().lower()

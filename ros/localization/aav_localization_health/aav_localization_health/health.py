@@ -107,7 +107,9 @@ def mean_and_sigma(values: List[float]) -> Tuple[float, float]:
     mean = sum(values) / n
     if n < 2:
         return mean, 0.0
-    var = sum((x - mean) ** 2 for x in values) / (n - 1)
+    # (x - mean) * (x - mean), not ** 2: pow() is libm's, and macOS's rounds a bit
+    # differently from Linux's; a product is the same everywhere (aav_localization_health_rs)
+    var = sum((x - mean) * (x - mean) for x in values) / (n - 1)
     return mean, math.sqrt(var / n)
 
 

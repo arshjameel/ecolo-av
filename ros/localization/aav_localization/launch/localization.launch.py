@@ -5,7 +5,8 @@ Neither EKF reads the other's topic. They meet only in TF: ekf_global publishes
 map -> odom, worked out on top of ekf_local's odom -> base_link.
 
   ros2 launch aav_localization localization.launch.py [gps:=true] [gps_heading:=true]
-      [health:=true] [ndt_ekf:=false] [kiss_ekf:=false] [lane_pose:=false] [lane_map:=]
+      [health:=true] [localization_health_impl:=python] [ndt_ekf:=false] [kiss_ekf:=false]
+      [lane_pose:=false] [lane_map:=]
       [start_x:=0.0] [start_y:=0.0]
       [start_yaw:=0.0] [use_sim_time:=false]
 
@@ -48,11 +49,14 @@ static map -> odom identity stands in, so map-frame tools still work.
   everything above, TF ──> localization_health (aav_localization_health)
       ──> /localization/health, /diagnostics: warn-only checks (gyro bias, IMU mounting,
       GPS quality, stamps, frames, TF, front wheels, runaway EKFs). Drives nothing and
-      changes nothing above. health:=false leaves it out
+      changes nothing above. health:=false leaves it out.
+      localization_health_impl:=rust runs aav_localization_health_rs instead: the same
+      node name, topics and answers, in Rust (TODO 185); python is the default
 """
 
 import os
 
+from aav_description import vehicle
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.conditions import IfCondition, UnlessCondition
@@ -60,6 +64,22 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Pyth
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 import yaml
+
+
+def health_node(context):
+    """Start localization_health in Python or Rust (localization_health_impl:=), or none."""
+    if LaunchConfiguration('health').perform(context).lower() != 'true':
+        return []
+    impl = vehicle.check_localization_health_impl(
+        LaunchConfiguration('localization_health_impl').perform(context))
+    return [Node(
+        package=vehicle.LOCALIZATION_HEALTH_IMPLS[impl],
+        executable='localization_health',
+        name='localization_health',
+        # The Rust one reads the Python package's settings too: one file for both.
+        parameters=[os.path.join(FindPackageShare('aav_localization_health').perform(context),
+                                 'config', 'localization_health.yaml'),
+                    {'use_sim_time': LaunchConfiguration('use_sim_time')}])]
 
 
 def ekf_services(node_name):
@@ -137,6 +157,10 @@ def generate_launch_description():
         DeclareLaunchArgument('gps', default_value='true'),
         DeclareLaunchArgument('gps_heading', default_value='true'),
         DeclareLaunchArgument('health', default_value='true'),
+        DeclareLaunchArgument('localization_health_impl',
+                              default_value=vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL,
+                              description='python or rust: which localization_health runs '
+                                          '(aav_localization_health, or its _rs port)'),
         DeclareLaunchArgument('ndt_ekf', default_value='false',
                               description="ekf_global also takes NDT's pose (a trial)"),
         DeclareLaunchArgument('kiss_ekf', default_value='false',
@@ -178,15 +202,7 @@ def generate_launch_description():
                 "'", LaunchConfiguration('gps'), "' == 'true' and '",
                 LaunchConfiguration('gps_heading'), "' == 'true'"])),
         ),
-        Node(
-            package='aav_localization_health',
-            executable='localization_health',
-            name='localization_health',
-            parameters=[PathJoinSubstitution([FindPackageShare('aav_localization_health'),
-                                              'config', 'localization_health.yaml']),
-                        use_sim_time],
-            condition=IfCondition(LaunchConfiguration('health')),
-        ),
+        OpaqueFunction(function=health_node),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',

@@ -1,0 +1,17 @@
+[package]
+name = "health-core"
+description = "localization_health's checks, no ROS: the Rust twin of aav_localization_health's health.py"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# Our crates, reused, not copied: ego-core's Python hypot and `format(x, 'g')`;
+# watchdog-core's Python sum(), max() and min().
+ego-core = { path = "../../../../ego/aav_ego_rs/crates/ego-core" }
+watchdog-core = { path = "../../../../safety/aav_watchdog_rs/crates/watchdog-core" }
+
+[dev-dependencies]
+# float_roundtrip: read each number exactly as Python wrote it (the default may be 1 bit off).
+serde_json = { version = "1", features = ["float_roundtrip"] }
