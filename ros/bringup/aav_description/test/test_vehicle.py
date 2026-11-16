@@ -956,6 +956,7 @@ def test_the_stop_zone_shadow_reads_what_collision_monitor_reads():
 
 def test_ego_impl_is_python_or_rust():
     assert vehicle.DEFAULT_EGO_IMPL == 'python'
+    assert vehicle.check_ego_impl(vehicle.SIM_DEFAULT_EGO_IMPL) == 'rust'
     assert vehicle.check_ego_impl(' Rust ') == 'rust'
     assert vehicle.EGO_IMPLS['rust'] == 'aav_ego_rs'
     with pytest.raises(ValueError, match='ego_impl:=c'):
@@ -964,6 +965,7 @@ def test_ego_impl_is_python_or_rust():
 
 def test_behaviour_impl_is_python_or_rust():
     assert vehicle.DEFAULT_BEHAVIOUR_IMPL == 'python'
+    assert vehicle.check_behaviour_impl(vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL) == 'rust'
     assert vehicle.check_behaviour_impl(' Rust ') == 'rust'
     assert vehicle.BEHAVIOUR_IMPLS == {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
     with pytest.raises(ValueError, match='behaviour_impl:=c'):

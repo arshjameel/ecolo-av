@@ -5,7 +5,8 @@
 ego and look_ahead in Rust (rclrs), **one process holding both nodes**: a challenger beside
 `aav_ego`'s two Python nodes. The same node names, topics, QoS, parameters and answers.
 Ben, 14 Nov: "convert anything that uses a lot of resources to rust" (TODO 185). The
-Python stays the default until this one has run on the car.
+simulator's default since 16 Nov (below); the car keeps the Python until this one has
+run on it.
 
 ```
 /control/cmd_vel ──► ego ──► /ego/actuator_cmd (50 Hz)          one process: `ego`
@@ -143,6 +144,25 @@ the same 35-40 s of the run, sampled with `ps`.
 Nav2's runs differ a little from run to run, whichever ego drives.
 
 Most of the Python's cost at 1000 Hz is `/clock` itself: rclpy wakes for each message.
+
+### The simulator's default
+
+Since 16 Nov this is **the simulator's default** (`sim.launch.py`,
+`vehicle.SIM_DEFAULT_EGO_IMPL`); the car (`ego.launch.py`) keeps the Python until Rust has run on
+it. Both gates were no worse with Rust (ego, behaviour and voxels all Rust, against all Python):
+
+| Gate | Python | Rust |
+|---|---|---|
+| sim-check, the road world | pass | pass (scripted drive 5.83 m, the same) |
+| lot, 8 legs (two runs of 2) | 8/8; sway 0.019, 0.022 | 8/8; sway 0.022, 0.021 |
+| lot, left-right changes per 100 m | 4.9, 6.3 | 6.8, 4.5 |
+| lot, off the path worst (m) | 0.48, 0.64 | 0.48, 0.50 |
+| university_box, 2 legs | 2/2; sway 0.069, 0.070 | 2/2; sway 0.057, 0.066 |
+| university_box, off the path worst (m) | 0.47, 0.38 | 0.35, 0.57 |
+
+`pixi run measure controllers --stacks own_calm_chunks --tours lot university_box --runs 2
+--reversing --launch behaviour:=true lane_route:=true` and the three `_impl:=`s. The
+differences are within one run to the next.
 
 ## Side Effects
 

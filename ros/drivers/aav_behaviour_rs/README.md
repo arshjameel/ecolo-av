@@ -4,8 +4,9 @@
 
 The behaviour planner in Rust (rclrs): a **challenger** beside `aav_behaviour`'s Python
 node. The same node name, topics, QoS, parameters and answers. Ben, 14 Nov: "convert
-anything that uses a lot of resources to rust" (TODO 185). The Python stays the default
-until this one has won its runs.
+anything that uses a lot of resources to rust" (TODO 185). The simulator's default since
+16 Nov (below); the car (`navigation.launch.py`) keeps the Python until this one has run
+on it.
 
 ```
 locks, odometry, /plan, the scan or the things, a stop sign, the fence
@@ -105,6 +106,25 @@ with `ps` every 2 s.
 | `--behaviour-things-only`: a parked box with the things | fail once (the load was 9.4: the box flickered into APPROACH(obstacle)) | pass: no wait for the parked box, 0.46 m clear |
 
 The Python's one fail was on a busy computer (load 9 on 16 cores); it isn't the port's.
+
+### The simulator's default
+
+Since 16 Nov this is **the simulator's default** (`sim.launch.py`,
+`vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL`); the car (`navigation.launch.py`) keeps the Python until Rust has run on
+it. Both gates were no worse with Rust (ego, behaviour and voxels all Rust, against all Python):
+
+| Gate | Python | Rust |
+|---|---|---|
+| sim-check, the road world | pass | pass (scripted drive 5.83 m, the same) |
+| lot, 8 legs (two runs of 2) | 8/8; sway 0.019, 0.022 | 8/8; sway 0.022, 0.021 |
+| lot, left-right changes per 100 m | 4.9, 6.3 | 6.8, 4.5 |
+| lot, off the path worst (m) | 0.48, 0.64 | 0.48, 0.50 |
+| university_box, 2 legs | 2/2; sway 0.069, 0.070 | 2/2; sway 0.057, 0.066 |
+| university_box, off the path worst (m) | 0.47, 0.38 | 0.35, 0.57 |
+
+`pixi run measure controllers --stacks own_calm_chunks --tours lot university_box --runs 2
+--reversing --launch behaviour:=true lane_route:=true` and the three `_impl:=`s. The
+differences are within one run to the next.
 
 ## Side Effects
 

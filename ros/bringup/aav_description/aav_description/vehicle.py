@@ -416,6 +416,9 @@ def check_voxels_impl(impl):
 # names, topics and answers; a challenger, TODO 185). Each one's package.
 EGO_IMPLS = {'python': 'aav_ego', 'rust': 'aav_ego_rs'}
 DEFAULT_EGO_IMPL = 'python'
+# Our simulator's own default (sim.launch.py only; the car keeps DEFAULT_EGO_IMPL until
+# Rust has run on it): rust since 16 Nov, as sim-check and the scores were no worse.
+SIM_DEFAULT_EGO_IMPL = 'rust'
 
 
 def check_ego_impl(impl):
@@ -431,6 +434,9 @@ def check_ego_impl(impl):
 # node name, topics and answers; a challenger, TODO 185). Each one's package.
 BEHAVIOUR_IMPLS = {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
 DEFAULT_BEHAVIOUR_IMPL = 'python'
+# Our simulator's own default (sim.launch.py only; navigation.launch.py on the car keeps
+# DEFAULT_BEHAVIOUR_IMPL): rust since 16 Nov, as sim-check and the scores were no worse.
+SIM_DEFAULT_BEHAVIOUR_IMPL = 'rust'
 
 
 # Which sensor watchdog runs (watchdog.launch.py, sim.launch.py watchdog_impl:=): python
