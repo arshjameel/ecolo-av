@@ -60,6 +60,8 @@ if command -v cargo >/dev/null; then
   (cd ros/localization/aav_ndt && cargo test -q --locked -p ndt-core)
   echo "== ros/sim/aav_simulator: our own simulator's core: the car, the rays, Gazebo's worlds"
   (cd ros/sim/aav_simulator && cargo test -q --locked -p sim-core --features shared)
+  echo "== ros/sim/aav_spine_sim: bench mode's car: the spine's real logic on a model car"
+  (cd ros/sim/aav_spine_sim && cargo test -q --locked -p bench-car)
   echo "== ros/drivers/aav_mppi_lag: MPPI with the lag, its critics, the closed-loop runs"
   (cd ros/drivers/aav_mppi_lag && cargo test -q --locked -p mppi-lag --features shared)
   echo "== ros/drivers/aav_mpc_lag: the lag-aware MPC in Rust, against the Python's vectors; closed loop"
@@ -99,6 +101,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/safety/aav_stop_zone -p stop-zone
   rust_style ros/localization/aav_ndt -p ndt-core
   rust_style ros/sim/aav_simulator -p sim-core --features shared
+  rust_style ros/sim/aav_spine_sim -p bench-car
   rust_style ros/drivers/aav_mppi_lag -p mppi-lag --features shared
   rust_style ros/drivers/aav_mpc_lag -p mpc-lag
   rust_style ros/drivers/aav_costmap -p costmap

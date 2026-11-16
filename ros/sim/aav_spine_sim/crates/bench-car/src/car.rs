@@ -58,6 +58,7 @@ pub struct MeasuredCar {
 
 impl MeasuredCar {
     /// A car standing still, its encoder at `ticks_per_metre` counts per metre.
+    #[must_use]
     pub fn new(ticks_per_metre: f32) -> Self {
         MeasuredCar {
             ticks_per_metre,

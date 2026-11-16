@@ -7,6 +7,7 @@
 
 use spine_core::Outputs;
 
+/// The model car's numbers: its size, steering, throttle, brake and encoder.
 #[derive(Debug, Clone, Copy)]
 pub struct PlantConfig {
     /// Rear axle to front axle (m). vehicle.yaml overrides it.
@@ -47,6 +48,7 @@ impl Default for PlantConfig {
 pub struct Pose {
     /// m, in the map frame: x east, y north.
     pub x: f64,
+    /// m, in the map frame: north.
     pub y: f64,
     /// rad, from east, positive left (counter-clockwise).
     pub yaw: f64,
@@ -60,6 +62,7 @@ pub struct Pose {
     pub steering: f32,
 }
 
+/// The model car: where it is, and how it answers the spine's outputs.
 pub struct Plant {
     cfg: PlantConfig,
     pose: Pose,
@@ -69,6 +72,8 @@ pub struct Plant {
 }
 
 impl Plant {
+    /// A model car with `cfg`'s numbers, standing at `start`.
+    #[must_use]
     pub fn new(cfg: PlantConfig, start: Pose) -> Self {
         Plant {
             cfg,
@@ -78,17 +83,21 @@ impl Plant {
         }
     }
 
+    /// Where the car is and how it moves.
+    #[must_use]
     pub fn pose(&self) -> Pose {
         self.pose
     }
 
     /// The encoder's 16-bit counter, as the spine sends it in VEHICLE_FEEDBACK.
+    #[must_use]
     pub fn wheel_ticks(&self) -> u16 {
         (self.ticks as u64 & 0xFFFF) as u16
     }
 
     /// How far each front tyre has rolled over the ground, either way (m): [left, right].
     /// What the wheel nodes' Hall sensors count.
+    #[must_use]
     pub fn front_rolled(&self) -> [f64; 2] {
         self.front_rolled
     }
@@ -97,6 +106,7 @@ impl Plant {
     ///
     /// The rigid-body speed at each front wheel, turning about the rear axle's centre
     /// line: the wheel at (wheelbase, ±track/2) moves at (v - ω·y, ω·wheelbase).
+    #[must_use]
     pub fn front_wheel_speeds(&self) -> [f32; 2] {
         let p = &self.pose;
         let c = &self.cfg;

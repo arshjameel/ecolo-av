@@ -6,6 +6,9 @@
 //!
 //! The same spine can drive a car measured elsewhere instead of the model ([`MeasuredCar`]):
 //! Gazebo's, in the simulator's spine profile (sim.launch.py spine:=true).
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod bench;
 pub mod car;

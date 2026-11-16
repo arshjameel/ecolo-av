@@ -19,8 +19,9 @@ use wheel_core::{ConfigError, WheelConfig, WheelNode};
 use crate::car::Car;
 use crate::plant::{Plant, PlantConfig, Pose};
 
-/// How often the spine sends each frame (ms), from firmware/can/aav.dbc.
+/// How often the spine sends VEHICLE_FEEDBACK (ms), from firmware/can/aav.dbc.
 pub const FEEDBACK_PERIOD_MS: u32 = 20;
+/// How often the spine sends VEHICLE_STATUS (ms), from firmware/can/aav.dbc.
 pub const STATUS_PERIOD_MS: u32 = 100;
 pub use wheel_core::FRAME_PERIOD_MS as WHEEL_PERIOD_MS;
 
@@ -56,6 +57,10 @@ pub struct Bench<C: Car = Plant> {
 
 impl Bench<Plant> {
     /// The spine driving the bench's model car, from `start`.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError`] if `wheels` can't work (no holes, a bad radius or timeout).
     pub fn new(
         spine: SpineConfig,
         plant: PlantConfig,
@@ -66,6 +71,7 @@ impl Bench<Plant> {
     }
 
     /// Where the model car is: the ground truth.
+    #[must_use]
     pub fn pose(&self) -> Pose {
         self.plant.pose()
     }
@@ -73,6 +79,10 @@ impl Bench<Plant> {
 
 impl<C: Car> Bench<C> {
     /// The spine driving any car: the model, or one measured elsewhere.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError`] if `wheels` can't work (no holes, a bad radius or timeout).
     pub fn with_car(spine: SpineConfig, car: C, wheels: WheelConfig) -> Result<Self, ConfigError> {
         Ok(Bench {
             spine: Spine::new(spine),
