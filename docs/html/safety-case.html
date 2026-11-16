@@ -7,7 +7,7 @@
 <!-- Generated from docs/safety-case.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The safety case</h1>
-<div class="meta">20 min read · 17 sections</div></header>
+<div class="meta">21 min read · 17 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -471,7 +471,7 @@ command's.</p>
 </tr>
 <tr>
 <td>Watchdog (OVERSPEED)</td>
-<td>the wheels over ego's speed by 0.2 m/s while not slowing (under 0.3 m/s²): OVER (a warning) after 1 s, OVERSPEED after 2 s, latched, holds the programs (TODO 207)</td>
+<td>the wheels over ego's speed by 0.2 m/s while not slowing (under 0.3 m/s²): OVER (a warning) after 1 s, OVERSPEED after 2 s, latched, holds the programs (TODO 207). Only fresh numbers count: a wheel speed older than the input's <code>max_age</code> (1 s), or a command after a gap longer than that, is no check; quiet wheels are odometry's own fault, STALE (16 Nov)</td>
 <td><code>aav_safety</code> <code>watchdog.py</code>, input <code>speed</code>; the sim only</td>
 </tr>
 </tbody>
@@ -523,6 +523,11 @@ command's.</p>
 <tr>
 <td>OVERSPEED never in a healthy drive or stop: every loop profile on the car model; the healthy, weak-brake and stuck-throttle e-stops in the sim</td>
 <td>the car model (tests); sim (ours), 16 Nov, 3 runs</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>Fixed 16 Nov:</strong> with the wheels quiet (<code>--faults</code>' odom stop), the watchdog kept their last 0.5 m/s against ego's 0 and latched OVERSPEED, so the ten fault cases after it found the lock already on. Now a stale wheel speed is no check: <code>sim-check --faults</code> passed all 14 fault cases and <code>--actuator-faults</code> all 6 (the Python watchdog, first run); a test in each language; the shared vectors replay it. In 4 runs since (Python and Rust watchdogs), OVERSPEED never latched after the odom stop, but 1-4 cases a run failed "Nav2 would not drive before the fault": the global EKF jumps 9 m as the wheels come back and the path follower loses its path (a navigation flake, TODO 207)</td>
+<td>sim (ours), 16 Nov</td>
 <td>Ben</td>
 </tr>
 <tr>

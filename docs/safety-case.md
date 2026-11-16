@@ -108,7 +108,7 @@ command's.
 | Spine overspeed | over 1.25 m/s: throttle 0, brake 0.5; still over after 2 s: full brake, latched | `spine-core` (Arsh's stop rules) |
 | ESP32 throttle cap | DAC at most 700 of 1023; open-loop cap 1.0 / 3.0 (3.0 a guess) | `esp32-umod` |
 | Actuator tests | stop on a speed rising while the command falls (`runaway`) | `aav_actuator_tests` |
-| Watchdog (OVERSPEED) | the wheels over ego's speed by 0.2 m/s while not slowing (under 0.3 m/s²): OVER (a warning) after 1 s, OVERSPEED after 2 s, latched, holds the programs (TODO 207) | `aav_safety` `watchdog.py`, input `speed`; the sim only |
+| Watchdog (OVERSPEED) | the wheels over ego's speed by 0.2 m/s while not slowing (under 0.3 m/s²): OVER (a warning) after 1 s, OVERSPEED after 2 s, latched, holds the programs (TODO 207). Only fresh numbers count: a wheel speed older than the input's `max_age` (1 s), or a command after a gap longer than that, is no check; quiet wheels are odometry's own fault, STALE (16 Nov) | `aav_safety` `watchdog.py`, input `speed`; the sim only |
 
 | Number | Where, when | Who |
 |---|---|---|
@@ -120,6 +120,7 @@ command's.
 | the throttle stuck at its cruise level, then the e-stop from 0.9 m/s: 1.48-1.50 m (healthy 1.18-1.20), stood in 2.2 s: the brake beats it | sim (ours), 15 Nov, 3 runs | Ben |
 | the throttle stuck while speeding up (at 0.4 m/s, `--actuator-faults`): the car held 1.37 m/s for 1.00 asked; the watchdog said OVER 3.6 s after, OVERSPEED 4.6 s after | sim (ours), 16 Nov, 2 runs | Ben |
 | OVERSPEED never in a healthy drive or stop: every loop profile on the car model; the healthy, weak-brake and stuck-throttle e-stops in the sim | the car model (tests); sim (ours), 16 Nov, 3 runs | Ben |
+| **Fixed 16 Nov:** with the wheels quiet (`--faults`' odom stop), the watchdog kept their last 0.5 m/s against ego's 0 and latched OVERSPEED, so the ten fault cases after it found the lock already on. Now a stale wheel speed is no check: `sim-check --faults` passed all 14 fault cases and `--actuator-faults` all 6 (the Python watchdog, first run); a test in each language; the shared vectors replay it. In 4 runs since (Python and Rust watchdogs), OVERSPEED never latched after the odom stop, but 1-4 cases a run failed "Nav2 would not drive before the fault": the global EKF jumps 9 m as the wheels come back and the path follower loses its path (a navigation flake, TODO 207) | sim (ours), 16 Nov | Ben |
 | stuck wide open | not measured | |
 | the car | not measured | |
 

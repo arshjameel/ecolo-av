@@ -91,12 +91,16 @@ Our simulator's road world, headless (`pixi run sim-check`, through `tools/ros.s
 | the road world (start-up, contract, sensors, lidar, scripted drive, EKF, wheels vs IMU and GPS) | pass | pass |
 | `--actuator-faults`: brake weak or dead, throttle stuck, steering stuck | pass: OVERSPEED 4.6 s after the stuck throttle, steering STUCK 4.1 s after | pass: 4.7 s and 4.1 s |
 | `--faults`: gps stop, watchdog hang, hud stop, imu stop | pass | pass |
-| `--faults`: odom stop and the ten after it | **fail** | **fail, the same way** |
+| `--faults`: odom stop and the ten after it, before 16 Nov's fix | **fail** | **fail, the same way** |
+| `--faults` since the fix (14 cases) | 14, then 13 | 8 (a busy computer), 12, 10 |
 
-The `--faults` fail is the Python's, and the port copies it exactly: when `/vehicle/odom`
-stops, the `speed` input keeps the wheels' last speed (0.5 m/s), so with ego asking 0 it
-latches OVERSPEED, and every fault after it finds the lock already on. Not fixed here:
-a safety lock's rule is a person's call, and both must change together (`gen_vectors.py`).
+Before the fix, when `/vehicle/odom` stopped, the `speed` input kept the wheels' last
+speed (0.5 m/s), so with ego asking 0 it latched OVERSPEED, and every fault after it found
+the lock already on. Fixed in both, the same way (TODO 207): a stale wheel speed, or a
+command after a gap, is no check; `gen_vectors.py` now plays a 3 s odom silence with ego
+asking 0. Since then OVERSPEED never latched there. The cases lost since are "Nav2 would
+not drive before the fault": the global EKF jumps 9 m when the wheels come back and the
+path follower loses its path (a navigation flake; the watchdog says OK by then).
 
 ## Side Effects
 

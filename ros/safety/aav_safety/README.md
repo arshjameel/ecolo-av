@@ -38,7 +38,7 @@ The watchdog works through a twist_mux lock (priority 30, in `aav_command_mux`).
 | `DISAGREE` | the wheels' speed or turn against the IMU and the GPS (`wheel_check.py`). Latched |
 | `STUCK` | an actuator (`/vehicle/steering`) more than `follow_tolerance` off its command for `follow_persist` s (TODO 207). Latched; NaN on a side is no check, not a fault |
 | `OVER` | the car more than `over_margin` over ego's speed for `over_warn` s while not slowing (TODO 207). A warning only |
-| `OVERSPEED` | the same for `over_persist` s: a stuck throttle. Latched |
+| `OVERSPEED` | the same for `over_persist` s: a stuck throttle. Latched. A stale wheel speed or command is no check |
 | `LOST` | a `latch` input (the HUD) dropped out after its start-up. Latched |
 
 A person clears latched faults: `pixi run clear watchdog`. More in
@@ -191,6 +191,9 @@ stays the default.
 - The stop hold's lock holds Nav2 (20) and the AI slot (10) only. Timeout 0: its silence
   locks nothing, and a `stop_hold` that dies while true keeps the stop.
 - The stop hold times on the steady clock, so a jump in sim time can't end it early.
+- OVER and OVERSPEED count fresh numbers only: a wheel speed older than the `speed`
+  input's `max_age`, or a command after a gap longer than it, is no check. Quiet wheels
+  are the `odom` input's own fault (STALE), so they never latch OVERSPEED (16 Nov).
 - Speeds compare as sizes, so reversing counts too. A car that slows at 0.3 m/s² or
   more is never over: a healthy stop lags its command (the car model, `test_watchdog.py`).
 - The lock holds the point driver (25), Nav2 (20) and the AI slot (10), never a person or a test.
