@@ -80,7 +80,16 @@ ros/<area>/aav_<what>/
 | small types for units: `Metres(f32)` | bare `f32` everywhere |
 | `?`, and `expect` with a reason, only where failure is a bug | `unwrap()` in library code |
 | traits for a device (`embedded-hal`) | functions that take a bus handle and a pin number |
+| `#[must_use]` on a pure function: dropping its value is a mistake | a getter whose answer can be thrown away silently |
+| a doc comment on every public item, units included; `# Errors` on a call that returns `Result` | fields only the author understands |
+| `#[derive(Debug)]` on every public type (by hand where a field can't print) | types nobody can print while debugging |
 | `cargo fmt`, `cargo clippy` clean | a style of your own |
+
+The `#[must_use]` and doc comment rows are kept by the compiler (TODO 176, 15 Nov). A crate root says
+`#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]`, and
+clippy's `-D warnings` turns a miss into a failed `tools/test.sh`. Every crate has it
+except the HUD's four logic crates, `sim-core`, `camera-core` and `bench-car` (their
+docs are still to write: TODO 176) and the programs (boards, nodes, screens).
 
 ### A launch override that silently loses
 
