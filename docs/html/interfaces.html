@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">115 min read · 4 sections</div></header>
+<div class="meta">116 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -162,7 +162,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/joy/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>teleop_twist_joy_node</code></td>
-<td><code>twist_mux</code>, <code>language_drive</code></td>
+<td><code>twist_mux</code>, <code>language_drive</code>, <code>ego</code></td>
 <td>-</td>
 <td>Priority 100. Only while the deadman (trigger) is held.</td>
 </tr>
@@ -170,7 +170,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/keyboard/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>teleop_twist_keyboard</code></td>
-<td><code>twist_mux</code>, <code>language_drive</code></td>
+<td><code>twist_mux</code>, <code>language_drive</code>, <code>ego</code></td>
 <td>-</td>
 <td>Priority 90 (twist_mux's keyboard slot). A person driving from a laptop - teleop_twist_keyboard in the namespace /drivers/keyboard (tools/keyboard.sh, stamped:=true), or the Foxglove teleop panel set to this topic - on the stand-ins only, as the car's bridge only watches (foxglove.launch.py).</td>
 </tr>
@@ -178,7 +178,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/rc/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>rc_driver</code></td>
-<td><code>twist_mux</code>, <code>language_drive</code></td>
+<td><code>twist_mux</code>, <code>language_drive</code>, <code>ego</code></td>
 <td>-</td>
 <td>Priority 95 (proposed, TODO 48) - a person with the RC transmitter, below the joystick's deadman (100), above the keyboard (90). rc_driver (aav_rc) turns /vehicle/rc into a command only while the transmitter's mode switch is on RC via ROS - throttle stick x max_speed (1.0 m/s; reverse 0.5), steering stick x the steering limit, as a turn rate by the bicycle model - at the uplink's 50 Hz, zeros included, so nothing below it drives. It publishes one zero when the switch leaves RC via ROS; if /vehicle/rc goes quiet while on RC via ROS it keeps publishing zeros (a stop) until the uplink comes back. RC direct never comes here - the ESP32 drives from the sticks itself.</td>
 </tr>
@@ -401,10 +401,10 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <tr>
 <td><code>/drivers/nav/lag_aware</code></td>
 <td><code>std_msgs/msg/Bool</code></td>
-<td><code>mppi_lag</code>, <code>track</code></td>
+<td><code>mppi_lag</code>, <code>track</code>, <code>mpc_lag_rs</code></td>
 <td><code>ego</code></td>
 <td>-</td>
-<td>Latched (reliable, transient local, depth 1). true - this driver leads for the car's lag and dead times itself (a lag-aware tracker, such as aav_track's MPC or the Rust MPPI), so ego's own lead (lag_lead) turns off while its commands drive; false or never sent - ego may lead (docs/vehicle-model.md). Publish true when the lag-aware mode starts and false when it ends, once each (latched), and stamp every cmd_vel with now - ego knows whose command it obeys by matching /control/cmd_vel (twist_mux passes the winner's message on unchanged) against each lag-aware driver's last commands (stamp and twist), so a message re-stamped on the way can't match. ego watches the drivers in its lag_aware_drivers parameter (ego.yaml - scripted, point, nav, ai). Publishers (both drive through Nav2, so this slot) - aav_track's track node - true while its tracker models the lags itself (tracker:=mpc_lag, docs/trials.md), false for every other tracker, sent at start, on each live swap, and false as it stops; aav_mppi_lag's mppi_lag (tracker:=mppi_lag) - false at start, true when it starts following a path with model lag, false when the path ends and when it exits, always false with model ideal. Absent with Nav2's own controllers (no lag in their model). Nav2 republishes their command (velocity_smoother, collision_monitor) with its own stamps; ego matches what reaches /drivers/nav/cmd_vel, so the whole Nav2 slot counts as lag-aware while this is true.</td>
+<td>Latched (reliable, transient local, depth 1). true - this driver leads for the car's lag and dead times itself (a lag-aware tracker, such as aav_track's MPC or the Rust MPPI), so ego's own lead (lag_lead) turns off while its commands drive; false or never sent - ego may lead (docs/vehicle-model.md). Publish true when the lag-aware mode starts and false when it ends, once each (latched), and stamp every cmd_vel with now - ego knows whose command it obeys by matching /control/cmd_vel (twist_mux passes the winner's message on unchanged) against each lag-aware driver's last commands (stamp and twist), so a message re-stamped on the way can't match. ego watches the drivers in its lag_aware_drivers parameter (ego.yaml - scripted, point, nav, ai). Publishers (both drive through Nav2, so this slot) - aav_track's track node - true while its tracker models the lags itself (tracker:=mpc_lag, docs/trials.md), false for every other tracker, sent at start, on each live swap, and false as it stops; aav_mppi_lag's mppi_lag (tracker:=mppi_lag) - false at start, true when it starts following a path with model lag, false when the path ends and when it exits, always false with model ideal; aav_mpc_lag's mpc_lag_rs (tracker:=mpc_lag_rs, the Rust mpc_lag) - false at start, true while a path runs, false when it ends and when it exits. Absent with Nav2's own controllers (no lag in their model). Nav2 republishes their command (velocity_smoother, collision_monitor) with its own stamps; ego matches what reaches /drivers/nav/cmd_vel, so the whole Nav2 slot counts as lag-aware while this is true.</td>
 </tr>
 <tr>
 <td><code>/drivers/ai/lag_aware</code></td>
@@ -426,9 +426,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/safety/estop</code></td>
 <td><code>std_msgs/msg/Bool</code></td>
 <td><code>joy_teleop</code>, <code>hud</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>hw_panel</code>, <code>dev_window</code></td>
-<td><code>twist_mux</code>, <code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>carla_adapter</code>, <code>point_driver</code>, <code>hw_panel</code>, <code>behaviour</code></td>
+<td><code>twist_mux</code>, <code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>carla_adapter</code>, <code>point_driver</code>, <code>hw_panel</code>, <code>behaviour</code>, <code>ego</code></td>
 <td>-</td>
-<td>true = stop. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop. None of them ever publishes false.</td>
+<td>true = stop. ego turns the pedal off (full braking) while true. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop. None of them ever publishes false.</td>
 </tr>
 <tr>
 <td><code>/control/cmd_vel</code></td>
@@ -1329,7 +1329,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <tr>
 <td><code>/cmd_vel_nav</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
-<td><code>controller_server</code>, <code>behavior_server</code>, <code>track</code>, <code>mppi_lag</code></td>
+<td><code>controller_server</code>, <code>behavior_server</code>, <code>track</code>, <code>mppi_lag</code>, <code>mpc_lag_rs</code></td>
 <td><code>velocity_smoother</code></td>
 <td>-</td>
 <td>Nav2's own name, inside Nav2 - the path follower's command, before the velocity smoother, collision_monitor and /drivers/nav/cmd_vel. controller_server publishes it (tracker:=none, the default), or aav_track's track node with a trial tracker on (tracker:=pure_pursuit</td>
@@ -1345,10 +1345,10 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <tr>
 <td><code>/drivers/nav/track/status</code></td>
 <td><code>diagnostic_msgs/msg/DiagnosticStatus</code></td>
-<td><code>track</code>, <code>mppi_lag</code></td>
+<td><code>track</code>, <code>mppi_lag</code>, <code>mpc_lag_rs</code></td>
 <td><code>controller_compare</code>, <code>debug_hud</code></td>
 <td>-</td>
-<td>aav_track's debug, every tick while it follows a path (20 Hz) - name track, message the tracker's name; values tracker, loop_ms (this tick's work), loop_ms_max, missed_ticks (since the path came, by the node's clock), cross_track_m (+ left of the path), heading_error_rad, steer_rad, speed_mps, left_m (along the path to its end). Only with tracker:= on. aav_mppi_lag's mppi_lag (tracker:=mppi_lag) publishes the same keys, message mppi_lag, and adds model (lag or ideal), est_steering_rad (its model's wheel angle), best_cost and collided_share (MPPI's cheapest sample, the share of samples that hit the costmap).</td>
+<td>aav_track's debug, every tick while it follows a path (20 Hz) - name track, message the tracker's name; values tracker, loop_ms (this tick's work), loop_ms_max, missed_ticks (since the path came, by the node's clock), cross_track_m (+ left of the path), heading_error_rad, steer_rad, speed_mps, left_m (along the path to its end). Only with tracker:= on. aav_mppi_lag's mppi_lag (tracker:=mppi_lag) publishes the same keys, message mppi_lag, and adds model (lag or ideal), est_steering_rad (its model's wheel angle), best_cost and collided_share (MPPI's cheapest sample, the share of samples that hit the costmap). aav_mpc_lag's mpc_lag_rs (tracker:=mpc_lag_rs) publishes the same keys, message mpc_lag_rs, and the Python mpc_lag's debug ones - solve_ms, iterations, solved, wheels_est_rad, speed_limit_mps, feed_forward_rad - and map_gap_m.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/speed_limit</code></td>

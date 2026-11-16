@@ -263,7 +263,19 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>LQR and MPC (textbook control)</td>
 <td>-</td>
 <td>idea</td>
-<td><code>aav_track</code>'s LQR, MPC and MPC with lag</td>
+<td><code>aav_track</code>'s LQR, MPC and MPC with lag; <code>aav_mpc_lag</code>, the MPC with lag in Rust</td>
+</tr>
+<tr>
+<td><strong>OSQP</strong>'s ADMM: B. Stellato, G. Banjac, P. Goulart, A. Bemporad, S. Boyd, "OSQP: an operator splitting solver for quadratic programs", Math. Programming Computation, 2020</td>
+<td>Apache-2.0 (the solver; we took the algorithm, not its code)</td>
+<td>idea</td>
+<td><code>aav_track</code>'s <code>qp.py</code> and its Rust port in <code>aav_mpc_lag</code> (<code>qp.rs</code>, 15 Nov)</td>
+</tr>
+<tr>
+<td><strong>Clarabel</strong> (P. Goulart, Y. Chen; Oxford)</td>
+<td>Apache-2.0</td>
+<td>idea</td>
+<td>read and weighed for <code>aav_mpc_lag</code>'s QP (15 Nov); we kept our ADMM for its warm start and the same answers as the Python (<code>aav_mpc_lag</code> README)</td>
 </tr>
 <tr>
 <td><strong>Flow matching</strong> and the diffusion planner's other ideas</td>
