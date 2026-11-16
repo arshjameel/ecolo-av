@@ -48,6 +48,8 @@ if command -v cargo >/dev/null; then
   (cd ros/ego/aav_ego_rs && cargo test -q --locked -p ego-core)
   echo "== ros/drivers/aav_behaviour_rs: the behaviour planner in Rust, the Python modules' answers"
   (cd ros/drivers/aav_behaviour_rs && cargo test -q --locked -p behaviour-core)
+  echo "== ros/safety/aav_watchdog_rs: the sensor watchdog in Rust, the Python node's answers"
+  (cd ros/safety/aav_watchdog_rs && cargo test -q --locked -p watchdog-core)
   echo "== ros/can_bridge/aav_spine_bridge: the Rust CAN bridge's logic, the shared CAN vectors"
   (cd ros/can_bridge/aav_spine_bridge && cargo test -q --locked -p spine-bridge)
   echo "== ros/bringup/aav_description/car-model: the car model's Rust twin, the shared vectors"
@@ -97,6 +99,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/perception/aav_radar_clusters -p radar-clustering
   rust_style ros/ego/aav_ego_rs -p ego-core
   rust_style ros/drivers/aav_behaviour_rs -p behaviour-core
+  rust_style ros/safety/aav_watchdog_rs -p watchdog-core
   rust_style ros/can_bridge/aav_spine_bridge -p spine-bridge
   rust_style ros/bringup/aav_description/car-model
   rust_style ros/bringup/aav_description/map-chunks

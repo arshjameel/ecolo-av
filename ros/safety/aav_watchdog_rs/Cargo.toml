@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+# watchdog-core: the sensor watchdog's logic and the wheels' cross check, with no ROS
+#   (aav_safety's watchdog.py and wheel_check.py, ported): cargo test -p watchdog-core
+# watchdog-node: the ROS node (rclrs), binary `sensor_watchdog`. colcon builds it through
+#   CMakeLists.txt.
+members = ["crates/watchdog-core", "crates/watchdog-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false

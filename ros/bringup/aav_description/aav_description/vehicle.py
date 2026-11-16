@@ -433,6 +433,21 @@ BEHAVIOUR_IMPLS = {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
 DEFAULT_BEHAVIOUR_IMPL = 'python'
 
 
+# Which sensor watchdog runs (watchdog.launch.py, sim.launch.py watchdog_impl:=): python
+# (aav_safety's, the default) or rust (aav_watchdog_rs: the same node name, topics and
+# answers). A safety lock: the Python stays the default until a person decides (TODO 185).
+WATCHDOG_IMPLS = {'python': 'aav_safety', 'rust': 'aav_watchdog_rs'}
+DEFAULT_WATCHDOG_IMPL = 'python'
+
+
+def check_watchdog_impl(impl):
+    """Return the sensor watchdog's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in WATCHDOG_IMPLS:
+        raise ValueError(f'watchdog_impl:={impl}: pick one of {", ".join(WATCHDOG_IMPLS)}')
+    return name
+
+
 def check_behaviour_impl(impl):
     """Return the behaviour node's language (lower case), or raise ValueError: what to pick."""
     name = str(impl).strip().lower()

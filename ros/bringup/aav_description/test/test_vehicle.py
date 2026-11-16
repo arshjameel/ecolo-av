@@ -968,3 +968,11 @@ def test_behaviour_impl_is_python_or_rust():
     assert vehicle.BEHAVIOUR_IMPLS == {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
     with pytest.raises(ValueError, match='behaviour_impl:=c'):
         vehicle.check_behaviour_impl('c')
+
+
+def test_watchdog_impl_is_python_or_rust():
+    assert vehicle.DEFAULT_WATCHDOG_IMPL == 'python'
+    assert vehicle.check_watchdog_impl(' Rust ') == 'rust'
+    assert vehicle.WATCHDOG_IMPLS == {'python': 'aav_safety', 'rust': 'aav_watchdog_rs'}
+    with pytest.raises(ValueError, match='watchdog_impl:=c'):
+        vehicle.check_watchdog_impl('c')
