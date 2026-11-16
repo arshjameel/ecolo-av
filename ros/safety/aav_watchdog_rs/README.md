@@ -78,7 +78,25 @@ node, and a clear.
 
 ## Measured
 
-Not yet in our simulator.
+Our simulator's road world, headless (`pixi run sim-check`, through `tools/ros.sh
+--local`), Ben's MacBook (M4 Max), 16 Nov. CPU: the node's CPU seconds a second over about
+29 s of the run, sampled with `ps` every 2 s.
+
+| `/clock` 100 Hz | Python `sensor_watchdog` | Rust `sensor_watchdog` |
+|---|---|---|
+| share of a core | **9.9 %** | **1.4 %** |
+
+| sim-check, `watchdog_impl:=` | Python | Rust |
+|---|---|---|
+| the road world (start-up, contract, sensors, lidar, scripted drive, EKF, wheels vs IMU and GPS) | pass | pass |
+| `--actuator-faults`: brake weak or dead, throttle stuck, steering stuck | pass: OVERSPEED 4.6 s after the stuck throttle, steering STUCK 4.1 s after | pass: 4.7 s and 4.1 s |
+| `--faults`: gps stop, watchdog hang, hud stop, imu stop | pass | pass |
+| `--faults`: odom stop and the ten after it | **fail** | **fail, the same way** |
+
+The `--faults` fail is the Python's, and the port copies it exactly: when `/vehicle/odom`
+stops, the `speed` input keeps the wheels' last speed (0.5 m/s), so with ego asking 0 it
+latches OVERSPEED, and every fault after it finds the lock already on. Not fixed here:
+a safety lock's rule is a person's call, and both must change together (`gen_vectors.py`).
 
 ## Side Effects
 
