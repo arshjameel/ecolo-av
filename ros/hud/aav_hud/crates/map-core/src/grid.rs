@@ -74,7 +74,9 @@ impl GridInfo {
 /// A box on the map's axes.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Bounds {
+    /// The lower-left corner.
     pub min: Point,
+    /// The upper-right corner.
     pub max: Point,
 }
 
@@ -92,6 +94,7 @@ impl Bounds {
         })
     }
 
+    /// The middle of the box.
     #[must_use]
     pub fn centre(&self) -> Point {
         (self.min + self.max) * 0.5
@@ -125,8 +128,11 @@ impl From<i8> for Cell {
 /// The colours a grid is drawn in, as RGBA.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Palette {
+    /// A free cell.
     pub free: [u8; 4],
+    /// An occupied cell.
     pub occupied: [u8; 4],
+    /// An unknown cell.
     pub unknown: [u8; 4],
 }
 
@@ -151,15 +157,22 @@ impl Palette {
 /// Why a grid can't be drawn.
 #[derive(Debug, Error, PartialEq)]
 pub enum GridError {
+    /// The cell count doesn't match the size.
     #[error("the map has {got} cells, but {width} x {height} needs {expected}")]
     WrongSize {
+        /// Cells across.
         width: u32,
+        /// Cells down.
         height: u32,
+        /// Cells the size needs.
         expected: usize,
+        /// Cells the message has.
         got: usize,
     },
+    /// The resolution (m) isn't positive.
     #[error("the map's resolution must be positive, not {0} m")]
     BadResolution(f64),
+    /// The map has no cells.
     #[error("the map is empty (0 x 0 cells)")]
     Empty,
 }
@@ -167,6 +180,7 @@ pub enum GridError {
 /// A whole occupancy grid.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Grid {
+    /// Its size, resolution and origin.
     pub info: GridInfo,
     /// The frame it's in: `map`, normally.
     pub frame: String,
@@ -175,6 +189,10 @@ pub struct Grid {
 
 impl Grid {
     /// Checks the message: the cell count must match its size.
+    ///
+    /// # Errors
+    ///
+    /// [`GridError`] if the map is empty, its resolution isn't positive, or the cell count doesn't match.
     pub fn new(info: GridInfo, frame: String, cells: Vec<i8>) -> Result<Self, GridError> {
         if !(info.resolution.is_finite() && info.resolution > 0.0) {
             return Err(GridError::BadResolution(info.resolution));

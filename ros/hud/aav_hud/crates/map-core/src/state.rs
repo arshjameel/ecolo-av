@@ -28,6 +28,7 @@ pub const DEFAULT_FRAME: &str = "map";
 /// The car, from one odometry message.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Car {
+    /// Where it is and which way it faces.
     pub pose: Pose,
     /// Forward speed; negative in reverse.
     pub speed: MetresPerSecond,
@@ -38,24 +39,35 @@ pub struct Car {
 /// One piece of news.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Update {
+    /// Nav2's map.
     Map(Grid),
     /// A map message that can't be drawn, and why.
     BadMap(String),
+    /// The car, from odometry.
     Car(Car),
+    /// Nav2's planned path.
     Plan {
+        /// Its points.
         route: Route,
+        /// Its frame.
         frame: String,
     },
+    /// A goal: RViz's, or the place search's.
     Goal {
+        /// Where.
         pose: Pose,
+        /// Its frame.
         frame: String,
     },
+    /// A node said where its data comes from (`/system/source`).
     Source(Announcement),
     /// The sensor watchdog's verdict: "OK", or "STOP: ..." / "WARN: ...".
     Watchdog(String),
     /// street_router's street route: drawn, but not what Nav2 drives (that's the plan).
     StreetRoute {
+        /// Its points.
         route: Route,
+        /// Its frame.
         frame: String,
     },
 }
@@ -70,6 +82,7 @@ pub enum Remaining {
 }
 
 impl Remaining {
+    /// How far, in metres.
     #[must_use]
     pub fn metres(self) -> Metres {
         match self {
@@ -81,12 +94,16 @@ impl Remaining {
 /// Everything the screen draws.
 #[derive(Debug, Clone)]
 pub struct MapState {
+    /// The settings.
     pub config: MapConfig,
+    /// Nav2's map, once it came.
     pub grid: Option<Grid>,
     grid_changed: bool,
     /// Why the last map couldn't be drawn.
     pub map_problem: Option<String>,
+    /// The car, once it came.
     pub car: Option<Car>,
+    /// Nav2's planned path.
     pub route: Route,
     plan_frame: String,
     /// street_router's street route, and its frame.
@@ -97,6 +114,7 @@ pub struct MapState {
     pub goal_pose: Option<Pose>,
     goal_frame: String,
     goal_at: Option<Instant>,
+    /// Where each sensor's data comes from.
     pub origins: Origins,
     /// The sensor watchdog's last verdict.
     pub watchdog: Option<String>,
@@ -104,6 +122,7 @@ pub struct MapState {
 }
 
 impl MapState {
+    /// Nothing heard yet, with these settings.
     #[must_use]
     pub fn new(config: MapConfig) -> Self {
         Self {

@@ -23,16 +23,22 @@ const MAX_DEPTH: usize = 4;
 /// Why a PMTiles file can't be read.
 #[derive(Debug, Error)]
 pub enum PmtilesError {
+    /// Not a PMTiles version 3 file.
     #[error("not a PMTiles version 3 file")]
     NotPmtiles,
+    /// The file is cut short: the bytes wanted, from and to.
     #[error("the file is cut short (wanted bytes {0} to {1})")]
     Truncated(u64, u64),
+    /// A compression other than gzip or none.
     #[error("{0} compression isn't supported here (only gzip or none)")]
     Compression(Compression),
+    /// The tiles aren't vector tiles.
     #[error("the tiles are {0:?}, not vector tiles (MVT)")]
     NotVector(TileType),
+    /// A directory is broken.
     #[error("a directory is broken")]
     BadDirectory,
+    /// gzip failed.
     #[error("gzip: {0}")]
     Gzip(#[from] std::io::Error),
 }
@@ -40,10 +46,15 @@ pub enum PmtilesError {
 /// How the directories or the tiles are compressed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Compression {
+    /// Not known.
     Unknown,
+    /// Not compressed.
     None,
+    /// gzip.
     Gzip,
+    /// Brotli.
     Brotli,
+    /// Zstandard.
     Zstd,
 }
 
@@ -68,11 +79,17 @@ impl std::fmt::Display for Compression {
 /// What the tiles are.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TileType {
+    /// Not known.
     Unknown,
+    /// Mapbox Vector Tiles.
     Mvt,
+    /// PNG pictures.
     Png,
+    /// JPEG pictures.
     Jpeg,
+    /// WebP pictures.
     Webp,
+    /// AVIF pictures.
     Avif,
 }
 
@@ -96,9 +113,13 @@ pub struct Header {
     leaves: u64,
     data: u64,
     internal: Compression,
+    /// How the tiles are compressed.
     pub tile_compression: Compression,
+    /// What the tiles are.
     pub tile_type: TileType,
+    /// The lowest zoom it has.
     pub min_zoom: u8,
+    /// The highest zoom it has.
     pub max_zoom: u8,
 }
 
@@ -115,6 +136,7 @@ struct Entry {
 #[derive(Debug, Clone)]
 pub struct Archive {
     bytes: Vec<u8>,
+    /// The file's header.
     pub header: Header,
     root: Vec<Entry>,
 }
@@ -122,6 +144,10 @@ pub struct Archive {
 impl Archive {
     /// Reads the header and the root directory. Only vector tiles (MVT), compressed with
     /// gzip or not at all.
+    ///
+    /// # Errors
+    ///
+    /// [`PmtilesError`] if it isn't a PMTiles file of vector tiles, is cut short, or can't be unzipped.
     pub fn new(bytes: Vec<u8>) -> Result<Self, PmtilesError> {
         let header = parse_header(&bytes)?;
         if header.tile_type != TileType::Mvt {
@@ -144,6 +170,10 @@ impl Archive {
 
     /// One tile's bytes, unzipped (a Mapbox Vector Tile); None when the file has no such
     /// tile.
+    ///
+    /// # Errors
+    ///
+    /// [`PmtilesError`] if a directory is broken or the tile can't be unzipped.
     pub fn tile(&self, id: TileId) -> Result<Option<Vec<u8>>, PmtilesError> {
         let wanted = tile_number(id);
         let mut dir = std::borrow::Cow::Borrowed(&self.root);

@@ -26,7 +26,10 @@ pub enum Refusal {
     /// No `/map` yet: nobody knows where Nav2 can plan.
     NoMap,
     /// Off Nav2's map: it can't plan there. How far from the map's edge.
-    OutsideMap { from_edge: Metres },
+    OutsideMap {
+        /// How far outside the edge.
+        from_edge: Metres,
+    },
     /// No position for the car: no way to say which way to face, or that it's safe.
     NoCar,
 }
@@ -54,6 +57,10 @@ fn far(d: Metres) -> String {
 
 /// The goal for a place at `place` (map frame): facing from the car toward it. Refused
 /// with no map, outside the map, or with no car.
+///
+/// # Errors
+///
+/// [`Refusal`] with no map, outside the map, or with no car.
 pub fn goal_for(place: Point, car: Option<Point>, map: Option<&GridInfo>) -> Result<Pose, Refusal> {
     let map = map.ok_or(Refusal::NoMap)?;
     let from_edge = map.distance_outside(place);
@@ -92,20 +99,26 @@ pub enum Step {
 pub enum Key {
     /// `/`, or a click on the box.
     Open,
+    /// A letter typed.
     Char(char),
     /// Removes the last letter (a whole letter: é is one, though two bytes).
     Backspace,
     /// Empties the box (the on-screen keyboard's Clear).
     Clear,
+    /// Up the list.
     Up,
+    /// Down the list.
     Down,
+    /// Search, or pick the place.
     Enter,
+    /// Back, or close the box.
     Escape,
 }
 
 /// What the window must do after a key.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
+    /// Nothing to do.
     Nothing,
     /// The words changed: search again, then [`Finder::set_results`].
     Search,
@@ -128,21 +141,25 @@ pub struct Finder {
 }
 
 impl Finder {
+    /// An empty, closed search box.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Where the search is: shut, typing, picked or confirming.
     #[must_use]
     pub fn step(&self) -> Step {
         self.step
     }
 
+    /// The words typed so far.
     #[must_use]
     pub fn query(&self) -> &str {
         &self.query
     }
 
+    /// The places found.
     #[must_use]
     pub fn results(&self) -> &[Place] {
         &self.results
@@ -163,6 +180,7 @@ impl Finder {
         }
     }
 
+    /// Why the last search failed, if it did.
     #[must_use]
     pub fn problem(&self) -> Option<&str> {
         self.problem.as_deref()

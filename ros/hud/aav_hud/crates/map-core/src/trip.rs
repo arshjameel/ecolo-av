@@ -30,9 +30,13 @@ pub enum Trip {
 /// How the panel colours a status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tone {
+    /// Nothing to flag.
     Quiet,
+    /// All is well.
     Good,
+    /// Worth a look.
     Warn,
+    /// Something is wrong.
     Bad,
 }
 
@@ -87,6 +91,7 @@ impl Trip {
         }
     }
 
+    /// Its colour on the panel.
     #[must_use]
     pub fn tone(self) -> Tone {
         match self {

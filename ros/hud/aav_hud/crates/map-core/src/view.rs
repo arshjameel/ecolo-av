@@ -31,11 +31,14 @@ impl PixelsPerMetre {
 /// A point on the screen, in pixels from the window's top left.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct ScreenPoint {
+    /// px, right.
     pub x: f64,
+    /// px, down.
     pub y: f64,
 }
 
 impl ScreenPoint {
+    /// A point from x and y (px).
     #[must_use]
     pub const fn new(x: f64, y: f64) -> Self {
         Self { x, y }
@@ -45,18 +48,24 @@ impl ScreenPoint {
 /// The part of the window the map is drawn in, in pixels.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Viewport {
+    /// The left edge (px).
     pub x: f64,
+    /// The top edge (px).
     pub y: f64,
+    /// px.
     pub width: f64,
+    /// px.
     pub height: f64,
 }
 
 impl Viewport {
+    /// The middle.
     #[must_use]
     pub fn centre(&self) -> ScreenPoint {
         ScreenPoint::new(self.x + self.width / 2.0, self.y + self.height / 2.0)
     }
 
+    /// True if `p` is inside.
     #[must_use]
     pub fn contains(&self, p: ScreenPoint) -> bool {
         (self.x..self.x + self.width).contains(&p.x)
@@ -67,9 +76,12 @@ impl Viewport {
 /// What the view keeps in sight.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Mode {
+    /// Keeps the car in the middle.
     #[default]
     FollowCar,
+    /// Fits the whole map.
     WholeMap,
+    /// Stays where the person moved it.
     Free,
 }
 
@@ -95,7 +107,9 @@ const FIT_MARGIN: f64 = 0.04;
 pub struct View {
     /// The map point at the viewport's middle.
     pub centre: Point,
+    /// Pixels per metre: the zoom.
     pub scale: PixelsPerMetre,
+    /// What it keeps in sight.
     pub mode: Mode,
     /// The scale to go back to when following the car again; None until first set.
     follow_scale: Option<PixelsPerMetre>,

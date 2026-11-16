@@ -142,7 +142,9 @@ pub struct Place {
     pub kind: String,
     /// "1125 Colonel By Drive", when the row has a street and isn't only an address.
     pub address: Option<String>,
+    /// Where it is.
     pub at: LatLon,
+    /// How well it matched the words.
     pub matched: Match,
     /// From the place the search was asked near, when one was given.
     pub distance: Option<Metres>,
@@ -173,18 +175,26 @@ impl Place {
 /// Why the place file can't be used.
 #[derive(Debug, Error)]
 pub enum PlacesError {
+    /// There's no file there.
     #[error("no place database at {0}: pixi run get places")]
     Missing(PathBuf),
+    /// The file can't be opened.
     #[error("can't open {path}: {source}")]
     Open {
+        /// The file.
         path: PathBuf,
+        /// SQLite's error.
         source: rusqlite::Error,
     },
+    /// The file has no places table.
     #[error("{path} has no places table: {source}")]
     NotPlaces {
+        /// The file.
         path: PathBuf,
+        /// SQLite's error.
         source: rusqlite::Error,
     },
+    /// A search failed.
     #[error("searching: {0}")]
     Query(#[from] rusqlite::Error),
 }
@@ -266,6 +276,10 @@ impl Candidate {
 
 impl Places {
     /// Opens the file read-only (it is never changed), and checks it has the table.
+    ///
+    /// # Errors
+    ///
+    /// [`PlacesError`] if there's no file, it can't be opened, or it has no places table.
     pub fn open(path: &Path) -> Result<Self, PlacesError> {
         if !path.is_file() {
             return Err(PlacesError::Missing(path.to_path_buf()));
@@ -286,6 +300,10 @@ impl Places {
 
     /// The best [`MAX_RESULTS`] places for `query`, nearest to `near` first among
     /// equal matches. Fewer than [`MIN_QUERY_CHARS`] letters: none.
+    ///
+    /// # Errors
+    ///
+    /// [`PlacesError::Query`] if SQLite fails.
     pub fn search(&self, query: &str, near: Option<LatLon>) -> Result<Vec<Place>, PlacesError> {
         let query = query.split_whitespace().collect::<Vec<_>>().join(" ");
         if query.chars().count() < MIN_QUERY_CHARS {

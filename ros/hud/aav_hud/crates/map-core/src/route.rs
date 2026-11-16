@@ -32,11 +32,13 @@ impl Route {
         }
     }
 
+    /// The route's points.
     #[must_use]
     pub fn points(&self) -> &[Point] {
         &self.points
     }
 
+    /// True if it has no points.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.points.is_empty()

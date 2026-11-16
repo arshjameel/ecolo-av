@@ -19,11 +19,14 @@ pub enum Area {
     Green,
     /// Universities, schools, hospitals: their grounds.
     Campus,
+    /// Lakes, rivers and ponds.
     Water,
+    /// Buildings.
     Building,
 }
 
 impl Area {
+    /// Every area, in drawing order.
     pub const ALL: [Area; 4] = [Area::Green, Area::Campus, Area::Water, Area::Building];
 }
 
@@ -32,6 +35,7 @@ impl Area {
 pub enum RoadClass {
     /// Footways, cycleways, paths, steps.
     Path,
+    /// Rail lines.
     Rail,
     /// Driveways, parking aisles, alleys.
     Service,
@@ -46,6 +50,7 @@ pub enum RoadClass {
 }
 
 impl RoadClass {
+    /// Every class, from the least.
     pub const ALL: [RoadClass; 7] = [
         RoadClass::Path,
         RoadClass::Rail,
@@ -88,6 +93,7 @@ impl RoadClass {
 /// What a line is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LineKind {
+    /// A road of this class.
     Road(RoadClass),
     /// Rivers, streams, canals drawn as lines (the Rideau Canal is also an area).
     Waterway,
@@ -96,6 +102,7 @@ pub enum LineKind {
 /// A line: a road or a stream.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Line {
+    /// A road or a stream.
     pub kind: LineKind,
     /// Map metres, x east, y north.
     pub points: Vec<[f32; 2]>,
@@ -104,7 +111,9 @@ pub struct Line {
 /// A street's name, to write along it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Label {
+    /// The street's name.
     pub text: String,
+    /// Its road class.
     pub class: RoadClass,
     /// The middle of the street (along it), in map metres.
     pub at: [f32; 2],
@@ -120,7 +129,9 @@ pub struct Label {
 pub struct TileShapes {
     /// Per kind of area: triangles, three points each, map metres.
     pub areas: Vec<(Area, Vec<[f32; 2]>)>,
+    /// The roads and streams.
     pub lines: Vec<Line>,
+    /// The street names.
     pub labels: Vec<Label>,
 }
 
@@ -145,6 +156,7 @@ impl TileShapes {
 /// Why a tile can't be decoded.
 #[derive(Debug, Error)]
 pub enum StreetError {
+    /// The bytes aren't a vector tile.
     #[error("not a vector tile: {0}")]
     Mvt(#[from] mvt_reader::error::ParserError),
 }
@@ -161,6 +173,7 @@ pub struct TileProjection {
 }
 
 impl TileProjection {
+    /// The projection for tile `id`, on `datum`'s map.
     #[must_use]
     pub fn new(id: TileId, datum: &Datum) -> Self {
         let step = 1.0 / LATTICE as f64;
@@ -213,6 +226,10 @@ fn area_of(layer: &str, kind: &str) -> Option<Area> {
 }
 
 /// Decodes one tile's bytes (unzipped MVT) into shapes in map metres.
+///
+/// # Errors
+///
+/// [`StreetError`] if the bytes aren't a vector tile.
 pub fn decode(id: TileId, mvt: Vec<u8>, datum: &Datum) -> Result<TileShapes, StreetError> {
     let reader = Reader::new(mvt)?;
     let proj = TileProjection::new(id, datum);

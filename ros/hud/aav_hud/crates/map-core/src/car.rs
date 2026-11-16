@@ -34,6 +34,10 @@ struct Vehicle {
 
 impl CarShape {
     /// Reads `vehicle: body:` from a vehicle.yaml.
+    ///
+    /// # Errors
+    ///
+    /// serde's error if the text has no readable `vehicle: body:`.
     pub fn from_vehicle_yaml(text: &str) -> Result<Self, serde_yaml_ng::Error> {
         let file: VehicleFile = serde_yaml_ng::from_str(text)?;
         Ok(file.vehicle.body)

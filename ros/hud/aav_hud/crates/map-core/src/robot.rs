@@ -30,6 +30,7 @@ impl CarMarker {
     /// Every marker, as the settings write them.
     pub const ALL: [CarMarker; 2] = [CarMarker::Outline, CarMarker::Robot];
 
+    /// Its name, as the settings write it.
     #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {

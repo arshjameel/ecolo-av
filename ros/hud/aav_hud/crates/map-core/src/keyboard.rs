@@ -23,9 +23,13 @@ use crate::{
 /// One key on the on-screen keyboard.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KeyCap {
+    /// A letter.
     Char(char),
+    /// The space bar.
     Space,
+    /// Removes the last letter.
     Backspace,
+    /// Empties the box.
     Clear,
     /// Searches what's typed: picks the highlighted result (the first, after typing).
     Enter,

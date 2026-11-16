@@ -67,12 +67,19 @@ impl Topic {
 /// The settings.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct MapConfig {
+    /// Nav2's map (`/map`).
     pub map_topic: String,
+    /// The car's odometry, in the map frame.
     pub odom_topic: String,
+    /// Nav2's planned path.
     pub plan_topic: String,
+    /// The goal: RViz's, and the place search's.
     pub goal_topic: String,
+    /// `/system/source`: where the data comes from.
     pub source_topic: String,
+    /// The sensor watchdog's verdict.
     pub watchdog_topic: String,
+    /// street_router's street route.
     pub street_route_topic: String,
     /// Seconds without a position before the car shows STALE.
     pub stale_after: f64,
@@ -99,10 +106,17 @@ pub struct MapConfig {
 /// Why a settings file can't be used.
 #[derive(Debug, Error)]
 pub enum ConfigError {
+    /// The text isn't a map parameters file.
     #[error("not a map settings file (it needs map: ros__parameters: ...): {0}")]
     Yaml(#[from] serde_yaml_ng::Error),
+    /// A setting that must be positive isn't.
     #[error("{name} must be a positive number, not {value}")]
-    NotPositive { name: &'static str, value: f64 },
+    NotPositive {
+        /// The setting.
+        name: &'static str,
+        /// Its value.
+        value: f64,
+    },
 }
 
 #[derive(Deserialize)]
@@ -118,6 +132,10 @@ struct NodeSection {
 
 impl MapConfig {
     /// Reads a ROS parameters file whose top key is `map`. Every setting must be there.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError`] if the text isn't a map parameters file, or a number isn't positive.
     pub fn from_yaml(text: &str) -> Result<Self, ConfigError> {
         let file: ParamsFile = serde_yaml_ng::from_str(text)?;
         let config = file.map.params;
@@ -126,6 +144,10 @@ impl MapConfig {
     }
 
     /// Checks the numbers. Call it after changing a setting by hand.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError::NotPositive`] for the first number that isn't positive.
     pub fn validate(&self) -> Result<(), ConfigError> {
         let numbers = [
             ("stale_after", self.stale_after),

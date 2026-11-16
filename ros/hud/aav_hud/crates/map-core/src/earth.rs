@@ -38,6 +38,7 @@ pub struct LatLon {
 }
 
 impl LatLon {
+    /// A place from its latitude and longitude (degrees).
     #[must_use]
     pub const fn new(lat: f64, lon: f64) -> Self {
         Self { lat, lon }
@@ -56,7 +57,9 @@ impl LatLon {
 /// A UTM zone: its number (1 to 60) and its hemisphere.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UtmZone {
+    /// 1 to 60.
     pub number: u8,
+    /// North of the equator.
     pub north: bool,
 }
 
@@ -89,8 +92,11 @@ impl UtmZone {
 /// A point in UTM, with the projection's local properties there.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Utm {
+    /// The zone.
     pub zone: UtmZone,
+    /// m east, from the zone's false origin.
     pub easting: f64,
+    /// m north, from the equator (or its false northing in the south).
     pub northing: f64,
     /// The meridian convergence, radians: the bearing of grid north, clockwise from true
     /// north (GeographicLib's gamma).
@@ -191,10 +197,13 @@ pub fn from_utm(easting: f64, northing: f64, zone: UtmZone) -> LatLon {
 /// Why a datum can't be used.
 #[derive(Debug, Error)]
 pub enum DatumError {
+    /// The text isn't a navsat_transform parameters file with a datum.
     #[error("not a navsat_transform parameters file with a datum: {0}")]
     Yaml(#[from] serde_yaml_ng::Error),
+    /// The datum isn't three numbers.
     #[error("the datum must be [lat, lon, yaw]: {0:?}")]
     Shape(Vec<f64>),
+    /// The datum isn't a place on the Earth.
     #[error("the datum isn't on the globe: {0:?}")]
     OffTheGlobe(LatLon),
 }
@@ -207,6 +216,7 @@ pub const BUILT_IN_NAVSAT_YAML: &str =
 /// The map frame's anchor on the Earth: map (0, 0) is the datum, x east, y north.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Datum {
+    /// Map (0, 0) on the Earth.
     pub origin: LatLon,
     zone: UtmZone,
     easting: f64,
@@ -234,12 +244,20 @@ struct NavsatParams {
 
 impl Datum {
     /// A datum at `origin`, with the map's x axis east (yaw 0).
+    ///
+    /// # Errors
+    ///
+    /// [`DatumError::OffTheGlobe`] if `origin` isn't a place on the Earth.
     pub fn new(origin: LatLon) -> Result<Self, DatumError> {
         Self::with_yaw(origin, 0.0)
     }
 
     /// A datum with navsat_transform's third number, the yaw (radians): it turns the map
     /// frame. Our navsat.yaml keeps it 0.
+    ///
+    /// # Errors
+    ///
+    /// [`DatumError::OffTheGlobe`] if `origin` isn't a place on the Earth, or `yaw` isn't a number.
     pub fn with_yaw(origin: LatLon, yaw: f64) -> Result<Self, DatumError> {
         if !(origin.is_valid() && yaw.is_finite()) {
             return Err(DatumError::OffTheGlobe(origin));
@@ -259,6 +277,10 @@ impl Datum {
 
     /// From navsat_transform's parameters file (`navsat.yaml`):
     /// `navsat_transform: ros__parameters: datum: [lat, lon, yaw]`.
+    ///
+    /// # Errors
+    ///
+    /// [`DatumError`] if the file has no datum, it isn't three numbers, or it isn't on the Earth.
     pub fn from_navsat_yaml(text: &str) -> Result<Self, DatumError> {
         let file: NavsatFile = serde_yaml_ng::from_str(text)?;
         match file.navsat_transform.params.datum.as_slice() {

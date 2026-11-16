@@ -11,8 +11,11 @@ use crate::{
 /// One tile: zoom `z` cuts the world into 2^z x 2^z squares; x goes east, y south.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TileId {
+    /// Zoom.
     pub z: u8,
+    /// Column, east.
     pub x: u32,
+    /// Row, south.
     pub y: u32,
 }
 
@@ -26,6 +29,7 @@ const EQUATOR_M: f64 = 40_075_016.686;
 pub const MAX_TILES: usize = 64;
 
 impl TileId {
+    /// A tile from its zoom, column and row.
     #[must_use]
     pub const fn new(z: u8, x: u32, y: u32) -> Self {
         Self { z, x, y }

@@ -123,6 +123,7 @@ impl TileCache {
         self.slots.len()
     }
 
+    /// True if it holds no tiles.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.slots.is_empty()

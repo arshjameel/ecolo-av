@@ -10,11 +10,14 @@ pub struct Metres(pub f64);
 /// A point on the map, in metres.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Point {
+    /// m, east.
     pub x: f64,
+    /// m, north.
     pub y: f64,
 }
 
 impl Point {
+    /// A point from x and y (m).
     #[must_use]
     pub const fn new(x: f64, y: f64) -> Self {
         Self { x, y }
@@ -45,6 +48,7 @@ impl Point {
         Point::new(c * self.x - s * self.y, s * self.x + c * self.y)
     }
 
+    /// True if both numbers are finite.
     #[must_use]
     pub fn is_finite(self) -> bool {
         self.x.is_finite() && self.y.is_finite()
@@ -75,12 +79,14 @@ impl Mul<f64> for Point {
 /// A position and a heading on the map.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Pose {
+    /// Where it is.
     pub position: Point,
     /// Radians, counter-clockwise from the map's x axis (east).
     pub yaw: f64,
 }
 
 impl Pose {
+    /// A pose from x, y (m) and yaw (rad).
     #[must_use]
     pub const fn new(x: f64, y: f64, yaw: f64) -> Self {
         Self {
@@ -109,9 +115,13 @@ impl Pose {
 /// A ROS orientation quaternion (x, y, z, w).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Quaternion {
+    /// The x part.
     pub x: f64,
+    /// The y part.
     pub y: f64,
+    /// The z part.
     pub z: f64,
+    /// The w part.
     pub w: f64,
 }
 
