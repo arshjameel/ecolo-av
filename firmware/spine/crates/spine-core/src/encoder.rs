@@ -9,6 +9,7 @@
 /// Step for each (previous AB, current AB) pair, indexed by `prev << 2 | cur`.
 const STEP: [i8; 16] = [0, 1, -1, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, -1, 1, 0];
 
+/// A quadrature decoder: the two sensors' levels in, steps and a count out.
 #[derive(Debug, Clone, Copy)]
 pub struct Quadrature {
     last: u8,
@@ -16,6 +17,7 @@ pub struct Quadrature {
 }
 
 impl Quadrature {
+    /// Starts at count 0, from the sensors' levels now.
     #[must_use]
     pub fn new(a: bool, b: bool) -> Self {
         Quadrature {
@@ -33,6 +35,7 @@ impl Quadrature {
         step
     }
 
+    /// The steps so far, forward minus back; wraps.
     #[must_use]
     pub fn count(&self) -> i32 {
         self.count

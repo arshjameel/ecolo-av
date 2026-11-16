@@ -8,6 +8,7 @@ pub struct Watchdog {
 }
 
 impl Watchdog {
+    /// Expired until the first [`feed`](Self::feed).
     #[must_use]
     pub const fn new(timeout_ms: u32) -> Self {
         Watchdog {

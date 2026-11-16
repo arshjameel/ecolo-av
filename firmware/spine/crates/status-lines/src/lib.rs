@@ -9,7 +9,7 @@
 //! | `config` | [`Config`] | at boot and every 10 s: the build and the numbers it runs with |
 //! | `devices` | [`DeviceList`] | at boot and every 10 s: which I2C devices answered at boot |
 //!
-//! A [`Line`] is one of them with its `seq` and `up_ms`. It is [`Display`](core::fmt::Display),
+//! A [`Line`] is one of them with its `seq` and `up_ms`. It is [`Display`],
 //! so it can go straight to a log, or into a fixed buffer with [`Line::write_to`] or a
 //! [`LineBuf`] for a socket. Nothing allocates. [`Spread`] keeps the lowest and highest
 //! device values between two status lines; [`Trickle`] hands lines to a slow serial log a

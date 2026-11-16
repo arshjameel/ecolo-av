@@ -128,6 +128,7 @@ impl LqiConfig {
     }
 }
 
+/// The speed loop's law and gains.
 #[derive(Debug, Clone, Copy)]
 pub struct SpeedLoopConfig {
     /// How the error becomes throttle and brake. The fields below are the PI's; the LQI
@@ -287,12 +288,16 @@ impl FromStr for SpeedLoopProfile {
 /// Actuator demand. Throttle and brake are never both above zero.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Drive {
+    /// 0..1.
     pub throttle: f32,
+    /// 0..1.
     pub brake: f32,
+    /// The direction: true for reverse.
     pub reverse: bool,
 }
 
 // Clone: a car model's prediction (car-model, beside aav_description) runs a copy ahead.
+/// The closed speed loop: a target and the measured speed in, throttle and brake out.
 #[derive(Debug, Clone)]
 pub struct SpeedLoop {
     cfg: SpeedLoopConfig,
@@ -309,6 +314,7 @@ fn clamp01(x: f32) -> f32 {
 }
 
 impl SpeedLoop {
+    /// A loop at rest: no integral, forward.
     #[must_use]
     pub fn new(cfg: SpeedLoopConfig) -> Self {
         SpeedLoop {
@@ -327,12 +333,14 @@ impl SpeedLoop {
         self.integral
     }
 
+    /// Forget the integrals and the pedals' state, as after a stop.
     pub fn reset(&mut self) {
         self.integral = 0.0;
         self.lqi_integral = 0.0;
         self.pedals = 0.0;
     }
 
+    /// One step: `target` and `measured` in m/s, `dt` in s.
     pub fn update(&mut self, target: f32, measured: f32, dt: f32) -> Drive {
         let c = self.cfg;
         let stopped = abs(measured) < c.stopped_speed;

@@ -6,6 +6,9 @@
 //! iBUS receiver, encoder inputs, e-stop input). Each tick it reads them into
 //! [`Inputs`], calls [`Spine::step`], and writes [`Outputs`] back to them.
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod encoder;
 pub mod fsm;
