@@ -17,8 +17,17 @@ a speed or a memory. `things` turns the lidar's cubes into one list:
 | Track | one constant-velocity Kalman filter per thing (x, y, vx, vy in odom); greedy nearest association inside a 2 m gate. AB3DMOT (Weng 2020): the simple tracker is a strong baseline |
 | Radar | where `radar:=true`, each cluster's mean radial speed, the car's own speed taken off, updates the nearest thing's speed along the ray |
 | Memory | a thing seen 3 times stays listed 3 s after it leaves view, moving on its speed (slower than 0.5 m/s: parked). Within 4 m of the car, 30 s: the roof lidar can't see a low box there, so not seeing it says nothing |
-| Background | `background: true` (off by default): cubes on the saved map's walls (`/map`, grown `background_slack`, 0.25 m) are dropped before grouping, so a wall seen again is not a new thing (`background.py`, TODO 175). Safety never relies on it |
+| Background | `things_background:=true` (off by default): cubes on the saved map are dropped before grouping, so a wall seen again is not a new thing (`background.py`, TODO 175). Two saved maps, below. Safety never relies on it: the stop zone and the costmaps read the lidar's own topics, never `/world/things` |
 | Names | `names: true` (off by default, `things_names:=true`): each thing's box is drawn into every camera's picture; the detector's box overlapping it most (IoU ≥ 0.3, score ≥ 0.5) gives its `kind` (person, car, stop sign), held 3 s unseen (`naming.py`, TODO 192). A thing reaching the cubes' 2 m ceiling (`name_ceiling`) has an unseen top, such as a stop sign's pole under its plate: it is matched on its bearing instead (`name_min_side`, 0.5). Passed in the sim: `pixi run -e ml sim-check --thing-names`. The lidar says where, the camera says what. On the car it needs the cameras' mounts calibrated (Q22) |
+
+### The background: which saved map
+
+| `things_background_chunks:=` | The background | Taken |
+|---|---|---|
+| empty | `/map`, the occupancy grid (`Background.from_grid`) | every wall cell, grown 0.25 m. On the campus that is all that isn't road or lot: a person on a path or the grass is dropped too |
+| `maps/campus/chunks/ndt` | the NDT map's 3 x 3 chunks round the car (`ChunkBackground`), read again in each new chunk | only where the saved 3D map has points over `background_min_z` (0.3 m): buildings and poles. 3 % of the cells round the campus start |
+
+The scores (16 Nov, our simulator): TODO 175 in `TODO.md`.
 
 ### Stock or ours?
 
@@ -55,6 +64,9 @@ So ours: about 300 lines of numpy, with tests.
 | `keep`, `keep_blind`, `blind_range` | 3 s, 30 s, 4 m | the memory |
 | `still_speed` | 0.5 m/s | slower, an unseen thing is taken as parked |
 | `radar` | false | the launch file sets it to `radar:=` |
+| `background` | false | the launch file sets it to `things_background:=` (never in `things.yaml`: a node's own block there outranks the launch's) |
+| `background_chunks` | empty | the launch's `things_background_chunks:=`: a folder of NDT chunks, `chunks.yaml` beside it |
+| `background_slack`, `background_min_z` | 0.25 m, 0.3 m | walls grown for pose error; NDT points lower are the ground |
 
 ### Modules
 
@@ -63,6 +75,7 @@ So ours: about 300 lines of numpy, with tests.
 | `groups.py` | yes | `GroupShape`, `Group`, `group`, `to_frame` |
 | `tracker.py` | yes | `TrackerShape`, `Track`, `Tracker`, `predict`, `update`, `RadarCluster`, `ground_radial_speed` |
 | `looks.py` | yes | `colour`, `caption`: a thing's colour by kind and its words, for the markers (the Rust screens use the same colours: `hud_core::things`) |
+| `background.py` | yes | `Background` (`from_grid`, `from_points`, `on_map`), `new_only`, `ChunkBackground`, `read_pcd`, `read_grid` |
 | `tf_wait.py` | yes | `Waiting`, `decide`, `Step`, `WaitShape`: clouds waiting for their transform (tf2's MessageFilter, in short) |
 | `things_node.py` | no | the node |
 

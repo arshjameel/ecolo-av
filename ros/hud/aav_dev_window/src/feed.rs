@@ -82,6 +82,8 @@ pub enum Update {
     /// The things near the car (`/world/things`, odom), named by the camera
     /// (`hud_core::things`: kind, words, colour).
     Things(Vec<Thing>),
+    /// The street route (`/drivers/nav/route/path`, map): the zoomed-out level's line.
+    Route(Vec<Point>),
 }
 
 /// The road ahead (`/world/road_ahead`, the whole-car design), on the map: where the car

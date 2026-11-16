@@ -27,6 +27,8 @@ simulator; the other choices are made at launch. The plan:
 | `src/panels.rs` | the layout and every panel, in egui |
 | `src/feed.rs` | what the window is told, and the gates on commands: no Bevy, no ROS, tested |
 | `src/pretend.rs` | pretend data, as a `Feed`: no Bevy, no ROS, tested |
+| `src/chunks.rs` | the chunks loaded (`map_chunks::wanted`), their outlines, labels and saved maps: no Bevy, no egui, tested |
+| `src/lanes.rs` | the lane map's lines and their looks (`lanelet-map`) |
 | `src/ros.rs` | the node `dev_window`, as a `Feed` (the `ros` feature). Its docstring lists its topics |
 | `config/dev_window.yaml` | every topic's name |
 
@@ -43,7 +45,7 @@ pixi run dev-window --watch                        # listens to the network it's
 pixi run dev-window --all-layers --seconds 12      # the speed test: prints the frame rate
 pixi run dev-window --cubes 60000 --seconds 8 --screenshot /tmp/window.png
 pixi run dev-window --live --lanes maps/campus/campus.osm   # the lane map's lines (pixi run campus)
-pixi run dev-window --live --chunks maps/campus/chunks     # the 3 x 3 chunks round the car
+pixi run dev-window --live --chunks maps/campus/chunks     # the chunks loaded, their saved map
 ```
 
 | Key | Does | Key | Does |
@@ -53,6 +55,7 @@ pixi run dev-window --live --chunks maps/campus/chunks     # the 3 x 3 chunks ro
 | N | NDT's cells, dark to light purple (off, the default: cubes by height) | P | plan |
 | O | costmap | C, R | from behind it (the default) or the car; reset |
 | T | the squiggly line (on) | K | the things, with their names (on) |
+| H | the chunks loaded, their saved map, and the route (on) | | |
 
 ### The squiggly line (Ben, 7 Nov)
 
@@ -95,6 +98,20 @@ in its kind's colour, in the 3D scene and on the map, with its name over it.
 
 The colours are `hud_core::things`' (the HUD's and the RViz markers' too). Silent for 2 s:
 not drawn. Pretend data: a person crossing ahead, a stop sign, a car, an unnamed box.
+
+**The three levels** (TODO 175, step 7; [the design](../../../docs/designs/2026-11-15_three-levels.md)):
+on the map, with `--chunks` and `--lanes`; key H.
+
+| Level | Drawn as | From |
+|---|---|---|
+| zoomed out: the route | thick violet line | `/drivers/nav/route/path` (street_router), latched |
+| middle: the chunks loaded | each chunk's square, labelled `(i, j) fine` (blue; the car's own light blue) or `(i, j) coarse` (amber) | `chunks::loaded`: `map_chunks::wanted` on the car and the route (the plan with no route), 100 m ahead |
+| middle: the saved static map | each loaded chunk's `.pgm`, at its detail (0.25 m or 1 m) | `--chunks` folder (`chunk-map`), read once per chunk |
+| the lanes | white lines, grey dashes, amber kerbs, red stop lines | `--lanes` (a Lanelet2 `.osm`) |
+
+With `--chunks`, the map fits the chunks loaded until you move it. Pretend data has a
+route out of its lot (`pretend::route`). Seen 16 Nov only off screen (the screen was
+locked): the same `chunks.rs` and the campus files drawn into a picture.
 
 **A goal sent elsewhere** (sim-check, the tools, RViz, the map window): while plans keep
 coming on `/plan` (within 5 s), the map marks the plan's end in gold and says "driving

@@ -101,11 +101,51 @@ New: `/maps/chunks/loaded` (which chunks are in memory, for the dev window and t
 | 2 | **Chunk files**: `chunk-map` cuts a map server's map into one `.pgm` per chunk; then `pixi run campus` and `ndt-map` call it | ✅ occupancy, 15 Nov: the campus in 625 chunks per detail, 1.5 s; read back cell for cell. NDT next |
 | 3 | **The middle planner on chunks**: our planner plans ~100 m ahead on the loaded chunks, then again as the car goes | 🔧 first form, `global_window:=192` (the global costmap rolls with the car, the 3 x 3 chunks): **scored 15 Nov, worse, stays a challenger**. Lot 8/8 either way (sway 0.022 against 0.021 m/s², 313 against 322 s); campus **2/6** against 6/6: a far goal's road leaves the window ("out of time or iterations"), or the goal is off it. It needs the next part first: a far goal planned via the lane route, in steps that fit |
 | 4 | **NDT on chunks** | ✅ 15 Nov, `ndt-core` `chunks.rs`; the campus NDT map in 699 chunk files. Scored on the campus tour (3 runs against 2 on the whole map): as good (off 0.058 / 0.014 / 0.011 m a leg against 0.051 / 0.014 / 0.011), ready in 0.02 s against 2.5 s, a new 3 x 3 read in 0-3 ms (rayon) and built in 8-22 ms. Fixed on the way: the chunks follow a restart from `ekf_global`. **On by default** with `ndt:=true` on the campus once `pixi run campus` made them (`ndt_chunks:=off`: the whole map) |
-| 5 | **The subtraction**: the things from new occupancies only | fewer things on a walled campus road; a person still found |
+| 5 | **The subtraction**: the things from new occupancies only | ✅ 16 Nov, the default where `aav_things` runs: cubes under 0.7 m on `/map`'s walls drop. On the campus, driving: 1.7 things listed, not 9.9; every walker found. Below, "Step 5: the scores" |
 | 6 | **Lanelet2 in Rust** as the route level's map (TODO 175) | a route by lanes, stop lines in the road ahead |
-| 7 | **The dev window** draws the chunks, the lanes, the static map | seen live |
+| 7 | **The dev window** draws the chunks, the lanes, the static map | 🔧 16 Nov: the route, the chunks loaded (`(i, j) fine` or `coarse`), each one's saved map, the lanes and stop lines (key H). Seen off screen only (the screen was locked); live: untested |
 
 Each step is a drop-in beside today's, with `sim-check` and `measure` against the same tours.
+
+### Step 5: the scores (16 Nov)
+
+Our simulator, the campus from the start in lot P4, the car standing, then driving 42 m to
+(75, -37). A post the size of a person (0.5 x 1.8 m) crosses at 1 m/s, from 5 m right of the
+car, 8, 12 and 16 m ahead; twice more where the drive ends, starting on the grass. Load
+average (1 min) at each start: 6 to 14, our own simulator only.
+
+| Background | Runs | Things listed, driving (mean, max) | Things ever, driving | Walker in the lot | Walker from the grass |
+|---|---|---|---|---|---|
+| none (before) | 3 | 9.9, 33 | 70-76 | found, 100 % | found, 100 % |
+| `/map`, every cube | 3 | 0.6, 6 | 3-9 | found, 100 % | **never found** |
+| NDT chunks | 2 | 10.7, 33 | 69-76 | found, 100 % | found, 100 % |
+| **`/map`, cubes under 0.7 m** (the default) | 2 | **1.7**, 15 | 12-21 | found, 100 % | found, 100 % |
+
+"Found": listed within 0.2 s of the walker being placed (once 1.7 s, with no background);
+"100 %": listed in every message while it walked. The walker from the grass ran in the
+last 2 runs of each, not the first `/map` and "none" ones. The road world: 1 thing (the stop sign), the same with and
+without; walkers found every time. With the new default, `sim-check --moving` (the road
+world, a person crossing ahead while the car drives) passed: the behaviour went APPROACH,
+WAIT, GO for them, 0.78 m clear, and the car reached its goal.
+
+What it says:
+
+| Finding | So |
+|---|---|
+| The campus's clutter is its kerbs and raised grass (0.3 m), seen as low cubes off the road | dropping only low cubes on the map's cells removes most of it |
+| `/map` marks everything that isn't road as taken | a whole-body subtraction hides a person on the grass from the tracker |
+| The campus's NDT map is a guess with walls, trunks and crowns, not kerbs or grass | against it, nothing changes; it would need the kerbs, or a real mapping drive's map |
+
+**Safety never trusts it** (checked in the code, 16 Nov): `aav_things` drops the cubes only
+in its own copy, before grouping; nothing republishes them. The stop zone
+(`collision_monitor`, `aav_stop_zone`) and the close-up costmap (Nav2's or `aav_costmap`)
+read `/sensors/lidar/scan` and `/perception/voxels/cubes` themselves (`nav2.yaml`), never
+`/world/things`. Only the behaviour planner, the stop sign watcher and the screens read the
+things.
+
+Next: the NDT chunks with the kerbs (`campus_world.py`'s guessed map, or a mapping drive),
+then whole-body subtraction against them; a person under 0.7 m on a mapped wall's cell
+(a crouching child by a building) is still not a thing.
 
 ## Decisions for Ben
 

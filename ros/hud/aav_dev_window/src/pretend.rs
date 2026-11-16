@@ -47,6 +47,20 @@ pub fn walls() -> Vec<Wall> {
     ]
 }
 
+/// The street route: out of the lot's gap and 200 m along a street to the east, then
+/// north (the coarse chunks follow it, `--chunks`).
+pub fn route() -> Vec<Point> {
+    let p = Point::new;
+    vec![
+        p(10.0, 12.0),
+        p(0.0, 12.0),
+        p(-6.0, 12.0),
+        p(-6.0, -10.0),
+        p(200.0, -10.0),
+        p(200.0, 120.0),
+    ]
+}
+
 /// The car at `t` seconds: a slow loop inside the lot, at about 1 m/s.
 pub fn car_at(t: f64) -> Pose {
     const RADIUS: f64 = 9.0;
@@ -318,6 +332,7 @@ impl Feed for PretendFeed {
             };
             updates.extend(lot_grid(occupied).map(Update::Map));
             updates.push(Update::RoadAhead(road_ahead()));
+            updates.push(Update::Route(route()));
             updates.extend(lot_grid(cost).map(Update::Costmap));
             updates.push(Update::Origin(Announcement {
                 announcer: "pretend".to_owned(),

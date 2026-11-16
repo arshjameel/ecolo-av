@@ -8,8 +8,8 @@
 //! watchdog, and the squiggly line's four, all base_link: `/ego/trace` (Path),
 //! `/ego/plan_ahead` (Path), `/ego/stop_point` (PoseStamped), `/ego/ahead`
 //! (DiagnosticStatus); the road ahead, map (`aav_interfaces/RoadAhead`); the things
-//! near the car, odom (`aav_interfaces/Things`, named by the camera)
-//! (`config/dev_window.yaml`).
+//! near the car, odom (`aav_interfaces/Things`, named by the camera); the street route,
+//! map (`/drivers/nav/route/path`, Path, latched) (`config/dev_window.yaml`).
 //! Publishes, only with `--developer`: `/goal_pose`, `/safety/estop` (only ever true).
 //! Calls, only with `--developer` and every sensor SIM: `/navigate_to_pose/_action/cancel_goal`
 //! (action_msgs/CancelGoal, every goal: CANCEL THE GOAL) and `/track/set_parameters`
@@ -106,6 +106,7 @@ struct Topics {
     ahead: String,
     road_ahead: String,
     things: String,
+    route: String,
 }
 
 /// A Path's points, as they are (base_link for the squiggly line's two).
@@ -624,6 +625,17 @@ fn spin(
                 })
                 .collect();
             send(&tx, Update::Things(things));
+        }
+    })?;
+    let _route = node.create_subscription(topics.route.as_str().qos(latched), {
+        let tx = tx.clone();
+        move |m: Path| {
+            let points = m
+                .poses
+                .iter()
+                .map(|p| Point::new(p.pose.position.x, p.pose.position.y))
+                .collect();
+            send(&tx, Update::Route(points));
         }
     })?;
     let _map = node.create_subscription(topics.map.as_str().qos(latched), {

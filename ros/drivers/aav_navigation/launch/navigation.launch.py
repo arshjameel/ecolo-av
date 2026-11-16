@@ -163,7 +163,12 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           seconds unseen, on /world/things (and /world/things/markers); the
                           radar's speed too with radar:=true. voxels runs for it. Nothing
                           reads the list yet (docs/designs/2026-11-14_the-whole-car.md)
-  things_background:=true  with things: cubes on /map's walls are not things (TODO 175)
+  things_background:=true  with things (the default): cubes under 0.7 m on /map's walls
+                          are not things (TODO 175); false: every cube is
+  things_background_chunks:=maps/campus/chunks/ndt  with things_background: the NDT map's
+                          chunks round the car are the background instead of /map
+  things_background_below:=0.7  with things_background: only cubes under it drop (the
+                          default); empty: any height
   things_names:=true  with things: each thing takes the detector's label (person, car,
                           stop sign) where its box overlaps it in a camera (TODO 192)
   stop_zone_shadow:=true  our stop zone in Rust beside collision_monitor, never driving:
@@ -555,6 +560,13 @@ def nodes(context):
                             parameters=[config, {'radar': radar,
                                                  'background': flag(context,
                                                                     'things_background'),
+                                                 'background_chunks': LaunchConfiguration(
+                                                     'things_background_chunks'
+                                                 ).perform(context),
+                                                 'background_below': float(
+                                                     LaunchConfiguration(
+                                                         'things_background_below'
+                                                     ).perform(context) or 0.0),
                                                  'names': flag(context, 'things_names'),
                                                  'use_sim_time': use_sim_time}]))
     if flag(context, 'stop_zone_shadow'):
@@ -805,9 +817,18 @@ def generate_launch_description():
         DeclareLaunchArgument('global_window', default_value='0.0',
                               description='m: the global costmap a square rolling with the '
                                           'car (192: the 3 x 3 chunks; 0: the whole map)'),
-        DeclareLaunchArgument('things_background', default_value='false',
-                              description='with things:=true: cubes on the saved map are '
-                                          'not things (TODO 175 step 5)'),
+        DeclareLaunchArgument('things_background', default_value='true',
+                              description='with things:=true: low cubes on the saved map '
+                                          'are not things (TODO 175 step 5; the default '
+                                          'since 16 Nov); false: every cube'),
+        DeclareLaunchArgument('things_background_chunks', default_value='',
+                              description='with things_background: a folder of the NDT '
+                                          "map's chunks (maps/campus/chunks/ndt) as the "
+                                          'background instead of /map'),
+        DeclareLaunchArgument('things_background_below', default_value='0.7',
+                              description='with things_background: m, only cubes lower '
+                                          'than this drop (kerbs, grass; not a body). '
+                                          'Empty: any height'),
         DeclareLaunchArgument('things_names', default_value='false',
                               description='with things:=true: things take the camera '
                                           "detector's labels (TODO 192)"),

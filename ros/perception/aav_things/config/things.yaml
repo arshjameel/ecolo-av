@@ -20,7 +20,10 @@ things:
     keep_tentative: 0.3     # s, a thing seen fewer than confirm times
     start_speed_sigma: 3.0  # m/s
     still_speed: 0.5        # m/s: slower, an unseen thing is taken as parked
-    # The saved map as background (background.py, TODO 175 step 5): cubes on /map's walls,
-    # grown by the slack for pose error, are not things. Off until it scores in the sim.
-    background: false
+    # The saved map as background (background.py, TODO 175 step 5): cubes under 0.7 m on
+    # /map's walls, grown by the slack for pose error, are not things. Its switches,
+    # `background` and `background_below`, are the launch's things_background:= (true) and
+    # things_background_below:= (0.7), never here: a node's own block in this file outranks
+    # the launch's /** parameters, so a value here would always win.
     background_slack: 0.25  # m
+    background_min_z: 0.3   # m, map frame: NDT chunk points lower are the ground, not walls
