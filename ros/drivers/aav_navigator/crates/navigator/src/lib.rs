@@ -21,6 +21,9 @@
 //!   and no turn to face at each one (TODO 140's bends). `WaypointMode::StopAtEach` is
 //!   Nav2's way;
 //! - the final approach keeps its path on the last leg of a through-poses goal too.
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 mod machine;
 pub mod path;
@@ -30,17 +33,23 @@ pub use machine::{Navigator, Progress};
 /// A pose in the map frame: metres, radians (REP-103: x forward, yaw counter-clockwise).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Pose {
+    /// m.
     pub x: f64,
+    /// m.
     pub y: f64,
+    /// rad, counter-clockwise from x.
     pub yaw: f64,
 }
 
 impl Pose {
+    /// The pose (`x`, `y`, `yaw`).
+    #[must_use]
     pub const fn new(x: f64, y: f64, yaw: f64) -> Self {
         Self { x, y, yaw }
     }
 
     /// Straight-line distance, m.
+    #[must_use]
     pub fn distance(&self, other: &Pose) -> f64 {
         (self.x - other.x).hypot(self.y - other.y)
     }
@@ -48,6 +57,7 @@ impl Pose {
     /// `local`, a pose in this pose's own frame, put in the frame this pose is in
     /// (`self ∘ local`). With `self` = map -> odom, an odom pose becomes a map pose; with
     /// `self` = the car in map, a base_link pose (1 m ahead, say) becomes a map pose.
+    #[must_use]
     pub fn compose(&self, local: &Pose) -> Pose {
         let (s, c) = self.yaw.sin_cos();
         let yaw = self.yaw + local.yaw;
@@ -117,6 +127,7 @@ pub struct Settings {
     pub pass_radius: f64,
     /// m: a through-pose counts as on the path within this (to be passed along it).
     pub on_path: f64,
+    /// How waypoints are driven.
     pub waypoints: WaypointMode,
     /// StopAtEach: a waypoint that fails ends the goal (waypoint_follower's own flag).
     pub stop_on_failure: bool,
@@ -137,6 +148,7 @@ pub struct Settings {
 
 impl BackUp {
     /// s: behavior_server's `time_allowance` for this back up: 10 s plus the drive.
+    #[must_use]
     pub fn time_allowance(&self) -> f64 {
         10.0 + self.distance.abs() / self.speed.abs().max(0.05)
     }
@@ -173,15 +185,23 @@ pub type Token = u64;
 /// ComputePathThroughPoses (300s, see [`PlanError::code`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlanError {
+    /// Nav2's UNKNOWN.
     Unknown,
+    /// No planner of that name.
     InvalidPlanner,
+    /// The car's pose couldn't be looked up.
     TfError,
+    /// The start is off the costmap.
     StartOutsideMap,
+    /// The goal is off the costmap.
     GoalOutsideMap,
+    /// The car at the start hits something.
     StartOccupied,
+    /// The car at the goal would hit something.
     GoalOccupied,
     /// The planner ran out of time, or (ours) never answered within `plan_timeout`.
     Timeout,
+    /// The search found no way.
     NoValidPath,
     /// Through-poses only.
     NoViapointsGiven,
@@ -203,6 +223,7 @@ impl PlanError {
 
     /// From a planner's `error_code`, to-pose (200s) or through-poses (300s). Any other
     /// number (0 too, from a planner that failed without saying why) is `Unknown`.
+    #[must_use]
     pub fn from_code(code: u16) -> Self {
         Self::ALL
             .into_iter()
@@ -213,6 +234,7 @@ impl PlanError {
     }
 
     /// Nav2's number: ComputePathToPose's, or ComputePathThroughPoses' with `through`.
+    #[must_use]
     pub fn code(self, through: bool) -> u16 {
         let offset = match self {
             Self::Unknown => 0,
@@ -237,6 +259,7 @@ impl PlanError {
     /// occupied. On the campus the lidar's marks beside a lot exit made the car's own spot
     /// "occupied" (8 Nov); clearing the global costmap forgets them, and the lidar marks
     /// again only what it still sees.
+    #[must_use]
     pub fn recovery_helps(self) -> bool {
         matches!(
             self,
@@ -248,12 +271,19 @@ impl PlanError {
 /// Why the follower failed: Nav2's FollowPath error codes (100s).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FollowError {
+    /// Nav2's UNKNOWN.
     Unknown,
+    /// No follower of that name.
     InvalidController,
+    /// The car's pose couldn't be looked up.
     TfError,
+    /// The path is empty or bad.
     InvalidPath,
+    /// The follower waited too long.
     PatienceExceeded,
+    /// The car stopped getting nearer the goal.
     FailedToMakeProgress,
+    /// Every command the follower tried hits something.
     NoValidControl,
     /// The follower's costmap went stale, or (ours) the follower fell silent for
     /// `follow_timeout`.
@@ -273,6 +303,7 @@ impl FollowError {
     ];
 
     /// From a follower's `error_code`; any other number (0 too) is `Unknown`.
+    #[must_use]
     pub fn from_code(code: u16) -> Self {
         Self::ALL
             .into_iter()
@@ -281,6 +312,7 @@ impl FollowError {
     }
 
     /// Nav2's number.
+    #[must_use]
     pub fn code(self) -> u16 {
         match self {
             Self::Unknown => 100,
@@ -296,6 +328,7 @@ impl FollowError {
 
     /// WouldAControllerRecoveryHelp: unknown, patience exceeded, no progress, no valid
     /// control. A follower timed out is not on it: as in Nav2, the goal ends.
+    #[must_use]
     pub fn recovery_helps(self) -> bool {
         matches!(
             self,
@@ -312,16 +345,25 @@ impl FollowError {
 pub enum Failure {
     /// ComputePathToPose, or ComputePathThroughPoses (`through`).
     Plan {
+        /// Nav2's code.
         error: PlanError,
+        /// ComputePathThroughPoses, not ComputePathToPose.
         through: bool,
+        /// The planner's own words.
         message: String,
     },
     /// FollowPath.
-    Follow { error: FollowError, message: String },
+    Follow {
+        /// Nav2's code.
+        error: FollowError,
+        /// The follower's own words.
+        message: String,
+    },
 }
 
 impl Failure {
     /// Nav2's error code.
+    #[must_use]
     pub fn code(&self) -> u16 {
         match self {
             Self::Plan { error, through, .. } => error.code(*through),
@@ -329,6 +371,8 @@ impl Failure {
         }
     }
 
+    /// The planner's or the follower's own words.
+    #[must_use]
     pub fn message(&self) -> &str {
         match self {
             Self::Plan { message, .. } | Self::Follow { message, .. } => message,
@@ -336,16 +380,19 @@ impl Failure {
     }
 
     /// WouldAPlannerRecoveryHelp ([`PlanError::recovery_helps`]).
+    #[must_use]
     pub fn planner_recovery_helps(&self) -> bool {
         matches!(self, Self::Plan { error, .. } if error.recovery_helps())
     }
 
     /// WouldAControllerRecoveryHelp ([`FollowError::recovery_helps`]).
+    #[must_use]
     pub fn controller_recovery_helps(&self) -> bool {
         matches!(self, Self::Follow { error, .. } if error.recovery_helps())
     }
 
     /// Either: the outer recovery runs only then.
+    #[must_use]
     pub fn recovery_helps(&self) -> bool {
         self.planner_recovery_helps() || self.controller_recovery_helps()
     }
@@ -379,6 +426,7 @@ pub enum Abort {
 
 impl Abort {
     /// Nav2's error code for the goal's result: the failed step's, else 0.
+    #[must_use]
     pub fn code(&self) -> u16 {
         match self {
             Self::Failed(failure) => failure.code(),
@@ -402,13 +450,17 @@ impl std::fmt::Display for Abort {
 pub enum Outcome {
     /// There (waypoints: `missed` holds those not reached, by index).
     Succeeded {
+        /// The waypoints not reached, by index.
         missed: Vec<usize>,
     },
     /// Given up, and why.
     Aborted {
+        /// Why.
         reason: Abort,
+        /// The waypoints not reached, by index.
         missed: Vec<usize>,
     },
+    /// Cancelled by the caller.
     Cancelled,
 }
 
@@ -417,27 +469,48 @@ pub enum Outcome {
 pub enum Command {
     /// Ask the planner for a path from the car: one goal, ComputePathToPose; more,
     /// ComputePathThroughPoses. Answer with [`Navigator::planned`].
-    Plan { token: Token, goals: Vec<Pose> },
+    Plan {
+        /// Hand it back with the answer.
+        token: Token,
+        /// The goals, in order.
+        goals: Vec<Pose>,
+    },
     /// Send the follower this path (FollowPath; it replaces the one before without a
     /// stop). Pass on each feedback with [`Navigator::follower_heard`]; answer with
     /// [`Navigator::followed`].
-    Follow { token: Token, path: Vec<Pose> },
+    Follow {
+        /// Hand it back with the answer.
+        token: Token,
+        /// The path to follow.
+        path: Vec<Pose>,
+    },
     /// Cancel the follower's goal: the car stops.
     StopFollowing,
     /// Clear costmaps. Answer with [`Navigator::recovered`].
     Clear {
+        /// Hand it back with the answer.
         token: Token,
+        /// Clear the local costmap.
         local: bool,
+        /// Clear the global costmap.
         global: bool,
     },
     /// Back up. Answer with [`Navigator::recovered`].
     BackUp {
+        /// Hand it back with the answer.
         token: Token,
+        /// m.
         distance: f64,
+        /// m/s.
         speed: f64,
     },
     /// The goal `id` ended.
-    Finished { id: u64, outcome: Outcome },
+    Finished {
+        /// The goal's number.
+        id: u64,
+        /// How it ended.
+        outcome: Outcome,
+    },
 }
 
 #[cfg(test)]

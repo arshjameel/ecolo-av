@@ -3,6 +3,7 @@
 use crate::Pose;
 
 /// The index of the path's point nearest to `p`, and how far it is (m). None: no path.
+#[must_use]
 pub fn nearest(path: &[Pose], p: &Pose) -> Option<(usize, f64)> {
     path.iter()
         .enumerate()
@@ -12,6 +13,7 @@ pub fn nearest(path: &[Pose], p: &Pose) -> Option<(usize, f64)> {
 
 /// Metres along the path from its point nearest the car to its end; the straight line
 /// with no path.
+#[must_use]
 pub fn remaining(path: &[Pose], car: &Pose) -> f64 {
     match nearest(path, car) {
         None => 0.0,
@@ -20,12 +22,14 @@ pub fn remaining(path: &[Pose], car: &Pose) -> f64 {
 }
 
 /// A path's length, m.
+#[must_use]
 pub fn length(path: &[Pose]) -> f64 {
     path.windows(2).map(|w| w[0].distance(&w[1])).sum()
 }
 
 /// Has the car passed `pose` along `path`? True when the pose lies on the path (within
 /// `on_path` m) and the car's nearest point is at or beyond the pose's.
+#[must_use]
 pub fn passed_along(path: &[Pose], pose: &Pose, car: &Pose, on_path: f64) -> bool {
     match (nearest(path, pose), nearest(path, car)) {
         (Some((at, gap)), Some((here, _))) => gap <= on_path && here >= at,
@@ -36,6 +40,7 @@ pub fn passed_along(path: &[Pose], pose: &Pose, car: &Pose, on_path: f64) -> boo
 /// A straight line from `car` to `distance` m behind it, a pose every `spacing` m, each
 /// facing the way the car faces: a path a reversing follower backs along (BackUp, done by
 /// the follower where no behaviour server runs). The car's own pose first.
+#[must_use]
 pub fn straight_back(car: &Pose, distance: f64, spacing: f64) -> Vec<Pose> {
     let distance = distance.abs();
     let spacing = spacing.abs().max(0.01);

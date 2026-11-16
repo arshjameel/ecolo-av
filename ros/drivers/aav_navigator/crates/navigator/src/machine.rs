@@ -134,6 +134,7 @@ pub struct Progress {
     pub id: u64,
     /// m along the path to its end (the straight line with no path yet).
     pub distance_remaining: f64,
+    /// Recoveries so far.
     pub recoveries: u32,
     /// Waypoints: the one driven to now (EachInTurn), or how many passed (PassThrough).
     pub waypoint: usize,
@@ -159,6 +160,8 @@ pub struct Navigator {
 }
 
 impl Navigator {
+    /// A navigator with no goal.
+    #[must_use]
     pub fn new(settings: Settings) -> Self {
         Self {
             settings,
@@ -167,11 +170,14 @@ impl Navigator {
         }
     }
 
+    /// The settings it runs with.
+    #[must_use]
     pub fn settings(&self) -> &Settings {
         &self.settings
     }
 
     /// The goal now, if any.
+    #[must_use]
     pub fn goal(&self) -> Option<u64> {
         self.active.as_ref().map(|a| a.id)
     }
@@ -317,6 +323,7 @@ impl Navigator {
     /// The path to ask IsPathValid about while it is kept, not replanned (the final
     /// approach, or a to-pose path still young enough): its `made` time (to name it in the
     /// answer) and its poses. `None` elsewhere: the second's replan already checks the way.
+    #[must_use]
     pub fn path_to_check(&self, now: f64, car: Option<&Pose>) -> Option<(f64, &[Pose])> {
         let a = self.active.as_ref()?;
         if !holding(a, car, now, &self.settings) {
@@ -486,6 +493,7 @@ impl Navigator {
     }
 
     /// How far along the goal is.
+    #[must_use]
     pub fn progress(&self, car: Option<&Pose>) -> Option<Progress> {
         let a = self.active.as_ref()?;
         let distance_remaining = match (&a.path, car, a.end()) {
