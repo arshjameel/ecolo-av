@@ -61,6 +61,9 @@ pub mod shared;
 pub mod smoothing;
 
 pub use age::{Arrival, Stale};
+/// The shared car model crate (its `ActuatorConfig`, and spine-core's `SpeedLoopProfile`).
+#[cfg(feature = "shared")]
+pub use car_model;
 pub use costmap::Costmap;
 pub use critics::{Critic, PathAngleMode};
 pub use ego::{Driven, Ego};
@@ -73,4 +76,4 @@ pub use model::{CarModel, Command, Observation, Pose};
 pub use optimizer::{Optimizer, Plan, Scene, Settings};
 pub use path::{GlobalPath, Inversion};
 #[cfg(feature = "shared")]
-pub use shared::{SharedModel, SharedState};
+pub use shared::{NotPi, SharedModel, SharedState};

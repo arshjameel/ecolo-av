@@ -36,7 +36,7 @@ if(BUILD_TESTING)
   find_package(ament_cmake_test REQUIRED)
   ament_add_test(mppi_lag_logic
     COMMAND ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${CARGO_TARGET_DIR}
-      ${CARGO} test --release --locked --quiet -p mppi-lag
+      ${CARGO} test --release --locked --quiet -p mppi-lag --features shared
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     TIMEOUT 600
     GENERATE_RESULT_FOR_RETURN_CODE_ZERO)

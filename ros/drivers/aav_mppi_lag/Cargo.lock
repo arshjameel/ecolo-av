@@ -916,6 +916,7 @@ dependencies = [
  "car-model",
  "criterion",
  "mcap",
+ "spine-core",
  "tracing",
 ]
 

@@ -16,7 +16,9 @@ anyhow = "1"
 ctrlc = { version = "3", features = ["termination"] }
 # The one-shot channel between the action's task and the tick.
 futures = "0.3"
-mppi-lag = { path = "../mppi-lag" }
+# `shared`: the speed loop's profiles from spine-core (the `speed_loop` parameter), and the
+# shared car model for the one the lag model can't run (the LQI).
+mppi-lag = { path = "../mppi-lag", features = ["shared"] }
 rclrs = "0.8"
 # The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
 ros-env = "0.3"

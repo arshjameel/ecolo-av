@@ -20,9 +20,10 @@
 //! setpoint, the new speed and angle with the mid-step heading. At its merge, its model
 //! implements [`CarModel`] in this one's place.
 //!
-//! Speed commands: the spine's speed loop is modelled as aav_gazebo's `SpeedLoop` does
-//! with its `default` profile (spine-core `speed_loop.rs`: a PI on the throttle, the
-//! brake for overspeed past a coast band, a hold brake at a stop), both ways as
+//! Speed commands: the spine's speed loop is modelled as aav_gazebo's `SpeedLoop` does,
+//! with any of spine-core's PI profiles (`speed_loop.rs`: a PI with a setpoint weight on
+//! the throttle, the brake for overspeed past a coast band, a hold brake at a stop; the
+//! `default` one unless told, the node's `speed_loop` parameter, TODO 163), both ways as
 //! spine-core's loop runs: a negative speed asks for reverse; the gear changes only while
 //! stopped (until then the loop brakes); the loop works along the gear, so reversing uses
 //! the same law as going forward. The car is stepped in steps
@@ -86,15 +87,23 @@ impl Default for Actuators {
     }
 }
 
-/// The spine's speed loop: spine-core's `default` profile (aav_gazebo `SpeedLoopConfig()`).
+/// The spine's speed loop, its PI law: by default spine-core's `default` profile
+/// (aav_gazebo `SpeedLoopConfig()`); `SpeedLoop::from_profile` (feature `shared`) gives
+/// any of its PI profiles.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SpeedLoop {
     /// Throttle per m/s of error.
     pub kp: f64,
     /// Throttle per (m/s x s).
     pub ki: f64,
-    /// The most throttle the integral may add.
+    /// The most throttle the integral may add, beyond the share of the target the P term
+    /// leaves to it, `(1 - setpoint_weight) x kp x target`.
     pub integral_limit: f64,
+    /// The share of the target the P term sees (`b`, 0..1): 1 is a plain PI.
+    pub setpoint_weight: f64,
+    /// true: no integrating while the throttle is pinned (full, or none) the error's way
+    /// (spine-core `AntiWindup::Clamp`); false: only the integral's bounds (`Bounds`).
+    pub clamp_windup: bool,
     /// Brake per m/s of overspeed past `coast_band`.
     pub brake_gain: f64,
     /// m/s too fast that coasting handles.
@@ -111,6 +120,8 @@ impl Default for SpeedLoop {
             kp: 0.3,
             ki: 0.1,
             integral_limit: 0.3,
+            setpoint_weight: 1.0,
+            clamp_windup: false,
             brake_gain: 0.5,
             coast_band: 0.2,
             stopped_speed: 0.05,
@@ -287,8 +298,17 @@ impl LagModel {
             return (0.0, brake);
         }
         let error = target - measured;
-        let proportional = c.kp * error;
-        s.integral = (s.integral + c.ki * error * dt).clamp(0.0, c.integral_limit.max(0.0));
+        // The P term sees b x target; the integral holds the rest on top of its own limit.
+        // With b = 1 and no clamping, both are the plain PI.
+        let proportional = c.kp * (c.setpoint_weight * target - measured);
+        let ceiling = c.integral_limit + (1.0 - c.setpoint_weight) * c.kp * target;
+        let integral = (s.integral + c.ki * error * dt).clamp(0.0, ceiling.max(0.0));
+        let demand = proportional + integral;
+        let pinned =
+            c.clamp_windup && ((demand > 1.0 && error > 0.0) || (demand < 0.0 && error < 0.0));
+        if !pinned {
+            s.integral = integral;
+        }
         let overspeed = -error - c.coast_band;
         if overspeed > 0.0 {
             s.integral = 0.0;

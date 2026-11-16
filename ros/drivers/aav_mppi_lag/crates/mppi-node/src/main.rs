@@ -40,7 +40,10 @@
 //!                                         through: nav
 //! Serves      nothing else; calls nothing.
 //! Parameters  read once at start (config/mppi_lag.yaml, and navigation.launch.py's from
-//!             nav2.yaml, vehicle.yaml and ego.yaml): see the README.
+//!             nav2.yaml, vehicle.yaml and ego.yaml): see the README. speed_loop: the
+//!             spine's speed loop profile the car runs (default, smooth, firm: the lag
+//!             model's PI; lqi: the shared car model), as sim.launch.py speed_loop:=
+//!             (TODO 163); an unknown name is refused.
 //!
 //! navigation.launch.py tracker:=mppi_lag starts it and renames controller_server's own
 //! action follow_path_unused. With reversing:=true it reverses as Nav2's MPPI does (vx_min
@@ -54,13 +57,14 @@ use std::{
 
 use anyhow::{bail, Context as _, Result};
 use futures::channel::oneshot;
+use mppi_lag::car_model::SpeedLoopProfile;
 use mppi_lag::map_correction::{into_map, into_odom, Correction};
 use mppi_lag::{
     critics::{inflation_cost, Critic},
     lag::Actuators,
     Arrival, Costmap, Edges, Ego, Follower, FollowerSettings, GlobalPath, IdealModel, Inversion,
     LagModel, Lane, LanePoint, MapCorrection, Observation, Outcome, PathAngleMode, Pose, Report,
-    Settings, SlewLimits, Tick,
+    Settings, SharedModel, SlewLimits, SpeedLoop, Tick,
 };
 use rclrs::*;
 use ros_env::aav_interfaces::msg::{ActuatorState, RoadAhead};
@@ -134,9 +138,10 @@ fn main() -> Result<()> {
     };
     log_info!(
         node.logger(),
-        "MPPI with the {} model follows Nav2's paths at {} Hz, up to {} m/s; {} samples x {} \
-         steps; lag_aware {lag_aware}",
+        "MPPI with the {} model (speed loop {}) follows Nav2's paths at {} Hz, up to {} m/s; \
+         {} samples x {} steps; lag_aware {lag_aware}",
         config.model,
+        config.speed_loop.name(),
         config.rate_hz,
         config.mppi.vx_max,
         config.mppi.batch_size,
@@ -239,6 +244,8 @@ enum AnyFollower {
     Lag(Box<Follower<LagModel>>),
     /// The lag-free model, as Nav2's MPPI: for comparison runs.
     Ideal(Box<Follower<IdealModel>>),
+    /// The shared car model (lag-aware): for a speed loop the lag model can't run (the LQI).
+    Shared(Box<Follower<SharedModel>>),
 }
 
 macro_rules! each {
@@ -246,6 +253,7 @@ macro_rules! each {
         match $self {
             AnyFollower::Lag($f) => $body,
             AnyFollower::Ideal($f) => $body,
+            AnyFollower::Shared($f) => $body,
         }
     };
 }
@@ -759,6 +767,7 @@ impl Core {
         let values = [
             ("tracker", TRACKER.to_string()),
             ("model", self.config.model.clone()),
+            ("speed_loop", self.config.speed_loop.name().to_string()),
             ("loop_ms", format!("{loop_ms:.3}")),
             ("loop_ms_max", format!("{:.3}", self.loop_max)),
             ("missed_ticks", self.missed.to_string()),
@@ -794,10 +803,18 @@ impl Core {
     }
 }
 
+/// The `speed_loop` parameter's profile: spine-core's names (default, smooth, lqi, firm).
+fn speed_loop_profile(name: &str) -> Result<SpeedLoopProfile> {
+    name.parse()
+        .map_err(|e| anyhow::anyhow!("speed_loop:={name}: {e}"))
+}
+
 /// Everything read from the parameters, once.
 #[derive(Debug, Clone)]
 struct Config {
     model: String,
+    /// The spine's speed loop profile the car runs (TODO 163).
+    speed_loop: SpeedLoopProfile,
     rate_hz: f64,
     odom_topic: String,
     odom_frame: String,
@@ -1194,6 +1211,9 @@ impl Config {
         };
         let config = Self {
             model: d.text("model", "lag")?,
+            speed_loop: speed_loop_profile(
+                &d.text("speed_loop", SpeedLoopProfile::Default.name())?,
+            )?,
             rate_hz,
             odom_topic: d.text("odom_topic", "/localization/odom/local")?,
             odom_frame: d.text("odom_frame", "odom")?,
@@ -1240,13 +1260,27 @@ impl Config {
                 self.footprint.clone(),
             )
         };
+        let lag = LagModel {
+            actuators: self.actuators,
+            wheelbase: self.wheelbase,
+            max_steering_angle: self.max_steering_angle,
+            ..LagModel::default()
+        };
         Ok(match self.model.as_str() {
-            "lag" => AnyFollower::Lag(Box::new(follower(LagModel {
-                actuators: self.actuators,
-                wheelbase: self.wheelbase,
-                max_steering_angle: self.max_steering_angle,
-                ..LagModel::default()
-            }))),
+            "lag" => match SpeedLoop::from_profile(self.speed_loop) {
+                Ok(speed_loop) => {
+                    AnyFollower::Lag(Box::new(follower(LagModel { speed_loop, ..lag })))
+                }
+                // The LQI: the shared model runs the spine's own loop, any law.
+                Err(_) => AnyFollower::Shared(Box::new(Follower::new(
+                    SharedModel::like(&lag, self.speed_loop),
+                    self.ego,
+                    self.mppi.clone(),
+                    self.critics.clone(),
+                    self.follower,
+                    self.footprint.clone(),
+                ))),
+            },
             "ideal" => AnyFollower::Ideal(Box::new(Follower::new(
                 IdealModel {
                     wheelbase: self.wheelbase,

@@ -78,6 +78,7 @@ From `navigation.launch.py` (`vehicle.mppi_lag_params`; nothing copied):
 | `footprint`, `footprint_padding`, `inflation_radius`, `cost_scaling_factor` | vehicle.yaml's body; the local costmap's |
 | `wheelbase`, `max_steering_angle`, `actuators.*` | vehicle.yaml (dead times 0 while unset) |
 | `ego.*` | ego.yaml's ramps |
+| `speed_loop` | the spine's speed loop profile the car runs: the sim's `speed_loop:=` (`default`, `smooth`, `firm`: the lag model's PI; `lqi`: the shared car model); an unknown name is refused (TODO 163) |
 
 From `config/mppi_lag.yaml`: `model` (lag or ideal), `steer_std`, `steer_std_speed` (above it
 the steering noise shrinks as 1 / speed², TODO 168), `steer_std_min` (never under it: 0.024 rad),
@@ -121,8 +122,10 @@ All read once at start.
 - `model_dt` must equal `1 / rate_hz` (the plan shifts one step a tick, as Nav2's).
 - Rust API Guidelines; `cargo fmt` and `cargo clippy` clean; no dependencies in the crate
   by default. The feature `shared` adds the shared `car-model` crate (ours) as
-  `SharedModel` behind `CarModel` (`shared.rs`: it drives as `LagModel` does, to 1 cm);
-  the node still runs `LagModel`. The feature `trace` adds `tracing` (below).
+  `SharedModel` behind `CarModel` (`shared.rs`: it drives as `LagModel` does, to 1 cm,
+  with each PI profile), and spine-core's profiles for `LagModel`'s loop
+  (`SpeedLoop::from_profile`); the node builds with it and runs `LagModel`, or
+  `SharedModel` for the LQI. The feature `trace` adds `tracing` (below).
 
 ## Side Effects
 
