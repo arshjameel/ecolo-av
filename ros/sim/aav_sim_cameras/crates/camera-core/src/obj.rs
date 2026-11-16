@@ -7,6 +7,7 @@ use std::fmt;
 /// Triangles, three corners each, in the mesh's own frame.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TriMesh {
+    /// Three corners for each triangle.
     pub positions: Vec<[f32; 3]>,
     /// One per corner: the file's, or the face's own if the file has none.
     pub normals: Vec<[f32; 3]>,
@@ -17,7 +18,9 @@ pub struct TriMesh {
 /// Why an OBJ file can't be read.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ObjError {
+    /// The file's line, from 1.
     pub line: usize,
+    /// What's wrong with it.
     pub why: String,
 }
 
@@ -64,6 +67,10 @@ type Corner = (usize, Option<usize>, Option<usize>);
 
 impl TriMesh {
     /// Reads an OBJ file's text.
+    ///
+    /// # Errors
+    ///
+    /// [`ObjError`] with the line if a line can't be read.
     pub fn from_obj(text: &str) -> Result<Self, ObjError> {
         let (mut v, mut vt, mut vn) = (Vec::new(), Vec::new(), Vec::new());
         let mut mesh = TriMesh::default();

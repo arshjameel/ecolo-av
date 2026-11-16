@@ -17,7 +17,9 @@ use crate::geom::{Rotation, Vec3};
 /// Where a point lands, in pixels (u right, v down).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pixel {
+    /// Pixels from the left edge.
     pub u: f64,
+    /// Pixels from the top edge.
     pub v: f64,
 }
 
@@ -65,6 +67,10 @@ pub struct Lens {
 
 impl Lens {
     /// From the focal length in pixels (`aav.sensors.gazebo.xacro`'s `camera_focal`).
+    ///
+    /// # Errors
+    ///
+    /// [`LensError`] if the picture is empty or the focal length isn't above 0.
     pub fn from_focal(width: u32, height: u32, focal_px: f64) -> Result<Self, LensError> {
         if width == 0 || height == 0 {
             return Err(LensError::EmptyPicture);
@@ -80,6 +86,10 @@ impl Lens {
     }
 
     /// From the horizontal field of view (radians), as SDF's `horizontal_fov`.
+    ///
+    /// # Errors
+    ///
+    /// [`LensError`] if the field of view isn't between 0 and pi, or the picture is empty.
     pub fn from_horizontal_fov(width: u32, height: u32, fov: f64) -> Result<Self, LensError> {
         if !(fov > 0.0 && fov < std::f64::consts::PI) {
             return Err(LensError::BadFov(fov));
@@ -87,31 +97,37 @@ impl Lens {
         Self::from_focal(width, height, f64::from(width) / 2.0 / (fov / 2.0).tan())
     }
 
+    /// Pixels across.
     #[must_use]
     pub fn width(&self) -> u32 {
         self.width
     }
 
+    /// Pixels down.
     #[must_use]
     pub fn height(&self) -> u32 {
         self.height
     }
 
+    /// Focal length across, in pixels (camera_info's fx).
     #[must_use]
     pub fn fx(&self) -> f64 {
         self.focal
     }
 
+    /// Focal length down, in pixels (camera_info's fy): the same, as pixels are square.
     #[must_use]
     pub fn fy(&self) -> f64 {
         self.focal
     }
 
+    /// The centre's column, in pixels (camera_info's cx).
     #[must_use]
     pub fn cx(&self) -> f64 {
         f64::from(self.width) / 2.0
     }
 
+    /// The centre's row, in pixels (camera_info's cy).
     #[must_use]
     pub fn cy(&self) -> f64 {
         f64::from(self.height) / 2.0
@@ -123,6 +139,7 @@ impl Lens {
         2.0 * (f64::from(self.height) / 2.0 / self.focal).atan()
     }
 
+    /// Left to right, radians.
     #[must_use]
     pub fn horizontal_fov(&self) -> f64 {
         2.0 * (f64::from(self.width) / 2.0 / self.focal).atan()

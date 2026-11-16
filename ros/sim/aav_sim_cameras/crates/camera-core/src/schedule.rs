@@ -17,6 +17,7 @@ pub struct Timer {
 }
 
 impl Timer {
+    /// A timer for this rate, due at its first look.
     #[must_use]
     pub fn new(rate: Hz) -> Self {
         Self {

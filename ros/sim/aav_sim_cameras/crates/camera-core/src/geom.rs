@@ -5,24 +5,31 @@ use std::ops::{Add, Mul, Neg, Sub};
 /// A point or a direction, in metres.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Vec3 {
+    /// m, forward.
     pub x: f64,
+    /// m, left.
     pub y: f64,
+    /// m, up.
     pub z: f64,
 }
 
 impl Vec3 {
+    /// The origin.
     pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
 
+    /// A vector from x, y and z (m).
     #[must_use]
     pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
 
+    /// The dot product.
     #[must_use]
     pub fn dot(self, other: Self) -> f64 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
+    /// How long it is (m).
     #[must_use]
     pub fn length(self) -> f64 {
         self.dot(self).sqrt()
@@ -71,6 +78,7 @@ pub struct Rotation {
 }
 
 impl Rotation {
+    /// No rotation.
     pub const IDENTITY: Self = Self {
         rows: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
     };
@@ -145,6 +153,7 @@ impl Rotation {
         Vec3::new(self.rows[0][i], self.rows[1][i], self.rows[2][i])
     }
 
+    /// `v` turned by this rotation.
     #[must_use]
     pub fn apply(&self, v: Vec3) -> Vec3 {
         let r = &self.rows;
@@ -155,6 +164,7 @@ impl Rotation {
         )
     }
 
+    /// The opposite rotation.
     #[must_use]
     pub fn inverse(&self) -> Self {
         let r = &self.rows;
@@ -221,7 +231,9 @@ impl Rotation {
 /// Where a frame sits in its parent: `parent_point = rotation * child_point + translation`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pose {
+    /// The child's origin in the parent frame (m).
     pub translation: Vec3,
+    /// How the child frame is turned in the parent's.
     pub rotation: Rotation,
 }
 
@@ -232,11 +244,13 @@ impl Default for Pose {
 }
 
 impl Pose {
+    /// The child frame on top of its parent.
     pub const IDENTITY: Self = Self {
         translation: Vec3::ZERO,
         rotation: Rotation::IDENTITY,
     };
 
+    /// A pose from a translation and a rotation.
     #[must_use]
     pub fn new(translation: Vec3, rotation: Rotation) -> Self {
         Self {
@@ -275,6 +289,7 @@ impl Pose {
         )
     }
 
+    /// The parent frame in the child's.
     #[must_use]
     pub fn inverse(&self) -> Self {
         let r = self.rotation.inverse();

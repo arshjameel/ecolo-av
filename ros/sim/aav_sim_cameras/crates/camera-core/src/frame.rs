@@ -9,7 +9,9 @@ pub struct Frame {
     pub camera: usize,
     /// The simulator's time of the car pose it was drawn from: the header's stamp.
     pub stamp: Duration,
+    /// Pixels across.
     pub width: u32,
+    /// Pixels down.
     pub height: u32,
     /// rgb8, `width * 3` bytes a row, no padding.
     pub rgb: Vec<u8>,
@@ -39,7 +41,9 @@ impl Frame {
 /// The GPU's copy is shorter than its picture.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ShortCopy {
+    /// Bytes the GPU gave.
     pub got: usize,
+    /// Bytes the picture needs.
     pub wanted: usize,
 }
 
@@ -57,6 +61,10 @@ impl std::error::Error for ShortCopy {}
 
 /// RGBA rows as a GPU copies them (each row padded to `row_bytes`, at least `width * 4`)
 /// into packed rgb8.
+///
+/// # Errors
+///
+/// [`ShortCopy`] if `data` is shorter than the picture.
 pub fn rgba_rows_to_rgb(
     data: &[u8],
     width: u32,

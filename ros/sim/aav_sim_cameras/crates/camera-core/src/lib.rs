@@ -14,6 +14,9 @@
 //!     // publish each frame on cameras.rig().cameras[frame.camera]'s topics
 //! }
 //! ```
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod core_world;
 pub mod frame;
@@ -36,14 +39,23 @@ pub use world::{Geometry, Look, Rgb, Shape, SimWorld, Sun};
 
 /// Draws pictures of a world. Bevy's is `sim_cameras::BevyRenderer`; a test can use a fake.
 pub trait CameraRenderer {
+    /// What goes wrong when drawing.
     type Error;
 
     /// Replaces the world: the next pictures show this one.
+    ///
+    /// # Errors
+    ///
+    /// The renderer's error if it can't take the world.
     fn set_world(&mut self, world: &SimWorld) -> Result<(), Self::Error>;
 
     /// Draws the cameras `which` (indices into the rig it was made with), with the car's
     /// base_link at `car` in the map, and stamps them `stamp`. Blocks until every picture
     /// is back from the GPU. Returns them in `which`'s order.
+    ///
+    /// # Errors
+    ///
+    /// The renderer's error if it can't draw or read back a picture.
     fn render(
         &mut self,
         car: &Pose,
@@ -70,6 +82,7 @@ impl<R> std::fmt::Debug for Cameras<R> {
 }
 
 impl<R: CameraRenderer> Cameras<R> {
+    /// The rig's cameras, each with its own timer, drawn by `renderer`.
     pub fn new(rig: Rig, renderer: R) -> Self {
         let timers = rig.cameras.iter().map(|c| Timer::new(c.rate)).collect();
         Self {
@@ -79,10 +92,12 @@ impl<R: CameraRenderer> Cameras<R> {
         }
     }
 
+    /// The cameras.
     pub fn rig(&self) -> &Rig {
         &self.rig
     }
 
+    /// The renderer, to change its world.
     pub fn renderer_mut(&mut self) -> &mut R {
         &mut self.renderer
     }
@@ -97,6 +112,10 @@ impl<R: CameraRenderer> Cameras<R> {
     }
 
     /// Draws the cameras due at `now`, with the car at `car`. Often none.
+    ///
+    /// # Errors
+    ///
+    /// The renderer's error if it can't draw the cameras due.
     pub fn tick(&mut self, car: &Pose, now: Duration) -> Result<Vec<Frame>, R::Error> {
         let due = self.due(now);
         if due.is_empty() {
