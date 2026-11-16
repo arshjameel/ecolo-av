@@ -19,7 +19,9 @@ use crate::stop_law::StopCurve;
 /// One stop on the line: metres along it, and why.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StopOnLine {
+    /// m along the line.
     pub along: f64,
+    /// Why the car stops there.
     pub reason: String,
 }
 
@@ -28,20 +30,27 @@ pub struct StopOnLine {
 pub struct Strip {
     /// m between the line's points.
     pub spacing: f64,
+    /// The points' x (m).
     pub x: Vec<f64>,
+    /// The points' y (m).
     pub y: Vec<f64>,
     /// m/s at each point.
     pub speed_limit: Vec<f64>,
+    /// Where the car must stop.
     pub stops: Vec<StopOnLine>,
     /// m along the line: the car may not pass it.
     pub end: f64,
 }
 
 impl Strip {
+    /// How many points.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.x.len()
     }
 
+    /// No points.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.x.is_empty()
     }
@@ -72,6 +81,7 @@ fn foot(points: &[(f64, f64)], x: f64, y: f64) -> (usize, f64) {
 }
 
 /// (metres along the strip's line of the point nearest (x, y), distance off it).
+#[must_use]
 pub fn along_of(strip: &Strip, x: f64, y: f64) -> (f64, f64) {
     match strip.len() {
         0 => (0.0, f64::INFINITY),
@@ -88,6 +98,7 @@ pub fn along_of(strip: &Strip, x: f64, y: f64) -> (f64, f64) {
 }
 
 /// The metres from the car at (x, y) to the strip's end: 0 or less, no further.
+#[must_use]
 pub fn room_at(strip: &Strip, x: f64, y: f64) -> f64 {
     if strip.is_empty() {
         return 0.0;
@@ -99,6 +110,7 @@ pub fn room_at(strip: &Strip, x: f64, y: f64) -> f64 {
 ///
 /// With a `curve` (the reader's own stopping law), the limit is worked out again from the
 /// room left, never above `base`; without one, the writer's limit at the nearest point.
+#[must_use]
 pub fn limit_at(
     strip: Option<&Strip>,
     x: f64,
@@ -132,6 +144,7 @@ pub fn limit_at(
 }
 
 /// The forward speed the road ahead allows now (m/s, 0 or more).
+#[must_use]
 pub fn allowed(
     strip: Option<&Strip>,
     pose: Option<(f64, f64)>,
@@ -155,6 +168,7 @@ pub fn allowed(
 
 /// (v, w) with v at most `limit` going forward, keeping the curvature w / v. A reverse
 /// command and a stop pass unchanged.
+#[must_use]
 pub fn cap(cmd: (f64, f64), limit: f64) -> (f64, f64) {
     let (v, w) = cmd;
     if v <= limit || v <= 0.0 {

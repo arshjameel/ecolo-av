@@ -20,22 +20,32 @@ use crate::round_half_even;
 pub struct Pose {
     /// s from now.
     pub t: f64,
+    /// m, + forward.
     pub x: f64,
+    /// m, + left.
     pub y: f64,
+    /// rad, + left.
     pub yaw: f64,
+    /// m/s, + forward.
     pub v: f64,
+    /// rad, + left: the wheels' angle.
     pub steer: f64,
 }
 
 /// ego's copy of the car: the car model, stepped with what ego sends.
 #[derive(Debug, Clone)]
 pub struct Twin {
+    /// The car's actuators.
     pub cfg: ActuatorConfig,
+    /// The spine's speed loop, as the car runs it.
     pub speed_loop: SpeedLoop,
+    /// The car now.
     pub state: CarState,
 }
 
 impl Twin {
+    /// A twin at rest, at the origin.
+    #[must_use]
     pub fn new(cfg: ActuatorConfig, loop_config: SpeedLoopConfig) -> Self {
         Twin {
             cfg,
@@ -50,6 +60,10 @@ impl Twin {
     }
 
     /// Answer what ego sent this tick (m/s, rad) with the twin's actuators.
+    ///
+    /// # Errors
+    ///
+    /// The car model's [`ModelError`].
     pub fn sent(&mut self, speed: f64, angle: f64, dt: f64) -> Result<(), ModelError> {
         if dt > 0.0 {
             self.state = self.cfg.step(
@@ -65,6 +79,7 @@ impl Twin {
 
 /// What ego would send each step for `steps` steps, the request held. The model and the
 /// lead are copied: the caller's own never change.
+#[must_use]
 pub fn ego_commands(
     model: &EgoModel,
     cmd: Option<(f64, f64)>,
@@ -86,6 +101,10 @@ pub fn ego_commands(
 ///
 /// `cmd` is ego's request (`None`: stopping), `lead` its lead while it runs. Nothing
 /// passed in is changed.
+///
+/// # Errors
+///
+/// The car model's [`ModelError`]: `dt` not above 0, say.
 pub fn trace(
     twin: &Twin,
     model: &EgoModel,

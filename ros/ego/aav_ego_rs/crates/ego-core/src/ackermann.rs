@@ -55,6 +55,7 @@ impl Default for Limits {
 }
 
 /// The front-wheel angle for (v, w), or `hold` if the car is too slow to tell.
+#[must_use]
 pub fn steering_angle(v: f64, w: f64, lim: &Limits, hold: f64) -> f64 {
     if v.abs() < lim.min_speed_for_steering {
         return hold;
@@ -64,11 +65,13 @@ pub fn steering_angle(v: f64, w: f64, lim: &Limits, hold: f64) -> f64 {
 }
 
 /// The yaw rate of the bicycle model, the inverse of [`steering_angle`].
+#[must_use]
 pub fn turn_rate(v: f64, d: f64, wheelbase: f64) -> f64 {
     v * d.tan() / wheelbase
 }
 
 /// How sharply the path bends (1/m) for a front-wheel angle.
+#[must_use]
 pub fn curvature(steering: f64, wheelbase: f64) -> f64 {
     steering.tan() / wheelbase
 }
@@ -77,6 +80,7 @@ pub fn curvature(steering: f64, wheelbase: f64) -> f64 {
 ///
 /// `speed_up` replaces `max_acceleration` (the body's lower limit); `slow_down` replaces
 /// `max_deceleration`, never above it (the pedal's).
+#[must_use]
 pub fn slew_speed(
     current: f64,
     target: f64,
@@ -103,6 +107,7 @@ pub fn slew_speed(
 
 /// Speed up toward `target`, the acceleration changing at most `jerk` m/s³; return
 /// (speed, signed acceleration). `accel` is the last tick's signed acceleration.
+#[must_use]
 pub fn ease_speed(
     current: f64,
     target: f64,
@@ -129,9 +134,13 @@ pub fn ease_speed(
 /// The car as ego sees it: the speed and steering it last commanded.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EgoModel {
+    /// ego's limits.
     pub lim: Limits,
+    /// The car's body, for the lateral limit; `None` without one.
     pub body: Option<Body>,
+    /// m/s, + forward: the last speed commanded.
     pub speed: f64,
+    /// rad, + left: the last steering commanded.
     pub steering: f64,
     /// m/s², signed: the last tick's change of speed.
     pub accel: f64,
@@ -151,6 +160,8 @@ pub struct Output {
 }
 
 impl EgoModel {
+    /// At rest, wheels straight.
+    #[must_use]
     pub fn new(lim: Limits, body: Option<Body>) -> Self {
         EgoModel {
             lim,

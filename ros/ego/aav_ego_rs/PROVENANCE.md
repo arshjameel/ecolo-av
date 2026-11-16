@@ -38,3 +38,4 @@ code), so that the Rust gives Python's last bit. `docs/acknowledgements.md` has 
 ## Changes
 
 - 2026-11-15: written; `ego_impl:=` in `ego.launch.py` and `sim.launch.py`.
+- 2026-11-15 (TODO 176): the Rust API Guidelines pass: `#[must_use]` on pure functions, doc comments, `Debug`, and the lints that keep them; no change in behaviour.

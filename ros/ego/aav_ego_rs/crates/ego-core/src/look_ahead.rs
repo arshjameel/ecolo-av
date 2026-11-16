@@ -23,12 +23,14 @@ fn dist(a: Point, b: Point) -> f64 {
 }
 
 /// How long the polyline is (m).
+#[must_use]
 pub fn length(points: &[Point]) -> f64 {
     points.windows(2).map(|p| dist(p[0], p[1])).sum()
 }
 
 /// How far along the polyline p's nearest point is, and how far p is from it:
 /// `(along, off)`. A single point: (0, its distance). `None` for no points.
+#[must_use]
 pub fn project(points: &[Point], p: Point) -> Option<(f64, f64)> {
     match points {
         [] => None,
@@ -57,6 +59,7 @@ pub fn project(points: &[Point], p: Point) -> Option<(f64, f64)> {
 }
 
 /// The plan from the point nearest the car (the origin) to `ahead` m further on.
+#[must_use]
 pub fn crop_ahead(points: &[Point], ahead: f64) -> Vec<Point> {
     if points.len() < 2 {
         return points.to_vec();
@@ -66,6 +69,7 @@ pub fn crop_ahead(points: &[Point], ahead: f64) -> Vec<Point> {
 }
 
 /// The part of a polyline between `start` and `end` m along it.
+#[must_use]
 pub fn cut(points: &[Point], start: f64, end: f64) -> Vec<Point> {
     let mut out = Vec::new();
     let mut walked = 0.0;
@@ -87,11 +91,14 @@ pub fn cut(points: &[Point], start: f64, end: f64) -> Vec<Point> {
     out
 }
 
+/// The point `u` (0..1) of the way from `a` to `b`.
+#[must_use]
 pub fn along_segment(a: Point, b: Point, u: f64) -> Point {
     (a.0 + u * (b.0 - a.0), a.1 + u * (b.1 - a.1))
 }
 
 /// The largest distance of a trace point from the plan; `None` without both lines.
+#[must_use]
 pub fn gap(trace: &[Point], plan: &[Point]) -> Option<f64> {
     if trace.is_empty() || plan.len() < 2 {
         return None;
@@ -105,13 +112,17 @@ pub fn gap(trace: &[Point], plan: &[Point]) -> Option<f64> {
 /// The gap's grade: green, amber or red (DiagnosticStatus's OK, WARN, ERROR).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Level {
+    /// Green: within `warn`.
     Ok,
+    /// Amber: past `warn`.
     Warn,
+    /// Red: past `bad`.
     Bad,
 }
 
 impl Level {
     /// diagnostic_msgs/DiagnosticStatus's level byte.
+    #[must_use]
     pub fn byte(self) -> u8 {
         match self {
             Level::Ok => 0,
@@ -124,7 +135,9 @@ impl Level {
 /// m: amber past `warn`, red past `bad`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Limits {
+    /// Amber past this (m).
     pub warn: f64,
+    /// Red past this (m).
     pub bad: f64,
 }
 
@@ -138,6 +151,7 @@ impl Default for Limits {
 }
 
 /// OK, WARN or BAD for a gap; OK with no plan.
+#[must_use]
 pub fn grade(value: Option<f64>, limits: &Limits) -> Level {
     match value {
         None => Level::Ok,
@@ -149,6 +163,7 @@ pub fn grade(value: Option<f64>, limits: &Limits) -> Level {
 
 /// The metres from the stop point to the plan's end, along the plan: + short of the goal,
 /// - past it. `None` without a plan.
+#[must_use]
 pub fn to_goal(plan: &[Point], stop: Point) -> Option<f64> {
     if plan.len() < 2 {
         return None;
@@ -167,7 +182,9 @@ pub fn to_goal(plan: &[Point], stop: Point) -> Option<f64> {
 /// An occupancy grid (nav_msgs/OccupancyGrid's numbers), already in `base_link`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Grid {
+    /// Cells across.
     pub width: usize,
+    /// Cells up.
     pub height: usize,
     /// m per cell.
     pub resolution: f64,
@@ -179,6 +196,7 @@ pub struct Grid {
 
 impl Grid {
     /// The cell's value under p, -1 outside the grid.
+    #[must_use]
     pub fn cost(&self, p: Point) -> i32 {
         let (ox, oy, yaw) = self.origin;
         let (dx, dy) = (p.0 - ox, p.1 - oy);
@@ -195,6 +213,7 @@ impl Grid {
 }
 
 /// A path of (x, y, yaw) poses, carried on straight to `total` m long.
+#[must_use]
 pub fn extend(path: &[Pose2], total: f64) -> Vec<Pose2> {
     let mut out = if path.is_empty() {
         vec![(0.0, 0.0, 0.0)]
@@ -213,6 +232,7 @@ pub fn extend(path: &[Pose2], total: f64) -> Vec<Pose2> {
 }
 
 /// IEEE remainder, as Python's `math.remainder`: x - n y, n the nearest whole (ties even).
+#[must_use]
 pub fn remainder(x: f64, y: f64) -> f64 {
     x - (x / y).round_ties_even() * y
 }
@@ -222,6 +242,7 @@ pub fn remainder(x: f64, y: f64) -> f64 {
 /// `front` is the bumper's distance ahead of `base_link`, `half_width` half the body's.
 /// The bumper is checked across its width at most `step` m apart, every `step` m along.
 /// `None`: nothing in the way.
+#[must_use]
 pub fn first_hit(
     grid: &Grid,
     path: &[Pose2],
@@ -258,6 +279,7 @@ pub fn first_hit(
 }
 
 /// One line for people, such as `ON PLAN 0.12 m - stops in 1.4 m, 0.8 m short of the goal`.
+#[must_use]
 pub fn describe(
     gap_m: Option<f64>,
     level: Level,
@@ -308,6 +330,7 @@ pub struct Road {
 
 /// The road ahead at the car (x, y, the strip's frame); `None` with no strip. The writer's
 /// own limit (no curve): the screens show what the road says.
+#[must_use]
 pub fn road(strip: Option<&Strip>, x: f64, y: f64) -> Option<Road> {
     let strip = strip.filter(|s| !s.is_empty())?;
     let (s, _) = along_of(strip, x, y);
@@ -325,6 +348,7 @@ pub fn road(strip: Option<&Strip>, x: f64, y: f64) -> Option<Road> {
 }
 
 /// The yaw of a quaternion (x, y, z, w).
+#[must_use]
 pub fn yaw_of(x: f64, y: f64, z: f64, w: f64) -> f64 {
     (2.0 * (w * z + x * y)).atan2(1.0 - 2.0 * (y * y + z * z))
 }
@@ -332,8 +356,11 @@ pub fn yaw_of(x: f64, y: f64, z: f64, w: f64) -> f64 {
 /// A 2D transform: a point in the source frame into the target frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Frame2D {
+    /// The source frame's origin in the target (m).
     pub x: f64,
+    /// m.
     pub y: f64,
+    /// Its turn (rad, + left).
     pub yaw: f64,
     c: f64,
     s: f64,
@@ -346,6 +373,8 @@ impl Default for Frame2D {
 }
 
 impl Frame2D {
+    /// The transform for a source frame at (`x`, `y`), turned `yaw`.
+    #[must_use]
     pub fn new(x: f64, y: f64, yaw: f64) -> Self {
         Frame2D {
             x,
@@ -356,6 +385,8 @@ impl Frame2D {
         }
     }
 
+    /// A point of the source frame, in the target.
+    #[must_use]
     pub fn point(&self, px: f64, py: f64) -> Point {
         (
             self.x + self.c * px - self.s * py,
@@ -363,6 +394,8 @@ impl Frame2D {
         )
     }
 
+    /// A pose of the source frame, in the target.
+    #[must_use]
     pub fn pose(&self, px: f64, py: f64, pyaw: f64) -> Pose2 {
         let (x, y) = self.point(px, py);
         (x, y, pyaw + self.yaw)
@@ -370,6 +403,7 @@ impl Frame2D {
 }
 
 /// The index of the point nearest the origin (the first of equals); 0 for none.
+#[must_use]
 pub fn nearest_index(points: &[Point]) -> usize {
     let mut best = (f64::INFINITY, 0);
     for (i, p) in points.iter().enumerate() {

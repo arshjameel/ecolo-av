@@ -35,6 +35,8 @@ pub enum LeadMode {
 }
 
 impl LeadMode {
+    /// Its parameter value: `auto`, `on` or `off`.
+    #[must_use]
     pub fn name(self) -> &'static str {
         match self {
             LeadMode::Auto => "auto",
@@ -76,6 +78,7 @@ impl FromStr for LeadMode {
 }
 
 /// Whether the lead runs now: off never, auto in a simulator, on always; never twice.
+#[must_use]
 pub fn lead_wanted(mode: LeadMode, sim: bool, lag_aware_driving: bool) -> bool {
     if lag_aware_driving {
         return false;
@@ -86,12 +89,17 @@ pub fn lead_wanted(mode: LeadMode, sim: bool, lag_aware_driving: bool) -> bool {
 /// How late each actuator answers (s): its dead time plus its lag.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LeadTimes {
+    /// The throttle's.
     pub speed_up: f64,
+    /// The brake's.
     pub slow_down: f64,
+    /// The steering's.
     pub steer: f64,
 }
 
 impl LeadTimes {
+    /// From the car model's dead times and lags.
+    #[must_use]
     pub fn from_config(cfg: &ActuatorConfig) -> Self {
         LeadTimes {
             speed_up: cfg.throttle_dead_time + cfg.throttle_lag,
@@ -125,13 +133,17 @@ impl Default for LeadLimits {
 /// The lead on a (speed, steering angle) request, one tick at a time.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LagLead {
+    /// How far ahead to lead each actuator.
     pub times: LeadTimes,
+    /// The most the lead may add.
     pub limits: LeadLimits,
     /// The filtered (speed, angle); `None`: start from the next request.
     filtered: Option<(f64, f64)>,
 }
 
 impl LagLead {
+    /// A lead with nothing filtered yet.
+    #[must_use]
     pub fn new(times: LeadTimes, limits: LeadLimits) -> Self {
         LagLead {
             times,
@@ -141,6 +153,7 @@ impl LagLead {
     }
 
     /// The filters' state: `None` before the first request.
+    #[must_use]
     pub fn filtered(&self) -> Option<(f64, f64)> {
         self.filtered
     }
@@ -215,9 +228,13 @@ impl LagLead {
 /// What identifies one TwistStamped: twist_mux passes it on unchanged.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CommandKey {
+    /// The stamp's seconds.
     pub sec: i32,
+    /// The stamp's nanoseconds.
     pub nanosec: u32,
+    /// twist.linear.x (m/s).
     pub vx: f64,
+    /// twist.angular.z (rad/s).
     pub wz: f64,
 }
 
@@ -238,10 +255,13 @@ struct Watched {
 
 impl LagAwareWatch {
     /// Watch these drivers (a name given twice counts once), each one's last 50 commands.
+    #[must_use]
     pub fn new<S: AsRef<str>>(drivers: &[S]) -> Self {
         LagAwareWatch::with_keep(drivers, 50)
     }
 
+    /// As [`LagAwareWatch::new`], keeping each one's last `keep` commands.
+    #[must_use]
     pub fn with_keep<S: AsRef<str>>(drivers: &[S], keep: usize) -> Self {
         let mut watched: Vec<Watched> = Vec::new();
         for d in drivers {
@@ -264,10 +284,13 @@ impl LagAwareWatch {
         self.drivers.iter().map(|w| w.name.as_str())
     }
 
+    /// True if `driver` is watched.
+    #[must_use]
     pub fn watches(&self, driver: &str) -> bool {
         self.drivers.iter().any(|w| w.name == driver)
     }
 
+    /// Note whether `driver` says it is lag-aware; an unwatched one is ignored.
     pub fn set_aware(&mut self, driver: &str, aware: bool) {
         if let Some(w) = self.drivers.iter_mut().find(|w| w.name == driver) {
             w.aware = aware;
@@ -289,6 +312,7 @@ impl LagAwareWatch {
     }
 
     /// The watched driver whose command this is, lag-aware or not.
+    #[must_use]
     pub fn whose(&self, key: Option<&CommandKey>) -> Option<&str> {
         let key = key?;
         self.drivers
@@ -298,6 +322,7 @@ impl LagAwareWatch {
     }
 
     /// The lag-aware driver whose command this is.
+    #[must_use]
     pub fn driving(&self, key: Option<&CommandKey>) -> Option<&str> {
         let key = key?;
         self.drivers

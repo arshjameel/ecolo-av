@@ -31,6 +31,7 @@ impl Pedal {
     ///
     /// Called only while slowing. Against the motion, a target's size over `full` is how
     /// far the stick is pulled back.
+    #[must_use]
     pub fn slow_rate(&self, current: f64, target: f64, max_deceleration: f64) -> f64 {
         let let_off = self.let_off.min(max_deceleration);
         if current == 0.0 {

@@ -14,7 +14,9 @@ use std::collections::HashMap;
 /// A rigid transform: a translation (m) and a unit quaternion (x, y, z, w).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Transform {
+    /// m: x, y, z.
     pub translation: [f64; 3],
+    /// A unit quaternion: x, y, z, w.
     pub rotation: [f64; 4],
 }
 
@@ -36,12 +38,14 @@ fn quat_mul(a: [f64; 4], b: [f64; 4]) -> [f64; 4] {
 }
 
 impl Transform {
+    /// No move, no turn.
     pub const IDENTITY: Transform = Transform {
         translation: [0.0; 3],
         rotation: [0.0, 0.0, 0.0, 1.0],
     };
 
     /// Rotate a vector by this transform's rotation.
+    #[must_use]
     pub fn rotate(&self, v: [f64; 3]) -> [f64; 3] {
         let q = self.rotation;
         let p = quat_mul(
@@ -53,6 +57,7 @@ impl Transform {
 
     /// `self ∘ other`: first `other`, then `self` (a point in other's source, into self's
     /// target).
+    #[must_use]
     pub fn then(&self, other: &Transform) -> Transform {
         let r = self.rotate(other.translation);
         Transform {
@@ -65,6 +70,8 @@ impl Transform {
         }
     }
 
+    /// The transform the other way.
+    #[must_use]
     pub fn inverse(&self) -> Transform {
         let q = self.rotation;
         let conj = Transform {
@@ -79,6 +86,7 @@ impl Transform {
     }
 
     /// The yaw of the rotation (rad).
+    #[must_use]
     pub fn yaw(&self) -> f64 {
         let [x, y, z, w] = self.rotation;
         crate::look_ahead::yaw_of(x, y, z, w)
@@ -100,6 +108,8 @@ fn clean(frame: &str) -> &str {
 }
 
 impl Tree {
+    /// No frames yet.
+    #[must_use]
     pub fn new() -> Self {
         Tree::default()
     }
@@ -129,6 +139,7 @@ impl Tree {
     }
 
     /// target ← source: a point in `source` into `target`. `None` when they share no tree.
+    #[must_use]
     pub fn lookup(&self, target: &str, source: &str) -> Option<Transform> {
         let (target, source) = (clean(target), clean(source));
         if target == source {

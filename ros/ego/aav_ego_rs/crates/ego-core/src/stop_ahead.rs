@@ -17,8 +17,11 @@ pub const MAX_TIME: f64 = 30.0;
 /// Where a full brake now stops the car, in `base_link`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct StopPoint {
+    /// m, + forward.
     pub x: f64,
+    /// m, + left.
     pub y: f64,
+    /// rad, + left.
     pub yaw: f64,
     /// m along the way there.
     pub distance: f64,
@@ -31,6 +34,10 @@ pub struct StopPoint {
 /// Where the car stops if it brakes fully now, in `base_link` (the state's x, y, yaw are
 /// ignored). The throttle let go, the brake full, the steering held at the motor's
 /// setpoint. Nothing passed in changes.
+///
+/// # Errors
+///
+/// [`ModelError::NonPositiveDt`] for `dt` not above 0.
 pub fn stop_point(
     cfg: &ActuatorConfig,
     state: &CarState,
@@ -82,6 +89,7 @@ pub fn stop_point(
 }
 
 /// The design's S(v) = v tau + v² / (2a): m to stop from v m/s.
+#[must_use]
 pub fn s_of_v(v: f64, tau: f64, a: f64) -> f64 {
     let v = v.abs();
     v * tau + v * v / (2.0 * a)

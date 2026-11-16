@@ -22,6 +22,9 @@
 //!
 //! The same answers as the Python: `tests/vectors.rs` reads `vectors.json`, written by
 //! `gen_vectors.py` from the Python modules. Units: m, s, rad, m/s (REP-103).
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod ackermann;
 pub mod dynamics;
@@ -37,6 +40,7 @@ pub mod trace;
 pub use car_model;
 
 /// `max(lo, min(hi, x))`, as the Python's `clamp`.
+#[must_use]
 pub fn clamp(x: f64, lo: f64, hi: f64) -> f64 {
     lo.max(hi.min(x))
 }
@@ -46,6 +50,7 @@ pub fn clamp(x: f64, lo: f64, hi: f64) -> f64 {
 ///
 /// libm's `hypot` may differ in the last bit; a step count `ceil(seg / step)` on a segment
 /// exactly `step` long then differs by one, and look_ahead's obstacle distance by a step.
+#[must_use]
 pub fn hypot(x: f64, y: f64) -> f64 {
     let (x, y) = (x.abs(), y.abs());
     if x.is_nan() || y.is_nan() {
@@ -91,18 +96,21 @@ pub fn hypot(x: f64, y: f64) -> f64 {
 }
 
 /// Python's `round()`: halves go to the even number.
+#[must_use]
 pub fn round_half_even(x: f64) -> f64 {
     x.round_ties_even()
 }
 
 /// An `f32` from spine-core, as the decimal the Python writes for it (`0.2f32` is `0.2`,
 /// not `0.20000000298`): the speed loop's numbers are written once, in decimals, in both.
+#[must_use]
 pub fn widen(x: f32) -> f64 {
     x.to_string().parse().unwrap_or(f64::from(x))
 }
 
 /// Python's `format(x, 'g')` for the numbers ego logs: six significant digits, no
 /// trailing zeros (`1.0` is `1`, `0.4` is `0.4`).
+#[must_use]
 pub fn fmt_g(x: f64) -> String {
     if !x.is_finite() {
         return if x.is_nan() {

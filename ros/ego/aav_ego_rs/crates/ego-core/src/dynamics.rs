@@ -58,36 +58,44 @@ impl Default for Body {
 }
 
 impl Body {
+    /// The car and its load (kg).
+    #[must_use]
     pub fn total_mass(&self) -> f64 {
         self.mass + self.payload
     }
 
     /// The empty car's share of the total mass.
+    #[must_use]
     pub fn load_share(&self) -> f64 {
         self.mass / self.total_mass()
     }
 
     /// The hardest (m/s²) the loaded car can speed up: its motor, then its tyres.
+    #[must_use]
     pub fn speed_up_limit(&self) -> f64 {
         (self.full_throttle_accel * self.load_share()).min(self.tyre_grip * G)
     }
 
     /// The hardest (m/s²) the loaded car can brake: its brakes, then its tyres.
+    #[must_use]
     pub fn braking_limit(&self) -> f64 {
         (self.full_brake_decel * self.load_share()).min(self.tyre_grip * G)
     }
 
     /// m/s² sideways at which the tyres slide.
+    #[must_use]
     pub fn sliding_accel(&self) -> f64 {
         self.tyre_grip * G
     }
 
     /// m/s² sideways at which the inside wheels lift.
+    #[must_use]
     pub fn tipping_accel(&self) -> f64 {
         G * (self.track / 2.0) / self.cg_height
     }
 
     /// m/s² sideways ego allows: comfort, or half of slide or tip.
+    #[must_use]
     pub fn lateral_limit(&self) -> f64 {
         self.max_lateral_accel
             .min(self.sliding_accel() / MARGIN)
@@ -95,6 +103,7 @@ impl Body {
     }
 
     /// The fastest (m/s) a turn of this curvature (1/m) allows; infinite when straight.
+    #[must_use]
     pub fn curve_speed(&self, curvature: f64) -> f64 {
         let k = curvature.abs();
         if k < 1e-9 {
@@ -105,11 +114,13 @@ impl Body {
     }
 
     /// The distance (m) to stop from `speed`: the reaction time, then braking at `decel`.
+    #[must_use]
     pub fn stopping_distance(&self, speed: f64, decel: f64) -> f64 {
         speed.abs() * REACTION + speed * speed / (2.0 * decel)
     }
 
     /// The energy of motion (J), the load included.
+    #[must_use]
     pub fn energy(&self, speed: f64) -> f64 {
         0.5 * self.total_mass() * speed * speed
     }
@@ -118,22 +129,31 @@ impl Body {
 /// ego's limits as `describe` needs them.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Described {
+    /// m.
     pub wheelbase: f64,
+    /// rad.
     pub max_steering_angle: f64,
+    /// m/s.
     pub max_speed: f64,
+    /// m/s².
     pub max_acceleration: f64,
+    /// m/s².
     pub max_deceleration: f64,
+    /// m/s³.
     pub max_jerk: f64,
 }
 
 /// A line for ego's start-up log.
 #[derive(Debug, Clone, PartialEq)]
 pub enum LogLine {
+    /// Logged at INFO.
     Info(String),
+    /// Logged at WARN.
     Warning(String),
 }
 
 /// Short lines for ego's log: what this body allows with ego's limits (`dynamics.describe`).
+#[must_use]
 pub fn describe(body: &Body, lim: &Described) -> Vec<LogLine> {
     let jerk = if lim.max_jerk != 0.0 {
         lim.max_jerk

@@ -52,11 +52,13 @@ impl fmt::Display for CurveError {
 impl std::error::Error for CurveError {}
 
 /// Half the softer of ego's deceleration and the brake's (m/s²).
+#[must_use]
 pub fn planned_braking(ego_max_deceleration: f64, max_brake: f64) -> f64 {
     ego_max_deceleration.min(max_brake) / 2.0
 }
 
 /// How long the speed loop lags a set speed falling at `a` (s); 0 with no loop.
+#[must_use]
 pub fn loop_lag(speed_loop: Option<&SpeedLoopConfig>, a: f64, max_brake: f64) -> f64 {
     match speed_loop {
         None => 0.0,
@@ -69,6 +71,10 @@ pub fn loop_lag(speed_loop: Option<&SpeedLoopConfig>, a: f64, max_brake: f64) ->
 
 impl StopCurve {
     /// A curve, its numbers checked.
+    ///
+    /// # Errors
+    ///
+    /// [`CurveError`] for the first number out of its range.
     pub fn new(a: f64, j: f64, rho: f64) -> Result<Self, CurveError> {
         if !(a.is_finite() && a > 0.0) {
             return Err(CurveError::Braking(a));
@@ -83,6 +89,10 @@ impl StopCurve {
     }
 
     /// The curve for this car: the car model's brake and speed loop, ego's limits.
+    ///
+    /// # Errors
+    ///
+    /// [`CurveError`], as [`StopCurve::new`].
     pub fn from_car_model(
         cfg: &ActuatorConfig,
         ego_max_deceleration: f64,
@@ -103,6 +113,10 @@ impl StopCurve {
 
     /// From loose numbers (the brake's lag 0.2 s and no dead time, as the Python's
     /// defaults; the spine's default loop), as `from_car_model`.
+    ///
+    /// # Errors
+    ///
+    /// [`CurveError`], as [`StopCurve::new`].
     pub fn from_numbers(
         max_brake: f64,
         ego_max_deceleration: f64,
@@ -123,24 +137,32 @@ impl StopCurve {
         )
     }
 
+    /// The planned braking (m/s²).
+    #[must_use]
     pub fn a(&self) -> f64 {
         self.a
     }
 
+    /// The jerk limit (m/s³).
+    #[must_use]
     pub fn j(&self) -> f64 {
         self.j
     }
 
+    /// The delay before the brake bites (s).
+    #[must_use]
     pub fn rho(&self) -> f64 {
         self.rho
     }
 
     /// τ = ρ + a/(2j): the delay plus the easing in of the brake (s).
+    #[must_use]
     pub fn tau(&self) -> f64 {
         self.rho + self.a / (2.0 * self.j)
     }
 
     /// S(v): how far the car needs to stop from `speed` (m).
+    #[must_use]
     pub fn distance(&self, speed: f64) -> f64 {
         let v = speed.abs();
         if !v.is_finite() {
@@ -150,6 +172,7 @@ impl StopCurve {
     }
 
     /// v_cap: the fastest speed that still stops in `left` m; 0 if none.
+    #[must_use]
     pub fn cap(&self, left: f64) -> f64 {
         if !left.is_finite() {
             return if left > 0.0 { f64::INFINITY } else { 0.0 };
@@ -162,6 +185,7 @@ impl StopCurve {
     }
 
     /// One line for the log, as the Python's `describe()`.
+    #[must_use]
     pub fn describe(&self) -> String {
         format!(
             "the stopping law: a {:.2} m/s^2, j {:.2} m/s^3, rho {:.2} s (tau {:.2} s)",
