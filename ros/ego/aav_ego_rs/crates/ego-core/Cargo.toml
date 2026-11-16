@@ -1,0 +1,17 @@
+[package]
+name = "ego-core"
+description = "ego and look_ahead's maths, no ROS: the Rust twin of aav_ego's Python modules"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The shared car model (ours): the twin, the trace, the stop point; spine-core's speed loop.
+car-model = { path = "../../../../bringup/aav_description/car-model" }
+# The speed loop's law (PI or LQI), for the stopping law's loop lag.
+spine-core = { path = "../../../../../firmware/spine/crates/spine-core" }
+
+[dev-dependencies]
+# float_roundtrip: read each number exactly as Python wrote it (the default may be 1 bit off).
+serde_json = { version = "1", features = ["float_roundtrip"] }

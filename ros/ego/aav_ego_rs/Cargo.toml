@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+# ego-core: ego's and look_ahead's maths, with no ROS (aav_ego's Python modules, ported):
+#   cargo test -p ego-core
+# ego-node: the ROS process (rclrs), binary `ego`: the nodes ego and look_ahead in one
+#   process. colcon builds it through CMakeLists.txt.
+members = ["crates/ego-core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
