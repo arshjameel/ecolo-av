@@ -18,7 +18,7 @@ DEFAULTS = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.DEFAULT
             'lattice_moves': vehicle.LATTICE_MOVES[0],
             'planner_search': vehicle.PLANNER_SEARCHES[0],
             'plan_smoothing': 'nav2', 'map_correction': 'newest', 'mppi_lag_steer_gamma': '',
-            'lane_costs': 'false'}
+            'lane_costs': 'false', 'lane_route': 'false'}
 # What the launch passes when no switch is given: each declared empty, "the stack's choice".
 NOT_GIVEN = {name: stacks.CHOSEN for name in DEFAULTS}
 VALID = {'controller': vehicle.CONTROLLERS, 'tracker': vehicle.TRACKERS,
@@ -29,7 +29,7 @@ VALID = {'controller': vehicle.CONTROLLERS, 'tracker': vehicle.TRACKERS,
          'planner_search': vehicle.PLANNER_SEARCHES,
          'plan_smoothing': tuple(vehicle.PLAN_SMOOTHINGS), 'map_correction': ('newest', 'slow'),
          'mppi_lag_steer_gamma': ('', '0.05'),
-         'lane_costs': ('true', 'false')}
+         'lane_costs': ('true', 'false'), 'lane_route': ('true', 'false')}
 
 
 def test_the_four_stacks_are_there():
@@ -86,6 +86,14 @@ def test_the_lanes_layer_is_a_challenger_off_in_every_stack():
     # TODO 148: lane_costs stays off until it wins on the scorecard.
     for stack in stacks.names(LEAGUE):
         assert stacks.switches(LEAGUE, stack).get('lane_costs', 'false') == 'false', stack
+
+
+def test_the_lane_centre_planner_is_a_challenger_off_in_every_stack():
+    # TODO 148: path:=lane (lane_route) stays a challenger until it wins on the scorecard.
+    assert LEAGUE['levels']['path']['options']['lane']['lane_route'] == 'true'
+    assert LEAGUE['levels']['path']['options']['lane']['planner'] == 'own'
+    for stack in stacks.names(LEAGUE):
+        assert stacks.switches(LEAGUE, stack).get('lane_route', 'false') == 'false', stack
 
 
 def test_ours_reverses():

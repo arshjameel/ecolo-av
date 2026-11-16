@@ -148,6 +148,11 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           cost, lowest at the right lane's centre, so the planner keeps
                           right and crosses a line only when it pays. Which lane is right
                           comes from /plan. Empty (the default): off
+  lane_route:=<lanes.yaml>  with planner:=own: the lane-centre planner, a challenger (TODO
+                          148, path:=lane): on the lane map the path is the right lane's
+                          centre, routed along its roads, our lattice joining the car and
+                          the goal to it; off it (the lot), the lattice alone. Empty (the
+                          default): off
   things:=true            (with lidar:=true) aav_things' things node: voxels' cubes grouped
                           into things, each followed by a Kalman filter and remembered a few
                           seconds unseen, on /world/things (and /world/things/markers); the
@@ -415,6 +420,11 @@ def nodes(context):
     if lane_costs and costmap != 'own':
         raise ValueError(f'lane_costs:={lane_costs}: the lanes layer is in our costmap only: '
                          'add costmap:=own')
+    # lane_route:=<lanes.yaml>: the lane-centre planner, inside ours (TODO 148, path:=lane).
+    lane_route = LaunchConfiguration('lane_route').perform(context).strip()
+    if lane_route and not own_planner:
+        raise ValueError(f'lane_route:={lane_route}: the lane-centre planner is in our planner '
+                         'only: add planner:=own')
     # navigator:=own: aav_navigator in place of bt_navigator and waypoint_follower. Each
     # Nav2 server it no longer needs stays off: planner_server when our planner plans on
     # our global costmap, controller_server (and its local costmap) when mppi_lag reads
@@ -576,6 +586,8 @@ def nodes(context):
             tuned = yaml.safe_load(f)
         with open(f'{share}/config/nav2.yaml') as f:
             settings = vehicle.planner_params(tuned, v, costmap, search, yaml.safe_load(f))
+        if lane_route:
+            settings['lanes'] = lane_map.costmap_block(lane_map.load(lane_route))
         topic, updates, latched = vehicle.GLOBAL_COSTMAP_TOPICS[costmap]
         actions.append(Node(
             package='aav_planner', executable='planner', name='planner', output='screen',
@@ -881,6 +893,10 @@ def generate_launch_description():
                                           'global costmap as soft costs, lowest at the right '
 
                                           "lane's centre (TODO 148); empty: off"),
+        DeclareLaunchArgument('lane_route', default_value='',
+                              description="with planner:=own: a lanes.yaml; the path is the "
+                                          "right lane's centre along it, the lattice joining "
+                                          "the ends (TODO 148, path:=lane); empty: off"),
         DeclareLaunchArgument('things', default_value='false',
                               description='true (with lidar:=true): aav_things, the cubes as '
                                           'tracked things on /world/things (voxels runs too)'),

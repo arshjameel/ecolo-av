@@ -186,6 +186,16 @@ TOURS = {
         # 6.5 m street at the goal (TODO 174 tests that on its own).
         ('round the bend', 139.0, -190.0, 109.0),
     ]},
+    # TODO 148: more mapped road than the campus tour (whose middle goals are off the lane
+    # map): out of P4 onto University Drive heading south-east, down it 135 m, then round
+    # the bend south 150 m; each goal on the right lane's centre (maps/campus/lanes.yaml),
+    # facing the way the road runs there. lattice-planner's examples/lane.rs plans it too.
+    'university': {'obstacle': False, 'world': worlds.CAMPUS, 'launch': [CAMPUS_FENCE],
+                   'legs': [
+                       ('onto University Drive', 87.7, -72.6, -67.4),
+                       ('down University Drive', 139.9, -196.4, -67.0),
+                       ('round the bend south', 169.0, -337.4, -129.0),
+                   ]},
     # TODO 149: the wiggle's road, in one goal from lot P4: out of the lot, then about 120 m
     # of gently bending road (the campus tour's second leg, without its stop in between,
     # which left the car on a cell the costmap called occupied: "Start occupied").
