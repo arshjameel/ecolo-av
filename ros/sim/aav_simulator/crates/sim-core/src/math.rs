@@ -5,24 +5,31 @@ use std::ops::{Add, Mul, Neg, Sub};
 /// A point or a direction, in metres.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Vec3 {
+    /// m, forward.
     pub x: f64,
+    /// m, left.
     pub y: f64,
+    /// m, up.
     pub z: f64,
 }
 
 impl Vec3 {
+    /// The origin.
     pub const ZERO: Vec3 = Vec3::new(0.0, 0.0, 0.0);
 
+    /// A vector from x, y and z (m).
     #[must_use]
     pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
 
+    /// The dot product.
     #[must_use]
     pub fn dot(self, o: Vec3) -> f64 {
         self.x * o.x + self.y * o.y + self.z * o.z
     }
 
+    /// The cross product: self x o.
     #[must_use]
     pub fn cross(self, o: Vec3) -> Vec3 {
         Vec3::new(
@@ -32,16 +39,19 @@ impl Vec3 {
         )
     }
 
+    /// How long it is (m).
     #[must_use]
     pub fn length(self) -> f64 {
         self.dot(self).sqrt()
     }
 
+    /// The smaller of each component.
     #[must_use]
     pub fn min(self, o: Vec3) -> Vec3 {
         Vec3::new(self.x.min(o.x), self.y.min(o.y), self.z.min(o.z))
     }
 
+    /// The larger of each component.
     #[must_use]
     pub fn max(self, o: Vec3) -> Vec3 {
         Vec3::new(self.x.max(o.x), self.y.max(o.y), self.z.max(o.z))
@@ -89,6 +99,7 @@ impl Neg for Vec3 {
 /// A rotation, as a 3 x 3 matrix (rows).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rot3 {
+    /// The matrix, row by row.
     pub m: [[f64; 3]; 3],
 }
 
@@ -99,6 +110,7 @@ impl Default for Rot3 {
 }
 
 impl Rot3 {
+    /// No rotation.
     pub const IDENTITY: Rot3 = Rot3 {
         m: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
     };
@@ -118,11 +130,13 @@ impl Rot3 {
         }
     }
 
+    /// A turn about z (rad, + left).
     #[must_use]
     pub fn from_yaw(yaw: f64) -> Self {
         Self::from_rpy(0.0, 0.0, yaw)
     }
 
+    /// `v` turned by this rotation.
     #[must_use]
     pub fn apply(&self, v: Vec3) -> Vec3 {
         let m = &self.m;
@@ -133,6 +147,7 @@ impl Rot3 {
         )
     }
 
+    /// This rotation after `inner`: the matrix product self x inner.
     #[must_use]
     pub fn then(&self, inner: &Rot3) -> Rot3 {
         let a = &self.m;
@@ -146,6 +161,7 @@ impl Rot3 {
         Rot3 { m }
     }
 
+    /// The transpose, which is the inverse rotation.
     #[must_use]
     pub fn transpose(&self) -> Rot3 {
         let a = &self.m;
@@ -210,16 +226,20 @@ impl Rot3 {
 /// Where something is and how it's turned: the child frame in its parent's.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Pose {
+    /// m, in the parent frame.
     pub position: Vec3,
+    /// How the child frame is turned in the parent's.
     pub rotation: Rot3,
 }
 
 impl Pose {
+    /// The child frame on top of its parent.
     pub const IDENTITY: Pose = Pose {
         position: Vec3::ZERO,
         rotation: Rot3::IDENTITY,
     };
 
+    /// A pose from a position and a rotation.
     #[must_use]
     pub fn new(position: Vec3, rotation: Rot3) -> Self {
         Self { position, rotation }
@@ -249,6 +269,7 @@ impl Pose {
         )
     }
 
+    /// The parent frame in the child's.
     #[must_use]
     pub fn inverse(&self) -> Pose {
         let r = self.rotation.transpose();

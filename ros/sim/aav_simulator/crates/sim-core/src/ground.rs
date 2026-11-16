@@ -19,7 +19,9 @@ use crate::scene::{Ray, Scene};
 pub struct Ground {
     /// m: the highest step a wheel rolls up. Higher stops the car.
     pub max_step: f64,
+    /// m: rear axle to front axle.
     pub wheelbase: f64,
+    /// m: left wheel to right wheel.
     pub track: f64,
 }
 
@@ -52,6 +54,10 @@ impl Ground {
     }
 
     /// The four wheels' heights with the car at (x, y, yaw), each from its last height.
+    ///
+    /// # Errors
+    ///
+    /// [`Blocked`] if a wheel meets a step higher than `max_step`.
     pub fn settle(
         &self,
         scene: &Scene,

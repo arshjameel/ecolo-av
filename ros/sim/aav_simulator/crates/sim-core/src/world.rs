@@ -36,11 +36,36 @@ impl Surfaces {
 /// Why a world couldn't be read.
 #[derive(Debug, Clone, PartialEq)]
 pub enum WorldError {
-    Read { path: PathBuf, why: String },
-    Xml { path: PathBuf, why: String },
+    /// A file couldn't be read.
+    Read {
+        /// The file.
+        path: PathBuf,
+        /// What the system said.
+        why: String,
+    },
+    /// A file isn't SDF (bad XML).
+    Xml {
+        /// The file.
+        path: PathBuf,
+        /// What the XML reader said.
+        why: String,
+    },
+    /// The file has no `<world>` (or, for a model file, no `<model>`).
     NoWorld(PathBuf),
-    NoModel { uri: String, searched: Vec<PathBuf> },
-    Mesh { path: PathBuf, why: String },
+    /// A `model://` URI was found in none of the model folders.
+    NoModel {
+        /// The URI asked for.
+        uri: String,
+        /// The folders looked in.
+        searched: Vec<PathBuf>,
+    },
+    /// A mesh file couldn't be read.
+    Mesh {
+        /// The mesh file.
+        path: PathBuf,
+        /// What went wrong.
+        why: String,
+    },
 }
 
 impl std::fmt::Display for WorldError {
@@ -66,6 +91,7 @@ impl std::error::Error for WorldError {}
 pub struct Shape {
     /// The model's name, then the shape's (`wall_south/visual`).
     pub name: String,
+    /// What the shape is: a box, cylinder, plane or mesh.
     pub geometry: Geometry,
     /// Where it is in the world (the map frame).
     pub pose: Pose,
@@ -89,7 +115,9 @@ pub struct Lighting {
 /// A directional light: which way it shines, and its `<diffuse>` colour.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Sunlight {
+    /// Which way the light shines, in the world frame.
     pub direction: Vec3,
+    /// The light's colour (linear RGBA).
     pub diffuse: [f64; 4],
 }
 
@@ -97,13 +125,31 @@ pub struct Sunlight {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Geometry {
     /// `size` across, centred on the pose.
-    Box { size: Vec3 },
+    Box {
+        /// m: x, y and z.
+        size: Vec3,
+    },
     /// Upright, centred on the pose.
-    Cylinder { radius: f64, length: f64 },
+    Cylinder {
+        /// m.
+        radius: f64,
+        /// m, along z.
+        length: f64,
+    },
     /// Flat, facing up, `x` by `y`.
-    Plane { x: f64, y: f64 },
+    Plane {
+        /// m.
+        x: f64,
+        /// m.
+        y: f64,
+    },
     /// An OBJ file, scaled.
-    Mesh { file: PathBuf, scale: Vec3 },
+    Mesh {
+        /// The OBJ file.
+        file: PathBuf,
+        /// x, y and z scale.
+        scale: Vec3,
+    },
 }
 
 /// A world, ready for rays.
@@ -145,6 +191,10 @@ impl World {
 
     /// Read a world file. `models`: where `model://name` may be (aav_gazebo's
     /// `models/`, then GZ_SIM_RESOURCE_PATH's folders).
+    ///
+    /// # Errors
+    ///
+    /// [`WorldError`] if the file, a model or a mesh can't be found or read.
     pub fn load(path: &Path, models: &[PathBuf], surfaces: Surfaces) -> Result<World, WorldError> {
         let text = read(path)?;
         let doc = parse(path, &text)?;
@@ -180,6 +230,10 @@ impl World {
 
     /// One model file's shapes as SDF draws them, in the model's own frame: for a renderer
     /// to draw a model placed while the world runs.
+    ///
+    /// # Errors
+    ///
+    /// [`WorldError`] if the file, a model or a mesh can't be found or read.
     pub fn model_shapes(
         path: &Path,
         models: &[PathBuf],
@@ -206,6 +260,10 @@ impl World {
 
     /// One model file's shapes (`models/post/model.sdf`), in the model's own frame: for
     /// placing it while the world runs.
+    ///
+    /// # Errors
+    ///
+    /// [`WorldError`] if the file, a model or a mesh can't be found or read.
     pub fn model_mesh(
         path: &Path,
         models: &[PathBuf],

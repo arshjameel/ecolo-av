@@ -23,8 +23,11 @@ use crate::math::wrap;
 /// in the world frame, which is the map frame.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct CarState {
+    /// m, east, in the world frame.
     pub x: f64,
+    /// m, north, in the world frame.
     pub y: f64,
+    /// rad, from east, + left.
     pub yaw: f64,
     /// m/s along the car, + forward.
     pub speed: f64,
@@ -40,7 +43,12 @@ pub struct CarState {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Command {
     /// A speed (m/s) and a turn rate (rad/s): Gazebo's `cmd_vel`.
-    Twist { speed: f64, yaw_rate: f64 },
+    Twist {
+        /// m/s, + forward.
+        speed: f64,
+        /// rad/s, + left.
+        yaw_rate: f64,
+    },
     /// What a speed loop or firmware decided.
     Drive(Drive),
 }
@@ -52,6 +60,7 @@ pub struct Drive {
     pub throttle: f64,
     /// 0..1.
     pub brake: f64,
+    /// Drive backwards.
     pub reverse: bool,
     /// rad: the steering target, + left.
     pub steering: f64,
@@ -70,7 +79,9 @@ impl Drive {
 /// The actuators' levels after a step, for `/vehicle/throttle`, brake and steering.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct ActuatorLevels {
+    /// 0..1.
     pub throttle: f64,
+    /// 0..1.
     pub brake: f64,
     /// rad: the steering motor's angle, before the linkage's lag.
     pub motor: f64,
@@ -128,6 +139,7 @@ pub struct TwistFollower {
 }
 
 impl TwistFollower {
+    /// A follower for a car this long (m) with this full lock (rad).
     #[must_use]
     pub fn new(wheelbase: f64, max_steering: f64) -> Self {
         Self {
@@ -219,7 +231,9 @@ pub struct ActuatorConfig {
     pub wheelbase: f64,
     /// s before the throttle starts to move; 0 if not measured.
     pub throttle_dead_time: f64,
+    /// s before the brake starts to move; 0 if not measured.
     pub brake_dead_time: f64,
+    /// s before the steering starts to move; 0 if not measured.
     pub steer_dead_time: f64,
 }
 
@@ -330,6 +344,7 @@ impl ActuatorCar {
         }
     }
 
+    /// The actuators' settings this car runs with.
     #[must_use]
     pub fn config(&self) -> &ActuatorConfig {
         &self.cfg

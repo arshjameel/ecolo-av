@@ -23,14 +23,19 @@ pub type Motion<'a> = &'a (dyn Fn(&str) -> Option<Vec3> + Sync);
 pub struct LidarSpec {
     /// Steps round (`<horizontal><samples>`), from `h_min` to `h_max` inclusive.
     pub h_samples: usize,
+    /// rad: the first step round.
     pub h_min: f64,
+    /// rad: the last step round.
     pub h_max: f64,
     /// Rings (`<vertical><samples>`), from `v_min` to `v_max` inclusive.
     pub v_samples: usize,
+    /// rad: the lowest ring.
     pub v_min: f64,
+    /// rad: the highest ring.
     pub v_max: f64,
     /// m.
     pub range_min: f64,
+    /// m: the farthest the lidar sees.
     pub range_max: f64,
     /// m: the range noise's standard deviation.
     pub noise: f64,
@@ -100,6 +105,7 @@ impl LidarSpec {
 /// One scan: the range of every ray, ring by ring.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Scan {
+    /// The pattern the scan was taken with.
     pub spec: LidarSpec,
     /// `v_samples` x `h_samples` ranges (m); `inf` for nothing, `-inf` for too near.
     pub ranges: Vec<f32>,

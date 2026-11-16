@@ -24,8 +24,11 @@ pub const GRAVITY: f64 = 9.8;
 /// The car's size, for the wheels.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Geometry {
+    /// m: rear axle to front axle.
     pub wheelbase: f64,
+    /// m: left wheel to right wheel.
     pub track: f64,
+    /// m.
     pub wheel_radius: f64,
 }
 
@@ -34,9 +37,11 @@ pub struct Geometry {
 pub struct Body {
     /// m, bumper to bumper.
     pub length: f64,
+    /// m, side to side.
     pub width: f64,
     /// m from the rear bumper to the rear axle (base_link).
     pub rear_overhang: f64,
+    /// m, ground to roof.
     pub height: f64,
 }
 
@@ -89,9 +94,13 @@ impl Body {
 /// Where each sensor sits on the car, from `base_link` (vehicle.yaml's `sensors:`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Mounts {
+    /// The IMU (`imu_link`).
     pub imu: Pose,
+    /// The GPS antenna.
     pub gps: Pose,
+    /// The roof lidar.
     pub lidar: Pose,
+    /// The radar.
     pub radar: Pose,
 }
 
@@ -105,7 +114,9 @@ pub struct Rates {
     pub odom: f64,
     /// The OdometryPublisher's truth.
     pub truth: f64,
+    /// The IMU.
     pub imu: f64,
+    /// The GPS fix.
     pub navsat: f64,
     /// The wheels' joint states. Gazebo sends them every physics step; the car's wheel
     /// nodes, 100 Hz.
@@ -171,9 +182,13 @@ impl Default for SensorNoise {
 pub struct Settings {
     /// ns per step.
     pub step_ns: u64,
+    /// The car's size, for the wheels.
     pub geometry: Geometry,
+    /// Where each sensor sits on the car.
     pub mounts: Mounts,
+    /// How often each stream speaks.
     pub rates: Rates,
+    /// How noisy each sensor is.
     pub noise: SensorNoise,
     /// The roof lidar, if the car has one in this run.
     pub lidar: Option<LidarSpec>,
@@ -209,18 +224,21 @@ pub struct ImuReading {
 pub struct Joints {
     /// rad and rad/s: rear_left, rear_right, front_left, front_right wheel joints.
     pub wheel_angle: [f64; 4],
+    /// rad/s: the same wheels, in the same order.
     pub wheel_rate: [f64; 4],
     /// rad: front_left, front_right steering joints (Ackermann).
     pub steering: [f64; 2],
 }
 
 impl Joints {
+    /// The wheel joints' names, in `wheel_angle`'s order.
     pub const WHEELS: [&'static str; 4] = [
         "rear_left_wheel_joint",
         "rear_right_wheel_joint",
         "front_left_wheel_joint",
         "front_right_wheel_joint",
     ];
+    /// The steering joints' names, in `steering`'s order.
     pub const STEERING: [&'static str; 2] =
         ["front_left_steering_joint", "front_right_steering_joint"];
 }
@@ -230,33 +248,46 @@ impl Joints {
 pub struct Odometry {
     /// The pose in the message's frame.
     pub x: f64,
+    /// m.
     pub y: f64,
+    /// rad, + left.
     pub yaw: f64,
     /// m/s and rad/s, in base_link.
     pub speed: f64,
+    /// rad/s, + left.
     pub yaw_rate: f64,
     /// m and rad: the height and tilt on the ground (0 for the wheels' odometry).
     pub z: f64,
+    /// rad.
     pub roll: f64,
+    /// rad.
     pub pitch: f64,
 }
 
 /// Something to publish now.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Output {
+    /// The clock has moved on a step (`/clock`).
     Clock,
     /// The wheels' odometry, from where the car started (`/gazebo/odom`, odom frame).
     Odom(Odometry),
     /// Where the car really is, in the map (`/vehicle/sim/truth`).
     Truth(Odometry),
+    /// An IMU reading.
     Imu(ImuReading),
+    /// A GPS fix.
     NavSat(Geodetic),
+    /// The wheels' joint states.
     Joints(Joints),
+    /// A lidar scan.
     Lidar(Scan),
+    /// A radar scan.
     Radar(Scan),
     /// The car has just hit something, here (x, y in the map), and stopped.
     Hit {
+        /// m, east.
         x: f64,
+        /// m, north.
         y: f64,
     },
 }
@@ -264,10 +295,13 @@ pub enum Output {
 /// What a plug-in sees when it's its turn.
 #[derive(Debug)]
 pub struct Frame<'a> {
+    /// ns on the simulator's clock.
     pub time_ns: u64,
+    /// The world, as it is now.
     pub world: &'a World,
     /// The world file, for a plug-in that loads its own copy (with colours).
     pub world_file: Option<&'a std::path::Path>,
+    /// Where the car is and what it's doing.
     pub car: CarState,
     /// `base_link` in the world (= map) frame; a sensor's pose is this then its mount.
     pub base_link: Pose,
@@ -281,8 +315,11 @@ pub struct Frame<'a> {
 /// It runs inside the loop: a slow one slows the clock, so keep it quick or hand the work
 /// to a thread of its own and drop frames, as a real camera would.
 pub trait SensorPlugin: Send {
+    /// The plug-in's name, for logs.
     fn name(&self) -> &str;
+    /// ns between two samples.
     fn period_ns(&self) -> u64;
+    /// Make one sample of the world as it is in `frame`.
     fn sample(&mut self, frame: &Frame<'_>);
 }
 
@@ -355,6 +392,7 @@ struct Mover {
 pub struct Velocity {
     /// m/s, east and north.
     pub x: f64,
+    /// m/s, north.
     pub y: f64,
     /// rad/s, turning left.
     pub yaw_rate: f64,
@@ -416,21 +454,25 @@ impl Simulator {
         self.plugins.push(plugin);
     }
 
+    /// ns since the simulator started.
     #[must_use]
     pub fn time_ns(&self) -> u64 {
         self.time_ns
     }
 
+    /// Where the car is and what it's doing.
     #[must_use]
     pub fn car(&self) -> CarState {
         self.car.state()
     }
 
+    /// The car model it drives.
     #[must_use]
     pub fn car_model(&self) -> &dyn CarModel {
         self.car.as_ref()
     }
 
+    /// The world, as it is now.
     #[must_use]
     pub fn world(&self) -> &World {
         &self.world
@@ -441,6 +483,7 @@ impl Simulator {
         &mut self.world
     }
 
+    /// The settings it runs with.
     #[must_use]
     pub fn settings(&self) -> &Settings {
         &self.settings

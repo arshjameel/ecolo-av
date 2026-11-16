@@ -11,6 +11,7 @@ pub struct Noise {
 }
 
 impl Noise {
+    /// A stream that starts from `seed`: the same seed, the same numbers.
     #[must_use]
     pub fn new(seed: u64) -> Self {
         Self {
@@ -26,6 +27,7 @@ impl Noise {
         Noise::new(self.next_u64())
     }
 
+    /// The next random 64-bit number (SplitMix64).
     pub fn next_u64(&mut self) -> u64 {
         self.state = self.state.wrapping_add(0x9E37_79B9_7F4A_7C15);
         let mut z = self.state;

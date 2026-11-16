@@ -10,12 +10,16 @@ use crate::math::{Pose, Vec3};
 /// One triangle, in the world frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Triangle {
+    /// The first corner.
     pub a: Vec3,
+    /// The second corner.
     pub b: Vec3,
+    /// The third corner.
     pub c: Vec3,
 }
 
 impl Triangle {
+    /// A triangle from its three corners.
     #[must_use]
     pub fn new(a: Vec3, b: Vec3, c: Vec3) -> Self {
         Self { a, b, c }
@@ -65,6 +69,7 @@ impl Triangle {
 /// A shape made of triangles, in its own frame.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Mesh {
+    /// Its triangles, in its own frame.
     pub triangles: Vec<Triangle>,
 }
 
@@ -144,6 +149,10 @@ impl Mesh {
 
     /// A Wavefront OBJ file's faces: `v` and `f` lines; polygons as fans. Normals,
     /// textures and materials don't matter to a ray.
+    ///
+    /// # Errors
+    ///
+    /// A message with the line number if a `v` or `f` line can't be read.
     pub fn from_obj(text: &str) -> Result<Mesh, String> {
         let mut vertices = Vec::new();
         let mut triangles = Vec::new();
@@ -209,7 +218,9 @@ fn obj_index(word: &str, count: usize) -> Option<usize> {
 /// A ray: where it starts, and its direction (a unit vector).
 #[derive(Debug, Clone, Copy)]
 pub struct Ray {
+    /// Where the ray starts.
     pub origin: Vec3,
+    /// Which way it goes: a unit vector.
     pub direction: Vec3,
 }
 
@@ -272,6 +283,7 @@ pub struct Bvh {
 }
 
 impl Bvh {
+    /// The tree over these triangles.
     pub fn new(triangles: Vec<Triangle>) -> Self {
         let mut bvh = Bvh {
             triangles,
@@ -285,11 +297,13 @@ impl Bvh {
         bvh
     }
 
+    /// How many triangles it holds.
     #[must_use]
     pub fn len(&self) -> usize {
         self.triangles.len()
     }
 
+    /// True if it holds no triangles.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.triangles.is_empty()
@@ -397,6 +411,7 @@ pub struct Scene {
 }
 
 impl Scene {
+    /// A scene of these fixed triangles, nothing placed yet.
     #[must_use]
     pub fn new(triangles: Vec<Triangle>) -> Self {
         Self {

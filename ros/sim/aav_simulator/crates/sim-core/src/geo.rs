@@ -13,17 +13,23 @@ const E2: f64 = F * (2.0 - F); // eccentricity squared
 /// Where the world's origin is: navsat.yaml's datum, and the world file's.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Datum {
-    pub latitude: f64,  // degrees
-    pub longitude: f64, // degrees
-    pub elevation: f64, // m above the ellipsoid
+    /// Degrees, + north.
+    pub latitude: f64,
+    /// Degrees, + east.
+    pub longitude: f64,
+    /// m above the ellipsoid.
+    pub elevation: f64,
 }
 
 /// A place on the Earth.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Geodetic {
-    pub latitude: f64,  // degrees
-    pub longitude: f64, // degrees
-    pub altitude: f64,  // m
+    /// Degrees, + north.
+    pub latitude: f64,
+    /// Degrees, + east.
+    pub longitude: f64,
+    /// m above the ellipsoid.
+    pub altitude: f64,
 }
 
 impl Datum {

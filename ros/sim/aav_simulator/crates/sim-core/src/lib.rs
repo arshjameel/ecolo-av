@@ -15,6 +15,9 @@
 //!
 //! Units: m, m/s, rad, s. Frames: REP-103 and REP-105, the world = the map (x east, y
 //! north), `base_link` on the ground under the rear axle.
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod car;
 pub mod geo;
