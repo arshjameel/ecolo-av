@@ -53,7 +53,7 @@ def test_sim_max_speed_in_a_simulator():
 
 
 def rust_params(node):
-    """The Rust process's parameter file, read back: {'/ego': {...}, '/look_ahead': {...}}."""
+    """Return the Rust process's parameter file: {'/ego': {...}, '/look_ahead': {...}}."""
     import yaml
     (path,) = node._Node__parameters   # the file ego.launch.py wrote, as given
     with open(path.evaluate(LaunchContext())) as f:   # a launch_ros ParameterFile

@@ -121,7 +121,8 @@ def test_a_command_drives_and_both_nodes_answer():
         ahead = got['ahead'][-1]
         values = {kv.key: kv.value for kv in ahead.values}
         assert [kv.key for kv in ahead.values] == KEYS
-        assert (ahead.name, ahead.hardware_id, ahead.level) == ('look_ahead', 'aav_ego', DiagnosticStatus.OK)
+        assert (ahead.name, ahead.hardware_id) == ('look_ahead', 'aav_ego')
+        assert ahead.level == DiagnosticStatus.OK
         assert values['plan'] == 'none' and values['gap_m'] == 'nan'
         assert (values['front_m'], values['rear_m'], values['half_width_m']) == (
             '2.00', '-0.50', '0.60')

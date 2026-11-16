@@ -51,7 +51,7 @@ def state_dict(s):
 
 
 def commands(rng, n, every, stale=0.15, reverse=True, top=1.5):
-    """n (cmd or None, dt) steps: a new random request every `every` steps."""
+    """Return n (cmd or None, dt) steps: a new random request every `every` steps."""
     out, cmd = [], None
     for i in range(n):
         if i % every == 0:
@@ -70,25 +70,26 @@ def ego_runs():
     rng = random.Random(7)
     times = LeadTimes.from_config(LAGGY)
     runs = [
-        dict(name='plain', limits=asdict(Limits()), body=None, pedal=None, lead=None,
-             steps=commands(rng, 300, 30)),
-        dict(name='body and jerk', limits=asdict(Limits(max_jerk=2.0, max_speed=2.5)),
-             body=asdict(Body()), pedal=None, lead=None, steps=commands(rng, 400, 40, top=2.5)),
-        dict(name='loaded', limits=asdict(Limits(max_jerk=2.0)),
-             body=asdict(Body(payload=250.0, max_lateral_accel=3.0)), pedal=None, lead=None,
-             steps=commands(rng, 300, 25)),
-        dict(name='pedal', limits=asdict(Limits(max_jerk=2.0)), body=asdict(Body()),
-             pedal=asdict(Pedal(let_off=1.0, full=1.0)), lead=None,
-             steps=commands(rng, 400, 20)),
-        dict(name='pedal soft', limits=asdict(Limits()), body=None,
-             pedal=asdict(Pedal(let_off=0.4, full=0.8)), lead=None,
-             steps=commands(rng, 300, 15)),
-        dict(name='lead', limits=asdict(Limits(max_jerk=2.0)), body=asdict(Body()), pedal=None,
-             lead=dict(times=asdict(times), limits=asdict(LeadLimits())),
-             steps=commands(rng, 400, 35)),
-        dict(name='lead unfiltered', limits=asdict(Limits()), body=None, pedal=None,
-             lead=dict(times=asdict(times), limits=asdict(LeadLimits(filter_time=0.0))),
-             steps=commands(rng, 200, 20)),
+        {'name': 'plain', 'limits': asdict(Limits()), 'body': None, 'pedal': None,
+         'lead': None, 'steps': commands(rng, 300, 30)},
+        {'name': 'body and jerk', 'limits': asdict(Limits(max_jerk=2.0, max_speed=2.5)),
+         'body': asdict(Body()), 'pedal': None, 'lead': None,
+         'steps': commands(rng, 400, 40, top=2.5)},
+        {'name': 'loaded', 'limits': asdict(Limits(max_jerk=2.0)),
+         'body': asdict(Body(payload=250.0, max_lateral_accel=3.0)), 'pedal': None,
+         'lead': None, 'steps': commands(rng, 300, 25)},
+        {'name': 'pedal', 'limits': asdict(Limits(max_jerk=2.0)), 'body': asdict(Body()),
+         'pedal': asdict(Pedal(let_off=1.0, full=1.0)), 'lead': None,
+         'steps': commands(rng, 400, 20)},
+        {'name': 'pedal soft', 'limits': asdict(Limits()), 'body': None,
+         'pedal': asdict(Pedal(let_off=0.4, full=0.8)), 'lead': None,
+         'steps': commands(rng, 300, 15)},
+        {'name': 'lead', 'limits': asdict(Limits(max_jerk=2.0)), 'body': asdict(Body()),
+         'pedal': None, 'lead': {'times': asdict(times), 'limits': asdict(LeadLimits())},
+         'steps': commands(rng, 400, 35)},
+        {'name': 'lead unfiltered', 'limits': asdict(Limits()), 'body': None, 'pedal': None,
+         'lead': {'times': asdict(times), 'limits': asdict(LeadLimits(filter_time=0.0))},
+         'steps': commands(rng, 200, 20)},
     ]
     for run in runs:
         model = EgoModel(Limits(**run['limits']),
@@ -117,8 +118,8 @@ def slow_rates():
         cur = rng.choice([0.0, rng.uniform(-2, 2)])
         tgt = rng.choice([0.0, rng.uniform(-2, 2)])
         dec = rng.choice([2.0, 0.8])
-        out.append(dict(pedal=asdict(p), current=cur, target=tgt, max_deceleration=dec,
-                        rate=slow_rate(p, cur, tgt, dec)))
+        out.append({'pedal': asdict(p), 'current': cur, 'target': tgt, 'max_deceleration': dec,
+                    'rate': slow_rate(p, cur, tgt, dec)})
     return out
 
 
@@ -127,14 +128,14 @@ def bodies():
     for body in (Body(), Body(payload=300.0), Body(tyre_grip=0.3, cg_height=0.9),
                  Body(max_lateral_accel=10.0, track=1.2)):
         ks = [0.0, 1e-10, 0.1, 0.5, -0.8, 2.0]
-        out.append(dict(
-            body=asdict(body), speed_up=dynamics.speed_up_limit(body),
-            braking=dynamics.braking_limit(body), lateral=dynamics.lateral_limit(body),
-            curve=[[k, dynamics.curve_speed(body, k)] for k in ks if k >= 1e-9 or k < 0],
-            stopping=[[v, d, dynamics.stopping_distance(body, v, d)]
-                      for v in (0.0, 1.0, -2.5) for d in (1.0, 2.0)],
-            energy=[[v, dynamics.energy(body, v)] for v in (0.0, 1.0, 3.0)],
-            describe=dynamics.describe(body, 1.561, 0.5, 1.0, 1.0, 2.0, 2.0)))
+        out.append({
+            'body': asdict(body), 'speed_up': dynamics.speed_up_limit(body),
+            'braking': dynamics.braking_limit(body), 'lateral': dynamics.lateral_limit(body),
+            'curve': [[k, dynamics.curve_speed(body, k)] for k in ks if k >= 1e-9 or k < 0],
+            'stopping': [[v, d, dynamics.stopping_distance(body, v, d)]
+                         for v in (0.0, 1.0, -2.5) for d in (1.0, 2.0)],
+            'energy': [[v, dynamics.energy(body, v)] for v in (0.0, 1.0, 3.0)],
+            'describe': dynamics.describe(body, 1.561, 0.5, 1.0, 1.0, 2.0, 2.0)})
     return out
 
 
@@ -146,22 +147,23 @@ def stop_curves():
         for loop_name, loop in loops.items():
             for dec, jerk in ((2.0, 2.0), (1.0, 1e6), (5.0, 0.5)):
                 c = sl.from_car_model(cfg, dec, jerk, sl.INPUT_DELAY, loop)
-                out.append(dict(
-                    cfg=cfg_name, speed_loop=loop_name, max_deceleration=dec, max_jerk=jerk,
-                    a=c.a, j=c.j, rho=c.rho, tau=c.tau,
-                    distance=[[v, c.distance(v)] for v in (0.0, 0.5, -1.0, 2.5)],
-                    cap=[[d, c.cap(d)] for d in (-1.0, 0.0, 0.3, 2.0, 15.0)],
-                    describe=c.describe()))
+                out.append({
+                    'cfg': cfg_name, 'speed_loop': loop_name, 'max_deceleration': dec,
+                    'max_jerk': jerk,
+                    'a': c.a, 'j': c.j, 'rho': c.rho, 'tau': c.tau,
+                    'distance': [[v, c.distance(v)] for v in (0.0, 0.5, -1.0, 2.5)],
+                    'cap': [[d, c.cap(d)] for d in (-1.0, 0.0, 0.3, 2.0, 15.0)],
+                    'describe': c.describe()})
     for brake in (3.0, 1.2):
         c = sl.from_numbers(brake, 2.0, 2.0)
-        out.append(dict(numbers=brake, a=c.a, j=c.j, rho=c.rho))
+        out.append({'numbers': brake, 'a': c.a, 'j': c.j, 'rho': c.rho})
     return out
 
 
 def strip_dict(strip):
-    return dict(spacing=strip.spacing, x=list(strip.x), y=list(strip.y),
-                speed_limit=list(strip.speed_limit), end=strip.end,
-                stops=[[s.along, s.reason] for s in strip.stops])
+    return {'spacing': strip.spacing, 'x': list(strip.x), 'y': list(strip.y),
+            'speed_limit': list(strip.speed_limit), 'end': strip.end,
+            'stops': [[s.along, s.reason] for s in strip.stops]}
 
 
 class Stop:
@@ -188,23 +190,24 @@ def roads():
             y = car[1] + rng.uniform(-3.0, 3.0)
             age = rng.choice([0.0, 0.5, 1.5, math.inf])
             r = la.road(strip, x, y)
-            queries.append(dict(
-                x=x, y=y, along_of=list(ra.along_of(strip, x, y)), room=ra.room_at(strip, x, y),
-                limit=ra.limit_at(strip, x, y), limit_curve=ra.limit_at(strip, x, y, curve),
-                limit_base=ra.limit_at(strip, x, y, curve, 0.6),
-                age=age if math.isfinite(age) else 1e300,
-                allowed=road_limit.allowed(strip, (x, y), age, 1.0, curve, 1.0),
-                road=None if r is None else [r.limit, r.room, r.why]))
-        out.append(dict(strip=strip_dict(strip), queries=queries))
-    caps = [dict(cmd=list(c), limit=lim, out=list(road_limit.cap(c, lim)))
+            queries.append({
+                'x': x, 'y': y, 'along_of': list(ra.along_of(strip, x, y)),
+                'room': ra.room_at(strip, x, y), 'limit': ra.limit_at(strip, x, y),
+                'limit_curve': ra.limit_at(strip, x, y, curve),
+                'limit_base': ra.limit_at(strip, x, y, curve, 0.6),
+                'age': age if math.isfinite(age) else 1e300,
+                'allowed': road_limit.allowed(strip, (x, y), age, 1.0, curve, 1.0),
+                'road': None if r is None else [r.limit, r.room, r.why]})
+        out.append({'strip': strip_dict(strip), 'queries': queries})
+    caps = [{'cmd': list(c), 'limit': lim, 'out': list(road_limit.cap(c, lim))}
             for c in ((1.0, 0.4), (-1.0, 0.4), (0.0, 0.3), (2.0, -0.6), (0.5, 0.1))
             for lim in (0.0, 0.3, 0.5, 1.5, math.inf)
             if math.isfinite(lim)]
-    return dict(curve=dict(a=curve.a, j=curve.j, rho=curve.rho), strips=out, caps=caps)
+    return {'curve': {'a': curve.a, 'j': curve.j, 'rho': curve.rho}, 'strips': out, 'caps': caps}
 
 
 def car_states(rng, cfg, n=6):
-    """A few CarStates of cfg, driven by pedals, each with its delay lines full."""
+    """Return a few CarStates of cfg, driven by pedals, each with its delay lines full."""
     states, s = [], cm.CarState()
     for i in range(n * 40):
         throttle = rng.uniform(0.0, 1.0) if i % 80 < 50 else 0.0
@@ -219,19 +222,18 @@ def car_states(rng, cfg, n=6):
 def stop_points():
     rng = random.Random(5)
     out = []
+    turning = cm.CarState(v=2.0, steer=0.3, steer_setpoint=0.3)
     for name, cfg in CFGS.items():
-        for s in car_states(rng, cfg) + [cm.CarState(), cm.CarState(v=2.0, steer=0.3,
-                                                                     steer_setpoint=0.3)]:
+        for s in car_states(rng, cfg) + [cm.CarState(), turning]:
             for dt in (0.02, 0.05):
                 p = stop_ahead.stop_point(cfg, s, dt)
-                out.append(dict(cfg=name, state=state_dict(s), dt=dt,
-                                out=[p.x, p.y, p.yaw, p.distance, p.time, p.found]))
-    out.append(dict(cfg='default', state=state_dict(cm.CarState(v=1.0)), dt=0.1,
-                    max_time=0.5, cfg_override=dict(max_brake=0.0, drag=0.0),
-                    out=(lambda p: [p.x, p.y, p.yaw, p.distance, p.time, p.found])(
-                        stop_ahead.stop_point(replace(cm.ActuatorConfig(), max_brake=0.0,
-                                                      drag=0.0), cm.CarState(v=1.0), 0.1,
-                                              max_time=0.5))))
+                out.append({'cfg': name, 'state': state_dict(s), 'dt': dt,
+                            'out': [p.x, p.y, p.yaw, p.distance, p.time, p.found]})
+    no_brake = replace(cm.ActuatorConfig(), max_brake=0.0, drag=0.0)
+    p = stop_ahead.stop_point(no_brake, cm.CarState(v=1.0), 0.1, max_time=0.5)
+    out.append({'cfg': 'default', 'state': state_dict(cm.CarState(v=1.0)), 'dt': 0.1,
+                'max_time': 0.5, 'cfg_override': {'max_brake': 0.0, 'drag': 0.0},
+                'out': [p.x, p.y, p.yaw, p.distance, p.time, p.found]})
     return out
 
 
@@ -250,8 +252,8 @@ def traces():
                 cmd = (rng.uniform(0.0, 2.0), rng.uniform(-0.5, 0.5))
                 for i in range(60):
                     if i % 20 == 0:
-                        cmd = None if rng.random() < 0.2 else (rng.uniform(-0.5, 2.0),
-                                                                rng.uniform(-0.5, 0.5))
+                        stale = rng.random() < 0.2
+                        cmd = None if stale else (rng.uniform(-0.5, 2.0), rng.uniform(-0.5, 0.5))
                     if i % 5 == 0:
                         v = twin.state.v + rng.uniform(-0.05, 0.05)
                         twin.measured(v)
@@ -266,16 +268,18 @@ def traces():
                 on = lead is not None
                 cmds = trace_ahead.ego_commands(model, held, lead if on else None, 100, 0.02)
                 poses = trace_ahead.trace(twin, model, held, lead if on else None, 2.0, 0.02, 5)
-                out.append(dict(
-                    cfg=name, speed_loop=profile, ops=ops,
-                    model=dict(limits=asdict(lim), body=asdict(model.body) if model.body else None,
-                               speed=model.speed, steering=model.steering, accel=model.accel),
-                    lead=None if lead is None else dict(
-                        times=asdict(lead.times), limits=asdict(lead.limits),
-                        filtered=None if lead.speed is None else [lead.speed, lead.angle]),
-                    cmd=list(held), twin=state_dict(twin.state),
-                    commands=[[c.speed, c.steer] for c in cmds],
-                    poses=[[p.t, p.x, p.y, p.yaw, p.v, p.steer] for p in poses]))
+                out.append({
+                    'cfg': name, 'speed_loop': profile, 'ops': ops,
+                    'model': {'limits': asdict(lim),
+                              'body': asdict(model.body) if model.body else None,
+                              'speed': model.speed, 'steering': model.steering,
+                              'accel': model.accel},
+                    'lead': None if lead is None else {
+                        'times': asdict(lead.times), 'limits': asdict(lead.limits),
+                        'filtered': None if lead.speed is None else [lead.speed, lead.angle]},
+                    'cmd': list(held), 'twin': state_dict(twin.state),
+                    'commands': [[c.speed, c.steer] for c in cmds],
+                    'poses': [[p.t, p.x, p.y, p.yaw, p.v, p.steer] for p in poses]})
     return out
 
 
@@ -298,13 +302,13 @@ def looks():
         stop = (rng.uniform(-1.0, 12.0), rng.uniform(-1.0, 1.0))
         faint = la.crop_ahead(plan, 10.0)
         g = la.gap(trace, faint)
-        cases.append(dict(
-            plan=plan, trace=trace, stop=list(stop), length=la.length(plan),
-            project=None if not plan else list(la.project(plan, stop)),
-            faint=faint, cut=la.cut(plan, 1.0, 6.5), gap=g,
-            grade=la.grade(g, la.Limits()), to_goal=la.to_goal(plan, stop),
-            nearest=(min(range(len(plan)), key=lambda i: math.hypot(*plan[i]))
-                     if plan else None)))
+        cases.append({
+            'plan': plan, 'trace': trace, 'stop': list(stop), 'length': la.length(plan),
+            'project': None if not plan else list(la.project(plan, stop)),
+            'faint': faint, 'cut': la.cut(plan, 1.0, 6.5), 'gap': g,
+            'grade': la.grade(g, la.Limits()), 'to_goal': la.to_goal(plan, stop),
+            'nearest': (min(range(len(plan)), key=lambda i: math.hypot(*plan[i]))
+                        if plan else None)})
     grids = []
     for i in range(12):
         w, h = rng.choice([(60, 40), (50, 50), (30, 80)])
@@ -316,35 +320,34 @@ def looks():
         x = y = yaw = 0.0
         for _ in range(rng.choice([1, 2, 21])):
             path.append((x, y, yaw))
-            yaw = math.remainder(yaw + rng.uniform(-0.3, 0.3) + (3.0 if rng.random() < 0.1
-                                                                 else 0.0), math.tau)
+            jump = 3.0 if rng.random() < 0.1 else 0.0
+            yaw = math.remainder(yaw + rng.uniform(-0.3, 0.3) + jump, math.tau)
             x, y = x + 0.1 * math.cos(yaw), y + 0.1 * math.sin(yaw)
         ext = la.extend(path, 15.0)
         probes = [(rng.uniform(-8, 12), rng.uniform(-8, 12)) for _ in range(30)]
-        grids.append(dict(
-            width=w, height=h, resolution=grid.resolution, origin=list(origin), data=data,
-            path=path, extend=ext,
-            hit=la.first_hit(grid, ext, 1.9, 0.6, 100),
-            hit_soft=la.first_hit(grid, ext, 1.9, 0.6, 50, 0.25),
-            costs=[[p[0], p[1], grid.cost(p)] for p in probes]))
+        grids.append({
+            'width': w, 'height': h, 'resolution': grid.resolution, 'origin': list(origin),
+            'data': data, 'path': path, 'extend': ext,
+            'hit': la.first_hit(grid, ext, 1.9, 0.6, 100),
+            'hit_soft': la.first_hit(grid, ext, 1.9, 0.6, 50, 0.25),
+            'costs': [[p[0], p[1], grid.cost(p)] for p in probes]})
     describes = []
     for gap_m in (None, 0.0, 0.12, 0.449, 2.0):
         for stop_m in (None, 0.0, 1.45):
             for goal_m in (None, 0.8, -1.25):
                 for room_m in (None, 3.0, -0.05):
                     level = la.grade(gap_m)
-                    describes.append(dict(gap=gap_m, level=level, stop=stop_m, goal=goal_m,
-                                          room=room_m,
-                                          text=la.describe(gap_m, level, stop_m, goal_m,
-                                                           room_m)))
-    return dict(cases=cases, grids=grids, describes=describes)
+                    text = la.describe(gap_m, level, stop_m, goal_m, room_m)
+                    describes.append({'gap': gap_m, 'level': level, 'stop': stop_m,
+                                      'goal': goal_m, 'room': room_m, 'text': text})
+    return {'cases': cases, 'grids': grids, 'describes': describes}
 
 
 def main():
-    vectors = dict(ego_runs=ego_runs(), slow_rates=slow_rates(), bodies=bodies(),
-                   stop_curves=stop_curves(), roads=roads(), stop_points=stop_points(),
-                   traces=traces(), look_ahead=looks(),
-                   cfgs={k: asdict(v) for k, v in CFGS.items()})
+    vectors = {'ego_runs': ego_runs(), 'slow_rates': slow_rates(), 'bodies': bodies(),
+               'stop_curves': stop_curves(), 'roads': roads(), 'stop_points': stop_points(),
+               'traces': traces(), 'look_ahead': looks(),
+               'cfgs': {k: asdict(v) for k, v in CFGS.items()}}
     OUT.write_text(json.dumps(vectors, separators=(',', ':'), allow_nan=False) + '\n')
     print(f'wrote {OUT.relative_to(ROS.parent)} ({OUT.stat().st_size // 1024} kB)')
 
