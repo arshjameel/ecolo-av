@@ -7,7 +7,7 @@
 <!-- Generated from docs/packages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>What each package does</h1>
-<div class="meta">21 min read · 10 sections</div></header>
+<div class="meta">22 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -198,6 +198,13 @@ each one's README has its topics.</p></div>
 <td>warn-only checks on what the EKFs read and say, on <code>/localization/health</code> and <code>/diagnostics</code></td>
 <td>built 1 Nov</td>
 <td>new (Betsi)</td>
+</tr>
+<tr>
+<td><code>aav_localization_health_rs</code></td>
+<td>localization</td>
+<td><code>localization_health</code> in Rust (<code>localization_health_impl:=rust</code>): the same topics and answers</td>
+<td><span class="badge b-works">works</span> against the Python's answers; our simulator's road world</td>
+<td>new: a port of <code>aav_localization_health</code></td>
 </tr>
 <tr>
 <td><code>aav_ndt</code></td>

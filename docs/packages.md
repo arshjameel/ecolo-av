@@ -20,6 +20,7 @@ each one's README has its topics.
 | `aav_localization` | localization | the two EKFs and `navsat_transform`: configuration only | [[works]] turtle, Gazebo and the bench | new |
 | `aav_gps_heading` | localization | `gps_heading`: the heading from the GPS receiver's velocity, for `ekf_global` | [[works]] Gazebo | new |
 | `aav_localization_health` | localization | warn-only checks on what the EKFs read and say, on `/localization/health` and `/diagnostics` | built 1 Nov | new (Betsi) |
+| `aav_localization_health_rs` | localization | `localization_health` in Rust (`localization_health_impl:=rust`): the same topics and answers | [[works]] against the Python's answers; our simulator's road world | new: a port of `aav_localization_health` |
 | `aav_ndt` | localization | NDT in Rust, a trial (`ndt:=true`): where the car is on a saved lidar map; never TF | built 29 Oct; a trial, off by default ([Trials](trials.md)) | new |
 | `aav_kiss_icp` | localization | KISS-ICP lidar odometry, a trial (`kiss_icp:=true`): how far the car moved, from the lidar alone | built 30 Oct; a trial, off by default ([Trials](trials.md)) | new, around stock KISS-ICP (MIT) |
 | `aav_teleop` | drivers | joystick → `/drivers/joy/cmd_vel`, plus an e-stop button | [[untested]] | new; the button map from 2025-26 `joy_teleop_ackerman` |

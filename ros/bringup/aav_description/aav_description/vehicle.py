@@ -462,8 +462,8 @@ LOCALIZATION_HEALTH_IMPLS = {'python': 'aav_localization_health',
                              'rust': 'aav_localization_health_rs'}
 DEFAULT_LOCALIZATION_HEALTH_IMPL = 'python'
 # Our simulator's own default (sim.launch.py only; the car keeps the Python until Rust has
-# run on it).
-SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL = 'python'
+# run on it): rust since 16 Nov, the same answers at 1.5 % of a core against 9.4 %.
+SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL = 'rust'
 
 
 def check_localization_health_impl(impl):

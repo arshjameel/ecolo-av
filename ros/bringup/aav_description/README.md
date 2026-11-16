@@ -65,7 +65,7 @@ Many values are still `TODO measure` (docs/car_measurements.md).
 
 Constants: `SELF_MARGIN`, `SENSOR_HALF_SIZE` (m), `STOP_ZONE_AHEAD`, `STOP_ZONE_BEHIND`, `STOP_ZONE_MARGIN` (m),
 `SEES_BEHIND`, `PLAN_TURN_MARGIN`, `GROUND_CLEARANCE`, `OVERHEAD_MARGIN` (m), and
-`VOXELS_IMPLS` (`python`: `aav_voxels`, `rust`: `aav_voxels_rs`) with `DEFAULT_VOXELS_IMPL = 'python'` and `check_voxels_impl(name)` (`voxels_impl:=`); the same for `EGO_IMPLS`, `BEHAVIOUR_IMPLS` and `WATCHDOG_IMPLS` (`ego_impl:=`, `behaviour_impl:=`, `watchdog_impl:=`; every `DEFAULT_*_IMPL` is `python`), and `SIM_DEFAULT_EGO_IMPL = SIM_DEFAULT_BEHAVIOUR_IMPL = 'rust'`, the simulator's own (16 Nov, TODO 185);
+`VOXELS_IMPLS` (`python`: `aav_voxels`, `rust`: `aav_voxels_rs`) with `DEFAULT_VOXELS_IMPL = 'python'` and `check_voxels_impl(name)` (`voxels_impl:=`); the same for `EGO_IMPLS`, `BEHAVIOUR_IMPLS`, `WATCHDOG_IMPLS` and `LOCALIZATION_HEALTH_IMPLS` (`ego_impl:=`, `behaviour_impl:=`, `watchdog_impl:=`, `localization_health_impl:=`; every `DEFAULT_*_IMPL` is `python`), and `SIM_DEFAULT_EGO_IMPL = SIM_DEFAULT_BEHAVIOUR_IMPL = SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL = 'rust'`, the simulator's own (16 Nov, TODO 185);
 `CONTROLLERS = ('rpp', 'mppi')` with `DEFAULT_CONTROLLER = 'mppi'` (the car's, and the fallback of
 `sim.launch.py`'s `controller`); `TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr',
 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag', 'mpc_lag_rs')` with `DEFAULT_TRACKER = 'none'` (`tracker:=`, `docs/trials.md`), kept apart from

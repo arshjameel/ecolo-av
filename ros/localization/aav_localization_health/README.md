@@ -18,6 +18,10 @@ It never stops the car and never changes what the EKFs see: the sensor watchdog
 | `motion` | an EKF says a speed, turn or acceleration the car can't do; `ekf_local` jumps |
 
 `localization.launch.py` starts it (`health:=true` by default; `health:=false` leaves it out).
+Its Rust twin, [aav_localization_health_rs](../aav_localization_health_rs/README.md), gives
+the same answers (`localization_health_impl:=rust`); our simulator runs the Rust one by
+default since 16 Nov, the car this one. Change `health.py` and run that package's
+`gen_vectors.py`.
 
 ## Interface
 

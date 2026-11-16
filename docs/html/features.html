@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">96 min read · 15 sections</div></header>
+<div class="meta">98 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -251,6 +251,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Warns, without stopping anything, when localization's inputs or outputs stop being believable: gyro bias, IMU mounting, GPS quality, clock skew, frames, TF, front wheels, runaway EKFs</td>
 <td>Betsi</td>
 <td>2026-11-01</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="../../ros/localization/aav_localization_health_rs/README.md">Localization health in Rust</a> (<code>aav_localization_health_rs</code>, <code>localization_health_impl:=rust</code>)</td>
+<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust" (TODO 185). The same answers as the Python, exactly (3,600 reports: every check's level, words, numbers and /diagnostics text; 300 TF trees against tf2's own Buffer). Our simulator's road world, /clock at 100 Hz, parked: 1.5 % of a core against 9.4 %; both say OK; sim-check's road world passes with each. The simulator's default since 16 Nov; the car keeps the Python until it has run there</td>
+<td>Ben</td>
+<td>2026-11-16</td>
 <td>sim</td>
 </tr>
 <tr>
@@ -878,14 +885,14 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="simulation.html#sensor-failures-on-purpose">Sensor watchdog</a> (<code>aav_safety</code>)</td>
-<td>When a sensor fails or freezes, Nav2 stops loudly and says why, instead of driving blind; since 15 Nov it also warns (never stops) when one of our own nodes leaves the ROS graph 15 Nov (TODO 207): an actuator that doesn't follow its command latches STUCK: the steering stuck in a bend, noticed 3.6 s after in the sim (before: never); 16 Nov (TODO 207): the car over ego's speed while not slowing latches OVERSPEED: a throttle stuck while speeding up, 4.6 s after, and a dead brake, in the sim</td>
+<td>When a sensor fails or freezes, Nav2 stops loudly and says why, instead of driving blind; since 15 Nov it also warns (never stops) when one of our own nodes leaves the ROS graph 15 Nov (TODO 207): an actuator that doesn't follow its command latches STUCK: the steering stuck in a bend, noticed 3.6 s after in the sim (before: never); 16 Nov (TODO 207): the car over ego's speed while not slowing latches OVERSPEED: a throttle stuck while speeding up, 4.6 s after, and a dead brake, in the sim; only fresh numbers count (16 Nov): quiet wheels no longer latch OVERSPEED (<code>sim-check --faults</code>: all 14 cases on the first run; later runs lose some to a navigation flake after the odom faults, TODO 207)</td>
 <td>Ben</td>
 <td>2026-10-15</td>
 <td>sim</td>
 </tr>
 <tr>
 <td><a href="../../ros/safety/aav_watchdog_rs/README.md">The sensor watchdog in Rust</a> (<code>aav_watchdog_rs</code>, <code>watchdog_impl:=rust</code>), a challenger beside the Python</td>
-<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust" (TODO 185). A safety lock, so it must answer exactly as the Python: every tick the same (1,600 ticks of each input's state and words, the lock, the state line and /diagnostics, with all 11 states, the STUCK and OVERSPEED latches among them). Our simulator's road world, /clock at 100 Hz: 1.4 % of a core against 9.9 %; sim-check's road world, <code>--actuator-faults</code> and <code>--faults</code> give the same results as the Python's. The Python stays the default until a person decides</td>
+<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust" (TODO 185). A safety lock, so it must answer exactly as the Python: every tick the same (1,600 ticks of each input's state and words, the lock, the state line and /diagnostics, with all 11 states, the STUCK and OVERSPEED latches among them). Our simulator's road world, /clock at 100 Hz: 1.4 % of a core against 9.9 %; sim-check's road world and <code>--actuator-faults</code> pass; since the OVERSPEED fix (16 Nov) <code>--faults</code> loses 2-6 of 14 cases a run to a navigation flake after the odom faults (the Python watchdog lost 0 and 1 in 2 runs; TODO 207). The Python stays the default until a person decides</td>
 <td>Ben</td>
 <td>2026-11-16</td>
 <td>sim</td>
