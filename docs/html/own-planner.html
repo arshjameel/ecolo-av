@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-planner.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own planner</h1>
-<div class="meta">21 min read · 9 sections</div></header>
+<div class="meta">24 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -117,7 +117,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#hand-made-maps-no-ros">Hand-made maps (no ROS)</a><a href="#in-our-simulator-8-nov">In our simulator (8 Nov)</a><a href="#hybrid-a-a-second-search-14-nov">Hybrid-A*: a second search (14 Nov)</a><a href="#the-staircase-and-the-strong-smoother-15-nov">The staircase and the strong smoother (15 Nov)</a><a href="#the-lane-centre-planner-pathlane-16-nov">The lane-centre planner (path:=lane, 16 Nov)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#hand-made-maps-no-ros">Hand-made maps (no ROS)</a><a href="#in-our-simulator-8-nov">In our simulator (8 Nov)</a><a href="#hybrid-a-a-second-search-14-nov">Hybrid-A*: a second search (14 Nov)</a><a href="#the-staircase-and-the-strong-smoother-15-nov">The staircase and the strong smoother (15 Nov)</a><a href="#re-timed-in-the-sim-16-nov-todo-152">Re-timed in the sim (16 Nov, TODO 152)</a><a href="#the-lane-centre-planner-pathlane-16-nov">The lane-centre planner (path:=lane, 16 Nov)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
 <div class="lead"><p>Ben, 8 Nov: move off Nav2 <strong>one piece at a time</strong>, each beside Nav2 until it wins. The
 order: the costmap (<a href="own-costmap.html">done</a>), then <strong>the path planner</strong> (this page), then
 the navigator. Since 14 Nov ours is the simulator's default (<code>stack:=ours</code>; Nav2's
@@ -144,7 +144,9 @@ lattice with <code>planner:=lattice</code> or <code>stack:=stock</code>). Nav2 s
   ours took about <strong>20 % longer</strong> to plan the long legs (180 ms against 150 ms).
   15 Nov: 11 % off without changing a path (<code>examples/campus.rs</code> times the legs on
   the real map, no ROS; the outline's check no longer allocates). Splitting across cores
-  doesn't pay: one step of the search is about 1 µs.</p>
+  doesn't pay: one step of the search is about 1 µs. 16 Nov: a move that can't improve
+  its node skips the outline check (3-9 % off, the same paths); <strong>re-timed in the sim,
+  still slower</strong> (<a href="#re-timed-in-the-sim-16-nov-todo-152">below</a>).</p>
 </li>
 <li>
 <p><strong>Not yet a winner:</strong> as good on the lot, a little slower on the campus.</p>
@@ -156,7 +158,8 @@ lattice with <code>planner:=lattice</code> or <code>stack:=stock</code>). Nav2 s
 <li>
 <p><strong>The lane-centre planner (16 Nov):</strong> <code>path:=lane</code> plans the right lane's centre
   along the lane map, the lattice only at the ends
-  (<a href="#the-lane-centre-planner-pathlane-16-nov">below</a>). A challenger.</p>
+  (<a href="#the-lane-centre-planner-pathlane-16-nov">below</a>). <strong><code>ours</code>' path since 16 Nov</strong>
+  (3 clean runs each: <a href="#the-swap-16-nov-3-clean-runs-each">the swap</a>).</p>
 </li>
 </ul>
 </blockquote></div>
@@ -733,6 +736,80 @@ take out wiggles shorter than ~2 m, so the steps stay, and the follower drives t
 numbers: <a href="mppi-lag.html#the-sway-that-was-left">mppi-lag.md, The sway that was left</a>.
 <code>tests/scenes.rs</code> checks the steps go (8°: under half the swing).</p>
 </section>
+<section class="card"><h2 id="re-timed-in-the-sim-16-nov-todo-152">Re-timed in the sim (16 Nov, TODO 152)</h2>
+<p><code>measure controllers --planners lattice own --reversing --tours campus</code>, 2 + 2 runs.
+Before each leg, both planners plan <strong>from the same spot on the same map</strong>; each one's
+own <code>planning_time</code> (the search and the smoother). Our simulator, an M4 Max.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Leg</th>
+<th>Ours (ms)</th>
+<th>Nav2's lattice (ms)</th>
+<th>Ours, slower by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>out of the lot (46 m)</td>
+<td>3-7</td>
+<td>6-9</td>
+<td>none</td>
+</tr>
+<tr>
+<td>along the road (255 m)</td>
+<td>185, 186, 188, 197</td>
+<td>122, 145, 146, 171</td>
+<td><strong>~30 %</strong> (means 189, 146)</td>
+</tr>
+<tr>
+<td>round the bend (~180 m)</td>
+<td>230, 233, 289, 357</td>
+<td>227, 235, 242</td>
+<td>~18 %</td>
+</tr>
+</tbody>
+</table></div>
+<p>Ours prices each change of gear (<code>cusp_penalty</code> 4 m), Nav2's doesn't, so the two searches
+differ a little (Nav2's plans had 2-6 cusps).</p>
+<p><strong>The cheap win kept (16 Nov):</strong> a move's cost never falls as the ground's cost rises, so
+a move that, on free ground, already costs more than its node's best skips its outline
+check. The same nodes and paths. <code>WHOLE=1 CUSP_PENALTY=4 cargo run --release -p
+lattice-planner --example campus</code> (the whole map, as the sim's), interleaved, best of 5:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Leg</th>
+<th>Before (ms)</th>
+<th>After (ms)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>out of the lot, forward</td>
+<td>120-121</td>
+<td>116</td>
+</tr>
+<tr>
+<td>along the road, forward</td>
+<td>256-258</td>
+<td>249</td>
+</tr>
+<tr>
+<td>along the road, reversing</td>
+<td>150-152</td>
+<td>136-138</td>
+</tr>
+<tr>
+<td>round the bend, reversing</td>
+<td>45</td>
+<td>43</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Left:</strong> where the whole map's extra time goes (a search step 0.95 µs there, 0.82 µs on
+the tour's corner of it).</p>
+</section>
 <section class="card"><h2 id="the-lane-centre-planner-pathlane-16-nov">The lane-centre planner (<code>path:=lane</code>, 16 Nov)</h2>
 <p>TODO 148 and 169; the Fable review's change 7 ("follow the lane's centre, shift only to
 go round": Autoware's idea). A challenger beside the lanes layer (<code>lane_costs:=true</code>,
@@ -896,10 +973,67 @@ map, so every leg falls back to the lattice (<code>examples/lane.rs</code>). A n
 <li>The campus tour (2 runs each, the same load): 2, 1 and 4 of 6 legs; <code>path:=lane</code>
   fell back to the lattice there, as expected.</li>
 </ul>
-<p><strong>The verdict: a challenger, proposed for <code>ours</code>.</strong> It keeps the lane best (0.10 m off
-its centre, never over the centre line) and sways least, at the same time a leg. Not
-swapped yet: its reached column is lower on paper (the load), and the league asks for 3
-clean runs of each on the same routes (TODO 148).</p>
+<p><strong>The verdict then: a challenger, proposed for <code>ours</code>.</strong> It kept the lane best and swayed
+least, but its reached column was lower on paper (the load), and the league asks for 3
+clean runs of each on the same routes.</p>
+<h3 id="the-swap-16-nov-3-clean-runs-each">The swap (16 Nov, 3 clean runs each)</h3>
+<p>The same tour and stack, one variant after the other, each batch started with the
+machine's load under 8 (no other simulator running). Results in <code>/tmp/w152</code> (not in git).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Legs reached</th>
+<th>Time (s)</th>
+<th>Sway (m/s²)</th>
+<th>Off the path (m), mean / worst</th>
+<th>Left-right changes /100 m</th>
+<th>Off the lane's centre (m)</th>
+<th>Over the centre line</th>
+<th>Crossings</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>As now</td>
+<td>9 of 9</td>
+<td>512</td>
+<td>0.087</td>
+<td>0.11 / 0.72</td>
+<td>9.6</td>
+<td>1.43</td>
+<td>61 %</td>
+<td>36</td>
+</tr>
+<tr>
+<td><code>lane_costs:=true</code> (the ramp)</td>
+<td>9 of 9</td>
+<td>517</td>
+<td>0.090</td>
+<td>0.13 / 1.06</td>
+<td>8.7</td>
+<td>0.59</td>
+<td>1 %</td>
+<td>3</td>
+</tr>
+<tr>
+<td><code>path:=lane</code></td>
+<td>9 of 9</td>
+<td>512</td>
+<td><strong>0.055</strong></td>
+<td><strong>0.09 / 0.61</strong></td>
+<td><strong>5.4</strong></td>
+<td><strong>0.11</strong></td>
+<td><strong>0 %</strong></td>
+<td>0</td>
+</tr>
+</tbody>
+</table></div>
+<p>Each leg's time, every run: 42-44, 60 and 68-69 s in all three (the ramp's first leg once
+51 s). <code>path:=lane</code> backed up 0 times.</p>
+<p><strong>No worse on any column: <code>path:=lane</code> is <code>ours</code>' path since 16 Nov</strong> (<code>stacks.yaml</code>;
+<code>decisions.md</code>). Off the lane map (the lot, a three-point turn in the road world) it is
+the lattice, as before. The ramp stays a challenger (<code>lanes:=ramp</code>).</p>
 </section>
 <section class="card"><h2 id="whats-missing">What's missing</h2>
 <ul>

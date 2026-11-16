@@ -162,7 +162,8 @@ University Drive), 3 runs each: the ramp kept the car 0.59 m off the lane's cent
 over the centre line 1 % of the time (nothing: 1.51 m, 68 %); the lane-centre planner
 0.10 m and 0 %, with less sway (0.063 against 0.087 m/s²), the same time a leg. The
 table: [own-planner.md](own-planner.md#the-scores-16-nov-our-simulator-the-university-drive-tour).
-Both stay challengers; `path:=lane` is proposed for `ours` (TODO 148).
+Later that day, 3 clean runs each: `path:=lane` no worse on any column, and since then
+`ours`' path; the ramp stays a challenger (`lanes:=ramp`; TODO 148).
 
 ## Threads and bounds (14 Nov)
 

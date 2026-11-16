@@ -147,7 +147,9 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             goal behind the car facing back; the car must
                                             turn in it, backing at least once, without
                                             touching a wall. One more run, with the lidar;
-                                            --three-point-only skips the road world's)
+                                            --three-point-only skips the road world's;
+                                            AAV_THREE_POINT_SAVE=<file> keeps the run's
+                                            track, plans and commands as JSON)
 
 bench_check.py tests the car's software against pretend sensors that draw a flat world;
 this tests it against Gazebo's camera and radar stand-in, which see the road world
@@ -1430,8 +1432,8 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
         with open(save, 'w') as f:
             json.dump({'track': drive, 'plans': plans, 'goal': (gx, gy, gyaw),
                        'street': (x0, y0, h, half), 'commands': probe.commands,
-                       'actuator': probe.actuator_cmds, 'asked': asked, 'behaviour': probe.behaviour,
-                       'monitor': probe.monitor}, f)
+                       'actuator': probe.actuator_cmds, 'asked': asked,
+                       'behaviour': probe.behaviour, 'monitor': probe.monitor}, f)
 
 
 def check_stop_zone_shadow(probe, delay_limit=0.3, missed_limit=0.2):

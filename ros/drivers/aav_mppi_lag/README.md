@@ -25,7 +25,7 @@ What it adds to Nav2's MPPI:
 | Model of the car | speed and turn rate obey at once (within ax, az limits) | ego's ramps, the spine's speed loop, throttle and brake lag, steering motor rate, linkage lag, deadbands, dead times |
 | State it starts from | pose and speed | pose, speed, ego's output, the actuators' levels, the commands still in their dead time |
 | Noise | white, on (v, w) | on (v, steering), correlated step to step (AR(1), 0.8); the control cost weighs it by its own covariance |
-| Cusps | reached within the inversion tolerances | the same, or stopped within the goal's tolerances |
+| Cusps | reached within the inversion tolerances | the same, or stopped within the goal's tolerances, or held 3 s within 2 m (`cusp_reach`, `cusp_wait`: a stop zone short of a wall) |
 | The lane | no critic for it | `LaneCritic`, with a lane map: the outline kept inside the road ahead's lines and kerbs |
 | Language | C++ plugin | Rust |
 

@@ -7,7 +7,7 @@
 <!-- Generated from docs/decisions.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Decisions and open questions</h1>
-<div class="meta">55 min read · 16 sections</div></header>
+<div class="meta">56 min read · 16 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -952,6 +952,11 @@ answer.</p>
 <td>15 Nov</td>
 <td><strong>The sim's <code>ours</code> stack takes the three sway fixes</strong> (TODO 168): <code>plan_smoothing:=strong</code> (path <code>lattice_rs_strong</code>), and <code>map_correction:=slow</code> with <code>mppi_lag_steer_gamma:=0.05</code> (steer <code>mppi_lag_calm</code>). Scored in the sim, 2 runs each: sway at Nav2's on the lot (0.021 against 0.018 m/s²) and under it on the campus (0.099 against 0.131), every leg, closer to the path. The champions, the car and <code>stack:=stock</code> are unchanged; each old setting stays a switch (<a href="mppi-lag.html#the-sway-that-was-left">why</a>)</td>
 <td>Ben's rule (5 Nov): a challenger that wins on the same routes</td>
+</tr>
+<tr>
+<td>16 Nov</td>
+<td><strong>The sim's <code>ours</code> plans the lane's centre</strong> (<code>path:=lane</code>, TODO 148): 3 clean runs each of the <code>university</code> tour, no worse on any column than as now or the ramp (9/9 legs each, the same 512 s; sway 0.055 against 0.087-0.090 m/s², never over the centre line against 61 % and 1 %). Off the lane map it is the lattice, as before. The champions, the car and <code>stack:=stock</code> are unchanged (<a href="own-planner.html#the-swap-16-nov-3-clean-runs-each">why</a>)</td>
+<td>Ben's rule (5 Nov): a challenger that wins on the same routes; the swap asked for in TODO 148</td>
 </tr>
 </tbody>
 </table></div>

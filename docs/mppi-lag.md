@@ -101,7 +101,7 @@ pub trait CarModel: Sync {
 | Sent | element 1 | element 0 | the dead times already hold what was sent |
 | Critics | the eight in nav2.yaml | the same eight, same weights; PathAngle's three modes; and our `LaneCritic` with a lane map ([below](#the-lane)) | Nav2 has no critic for a lane |
 | At a cusp (reversing) | the critics' goal is the path's end | the cusp, while one lies ahead; the goal check waits for the last stretch | the car stops there as at a goal; Nav2 stops only because the path ends |
-| Cusp reached | within the inversion tolerances | the same, or stopped within the goal's tolerances | it may stop just outside them ([Cusps](#cusps)) |
+| Cusp reached | within the inversion tolerances | the same, or stopped within the goal's tolerances; or stopped 3 s within 2 m (`cusp_reach`) | it may stop just outside them, or be held there by the stop zone ([Cusps](#cusps)) |
 
 ### Why the noise is correlated
 
@@ -273,6 +273,42 @@ at its goal. The progress check starts again at each new stretch.
 The planner's own path (exported from `lattice-planner` on the lot's map), 8 seeds
 each: 0 of 8 before, 8 of 8 after; also with a slow car, rolling at 0.8 m/s, or
 started 0.2 rad off. **In the simulator: not yet run** with the fix.
+
+### Held short of a cusp (16 Nov, TODO 174)
+
+`sim-check --three-point` (a 6.5 m street): the plan had 2-3 changes of direction, the car
+drove 4-8. A run's record (`AAV_THREE_POINT_SAVE=<file>`) showed why:
+
+```text
+ wall ═══════════════════════════════
+        ▲ the stop zone (1 m) reaches the wall: collision_monitor holds the car
+      [car]  stands 1.3 m short of the cusp ✕, out of the goal's 1 m
+ the navigator plans again (20 s on, the final approach): new cusps from there
+```
+
+| Part | What | Now |
+|---|---|---|
+| The progress check | started again **every tick**: a new stretch was told by its cusp's pose, and `map_correction` moves the path a little most ticks. A held car never gave up | by the stretch's index: held anywhere, Stuck after 10 s, and the navigator plans again |
+| Held short of a cusp | nothing moved the car on | stopped `cusp_wait` (3 s) within `cusp_reach` (2 m) of the cusp: the stretch is done, it backs on |
+
+Both are in `tests/closed_loop.rs` (`held_short_of_a_cusp_the_car_backs_on`,
+`the_progress_check_fires_on_a_moving_path`; each failed before).
+
+`sim-check --three-point`, our simulator, the 6.5 m street:
+
+| Version | Runs | Changes of direction (the plans') | Time |
+|---|---|---|---|
+| before | 1 | 5 (2, 2, 3, 1) | 64 s |
+| both fixes | 2 | **4** (2, 3, 0) and **6** (2, 3, 1) | **43 s, 56 s** |
+
+**Tried, and not kept** (each made it worse in the sim; the code in `/tmp/w152`):
+
+| Try | What happened |
+|---|---|
+| The navigator keeps a path with a cusp up to 120 s, not 20 | without the follower's fixes the car stood held for 100 s (6-7 changes, 145 s) |
+| The planner keeps the stop zone clear where it changes gear (`cusp_clearance` 1 m) | offline, 4 cusps in the street; in the sim it turned 14 m down the street, sat held, and once left the street (2 of 2 failed) |
+
+Left: the cause itself, the plan's cusps nearer a wall than the stop zone allows.
 
 ## The campus junction: the geofence, not MPPI
 

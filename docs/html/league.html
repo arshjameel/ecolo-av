@@ -154,7 +154,7 @@ The champions above stay as they are: they are what the car runs.</p>
 <tbody>
 <tr>
 <td><code>ours</code> (the default)</td>
-<td>every level we built: our costmap, navigator, planner (<code>lattice_rs_strong</code>: <code>lattice_rs</code> with <code>plan_smoothing:=strong</code>), <code>mppi_lag_calm</code> (<code>mppi_lag</code> with <code>map_correction:=slow</code> and <code>mppi_lag_steer_gamma:=0.05</code>), and the road ahead (<code>behaviour:=true</code>). The two calm picks since 15 Nov: they took ours' sway to Nav2's (<a href="mppi-lag.html#the-sway-that-was-left">why</a>)</td>
+<td>every level we built: our costmap, navigator, planner (<code>lane</code> since 16 Nov: the right lane's centre on the lane map, <code>lattice_rs_strong</code> off it, <a href="own-planner.html#the-swap-16-nov-3-clean-runs-each">why</a>), <code>mppi_lag_calm</code> (<code>mppi_lag</code> with <code>map_correction:=slow</code> and <code>mppi_lag_steer_gamma:=0.05</code>), and the road ahead (<code>behaviour:=true</code>). The two calm picks since 15 Nov: they took ours' sway to Nav2's (<a href="mppi-lag.html#the-sway-that-was-left">why</a>)</td>
 </tr>
 <tr>
 <td><code>stock</code></td>
@@ -180,7 +180,7 @@ pixi run sim world:=campus tracker:=mpc_lag      # all ours, but MPC follows
 pixi run sim world:=campus costmap:=nav2         # Nav2's costmaps, the rest ours
 pixi run sim stack:=stock planner:=own           # Nav2's, but our planner</code></pre>
 <p>The launch prints what it picked, such as
-<code>stack:=ours - pose ekf, costmap ours, navigator ours, path lattice_rs_strong, steer mppi_lag_calm, ...</code>.</p>
+<code>stack:=ours - pose ekf, costmap ours, navigator ours, path lane, steer mppi_lag_calm, ...</code>.</p>
 <div class="admonition note">
 <p class="admonition-title">How a hand-set switch is seen</p>
 <p>The switches a stack sets are empty by default in <code>sim.launch.py</code>, meaning "the

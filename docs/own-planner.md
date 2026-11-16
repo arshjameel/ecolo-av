@@ -18,13 +18,16 @@ lattice with `planner:=lattice` or `stack:=stock`). Nav2 stays on the car.
 >   ours took about **20 % longer** to plan the long legs (180 ms against 150 ms).
 >   15 Nov: 11 % off without changing a path (`examples/campus.rs` times the legs on
 >   the real map, no ROS; the outline's check no longer allocates). Splitting across cores
->   doesn't pay: one step of the search is about 1 µs.
+>   doesn't pay: one step of the search is about 1 µs. 16 Nov: a move that can't improve
+>   its node skips the outline check (3-9 % off, the same paths); **re-timed in the sim,
+>   still slower** ([below](#re-timed-in-the-sim-16-nov-todo-152)).
 > - **Not yet a winner:** as good on the lot, a little slower on the campus.
 > - **Hybrid-A\* too (14 Nov):** `planner_search:=hybrid` runs Nav2's Hybrid-A*
 >   ported, on the same search ([below](#hybrid-a-a-second-search-14-nov)). A challenger.
 > - **The lane-centre planner (16 Nov):** `path:=lane` plans the right lane's centre
 >   along the lane map, the lattice only at the ends
->   ([below](#the-lane-centre-planner-pathlane-16-nov)). A challenger.
+>   ([below](#the-lane-centre-planner-pathlane-16-nov)). **`ours`' path since 16 Nov**
+>   (3 clean runs each: [the swap](#the-swap-16-nov-3-clean-runs-each)).
 
 ## How it fits
 
@@ -277,6 +280,36 @@ The plan's own swing on a 6.5 m road at 2.2 m/s: 0.08-0.16 m with Nav2's weights
 numbers: [mppi-lag.md, The sway that was left](mppi-lag.md#the-sway-that-was-left).
 `tests/scenes.rs` checks the steps go (8°: under half the swing).
 
+## Re-timed in the sim (16 Nov, TODO 152)
+
+`measure controllers --planners lattice own --reversing --tours campus`, 2 + 2 runs.
+Before each leg, both planners plan **from the same spot on the same map**; each one's
+own `planning_time` (the search and the smoother). Our simulator, an M4 Max.
+
+| Leg | Ours (ms) | Nav2's lattice (ms) | Ours, slower by |
+|---|---|---|---|
+| out of the lot (46 m) | 3-7 | 6-9 | none |
+| along the road (255 m) | 185, 186, 188, 197 | 122, 145, 146, 171 | **~30 %** (means 189, 146) |
+| round the bend (~180 m) | 230, 233, 289, 357 | 227, 235, 242 | ~18 % |
+
+Ours prices each change of gear (`cusp_penalty` 4 m), Nav2's doesn't, so the two searches
+differ a little (Nav2's plans had 2-6 cusps).
+
+**The cheap win kept (16 Nov):** a move's cost never falls as the ground's cost rises, so
+a move that, on free ground, already costs more than its node's best skips its outline
+check. The same nodes and paths. `WHOLE=1 CUSP_PENALTY=4 cargo run --release -p
+lattice-planner --example campus` (the whole map, as the sim's), interleaved, best of 5:
+
+| Leg | Before (ms) | After (ms) |
+|---|---|---|
+| out of the lot, forward | 120-121 | 116 |
+| along the road, forward | 256-258 | 249 |
+| along the road, reversing | 150-152 | 136-138 |
+| round the bend, reversing | 45 | 43 |
+
+**Left:** where the whole map's extra time goes (a search step 0.95 µs there, 0.82 µs on
+the tour's corner of it).
+
 ## The lane-centre planner (`path:=lane`, 16 Nov)
 
 TODO 148 and 169; the Fable review's change 7 ("follow the lane's centre, shift only to
@@ -340,10 +373,27 @@ map, so every leg falls back to the lattice (`examples/lane.rs`). A new tour,
 - The campus tour (2 runs each, the same load): 2, 1 and 4 of 6 legs; `path:=lane`
   fell back to the lattice there, as expected.
 
-**The verdict: a challenger, proposed for `ours`.** It keeps the lane best (0.10 m off
-its centre, never over the centre line) and sways least, at the same time a leg. Not
-swapped yet: its reached column is lower on paper (the load), and the league asks for 3
-clean runs of each on the same routes (TODO 148).
+**The verdict then: a challenger, proposed for `ours`.** It kept the lane best and swayed
+least, but its reached column was lower on paper (the load), and the league asks for 3
+clean runs of each on the same routes.
+
+### The swap (16 Nov, 3 clean runs each)
+
+The same tour and stack, one variant after the other, each batch started with the
+machine's load under 8 (no other simulator running). Results in `/tmp/w152` (not in git).
+
+| Variant | Legs reached | Time (s) | Sway (m/s²) | Off the path (m), mean / worst | Left-right changes /100 m | Off the lane's centre (m) | Over the centre line | Crossings |
+|---|---|---|---|---|---|---|---|---|
+| As now | 9 of 9 | 512 | 0.087 | 0.11 / 0.72 | 9.6 | 1.43 | 61 % | 36 |
+| `lane_costs:=true` (the ramp) | 9 of 9 | 517 | 0.090 | 0.13 / 1.06 | 8.7 | 0.59 | 1 % | 3 |
+| `path:=lane` | 9 of 9 | 512 | **0.055** | **0.09 / 0.61** | **5.4** | **0.11** | **0 %** | 0 |
+
+Each leg's time, every run: 42-44, 60 and 68-69 s in all three (the ramp's first leg once
+51 s). `path:=lane` backed up 0 times.
+
+**No worse on any column: `path:=lane` is `ours`' path since 16 Nov** (`stacks.yaml`;
+`decisions.md`). Off the lane map (the lot, a three-point turn in the road world) it is
+the lattice, as before. The ramp stays a challenger (`lanes:=ramp`).
 
 ## What's missing
 
