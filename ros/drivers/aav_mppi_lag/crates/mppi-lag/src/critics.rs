@@ -42,6 +42,7 @@ pub struct Rollout {
 
 impl Rollout {
     /// A rollout with room for `steps` steps.
+    #[must_use]
     pub fn with_steps(steps: usize) -> Self {
         Self {
             controls: vec![Command::default(); steps],
@@ -202,6 +203,7 @@ impl Default for CostCritic {
 }
 
 /// Nav2's inflation cost at `distance` m from an obstacle (InflationLayer::computeCost).
+#[must_use]
 pub fn inflation_cost(distance: f64, inscribed: f64, cost_scaling_factor: f64) -> f64 {
     if distance <= 0.0 {
         f64::from(LETHAL)
@@ -332,6 +334,7 @@ impl GoalAngleCritic {
 
 /// The index after `dist` m along (Nav2's findClosestPathPt): the closer of the two
 /// path points either side of `dist`, searching from `init`.
+#[must_use]
 pub fn closest_path_point(along: &[f64], dist: f64, init: usize) -> usize {
     let mut before = if init != 0 { along[init] } else { 0.0 };
     for (i, &here) in along.iter().enumerate().skip(init + 1) {
@@ -497,6 +500,7 @@ pub enum PathAngleMode {
 
 impl PathAngleMode {
     /// Nav2's number for the mode; `None` for one it doesn't have.
+    #[must_use]
     pub fn from_number(n: i64) -> Option<Self> {
         match n {
             0 => Some(Self::ForwardPreference),
@@ -768,6 +772,7 @@ pub const NAMES: [&str; 8] = [
 
 impl Critic {
     /// The critic called `name` (Nav2's plugin name), with Nav2's defaults.
+    #[must_use]
     pub fn by_name(name: &str) -> Option<Self> {
         Some(match name {
             "ConstraintCritic" => Self::Constraint(ConstraintCritic::default()),
@@ -784,6 +789,7 @@ impl Critic {
     }
 
     /// Nav2's name for it.
+    #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
             Self::Constraint(_) => "ConstraintCritic",
@@ -815,6 +821,7 @@ pub struct Prepared<'a> {
 impl<'a> Prepared<'a> {
     /// Work out the per-tick parts: PathAlign's distances along, PathFollow's and
     /// PathAngle's targets, where the car is beside the lane.
+    #[must_use]
     pub fn new(critics: &'a [Critic], data: CriticData<'a>) -> Self {
         let mut along = Vec::new();
         let mut align = false;
@@ -852,6 +859,7 @@ impl<'a> Prepared<'a> {
     }
 
     /// Every critic's score for one sample, added up.
+    #[must_use]
     pub fn score(&self, r: &Rollout) -> Score {
         let d = &self.data;
         let mut total = Score::default();
@@ -879,6 +887,7 @@ impl<'a> Prepared<'a> {
 
 /// The furthest path index any sample's end comes nearest to (Nav2's
 /// findPathFurthestReachedPoint: each sample searches from the furthest so far).
+#[must_use]
 pub fn furthest_reached(path: &[Pose], rollouts: &[Rollout]) -> usize {
     let mut furthest = 0usize;
     for end in rollouts.iter().filter_map(|r| r.poses.last()) {
@@ -896,6 +905,7 @@ pub fn furthest_reached(path: &[Pose], rollouts: &[Rollout]) -> usize {
 
 /// For each path pose but the last: clear of obstacles (Nav2's findPathCosts). Without a
 /// costmap, all clear.
+#[must_use]
 pub fn path_clear(path: &[Pose], costmap: Option<&Costmap>, tracking_unknown: bool) -> Vec<bool> {
     let n = path.len().saturating_sub(1);
     let Some(map) = costmap else {

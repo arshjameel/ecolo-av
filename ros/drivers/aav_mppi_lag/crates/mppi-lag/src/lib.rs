@@ -25,6 +25,9 @@
 //! The feature `trace` (TODO 196) wraps each stage of a tick in a `tracing` span
 //! (`mppi.tick`, `mppi.rollout`, `mppi.critics`, `mppi.weigh`, `mppi.smooth`); without it
 //! [`span!`] is nothing, and the crate has no dependencies.
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 /// Time the rest of the enclosing block as the stage `$name` (feature `trace`).
 #[cfg(feature = "trace")]

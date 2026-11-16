@@ -126,6 +126,7 @@ impl Settings {
     /// rad: the steering noise's spread with the car at `speed` m/s (either way):
     /// `steer_std` up to `steer_std_speed`, then x (steer_std_speed / |speed|)², but never
     /// under `steer_std_min` (nor over `steer_std`).
+    #[must_use]
     pub fn steer_std_at(&self, speed: f64) -> f64 {
         let fast = speed.abs();
         if self.steer_std_speed > 0.0 && fast > self.steer_std_speed {
@@ -139,6 +140,7 @@ impl Settings {
     /// The steering's control cost weight with the car at `speed` m/s (either way):
     /// `steer_gamma` from `steer_gamma_speed` up, easing linearly to `gamma` at a stop;
     /// `gamma` when there is no `steer_gamma`.
+    #[must_use]
     pub fn steer_gamma_at(&self, speed: f64) -> f64 {
         let Some(steer) = self.steer_gamma else {
             return self.gamma;
@@ -165,6 +167,7 @@ impl Settings {
 /// For a = 0 that is Nav2's gamma / std² x Σ u e. The white form on correlated noise
 /// weighs each sample's whole drift, not its fresh part: at a = 0.8 its spread is 3x
 /// Nav2's (9x the right one), and it outweighed the critics.
+#[must_use]
 pub fn control_cost(settings: &Settings, sequence: &[Command], sample: &[Command]) -> f64 {
     let a = settings.noise_correlation.clamp(0.0, 0.999);
     let fresh = 1.0 - a * a;
@@ -412,6 +415,10 @@ impl<M: CarModel> Optimizer<M> {
     }
 
     /// One tick: the command to send now, from the car's state `state`.
+    ///
+    /// # Errors
+    ///
+    /// [`NoValidControl`] if every sample ran into something, even after a reset.
     pub fn evaluate(&mut self, state: &M::State, scene: &Scene) -> Result<Plan, NoValidControl> {
         span!("mppi.tick");
         let mut attempts = 0;

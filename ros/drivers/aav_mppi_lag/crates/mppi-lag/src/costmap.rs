@@ -29,6 +29,7 @@ pub struct Costmap {
 
 impl Costmap {
     /// A grid, or `None` if its size and data disagree or the resolution isn't positive.
+    #[must_use]
     pub fn new(
         origin: (f64, f64),
         resolution: f64,
@@ -47,6 +48,7 @@ impl Costmap {
     }
 
     /// The cell holding (x, y), or `None` outside the grid.
+    #[must_use]
     pub fn cell(&self, x: f64, y: f64) -> Option<(usize, usize)> {
         let cx = ((x - self.origin_x) / self.resolution).floor();
         let cy = ((y - self.origin_y) / self.resolution).floor();
@@ -55,11 +57,13 @@ impl Costmap {
     }
 
     /// The cost at cell (cx, cy).
+    #[must_use]
     pub fn at(&self, cx: usize, cy: usize) -> u8 {
         self.data[cy * self.width + cx]
     }
 
     /// The cost at (x, y); unknown outside the grid.
+    #[must_use]
     pub fn cost(&self, x: f64, y: f64) -> u8 {
         self.cell(x, y)
             .map_or(NO_INFORMATION, |(cx, cy)| self.at(cx, cy))
@@ -101,6 +105,7 @@ impl Costmap {
     }
 
     /// The highest cost under the outline `footprint` (base_link points) at `pose`.
+    #[must_use]
     pub fn footprint_cost(&self, pose: &Pose, footprint: &[(f64, f64)]) -> u8 {
         let (s, c) = pose.yaw.sin_cos();
         let cells: Vec<(i64, i64)> = footprint

@@ -47,6 +47,7 @@ impl Default for Ego {
 /// Move `current` toward `target` (m/s) by at most `up` x `dt` while speeding up and
 /// `down` x `dt` while slowing down, either way (ego's `slew_speed`). A change of
 /// direction goes through a stop: the target is 0 until the speed gets there.
+#[must_use]
 pub fn slew_speed(current: f64, target: f64, up: f64, down: f64, dt: f64) -> f64 {
     let crossing = current != 0.0 && target != 0.0 && (current > 0.0) != (target > 0.0);
     let target = if crossing { 0.0 } else { target };

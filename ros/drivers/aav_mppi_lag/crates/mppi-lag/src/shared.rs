@@ -35,7 +35,9 @@ impl Default for SharedModel {
 /// The car model's state and its speed loop.
 #[derive(Debug, Clone)]
 pub struct SharedState {
+    /// The car model's state.
     pub car: CarState,
+    /// The spine's speed loop, as the car runs it.
     pub speed_loop: SpeedLoop,
 }
 

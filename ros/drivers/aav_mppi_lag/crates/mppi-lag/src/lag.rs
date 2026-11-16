@@ -155,6 +155,7 @@ pub struct DelayLine {
 
 impl DelayLine {
     /// A line that has held `value` for ever.
+    #[must_use]
     pub fn filled(value: f64) -> Self {
         Self {
             values: [value; MAX_DELAY_STEPS],
@@ -183,6 +184,7 @@ pub enum Gear {
 
 impl Gear {
     /// The gear a speed asks for; `None` for 0 (a stop keeps the gear).
+    #[must_use]
     pub fn of(speed: f64) -> Option<Self> {
         if speed > 0.0 {
             Some(Self::Forward)
@@ -194,6 +196,7 @@ impl Gear {
     }
 
     /// +1 forward, -1 reverse: a speed along the gear is this times the signed speed.
+    #[must_use]
     pub fn sign(self) -> f64 {
         match self {
             Self::Forward => 1.0,

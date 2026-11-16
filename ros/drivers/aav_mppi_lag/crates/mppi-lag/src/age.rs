@@ -38,6 +38,7 @@ impl fmt::Display for Stale {
 
 impl Arrival {
     /// Nothing has arrived yet.
+    #[must_use]
     pub const fn new() -> Self {
         Self { at: None }
     }
@@ -48,6 +49,7 @@ impl Arrival {
     }
 
     /// s since it last arrived; `None` if it never did.
+    #[must_use]
     pub fn age(&self, now: f64) -> Option<f64> {
         self.at.map(|at| now - at)
     }
@@ -55,6 +57,10 @@ impl Arrival {
     /// Nav2's wait for a current input, for a path that began at `since`: counted from
     /// the last arrival or from `since`, whichever is later, so a path gets `limit` s for
     /// its first costmap. `Err` once that is over `limit`.
+    ///
+    /// # Errors
+    ///
+    /// [`Stale`], with how long it waited, once that is over `limit`.
     pub fn check(&self, now: f64, since: f64, limit: f64) -> Result<(), Stale> {
         let from = self.at.map_or(since, |at| at.max(since));
         let waited = now - from;

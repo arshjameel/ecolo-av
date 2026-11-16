@@ -39,6 +39,7 @@ pub struct GoalCheck {
 
 impl GoalCheck {
     /// A check with these tolerances.
+    #[must_use]
     pub fn new(xy: f64, yaw: f64) -> Self {
         Self {
             xy,
@@ -78,6 +79,7 @@ pub struct ProgressCheck {
 
 impl ProgressCheck {
     /// A check with these limits.
+    #[must_use]
     pub fn new(radius: f64, angle: f64, time: f64) -> Self {
         Self {
             radius,

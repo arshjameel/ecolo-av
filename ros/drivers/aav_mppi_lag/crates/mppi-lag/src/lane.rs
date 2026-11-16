@@ -38,6 +38,7 @@ fn lerp(a: Option<f64>, b: Option<f64>, t: f64) -> Option<f64> {
 
 impl Edges {
     /// The edges from the message's numbers (m): NaN, infinite or negative is not known.
+    #[must_use]
     pub fn from_numbers(left_hard: f64, right_hard: f64, left_soft: f64, right_soft: f64) -> Self {
         Self {
             left_hard: known(left_hard),
@@ -115,12 +116,14 @@ impl Lane {
     }
 
     /// The line's points.
+    #[must_use]
     pub fn points(&self) -> &[LanePoint] {
         &self.points
     }
 
     /// The same lane with each point moved by `f` (a rigid move, map into odom): the
     /// edges are distances, so they stay.
+    #[must_use]
     pub fn moved(&self, f: impl Fn(f64, f64) -> (f64, f64)) -> Self {
         Self {
             points: self
@@ -148,6 +151,7 @@ impl Lane {
     }
 
     /// The segment nearest (x, y), searching the whole line (once a tick).
+    #[must_use]
     pub fn nearest(&self, x: f64, y: f64) -> usize {
         (0..self.segments())
             .map(|i| (i, self.to_segment(i, x, y).0))
@@ -166,6 +170,7 @@ impl Lane {
 
     /// Where (x, y) lies beside the lane, searching from segment `hint` to the nearest one
     /// either way (a sample's poses move a little each step, so a few segments at most).
+    #[must_use]
     pub fn beside(&self, x: f64, y: f64, hint: usize) -> Beside {
         let last = self.segments() - 1;
         let mut i = hint.min(last);

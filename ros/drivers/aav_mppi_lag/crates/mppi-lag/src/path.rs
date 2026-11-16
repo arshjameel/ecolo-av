@@ -78,6 +78,7 @@ fn first_after(poses: &[Pose], from: usize, distance: f64) -> usize {
 
 impl GlobalPath {
     /// A path of `poses` (odom frame). `None` if it is empty or not all numbers.
+    #[must_use]
     pub fn new(poses: Vec<Pose>) -> Option<Self> {
         let finite = poses
             .iter()
@@ -92,6 +93,7 @@ impl GlobalPath {
 
     /// The same path, followed one stretch at a time where it changes direction (Nav2's
     /// `enforce_path_inversion`).
+    #[must_use]
     pub fn with_inversion(mut self, tolerance: Inversion) -> Self {
         self.inversion = Some(tolerance);
         self.end = first_cusp(&self.poses, self.start);
@@ -107,21 +109,25 @@ impl GlobalPath {
     }
 
     /// The last pose: the goal.
+    #[must_use]
     pub fn goal(&self) -> Pose {
         self.poses[self.poses.len() - 1]
     }
 
     /// The end of the stretch being followed: the next cusp, or the goal.
+    #[must_use]
     pub fn stretch_end(&self) -> Pose {
         self.poses[self.end - 1]
     }
 
     /// True while a change of direction lies ahead.
+    #[must_use]
     pub fn cusp_ahead(&self) -> bool {
         self.end < self.poses.len()
     }
 
     /// True if a cusp lies ahead and `pose` is within `tolerance` of it.
+    #[must_use]
     pub fn near_cusp(&self, pose: &Pose, tolerance: Inversion) -> bool {
         let cusp = self.stretch_end();
         self.cusp_ahead()
@@ -138,6 +144,7 @@ impl GlobalPath {
     }
 
     /// Every pose not yet pruned.
+    #[must_use]
     pub fn remaining(&self) -> &[Pose] {
         &self.poses[self.start..]
     }
@@ -180,6 +187,7 @@ impl GlobalPath {
     }
 
     /// Where `pose` is beside the path, from the pruned start on.
+    #[must_use]
     pub fn foot(&self, pose: &Pose) -> Foot {
         let poses = self.remaining();
         if poses.len() < 2 {

@@ -29,6 +29,7 @@
 use crate::model::{wrap, Pose};
 
 /// A pose in map, given odom's pose in map (the map -> odom transform), into odom.
+#[must_use]
 pub fn into_odom(p: &Pose, odom_in_map: &Pose) -> Pose {
     let (s, c) = odom_in_map.yaw.sin_cos();
     let (dx, dy) = (p.x - odom_in_map.x, p.y - odom_in_map.y);
@@ -40,6 +41,7 @@ pub fn into_odom(p: &Pose, odom_in_map: &Pose) -> Pose {
 }
 
 /// A pose in odom, given odom's pose in map, into map.
+#[must_use]
 pub fn into_map(p: &Pose, odom_in_map: &Pose) -> Pose {
     let (s, c) = odom_in_map.yaw.sin_cos();
     Pose::new(
@@ -72,6 +74,7 @@ impl SlewLimits {
     };
 
     /// True if the held map -> odom slews (both rates over 0).
+    #[must_use]
     pub fn on(&self) -> bool {
         self.speed > 0.0 && self.turn_rate > 0.0
     }
@@ -116,6 +119,7 @@ pub struct Shift {
 
 impl Shift {
     /// Where a pose in odom (placed by `from`) lies in odom by `to`.
+    #[must_use]
     pub fn apply(&self, p: &Pose) -> Pose {
         into_odom(&into_map(p, &self.from), &self.to)
     }
@@ -130,16 +134,19 @@ pub struct MapCorrection {
 
 impl MapCorrection {
     /// Nothing held yet.
+    #[must_use]
     pub fn new(limits: SlewLimits) -> Self {
         Self { limits, held: None }
     }
 
     /// The limits.
+    #[must_use]
     pub fn limits(&self) -> SlewLimits {
         self.limits
     }
 
     /// odom's pose in map as held (`None` before the first).
+    #[must_use]
     pub fn held(&self) -> Option<Pose> {
         self.held
     }

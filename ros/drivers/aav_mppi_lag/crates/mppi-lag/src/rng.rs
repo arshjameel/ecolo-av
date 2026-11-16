@@ -20,6 +20,7 @@ fn splitmix(x: &mut u64) -> u64 {
 
 impl Rng {
     /// A generator from `seed`: the same seed, the same numbers.
+    #[must_use]
     pub fn new(seed: u64) -> Self {
         let mut x = seed;
         Self {

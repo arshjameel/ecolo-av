@@ -21,11 +21,13 @@ pub struct Pose {
 
 impl Pose {
     /// A pose at (x, y), heading `yaw`.
+    #[must_use]
     pub const fn new(x: f64, y: f64, yaw: f64) -> Self {
         Self { x, y, yaw }
     }
 
     /// The straight-line distance to `other` (m).
+    #[must_use]
     pub fn distance(&self, other: &Pose) -> f64 {
         (self.x - other.x).hypot(self.y - other.y)
     }
@@ -45,11 +47,13 @@ pub struct Command {
 
 impl Command {
     /// A command of `speed` m/s and `steer` rad.
+    #[must_use]
     pub const fn new(speed: f64, steer: f64) -> Self {
         Self { speed, steer }
     }
 
     /// The yaw rate this command asks for on a car with this wheelbase (rad/s).
+    #[must_use]
     pub fn yaw_rate(&self, wheelbase: f64) -> f64 {
         self.speed * self.steer.tan() / wheelbase
     }
@@ -106,6 +110,7 @@ pub trait CarModel: Sync {
 }
 
 /// Wrap an angle into [-pi, pi).
+#[must_use]
 pub fn wrap(angle: f64) -> f64 {
     let a = (angle + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU);
     a - std::f64::consts::PI
