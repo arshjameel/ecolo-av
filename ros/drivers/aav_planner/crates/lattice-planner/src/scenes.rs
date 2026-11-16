@@ -121,15 +121,20 @@ pub const CAMPUS_TOUR: [(&str, f64, f64, f64); 3] = [
 ///
 /// Why not, if the map isn't made yet (`pixi run campus`) or can't be read.
 pub fn campus() -> Result<Grid, String> {
+    campus_area((-60.0, -260.0), (260.0, 60.0))
+}
+
+/// The campus map as [`campus`], cut to x `low.0..high.0` and y `low.1..high.1` (m).
+///
+/// # Errors
+///
+/// As [`campus`].
+pub fn campus_area(low: (f64, f64), high: (f64, f64)) -> Result<Grid, String> {
     let path = format!(
         "{}/../../../../../maps/campus/campus.pgm",
         env!("CARGO_MANIFEST_DIR")
     );
-    read_pgm(
-        &path,
-        (-900.0, -900.0),
-        Some(((-60.0, -260.0), (260.0, 60.0))),
-    )
+    read_pgm(&path, (-900.0, -900.0), Some((low, high)))
 }
 
 /// A map_server PGM with its origin (m), the part `crop` keeps ((x0, y0), (x1, y1) m; None:

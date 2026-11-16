@@ -22,6 +22,7 @@
 pub mod collision;
 pub mod curves;
 pub mod heuristic;
+pub mod lane;
 pub mod lattice;
 pub mod scenes;
 pub mod search;
