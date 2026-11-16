@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+# mpc-lag: the lag-aware MPC (aav_track's mpc_lag, ported to Rust). No ROS:
+#   cargo test --release -p mpc-lag
+#   cargo run --release -p mpc-lag --example timing    (how long a tick takes)
+# mpc-node: the ROS node (rclrs), binary mpc_lag_rs. colcon builds it through CMakeLists.txt.
+members = ["crates/mpc-lag", "crates/mpc-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+# Ours, ported from our own Python (aav_track); the QP is OSQP's algorithm (Apache-2.0).
+license = "Apache-2.0"
+publish = false
+
+# The closed-loop tests plan a few hundred ticks each: build them optimised.
+[profile.test]
+opt-level = 3
+
+[profile.dev.package.mpc-lag]
+opt-level = 3

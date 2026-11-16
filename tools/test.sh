@@ -60,6 +60,8 @@ if command -v cargo >/dev/null; then
   (cd ros/sim/aav_simulator && cargo test -q --locked -p sim-core --features shared)
   echo "== ros/drivers/aav_mppi_lag: MPPI with the lag, its critics, the closed-loop runs"
   (cd ros/drivers/aav_mppi_lag && cargo test -q --locked -p mppi-lag --features shared)
+  echo "== ros/drivers/aav_mpc_lag: the lag-aware MPC in Rust, against the Python's vectors; closed loop"
+  (cd ros/drivers/aav_mpc_lag && cargo test -q --locked -p mpc-lag)
   echo "== ros/drivers/aav_costmap: our own costmap's layers and hand-made scenes"
   (cd ros/drivers/aav_costmap && cargo test -q --locked -p costmap)
   echo "== ros/drivers/aav_planner: our own planner's curves and hand-made maps"
@@ -95,6 +97,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/localization/aav_ndt -p ndt-core
   rust_style ros/sim/aav_simulator -p sim-core --features shared
   rust_style ros/drivers/aav_mppi_lag -p mppi-lag --features shared
+  rust_style ros/drivers/aav_mpc_lag -p mpc-lag
   rust_style ros/drivers/aav_costmap -p costmap
   rust_style ros/drivers/aav_planner -p lattice-planner
   rust_style ros/drivers/aav_navigator -p navigator

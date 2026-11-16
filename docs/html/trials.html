@@ -7,7 +7,7 @@
 <!-- Generated from docs/trials.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Trials: new path followers and localizers beside the main ones</h1>
-<div class="meta">91 min read · 21 sections</div></header>
+<div class="meta">94 min read · 21 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -182,6 +182,11 @@ and is <strong>scored on the same routes</strong>. It becomes the default only o
 <td>MPC through the car's lags (sets its own speed; lag-aware)</td>
 <td>MPPI, RPP, MPC</td>
 <td><code>tracker:=mpc_lag</code></td>
+</tr>
+<tr>
+<td>The same MPC in Rust (<code>aav_mpc_lag</code>, 15 Nov)</td>
+<td>the Python <code>mpc_lag</code></td>
+<td><code>tracker:=mpc_lag_rs</code></td>
 </tr>
 <tr>
 <td>our pure pursuit (the control)</td>
@@ -1671,6 +1676,110 @@ the Mac more than the followers; kept for the record.</p>
 <li>One run each: a hint, not a verdict. In our simulator the same U-turn beat every
   aav_track tracker (<code>mpc</code>, <code>pure_pursuit</code> and <code>mpc_lag</code> all 2 of 3 legs, 8 Nov): they
   follow the planner's path and don't read the costmap.</li>
+</ul>
+<h3 id="in-rust-15-nov-mpc_lag_rs">In Rust, 15 Nov (<code>mpc_lag_rs</code>)</h3>
+<p>TODO 132: the Python plan was near 50 ms a tick on the Orin (estimated): the whole 20 Hz
+tick. <code>aav_mpc_lag</code> is the same tracker in Rust, a challenger beside the Python one
+(<code>tracker:=mpc_lag_rs</code>; the league's steer option <code>mpc_lag_rs</code>, in no stack).</p>
+<pre class="highlight"><code>the Python (aav_track)            the Rust (aav_mpc_lag, crate mpc-lag)
+lag_model.py   ──── ported ────►  model.rs     the same states, to 4e-15
+qp.py          ──── ported ────►  qp.rs        the same iterations (400 cold, 50 warm)
+mpc_lag.py     ──── ported ────►  tracker.rs   the same commands, to 1e-3
+car_model.py   ──── its twin ──►  car-model    the estimate</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>On this Mac, the U-turn at 2 m/s</th>
+<th>Python <code>mpc_lag</code></th>
+<th>Rust <code>mpc_lag_rs</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A tick, mean</td>
+<td>5.3 ms</td>
+<td><strong>0.75 ms</strong></td>
+</tr>
+<tr>
+<td>A tick, worst</td>
+<td>26 ms</td>
+<td><strong>2.4 ms</strong></td>
+</tr>
+<tr>
+<td>Worst off the path, vehicle.yaml's lags</td>
+<td>under 0.12 m (its test)</td>
+<td>0.10 m</td>
+</tr>
+<tr>
+<td>Worst off the path, the lags doubled</td>
+<td>under 0.25 m (its test)</td>
+<td>0.18 m</td>
+</tr>
+</tbody>
+</table></div>
+<p>In our simulator, 15 Nov: the test lot's tour (4 legs), one run each, headless, forward
+only, 1 m/s, <code>pixi run measure controllers --trackers mpc_lag_rs mpc_lag --tours lot</code>
+(<code>log/mpc-lag-rs-compare/</code>, not in git):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>The lot tour</th>
+<th>Python <code>mpc_lag</code></th>
+<th>Rust <code>mpc_lag_rs</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Legs reached</td>
+<td>4 of 4</td>
+<td>4 of 4</td>
+</tr>
+<tr>
+<td>Time</td>
+<td>164 s</td>
+<td>160 s</td>
+</tr>
+<tr>
+<td>Off the path, mean / worst</td>
+<td>0.12 / 0.84 m</td>
+<td>0.13 / 0.87 m</td>
+</tr>
+<tr>
+<td>Sway (m/s² RMS)</td>
+<td>0.052</td>
+<td>0.057</td>
+</tr>
+<tr>
+<td>A tick, mean (leg by leg)</td>
+<td>3.7-7.7 ms</td>
+<td><strong>0.7-1.3 ms</strong></td>
+</tr>
+<tr>
+<td>A tick, worst</td>
+<td>14.2 ms</td>
+<td><strong>6.6 ms</strong></td>
+</tr>
+<tr>
+<td>The follower's CPU</td>
+<td>28-35 %</td>
+<td><strong>4-6 %</strong></td>
+</tr>
+<tr>
+<td>Missed 20 Hz ticks</td>
+<td>0</td>
+<td>0</td>
+</tr>
+</tbody>
+</table></div>
+<p>They drive alike, as they should: the same maths. The Rust one swayed more on the first
+leg (28 against 14 left-right changes per 100 m) and less on others: one run, a hint.</p>
+<ul>
+<li><strong>The QP:</strong> our ADMM ported, not clarabel (TODO 199). It warm-starts from the last
+  tick and gives the Python's answers; clarabel (an interior point method) does neither.</li>
+<li><strong>Shared vectors:</strong> <code>gen_vectors.py</code> writes the Python's states and commands to
+  <code>vectors.json</code>; <code>cargo test</code> checks the Rust against them.</li>
+<li><strong>Not in the Rust yet:</strong> keeping each path inside the lane (TODO 169, <code>road_ahead_topic</code>)
+  and the live swap.</li>
 </ul>
 <h3 id="not-done-yet">Not done yet</h3>
 <ul>

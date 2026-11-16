@@ -37,6 +37,7 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 | MPC steering, within the steering's limits | our pure pursuit | `tracker:=mpc` |
 | MPC speed and steering together (sets its own speed) | MPC, MPPI | `tracker:=mpc_full` |
 | MPC through the car's lags (sets its own speed; lag-aware) | MPPI, RPP, MPC | `tracker:=mpc_lag` |
+| The same MPC in Rust (`aav_mpc_lag`, 15 Nov) | the Python `mpc_lag` | `tracker:=mpc_lag_rs` |
 | our pure pursuit (the control) | Nav2's RPP and MPPI | `tracker:=pure_pursuit` |
 | AMCL | the global EKF | `amcl:=true` |
 | NDT on a saved lidar map | the global EKF, and AMCL | `ndt:=true` (after `pixi run ndt-map drive`) |
@@ -678,6 +679,52 @@ the Mac more than the followers; kept for the record.
 - One run each: a hint, not a verdict. In our simulator the same U-turn beat every
   aav_track tracker (`mpc`, `pure_pursuit` and `mpc_lag` all 2 of 3 legs, 8 Nov): they
   follow the planner's path and don't read the costmap.
+
+### In Rust, 15 Nov (`mpc_lag_rs`)
+
+TODO 132: the Python plan was near 50 ms a tick on the Orin (estimated): the whole 20 Hz
+tick. `aav_mpc_lag` is the same tracker in Rust, a challenger beside the Python one
+(`tracker:=mpc_lag_rs`; the league's steer option `mpc_lag_rs`, in no stack).
+
+```
+the Python (aav_track)            the Rust (aav_mpc_lag, crate mpc-lag)
+lag_model.py   ──── ported ────►  model.rs     the same states, to 4e-15
+qp.py          ──── ported ────►  qp.rs        the same iterations (400 cold, 50 warm)
+mpc_lag.py     ──── ported ────►  tracker.rs   the same commands, to 1e-3
+car_model.py   ──── its twin ──►  car-model    the estimate
+```
+
+| On this Mac, the U-turn at 2 m/s | Python `mpc_lag` | Rust `mpc_lag_rs` |
+|---|---|---|
+| A tick, mean | 5.3 ms | **0.75 ms** |
+| A tick, worst | 26 ms | **2.4 ms** |
+| Worst off the path, vehicle.yaml's lags | under 0.12 m (its test) | 0.10 m |
+| Worst off the path, the lags doubled | under 0.25 m (its test) | 0.18 m |
+
+In our simulator, 15 Nov: the test lot's tour (4 legs), one run each, headless, forward
+only, 1 m/s, `pixi run measure controllers --trackers mpc_lag_rs mpc_lag --tours lot`
+(`log/mpc-lag-rs-compare/`, not in git):
+
+| The lot tour | Python `mpc_lag` | Rust `mpc_lag_rs` |
+|---|---|---|
+| Legs reached | 4 of 4 | 4 of 4 |
+| Time | 164 s | 160 s |
+| Off the path, mean / worst | 0.12 / 0.84 m | 0.13 / 0.87 m |
+| Sway (m/s² RMS) | 0.052 | 0.057 |
+| A tick, mean (leg by leg) | 3.7-7.7 ms | **0.7-1.3 ms** |
+| A tick, worst | 14.2 ms | **6.6 ms** |
+| The follower's CPU | 28-35 % | **4-6 %** |
+| Missed 20 Hz ticks | 0 | 0 |
+
+They drive alike, as they should: the same maths. The Rust one swayed more on the first
+leg (28 against 14 left-right changes per 100 m) and less on others: one run, a hint.
+
+- **The QP:** our ADMM ported, not clarabel (TODO 199). It warm-starts from the last
+  tick and gives the Python's answers; clarabel (an interior point method) does neither.
+- **Shared vectors:** `gen_vectors.py` writes the Python's states and commands to
+  `vectors.json`; `cargo test` checks the Rust against them.
+- **Not in the Rust yet:** keeping each path inside the lane (TODO 169, `road_ahead_topic`)
+  and the live swap.
 
 ### Not done yet
 

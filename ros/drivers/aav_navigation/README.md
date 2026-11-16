@@ -47,7 +47,7 @@ Launch: `ros2 launch aav_navigation navigation.launch.py [args]`
 | `lattice_moves` | `nav2` | with `planner:=lattice` or `own`: `smooth` (1 m/s) or `smooth_fast` (2.5 m/s), a trial: moves whose curvature changes no faster than the steering turns (`config/lattice_ackermann_smooth*.json`), and the lattice's smoother off |
 | `planner_search` | `lattice` | with `planner:=own`: `hybrid`, a challenger: our planner runs Nav2's Hybrid-A* ported instead of the State Lattice, on `nav2.yaml`'s `GridBased` block (Reeds-Shepp with `reversing:=true`, else Dubins; `docs/own-planner.md`) |
 | `plan_around` | true | false: the planner sees only the map, so the car stops (stop tests) |
-| `tracker` | `none` | a trial follower (`aav_track`): `pure_pursuit`, `stanley`, `lqr`, `mpc`, `mpc_full`; or `mppi_lag` (`aav_mppi_lag`: Nav2's MPPI with the lag). It serves `follow_path`; controller_server's becomes `follow_path_unused`. `aav_track`'s are refused with `reversing:=true` (`docs/trials.md`); `mppi_lag` reverses as Nav2's MPPI |
+| `tracker` | `none` | a trial follower (`aav_track`): `pure_pursuit`, `stanley`, `lqr`, `mpc`, `mpc_full`; or `mppi_lag` (`aav_mppi_lag`: Nav2's MPPI with the lag); or `mpc_lag_rs` (`aav_mpc_lag`: `mpc_lag` in Rust, a challenger). It serves `follow_path`; controller_server's becomes `follow_path_unused`. `aav_track`'s are refused with `reversing:=true` (`docs/trials.md`); `mppi_lag` reverses as Nav2's MPPI |
 | `navigator` | `nav2` | `own`: our own navigator (`aav_navigator`) in place of `bt_navigator` and `waypoint_follower`, serving their action names (a drop-in: no goal sender knows which runs); with `planner:=own costmap:=own tracker:=mppi_lag` also no `planner_server`, `controller_server` or `behavior_server` (`docs/own-navigator.md`). `car.launch.py` always passes `nav2` |
 | `plan_smoothing` | `nav2` | the planner's smoother: `nav2`, Nav2's weights; `strong` (TODO 168): w_data 0.02 in the GridBased block's `smoother`, so a road at an angle is no staircase. Nav2's lattice and ours both read it (`vehicle.PLAN_SMOOTHINGS`). The sim's `ours` stack picks `strong` |
 | `mppi_lag_steer_gamma` | empty | with `tracker:=mppi_lag`: its steering's control cost weight (`steer_gamma`); empty: nav2.yaml's gamma. 0.05 (TODO 168): less sampling jitter; it eases to gamma below 1 m/s. The sim's `ours` stack picks 0.05 |
@@ -72,7 +72,7 @@ Nodes started:
 | `collision_monitor` | `/control/cmd_vel_smoothed` -> `/drivers/nav/cmd_vel`; publishes `/safety/collision_monitor/state`, `stop_zone`, `collision_points_marker` |
 | `lidar_scan`, `ghost_obstacle` | with `lidar:=true`, `ghost:=true` |
 | `voxels` (`aav_voxels`, or `aav_voxels_rs` with `voxels_impl:=rust`) | with `voxels:=true` or `screen_cubes:=true` |
-| `track` (`aav_track`), or `mppi_lag` (`aav_mppi_lag`) with `tracker:=mppi_lag` | with `tracker:=` on: `follow_path` -> `cmd_vel_nav`, in controller_server's place |
+| `track` (`aav_track`), or `mppi_lag` (`aav_mppi_lag`) with `tracker:=mppi_lag`, or `mpc_lag_rs` (`aav_mpc_lag`) with `tracker:=mpc_lag_rs` | with `tracker:=` on: `follow_path` -> `cmd_vel_nav`, in controller_server's place |
 | `amcl`, `lifecycle_manager_localization` | with `amcl:=true`: AMCL and its own lifecycle manager; with `amcl_map:=`, also `amcl_map_server` |
 | `lifecycle_manager_navigation` | brings the servers up |
 

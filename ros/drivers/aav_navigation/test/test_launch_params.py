@@ -45,3 +45,24 @@ def test_track_yaml_sets_nothing_the_launch_sets():
     launch = set(vehicle.track_params(nav2, cfg, ego)) | TRACK_EXTRA
     both = sorted(set(own) & launch)
     assert not both, f'config/track.yaml sets what the launch sets (the file wins): {both}'
+
+
+def test_mpc_lag_rs_yaml_sets_nothing_the_launch_sets_and_races_on_the_pythons_gains():
+    own = yaml.safe_load((ROS / 'drivers' / 'aav_mpc_lag' / 'config' / 'mpc_lag_rs.yaml')
+                         .read_text())['mpc_lag_rs']['ros__parameters']
+    nav2 = yaml.safe_load((PACKAGE / 'config' / 'nav2.yaml').read_text())
+    cfg = vehicle.load(ROS / 'bringup' / 'aav_description' / 'config' / 'vehicle.yaml')
+    ego = yaml.safe_load((ROS / 'ego' / 'aav_ego' / 'config' / 'ego.yaml')
+                         .read_text())['ego']['ros__parameters']
+    extra = {'use_sim_time', 'map_correction'}
+    launch = set(vehicle.mpc_lag_rs_params(nav2, cfg, ego)) | extra
+    both = sorted(set(own) & launch)
+    assert not both, f'config/mpc_lag_rs.yaml sets what the launch sets (the file wins): {both}'
+    # A challenger beside the Python mpc_lag: the same gains, the same rates.
+    track = yaml.safe_load((ROS / 'drivers' / 'aav_track' / 'config' / 'track.yaml')
+                           .read_text())['track']['ros__parameters']
+    assert own['mpc_lag'] == track['mpc_lag']
+    for key in ('lateral_accel', 'odom_timeout', 'map_correction_speed',
+                'map_correction_turn_rate', 'map_correction_snap_distance',
+                'map_correction_snap_angle'):
+        assert own[key] == track[key], key

@@ -39,7 +39,9 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | OMPL (the Open Motion Planning Library) | BSD-3 | ported (through Nav2) | the curves inside the planner |
 | **Pure Pursuit**: R. C. Coulter, CMU-RI-TR-92-01, 1992; **Regulated Pure Pursuit**: S. Macenski et al., Autonomous Robots, 2023 | paper | idea | `aav_track`, Nav2's RPP |
 | **Stanley**: S. Thrun et al., "Stanley: The Robot that Won the DARPA Grand Challenge", J. Field Robotics, 2006 | paper | idea | `aav_track`'s Stanley follower |
-| LQR and MPC (textbook control) | - | idea | `aav_track`'s LQR, MPC and MPC with lag |
+| LQR and MPC (textbook control) | - | idea | `aav_track`'s LQR, MPC and MPC with lag; `aav_mpc_lag`, the MPC with lag in Rust |
+| **OSQP**'s ADMM: B. Stellato, G. Banjac, P. Goulart, A. Bemporad, S. Boyd, "OSQP: an operator splitting solver for quadratic programs", Math. Programming Computation, 2020 | Apache-2.0 (the solver; we took the algorithm, not its code) | idea | `aav_track`'s `qp.py` and its Rust port in `aav_mpc_lag` (`qp.rs`, 15 Nov) |
+| **Clarabel** (P. Goulart, Y. Chen; Oxford) | Apache-2.0 | idea | read and weighed for `aav_mpc_lag`'s QP (15 Nov); we kept our ADMM for its warm start and the same answers as the Python (`aav_mpc_lag` README) |
 | **Flow matching** and the diffusion planner's other ideas | see `aav_diffusion_planner/PROVENANCE.md` | idea | `planner:=diffusion` |
 
 ## Where the car is

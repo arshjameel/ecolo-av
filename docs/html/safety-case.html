@@ -242,9 +242,9 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
 <td>7</td>
 <td>Steering stuck or off centre</td>
 <td>driver-fault brake; calibration</td>
-<td>stuck in a bend: <strong>nothing noticed</strong>, 3.1 m off</td>
+<td>stuck in a bend: the watchdog's STUCK after 3.6 s, stood after 5 s (was: nothing noticed, 3.1 m off)</td>
 <td>sim</td>
-<td>❌</td>
+<td>🟡</td>
 </tr>
 <tr>
 <td>8</td>
@@ -772,6 +772,11 @@ brake does with no power (<a href="esp32-safety.html">ESP32 safety</a>, row 7; t
 <td>the steering actuator's ends and centre, <code>steering_limits</code></td>
 <td><a href="actuator-tests.html#find-the-steering-actuators-ends-and-centre">actuator tests</a></td>
 </tr>
+<tr>
+<td>Watchdog (STUCK)</td>
+<td>the steering asked against measured: over 0.15 rad apart for 1 s latches STUCK and holds the programs (TODO 207)</td>
+<td><code>aav_safety</code> <code>watchdog.py</code>, input <code>steering</code></td>
+</tr>
 </tbody>
 </table></div>
 <div class="table-wrap"><table>
@@ -793,11 +798,16 @@ brake does with no power (<a href="esp32-safety.html">ESP32 safety</a>, row 7; t
 <td>sim (ours), 15 Nov, 1 run</td>
 <td>Ben</td>
 </tr>
+<tr>
+<td>the same with the watchdog's STUCK (TODO 207): <strong>noticed 3.6 s after</strong>, the car stood 5 s after; drove 3.9 m, up to 1.3 m off</td>
+<td>sim (ours), 15 Nov, 1 run</td>
+<td>Ben</td>
+</tr>
 </tbody>
 </table></div>
-<p><strong>Gap:</strong> nothing in ROS notices a steering actuator that doesn't follow its command: the
-follower just tries again. <code>/vehicle/steering</code> carries both the command and the measured
-angle, so a watchdog could compare them (not built).</p>
+<p><strong>Gap:</strong> on the car today the measured side is NaN (the 2025-26 uplink has no steering
+feedback, Q2), so the check stays silent there until the steering's position is read;
+its 0.15 rad and 1 s are the sim's, not tuned on the car.</p>
 </section>
 <section class="card"><h2 id="8-a-weak-brake">8. A weak brake</h2>
 <div class="table-wrap"><table>
@@ -1110,7 +1120,7 @@ measurement.</p>
 <td>67, A7</td>
 </tr>
 <tr>
-<td>Nothing notices a steering actuator that doesn't follow; nothing but the e-stop and the drag stops a dead brake</td>
+<td>A steering actuator that doesn't follow is noticed in the sim only (no feedback on the car yet); nothing but the e-stop and the drag stops a dead brake</td>
 <td>7, 8</td>
 <td>159</td>
 </tr>

@@ -313,6 +313,12 @@ impl SpeedLoop {
         }
     }
 
+    /// The PI's integral (throttle, 0..its ceiling): for a model that predicts the loop
+    /// from where it is now (aav_mpc_lag's estimate). 0 under the LQI.
+    pub fn integral(&self) -> f32 {
+        self.integral
+    }
+
     pub fn reset(&mut self) {
         self.integral = 0.0;
         self.lqi_integral = 0.0;

@@ -18,6 +18,7 @@ The launch files use this so the car's measurements live in one file:
     vehicle.ego_params(vehicle.load())          # ego: the whole file (the actuators too)
     vehicle.track_params(nav2, cfg, ego, max_speed)  # aav_track: a trial tracker (tracker:=)
     vehicle.mppi_lag_params(nav2, cfg, ego, max_speed, reversing, lane)  # aav_mppi_lag's
+    vehicle.mpc_lag_rs_params(nav2, cfg, ego, max_speed)  # aav_mpc_lag's (tracker:=mpc_lag_rs)
     vehicle.centre_of_mass(v, front, rear, front_lifted, lift)   # from the scales (M7, M7b)
     vehicle.wheel_angles(v, centre)  # each front wheel's angle for a centre (bicycle) angle
     vehicle.centre_angle(v, inner, outer)       # the reverse: from M5's two measured angles
@@ -318,12 +319,15 @@ DEFAULT_CONTROLLER = 'mppi'
 # FollowPath with tracker:=<name>. 'none' keeps controller_server (CONTROLLERS) following.
 # Apart from CONTROLLERS, not in it: nav2_tuned treats anything not mppi as RPP.
 # mppi_lag is aav_mppi_lag's node (Rust), not aav_track's: Nav2's MPPI ported, on a car
-# model with the actuators' lag (docs/mppi-lag.md).
-TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag')
+# model with the actuators' lag (docs/mppi-lag.md). mpc_lag_rs is aav_mpc_lag's node (Rust):
+# aav_track's mpc_lag ported, a challenger beside it (TODO 132, 199).
+TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag',
+            'mpc_lag_rs')
 DEFAULT_TRACKER = 'none'
-# The trackers that drive forwards only (aav_track's): refused with reversing:=true.
-# mppi_lag reverses as Nav2's MPPI does (Ben, 14 Nov: "The car can reverse").
-FORWARD_ONLY_TRACKERS = ('pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag')
+# The trackers that drive forwards only (aav_track's, and mpc_lag_rs): refused with
+# reversing:=true. mppi_lag reverses as Nav2's MPPI does (Ben, 14 Nov: "The car can reverse").
+FORWARD_ONLY_TRACKERS = ('pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag',
+                         'mpc_lag_rs')
 
 
 def check_tracker(tracker, reversing=False):
@@ -696,6 +700,25 @@ MPPI_LAG_ACTUATORS = ('max_accel', 'throttle_deadband', 'throttle_lag', 'max_bra
                       'brake_lag', 'drag', 'steer_rate', 'steer_lag', 'steer_offset',
                       'steer_deadband', 'throttle_dead_time', 'brake_dead_time',
                       'steer_dead_time')
+# aav_track's parameters mpc_lag_rs (aav_mpc_lag) doesn't take: pure pursuit's lookahead.
+MPC_LAG_RS_UNUSED = ('lookahead_min', 'lookahead_max', 'lookahead_time')
+
+
+def mpc_lag_rs_params(nav2, cfg, ego=None, max_speed=None):
+    """
+    Return aav_mpc_lag's parameters: aav_track's (track_params), and the car's actuators.
+
+    The same speed, checks and steering limits as the Python mpc_lag gets, so the two race
+    on the same terms; vehicle.yaml's actuators as actuators.<key> (MPPI_LAG_ACTUATORS, the
+    dead times 0 when unset), where aav_track reads the file itself.
+    """
+    params = {k: v for k, v in track_params(nav2, cfg, ego, max_speed).items()
+              if k not in MPC_LAG_RS_UNUSED}
+    act = cfg['actuators']
+    params.update({f'actuators.{k}': float(act.get(k, 0.0)) for k in MPPI_LAG_ACTUATORS})
+    return params
+
+
 # nav2.yaml's MPPI settings it takes under the same name, and their types.
 MPPI_LAG_SAME = {'time_steps': int, 'model_dt': float, 'batch_size': int,
                  'iteration_count': int, 'temperature': float, 'gamma': float,
