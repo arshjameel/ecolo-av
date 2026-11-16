@@ -62,6 +62,7 @@ pub struct Road {
 
 impl Road {
     /// Every lane, both ways.
+    #[must_use]
     pub fn lane_count(&self) -> u32 {
         if self.lanes > 0 {
             self.lanes
@@ -72,6 +73,7 @@ impl Road {
 
     /// The car's lane: its centre (m right of the road's centre, the way the car drives)
     /// and its width. One lane: 0 and the whole painted width (`lane_map.py` lane_offset).
+    #[must_use]
     pub fn lane(&self) -> (f64, f64) {
         let painted = self.width - 2.0 * self.edge_inset;
         let n = self.lane_count();
@@ -165,6 +167,10 @@ pub struct Lanes {
 
 impl Lanes {
     /// The lane map, checked. Every segment starts [`Way::Unknown`].
+    ///
+    /// # Errors
+    ///
+    /// [`LaneError`] for a bad road or a bad ramp.
     pub fn new(roads: Vec<Road>, ramp: Ramp) -> Result<Self, LaneError> {
         for r in &roads {
             let finite = r.points.iter().all(|p| p.0.is_finite() && p.1.is_finite());
@@ -193,16 +199,19 @@ impl Lanes {
     }
 
     /// The roads.
+    #[must_use]
     pub fn roads(&self) -> &[Road] {
         &self.roads
     }
 
     /// The ramp.
+    #[must_use]
     pub fn ramp(&self) -> Ramp {
         self.ramp
     }
 
     /// The way the newest route drives segment `segment` of road `road`.
+    #[must_use]
     pub fn way(&self, road: usize, segment: usize) -> Option<Way> {
         self.ways.get(road)?.get(segment).copied()
     }
@@ -296,6 +305,7 @@ impl Lanes {
 
     /// The cost `s` m right of a road's centre line (as drawn), driven `way`; None past
     /// the off-road band.
+    #[must_use]
     pub fn cost_across(&self, road: &Road, s: f64, way: Way) -> Option<u8> {
         match way {
             Way::Along => self.profile(road, s),

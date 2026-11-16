@@ -44,6 +44,7 @@ impl fmt::Display for Stale {
 
 impl Arrival {
     /// Nothing has arrived yet.
+    #[must_use]
     pub const fn new() -> Self {
         Self { at: None }
     }
@@ -54,16 +55,19 @@ impl Arrival {
     }
 
     /// When it last arrived.
+    #[must_use]
     pub fn at(&self) -> Option<f64> {
         self.at
     }
 
     /// s since it last arrived; `None` if it never did.
+    #[must_use]
     pub fn age(&self, now: f64) -> Option<f64> {
         self.at.map(|at| now - at)
     }
 
     /// Fresh enough to act on: arrived within `limit` s of `now`.
+    #[must_use]
     pub fn fresh(&self, now: f64, limit: f64) -> bool {
         self.age(now).is_some_and(|age| age <= limit)
     }
@@ -71,6 +75,10 @@ impl Arrival {
     /// Nav2's wait for a current input, for a job that began at `since`: the time waited
     /// counts from its last arrival or from `since`, whichever is later, so a job gets
     /// `limit` s for its first input. `Err` once that is over `limit`.
+    ///
+    /// # Errors
+    ///
+    /// [`Stale`], with how long it waited, once that is over `limit`.
     pub fn check(&self, now: f64, since: f64, limit: f64) -> Result<(), Stale> {
         let from = self.at.map_or(since, |at| at.max(since));
         let waited = now - from;
@@ -98,6 +106,7 @@ pub struct PoseHistory {
 
 impl PoseHistory {
     /// Keeps `kept` s of poses.
+    #[must_use]
     pub fn new(kept: f64) -> Self {
         Self {
             poses: VecDeque::new(),
@@ -121,6 +130,7 @@ impl PoseHistory {
     }
 
     /// The newest pose and its stamp.
+    #[must_use]
     pub fn latest(&self) -> Option<(f64, Pose2)> {
         self.poses.back().copied()
     }
@@ -133,6 +143,7 @@ impl PoseHistory {
     /// The pose at stamp `t`: between the two nearest, or the nearest end if `t` is
     /// within `tolerance` s past it (as tf2 with Nav2's `transform_tolerance`). `None`
     /// further out: no pose is known for that time.
+    #[must_use]
     pub fn at(&self, t: f64, tolerance: f64) -> Option<Pose2> {
         let (first, last) = (self.poses.front()?, self.poses.back()?);
         if t <= first.0 {

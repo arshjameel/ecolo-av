@@ -11,6 +11,7 @@ pub const NO_INFORMATION: u8 = 255;
 
 /// The `OccupancyGrid` value for a cost, as Nav2's `Costmap2DPublisher` writes it:
 /// 0 free, 99 inscribed, 100 lethal, -1 unknown, 1..98 in between.
+#[must_use]
 pub fn occupancy(cost: u8) -> i8 {
     match cost {
         FREE => 0,

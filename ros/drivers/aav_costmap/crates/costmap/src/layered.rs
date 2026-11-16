@@ -68,6 +68,7 @@ pub enum Changed {
 impl Costmap {
     /// A costmap with these obstacle layers (their grids are resized to fit). A fixed one
     /// is empty until it has a map.
+    #[must_use]
     pub fn new(settings: Settings, layers: Vec<ObstacleLayer>) -> Self {
         let (inscribed, _) = footprint::radii(&settings.footprint);
         let inflation = settings.inflation.map(|(radius, scaling)| Inflation {
@@ -115,6 +116,7 @@ impl Costmap {
     }
 
     /// The lanes layer, if on.
+    #[must_use]
     pub fn lanes(&self) -> Option<&Lanes> {
         self.lanes.as_ref().map(|(l, _)| l)
     }
@@ -150,21 +152,25 @@ impl Costmap {
     }
 
     /// The settings.
+    #[must_use]
     pub fn settings(&self) -> &Settings {
         &self.settings
     }
 
     /// The obstacle layers.
+    #[must_use]
     pub fn layers(&self) -> &[ObstacleLayer] {
         &self.layers
     }
 
     /// The newest grid.
+    #[must_use]
     pub fn grid(&self) -> &Grid {
         &self.master
     }
 
     /// The inscribed radius (m) and the inflation, if any.
+    #[must_use]
     pub fn inflation(&self) -> Option<&Inflation> {
         self.inflation.as_ref()
     }
@@ -193,6 +199,7 @@ impl Costmap {
     }
 
     /// Has it a map (or needs none)?
+    #[must_use]
     pub fn ready(&self) -> bool {
         self.settings.rolling || self.map.is_some()
     }

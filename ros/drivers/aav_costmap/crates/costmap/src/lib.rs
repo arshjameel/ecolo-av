@@ -15,6 +15,9 @@
 //! The node (`costmap-node`) only moves messages in and out of a [`Costmap`].
 
 #![forbid(unsafe_code)]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod age;
 pub mod cost;

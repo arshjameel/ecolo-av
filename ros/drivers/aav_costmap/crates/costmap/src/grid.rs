@@ -36,6 +36,7 @@ pub struct Bounds {
 
 impl Bounds {
     /// One cell.
+    #[must_use]
     pub fn cell(cx: usize, cy: usize) -> Self {
         Self {
             x0: cx,
@@ -46,6 +47,7 @@ impl Bounds {
     }
 
     /// The smallest rectangle holding both.
+    #[must_use]
     pub fn union(self, other: Self) -> Self {
         Self {
             x0: self.x0.min(other.x0),
@@ -56,6 +58,7 @@ impl Bounds {
     }
 
     /// Grown by `cells` on every side, cut to a `width` x `height` grid.
+    #[must_use]
     pub fn grown(self, cells: usize, width: usize, height: usize) -> Self {
         Self {
             x0: self.x0.saturating_sub(cells),
@@ -66,11 +69,13 @@ impl Bounds {
     }
 
     /// Columns.
+    #[must_use]
     pub fn width(&self) -> usize {
         self.x1.saturating_sub(self.x0)
     }
 
     /// Rows.
+    #[must_use]
     pub fn height(&self) -> usize {
         self.y1.saturating_sub(self.y0)
     }
@@ -85,6 +90,7 @@ impl Bounds {
 }
 
 /// The union of two optional areas.
+#[must_use]
 pub fn union(a: Option<Bounds>, b: Option<Bounds>) -> Option<Bounds> {
     match (a, b) {
         (Some(a), Some(b)) => Some(a.union(b)),
@@ -94,6 +100,7 @@ pub fn union(a: Option<Bounds>, b: Option<Bounds>) -> Option<Bounds> {
 
 impl Grid {
     /// A grid with every cell `fill`.
+    #[must_use]
     pub fn new(origin: (f64, f64), resolution: f64, width: usize, height: usize, fill: u8) -> Self {
         Self {
             origin_x: origin.0,
@@ -106,6 +113,7 @@ impl Grid {
     }
 
     /// The same size and place, every cell `fill`.
+    #[must_use]
     pub fn like(&self, fill: u8) -> Self {
         Self::new(
             (self.origin_x, self.origin_y),
@@ -117,11 +125,13 @@ impl Grid {
     }
 
     /// The index of cell (cx, cy) in `data`.
+    #[must_use]
     pub fn index(&self, cx: usize, cy: usize) -> usize {
         cy * self.width + cx
     }
 
     /// The cost of cell (cx, cy).
+    #[must_use]
     pub fn get(&self, cx: usize, cy: usize) -> u8 {
         self.data[self.index(cx, cy)]
     }
@@ -133,6 +143,7 @@ impl Grid {
     }
 
     /// The cell holding (x, y), or `None` outside (Nav2's `worldToMap`).
+    #[must_use]
     pub fn cell(&self, x: f64, y: f64) -> Option<(usize, usize)> {
         if x < self.origin_x || y < self.origin_y {
             return None;
@@ -143,6 +154,7 @@ impl Grid {
     }
 
     /// The centre of cell (cx, cy) (Nav2's `mapToWorld`).
+    #[must_use]
     pub fn centre(&self, cx: usize, cy: usize) -> (f64, f64) {
         (
             self.origin_x + (cx as f64 + 0.5) * self.resolution,
@@ -151,6 +163,7 @@ impl Grid {
     }
 
     /// The cells in `b`, as a grid of their own (its corner on the same ground).
+    #[must_use]
     pub fn crop(&self, b: Bounds) -> Self {
         let mut data = Vec::with_capacity(b.width() * b.height());
         for row in self
@@ -182,6 +195,7 @@ impl Grid {
     }
 
     /// The cost at (x, y); `outside` off the grid.
+    #[must_use]
     pub fn cost_at(&self, x: f64, y: f64, outside: u8) -> u8 {
         self.cell(x, y).map_or(outside, |(cx, cy)| self.get(cx, cy))
     }
@@ -189,6 +203,7 @@ impl Grid {
     /// Nav2's IsPathValid (planner_server, `consider_footprint` false): the indices, from
     /// `from` on, of the points whose cell is lethal or inside the car's inscribed circle.
     /// A point off the grid can't be judged and is skipped, as Nav2's.
+    #[must_use]
     pub fn blocked_along(&self, points: &[(f64, f64)], from: usize) -> Vec<usize> {
         points
             .iter()
@@ -203,6 +218,7 @@ impl Grid {
     }
 
     /// The far corner, m.
+    #[must_use]
     pub fn end(&self) -> (f64, f64) {
         (
             self.origin_x + self.width as f64 * self.resolution,
@@ -211,6 +227,7 @@ impl Grid {
     }
 
     /// A distance in whole cells, rounded up (Nav2's `cellDistance`).
+    #[must_use]
     pub fn cell_distance(&self, metres: f64) -> usize {
         (metres / self.resolution).ceil().max(0.0) as usize
     }

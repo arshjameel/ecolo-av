@@ -33,6 +33,7 @@ pub struct Source {
 
 impl Source {
     /// Nav2's defaults (marking and clearing, 0-2 m high, 0-2.5 m marks, 0-3 m clears).
+    #[must_use]
     pub fn named(name: &str) -> Self {
         Self {
             name: name.to_owned(),
@@ -61,6 +62,7 @@ pub struct Observation {
 /// A laser scan's points in its own frame, as Nav2 gets them: with `inf_is_valid` an inf
 /// range becomes a point just short of `range_max` (clears, never marks past the marking
 /// range); NaN and ranges outside [range_min, range_max) are dropped.
+#[must_use]
 pub fn scan_points(
     angle_min: f64,
     angle_increment: f64,
@@ -95,6 +97,7 @@ pub const VIEW_STEP: f64 = 0.5 * std::f64::consts::PI / 180.0;
 /// Its rays clear what an earlier frame marked; give a `range` past the source's
 /// `obstacle_max_range` and they never mark (a scan's inf with `inf_is_valid`, for a
 /// radar: TODO 193, a box taken away stayed in the radar's layer for ever).
+#[must_use]
 pub fn view_points(points: &[[f64; 3]], view_angle: f64, range: f64) -> Vec<[f64; 3]> {
     if view_angle <= 0.0 || range <= 0.0 {
         return Vec::new();
@@ -140,6 +143,7 @@ pub struct ObstacleLayer {
 
 impl ObstacleLayer {
     /// A layer with an empty grid of the master's size.
+    #[must_use]
     pub fn new(name: &str, sources: Vec<Source>, like: &Grid, track_unknown: bool) -> Self {
         let default = if track_unknown { NO_INFORMATION } else { FREE };
         Self {
