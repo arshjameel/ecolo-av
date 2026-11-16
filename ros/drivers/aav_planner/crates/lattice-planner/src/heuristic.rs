@@ -64,6 +64,7 @@ impl Obstacles {
     /// Start a new search from the goal's cell, aimed at the start's. `downsample`: search
     /// a grid of 2 x 2 blocks, each as cheap as its cheapest cell, and double the answer
     /// (Nav2's Hybrid-A* does, by default: a quarter of the cells, the same paths).
+    #[must_use]
     pub fn new(
         grid: &Grid,
         start: (usize, usize),
@@ -190,6 +191,7 @@ pub struct DistanceTable {
 
 impl DistanceTable {
     /// `size_cells`: the table's width (made odd); `radius`: the turning radius in cells.
+    #[must_use]
     pub fn new(kind: CurveKind, radius: f64, headings: &[f64], size_cells: usize) -> Self {
         let size = (size_cells as i64) | 1;
         let half = size / 2;
@@ -216,6 +218,7 @@ impl DistanceTable {
     /// The estimate from a node (cells, a heading) to the goal (cells, a heading). The
     /// lattice gives its node's whole cell, Hybrid-A* its node's own pose (as Nav2's do).
     /// Off the table: the curve itself if `obstacles` is 0, else 0 (Nav2's choice).
+    #[must_use]
     pub fn get(&self, node: (f64, f64, usize), goal: (f64, f64, usize), obstacles: f32) -> f32 {
         let n = self.headings.len();
         let (s, c) = self.headings[goal.2].sin_cos();

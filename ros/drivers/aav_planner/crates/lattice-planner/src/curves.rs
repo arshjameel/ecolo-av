@@ -13,8 +13,11 @@ use crate::Pose;
 /// One piece of a curve.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Piece {
+    /// An arc to the left.
     Left,
+    /// A straight.
     Straight,
+    /// An arc to the right.
     Right,
 }
 
@@ -30,17 +33,21 @@ pub enum CurveKind {
 /// A curve: pieces with signed lengths in radii (negative: backwards).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Curve {
+    /// Each piece, and its signed length in radii.
     pub pieces: Vec<(Piece, f64)>,
+    /// The turning radius, in the poses' units.
     pub radius: f64,
 }
 
 impl Curve {
     /// The length driven, in the poses' units.
+    #[must_use]
     pub fn length(&self) -> f64 {
         self.radius * self.pieces.iter().map(|(_, l)| l.abs()).sum::<f64>()
     }
 
     /// The pose a fraction `t` (0 to 1) of the way along, starting at `from`.
+    #[must_use]
     pub fn sample(&self, from: &Pose, t: f64) -> Pose {
         let total: f64 = self.pieces.iter().map(|(_, l)| l.abs()).sum();
         let mut left = t.clamp(0.0, 1.0) * total;
@@ -78,6 +85,7 @@ impl Curve {
 }
 
 /// An angle in (-pi, pi].
+#[must_use]
 pub fn wrap(a: f64) -> f64 {
     let v = a.rem_euclid(TAU);
     if v > PI {
@@ -88,6 +96,7 @@ pub fn wrap(a: f64) -> f64 {
 }
 
 /// The shortest curve from `from` to `to` at `radius` (> 0).
+#[must_use]
 pub fn shortest(kind: CurveKind, from: &Pose, to: &Pose, radius: f64) -> Curve {
     match kind {
         CurveKind::Dubins => dubins(from, to, radius),
@@ -96,6 +105,7 @@ pub fn shortest(kind: CurveKind, from: &Pose, to: &Pose, radius: f64) -> Curve {
 }
 
 /// Every candidate curve (for the tests: each must end on the goal).
+#[must_use]
 pub fn candidates(kind: CurveKind, from: &Pose, to: &Pose, radius: f64) -> Vec<Curve> {
     let words = match kind {
         CurveKind::Dubins => {

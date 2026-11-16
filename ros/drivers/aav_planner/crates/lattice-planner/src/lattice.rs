@@ -14,6 +14,7 @@ pub struct Primitive {
     pub start_heading: usize,
     /// The heading it ends on.
     pub end_heading: usize,
+    /// It turns left.
     pub left_turn: bool,
     /// m driven.
     pub length: f64,
@@ -26,6 +27,7 @@ pub struct Primitive {
 
 impl Primitive {
     /// The end point, m from the start.
+    #[must_use]
     pub fn end(&self) -> (f64, f64) {
         self.poses.last().map_or((0.0, 0.0), |p| (p.0, p.1))
     }
@@ -64,6 +66,10 @@ fn number(v: &Value, key: &str) -> Result<f64, LatticeError> {
 
 impl Lattice {
     /// Read the file's text.
+    ///
+    /// # Errors
+    ///
+    /// [`LatticeError`] if it isn't a primitives file this planner can use.
     pub fn parse(text: &str) -> Result<Self, LatticeError> {
         let json: Value =
             serde_json::from_str(text).map_err(|e| LatticeError(format!("not JSON: {e}")))?;
@@ -135,6 +141,11 @@ impl Lattice {
     /// heading's moves backwards, which are Nav2's `REVERSE`, `REV_LEFT` and `REV_RIGHT`.
     ///
     /// Each move has one pose, its end: Hybrid-A* checks the car only where a move ends.
+    ///
+    /// # Errors
+    ///
+    /// [`LatticeError`] for an odd or too small `bins`, or a `radius` or `resolution`
+    /// not above 0.
     pub fn hybrid(
         radius: f64,
         bins: usize,
@@ -212,6 +223,7 @@ impl Lattice {
     }
 
     /// The heading index nearest an angle (Nav2's `getClosestAngularBin`).
+    #[must_use]
     pub fn nearest_heading(&self, yaw: f64) -> usize {
         self.headings
             .iter()
@@ -221,6 +233,7 @@ impl Lattice {
     }
 
     /// The heading facing the other way.
+    #[must_use]
     pub fn opposite(&self, heading: usize) -> usize {
         (heading + self.headings.len() / 2) % self.headings.len()
     }

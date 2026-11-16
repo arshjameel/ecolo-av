@@ -15,6 +15,9 @@
 //!            │  moves: lattice.rs        fits?: collision.rs        how far?: heuristic.rs
 //!            │  (the file, or Lattice::hybrid's arcs)
 //! ```
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod collision;
 pub mod curves;
@@ -41,12 +44,17 @@ use search::Search;
 /// A pose: x, y (m or cells), yaw (rad).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Pose {
+    /// m.
     pub x: f64,
+    /// m.
     pub y: f64,
+    /// rad, + left of x.
     pub yaw: f64,
 }
 
 impl Pose {
+    /// A pose at (`x`, `y`), facing `yaw`.
+    #[must_use]
     pub const fn new(x: f64, y: f64, yaw: f64) -> Self {
         Self { x, y, yaw }
     }
@@ -61,6 +69,7 @@ pub struct Settings {
     pub allow_unknown: bool,
     /// m: a path ending this close to the goal will do, if the goal can't be reached.
     pub tolerance: f64,
+    /// The most nodes a search expands.
     pub max_iterations: usize,
     /// Iterations to keep looking once within the tolerance.
     pub max_on_approach_iterations: usize,
@@ -68,24 +77,35 @@ pub struct Settings {
     pub max_planning_time: f64,
     /// Iterations between checks of the clock and of a cancel.
     pub terminal_checking_interval: usize,
+    /// Nav2's: a backward move costs this many times its length.
     pub reverse_penalty: f64,
+    /// Nav2's: a change of turn (left to right, say) costs this.
     pub change_penalty: f64,
     /// m of straight driving a change between forward and back costs (ours, not Nav2's:
     /// Nav2 prices a backward move, never the stop and start between gears). 0: Nav2's
     /// way. TODO 174: a 6.5 m street's turn planned 6 cusps.
     pub cusp_penalty: f64,
+    /// Nav2's: a turning move costs this many times its length.
     pub non_straight_penalty: f64,
+    /// Nav2's: how much the costmap's cost weighs.
     pub cost_penalty: f64,
+    /// Nav2's: a nudge toward turning later rather than sooner.
     pub retrospective_penalty: f64,
+    /// Nav2's: a turn on the spot (no Ackermann car makes one).
     pub rotation_penalty: f64,
+    /// Nav2's: how often to try a curve straight to the goal, nearer the goal more often.
     pub analytic_expansion_ratio: f64,
     /// m.
     pub analytic_expansion_max_length: f64,
+    /// Nav2's: such a curve may cross no cell dearer than this.
     pub analytic_expansion_max_cost: f64,
+    /// Nav2's: near the goal, `analytic_expansion_max_cost` is let off.
     pub analytic_expansion_max_cost_override: bool,
     /// m: the side of the curve-length table round the goal.
     pub lookup_table_size: f64,
+    /// Smooth the search's path.
     pub smooth_path: bool,
+    /// The smoother's settings.
     pub smoother: SmootherSettings,
 }
 
@@ -120,6 +140,7 @@ impl Default for Settings {
 impl Settings {
     /// nav2.yaml's Hybrid-A* block (`GridBased`, SmacPlannerHybrid): its penalties differ
     /// from the lattice's (no change penalty, a dearer turn).
+    #[must_use]
     pub fn hybrid() -> Self {
         Self {
             change_penalty: 0.0,
@@ -146,6 +167,7 @@ pub struct Hybrid {
 
 impl Hybrid {
     /// nav2.yaml's block for a car turning at `minimum_turning_radius` m.
+    #[must_use]
     pub fn new(minimum_turning_radius: f64) -> Self {
         Self {
             minimum_turning_radius,
@@ -159,13 +181,19 @@ impl Hybrid {
 /// Why there is no path (Nav2's `ComputePathToPose` error codes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlanError {
+    /// The start is off the costmap.
     StartOutsideMap,
+    /// The goal is off the costmap.
     GoalOutsideMap,
+    /// The car at the start hits something.
     StartOccupied,
+    /// The car at the goal would hit something.
     GoalOccupied,
     /// Out of time or iterations.
     Timeout,
+    /// The search ran out of places to try.
     NoValidPath,
+    /// Cancelled by the caller.
     Cancelled,
     /// The costmap's cells aren't the primitives file's.
     WrongResolution,
@@ -197,13 +225,16 @@ pub struct Plan {
     pub poses: Vec<Pose>,
     /// The search's poses, before smoothing.
     pub raw: Vec<Pose>,
+    /// How many nodes the search expanded.
     pub iterations: usize,
     /// s of wall time: the search, and the whole plan with smoothing.
     pub search_time: f64,
+    /// s of wall time for the whole plan.
     pub total_time: f64,
 }
 
 /// The moves and the tables made from them, for one size of cell.
+#[derive(Debug)]
 struct Tables {
     lattice: Lattice,
     checker: Checker,
@@ -236,6 +267,7 @@ impl Tables {
 }
 
 /// Where the moves come from.
+#[derive(Debug)]
 enum Moves {
     /// The primitives file: made for one size of cell.
     Lattice(Arc<Tables>),
@@ -248,6 +280,7 @@ enum Moves {
 }
 
 /// The planner: the moves, the car, and the tables built once.
+#[derive(Debug)]
 pub struct Planner {
     settings: Settings,
     outline: Vec<(f64, f64)>,
@@ -261,6 +294,7 @@ impl Planner {
     /// base_link), already padded. `inflation`: the costmap's inflation settings (its cost
     /// at the circumscribed radius lets most poses skip the outline check); None if the
     /// costmap has none.
+    #[must_use]
     pub fn new(
         lattice: Lattice,
         settings: Settings,
@@ -281,6 +315,10 @@ impl Planner {
     /// Hybrid-A* (Nav2's SmacPlannerHybrid), its tables made for `resolution` m cells (the
     /// global costmap's; another costmap's makes them again). Reeds-Shepp if
     /// `settings.allow_reverse`, else Dubins.
+    ///
+    /// # Errors
+    ///
+    /// [`LatticeError`] if the spec can't make moves (see [`Lattice::hybrid`]).
     pub fn hybrid(
         spec: Hybrid,
         settings: Settings,
@@ -308,6 +346,8 @@ impl Planner {
         })
     }
 
+    /// The settings it plans with.
+    #[must_use]
     pub fn settings(&self) -> &Settings {
         &self.settings
     }
@@ -386,6 +426,10 @@ impl Planner {
 
     /// Plan from `start` to `goal` (world poses on `grid`'s frame). `cancelled` is asked
     /// now and then; true stops the search.
+    ///
+    /// # Errors
+    ///
+    /// [`PlanError`]: why there is no path.
     pub fn plan(
         &self,
         grid: &Grid,
@@ -479,6 +523,10 @@ impl Planner {
     /// for `ComputePathThroughPoses`: one plan a leg, each leg starting at the last goal,
     /// joined into one path. On a failure, the leg's number (0 = start to the first goal)
     /// and why. No goals: [`PlanError::NoValidPath`] on leg 0.
+    ///
+    /// # Errors
+    ///
+    /// The failed leg's number and its [`PlanError`].
     pub fn plan_through(
         &self,
         grid: &Grid,
@@ -523,6 +571,7 @@ fn curve_kind(settings: &Settings) -> CurveKind {
 }
 
 /// A path's length, m.
+#[must_use]
 pub fn length(poses: &[Pose]) -> f64 {
     poses
         .windows(2)
@@ -575,6 +624,7 @@ fn tightest_in(poses: &[Pose], span: f64) -> f64 {
 }
 
 /// How many times a path changes direction (forward to reverse or back).
+#[must_use]
 pub fn cusps(poses: &[Pose]) -> usize {
     poses
         .windows(3)

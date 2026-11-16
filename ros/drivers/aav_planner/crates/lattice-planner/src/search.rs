@@ -61,7 +61,9 @@ impl Ord for Open {
 /// What the search found: the poses in cells (yaw in radians), start first.
 #[derive(Debug, Clone)]
 pub struct Found {
+    /// The path, start first.
     pub poses: Vec<Pose>,
+    /// How many nodes the search expanded.
     pub iterations: usize,
 }
 
@@ -81,18 +83,28 @@ pub enum Expansion {
 /// (`FORWARD`, `LEFT`, `RIGHT`, `REVERSE`, `REV_LEFT`, `REV_RIGHT`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Turn {
+    /// Straight on.
     Straight,
+    /// Turning left.
     Left,
+    /// Turning right.
     Right,
 }
 
 /// The things a search needs that don't change between plans.
+#[derive(Debug)]
 pub struct Search<'a> {
+    /// The moves.
     pub lattice: &'a Lattice,
+    /// The penalties and limits.
     pub settings: &'a Settings,
+    /// The car against the costmap.
     pub checker: &'a Checker,
+    /// The obstacle-free distance estimate.
     pub distances: &'a DistanceTable,
+    /// Dubins or Reeds-Shepp, for the analytic expansion.
     pub kind: CurveKind,
+    /// The lattice's moves, or Hybrid-A*'s.
     pub expansion: Expansion,
 }
 
@@ -150,6 +162,11 @@ impl State<'_> {
 
 impl Search<'_> {
     /// Search from `start` to `goal`, both in cells with lattice headings.
+    ///
+    /// # Errors
+    ///
+    /// [`PlanError`]: the start or goal off the map or occupied, out of time, cancelled,
+    /// or no path.
     pub fn run(
         &self,
         grid: &Grid,

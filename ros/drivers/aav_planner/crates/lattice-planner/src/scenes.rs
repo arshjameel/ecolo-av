@@ -12,11 +12,19 @@ use crate::{Hybrid, Lattice, Planner, Pose, Settings};
 pub const CAR: [(f64, f64); 4] = [(1.8, 0.5), (1.8, -0.5), (-0.2, -0.5), (-0.2, 0.5)];
 /// nav2.yaml's global costmap.
 pub const PADDING: f64 = 0.05;
+/// The global costmap's cells (m).
 pub const RESOLUTION: f64 = 0.25;
+/// Its inflation's reach (m).
 pub const INFLATION_RADIUS: f64 = 3.0;
+/// Its inflation's cost scaling factor.
 pub const COST_SCALING: f64 = 1.0;
 
 /// Our lattice file (aav_navigation's config/lattice_ackermann.json).
+///
+/// # Panics
+///
+/// If the file is missing from the repo, or bad: a test fixture.
+#[must_use]
 pub fn lattice() -> Lattice {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -26,10 +34,14 @@ pub fn lattice() -> Lattice {
     Lattice::parse(&text).expect("a good lattice file")
 }
 
+/// The car's outline, padded as nav2.yaml pads it.
+#[must_use]
 pub fn outline() -> Vec<(f64, f64)> {
     footprint::padded(&CAR, PADDING)
 }
 
+/// nav2.yaml's global inflation, for our car.
+#[must_use]
 pub fn inflation() -> Inflation {
     Inflation {
         inflation_radius: INFLATION_RADIUS,
@@ -39,6 +51,7 @@ pub fn inflation() -> Inflation {
 }
 
 /// A planner as navigation.launch.py starts ours.
+#[must_use]
 pub fn planner(reversing: bool) -> Planner {
     let settings = Settings {
         allow_reverse: reversing,
@@ -49,6 +62,11 @@ pub fn planner(reversing: bool) -> Planner {
 
 /// Hybrid-A* as navigation.launch.py starts ours with `planner_search:=hybrid`: nav2.yaml's
 /// `GridBased` block, at the lattice file's radius (both are vehicle.plan_turning_radius).
+///
+/// # Panics
+///
+/// As [`lattice`], or if that block's settings were bad: a test fixture.
+#[must_use]
 pub fn hybrid_planner(reversing: bool) -> Planner {
     let settings = Settings {
         allow_reverse: reversing,
@@ -62,6 +80,7 @@ pub fn hybrid_planner(reversing: bool) -> Planner {
 /// `measure controllers --tours lot`: the start, then each leg's goal (x, y, heading
 /// degrees), on `example_lot`.
 pub const LOT_START: Pose = Pose::new(0.0, 0.0, 0.0);
+/// The lot tour's legs: a name, then the goal (x, y, heading degrees).
 pub const LOT_TOUR: [(&str, f64, f64, f64); 4] = [
     ("a left turn", 15.0, 15.0, 90.0),
     ("round the building", 35.0, 42.0, 0.0),
@@ -72,6 +91,10 @@ pub const LOT_TOUR: [(&str, f64, f64, f64); 4] = [
 /// aav_navigation's map `name` (`maps/<name>.pgm`, binary P5, with `example_lot.yaml`'s
 /// 0.25 m cells and origin (-10, -10)), read as map_server's trinary mode does (occupied
 /// above 0.65, free under 0.25, else unknown), then inflated as nav2.yaml's global costmap.
+///
+/// # Errors
+///
+/// Why the map's files can't be read.
 pub fn map(name: &str) -> Result<Grid, String> {
     let path = format!(
         "{}/../../../aav_navigation/maps/{name}.pgm",
@@ -83,6 +106,7 @@ pub fn map(name: &str) -> Result<Grid, String> {
 /// `measure controllers --tours campus`: the start (lot P4, `maps/campus/place.yaml`), then each leg's goal (x, y,
 /// heading degrees), on `pixi run campus`'s map.
 pub const CAMPUS_START: Pose = Pose::new(49.25, -70.75, 0.0);
+/// The campus tour's legs: a name, then the goal (x, y, heading degrees).
 pub const CAMPUS_TOUR: [(&str, f64, f64, f64); 3] = [
     ("out of the lot", 73.0, -38.0, 45.0),
     ("along the road", 165.0, -111.0, -40.0),
@@ -91,7 +115,11 @@ pub const CAMPUS_TOUR: [(&str, f64, f64, f64); 3] = [
 
 /// The campus map (`pixi run campus`: `maps/campus/campus.pgm`, 0.25 m cells, origin
 /// (-900, -900)), cut to the campus tour's area, x -60..260 m and y -260..60 m, and
-/// inflated as nav2.yaml's global costmap. An error if the map isn't made yet.
+/// inflated as nav2.yaml's global costmap.
+///
+/// # Errors
+///
+/// Why not, if the map isn't made yet (`pixi run campus`) or can't be read.
 pub fn campus() -> Result<Grid, String> {
     let path = format!(
         "{}/../../../../../maps/campus/campus.pgm",
@@ -182,6 +210,7 @@ pub const ROAD_WIDTH: f64 = 6.5;
 /// A straight road `length` m long, `ROAD_WIDTH` wide, at `angle` (rad) from (10, 10): walls
 /// everywhere further than half the width from its centre line, inflated. At an angle
 /// between two of the lattice's headings its plan is a staircase (TODO 168).
+#[must_use]
 pub fn angled_road(angle: f64, length: f64) -> Grid {
     let (w, h) = (length + 20.0, length * angle.sin().abs() + 30.0);
     let r = RESOLUTION;
@@ -200,12 +229,19 @@ pub fn angled_road(angle: f64, length: f64) -> Grid {
 
 /// One scene: a map, a start, a goal, and whether a path must exist with and without
 /// reversing.
+#[derive(Debug)]
 pub struct Scene {
+    /// For the test's message.
     pub name: &'static str,
+    /// The inflated map.
     pub grid: Grid,
+    /// Where the car starts.
     pub start: Pose,
+    /// Where it is to go.
     pub goal: Pose,
+    /// A forward-only plan must exist.
     pub forward_ok: bool,
+    /// A plan with reversing must exist.
     pub reverse_ok: bool,
 }
 
@@ -238,6 +274,7 @@ fn inflated(mut grid: Grid) -> Grid {
 }
 
 /// The scenes.
+#[must_use]
 pub fn all() -> Vec<Scene> {
     let mut out = Vec::new();
 
