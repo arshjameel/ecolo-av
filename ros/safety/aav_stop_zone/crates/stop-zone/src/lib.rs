@@ -17,6 +17,9 @@
 //! and `Source::sourceValid`. Only the `stop` action: our config uses no other.
 //!
 //! Units: m, rad, s; `base_link` (x forward, y left). A command's `x` is m/s, `turn` rad/s.
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 use std::fmt;
 use std::ops::RangeInclusive;
@@ -24,11 +27,15 @@ use std::ops::RangeInclusive;
 /// A point on the ground, `base_link` (m).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
+    /// m, + forward.
     pub x: f64,
+    /// m, + left.
     pub y: f64,
 }
 
 impl Point {
+    /// The point (`x`, `y`).
+    #[must_use]
     pub const fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
@@ -37,13 +44,18 @@ impl Point {
 /// A drive command: forward speed (m/s, negative reversing) and turn rate (rad/s).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Command {
+    /// m/s, negative reversing.
     pub x: f64,
+    /// rad/s, + left.
     pub turn: f64,
 }
 
 impl Command {
+    /// Standing still.
     pub const STOP: Command = Command { x: 0.0, turn: 0.0 };
 
+    /// Both zero.
+    #[must_use]
     pub fn is_zero(&self) -> bool {
         self.x == 0.0 && self.turn == 0.0
     }
@@ -55,6 +67,7 @@ pub struct Polygon(pub Vec<Point>);
 
 impl Polygon {
     /// Is `p` inside? Ray crossing (Shimrat 1962), as Nav2's `isPointInside`.
+    #[must_use]
     pub fn contains(&self, p: Point) -> bool {
         let corners = &self.0;
         let mut inside = false;
@@ -76,9 +89,13 @@ impl Polygon {
 /// One box and the commands it is for (Nav2's `velocity_polygons` entry, not holonomic).
 #[derive(Debug, Clone, PartialEq)]
 pub struct SpeedBand {
+    /// Its name in nav2.yaml.
     pub name: String,
+    /// The box, in `base_link`.
     pub polygon: Polygon,
+    /// The forward speeds it is for (m/s).
     pub speed: RangeInclusive<f64>,
+    /// The turn rates it is for (rad/s).
     pub turn: RangeInclusive<f64>,
 }
 
@@ -94,24 +111,36 @@ pub enum SourceKind {
     /// A laser scan: points on its plane, no height filter.
     Scan,
     /// A point cloud: points kept between these heights in `base_link` (m).
-    Cloud { min_height: f64, max_height: f64 },
+    Cloud {
+        /// m.
+        min_height: f64,
+        /// m.
+        max_height: f64,
+    },
 }
 
 /// Where a sensor sits in `base_link`: (x, y, z) m and its yaw (rad). The sensors we use
 /// are level; roll and pitch are left out.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Mount {
+    /// m, + forward.
     pub x: f64,
+    /// m, + left.
     pub y: f64,
+    /// m, + up.
     pub z: f64,
+    /// rad, + left.
     pub yaw: f64,
 }
 
 /// One sensor the zone watches.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Source {
+    /// Its name in nav2.yaml.
     pub name: String,
+    /// A scan or a cloud.
     pub kind: SourceKind,
+    /// Where it sits on the car.
     pub mount: Mount,
     /// m from the sensor: closer points are its own clutter (clouds only).
     pub min_range: f64,
@@ -120,13 +149,16 @@ pub struct Source {
 /// A sensor's newest reading: its stamp (s) and its points in its own frame (m).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Reading {
+    /// s.
     pub stamp: f64,
+    /// x, y, z (m), in the sensor's frame.
     pub points: Vec<[f64; 3]>,
 }
 
 /// The zone's settings (nav2.yaml's `collision_monitor`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Settings {
+    /// The boxes, each for its commands.
     pub bands: Vec<SpeedBand>,
     /// Points in the box, all sensors together, that stop the car.
     pub min_points: usize,
@@ -140,9 +172,17 @@ pub struct Settings {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Why {
     /// This many points in the box `band`.
-    Points { band: String, count: usize },
+    Points {
+        /// The box.
+        band: String,
+        /// The points in it.
+        count: usize,
+    },
     /// A sensor has sent nothing, or nothing new enough.
-    Silent { source: String },
+    Silent {
+        /// The sensor.
+        source: String,
+    },
 }
 
 impl fmt::Display for Why {
@@ -168,9 +208,11 @@ pub struct Decision {
 /// Why the settings can't make a zone.
 #[derive(Debug, Clone, PartialEq)]
 pub enum SettingsError {
+    /// No box at all.
     NoBands,
     /// A box with fewer than three corners.
     BadBox(String),
+    /// `min_points` is 0: the car would always stop.
     ZeroMinPoints,
 }
 
@@ -197,6 +239,11 @@ pub struct StopZone {
 }
 
 impl StopZone {
+    /// A zone for these settings, watching `sources`.
+    ///
+    /// # Errors
+    ///
+    /// [`SettingsError`] for no box, a box under three corners, or `min_points` 0.
     pub fn new(settings: Settings, sources: Vec<Source>) -> Result<Self, SettingsError> {
         if settings.bands.is_empty() {
             return Err(SettingsError::NoBands);
@@ -216,6 +263,8 @@ impl StopZone {
         })
     }
 
+    /// The sensors it watches.
+    #[must_use]
     pub fn sources(&self) -> &[Source] {
         &self.sources
     }

@@ -16,3 +16,4 @@ Russia), https://github.com/ros-planning/navigation2.git at
 ## Changes since
 
 - 15 Nov 2026 (Ben): ported; the decision only, with its own tests (TODO 182).
+- 2026-11-15 (TODO 176): the Rust API Guidelines pass: `#[must_use]` on pure functions, doc comments, `Debug`, and the lints that keep them; no change in behaviour.
