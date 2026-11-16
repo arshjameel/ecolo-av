@@ -163,6 +163,10 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           centre, routed along its roads, our lattice joining the car and
                           the goal to it; off it (the lot), the lattice alone. Empty (the
                           default): off
+  lane_pass:=false        with lane_route: something parked on the lane line gives the
+                          whole path to the lattice, as before 16 Nov. true (the default):
+                          only the blocked stretch moves left, the least that clears it,
+                          then back (aav_planner pass.rs)
   things:=true            (with lidar:=true) aav_things' things node: voxels' cubes grouped
                           into things, each followed by a Kalman filter and remembered a few
                           seconds unseen, on /world/things (and /world/things/markers); the
@@ -621,6 +625,8 @@ def nodes(context):
             settings = vehicle.planner_params(tuned, v, costmap, search, yaml.safe_load(f))
         if lane_route:
             settings['lanes'] = lane_map.costmap_block(lane_map.load(lane_route))
+            settings['lanes']['pass'] = LaunchConfiguration('lane_pass').perform(
+                context).strip().lower() != 'false'
         topic, updates, latched = vehicle.GLOBAL_COSTMAP_TOPICS[costmap]
         actions.append(Node(
             package='aav_planner', executable='planner', name='planner', output='screen',
@@ -946,6 +952,10 @@ def generate_launch_description():
                               description='with planner:=own: a lanes.yaml; the path is the '
                                           "right lane's centre along it, the lattice joining "
                                           'the ends (TODO 148, path:=lane); empty: off'),
+        DeclareLaunchArgument('lane_pass', default_value='true',
+                              description='with lane_route: true, a parked obstacle on the '
+                                          'lane is passed by moving only its stretch left; '
+                                          'false: the whole path is the lattice\'s'),
         DeclareLaunchArgument('things', default_value='false',
                               description='true (with lidar:=true): aav_things, the cubes as '
                                           'tracked things on /world/things (voxels runs too)'),

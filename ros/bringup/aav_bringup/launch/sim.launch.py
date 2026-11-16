@@ -150,6 +150,9 @@ bench's argument names:
                       centre, the lattice joining the car and the goal to it; off the map,
                       or a world with none (the test lot), the lattice alone.
                       Empty: the stack's choice (on in stack:=ours, else off)
+  lane_pass:=false    with lane_route: a parked obstacle on the lane line gives the whole
+                      path to the lattice (before 16 Nov); true (the default): only the
+                      blocked stretch moves left, the least that clears it, then back
   things:=true        the lidar's cubes as things with an id, a speed and a memory, on
                       /world/things (aav_things; voxels runs for it): only with nav:=true
                       and the lidar. Nothing reads the list yet
@@ -586,7 +589,7 @@ def launch_setup(context):
                                lane_map=lane_map, lane_costs=lane_costs,
                                # Every model of the car predicts the loop it runs (TODO 163).
                                speed_loop=speed_loop,
-                               lane_route=lane_route))
+                               lane_route=lane_route, lane_pass=arg('lane_pass')))
     if ndt:
         # Scored only (measure controllers --ndt), unless ndt_ekf:=true: then ekf_global
         # reads its pose (measure controllers --ndt-ekf scores the difference).
@@ -943,6 +946,10 @@ def generate_launch_description():
                                           "the right lane's centre along the lane map, "
                                           'planner:=own (TODO 148); false: none. Empty: '
                                           "the stack's choice (on in ours)"),
+        DeclareLaunchArgument('lane_pass', default_value='true',
+                              description='with lane_route: true, a parked obstacle is '
+                                          'passed by moving only its stretch left; false: '
+                                          "the whole path is the lattice's (before 16 Nov)"),
         DeclareLaunchArgument('navigator', default_value=stacks.CHOSEN,
                               description="own (aav_navigator, in bt_navigator's place; "
                                           'docs/own-navigator.md) or nav2. Empty: the '

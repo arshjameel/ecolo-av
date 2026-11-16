@@ -25,7 +25,9 @@
 //!                                         own goes to /drivers/nav/planner/nav2_plan)
 //!             drivers/nav/planner/status  diagnostic_msgs/DiagnosticStatus, one a plan: the
 //!                                         times, iterations, length, cusps, error; with
-//!                                         a lane map, "how": lane, or lattice and why;
+//!                                         a lane map, "how": lane, pass (and pass_m:
+//!                                         how far left round a parked obstacle), or
+//!                                         lattice and why;
 //!                                         "cut": the goal was off the costmap
 //!             drivers/nav/planner/route   nav_msgs/Path: the route level's whole way to the
 //!                                         goal with each plan (the lane line, or the
@@ -47,7 +49,8 @@
 //!             With "lanes" in settings (navigation.launch.py lane_route:=, path:=lane), the
 //!             lane-centre planner (lattice_planner::lane): the right lane's centre along
 //!             the lane map, the lattice joining the car and the goal to it; off the map,
-//!             the lattice alone.
+//!             the lattice alone. "lanes"."pass": false (lane_pass:=false): a blocked
+//!             lane line is the lattice's, not passed.
 //!
 //! A goal off the costmap (a global costmap made of the chunks round the car): the path
 //! goes as far as the way there stays on it (lattice_planner::steps), and the navigator's
@@ -138,7 +141,15 @@ fn main() -> Result<()> {
         Value::Null => None,
         block => Some(Arc::new(LaneRouter::new(
             roads_from_json(block).map_err(|e| anyhow!("lanes: {e}"))?,
-            LaneSettings::default(),
+            // lane_pass:=false: a blocked lane line is the lattice's, as before 16 Nov.
+            LaneSettings {
+                pass: if block["pass"].as_bool().unwrap_or(true) {
+                    LaneSettings::default().pass
+                } else {
+                    None
+                },
+                ..LaneSettings::default()
+            },
         ))),
     };
     let lanes_through = lanes.clone();
