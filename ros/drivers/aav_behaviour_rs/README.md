@@ -88,8 +88,23 @@ picture's stamp (`PROVENANCE.md`, "Where it differs").
 
 ## Measured
 
-See TODO 185 and `docs/features.md`'s row: CPU in our simulator's road world, Python
-against Rust, and the sim checks run with it.
+Our simulator's road world, headless (`pixi run sim-check --with clock_hz:=100`, through
+`tools/ros.sh --local`; `stack:=ours`, so the behaviour planner runs), Ben's MacBook (M4
+Max), 16 Nov. CPU: the node's CPU seconds a second over the same 28 s of the run, sampled
+with `ps` every 2 s.
+
+| `/clock` 100 Hz | Python `behaviour` | Rust `behaviour` |
+|---|---|---|
+| share of a core | **9.0 %** | **1.3 %** |
+
+| sim-check, `behaviour_impl:=` | Python | Rust |
+|---|---|---|
+| the road world (start-up, the graph against the contract, sensors, lidar, the scripted drive, the EKF, wheels) | pass | pass |
+| scripted drive | 5.83 m (plan 6.5), +0.00 m to the side | the same |
+| `--behaviour-only`: an obstacle (the stop zone), then a Nav2 goal | pass: 0.93 m short, states DRIVE > APPROACH(obstacle) > WAIT(obstacle) > GO(obstacle) > DRIVE > APPROACH(goal), lowest cap 0.3; goal 0.92 m off | pass: the same distance and states; goal 0.90 m off |
+| `--behaviour-things-only`: a parked box with the things | fail once (the load was 9.4: the box flickered into APPROACH(obstacle)) | pass: no wait for the parked box, 0.46 m clear |
+
+The Python's one fail was on a busy computer (load 9 on 16 cores); it isn't the port's.
 
 ## Side Effects
 

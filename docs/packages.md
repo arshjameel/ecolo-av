@@ -38,6 +38,7 @@ each one's README has its topics.
 | `aav_smoother` | drivers | our own velocity smoother in Rust (`smoother:=own`): the turn rate from where the wheels can be | built 8 Nov; a trial ([its page](own-smoother.md)) | new |
 | `aav_diffusion_planner` | drivers | a trial planner (`planner:=diffusion`): a model draws paths, a guard checks them, the lattice's path otherwise | built 2 Nov; a trial, off by default ([Trials](trials.md)) | new |
 | `aav_behaviour` | drivers | the behaviour planner, a trial (`behaviour:=true`): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK, and a speed cap on Nav2 | built 7 Nov; off by default ([How the car stops](stopping.md)) | new |
+| `aav_behaviour_rs` | drivers | `behaviour` in Rust, a challenger beside `aav_behaviour`'s (`behaviour_impl:=rust`): the same topics and answers | [[works]] against the Python's answers, and in our simulator | new: a port of `aav_behaviour` |
 | `aav_command_mux` | command_mux | twist_mux: the priorities, the e-stop lock and the other locks | [[works]] | new |
 | `aav_io_mux` | io_mux | the sensor mux and the output mux: simulated data never drives the real car | [[works]] turtle, Gazebo and the bench; [[untested]] on the car | new |
 | `aav_ego` | ego | one command → speed and steering the car can do | [[works]] | new |
