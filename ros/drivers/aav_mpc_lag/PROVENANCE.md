@@ -25,3 +25,4 @@ for errors, `Result`, a sparse-row matrix for the QP's constraints. No outside c
 |---|---|
 | 15 Nov | `qp.rs` keeps A by rows, only its non-zeros (the Python's is dense): the same iterations, less work each |
 | 15 Nov | The node forgets the estimate when a path starts with none running (the car was held since the last), where the Python carries it on |
+| 15 Nov | TODO 176: the Rust API Guidelines pass: `#[must_use]` on pure functions, doc comments, `Debug`, and the lints that keep them; no change in behaviour |

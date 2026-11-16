@@ -77,14 +77,23 @@ impl std::error::Error for LoopError {}
 /// The spine's PI speed loop, its gains in f64 (spine-core keeps them in f32).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PiLoop {
+    /// Throttle (0..1) per m/s of speed error.
     pub kp: f64,
+    /// Throttle per (m/s x s) of accumulated error.
     pub ki: f64,
+    /// The integral's ceiling (throttle).
     pub integral_limit: f64,
+    /// The share of the target the P term sees (0..1): 1 is a plain PI.
     pub setpoint_weight: f64,
+    /// How the integral is kept from winding up.
     pub anti_windup: AntiWindup,
+    /// Brake (0..1) per m/s of overspeed beyond `coast_band`.
     pub brake_gain: f64,
+    /// Overspeed (m/s) handled by coasting before the brake is used.
     pub coast_band: f64,
+    /// Below this |speed| (m/s) the car counts as stopped.
     pub stopped_speed: f64,
+    /// Brake held while stopped with a zero target.
     pub hold_brake: f64,
 }
 
@@ -95,11 +104,19 @@ fn widen(x: f32) -> f64 {
 
 impl PiLoop {
     /// A spine-core profile's PI; the LQI is refused.
+    ///
+    /// # Errors
+    ///
+    /// [`LoopError::Lqi`] for the LQI.
     pub fn from_profile(profile: SpeedLoopProfile) -> Result<Self, LoopError> {
         Self::from_config(&profile.config())
     }
 
     /// A spine-core config's PI; the LQI is refused.
+    ///
+    /// # Errors
+    ///
+    /// [`LoopError::Lqi`] for the LQI.
     pub fn from_config(c: &SpeedLoopConfig) -> Result<Self, LoopError> {
         if let SpeedLaw::Lqi(_) = c.law {
             return Err(LoopError::Lqi);
@@ -118,6 +135,7 @@ impl PiLoop {
     }
 
     /// (throttle, brake, integral): the spine's PI, forward only (lag_model.pedals).
+    #[must_use]
     pub fn pedals(&self, target: f64, measured: f64, integral: f64, dt: f64) -> (f64, f64, f64) {
         if target <= 0.0 {
             // A stop: brake until stopped, then hold (the spine's rule: never coast).
@@ -160,11 +178,13 @@ impl PiLoop {
 }
 
 /// `min(max(x, lo), hi)`, as numpy's clip.
+#[must_use]
 pub fn clip(x: f64, lo: f64, hi: f64) -> f64 {
     x.max(lo).min(hi)
 }
 
 /// The share of the way a first-order lag moves in `dt`: `1 - exp(-dt / tau)`.
+#[must_use]
 pub fn lag_factor(dt: f64, tau: f64) -> f64 {
     if tau <= 0.0 {
         1.0
@@ -174,11 +194,13 @@ pub fn lag_factor(dt: f64, tau: f64) -> f64 {
 }
 
 /// Whole ticks of a dead time: `floor(t / period + 0.5)`, as the shared car model rounds.
+#[must_use]
 pub fn dead_ticks(dead_time: f64, period: f64) -> usize {
     (dead_time / period + 0.5).floor().max(0.0) as usize
 }
 
 /// The numbers with every lag and dead time `k` times longer.
+#[must_use]
 pub fn lags_scaled(car: &ActuatorConfig, k: f64) -> ActuatorConfig {
     ActuatorConfig {
         throttle_lag: k * car.throttle_lag,
@@ -192,6 +214,7 @@ pub fn lags_scaled(car: &ActuatorConfig, k: f64) -> ActuatorConfig {
 }
 
 /// The numbers with no deadbands: for a plan, whose gradients they'd flatten.
+#[must_use]
 pub fn without_deadbands(car: &ActuatorConfig) -> ActuatorConfig {
     ActuatorConfig {
         throttle_deadband: 0.0,
@@ -201,6 +224,7 @@ pub fn without_deadbands(car: &ActuatorConfig) -> ActuatorConfig {
 }
 
 /// The numbers with no dead times: the tracker keeps those itself, a tick at a time.
+#[must_use]
 pub fn without_dead_times(car: &ActuatorConfig) -> ActuatorConfig {
     ActuatorConfig {
         throttle_dead_time: 0.0,
@@ -212,6 +236,7 @@ pub fn without_dead_times(car: &ActuatorConfig) -> ActuatorConfig {
 
 /// The state `dt` later, in `substeps` equal steps. `kappa`: the path's curvature here
 /// (1/m, + left), held over the step.
+#[must_use]
 pub fn step(
     car: &ActuatorConfig,
     lp: &PiLoop,

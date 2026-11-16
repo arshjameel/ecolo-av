@@ -15,6 +15,7 @@
 use std::f64::consts::PI;
 
 /// The angle in [-pi, pi), as Python's `(a + pi) % (2 pi) - pi`.
+#[must_use]
 pub fn wrap(angle: f64) -> f64 {
     (angle + PI).rem_euclid(2.0 * PI) - PI
 }
@@ -66,11 +67,19 @@ pub struct Path {
 impl Path {
     /// The planner's (x, y, yaw) poses; repeated points are dropped. Curvature over
     /// +-0.5 m, as path.py's default.
+    ///
+    /// # Errors
+    ///
+    /// [`PathError::Empty`] for no poses; [`PathError::NotANumber`] for a NaN.
     pub fn new(poses: &[(f64, f64, f64)]) -> Result<Self, PathError> {
         Self::with_bend(poses, 0.5)
     }
 
     /// As [`Path::new`], with the curvature measured over +-`bend` m.
+    ///
+    /// # Errors
+    ///
+    /// As [`Path::new`].
     pub fn with_bend(poses: &[(f64, f64, f64)], bend: f64) -> Result<Self, PathError> {
         let &(_, _, goal_yaw) = poses.last().ok_or(PathError::Empty)?;
         let mut points: Vec<(f64, f64)> = Vec::with_capacity(poses.len());
@@ -106,26 +115,31 @@ impl Path {
     }
 
     /// m from the start to the end.
+    #[must_use]
     pub fn length(&self) -> f64 {
         self.s[self.s.len() - 1]
     }
 
     /// The last point.
+    #[must_use]
     pub fn end(&self) -> (f64, f64) {
         self.points[self.points.len() - 1]
     }
 
     /// The goal's heading (the last pose's yaw).
+    #[must_use]
     pub fn goal_yaw(&self) -> f64 {
         self.goal_yaw
     }
 
     /// The points, repeated ones dropped.
+    #[must_use]
     pub fn points(&self) -> &[(f64, f64)] {
         &self.points
     }
 
     /// The same path with every pose moved by `f` (x, y, yaw), as the held map -> odom moves.
+    #[must_use]
     pub fn moved(&self, f: impl Fn(f64, f64, f64) -> (f64, f64, f64)) -> Self {
         let n = self.points.len();
         let poses: Vec<(f64, f64, f64)> = self
@@ -154,6 +168,7 @@ impl Path {
     }
 
     /// The point `s` m along; before the start or past the end, straight on.
+    #[must_use]
     pub fn point_at(&self, s: f64) -> (f64, f64) {
         let i = self.segment(s);
         let (x0, y0) = self.points[i];
@@ -163,11 +178,13 @@ impl Path {
     }
 
     /// The path's direction at `s`.
+    #[must_use]
     pub fn heading_at(&self, s: f64) -> f64 {
         self.headings[self.segment(s)]
     }
 
     /// The curvature at `s` (1/m, + left): the turn over +-bend m.
+    #[must_use]
     pub fn curvature_at(&self, s: f64) -> f64 {
         let a = (s - self.bend).max(0.0);
         let b = (s + self.bend).min(self.length());
@@ -179,6 +196,7 @@ impl Path {
 
     /// Where `p` is against the path, searching segments from `hint` on, `window` m. Past
     /// the last segment, the line straight on (so `s` may exceed the length).
+    #[must_use]
     pub fn project(&self, p: (f64, f64), hint: usize, window: f64) -> Foot {
         let last = self.headings.len() - 1;
         let hint = hint.min(last);
@@ -208,6 +226,7 @@ impl Path {
     }
 
     /// m from `s` to the end (negative past it).
+    #[must_use]
     pub fn left(&self, s: f64) -> f64 {
         self.length() - s
     }

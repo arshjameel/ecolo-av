@@ -177,8 +177,11 @@ impl From<qp::QpError> for TrackError {
 /// The car now: base_link in the path's frame, its speed, and the last steering asked.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Observed {
+    /// m.
     pub x: f64,
+    /// m.
     pub y: f64,
+    /// rad, + left of x.
     pub yaw: f64,
     /// m/s, + forward.
     pub v: f64,
@@ -212,6 +215,7 @@ pub struct Command {
     pub steer: f64,
     /// m/s: its own set speed.
     pub speed: f64,
+    /// What the tick saw and chose, for the status.
     pub report: Report,
 }
 
@@ -254,6 +258,10 @@ pub struct MpcLag {
 impl MpcLag {
     /// The tracker for this car (`car`: vehicle.yaml's actuators; its wheelbase and full
     /// lock are taken from `limits`).
+    ///
+    /// # Errors
+    ///
+    /// [`TrackError::Limits`], [`TrackError::Setting`] or [`TrackError::Loop`].
     pub fn new(
         limits: Limits,
         car: ActuatorConfig,
@@ -322,6 +330,7 @@ impl MpcLag {
     }
 
     /// The settings.
+    #[must_use]
     pub fn settings(&self) -> &Settings {
         &self.settings
     }
@@ -334,21 +343,25 @@ impl MpcLag {
     }
 
     /// Whole ticks of dead time: (steering, set speed).
+    #[must_use]
     pub fn dead_ticks(&self) -> (usize, usize) {
         (self.d_steer, self.d_speed)
     }
 
     /// The commands waiting in the dead times: (steering, set speed).
+    #[must_use]
     pub fn queued(&self) -> (usize, usize) {
         (self.steer_queue.len(), self.speed_queue.len())
     }
 
     /// What the last plan expects, a tick at a time: (e_y, e_theta, wheels, v).
+    #[must_use]
     pub fn predicted(&self) -> &[[f64; 4]] {
         &self.predicted
     }
 
     /// The path it follows.
+    #[must_use]
     pub fn path(&self) -> Option<&Path> {
         self.path.as_ref()
     }
@@ -607,6 +620,10 @@ impl MpcLag {
     }
 
     /// One tick: the steering and set speed to send now. `dt`: s since the last tick.
+    ///
+    /// # Errors
+    ///
+    /// [`TrackError::NoPath`] before a path; [`TrackError::Qp`] if the QP fails.
     pub fn step(&mut self, seen: &Observed, dt: f64) -> Result<Command, TrackError> {
         let t0 = Instant::now();
         let period = self.settings.period;

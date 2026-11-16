@@ -24,6 +24,9 @@
 //! let cmd = mpc.step(&Observed::default(), 0.05).unwrap();
 //! assert!(cmd.speed > 0.0 && cmd.steer.abs() < 1e-3);
 //! ```
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod model;
 pub mod path;

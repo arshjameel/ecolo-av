@@ -28,6 +28,7 @@ pub struct RowMatrix {
 
 impl RowMatrix {
     /// An empty matrix of `cols` columns; add rows with [`RowMatrix::push_row`].
+    #[must_use]
     pub fn new(cols: usize) -> Self {
         RowMatrix {
             cols,
@@ -49,11 +50,13 @@ impl RowMatrix {
     }
 
     /// How many rows.
+    #[must_use]
     pub fn rows(&self) -> usize {
         self.starts.len() - 1
     }
 
     /// How many columns.
+    #[must_use]
     pub fn cols(&self) -> usize {
         self.cols
     }
@@ -98,6 +101,7 @@ pub struct Settings {
     pub alpha: f64,
     /// Both residuals under this: solved.
     pub eps: f64,
+    /// The most iterations.
     pub max_iter: usize,
 }
 
@@ -116,9 +120,11 @@ impl Default for Settings {
 /// The answer.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Solution {
+    /// The minimiser.
     pub z: Vec<f64>,
     /// The constraints' multipliers, for a warm start.
     pub y: Vec<f64>,
+    /// The iterations it took.
     pub iterations: usize,
     /// Both residuals under eps.
     pub solved: bool,
@@ -186,6 +192,10 @@ fn is_close(a: f64, b: f64) -> bool {
 
 /// The QP's answer. `p`: n x n, row-major, symmetric positive semidefinite; `lo <= hi`.
 /// `z0`, `y0`: a warm start (zeros if `None`).
+///
+/// # Errors
+///
+/// [`QpError`]: the sizes don't fit, a bound is crossed, or P isn't convex.
 #[allow(clippy::too_many_arguments)]
 pub fn solve(
     p: &[f64],
