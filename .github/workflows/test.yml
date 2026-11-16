@@ -58,6 +58,23 @@ jobs:
           path: ~/.cache/rattler/cache/pkgs
           key: pixi-pkgs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
           restore-keys: pixi-pkgs-${{ runner.os }}-
+      # Rust (TODO 209): cargo's downloads and the release target folders colcon builds in
+      # (build/<package>/target), and tools/test.sh's own (ros/.../target, firmware/.../target),
+      # so a run rebuilds only our crates, not every dependency (the colcon build went from
+      # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
+      # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            build/*/target
+            ros/*/*/target
+            firmware/*/target
+            !**/target/*/incremental
+          key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
+          restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
       - name: pixi run test
         # A hung test fails the step (and so gets annotated) instead of the job being
         # cancelled at its limit with nothing to read; pytest prints every thread's stack
@@ -93,6 +110,23 @@ jobs:
           path: ~/Library/Caches/rattler/cache/pkgs
           key: pixi-pkgs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
           restore-keys: pixi-pkgs-${{ runner.os }}-
+      # Rust (TODO 209): cargo's downloads and the release target folders colcon builds in
+      # (build/<package>/target), and tools/test.sh's own (ros/.../target, firmware/.../target),
+      # so a run rebuilds only our crates, not every dependency (the colcon build went from
+      # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
+      # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            build/*/target
+            ros/*/*/target
+            firmware/*/target
+            !**/target/*/incremental
+          key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
+          restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
       - name: pixi run test
         # A hung test fails the step (and so gets annotated) instead of the job being
         # cancelled at its limit with nothing to read; pytest prints every thread's stack
@@ -133,6 +167,23 @@ jobs:
           # Not pixi-pkgs-Linux-*: the linux job's packages are x86_64.
           key: pixi-pkgs-arm64-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
           restore-keys: pixi-pkgs-arm64-${{ runner.os }}-
+      # Rust (TODO 209): cargo's downloads and the release target folders colcon builds in
+      # (build/<package>/target), and tools/test.sh's own (ros/.../target, firmware/.../target),
+      # so a run rebuilds only our crates, not every dependency (the colcon build went from
+      # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
+      # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            build/*/target
+            ros/*/*/target
+            firmware/*/target
+            !**/target/*/incremental
+          key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
+          restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
       - name: pixi run test
         timeout-minutes: 60
         env:

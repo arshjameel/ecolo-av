@@ -50,6 +50,8 @@ if command -v cargo >/dev/null; then
   (cd ros/drivers/aav_behaviour_rs && cargo test -q --locked -p behaviour-core)
   echo "== ros/safety/aav_watchdog_rs: the sensor watchdog in Rust, the Python node's answers"
   (cd ros/safety/aav_watchdog_rs && cargo test -q --locked -p watchdog-core)
+  echo "== ros/localization/aav_localization_health_rs: localization_health in Rust, the Python's answers"
+  (cd ros/localization/aav_localization_health_rs && cargo test -q --locked -p health-core)
   echo "== ros/can_bridge/aav_spine_bridge: the Rust CAN bridge's logic, the shared CAN vectors"
   (cd ros/can_bridge/aav_spine_bridge && cargo test -q --locked -p spine-bridge)
   echo "== ros/bringup/aav_description/car-model: the car model's Rust twin, the shared vectors"
@@ -66,8 +68,17 @@ if command -v cargo >/dev/null; then
   (cd ros/sim/aav_simulator && cargo test -q --locked -p sim-core --features shared)
   echo "== ros/sim/aav_spine_sim: bench mode's car: the spine's real logic on a model car"
   (cd ros/sim/aav_spine_sim && cargo test -q --locked -p bench-car)
-  echo "== ros/drivers/aav_mppi_lag: MPPI with the lag, its critics, the closed-loop runs"
-  (cd ros/drivers/aav_mppi_lag && cargo test -q --locked -p mppi-lag --features shared)
+  # The closed-loop runs (tests/closed_loop.rs) are the slowest Rust tests we have. Inside
+  # `pixi run test` (AAV_COLCON_TEST_FOLLOWS=1), colcon test runs the whole crate again in
+  # release, so they run once, there; alone, tools/test.sh runs them too (TODO 209).
+  if [[ ${AAV_COLCON_TEST_FOLLOWS:-0} == 1 ]]; then
+    echo "== ros/drivers/aav_mppi_lag: MPPI with the lag, its critics (closed loop: in colcon test)"
+    (cd ros/drivers/aav_mppi_lag && cargo test -q --locked -p mppi-lag --features shared \
+       --lib --test bag --test map_correction)
+  else
+    echo "== ros/drivers/aav_mppi_lag: MPPI with the lag, its critics, the closed-loop runs"
+    (cd ros/drivers/aav_mppi_lag && cargo test -q --locked -p mppi-lag --features shared)
+  fi
   echo "== ros/drivers/aav_mpc_lag: the lag-aware MPC in Rust, against the Python's vectors; closed loop"
   (cd ros/drivers/aav_mpc_lag && cargo test -q --locked -p mpc-lag)
   echo "== ros/drivers/aav_costmap: our own costmap's layers and hand-made scenes"
