@@ -373,6 +373,8 @@ pub struct Outputs {
     pub faults: u16,
 }
 
+/// The spine's whole state: feed it inputs, and each tick gives the outputs.
+#[derive(Debug)]
 pub struct Spine {
     cfg: SpineConfig,
     watchdog: Watchdog,

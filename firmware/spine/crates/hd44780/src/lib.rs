@@ -18,6 +18,7 @@ use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 
 /// The six pins. One type for all, as a HAL's plain output pin.
+#[derive(Debug)]
 pub struct Pins<P> {
     pub rs: P,
     pub e: P,
@@ -66,6 +67,7 @@ const COMMAND_US: u32 = 50;
 const CLEAR_US: u32 = 2_000;
 
 /// One HD44780 display.
+#[derive(Debug)]
 pub struct Hd44780<P, D> {
     pins: Pins<P>,
     delay: D,

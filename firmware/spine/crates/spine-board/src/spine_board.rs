@@ -39,6 +39,7 @@ const MAX_UART_READS: usize = 16;
 ///
 /// The computer's commands come through `L`: CAN by default ([`SpineBoard::new`]), or
 /// another [`CommandLink`] ([`SpineBoard::with_link`]).
+#[derive(Debug)]
 pub struct SpineBoard<B, I2C, U, L = CanLink> {
     board: B,
     uart: U,

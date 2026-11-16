@@ -178,6 +178,7 @@ impl Write for NoUplink {
     }
 }
 
+#[derive(Debug)]
 enum Decoder {
     V1(Parser),
     V2 {
@@ -227,6 +228,7 @@ enum Decoder {
 ///
 /// Version 4 frames (6 Nov) carry the car's wheel speed. It goes to the spine from every
 /// good frame, repeated counter or not: the Orin going quiet says nothing about the wheels.
+#[derive(Debug)]
 pub struct LegacyLink<U, T = NoUplink> {
     uart: U,
     tx: Option<T>,
