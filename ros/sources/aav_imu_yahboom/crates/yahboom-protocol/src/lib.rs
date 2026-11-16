@@ -9,6 +9,9 @@
 //! little-endian `i16` values, and a checksum: the low byte of the sum of the first ten
 //! bytes. The angle frame closes a set, so that is when a sample comes out.
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 use core::f64::consts::PI;
 
@@ -102,11 +105,13 @@ impl Decoder {
 }
 
 /// The low byte of the sum of `bytes`.
+#[must_use]
 pub fn checksum(bytes: &[u8]) -> u8 {
     bytes.iter().fold(0, |sum, &b| sum.wrapping_add(b))
 }
 
 /// Builds a valid frame, as the IMU would send it. For tests, and for faking the IMU.
+#[must_use]
 pub fn frame(kind: u8, values: [i16; 4]) -> [u8; FRAME_LEN] {
     let mut f = [0; FRAME_LEN];
     f[0] = HEADER;
