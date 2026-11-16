@@ -17,12 +17,14 @@ use crate::{
 /// Whether the speed buttons may drive, and how fast.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Gate {
+    /// The buttons may drive.
     On {
         /// m/s: the most the buttons ask for.
         cap: f64,
         /// The real car on stands: stop when the speed can't be seen (4 s).
         watch_unseen: bool,
     },
+    /// The buttons are off, and why.
     Off(Off),
 }
 
@@ -66,6 +68,7 @@ impl fmt::Display for Off {
 /// What the gate needs to know about the car.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Situation<'a> {
+    /// What `/system/source` says we're driving.
     pub kind: Kind,
     /// `--stands`: the wheels are off the ground.
     pub stands: bool,

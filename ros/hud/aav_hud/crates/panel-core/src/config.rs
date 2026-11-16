@@ -28,20 +28,35 @@ pub enum Topic {
     Buttons,
     /// Sent (true only) and read.
     Estop,
+    /// Read: twist_mux's output.
     Control,
+    /// Read: the geofence's lock.
     GeofenceLock,
+    /// Read: the legacy bridge's lock (no command timeout).
     NoTimeoutLock,
+    /// Read: `/system/source`.
     Source,
+    /// Read: the car's status.
     VehicleStatus,
+    /// Read: the steering actuator.
     Steering,
+    /// Read: the throttle.
     Throttle,
+    /// Read: the brake actuator.
     Brake,
+    /// Read: the wheel speeds.
     Wheels,
+    /// Read: the IMU.
     Imu,
+    /// Read: the GPS receiver's own fix.
     Gps,
+    /// Read (counted): the lidar.
     Lidar,
+    /// Read (counted): the radar.
     Radar,
+    /// Read (counted): the camera.
     Camera,
+    /// Read: the battery.
     Battery,
     /// Read: the steering actuator's raw counts and the firmware's calibration state.
     SteeringRaw,
@@ -125,18 +140,28 @@ impl Topic {
 /// Each number in the settings: all must be above 0.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Number {
+    /// `stale_after` (s).
     StaleAfter,
+    /// `speed_step` (m/s).
     SpeedStep,
+    /// `steer_step` (rad).
     SteerStep,
+    /// `creep` (m/s).
     Creep,
+    /// `sim_cap` (m/s).
     SimCap,
+    /// `stands_cap` (m/s).
     StandsCap,
+    /// `sweep_rate` (counts a second).
     SweepRate,
+    /// `sweep_stall` (s).
     SweepStall,
+    /// `easter_egg_after` (s).
     EasterEggAfter,
 }
 
 impl Number {
+    /// Every number.
     pub const ALL: [Number; 9] = [
         Number::StaleAfter,
         Number::SpeedStep,
@@ -149,6 +174,7 @@ impl Number {
         Number::EasterEggAfter,
     ];
 
+    /// Its parameter's name.
     #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
@@ -168,13 +194,18 @@ impl Number {
 /// Each count in the settings (the steering actuator's units, 0..4095): whole numbers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Count {
+    /// `jog_step`.
     JogStep,
+    /// `jog_min`.
     JogMin,
+    /// `jog_max`.
     JogMax,
+    /// `sweep_max_error`.
     SweepMaxError,
 }
 
 impl Count {
+    /// Every count.
     pub const ALL: [Count; 4] = [
         Count::JogStep,
         Count::JogMin,
@@ -182,6 +213,7 @@ impl Count {
         Count::SweepMaxError,
     ];
 
+    /// Its parameter's name.
     #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
@@ -196,30 +228,55 @@ impl Count {
 /// The settings.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct PanelConfig {
+    /// [`Topic::ScreenAlive`]'s topic.
     pub screen_alive_topic: String,
+    /// [`Topic::Buttons`]'s topic.
     pub buttons_topic: String,
+    /// [`Topic::Estop`]'s topic.
     pub estop_topic: String,
+    /// [`Topic::Control`]'s topic.
     pub control_topic: String,
+    /// [`Topic::GeofenceLock`]'s topic.
     pub geofence_lock_topic: String,
+    /// [`Topic::NoTimeoutLock`]'s topic.
     pub no_timeout_lock_topic: String,
+    /// [`Topic::Source`]'s topic.
     pub source_topic: String,
+    /// [`Topic::VehicleStatus`]'s topic.
     pub vehicle_status_topic: String,
+    /// [`Topic::Steering`]'s topic.
     pub steering_topic: String,
+    /// [`Topic::Throttle`]'s topic.
     pub throttle_topic: String,
+    /// [`Topic::Brake`]'s topic.
     pub brake_topic: String,
+    /// [`Topic::Wheels`]'s topic.
     pub wheels_topic: String,
+    /// [`Topic::Imu`]'s topic.
     pub imu_topic: String,
+    /// [`Topic::Gps`]'s topic.
     pub gps_topic: String,
+    /// [`Topic::Lidar`]'s topic.
     pub lidar_topic: String,
+    /// [`Topic::Radar`]'s topic.
     pub radar_topic: String,
+    /// [`Topic::Camera`]'s topic.
     pub camera_topic: String,
+    /// [`Topic::Battery`]'s topic.
     pub battery_topic: String,
+    /// [`Topic::SteeringRaw`]'s topic.
     pub steering_raw_topic: String,
+    /// [`Topic::SteeringCalibration`]'s topic.
     pub steering_calibration_topic: String,
+    /// [`Topic::CalibrationLine`]'s topic.
     pub calibration_line_topic: String,
+    /// [`Topic::EgoCommand`]'s topic.
     pub ego_command_topic: String,
+    /// [`Topic::CarCommand`]'s topic.
     pub car_command_topic: String,
+    /// [`Topic::LinkFrame`]'s topic.
     pub link_frame_topic: String,
+    /// [`Topic::UplinkHealth`]'s topic.
     pub uplink_health_topic: String,
     /// The ESP32's WebSocket for its status lines (`ws://...`); empty: not read. Read only.
     pub esp32_url: String,
@@ -240,6 +297,7 @@ pub struct PanelConfig {
     /// Counts: the calibration page's jog targets stay inside these (the firmware's
     /// software limits).
     pub jog_min: u16,
+    /// Counts: the highest jog target.
     pub jog_max: u16,
     /// Counts a second: the lock-to-lock check's speed.
     pub sweep_rate: f64,
@@ -259,16 +317,32 @@ pub struct PanelConfig {
 /// Why a settings file can't be used.
 #[derive(Debug, Error)]
 pub enum ConfigError {
+    /// The text isn't a hw_panel parameters file.
     #[error("not a hardware panel settings file (it needs hw_panel: ros__parameters: ...): {0}")]
     Yaml(#[from] serde_yaml_ng::Error),
+    /// A number isn't above 0: its name and value.
     #[error("{0} must be a number above 0, not {1}")]
     Number(&'static str, f64),
+    /// `stands_cap` is above `sim_cap`.
     #[error("stands_cap ({stands}) must not be above sim_cap ({sim})")]
-    Caps { stands: f64, sim: f64 },
+    Caps {
+        /// `stands_cap` (m/s).
+        stands: f64,
+        /// `sim_cap` (m/s).
+        sim: f64,
+    },
+    /// A count isn't 1 to 4095: its name and value.
     #[error("{0} must be a count from 1 to 4095, not {1}")]
     Count(&'static str, i64),
+    /// `jog_min` isn't below `jog_max`.
     #[error("jog_min ({min}) must be below jog_max ({max})")]
-    JogRange { min: u16, max: u16 },
+    JogRange {
+        /// `jog_min` (counts).
+        min: u16,
+        /// `jog_max` (counts).
+        max: u16,
+    },
+    /// `esp32_url` isn't a ws:// address.
     #[error("esp32_url: {0}")]
     Esp32Url(#[from] crate::ws::WsError),
 }
@@ -286,6 +360,10 @@ struct NodeSection {
 
 impl PanelConfig {
     /// Reads a ROS parameters file whose top key is `hw_panel`. Every setting must be there.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError`] if the text isn't a hw_panel parameters file, or a setting can't work.
     pub fn from_yaml(text: &str) -> Result<Self, ConfigError> {
         let file: ParamsFile = serde_yaml_ng::from_str(text)?;
         let config = file.hw_panel.params;
@@ -294,6 +372,10 @@ impl PanelConfig {
     }
 
     /// Checks the numbers. Call it after changing a setting by hand.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError`] for the first number, count, cap or address that can't work.
     pub fn validate(&self) -> Result<(), ConfigError> {
         if let Some(n) = Number::ALL
             .into_iter()
@@ -387,6 +469,7 @@ impl PanelConfig {
         *slot = name;
     }
 
+    /// One number's value.
     #[must_use]
     pub fn number(&self, n: Number) -> f64 {
         match n {
@@ -402,6 +485,7 @@ impl PanelConfig {
         }
     }
 
+    /// Sets a number (from a ROS parameter): call [`PanelConfig::validate`] after.
     pub fn set_number(&mut self, n: Number, value: f64) {
         let slot = match n {
             Number::StaleAfter => &mut self.stale_after,
@@ -417,6 +501,7 @@ impl PanelConfig {
         *slot = value;
     }
 
+    /// One count's value.
     #[must_use]
     pub fn count(&self, c: Count) -> u16 {
         match c {
@@ -428,6 +513,10 @@ impl PanelConfig {
     }
 
     /// Sets a count (from a ROS parameter, an i64): call [`PanelConfig::validate`] after.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError::Count`] if `value` doesn't fit in 0 to 65535.
     pub fn set_count(&mut self, c: Count, value: i64) -> Result<(), ConfigError> {
         let v = u16::try_from(value).map_err(|_| ConfigError::Count(c.parameter(), value))?;
         let slot = match c {
@@ -466,6 +555,10 @@ impl PanelConfig {
     }
 
     /// The ESP32's WebSocket, if one is set.
+    ///
+    /// # Errors
+    ///
+    /// [`crate::ws::WsError`] if `esp32_url` isn't a ws:// address.
     pub fn esp32(&self) -> Result<Option<crate::ws::Url>, crate::ws::WsError> {
         match self.esp32_url.trim() {
             "" => Ok(None),

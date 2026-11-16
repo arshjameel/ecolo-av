@@ -59,6 +59,7 @@ pub enum Press {
 /// Why the buttons were last zeroed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Zeroed {
+    /// An e-stop.
     Estop,
     /// Someone else drives: twist_mux passed another command.
     TakenOver,
@@ -107,6 +108,7 @@ pub struct Command {
 }
 
 impl Command {
+    /// Stand still, no turn.
     pub const ZERO: Self = Self {
         speed: 0.0,
         yaw_rate: 0.0,
@@ -130,6 +132,7 @@ impl Command {
 /// What the world says this frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct World<'a> {
+    /// Whether the speed buttons may drive, and how fast.
     pub gate: &'a Gate,
     /// `/safety/estop` true, or `/vehicle/status` says the e-stop is on.
     pub estop: bool,
@@ -157,6 +160,7 @@ pub struct Buttons {
 }
 
 impl Buttons {
+    /// The buttons at rest: nothing asked, GO not held.
     #[must_use]
     pub fn new(steps: Steps) -> Self {
         Self {

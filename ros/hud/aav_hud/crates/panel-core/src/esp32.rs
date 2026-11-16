@@ -23,8 +23,10 @@ pub const SCHEMA: u64 = 1;
 /// Why a line can't be read at all.
 #[derive(Debug, Error)]
 pub enum LineError {
+    /// The line isn't JSON.
     #[error("not JSON: {0}")]
     Json(#[from] serde_json::Error),
+    /// A key every line has is missing.
     #[error("no `{0}`: every line has t, schema, seq and up_ms")]
     Missing(&'static str),
 }
@@ -32,8 +34,11 @@ pub enum LineError {
 /// One line.
 #[derive(Debug, Clone, PartialEq)]
 pub enum StatusLine {
+    /// `hb`: the heartbeat.
     Heartbeat(Heartbeat),
+    /// `status`: what the board got and did.
     Status(Box<Status>),
+    /// `event`: what changed.
     Event(Event),
     /// A kind or a schema this panel doesn't know: its values are unknown.
     Unknown(Unknown),
@@ -55,8 +60,11 @@ impl StatusLine {
 /// A line this panel can't read the values of.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Unknown {
+    /// Its `t`.
     pub kind: String,
+    /// Its `schema`.
     pub schema: u64,
+    /// Its sequence number.
     pub seq: u64,
 }
 
@@ -77,14 +85,20 @@ impl fmt::Display for Unknown {
 /// `hb`, once a second.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Heartbeat {
+    /// The line's sequence number.
     pub seq: u64,
+    /// ms since the board started.
     pub up_ms: u64,
+    /// A new one at each start.
     #[serde(default)]
     pub boot_id: String,
+    /// The firmware's build.
     #[serde(default)]
     pub build: String,
+    /// The features built in.
     #[serde(default)]
     pub features: String,
+    /// Why the board last started.
     #[serde(default)]
     pub last_reset: String,
 }
@@ -94,22 +108,30 @@ pub struct Heartbeat {
 pub struct Rx {
     /// The frame's version.
     pub v: u8,
+    /// The frame's counter.
     pub counter: u8,
     /// The frame's last byte: with the counter, it tells frames apart.
     pub check: u8,
     /// -1..1, the frame's own values.
     pub steer: f64,
+    /// The speed, -1..1.
     pub speed: f64,
+    /// The acceleration, -1..1.
     pub accel: f64,
+    /// ms since the frame came.
     pub age_ms: u32,
 }
 
 /// What the firmware asked of each device.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub struct Out {
+    /// The steering actuator's target (counts).
     pub steer_counts: u16,
+    /// The brake actuator's target (counts).
     pub brake_counts: u16,
+    /// The throttle's DAC value.
     pub dac: u16,
+    /// The reverse relay is on.
     #[serde(default)]
     pub reverse: bool,
 }
@@ -117,24 +139,33 @@ pub struct Out {
 /// The lowest or highest of each since the last line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub struct Extremes {
+    /// The steering actuator's target (counts).
     pub steer_counts: u16,
+    /// The brake actuator's target (counts).
     pub brake_counts: u16,
+    /// The throttle's DAC value.
     pub dac: u16,
 }
 
 /// Each Jrk's position in counts, when known.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
 pub struct Positions {
+    /// The steering actuator's.
     pub steer: Option<u16>,
+    /// The brake actuator's.
     pub brake: Option<u16>,
 }
 
 /// The link's counts since boot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
 pub struct LinkCounts {
+    /// Frames that came.
     pub frames: u32,
+    /// Frames with a bad check.
     pub bad: u32,
+    /// Frames missed, by the counter.
     pub skipped: u32,
+    /// Frames that came twice.
     pub repeats: u32,
 }
 
@@ -142,10 +173,15 @@ pub struct LinkCounts {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BoardMode {
+    /// The computer drives.
     Computer,
+    /// The RC remote drives.
     Rc,
+    /// Stopped.
     Stopped,
+    /// A test drives.
     Test,
+    /// A mode this panel doesn't know.
     #[serde(other)]
     Other,
 }
@@ -165,34 +201,49 @@ impl fmt::Display for BoardMode {
 /// The board's state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub struct BoardState {
+    /// Who drives.
     pub mode: BoardMode,
+    /// The board is armed.
     pub armed: bool,
+    /// An e-stop is on.
     pub estop: bool,
+    /// The fault bits.
     pub faults: u16,
 }
 
 /// The tick's timing since boot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
 pub struct Tick {
+    /// The longest gap between ticks (us).
     pub worst_gap_us: u32,
+    /// Ticks that ran late.
     pub overruns: u32,
 }
 
 /// `status`, 5 to 20 times a second.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Status {
+    /// The line's sequence number.
     pub seq: u64,
+    /// ms since the board started.
     pub up_ms: u64,
     /// None before the first good frame.
     pub rx: Option<Rx>,
+    /// What it asked of each device.
     pub out: Out,
+    /// The lowest of each since the last line.
     pub low: Option<Extremes>,
+    /// The highest of each since the last line.
     pub high: Option<Extremes>,
+    /// Each Jrk's position.
     #[serde(default)]
     pub pos: Positions,
+    /// The link's counts.
     #[serde(default)]
     pub link: LinkCounts,
+    /// The board's state.
     pub state: BoardState,
+    /// The tick's timing.
     #[serde(default)]
     pub tick: Tick,
 }
@@ -200,16 +251,25 @@ pub struct Status {
 /// `event`: what changed.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Event {
+    /// The line's sequence number.
     pub seq: u64,
+    /// ms since the board started.
     pub up_ms: u64,
+    /// What changed.
     pub what: String,
+    /// What it was.
     #[serde(default)]
     pub from: String,
+    /// What it is now.
     #[serde(default)]
     pub to: String,
 }
 
 /// Reads one line. Blank lines are an error too: the caller skips them.
+///
+/// # Errors
+///
+/// [`LineError`] if the line isn't JSON, or a key every line has is missing.
 pub fn parse_line(line: &str) -> Result<StatusLine, LineError> {
     let value: Value = serde_json::from_str(line)?;
     let kind = value

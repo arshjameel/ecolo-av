@@ -25,6 +25,9 @@
 //!
 //! The E-STOP burst and the heartbeat that keeps the buttons to a live window are
 //! hud-core's (`estop`, `heartbeat`).
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod buttons;
 pub mod calibration;

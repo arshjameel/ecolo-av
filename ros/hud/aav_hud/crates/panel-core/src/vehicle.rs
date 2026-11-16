@@ -16,6 +16,7 @@ pub const BUILT_IN_YAML: &str =
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(from = "String")]
 pub enum SpeedWheels {
+    /// The front wheels: not driven.
     Front,
     /// The driven wheels: the car is rear-wheel drive.
     Rear,
@@ -79,6 +80,10 @@ struct VehicleFile {
 
 impl Vehicle {
     /// Reads `vehicle:` from a vehicle.yaml.
+    ///
+    /// # Errors
+    ///
+    /// serde's error if the text has no readable `vehicle:`.
     pub fn from_vehicle_yaml(text: &str) -> Result<Self, serde_yaml_ng::Error> {
         let file: VehicleFile = serde_yaml_ng::from_str(text)?;
         Ok(file.vehicle)

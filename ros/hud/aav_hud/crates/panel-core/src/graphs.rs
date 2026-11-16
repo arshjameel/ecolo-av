@@ -50,14 +50,19 @@ pub const FOLLOWS: f64 = 0.5;
 /// One of the three graphs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Channel {
+    /// The steering actuator.
     Steering,
+    /// The brake actuator.
     Brake,
+    /// The throttle.
     Throttle,
 }
 
 impl Channel {
+    /// Every channel.
     pub const ALL: [Channel; 3] = [Channel::Steering, Channel::Brake, Channel::Throttle];
 
+    /// Its name on the screen.
     #[must_use]
     pub fn label(self) -> &'static str {
         match self {
@@ -103,19 +108,30 @@ pub struct Drive {
 /// One frame the Pi wrote (aav_interfaces/LinkFrame).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PiFrame {
+    /// The frame's version.
     pub version: u8,
+    /// The frame's counter.
     pub counter: u8,
+    /// The frame's last byte.
     pub check: u8,
+    /// Armed.
     pub armed: bool,
+    /// An e-stop.
     pub estop: bool,
+    /// -1..1.
     pub steering: f64,
+    /// -1..1.
     pub speed: f64,
+    /// -1..1.
     pub accel: f64,
+    /// Frames written since the bridge started.
     pub written: u32,
+    /// Writes that failed since the bridge started.
     pub write_errors: u32,
 }
 
 impl PiFrame {
+    /// One channel's value.
     #[must_use]
     pub fn value(&self, c: Channel) -> f64 {
         c.of_frame(self.steering, self.speed, self.accel)
@@ -125,24 +141,34 @@ impl PiFrame {
 /// How the ESP32's uplink frames arrive (aav_interfaces/UplinkHealth).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UplinkHealth {
+    /// Frames are arriving.
     pub fresh: bool,
+    /// Frames that came.
     pub frames: u32,
+    /// Frames missed.
     pub lost: u32,
+    /// Frames with a bad check.
     pub bad: u32,
 }
 
 /// A hop on the way to the ESP32.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Hop {
+    /// ego's command.
     Ego,
+    /// The output mux's command.
     Mux,
+    /// What the Pi wrote.
     PiWrote,
+    /// What the ESP32 got.
     Esp32Got,
 }
 
 impl Hop {
+    /// Every hop, in order.
     pub const ALL: [Hop; 4] = [Hop::Ego, Hop::Mux, Hop::PiWrote, Hop::Esp32Got];
 
+    /// Its name on the screen.
     #[must_use]
     pub fn label(self) -> &'static str {
         match self {
@@ -159,6 +185,7 @@ impl Hop {
 pub enum Verdict {
     /// Fresh, changed, and the same as the hop before.
     Ok(String),
+    /// Fresh, but not the same as the hop before: how.
     Different(String),
     /// Heard, but not for a while.
     Stale,
@@ -169,6 +196,7 @@ pub enum Verdict {
 }
 
 impl Verdict {
+    /// Its word on the screen.
     #[must_use]
     pub fn word(&self) -> &'static str {
         match self {
@@ -202,15 +230,20 @@ impl fmt::Display for Verdict {
 /// One hop's verdict, and each channel's.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HopReport {
+    /// Which hop.
     pub hop: Hop,
+    /// The hop's verdict.
     pub verdict: Verdict,
+    /// Each channel's.
     pub channels: Vec<(Channel, Verdict)>,
 }
 
 /// A graph's two lines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Line {
+    /// What the Pi wrote.
     PiWrote,
+    /// What the ESP32 got or drives.
     Esp32,
 }
 
@@ -227,7 +260,9 @@ pub enum Esp32Line {
 /// One point of a line.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
+    /// When.
     pub at: Instant,
+    /// The value.
     pub value: f64,
     /// Lines lost, a restart or a long silence before it: don't join it to the last.
     pub gap_before: bool,
@@ -236,14 +271,20 @@ pub struct Point {
 /// now / avg / low / high.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Stats {
+    /// The latest.
     pub now: f64,
+    /// The mean.
     pub avg: f64,
+    /// The lowest.
     pub low: f64,
+    /// The highest.
     pub high: f64,
+    /// How many points.
     pub count: usize,
 }
 
 impl Stats {
+    /// The numbers of these points; None for none.
     #[must_use]
     pub fn of(points: &[Point]) -> Option<Self> {
         let now = points.last()?.value;
@@ -268,6 +309,7 @@ pub struct Counts {
     /// The Pi's frames written and failed writes since its bridge started, and the
     /// frames written in the window.
     pub pi: Option<(u32, u32, u32)>,
+    /// The ESP32's uplink, last heard.
     pub uplink: Option<UplinkHealth>,
     /// The ESP32's own counts since boot, and their rise in the window.
     pub esp32: Option<(LinkCounts, LinkCounts)>,
@@ -345,18 +387,22 @@ pub struct Graphs {
 }
 
 impl Graphs {
+    /// Keeps ego's command.
     pub fn record_ego(&mut self, at: Instant, d: Drive) {
         self.ego.push(at, d);
     }
 
+    /// Keeps the output mux's command.
     pub fn record_mux(&mut self, at: Instant, d: Drive) {
         self.mux.push(at, d);
     }
 
+    /// Keeps a frame the Pi wrote.
     pub fn record_pi(&mut self, at: Instant, f: PiFrame) {
         self.pi.push(at, f);
     }
 
+    /// Keeps the uplink's health.
     pub fn record_uplink(&mut self, at: Instant, h: UplinkHealth) {
         self.uplink.push(at, h);
     }
@@ -374,6 +420,7 @@ impl Graphs {
         }
     }
 
+    /// Keeps the IMU's turn rate (degrees a second); NaN is left out.
     pub fn record_imu_yaw(&mut self, at: Instant, deg_per_s: f64) {
         if deg_per_s.is_finite() {
             self.imu_yaw.push(at, deg_per_s);
@@ -875,6 +922,7 @@ impl Freezer {
         self.estop_was = estop;
     }
 
+    /// When the graphs froze, and why; None while live.
     #[must_use]
     pub fn frozen(&self) -> Option<(Instant, FreezeWhy)> {
         self.frozen.as_ref().map(|(at, why, _)| (*at, *why))

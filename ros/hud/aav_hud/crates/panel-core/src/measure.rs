@@ -95,6 +95,7 @@ impl Entry {
         self.text.pop();
     }
 
+    /// Empties it.
     pub fn clear(&mut self) {
         self.text.clear();
     }

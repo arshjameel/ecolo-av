@@ -41,10 +41,15 @@ use crate::{
 /// Why the firmware refused a mode (legacy-link's `Refusal`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Refusal {
+    /// A speed is asked for.
     Moving,
+    /// Not braked, or the throttle is on.
     NotBraked,
+    /// No position: the Jrk's feedback isn't analog.
     NoFeedback,
+    /// An e-stop.
     Estop,
+    /// The RC or a test drives.
     OtherDriver,
 }
 
@@ -52,18 +57,25 @@ pub enum Refusal {
 /// `CalState`, the uplink's byte 38).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum FirmwareState {
+    /// Normal steering.
     #[default]
     Off,
+    /// The motor off: the wheels turn by hand.
     Limp,
+    /// Jogging to a target.
     Jog,
+    /// No fresh frames: holding.
     Hold,
+    /// Moving back slowly.
     Return,
+    /// A mode was refused, and why.
     Refused(Refusal),
     /// A number this panel doesn't know: a newer firmware.
     Unknown(u8),
 }
 
 impl FirmwareState {
+    /// From the uplink's byte.
     #[must_use]
     pub fn from_byte(byte: u8) -> Self {
         match byte {
@@ -107,13 +119,16 @@ impl fmt::Display for FirmwareState {
 pub struct Raw {
     /// Counts, if the firmware has a position.
     pub position: Option<u16>,
+    /// The firmware's calibration state.
     pub state: FirmwareState,
 }
 
 /// Why the page may not ask for anything now.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NotReady {
+    /// The e-stop is on.
     Estop,
+    /// The car moves (m/s).
     Moving(f64),
     /// No speed is known, and no person has pressed ON STANDS, STILL.
     SpeedUnknown(SpeedUnknown),
@@ -149,6 +164,7 @@ pub const STANDSTILL: f64 = 0.05;
 /// What the page needs to know to be allowed.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Situation {
+    /// The e-stop is on.
     pub estop: bool,
     /// The speed: measured (fresh, a number), or why not. NaN is unknown, never stopped.
     pub speed: Speed,
@@ -197,8 +213,13 @@ pub enum StillBy {
 /// the people at the car check the rest (who set the current limit, hands clear).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Allowance {
+    /// Not allowed, and every reason why.
     NotAllowed(Vec<NotReady>),
-    SoftwareAllows { speed: StillBy },
+    /// The software's checks pass; people check the rest.
+    SoftwareAllows {
+        /// What "still" rests on.
+        speed: StillBy,
+    },
 }
 
 /// [`readiness`], with what "still" rests on.
@@ -243,7 +264,9 @@ impl fmt::Display for Allowance {
 /// What goes to `/drivers/buttons/steering_calibration` (SteeringCalibration's modes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Request {
+    /// Normal steering.
     Off,
+    /// The motor off.
     Limp,
     /// Counts.
     Jog(u16),
@@ -252,13 +275,21 @@ pub enum Request {
 /// A press on the page.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CalPress {
+    /// LIMP: the motor off, turn the wheels by hand.
     Limp,
+    /// HOLD: stay where the wheels are now.
     Hold,
+    /// STEP one jog step left.
     StepLeft,
+    /// STEP one jog step right.
     StepRight,
+    /// Mark where the wheels are now.
     Mark(Mark),
+    /// Forget the marks.
     ClearMarks,
+    /// Start the lock-to-lock check.
     Check,
+    /// END: back to normal steering.
     End,
     /// ON STANDS, STILL: a person checked the car is on stands and still, for when
     /// nothing measures the speed. Pressed again, it is withdrawn.
@@ -272,21 +303,29 @@ pub struct CalSettings {
     pub jog_step: u16,
     /// Counts: no jog target outside these (the firmware's software limits).
     pub jog_min: u16,
+    /// Counts: the highest jog target.
     pub jog_max: u16,
+    /// The lock-to-lock check's numbers.
     pub sweep: SweepSettings,
 }
 
 /// What the page is doing.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Mode {
+    /// Asking nothing.
     Off,
+    /// The motor off.
     Limp,
+    /// Jogging to a target.
     Jog {
+        /// Counts.
         target: u16,
     },
+    /// The lock-to-lock check.
     Sweep(Box<Sweep>),
     /// Ended: `MODE_OFF` until then.
     Ending {
+        /// When `MODE_OFF` stops.
         until: Instant,
     },
 }
@@ -312,6 +351,7 @@ pub struct CalPage {
 }
 
 impl CalPage {
+    /// The page, asking nothing, with no marks.
     #[must_use]
     pub fn new(settings: CalSettings) -> Self {
         Self {
@@ -337,21 +377,25 @@ impl CalPage {
         self.still_confirmed = false;
     }
 
+    /// What the page is doing.
     #[must_use]
     pub fn mode(&self) -> &Mode {
         &self.mode
     }
 
+    /// Its numbers.
     #[must_use]
     pub fn settings(&self) -> &CalSettings {
         &self.settings
     }
 
+    /// The last thing to tell the person.
     #[must_use]
     pub fn note(&self) -> Option<&str> {
         self.note.as_deref()
     }
 
+    /// The lock-to-lock check's last result.
     #[must_use]
     pub fn checked(&self) -> Option<&Outcome> {
         self.checked.as_ref()
@@ -363,6 +407,7 @@ impl CalPage {
         matches!(self.mode, Mode::Limp | Mode::Jog { .. } | Mode::Sweep(_))
     }
 
+    /// Where a mark is (counts), once marked.
     #[must_use]
     pub fn mark(&self, m: Mark) -> Option<u16> {
         match m {
