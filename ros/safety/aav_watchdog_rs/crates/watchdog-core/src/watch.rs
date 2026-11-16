@@ -405,6 +405,7 @@ impl Watch {
 
     /// Note a message at `now` (s).
     pub fn arrived(&mut self, now: f64, a: Arrival) {
+        let gap_before = self.heard.map(|heard| now - heard);
         match self.heard {
             None => self.window = Some(now),
             Some(heard) => {
@@ -420,6 +421,11 @@ impl Watch {
             return;
         }
         if matches!(kind, Kind::Actuator | Kind::Speed) {
+            if kind == Kind::Speed && gap_before.is_some_and(|g| g > self.rule.max_age) {
+                // A stale command: start afresh.
+                self.over_since = None;
+                self.speeds.clear();
+            }
             self.bad = None;
             self.good = Some(now);
             if kind == Kind::Actuator {
@@ -490,10 +496,17 @@ impl Watch {
         }
     }
 
-    /// Speed: (command, measured) in m/s; latch OVERSPEED once over too long.
+    /// Speed: (command, measured\[, age\]) in m/s; latch OVERSPEED once over too long.
+    ///
+    /// `age`: the measured speed's age (s). Older than `max_age`, it is no check: the
+    /// wheels went quiet (odometry's own fault), and their last speed says nothing now.
     fn over(&mut self, now: f64, values: &[f64]) {
         let rule = &self.rule;
-        if rule.over_margin <= 0.0 || values.len() < 2 || !finite(&values[..2]) {
+        // A NaN age is stale too.
+        let stale = values
+            .get(2)
+            .is_some_and(|&age| age.is_nan() || age > rule.max_age);
+        if rule.over_margin <= 0.0 || values.len() < 2 || !finite(&values[..2]) || stale {
             self.over_since = None;
             self.speeds.clear();
             return;
@@ -1096,6 +1109,36 @@ mod tests {
         assert_eq!(state(&mut d, "speed", t), State::Overspeed);
         d.clear();
         let t = drive(&mut d, t, 0.1, |_| 1.0, |_| 1.0);
+        assert_eq!(state(&mut d, "speed", t), State::Ok);
+    }
+
+    #[test]
+    fn a_stale_wheel_speed_or_command_never_counts() {
+        // sim-check --faults' "odom stop": the wheels' last 0.5 m/s, kept, is no overspeed.
+        let mut d = dog(vec![speed()]);
+        let max_age = speed().max_age;
+        drive(&mut d, 0.0, 2.0, |_| 0.5, |_| 0.5);
+        // The wheels go quiet at 2.0 s; ego, stopped by the lock, asks 0 for 10 s more.
+        let mut now = 2.0;
+        for i in 0..500 {
+            now = 2.0 + f64::from(i) * 0.02;
+            arrive(&mut d, "speed", now, values(&[0.0, 0.5, now - 2.0]));
+            if now - 2.0 > max_age {
+                assert_ne!(state(&mut d, "speed", now), State::Over, "{now}");
+            }
+        }
+        assert_eq!(state(&mut d, "speed", now), State::Ok);
+        assert!(!d.locked(now));
+        // A fresh wheel speed that runs over still counts, as before.
+        for i in 0..150 {
+            now = 12.0 + f64::from(i) * 0.02;
+            arrive(&mut d, "speed", now, values(&[0.0, 0.5, 0.01]));
+        }
+        assert_eq!(state(&mut d, "speed", now), State::Overspeed);
+        // A command after a gap longer than max_age starts afresh: no OVER across it.
+        let mut d = dog(vec![speed()]);
+        let t = drive(&mut d, 0.0, 0.9, |_| 1.0, |_| 1.3);
+        let t = drive(&mut d, t + 1.5, 0.2, |_| 1.0, |_| 1.3);
         assert_eq!(state(&mut d, "speed", t), State::Ok);
     }
 

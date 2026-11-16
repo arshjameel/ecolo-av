@@ -263,7 +263,10 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
     if !rules.iter().any(|r| r.topic == VEHICLE_ODOM) {
         keep.push(Box::new(worker.create_subscription(
             VEHICLE_ODOM.keep_last(10),
-            |s: &mut Dog, m: Odometry| s.feed.wheels(m.twist.twist.linear.x),
+            |s: &mut Dog, m: Odometry| {
+                let now = s.now();
+                s.feed.wheels(now, m.twist.twist.linear.x);
+            },
         )?));
     }
     if cross_checked && !rules.iter().any(|r| r.topic == IMU_TOPIC) {

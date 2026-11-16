@@ -35,7 +35,10 @@ What counts as wrong, per input (each check only where its rule asks for it):
           that runs away (TODO 207). Latched, as a jump. "Not slowing": the measured speed
           fell by less than over_slowing m/s^2 over the last SLOWING_WINDOW s, so a
           healthy stop, which lags its command by up to 0.7 m/s for a second (the car
-          model), never counts. Speeds compare as sizes, so reversing counts the same
+          model), never counts. Speeds compare as sizes, so reversing counts the same.
+          Only fresh numbers count (16 Nov): a wheel speed older than the speed input's
+          max_age, or a command after a gap of more than max_age, is no check (the
+          watched odom input says STALE for the wheels; this input for ego)
   LOST    where the rule says latch (the HUD's heartbeat): the input went wrong (STALE,
           FROZEN...) after its start-up. Latched: a program that died or froze once may
           do it again, so a person looks before Nav2 drives again (clear())
@@ -209,6 +212,7 @@ class Watch:
         say nothing about how far apart they were taken.
         """
         rule = self.rule
+        gap_before = None if self.heard is None else now - self.heard
         if self.heard is None:
             self.window = now
         else:
@@ -220,6 +224,8 @@ class Watch:
             self.bad = 'NO FIX'
             return
         if rule.kind in ('actuator', 'speed'):
+            if rule.kind == 'speed' and gap_before is not None and gap_before > rule.max_age:
+                self.over_since, self.speeds = None, []     # a stale command: start afresh
             self.bad = None
             self.good = now
             if rule.kind == 'actuator':
@@ -266,9 +272,15 @@ class Watch:
                           f'{now - self.off_since:.1f} s')
 
     def over(self, now: float, values: Sequence[float]):
-        """Speed: note (command, measured) in m/s; latch OVERSPEED once over too long."""
+        """
+        Speed: note (command, measured[, age]) in m/s; latch OVERSPEED once over too long.
+
+        age: the measured speed's age (s). Older than max_age, it is no check: the wheels
+        went quiet (odometry's own fault), and their last speed says nothing now.
+        """
         rule = self.rule
-        if rule.over_margin <= 0.0 or len(values) < 2 or not finite(values[:2]):
+        stale = len(values) >= 3 and not values[2] <= rule.max_age
+        if rule.over_margin <= 0.0 or len(values) < 2 or not finite(values[:2]) or stale:
             self.over_since, self.speeds = None, []
             return
         command, measured = abs(values[0]), abs(values[1])

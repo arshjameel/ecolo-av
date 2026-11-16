@@ -60,6 +60,7 @@ Parameters  inputs (the names to watch), rate_hz (10), and for each name: topic,
             OVERSPEED
 """
 
+import math
 import signal
 import time
 import zlib
@@ -143,6 +144,7 @@ class SensorWatchdog(Node):
         # so nothing latches for 3 s after.
         self.dog = Watchdog(rules, stall=max(0.5, 5.0 / rate))
         self.speed = None      # the wheels' newest speed, for the camera's frozen check
+        self.speed_at = None   # when it arrived, for the speed input (a stale one: no check)
         self.node_rules = [r for r in rules if r.kind == 'node']
         for rule in rules:
             if rule.kind == 'node':
@@ -176,6 +178,7 @@ class SensorWatchdog(Node):
 
     def on_wheels(self, msg):
         self.speed = msg.twist.twist.linear.x
+        self.speed_at = self.now()
 
     def on_imu(self, msg):
         self.dog.imu(self.now(), msg.linear_acceleration.x, msg.angular_velocity.z)
@@ -186,7 +189,7 @@ class SensorWatchdog(Node):
         if rule.kind == 'odom':
             values = odom_values(msg)
             if rule.topic == '/vehicle/odom':
-                self.speed = values[0]
+                self.speed, self.speed_at = values[0], now
             watch.arrived(now, values, digest=values)
         elif rule.kind == 'imu':
             values = imu_values(msg)
@@ -213,8 +216,10 @@ class SensorWatchdog(Node):
             watch.arrived(now, (msg.command, msg.measured))
         elif rule.kind == 'speed':
             # Ego's speed against the wheels': OVERSPEED when the car runs over (TODO 207).
+            # A stale wheel speed is no check (its age, against max_age, in watchdog.py).
             measured = float('nan') if self.speed is None else self.speed
-            watch.arrived(now, (msg.drive.speed, measured))
+            age = math.inf if self.speed_at is None else now - self.speed_at
+            watch.arrived(now, (msg.drive.speed, measured, age))
         elif rule.kind == 'heartbeat':
             # The count must keep rising: the same count again is a screen that stopped.
             watch.arrived(now, digest=msg.data)

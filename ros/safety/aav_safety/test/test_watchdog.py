@@ -448,6 +448,30 @@ def test_reversing_counts_by_size_and_nan_is_no_check():
     assert state(dog, 'speed', t) == OK
 
 
+def test_a_stale_wheel_speed_or_command_never_counts():
+    """sim-check --faults' "odom stop": the wheels' last 0.5 m/s, kept, is no overspeed."""
+    dog = Watchdog([SPEED])
+    speed = dog.watches['speed']
+    t = drive(dog, 0.0, 2.0, 0.5, 0.5)
+    # The wheels go quiet at 2.0 s; ego, stopped by the lock, asks 0 for 10 s more.
+    for i in range(500):
+        now = 2.0 + i * 0.02
+        speed.arrived(now, (0.0, 0.5, now - 2.0))
+        if now - 2.0 > SPEED.max_age:
+            assert speed.over_since is None, now
+    assert state(dog, 'speed', now) == OK and not dog.locked(now)
+    # A fresh wheel speed that runs over still counts, as before.
+    for i in range(150):
+        now = 12.0 + i * 0.02
+        speed.arrived(now, (0.0, 0.5, 0.01))
+    assert state(dog, 'speed', now) == watchdog.OVERSPEED
+    # A command after a gap longer than max_age starts afresh: no OVER carried across it.
+    dog = Watchdog([SPEED])
+    t = drive(dog, 0.0, 0.9, 1.0, 1.3)          # over since 0.0 s, under over_warn
+    t = drive(dog, t + 1.5, 0.2, 1.0, 1.3)      # ego silent 1.5 s, then over again
+    assert state(dog, 'speed', t) == OK         # 0.2 s over, not 2.6 s
+
+
 def test_the_car_models_healthy_drives_never_warn():
     """Every speed loop profile, ramps up and down and a step to 0: never OVER."""
     car_model = pytest.importorskip('aav_description.car_model')

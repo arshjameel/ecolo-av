@@ -85,8 +85,8 @@ pub struct Tick {
 #[derive(Debug, Clone)]
 pub struct Feed {
     dog: Watchdog,
-    /// The wheels' newest speed (m/s).
-    speed: Option<f64>,
+    /// The wheels' newest speed (m/s), and when it arrived (s).
+    speed: Option<(f64, f64)>,
     said: HashMap<String, State>,
 }
 
@@ -124,7 +124,7 @@ impl Feed {
     /// An odom input's message: (vx, vy, wz, x, y).
     pub fn odom(&mut self, now: f64, name: &str, v: [f64; 5]) {
         if self.topic_of(name) == Some(VEHICLE_ODOM) {
-            self.speed = Some(v[0]);
+            self.speed = Some((v[0], now));
         }
         let values = v.to_vec();
         self.arrive(
@@ -174,7 +174,7 @@ impl Feed {
 
     /// A camera's picture: its digest (`picture_digest`).
     pub fn image(&mut self, now: f64, name: &str, digest: u32) {
-        let speed = self.speed;
+        let speed = self.speed.map(|(v, _)| v);
         self.arrive(
             now,
             name,
@@ -217,14 +217,17 @@ impl Feed {
         );
     }
 
-    /// Ego's commanded speed, against the wheels' newest (NaN before any).
+    /// Ego's commanded speed, against the wheels' newest (NaN before any) and its age:
+    /// a stale wheel speed is no check (`Watch`'s overspeed check).
     pub fn speed(&mut self, now: f64, name: &str, command: f64) {
-        let measured = self.speed.unwrap_or(f64::NAN);
+        let (measured, age) = self
+            .speed
+            .map_or((f64::NAN, f64::INFINITY), |(v, at)| (v, now - at));
         self.arrive(
             now,
             name,
             Arrival {
-                values: vec![command, measured],
+                values: vec![command, measured, age],
                 ..Arrival::default()
             },
         );
@@ -248,8 +251,8 @@ impl Feed {
     }
 
     /// `/vehicle/odom`, where no input watches it: only the speed.
-    pub fn wheels(&mut self, speed: f64) {
-        self.speed = Some(speed);
+    pub fn wheels(&mut self, now: f64, speed: f64) {
+        self.speed = Some((speed, now));
     }
 
     /// The IMU for the cross check, where no input watches it.

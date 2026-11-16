@@ -58,12 +58,13 @@ class Harness:
     def __init__(self, rules):
         self.dog = Watchdog(rules, stall=max(0.5, 5.0 / RATE))
         self.speed = None
+        self.speed_at = None
         self.said = {}
 
     def odom(self, now, name, v):
         watch = self.dog.watches[name]
         if watch.rule.topic == '/vehicle/odom':
-            self.speed = v[0]
+            self.speed, self.speed_at = v[0], now
         watch.arrived(now, v, digest=v)
 
     def imu(self, now, name, v):
@@ -88,7 +89,8 @@ class Harness:
 
     def speed_cmd(self, now, name, command):
         measured = float('nan') if self.speed is None else self.speed
-        self.dog.watches[name].arrived(now, (command, measured))
+        age = math.inf if self.speed_at is None else now - self.speed_at
+        self.dog.watches[name].arrived(now, (command, measured, age))
 
     def heartbeat(self, now, name, count):
         self.dog.watches[name].arrived(now, digest=count)
@@ -189,7 +191,8 @@ def run(seed, variant):
     faults = {
         # Frozen while speeding up (DISAGREE), or at a steady speed (nothing to see).
         'wheels_frozen': window(1.5, 3, 3.0) if variant == 0 else window(8, 12, 4.0),
-        'odom_silent': window(20, 24, 1.2),
+        # Long enough for the wheels' last speed to go stale while ego asks 0 (16 Nov).
+        'odom_silent': window(20, 24, 3.0),
         'odom_nan': window(28, 30, 0.3), 'imu_frozen': window(14, 18, 1.8),
         'imu_silent': window(30, 34, 0.8), 'gps_nofix': window(5, 8, 3.0),
         'gps_jump': window(18, 22, 0.5), 'cam_frozen': window(10, 14, 2.5),
@@ -217,6 +220,8 @@ def run(seed, variant):
         cmd = r4(min(2.0, 0.5 * t) if t < 25 else max(0.0, 2.0 - 0.4 * (t - 25)))
         if on('overspeed', t):
             accel = 0.6                 # a throttle that runs away
+        if on('odom_silent', t):
+            cmd = 0.0                   # the lock stopped ego; the wheels' last speed stays
         v = max(0.0, v + accel * dt)
         yaw_rate = 0.1 * math.sin(0.3 * t)
         h_yaw += yaw_rate * dt
