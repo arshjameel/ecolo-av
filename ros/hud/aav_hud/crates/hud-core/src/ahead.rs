@@ -75,9 +75,11 @@ impl PlanSource {
 /// `/ego/ahead`'s numbers. `None`: unknown.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Summary {
+    /// How good the run ahead looks.
     pub grade: Grade,
     /// One line for people.
     pub message: String,
+    /// Which planner the plan comes from.
     pub plan: PlanSource,
     /// m: the most the trace strays from the plan.
     pub gap: Option<f64>,
@@ -110,8 +112,11 @@ pub struct Road {
 /// The car's outline from base_link, as look_ahead sends it.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Body {
+    /// m: base_link to the front bumper.
     pub front: f64,
+    /// m: base_link to the rear bumper (below 0).
     pub rear: f64,
+    /// m: half the car's width.
     pub half_width: f64,
 }
 
@@ -164,8 +169,11 @@ impl Summary {
 /// Where a full brake stops the car, in base_link.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct StopMark {
+    /// m, forward.
     pub x: f64,
+    /// m, left.
     pub y: f64,
+    /// rad, + left.
     pub yaw: f64,
 }
 
@@ -176,7 +184,9 @@ pub struct Ahead {
     pub trace: Vec<Point>,
     /// The faint line: the plan ahead.
     pub plan: Vec<Point>,
+    /// The stop bar: where a full brake stops the car.
     pub stop: Option<StopMark>,
+    /// The numbers under the drawing.
     pub summary: Option<Summary>,
 }
 
@@ -232,17 +242,24 @@ pub fn point_along(points: &[Point], s: f64) -> Option<Point> {
 /// What the words under the drawing say, and how each is coloured.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Line {
+    /// The words.
     pub text: String,
+    /// Their colour, by meaning.
     pub tone: Tone,
 }
 
 /// A line's colour, by meaning: the screen picks the theme's colour.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tone {
+    /// Nothing to say about it: the plain text colour.
     Plain,
+    /// All is well.
     Good,
+    /// Worth a look.
     Warn,
+    /// Something is wrong.
     Bad,
+    /// Unknown, or old news.
     Dim,
 }
 

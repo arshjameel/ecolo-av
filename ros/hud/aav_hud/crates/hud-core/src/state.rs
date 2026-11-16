@@ -49,7 +49,10 @@ impl Battery {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EstopReport {
     /// Published; this many nodes subscribe to the e-stop topic.
-    Sent { subscribers: usize },
+    Sent {
+        /// Nodes subscribed to the e-stop topic.
+        subscribers: usize,
+    },
     /// Couldn't publish at all.
     Failed,
 }
@@ -57,14 +60,21 @@ pub enum EstopReport {
 /// One piece of news from a data source.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Update {
+    /// A `/vehicle/status` message.
     Vehicle(VehicleStatus),
+    /// The GPS receiver's own fix.
     Gps(Fix),
+    /// The EKF's position, as a fix.
     GpsFiltered(Fix),
+    /// Whether a stop sign is seen.
     StopSign(bool),
+    /// The battery.
     Battery(Battery),
+    /// A camera picture.
     Picture(Picture),
     /// The camera sent a picture the HUD can't show; why.
     BadPicture(String),
+    /// What came of an e-stop press.
     Estop(EstopReport),
     /// A node said where its data comes from (`/system/source`).
     Source(Announcement),
@@ -114,11 +124,17 @@ impl Update {
 /// What the screen draws.
 #[derive(Debug, Clone, Default)]
 pub struct HudState {
+    /// The settings.
     pub config: HudConfig,
+    /// The car's last status.
     pub vehicle: Option<VehicleStatus>,
+    /// The GPS receiver's last fix.
     pub gps: Option<Fix>,
+    /// The EKF's last position.
     pub gps_filtered: Option<Fix>,
+    /// A stop sign is seen.
     pub stop_sign: bool,
+    /// The battery's last state.
     pub battery: Option<Battery>,
     /// Why the last camera picture couldn't be shown; None once one could.
     pub picture_problem: Option<String>,

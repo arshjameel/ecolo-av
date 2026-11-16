@@ -59,6 +59,7 @@ impl Origin {
         }
     }
 
+    /// True for real data.
     #[must_use]
     pub fn is_real(self) -> bool {
         self == Self::Real
@@ -78,6 +79,7 @@ pub struct Entry {
     pub name: String,
     /// Its main topic; empty if it has none.
     pub topic: String,
+    /// Where its data comes from.
     pub origin: Origin,
 }
 
@@ -86,6 +88,7 @@ pub struct Entry {
 pub struct Announcement {
     /// The node that says so.
     pub announcer: String,
+    /// Each sensor it speaks for.
     pub entries: Vec<Entry>,
 }
 

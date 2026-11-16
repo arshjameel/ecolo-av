@@ -24,25 +24,40 @@ pub enum Monitor {
 /// One monitor, as the windowing system reports it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MonitorInfo {
+    /// Its name: HDMI-1, DSI-1...
     pub name: String,
     /// Its size in screen coordinates.
     pub width: i32,
+    /// Its height in screen coordinates.
     pub height: i32,
     /// Its top-left corner on the desktop.
     pub x: i32,
+    /// Its top edge.
     pub y: i32,
 }
 
+/// Why `--monitor` names no monitor.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum MonitorError {
+    /// `--monitor` was given nothing.
     #[error("--monitor needs a name or a number, such as HDMI-1 or 0")]
     Empty,
     #[error("no monitor {wanted}: this computer has {}", seen_list(.seen))]
-    NotFound { wanted: String, seen: Vec<String> },
+    /// No monitor has that name or number.
+    NotFound {
+        /// The name or number asked for.
+        wanted: String,
+        /// Every monitor's name.
+        seen: Vec<String>,
+    },
+    /// Two or more monitors have that name.
     #[error("{count} monitors are called {name:?}: give its number instead ({})", seen_list(.seen))]
     Ambiguous {
+        /// The name asked for.
         name: String,
+        /// How many monitors have it.
         count: usize,
+        /// Every monitor's name.
         seen: Vec<String>,
     },
 }
@@ -87,6 +102,10 @@ impl fmt::Display for Monitor {
 
 impl Monitor {
     /// This monitor's place in `names`, the list the windowing system gave.
+    ///
+    /// # Errors
+    ///
+    /// [`MonitorError`] if no monitor has that name or number, or two have that name.
     pub fn find<S: AsRef<str>>(&self, names: &[S]) -> Result<usize, MonitorError> {
         let seen = || names.iter().map(|n| n.as_ref().to_owned()).collect();
         match self {

@@ -16,7 +16,9 @@ pub type Point = (f32, f32);
 /// A wheel: its centre and radius.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Wheel {
+    /// Its centre.
     pub centre: Point,
+    /// Its radius.
     pub radius: f32,
 }
 
@@ -26,6 +28,7 @@ pub struct Silhouette {
     /// The body's outline (closed: its last point is its first), then the windows, the
     /// door's cut and the crease along the side.
     pub lines: Vec<Vec<Point>>,
+    /// Rear and front wheels.
     pub wheels: [Wheel; 2],
 }
 
@@ -36,8 +39,11 @@ pub const HEIGHT: f32 = 0.345;
 /// and how long it is.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Placement {
+    /// The tail's x (px).
     pub left: f32,
+    /// The ground's y (px).
     pub ground: f32,
+    /// The car's length (px).
     pub length: f32,
 }
 

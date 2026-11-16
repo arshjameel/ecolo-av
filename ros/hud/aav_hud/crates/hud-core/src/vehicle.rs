@@ -89,15 +89,25 @@ impl Gear {
 /// One fault the spine reports, a bit of VehicleStatus's `faults`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Fault {
+    /// No commands came in time.
     CmdTimeout,
+    /// A command's checksum was wrong.
     BadChecksum,
+    /// A command's counter didn't move on.
     BadCounter,
+    /// The steering actuator's driver failed.
     SteeringDriver,
+    /// The brake actuator's driver failed.
     BrakeDriver,
+    /// The throttle's DAC failed.
     ThrottleDac,
+    /// The wheel encoder failed.
     WheelEncoder,
+    /// The CAN bus failed.
     CanBus,
+    /// The RC remote's signal is lost.
     RcSignalLost,
+    /// The car went faster than allowed.
     Overspeed,
 }
 
@@ -183,14 +193,21 @@ impl fmt::Display for Faults {
 /// One `/vehicle/status` message, in our types.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct VehicleStatus {
+    /// Who drives.
     pub mode: Mode,
+    /// The spine is armed.
     pub armed: bool,
     /// Any stop: the hardware button, `/safety/estop`, or the spine's watchdog.
     pub estop_active: bool,
+    /// Along the car, + forward.
     pub speed: MetresPerSecond,
+    /// The front wheels' angle, + left.
     pub steering_angle: Radians,
+    /// 0 to 1.
     pub throttle: Fraction,
+    /// 0 to 1.
     pub brake: Fraction,
+    /// The spine's faults, one bit each.
     pub faults: Faults,
 }
 

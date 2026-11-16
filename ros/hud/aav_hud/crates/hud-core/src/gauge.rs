@@ -75,6 +75,10 @@ impl Tick {
 
 impl Scale {
     /// The scale for a car whose top speed is `max_speed`.
+    ///
+    /// # Errors
+    ///
+    /// [`BadMaxSpeed`] if `max_speed` isn't a positive number.
     pub fn for_max_speed(max_speed: MetresPerSecond) -> Result<Self, BadMaxSpeed> {
         let max = max_speed.0;
         if !(max.is_finite() && max > 0.0) {

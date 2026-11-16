@@ -100,7 +100,9 @@ impl Lit {
 /// One cell of the display: its segments, and its decimal point after it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Cell {
+    /// Its segments.
     pub lit: Lit,
+    /// Its decimal point is lit.
     pub point: bool,
 }
 
@@ -138,8 +140,11 @@ pub type Point = (f32, f32);
 pub struct Digit {
     /// The top left corner of the upright box, before the slant.
     pub x: f32,
+    /// The top edge.
     pub y: f32,
+    /// Across.
     pub width: f32,
+    /// Down.
     pub height: f32,
     /// How thick each segment is.
     pub thick: f32,

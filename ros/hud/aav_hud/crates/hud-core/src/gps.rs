@@ -29,13 +29,19 @@ const COVARIANCE_TYPE_UNKNOWN: u8 = 0;
 /// How good a fix is, from worst to best.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FixKind {
+    /// No position at all.
     NoFix,
     /// A position, but the driver didn't say what kind.
     Unknown,
+    /// A fix without height.
     Fix2d,
+    /// A fix with height.
     Fix3d,
+    /// Helped by corrections (SBAS or DGPS).
     Dgps,
+    /// RTK, not yet settled: decimetres.
     RtkFloat,
+    /// RTK, settled: centimetres.
     RtkFixed,
 }
 
@@ -81,6 +87,7 @@ pub struct RawFix {
 /// A fix, judged.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Fix {
+    /// How good it is.
     pub kind: FixKind,
     /// (latitude, longitude) in degrees, when there is a position.
     pub position: Option<(f64, f64)>,

@@ -10,10 +10,15 @@ use thiserror::Error;
 /// The pixel layouts the HUD can show (sensor_msgs/image_encodings names).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Encoding {
+    /// Red, green, blue: 3 bytes.
     Rgb8,
+    /// Blue, green, red: 3 bytes.
     Bgr8,
+    /// Red, green, blue, alpha: 4 bytes.
     Rgba8,
+    /// Blue, green, red, alpha: 4 bytes.
     Bgra8,
+    /// Grey: 1 byte.
     Mono8,
 }
 
@@ -60,21 +65,37 @@ impl FromStr for Encoding {
 /// Why a picture can't be shown.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum PictureError {
+    /// An encoding the HUD can't show.
     #[error("the HUD can't show {0:?} pictures (only rgb8, bgr8, rgba8, bgra8, mono8)")]
     Encoding(String),
     #[error("an empty picture ({width}x{height})")]
-    Empty { width: u32, height: u32 },
+    /// The picture has no pixels.
+    Empty {
+        /// Pixels across.
+        width: u32,
+        /// Pixels down.
+        height: u32,
+    },
+    /// `step` is shorter than a row.
     #[error("a row of {width} pixels needs {needed} bytes, but step is {step}")]
     Step {
+        /// Pixels in a row.
         width: u32,
+        /// Bytes in a row, as the message says.
         step: u32,
+        /// Bytes a row needs.
         needed: usize,
     },
+    /// The data is shorter than the picture.
     #[error("{height} rows of {step} bytes need {needed} bytes, but the data has {got}")]
     Short {
+        /// Rows.
         height: u32,
+        /// Bytes in a row.
         step: u32,
+        /// Bytes the picture needs.
         needed: usize,
+        /// Bytes the data has.
         got: usize,
     },
 }
@@ -82,14 +103,21 @@ pub enum PictureError {
 /// A picture ready for the screen: width x height pixels, 4 bytes each (RGBA).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Picture {
+    /// Pixels across.
     pub width: u32,
+    /// Pixels down.
     pub height: u32,
+    /// RGBA, 4 bytes a pixel, row by row.
     pub rgba: Vec<u8>,
 }
 
 impl Picture {
     /// Converts one Image message's fields. `step` is the bytes in one row, which may be
     /// more than width x bytes per pixel (padding at each row's end).
+    ///
+    /// # Errors
+    ///
+    /// [`PictureError`] for an encoding it can't show, an empty picture, or too few bytes.
     pub fn from_image(
         encoding: &str,
         width: u32,

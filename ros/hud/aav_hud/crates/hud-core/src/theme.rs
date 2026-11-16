@@ -35,15 +35,20 @@ use thiserror::Error;
 /// A colour: red, green, blue and alpha (0 = see-through, 255 = solid), 0-255 each.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Rgba {
+    /// Red.
     pub r: u8,
+    /// Green.
     pub g: u8,
+    /// Blue.
     pub b: u8,
+    /// Alpha: 0 see-through, 255 solid.
     pub a: u8,
 }
 
 impl Rgba {
     /// Solid black and white, for mixing.
     pub const BLACK: Rgba = Rgba::hex(0x000000);
+    /// Solid white.
     pub const WHITE: Rgba = Rgba::hex(0xffffff);
 
     /// A solid colour from its web code: `Rgba::hex(0x1e1e2e)` is `#1e1e2e`.
@@ -226,32 +231,49 @@ impl FromStr for ThemeName {
 /// Nav2's occupancy grid, as a picture: free, occupied and unknown cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GridColours {
+    /// A free cell.
     pub free: Rgba,
+    /// An occupied cell.
     pub occupied: Rgba,
+    /// An unknown cell.
     pub unknown: Rgba,
 }
 
 /// The street map (OpenStreetMap) under Nav2's map.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StreetColours {
+    /// Land: the background.
     pub land: Rgba,
+    /// Parks and grass.
     pub green: Rgba,
+    /// The campus.
     pub campus: Rgba,
+    /// Lakes and rivers.
     pub water: Rgba,
+    /// Buildings.
     pub building: Rgba,
+    /// Streams and canals, as lines.
     pub waterway: Rgba,
     /// The edge under the major roads and highways.
     pub casing: Rgba,
+    /// Street and place names.
     pub label: Rgba,
+    /// The halo round a name.
     pub label_halo: Rgba,
     /// Each road class, from the least: path, rail, service, minor, medium, major,
     /// highway.
     pub path: Rgba,
+    /// Rail lines.
     pub rail: Rgba,
+    /// Service roads.
     pub service: Rgba,
+    /// Minor roads.
     pub minor: Rgba,
+    /// Medium roads.
     pub medium: Rgba,
+    /// Major roads.
     pub major: Rgba,
+    /// Highways.
     pub highway: Rgba,
 }
 
@@ -279,7 +301,9 @@ pub struct SceneColours {
     pub back: Rgba,
     /// The ground's lines: every metre, and every 5 m.
     pub grid: Rgba,
+    /// The 5 m lines.
     pub grid_major: Rgba,
+    /// Each localizer's colour.
     pub localizers: LocalizerColours,
     /// Nav2's plan: yellow.
     pub plan: Rgba,
@@ -295,9 +319,11 @@ pub struct SceneColours {
     pub ndt_cell: Rgba,
     /// The latest scan from above: on a map cell (green), off the map (red).
     pub scan_on: Rgba,
+    /// A scan point off the map.
     pub scan_off: Rgba,
     /// Nav2's cubes (the voxels trial's): red wireframes; dimmer once STALE.
     pub nav2_cube: Rgba,
+    /// A cube once STALE.
     pub nav2_cube_stale: Rgba,
     /// The cubes' height ramp, lowest first: ground, knee, waist, head, high, above.
     /// Teal, standing further from `back` the higher it is.
@@ -336,7 +362,9 @@ impl Tone {
 /// A pill's colours: its fill, and its words.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Pill {
+    /// The pill.
     pub fill: Rgba,
+    /// Its words.
     pub ink: Rgba,
 }
 
@@ -380,9 +408,11 @@ pub struct Arcade {
     pub redline: Rgba,
     /// The digital boxes (the speed, the gear): their fill and edge.
     pub readout: Rgba,
+    /// Their edge.
     pub readout_edge: Rgba,
     /// A lit segment, and an unlit one (faint, as a real display's glass).
     pub segment_on: Rgba,
+    /// An unlit segment.
     pub segment_off: Rgba,
     /// The car's lines in the background: faint, see-through.
     pub silhouette: Rgba,
@@ -406,14 +436,21 @@ impl Arcade {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Theme {
     // The window behind everything: a soft gradient, and two faint glows.
+    /// The gradient's top.
     pub background: Rgba,
+    /// The gradient's bottom.
     pub background_low: Rgba,
+    /// The first glow.
     pub glow_a: Rgba,
+    /// The second glow.
     pub glow_b: Rgba,
 
     // Frosted glass: the panels, see-through, with a soft edge and a shine on top.
+    /// A panel.
     pub panel: Rgba,
+    /// A panel's edge.
     pub glass_edge: Rgba,
+    /// The shine on a panel's top.
     pub glass_shine: Rgba,
     /// Glass over the map: the chips, the north arrow, the scale bar.
     pub overlay: Rgba,
@@ -425,58 +462,81 @@ pub struct Theme {
     pub camera_back: Rgba,
 
     // Words.
+    /// Words.
     pub text: Rgba,
+    /// Captions: quieter words.
     pub caption: Rgba,
     /// Old news, and nothing yet.
     pub dim: Rgba,
 
     // Status, as words or lines on a panel.
+    /// Good.
     pub good: Rgba,
+    /// A warning.
     pub warn: Rgba,
+    /// Bad.
     pub bad: Rgba,
     /// A topic's SIM / BENCH / REPLAY tag.
     pub not_real_text: Rgba,
 
     // Status, as filled shapes with words on them.
+    /// GO's fill.
     pub go_fill: Rgba,
+    /// Words on GO's fill.
     pub go_ink: Rgba,
+    /// WAIT's fill.
     pub wait_fill: Rgba,
+    /// Words on WAIT's fill.
     pub wait_ink: Rgba,
     /// STOP, the stop-sign banner, the e-stop button.
     pub stop_fill: Rgba,
     /// The same, blinking, and under the pointer.
     pub stop_fill_alt: Rgba,
+    /// Words on the stop fill.
     pub stop_ink: Rgba,
     /// The SIMULATED / BENCH / REPLAY band.
     pub not_real: Rgba,
+    /// Words on the band.
     pub not_real_ink: Rgba,
 
     // The map window.
     /// Nav2's plan, the search box while typing, the Enter key.
     pub accent: Rgba,
+    /// Words on the accent.
     pub accent_ink: Rgba,
     /// Under the plan, so it shows on any colour.
     pub plan_casing: Rgba,
     /// street_router's street route.
     pub street_route: Rgba,
+    /// The goal.
     pub goal: Rgba,
     /// The place picked in the search.
     pub picked: Rgba,
     /// CONFIRM: stop and read.
     pub confirm: Rgba,
+    /// Words on CONFIRM.
     pub confirm_ink: Rgba,
+    /// The car's body.
     pub car_body: Rgba,
     /// The edge of the car, the goal and the pin.
     pub marker_edge: Rgba,
+    /// The row picked in a list.
     pub selected_row: Rgba,
+    /// A key on the keyboard.
     pub key: Rgba,
+    /// A command key (Enter, Back...).
     pub key_command: Rgba,
+    /// A key held down.
     pub key_down: Rgba,
+    /// Nav2's map.
     pub grid: GridColours,
     /// Nav2's map over the streets: see-through.
     pub grid_over_streets: GridColours,
+    /// The map's grid lines.
     pub grid_line: Rgba,
+    /// The grid lines over the streets.
     pub grid_line_over_streets: Rgba,
+    /// The street map.
     pub streets: StreetColours,
 
     // The debug screen and the hardware panel.
@@ -484,10 +544,13 @@ pub struct Theme {
     pub section: Rgba,
     /// An Idle pill: NEVER, DISARMED.
     pub idle_fill: Rgba,
+    /// Words on an Idle pill.
     pub idle_ink: Rgba,
     /// The hardware panel's buttons: ready, held, and off (greyed out).
     pub button: Rgba,
+    /// A button held.
     pub button_down: Rgba,
+    /// A button that's off.
     pub button_off: Rgba,
     /// The debug screen's 3D view and top-downs.
     pub scene: SceneColours,
@@ -519,56 +582,102 @@ pub mod catppuccin {
     /// Mocha: the dark one.
     pub mod mocha {
         use super::Rgba;
+        /// Mocha's Red.
         pub const RED: Rgba = Rgba::hex(0xf38ba8);
+        /// Mocha's Maroon.
         pub const MAROON: Rgba = Rgba::hex(0xeba0ac);
+        /// Mocha's Peach.
         pub const PEACH: Rgba = Rgba::hex(0xfab387);
+        /// Mocha's Yellow.
         pub const YELLOW: Rgba = Rgba::hex(0xf9e2af);
+        /// Mocha's Green.
         pub const GREEN: Rgba = Rgba::hex(0xa6e3a1);
+        /// Mocha's Teal.
         pub const TEAL: Rgba = Rgba::hex(0x94e2d5);
+        /// Mocha's Sky.
         pub const SKY: Rgba = Rgba::hex(0x89dceb);
+        /// Mocha's Blue.
         pub const BLUE: Rgba = Rgba::hex(0x89b4fa);
+        /// Mocha's Lavender.
         pub const LAVENDER: Rgba = Rgba::hex(0xb4befe);
+        /// Mocha's Mauve.
         pub const MAUVE: Rgba = Rgba::hex(0xcba6f7);
+        /// Mocha's Pink.
         pub const PINK: Rgba = Rgba::hex(0xf5c2e7);
+        /// Mocha's Text.
         pub const TEXT: Rgba = Rgba::hex(0xcdd6f4);
+        /// Mocha's Subtext 1.
         pub const SUBTEXT1: Rgba = Rgba::hex(0xbac2de);
+        /// Mocha's Subtext 0.
         pub const SUBTEXT0: Rgba = Rgba::hex(0xa6adc8);
+        /// Mocha's Overlay 2.
         pub const OVERLAY2: Rgba = Rgba::hex(0x9399b2);
+        /// Mocha's Overlay 1.
         pub const OVERLAY1: Rgba = Rgba::hex(0x7f849c);
+        /// Mocha's Overlay 0.
         pub const OVERLAY0: Rgba = Rgba::hex(0x6c7086);
+        /// Mocha's Surface 2.
         pub const SURFACE2: Rgba = Rgba::hex(0x585b70);
+        /// Mocha's Surface 1.
         pub const SURFACE1: Rgba = Rgba::hex(0x45475a);
+        /// Mocha's Surface 0.
         pub const SURFACE0: Rgba = Rgba::hex(0x313244);
+        /// Mocha's Base.
         pub const BASE: Rgba = Rgba::hex(0x1e1e2e);
+        /// Mocha's Mantle.
         pub const MANTLE: Rgba = Rgba::hex(0x181825);
+        /// Mocha's Crust.
         pub const CRUST: Rgba = Rgba::hex(0x11111b);
     }
 
     /// Latte: the light one.
     pub mod latte {
         use super::Rgba;
+        /// Latte's Red.
         pub const RED: Rgba = Rgba::hex(0xd20f39);
+        /// Latte's Maroon.
         pub const MAROON: Rgba = Rgba::hex(0xe64553);
+        /// Latte's Peach.
         pub const PEACH: Rgba = Rgba::hex(0xfe640b);
+        /// Latte's Yellow.
         pub const YELLOW: Rgba = Rgba::hex(0xdf8e1d);
+        /// Latte's Green.
         pub const GREEN: Rgba = Rgba::hex(0x40a02b);
+        /// Latte's Teal.
         pub const TEAL: Rgba = Rgba::hex(0x179299);
+        /// Latte's Sky.
         pub const SKY: Rgba = Rgba::hex(0x04a5e5);
+        /// Latte's Blue.
         pub const BLUE: Rgba = Rgba::hex(0x1e66f5);
+        /// Latte's Lavender.
         pub const LAVENDER: Rgba = Rgba::hex(0x7287fd);
+        /// Latte's Mauve.
         pub const MAUVE: Rgba = Rgba::hex(0x8839ef);
+        /// Latte's Pink.
         pub const PINK: Rgba = Rgba::hex(0xea76cb);
+        /// Latte's Text.
         pub const TEXT: Rgba = Rgba::hex(0x4c4f69);
+        /// Latte's Subtext 1.
         pub const SUBTEXT1: Rgba = Rgba::hex(0x5c5f77);
+        /// Latte's Subtext 0.
         pub const SUBTEXT0: Rgba = Rgba::hex(0x6c6f85);
+        /// Latte's Overlay 2.
         pub const OVERLAY2: Rgba = Rgba::hex(0x7c7f93);
+        /// Latte's Overlay 1.
         pub const OVERLAY1: Rgba = Rgba::hex(0x8c8fa1);
+        /// Latte's Overlay 0.
         pub const OVERLAY0: Rgba = Rgba::hex(0x9ca0b0);
+        /// Latte's Surface 2.
         pub const SURFACE2: Rgba = Rgba::hex(0xacb0be);
+        /// Latte's Surface 1.
         pub const SURFACE1: Rgba = Rgba::hex(0xbcc0cc);
+        /// Latte's Surface 0.
         pub const SURFACE0: Rgba = Rgba::hex(0xccd0da);
+        /// Latte's Base.
         pub const BASE: Rgba = Rgba::hex(0xeff1f5);
+        /// Latte's Mantle.
         pub const MANTLE: Rgba = Rgba::hex(0xe6e9ef);
+        /// Latte's Crust.
         pub const CRUST: Rgba = Rgba::hex(0xdce0e8);
     }
 }
@@ -1639,13 +1748,21 @@ mod tests {
 /// white glint. Kept apart from [`Theme`]'s fields so a theme needs nothing new.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RobotColours {
+    /// The treads.
     pub tread: Rgba,
+    /// The treads' cleats.
     pub cleat: Rgba,
+    /// The body.
     pub body: Rgba,
+    /// The body's side, in shade.
     pub body_side: Rgba,
+    /// The neck.
     pub neck: Rgba,
+    /// The eye shells.
     pub eye: Rgba,
+    /// The dark glass.
     pub lens: Rgba,
+    /// The white glint.
     pub glint: Rgba,
     /// A thin edge round the map's robot, so it shows on any street colour.
     pub edge: Rgba,

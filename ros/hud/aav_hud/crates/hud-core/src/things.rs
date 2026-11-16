@@ -21,9 +21,11 @@ use crate::theme::{self, Rgba};
 /// What a thing is, from the camera's label.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Kind {
+    /// A person.
     Person,
     /// A car, truck, bus or motorcycle.
     Vehicle,
+    /// A stop sign.
     StopSign,
     /// Named, but none of the above (a bicycle...).
     Other,
@@ -64,22 +66,30 @@ impl Kind {
 /// One thing (aav_interfaces/Thing): odom, metres and m/s.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Thing {
+    /// Its tracking number.
     pub id: u32,
     /// The camera's label as it came (`person`, `stop sign`); `unknown` or empty: none.
     pub name: String,
+    /// m, along odom x.
     pub x: f64,
+    /// m, along odom y.
     pub y: f64,
+    /// m/s, along odom x.
     pub vx: f64,
+    /// m/s, along odom y.
     pub vy: f64,
     /// Along odom x, along odom y, above the road.
     pub length: f64,
+    /// m, along odom y.
     pub width: f64,
+    /// m, above the road.
     pub height: f64,
     /// Not seen in the last cloud: moved on its speed.
     pub coasting: bool,
 }
 
 impl Thing {
+    /// What it is, from its name.
     #[must_use]
     pub fn kind(&self) -> Kind {
         Kind::of(&self.name)

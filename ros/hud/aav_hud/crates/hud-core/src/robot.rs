@@ -22,11 +22,14 @@ use std::{
 /// A point on a flat picture: screen pixels (y down) or the robot's own frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Xy {
+    /// Across.
     pub x: f64,
+    /// Down on a screen; left in the robot's frame.
     pub y: f64,
 }
 
 impl Xy {
+    /// A point from x and y.
     #[must_use]
     pub const fn new(x: f64, y: f64) -> Self {
         Self { x, y }
@@ -37,12 +40,16 @@ impl Xy {
 /// metres, REP-103), or the map frame plus a height.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Xyz {
+    /// m, forward.
     pub x: f64,
+    /// m, left.
     pub y: f64,
+    /// m, up.
     pub z: f64,
 }
 
 impl Xyz {
+    /// A point from x, y and z.
     #[must_use]
     pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
@@ -90,13 +97,20 @@ pub enum Form<P> {
     /// A convex polygon: its corners, in order round it.
     Polygon(Vec<P>),
     /// A circle (from above: one lying flat, which a tilt from above keeps round).
-    Circle { centre: P, radius: f64 },
+    Circle {
+        /// Its centre.
+        centre: P,
+        /// Its radius.
+        radius: f64,
+    },
 }
 
 /// One shape of the robot, and its part.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Piece<P> {
+    /// Which part it is, for its colour.
     pub part: Part,
+    /// Its shape.
     pub form: Form<P>,
 }
 
@@ -323,13 +337,18 @@ impl Odometer {
 /// A box on the screen, in pixels: its top-left corner and its size.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Strip {
+    /// The left edge (px).
     pub x: f64,
+    /// The top edge (px).
     pub y: f64,
+    /// px.
     pub width: f64,
+    /// px.
     pub height: f64,
 }
 
 impl Strip {
+    /// A box from its top-left corner and its size (px).
     #[must_use]
     pub const fn new(x: f64, y: f64, width: f64, height: f64) -> Self {
         Self {
@@ -545,11 +564,13 @@ pub struct Watch {
 /// What to draw this frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Show {
+    /// No robot this frame.
     Nothing,
     /// The eyes over the bottom edge.
     Peek(PeekPose),
     /// The robot driving across: `progress` 0 (off the left edge) to 1 (off the right).
     Drive {
+        /// 0 to 1.
         progress: f64,
     },
 }
@@ -594,6 +615,7 @@ pub struct EasterEgg {
 }
 
 impl EasterEgg {
+    /// The robot, quiet from `now`.
     #[must_use]
     pub fn new(settings: EggSettings, now: Instant) -> Self {
         Self {

@@ -34,6 +34,7 @@ pub enum Light {
 /// What the panel says.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Verdict {
+    /// Its colour: green, amber, red or grey.
     pub light: Light,
     /// One or two short words, big: GO, WAIT, STOP, AUTO STOP, NO GATE.
     pub headline: &'static str,
@@ -103,7 +104,12 @@ pub enum Sensors {
     /// Nothing stops the drivers (a warning may be on: the camera's banner shows it).
     Drive,
     /// Nav2 and the AI slot are held: the first input that stops them, and its state.
-    Held { input: String, state: String },
+    Held {
+        /// The input: gps, imu, lidar...
+        input: String,
+        /// Its state: STALE, SIM...
+        state: String,
+    },
 }
 
 impl Sensors {
