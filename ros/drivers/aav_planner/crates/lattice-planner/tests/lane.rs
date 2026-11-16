@@ -70,6 +70,31 @@ fn along_the_lane_between_the_joins() {
 }
 
 #[test]
+fn a_car_on_its_lane_is_joined_straight() {
+    // Driving the lane (0.3 m off its centre, 10 degrees off): no lattice search at all,
+    // so no back-and-forth at a replan; the path starts at the car.
+    let planner = scenes::planner(true);
+    let grid = free();
+    let start = Pose::new(30.0, -1.2, -10f64.to_radians());
+    let goal = Pose::new(101.5, 70.0, std::f64::consts::FRAC_PI_2);
+    let got = ell()
+        .plan(&planner, &grid, &start, &goal, &never)
+        .expect("a path");
+    assert!(matches!(got.how, How::Lane(_)), "{:?}", got.how);
+    assert_eq!(got.plan.poses[0], start);
+    let gap = got
+        .plan
+        .poses
+        .windows(2)
+        .map(|w| (w[1].x - w[0].x).hypot(w[1].y - w[0].y))
+        .fold(0.0, f64::max);
+    assert!(gap <= 0.3, "{gap}");
+    // The goal on the line's end: joined straight too, so no search either end.
+    assert_eq!(got.plan.poses[got.plan.poses.len() - 1], goal);
+    assert_eq!(got.plan.iterations, 0);
+}
+
+#[test]
 fn off_the_map_short_or_blocked_is_the_lattices() {
     let planner = scenes::planner(false);
     let mut grid = free();
@@ -89,12 +114,25 @@ fn off_the_map_short_or_blocked_is_the_lattices() {
         ),
         How::Lattice(Fallback::OffMap)
     );
-    // 15 m of road: no room for two 8 m joins.
+    // 15 m of road, the car 2 m off its lane: no room for two 8 m joins.
     assert_eq!(
+        how(&grid, Pose::new(10.0, 0.5, 0.0), Pose::new(25.0, 0.5, 0.0)),
+        How::Lattice(Fallback::Short)
+    );
+    // On its lane already, the goal too: joined straight, so 15 m is enough; 5 m isn't.
+    assert!(matches!(
         how(
             &grid,
             Pose::new(10.0, -1.5, 0.0),
             Pose::new(25.0, -1.5, 0.0)
+        ),
+        How::Lane(_)
+    ));
+    assert_eq!(
+        how(
+            &grid,
+            Pose::new(10.0, -1.5, 0.0),
+            Pose::new(15.0, -1.5, 0.0)
         ),
         How::Lattice(Fallback::Short)
     );

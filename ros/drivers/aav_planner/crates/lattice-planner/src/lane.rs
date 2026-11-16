@@ -14,7 +14,7 @@
 //! | where on it | the start and the goal on their nearest segment: on the road, the way they face; off it but within [`LaneSettings::reach`], either way |
 //! | the route | Dijkstra, shortest along the centre lines |
 //! | the line | each segment moved right by its lane's centre (`Road::lane`, as the lanes layer and `lane_map.py`), corners rounded at the planner's turning radius |
-//! | the ends | the lattice, from the car to the line `join` m on, and from `join` m before its end to the goal |
+//! | the ends | the lattice, from the car to the line `join` m on, and from `join` m before its end to the goal; a car already on its lane (within [`LaneSettings::snap`]) straight onto the line `ease` m ahead, and a goal on the line's end straight too |
 //!
 //! It falls back to the lattice for the whole path, and says why ([`Fallback`]), when:
 //! the start or the goal is off the lane map (the lot), the route is too short for both
@@ -45,15 +45,26 @@ pub struct LaneSettings {
     pub min_lane: f64,
     /// m between the lane line's poses.
     pub spacing: f64,
+    /// m and rad: a car (or goal) this near the lane line's end, and facing its way, is
+    /// joined to it straight, not by the lattice: the path starts at the car and goes on
+    /// at the line `ease` m ahead (the goal: the line's end, then the goal).
+    pub snap: (f64, f64),
+    /// m along the line where a snapped car's path meets it.
+    pub ease: f64,
 }
 
 impl Default for LaneSettings {
+    /// 16 Nov: the first sim runs joined the car by the lattice at every replan (once a
+    /// second), and on the bends the lattice backed up now and then (4 reversals a leg);
+    /// a car already on its lane is now joined straight.
     fn default() -> Self {
         Self {
             join: 8.0,
             reach: 20.0,
             min_lane: 5.0,
             spacing: 0.25,
+            snap: (0.6, 20f64.to_radians()),
+            ease: 2.0,
         }
     }
 }
@@ -455,21 +466,57 @@ impl LaneRouter {
         let join = self.settings.join.max(s_bend(radius, ONE_LANE) + 2.0);
         let along = arc_lengths(&line);
         let total = along.last().copied().unwrap_or(0.0);
-        if total - 2.0 * join < self.settings.min_lane {
+        // On the line already (the car driving its lane, a goal at the lane's centre): a
+        // straight join; else the lattice's, `join` m along.
+        let (snap_m, snap_yaw) = self.settings.snap;
+        let near = |p: &Pose, q: &Pose| {
+            (p.x - q.x).hypot(p.y - q.y) <= snap_m && wrap(p.yaw - q.yaw).abs() <= snap_yaw
+        };
+        let snap_start = near(start, &line[0]);
+        let snap_goal = near(goal, &line[line.len() - 1]);
+        let head_m = if snap_start { self.settings.ease } else { join };
+        let tail_m = if snap_goal { 0.0 } else { join };
+        if total - head_m - tail_m < self.settings.min_lane {
             return lattice(Fallback::Short);
         }
-        let first = along.partition_point(|&s| s < join);
-        let last = along.partition_point(|&s| s <= total - join).max(first + 1) - 1;
+        let first = along.partition_point(|&s| s < head_m);
+        let last = along
+            .partition_point(|&s| s <= total - tail_m)
+            .max(first + 1)
+            - 1;
         let middle = &line[first..=last];
         let xy: Vec<(f64, f64)> = middle.iter().map(|p| (p.x, p.y)).collect();
         if !grid.blocked_along(&xy, 0).is_empty() {
             return lattice(Fallback::Blocked);
         }
         let (entry, exit) = (middle[0], middle[middle.len() - 1]);
-        let (Ok(head), Ok(tail)) = (
-            planner.plan(grid, start, &entry, cancelled),
-            planner.plan(grid, &exit, goal, cancelled),
-        ) else {
+        let straight = |from: &Pose, to: &Pose| {
+            let mut poses = resample(&[(from.x, from.y), (to.x, to.y)], self.settings.spacing);
+            if let Some(f) = poses.first_mut() {
+                *f = *from;
+            }
+            if let Some(l) = poses.last_mut() {
+                *l = *to;
+            }
+            Plan {
+                raw: poses.clone(),
+                poses,
+                iterations: 0,
+                search_time: 0.0,
+                total_time: 0.0,
+            }
+        };
+        let head = if snap_start {
+            Ok(straight(start, &entry))
+        } else {
+            planner.plan(grid, start, &entry, cancelled)
+        };
+        let tail = if snap_goal {
+            Ok(straight(&exit, goal))
+        } else {
+            planner.plan(grid, &exit, goal, cancelled)
+        };
+        let (Ok(head), Ok(tail)) = (head, tail) else {
             if cancelled() {
                 return Err(PlanError::Cancelled);
             }
