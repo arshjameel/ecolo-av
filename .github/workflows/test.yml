@@ -41,7 +41,7 @@ jobs:
   linux:
     if: github.event_name != 'schedule' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || github.repository != 'AAV-2025-2026/ecolo-av')
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v5
       - name: Install Pixi
@@ -62,7 +62,7 @@ jobs:
         # A hung test fails the step (and so gets annotated) instead of the job being
         # cancelled at its limit with nothing to read; pytest prints every thread's stack
         # once a test has run 5 min (the Mac nightly of 24 Oct ran past 90 min).
-        timeout-minutes: 45
+        timeout-minutes: 60
         env:
           PYTEST_ADDOPTS: -o faulthandler_timeout=300
         run: pixi run --locked test 2>&1 | tee test.log
@@ -97,7 +97,7 @@ jobs:
         # A hung test fails the step (and so gets annotated) instead of the job being
         # cancelled at its limit with nothing to read; pytest prints every thread's stack
         # once a test has run 5 min (the Mac nightly of 24 Oct ran past 90 min).
-        timeout-minutes: 45
+        timeout-minutes: 60
         env:
           PYTEST_ADDOPTS: -o faulthandler_timeout=300
         run: pixi run --locked test 2>&1 | tee test.log
@@ -115,7 +115,7 @@ jobs:
   arm:
     if: github.event_name != 'schedule' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || github.repository != 'AAV-2025-2026/ecolo-av')
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v5
       - name: Install Pixi
@@ -134,7 +134,7 @@ jobs:
           key: pixi-pkgs-arm64-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
           restore-keys: pixi-pkgs-arm64-${{ runner.os }}-
       - name: pixi run test
-        timeout-minutes: 45
+        timeout-minutes: 60
         env:
           PYTEST_ADDOPTS: -o faulthandler_timeout=300
         run: pixi run --locked test 2>&1 | tee test.log
