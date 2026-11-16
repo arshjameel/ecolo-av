@@ -88,6 +88,7 @@ fn main() -> Result<(), String> {
                 Ok(p) => {
                     let how = match p.how {
                         How::Lane(m) => format!("lane {m:.0} m"),
+                        How::Pass(m, d) => format!("lane {m:.0} m, passing {d:.2} m left"),
                         How::Lattice(why) => format!("lattice ({})", why.word()),
                     };
                     let end = p.plan.poses[p.plan.poses.len() - 1];

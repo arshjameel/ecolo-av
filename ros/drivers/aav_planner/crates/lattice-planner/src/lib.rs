@@ -24,6 +24,7 @@ pub mod curves;
 pub mod heuristic;
 pub mod lane;
 pub mod lattice;
+pub mod pass;
 pub mod scenes;
 pub mod search;
 pub mod smoother;
@@ -370,6 +371,28 @@ impl Planner {
             Moves::Lattice(t) => t.lattice.turning_radius,
             Moves::Hybrid { spec, .. } => spec.minimum_turning_radius,
         }
+    }
+
+    /// m: half the car's padded outline across (its widest point from base_link's line).
+    #[must_use]
+    pub fn half_width(&self) -> f64 {
+        self.outline.iter().map(|p| p.1.abs()).fold(0.0, f64::max)
+    }
+
+    /// Does the car fit at `pose` (world, on `grid`'s frame)? The search's own check: the
+    /// padded outline against lethal and inscribed cells; off the grid it doesn't.
+    ///
+    /// # Errors
+    ///
+    /// [`PlanError::WrongResolution`] if the lattice's cells aren't the grid's.
+    pub fn fits(&self, grid: &Grid, pose: &Pose) -> Result<bool, PlanError> {
+        let tables = self.tables(grid)?;
+        let x = (pose.x - grid.origin_x) / grid.resolution;
+        let y = (pose.y - grid.origin_y) / grid.resolution;
+        Ok(matches!(
+            tables.checker.fit(grid, x, y, pose.yaw),
+            collision::Fit::Free(_)
+        ))
     }
 
     /// One line for the log: which search, its headings, cells and radius.

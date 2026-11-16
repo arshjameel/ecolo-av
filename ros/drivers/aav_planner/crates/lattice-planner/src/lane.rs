@@ -16,9 +16,14 @@
 //! | the line | each segment moved right by its lane's centre (`Road::lane`, as the lanes layer and `lane_map.py`), corners rounded at the planner's turning radius |
 //! | the ends | the lattice, from the car to the line `join` m on, and from `join` m before its end to the goal; a car already on its lane (within [`LaneSettings::snap`]) straight onto the line `ease` m ahead, and a goal on the line's end straight too |
 //!
+//! Something parked on the line (Ben, 16 Nov: keep right, leave the lane only to pass):
+//! only the blocked stretch moves left, by the least that clears it, and back
+//! ([`crate::pass`]); the rest stays the lane's centre ([`How::Pass`]).
+//!
 //! It falls back to the lattice for the whole path, and says why ([`Fallback`]), when:
 //! the start or the goal is off the lane map (the lot), the route is too short for both
-//! joins, the line runs over an obstacle (the lattice goes round), or a join has no path.
+//! joins, the line is blocked with no pass (the other lane taken too, or the goal in the
+//! blocked stretch), or a join has no path.
 //!
 //! A goal off the costmap (a global costmap made of the chunks round the car, TODO 175):
 //! the lane line still runs the whole way, but the path stops on it where it leaves the
@@ -29,6 +34,7 @@ use std::collections::{BinaryHeap, HashMap};
 
 use costmap::{Grid, Road};
 
+use crate::pass::{self, PassSettings};
 use crate::steps::{self, EDGE_MARGIN};
 use crate::{curves::wrap, Plan, PlanError, Planner, Pose};
 
@@ -36,6 +42,8 @@ use crate::{curves::wrap, Plan, PlanError, Planner, Pose};
 const ON_ROAD_MARGIN: f64 = 0.5;
 /// m: the sideways step the joins must make room for: one lane.
 const ONE_LANE: f64 = 3.5;
+/// m a pass keeps from the left kerb, beyond half the car.
+const KERB_MARGIN: f64 = 0.25;
 
 /// How the lane planner joins and when it gives up on the lane.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -59,6 +67,9 @@ pub struct LaneSettings {
     /// A lane route longer than `detour.0` times the straight distance plus `detour.1` m
     /// is a loop round the block to reach a goal close by: the lattice's instead.
     pub detour: (f64, f64),
+    /// Something parked on the line: pass it ([`crate::pass`]); None: the lattice, all of
+    /// it, as before 16 Nov.
+    pub pass: Option<PassSettings>,
 }
 
 impl Default for LaneSettings {
@@ -76,6 +87,7 @@ impl Default for LaneSettings {
             // 16 Nov (TODO 175): on the campus tour a replan 10 m short of the goal (off
             // the road, at 45 degrees to it) gave a 430 m loop of lanes; the car drove it.
             detour: (2.0, 40.0),
+            pass: Some(PassSettings::default()),
         }
     }
 }
@@ -87,7 +99,8 @@ pub enum Fallback {
     OffMap,
     /// The route is too short for the two joins and a stretch of lane.
     Short,
-    /// The lane line runs over an obstacle (lethal or inscribed): the lattice goes round.
+    /// The lane line runs over an obstacle (lethal or inscribed), and no pass fits (or
+    /// passing is off): the lattice goes round.
     Blocked,
     /// The lattice found no join, at one end or the other.
     JoinFailed,
@@ -114,6 +127,9 @@ impl Fallback {
 pub enum How {
     /// Along the lane: this many metres of it between the two joins.
     Lane(f64),
+    /// Along the lane, passing something parked on it: the metres, and the most it moved
+    /// left (m).
+    Pass(f64, f64),
     /// The lattice's, all of it, and why.
     Lattice(Fallback),
 }
@@ -431,6 +447,23 @@ impl LaneRouter {
         Some((cost[found] + last, chain))
     }
 
+    /// m left of the right lane's centre the car may go near `p`: to the left kerb of the
+    /// nearest road, less `half_width` and [`KERB_MARGIN`]. 0 off every road.
+    fn room_left(&self, p: &Pose, half_width: f64) -> f64 {
+        let nearest = self
+            .roads
+            .iter()
+            .flat_map(|r| {
+                r.points
+                    .windows(2)
+                    .map(move |w| (foot((p.x, p.y), w[0], w[1]).2, r))
+            })
+            .min_by(|a, b| a.0.total_cmp(&b.0));
+        nearest.map_or(0.0, |(_, r)| {
+            (r.lane().0 + r.width / 2.0 - half_width - KERB_MARGIN).max(0.0)
+        })
+    }
+
     /// The right lane's centre from `start` to `goal`, a pose every
     /// [`LaneSettings::spacing`] m, its corners rounded at `radius` m; None off the lane map.
     #[must_use]
@@ -496,6 +529,25 @@ impl LaneRouter {
             }
         }
         let lattice = |why| lattice(why, route.clone());
+        // Something parked on the line: pass it, the rest the lane's centre.
+        let mut passing = 0.0;
+        if let Some(settings) = &self.settings.pass {
+            let along = arc_lengths(&line);
+            // Off the grid nothing is known: the search's own check decides there.
+            let fits = |p: &Pose| {
+                !steps::inside(grid, p.x, p.y, 0.0) || planner.fits(grid, p).unwrap_or(true)
+            };
+            let half = planner.half_width();
+            let room = |p: &Pose| self.room_left(p, half);
+            match pass::plan(&line, &along, radius, settings, &fits, &room) {
+                Ok(None) => {}
+                Ok(Some(p)) => {
+                    passing = p.shift();
+                    line = p.line;
+                }
+                Err(pass::NoRoom) => return lattice(Fallback::Blocked),
+            }
+        }
         let target = if cut { line[line.len() - 1] } else { *goal };
         let join = self.settings.join.max(s_bend(radius, ONE_LANE) + 2.0);
         let along = arc_lengths(&line);
@@ -570,7 +622,11 @@ impl LaneRouter {
                 search_time: head.search_time + tail.search_time,
                 total_time: head.total_time + tail.total_time,
             },
-            how: How::Lane(along[last] - along[first]),
+            how: if passing > 0.0 {
+                How::Pass(along[last] - along[first], passing)
+            } else {
+                How::Lane(along[last] - along[first])
+            },
             cut,
             route,
         })
@@ -602,6 +658,7 @@ impl LaneRouter {
             total_time: 0.0,
         };
         let mut lane = 0.0;
+        let mut shift: f64 = 0.0;
         let mut fallback = None;
         let mut from = *start;
         let mut cut = false;
@@ -612,6 +669,10 @@ impl LaneRouter {
                 .map_err(|e| (leg, e))?;
             match p.how {
                 How::Lane(m) => lane += m,
+                How::Pass(m, d) => {
+                    lane += m;
+                    shift = shift.max(d);
+                }
                 How::Lattice(why) => {
                     fallback.get_or_insert(why);
                 }
@@ -631,6 +692,7 @@ impl LaneRouter {
         }
         let how = match fallback {
             Some(why) if lane <= 0.0 => How::Lattice(why),
+            _ if shift > 0.0 => How::Pass(lane, shift),
             _ => How::Lane(lane),
         };
         Ok(LanePlan {

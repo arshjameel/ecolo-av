@@ -136,9 +136,9 @@ fn off_the_map_short_or_blocked_is_the_lattices() {
         ),
         How::Lattice(Fallback::Short)
     );
-    // A box on the right lane at x = 50: the lattice goes round.
-    for x in 276..284 {
-        for y in 72..76 {
+    // The whole road walled off at x = 50 (kerb to kerb and more): no pass, the lattice's.
+    for x in 276..280 {
+        for y in 60..100 {
             grid.set(x, y, LETHAL);
         }
     }
@@ -146,6 +146,64 @@ fn off_the_map_short_or_blocked_is_the_lattices() {
         how(&grid, Pose::new(5.0, -1.5, 0.0), Pose::new(90.0, -1.5, 0.0)),
         How::Lattice(Fallback::Blocked)
     );
+}
+
+#[test]
+fn a_box_parked_in_the_lane_is_passed_on_the_left_and_the_lane_kept_elsewhere() {
+    // Ben, 16 Nov: keep right, leave the lane only to pass. A 2 m x 1 m box on the right
+    // lane's centre (y -2 to -1) at x 49-51; the lane's centre y = -1.5, the centre line 0.
+    let planner = scenes::planner(false);
+    let mut grid = free();
+    for x in 276..284 {
+        for y in 72..76 {
+            grid.set(x, y, LETHAL);
+        }
+    }
+    // Inflated, as the global costmap is: the outline check reads it.
+    scenes::inflation().apply(&mut grid);
+    let start = Pose::new(5.0, -1.5, 0.0);
+    let goal = Pose::new(90.0, -1.5, 0.0);
+    let got = ell()
+        .plan(&planner, &grid, &start, &goal, &never)
+        .expect("a path");
+    let How::Pass(_, shift) = got.how else {
+        panic!("{:?}", got.how);
+    };
+    // The least that clears it, and no more than to the other lane's middle.
+    assert!(shift > 0.9 && shift < 2.0, "{shift}");
+    for p in &got.plan.poses {
+        // On the lane's centre except near the box; never past the left kerb (y 3.5).
+        if p.x < 30.0 || p.x > 75.0 {
+            assert!((p.y + 1.5).abs() < 0.05, "{p:?}");
+        }
+        assert!(p.y < 3.5 - 0.5, "{p:?}");
+    }
+    let beside = got
+        .plan
+        .poses
+        .iter()
+        .filter(|p| (49.0..51.0).contains(&p.x))
+        .map(|p| p.y)
+        .fold(f64::INFINITY, f64::min);
+    assert!((beside - (-1.5 + shift)).abs() < 0.05, "{beside}");
+    // Every pose fits.
+    assert!(got
+        .plan
+        .poses
+        .iter()
+        .all(|p| planner.fits(&grid, p).expect("cells")));
+    // With passing off: the lattice, as before 16 Nov.
+    let off = LaneRouter::new(
+        ell().roads().to_vec(),
+        LaneSettings {
+            pass: None,
+            ..LaneSettings::default()
+        },
+    );
+    let got = off
+        .plan(&planner, &grid, &start, &goal, &never)
+        .expect("a path");
+    assert_eq!(got.how, How::Lattice(Fallback::Blocked));
 }
 
 #[test]

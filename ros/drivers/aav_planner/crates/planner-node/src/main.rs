@@ -874,6 +874,11 @@ impl Core {
                 values.push(kv("how", "lane".into()));
                 values.push(kv("lane_m", format!("{m:.1}")));
             }
+            Some(How::Pass(m, d)) => {
+                values.push(kv("how", "pass".into()));
+                values.push(kv("lane_m", format!("{m:.1}")));
+                values.push(kv("pass_m", format!("{d:.2}")));
+            }
             Some(How::Lattice(why)) => values.push(kv("how", format!("lattice: {}", why.word()))),
             None => {}
         }
