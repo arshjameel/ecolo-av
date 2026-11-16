@@ -30,6 +30,7 @@ pub struct FrameV3 {
     pub values: Frame,
     /// The Orin's heartbeat counter, copied by the Motor-Pi.
     pub counter: u8,
+    /// Armed and e-stop.
     pub flags: Flags,
     /// What the steering actuator should do: drive, limp or jog.
     pub calibration: CalRequest,
@@ -72,6 +73,11 @@ impl FrameV3 {
 
     /// A frame from 20 bytes: the sync byte, then the CRC, then the version, the flags
     /// and the calibration. The values are not checked ([`Frame::check`] does that).
+    ///
+    /// # Errors
+    ///
+    /// [`FrameError::Sync`], [`FrameError::Checksum`], [`FrameError::Version`] or
+    /// [`FrameError::Flags`]: the first that fails.
     pub fn decode(bytes: &[u8; FRAME_V3_LEN]) -> Result<FrameV3, FrameError> {
         if bytes[0] != SYNC {
             return Err(FrameError::Sync);

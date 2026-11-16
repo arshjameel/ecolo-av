@@ -131,6 +131,7 @@ pub enum SteeringDrive {
 /// frame stands the car still: no speed, and a brake.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Ask {
+    /// What the frame asks for.
     pub request: CalRequest,
     /// The frame's speed value is within the dead band (|speed| < 0.03).
     pub speed_zero: bool,
@@ -141,6 +142,7 @@ pub struct Ask {
 /// What the rest of the spine says, this tick.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Situation {
+    /// The time now (ms; it may wrap).
     pub now_ms: u32,
     /// The steering actuator's position (counts), if it has one this tick.
     pub feedback: Option<u16>,

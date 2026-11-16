@@ -40,6 +40,10 @@ impl Flags {
     }
 
     /// The flags in byte 15, if no unknown bit is set.
+    ///
+    /// # Errors
+    ///
+    /// [`FrameError::Flags`] if an unknown bit is set.
     pub fn from_byte(byte: u8) -> Result<Flags, FrameError> {
         if byte & !(Self::ARMED | Self::ESTOP) != 0 {
             return Err(FrameError::Flags);
@@ -58,6 +62,7 @@ pub struct FrameV2 {
     pub values: Frame,
     /// The Orin's heartbeat counter, copied by the Motor-Pi. Wraps from 255 to 0.
     pub counter: u8,
+    /// Armed and e-stop.
     pub flags: Flags,
 }
 
@@ -80,6 +85,11 @@ impl FrameV2 {
 
     /// A frame from 17 bytes: the sync byte, then the CRC, then the version and the
     /// flags. The values are not checked ([`Frame::check`] does that).
+    ///
+    /// # Errors
+    ///
+    /// [`FrameError::Sync`], [`FrameError::Checksum`], [`FrameError::Version`] or
+    /// [`FrameError::Flags`]: the first that fails.
     pub fn decode(bytes: &[u8; FRAME_V2_LEN]) -> Result<FrameV2, FrameError> {
         if bytes[0] != SYNC {
             return Err(FrameError::Sync);
@@ -139,6 +149,7 @@ pub struct Heartbeat {
 }
 
 impl Heartbeat {
+    /// No counter seen yet: the first one isn't fresh.
     #[must_use]
     pub const fn new() -> Self {
         Heartbeat { last: None }

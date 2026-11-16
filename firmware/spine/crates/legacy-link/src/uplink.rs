@@ -115,7 +115,9 @@ pub struct Uplink {
     /// The last Orin counter the ESP32 took from a version 2 frame; none before the
     /// first, and never with version 1 frames.
     pub echo: Option<u8>,
+    /// Who drives: the spine's mode.
     pub mode: DriveMode,
+    /// Where the RC's mode switch is.
     pub switch: ModeSwitch,
     /// The spine accepts the computer's commands.
     pub armed: bool,
@@ -129,6 +131,7 @@ pub struct Uplink {
     pub brake_position: Option<f32>,
     /// What the ESP32 drives the throttle (0..1) and the brake (0..1) with.
     pub throttle_out: f32,
+    /// The brake (0..1) the ESP32 drives.
     pub brake_out: f32,
     /// The sticks; all 0 with [`ModeSwitch::NoSignal`].
     pub sticks: Sticks,
@@ -142,7 +145,9 @@ pub struct Uplink {
 /// None when the Jrk has no analog feedback, or the read failed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Counts {
+    /// The steering Jrk's.
     pub steering: Option<u16>,
+    /// The brake Jrk's.
     pub brake: Option<u16>,
 }
 
@@ -202,6 +207,11 @@ impl Uplink {
 
     /// A frame from its bytes, version 2 (35) or 3 (40): the sync byte, the version (it
     /// says the length), the CRC, then the kind and each field.
+    ///
+    /// # Errors
+    ///
+    /// [`FrameError::Sync`], [`FrameError::Version`] or [`FrameError::Checksum`] for a
+    /// bad frame; [`FrameError::Field`] for a mode or switch it doesn't know.
     pub fn decode(b: &[u8]) -> Result<Uplink, FrameError> {
         if b.first() != Some(&SYNC) {
             return Err(FrameError::Sync);

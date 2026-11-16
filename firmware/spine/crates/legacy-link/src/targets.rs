@@ -9,6 +9,7 @@ pub(crate) const JRK_MIN: u16 = 400;
 pub(crate) const JRK_MAX: u16 = 3500;
 /// The brake Jrk's targets: released, and full (`JRK_MIN`, `JRK_MAX`).
 pub const BRAKE_RELEASED: u16 = JRK_MIN;
+/// The brake Jrk's target for full on.
 pub const BRAKE_FULL: u16 = JRK_MAX;
 /// The throttle DAC's top code (`DAC_MAX_CAP`, of 1023).
 pub const DAC_CAP: u16 = 700;
@@ -24,6 +25,7 @@ pub struct Targets {
     pub steering: u16,
     /// The brake Jrk's target, 400 (released)..3500 (full).
     pub brake: u16,
+    /// What the DAC and the direction pin do.
     pub throttle: Throttle,
 }
 
@@ -37,7 +39,12 @@ pub enum Throttle {
     /// pin is left as it was.
     Idle,
     /// Ramp the DAC to `code`, in this direction (`ext_digitalWrite(DIR_PIN, ...)`).
-    Drive { code: u16, reverse: bool },
+    Drive {
+        /// The DAC code to ramp to.
+        code: u16,
+        /// The direction pin: true for reverse.
+        reverse: bool,
+    },
 }
 
 impl Frame {
@@ -88,6 +95,7 @@ impl Frame {
 /// most this far up, or down. On the Motor-Pi's link it was called once a frame, so at
 /// 50 frames a second the code rose at most 300 a second and fell at most 600.
 pub const ACCEL_STEP: u16 = 6;
+/// The C++'s DAC ramp's step down, a call.
 pub const DECEL_STEP: u16 = 12;
 
 /// How far the steering's stick or frame value turns right for each count it turns left:
@@ -105,6 +113,7 @@ pub struct DacRamp {
 }
 
 impl DacRamp {
+    /// A ramp at code 0.
     #[must_use]
     pub const fn new() -> Self {
         DacRamp { code: 0 }
@@ -126,6 +135,7 @@ impl DacRamp {
         self.code = 0;
     }
 
+    /// The code the ramp is at.
     #[must_use]
     pub const fn code(&self) -> u16 {
         self.code

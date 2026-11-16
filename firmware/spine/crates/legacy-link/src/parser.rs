@@ -16,6 +16,7 @@ pub struct Parser {
 }
 
 impl Parser {
+    /// An empty parser, waiting for a frame.
     #[must_use]
     pub const fn new() -> Self {
         Parser {
@@ -58,6 +59,7 @@ pub struct ParserV2 {
 }
 
 impl ParserV2 {
+    /// An empty parser, waiting for the sync byte.
     #[must_use]
     pub const fn new() -> Self {
         ParserV2 {
@@ -119,6 +121,7 @@ pub struct Accepted {
 }
 
 impl ParserV3 {
+    /// An empty parser, waiting for the sync byte.
     #[must_use]
     pub const fn new() -> Self {
         ParserV3 {
@@ -202,6 +205,7 @@ pub struct ParserV4 {
 }
 
 impl ParserV4 {
+    /// An empty parser, waiting for the sync byte.
     #[must_use]
     pub const fn new() -> Self {
         ParserV4 {

@@ -38,6 +38,7 @@ pub enum WheelSpeed {
 pub struct FrameV4 {
     /// What version 3 carries: the command, the heartbeat, the calibration.
     pub command: FrameV3,
+    /// The car's wheel speed, if the Motor-Pi has one.
     pub wheel_speed: WheelSpeed,
 }
 
@@ -67,6 +68,11 @@ impl FrameV4 {
     }
 
     /// A frame from 24 bytes: the sync byte, then the CRC, then the rest, as version 3.
+    ///
+    /// # Errors
+    ///
+    /// As version 3's (the first check that fails), and [`FrameError::Field`] for an
+    /// infinite wheel speed.
     pub fn decode(bytes: &[u8; FRAME_V4_LEN]) -> Result<FrameV4, FrameError> {
         if bytes[0] != SYNC {
             return Err(FrameError::Sync);
