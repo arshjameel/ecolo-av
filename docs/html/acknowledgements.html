@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">12 min read · 7 sections</div></header>
+<div class="meta">13 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -437,7 +437,7 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><strong>Autoware</strong> (the Autoware Foundation)</td>
 <td>Apache-2.0</td>
 <td>idea</td>
-<td>the three map levels, map chunks loaded near the car, its tracker as a reference (TODO 156, 175); its <code>roi_cluster_fusion</code> (a lidar cluster's box projected into the camera, matched by IoU) for the things' names (TODO 192)</td>
+<td>the three map levels, map chunks loaded near the car, its tracker as a reference (TODO 156, 175); its <code>roi_cluster_fusion</code> (a lidar cluster's box projected into the camera, matched by IoU) for the things' names (TODO 192); its route-then-lane-centre path (the mission planner routes on the lanelet map, the behaviour path planner follows the lane's centre and shifts only to go round) for our lane-centre planner (<code>aav_planner</code> <code>lane.rs</code>, <code>path:=lane</code>, TODO 148; Fable's review, change 7)</td>
 </tr>
 <tr>
 <td><strong>Apollo</strong> (Baidu)</td>

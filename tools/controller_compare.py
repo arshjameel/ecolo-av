@@ -79,6 +79,11 @@ The trials (docs/trials.md):
                     mppi_lag_steer_gamma:=0.05); own_slow and own_strong(_slow) each step;
                     own_nav2mppi and nav2_mppilag swap only the follower (which stage
                     sways?). --series keeps each leg's raw series for it
+    pixi run measure controllers --stacks own_calm --tours university --runs 2 --reversing
+            --launch behaviour:=true lane_route:=true
+                    TODO 148, path:=lane: University Drive, about 290 m of mapped road
+                    in 3 legs (the campus tour has ~30 s a leg); again with nothing more,
+                    and with lane_costs:=true; tools/lane_score.py on each results.json
     pixi run measure controllers --stacks own --smoothers nav2 own --tours lot campus --runs 3
                     Nav2's velocity smoother against ours (smoother:=own, aav_smoother: the
                     turn rate from where the wheels can be), behind each follower; the
