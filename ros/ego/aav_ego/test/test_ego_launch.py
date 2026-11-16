@@ -50,3 +50,33 @@ def test_sim_max_speed_in_a_simulator():
     nodes(use_sim_time='true', sim_max_speed='3.0')
     with pytest.raises(ValueError):
         nodes(use_sim_time='true', sim_max_speed='9.0')
+
+
+def rust_params(node):
+    """Return the Rust process's parameter file: {'/ego': {...}, '/look_ahead': {...}}."""
+    import yaml
+    (path,) = node._Node__parameters   # the file ego.launch.py wrote, as given
+    with open(path.evaluate(LaunchContext())) as f:   # a launch_ros ParameterFile
+        return yaml.safe_load(f)
+
+
+def test_ego_impl_rust_is_one_process_with_both_nodes():
+    (process,) = nodes(ego_impl='rust', use_sim_time='true', sim_max_speed='3.0')
+    assert isinstance(process, Node)
+    assert process.node_package == 'aav_ego_rs' and process.node_executable == 'ego'
+    files = rust_params(process)
+    ego, look = files['/ego']['ros__parameters'], files['/look_ahead']['ros__parameters']
+    assert ego['max_speed'] == 3.0 and ego['use_sim_time'] is True
+    assert ego['rate_hz'] == 50.0 and ego['vehicle_yaml'].endswith('vehicle.yaml')
+    assert look['use_sim_time'] is True and len(look['body']) == 3
+    assert 'rate_hz' not in look
+
+
+def test_ego_impl_rust_without_look_ahead():
+    (process,) = nodes(ego_impl='rust', look_ahead='false')
+    assert process._Node__arguments == ['--ego-only']
+
+
+def test_ego_impl_is_checked():
+    with pytest.raises(ValueError, match='ego_impl'):
+        nodes(ego_impl='cpp')

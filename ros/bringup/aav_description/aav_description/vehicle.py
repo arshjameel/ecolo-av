@@ -404,6 +404,21 @@ def check_voxels_impl(impl):
     return name
 
 
+# Which ego runs (ego.launch.py, sim.launch.py ego_impl:=): python (aav_ego's two nodes,
+# the default) or rust (aav_ego_rs: ego and look_ahead in one process, the same node
+# names, topics and answers; a challenger, TODO 185). Each one's package.
+EGO_IMPLS = {'python': 'aav_ego', 'rust': 'aav_ego_rs'}
+DEFAULT_EGO_IMPL = 'python'
+
+
+def check_ego_impl(impl):
+    """Return ego's language (lower case), or raise ValueError saying what to pick."""
+    name = str(impl).strip().lower()
+    if name not in EGO_IMPLS:
+        raise ValueError(f'ego_impl:={impl}: pick one of {", ".join(EGO_IMPLS)}')
+    return name
+
+
 def smoother_params(cfg, ego, vehicle_yaml):
     """
     Return car_smoother's car parameters (smoother:=own), beside nav2.yaml's own block.

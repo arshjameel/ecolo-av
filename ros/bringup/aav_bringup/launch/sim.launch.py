@@ -12,7 +12,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [payload:=0] [adaptive_brake:=false]
       [reversing:=true] [controller:=] [planner:=] [tracker:=] [costmap:=] [navigator:=]
       [smoother:=] [behaviour:=]
-      [amcl:=false] [voxels:=false] [voxels_impl:=python]
+      [amcl:=false] [voxels:=false] [voxels_impl:=python] [ego_impl:=python]
       [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
       [kiss_ekf:=false] [lane_pose:=false]
       [plan_around:=true] [things:=false]
@@ -148,6 +148,8 @@ bench's argument names:
                       instead of the flat scan; only with the lidar
   voxels_impl:=rust   the Rust voxels node (aav_voxels_rs) in the Python one's place, for
                       voxels:=true or screen_cubes:=true: the same topics and answers
+  ego_impl:=rust      ego and look_ahead in Rust, one process (aav_ego_rs), in the Python
+                      nodes' place: the same node names, topics and answers (TODO 185)
   ndt:=true           NDT on the saved lidar map (aav_ndt, Rust), scored only, never TF
                       (docs/designs/2026-10-29_ndt.md): only in world:=test_lot with the
                       lidar, from the start pose, and only once ndt_map (pixi run ndt-map
@@ -402,7 +404,8 @@ def launch_setup(context):
         # point driver at 0 for ever waiting for one (TODO 94, 15 Nov).
         include(context, 'aav_ego', 'ego.launch.py', use_sim_time='true',
                 sim_max_speed=sim_speed,
-                road_ahead=str(flag['behaviour'] and flag['nav']).lower()),
+                road_ahead=str(flag['behaviour'] and flag['nav']).lower(),
+                ego_impl=vehicle.check_ego_impl(arg('ego_impl'))),
         # ego's commands go to Gazebo (gazebo_adapter, or spine_bridge with spine:=true)
         # only while every source is SIM (aav_io_mux).
         include(context, 'aav_io_mux', 'io_mux.launch.py', target='sim', source='sim',
@@ -741,6 +744,9 @@ def generate_launch_description():
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
                                           'cubes (aav_voxels, or aav_voxels_rs)'),
+        DeclareLaunchArgument('ego_impl', default_value=vehicle.DEFAULT_EGO_IMPL,
+                              description='python or rust: which ego runs (aav_ego, or '
+                                          'aav_ego_rs: ego and look_ahead in one process)'),
         DeclareLaunchArgument('ghost', default_value='false',
                               description="a pretend person in Nav2's view (aav_ghost); "
                                           'place it with pixi run ghost ahead 10'),

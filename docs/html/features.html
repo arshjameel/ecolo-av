@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">90 min read · 15 sections</div></header>
+<div class="meta">91 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -724,6 +724,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben</td>
 <td>2026-11-07</td>
 <td>built</td>
+</tr>
+<tr>
+<td><a href="../../ros/ego/aav_ego_rs/README.md">ego and look_ahead in Rust</a> (<code>aav_ego_rs</code>, <code>ego_impl:=rust</code>): both nodes in one process, a challenger beside the Python</td>
+<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust". The same answers as the Python modules (0 difference, but the trace's f32 speed loop: 4e-8); our simulator's road world, /clock at 100 Hz: 2.4 % of a core against 17 % (ego 10.5, look_ahead 6.5); at 1000 Hz 4 % against 58 %; the same scripted drive (5.83 m, 0.00 m to the side)</td>
+<td>Ben</td>
+<td>2026-11-15</td>
+<td>sim</td>
 </tr>
 <tr>
 <td><a href="stopping.html#4-a-heavier-car-the-adaptive-brake">The adaptive brake</a> (<code>aav_description</code> <code>adaptive_brake.py</code>, <code>adaptive_brake:=true</code>, a sim trial): after the speed loop, it compares the slowing measured with the empty car model's, and brakes harder when the car stops too slowly, never above the brake's safe max, rising at a set rate, high force only for a set time; the brake's limits in <code>vehicle.yaml</code> <code>brake:</code> (placeholders until car day A7); the car model's <code>payload</code> (kg aboard: <code>payload:=</code>); <code>sim-check --loaded-stop</code></td>

@@ -44,6 +44,8 @@ if command -v cargo >/dev/null; then
   (cd ros/perception/aav_radar_clusters && cargo test -q --locked -p radar-clustering)
   echo "== ros/perception/aav_voxels_rs: the cubes in Rust, the Python's answers"
   (cd ros/perception/aav_voxels_rs && cargo test -q --locked -p voxels)
+  echo "== ros/ego/aav_ego_rs: ego and look_ahead in Rust, the Python modules' answers"
+  (cd ros/ego/aav_ego_rs && cargo test -q --locked -p ego-core)
   echo "== ros/can_bridge/aav_spine_bridge: the Rust CAN bridge's logic, the shared CAN vectors"
   (cd ros/can_bridge/aav_spine_bridge && cargo test -q --locked -p spine-bridge)
   echo "== ros/bringup/aav_description/car-model: the car model's Rust twin, the shared vectors"
@@ -89,6 +91,7 @@ if command -v cargo >/dev/null; then
   rust_style firmware/spine
   rust_style ros/sources/aav_imu_yahboom -p yahboom-protocol
   rust_style ros/perception/aav_radar_clusters -p radar-clustering
+  rust_style ros/ego/aav_ego_rs -p ego-core
   rust_style ros/can_bridge/aav_spine_bridge -p spine-bridge
   rust_style ros/bringup/aav_description/car-model
   rust_style ros/bringup/aav_description/map-chunks
