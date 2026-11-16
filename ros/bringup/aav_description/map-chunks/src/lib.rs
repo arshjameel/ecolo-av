@@ -32,6 +32,9 @@
 //! assert_eq!(need[&grid.key_at(car)], Detail::Fine);
 //! assert!(need.len() <= 15);
 //! ```
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -43,11 +46,15 @@ pub mod files;
 /// A point on the map (m).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
+    /// m.
     pub x: f64,
+    /// m.
     pub y: f64,
 }
 
 impl Point {
+    /// The point (`x`, `y`).
+    #[must_use]
     pub const fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
@@ -60,11 +67,15 @@ impl Point {
 /// One chunk: `i` squares along x from the map's origin, `j` along y.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ChunkKey {
+    /// Squares along x.
     pub i: i32,
+    /// Squares along y.
     pub j: i32,
 }
 
 impl ChunkKey {
+    /// The chunk (`i`, `j`).
+    #[must_use]
     pub const fn new(i: i32, j: i32) -> Self {
         Self { i, j }
     }
@@ -95,6 +106,7 @@ pub enum Detail {
 
 impl Detail {
     /// One cell's edge (m).
+    #[must_use]
     pub const fn cell(self) -> f64 {
         match self {
             Detail::Coarse => 1.0,
@@ -137,6 +149,10 @@ pub struct Grid {
 
 impl Grid {
     /// Squares of `size` m from `origin` (the map's own origin, so chunks line up with it).
+    ///
+    /// # Errors
+    ///
+    /// [`GridError::BadSize`] or [`GridError::BadOrigin`].
     pub fn new(origin: Point, size: f64) -> Result<Self, GridError> {
         if !(origin.x.is_finite() && origin.y.is_finite()) {
             return Err(GridError::BadOrigin);
@@ -147,16 +163,20 @@ impl Grid {
         Ok(Self { origin, size })
     }
 
+    /// The lower-left corner of chunk (0, 0).
+    #[must_use]
     pub fn origin(&self) -> Point {
         self.origin
     }
 
     /// One chunk's edge (m).
+    #[must_use]
     pub fn size(&self) -> f64 {
         self.size
     }
 
     /// The chunk holding `p`. A point on an edge belongs to the chunk above and right of it.
+    #[must_use]
     pub fn key_at(&self, p: Point) -> ChunkKey {
         ChunkKey::new(
             ((p.x - self.origin.x) / self.size).floor() as i32,
@@ -165,6 +185,7 @@ impl Grid {
     }
 
     /// A chunk's lower-left corner.
+    #[must_use]
     pub fn corner(&self, key: ChunkKey) -> Point {
         Point::new(
             self.origin.x + f64::from(key.i) * self.size,
@@ -173,6 +194,7 @@ impl Grid {
     }
 
     /// How many cells of `detail` along one side of a chunk.
+    #[must_use]
     pub fn cells_per_side(&self, detail: Detail) -> usize {
         (self.size / detail.cell()).round() as usize
     }
@@ -183,6 +205,7 @@ impl Grid {
 /// The 3 x 3 round the car at [`Detail::Fine`] (a 64 m chunk: at least 64 m all round, past
 /// the lidar's 30 m); then, from the route's point nearest the car, every chunk the route
 /// crosses in the next `ahead` m at [`Detail::Coarse`] (C3: 100 m).
+#[must_use]
 pub fn wanted(grid: &Grid, car: Point, route: &[Point], ahead: f64) -> BTreeMap<ChunkKey, Detail> {
     let mut need: BTreeMap<ChunkKey, Detail> = grid
         .key_at(car)
@@ -255,6 +278,8 @@ impl<T> Default for Store<T> {
 }
 
 impl<T> Store<T> {
+    /// Nothing loaded.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -264,6 +289,10 @@ impl<T> Store<T> {
     /// All the loads run first, each chunk on its own core (rayon; Ben, 15 Nov: "processing
     /// each block could be done in threads"): a new chunk reached loads 3 to 15 at once.
     /// If one fails, its error comes back and nothing changes.
+    ///
+    /// # Errors
+    ///
+    /// The first load's error; then nothing changes.
     pub fn update<E: Send>(
         &mut self,
         want: &BTreeMap<ChunkKey, Detail>,
@@ -298,6 +327,7 @@ impl<T> Store<T> {
     }
 
     /// A loaded chunk's detail and layers.
+    #[must_use]
     pub fn get(&self, key: ChunkKey) -> Option<(Detail, &T)> {
         self.chunks
             .get(&key)
@@ -309,10 +339,14 @@ impl<T> Store<T> {
         self.chunks.iter().map(|(key, (detail, _))| (*key, *detail))
     }
 
+    /// How many chunks are loaded.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.chunks.len()
     }
 
+    /// No chunk is loaded.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.chunks.is_empty()
     }
@@ -325,7 +359,9 @@ pub const UNKNOWN: i8 = -1;
 /// taken. Row by row from the chunk's lower-left corner, x fastest.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OccupancyChunk {
+    /// Which chunk.
     pub key: ChunkKey,
+    /// At which detail.
     pub detail: Detail,
     side: usize,
     cells: Vec<i8>,
@@ -333,6 +369,7 @@ pub struct OccupancyChunk {
 
 impl OccupancyChunk {
     /// A chunk with every cell unknown.
+    #[must_use]
     pub fn unknown(grid: &Grid, key: ChunkKey, detail: Detail) -> Self {
         let side = grid.cells_per_side(detail);
         Self {
@@ -345,6 +382,7 @@ impl OccupancyChunk {
 
     /// A chunk from its cells, row by row from the lower left; `None` if there aren't
     /// exactly side x side of them.
+    #[must_use]
     pub fn from_cells(grid: &Grid, key: ChunkKey, detail: Detail, cells: Vec<i8>) -> Option<Self> {
         let side = grid.cells_per_side(detail);
         (cells.len() == side * side).then_some(Self {
@@ -356,10 +394,13 @@ impl OccupancyChunk {
     }
 
     /// Cells along one side.
+    #[must_use]
     pub fn side(&self) -> usize {
         self.side
     }
 
+    /// The cells, row by row from the lower left.
+    #[must_use]
     pub fn cells(&self) -> &[i8] {
         &self.cells
     }
@@ -374,6 +415,7 @@ impl OccupancyChunk {
     }
 
     /// The cell under `p`, if `p` is in this chunk.
+    #[must_use]
     pub fn at(&self, grid: &Grid, p: Point) -> Option<i8> {
         self.index(grid, p).map(|index| self.cells[index])
     }
@@ -391,6 +433,7 @@ impl OccupancyChunk {
     }
 
     /// True if no cell is known.
+    #[must_use]
     pub fn is_unknown(&self) -> bool {
         self.cells.iter().all(|&cell| cell == UNKNOWN)
     }
@@ -411,7 +454,9 @@ pub struct WholeMap<'a> {
     pub origin: Point,
     /// One cell's edge (m).
     pub resolution: f64,
+    /// Cells across.
     pub width: usize,
+    /// Cells up.
     pub height: usize,
     /// Row by row from the lower left, x fastest: `width * height` cells.
     pub data: &'a [i8],
@@ -421,6 +466,7 @@ pub struct WholeMap<'a> {
 /// whose centres fall in it. Chunks with nothing known are left out.
 ///
 /// The map's cells should be no bigger than `detail`'s, or some chunk cells stay unknown.
+#[must_use]
 pub fn cut(grid: &Grid, map: &WholeMap<'_>, detail: Detail) -> BTreeMap<ChunkKey, OccupancyChunk> {
     let mut chunks: BTreeMap<ChunkKey, OccupancyChunk> = BTreeMap::new();
     for (index, &value) in map.data.iter().enumerate().take(map.width * map.height) {

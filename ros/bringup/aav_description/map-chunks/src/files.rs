@@ -23,10 +23,13 @@ use crate::{ChunkKey, Detail, Grid, OccupancyChunk, Point, WholeMap, UNKNOWN};
 /// Why a map or a chunk couldn't be read or written.
 #[derive(Debug)]
 pub enum FileError {
+    /// The file couldn't be read or written.
     Io(PathBuf, io::Error),
+    /// The `.yaml` isn't what it should be.
     Yaml(PathBuf, String),
     /// Not a binary `.pgm` (P5, 8 bits) of the expected size.
     Pgm(PathBuf, String),
+    /// `chunks.yaml`'s grid is bad.
     Grid(crate::GridError),
 }
 
@@ -46,25 +49,37 @@ impl std::error::Error for FileError {}
 /// A map server's `.yaml`: the parts we use.
 #[derive(Debug, Clone, Deserialize)]
 pub struct MapYaml {
+    /// The `.pgm`, relative to the `.yaml`.
     pub image: PathBuf,
+    /// One cell's edge (m).
     pub resolution: f64,
+    /// The lower-left corner (x, y m, yaw rad).
     pub origin: [f64; 3],
+    /// map_server's: 1 swaps black and white (0 if left out).
     #[serde(default)]
     pub negate: i32,
+    /// Darker than this (0..1) is taken.
     pub occupied_thresh: f64,
+    /// Lighter than this is free.
     pub free_thresh: f64,
 }
 
 /// A whole map as read from disk: ROS's cells, bottom row first.
 #[derive(Debug, Clone)]
 pub struct LoadedMap {
+    /// Its `.yaml`.
     pub yaml: MapYaml,
+    /// Cells across.
     pub width: usize,
+    /// Cells up.
     pub height: usize,
+    /// ROS's cells (-1 unknown, 0..100), bottom row first, x fastest.
     pub data: Vec<i8>,
 }
 
 impl LoadedMap {
+    /// The map as a [`WholeMap`], to cut.
+    #[must_use]
     pub fn whole(&self) -> WholeMap<'_> {
         WholeMap {
             origin: Point::new(self.yaml.origin[0], self.yaml.origin[1]),
@@ -77,6 +92,10 @@ impl LoadedMap {
 }
 
 /// Read a map server's `.yaml` and its `.pgm`, as map_server does in trinary mode.
+///
+/// # Errors
+///
+/// [`FileError`]: the file can't be read or written, or isn't what it should be.
 pub fn read_map(yaml_path: &Path) -> Result<LoadedMap, FileError> {
     let text =
         fs::read_to_string(yaml_path).map_err(|e| FileError::Io(yaml_path.to_path_buf(), e))?;
@@ -180,6 +199,7 @@ fn write_pgm(path: &Path, width: usize, pixels: &[u8]) -> Result<(), FileError> 
 }
 
 /// The folder for one detail's chunks.
+#[must_use]
 pub fn detail_dir(out: &Path, detail: Detail) -> PathBuf {
     out.join(match detail {
         Detail::Fine => "fine",
@@ -189,6 +209,10 @@ pub fn detail_dir(out: &Path, detail: Detail) -> PathBuf {
 
 /// Cut `map` at both details and write every chunk, with `chunks.yaml` for the grid.
 /// Returns how many chunks were written at each detail (fine, coarse).
+///
+/// # Errors
+///
+/// [`FileError::Io`] if a folder or file can't be written.
 pub fn write_chunks(
     grid: &Grid,
     map: &WholeMap<'_>,
@@ -220,6 +244,10 @@ pub fn write_chunks(
 }
 
 /// Write one chunk as `<out>/<detail>/<i_j>.pgm`.
+///
+/// # Errors
+///
+/// [`FileError::Io`] if it can't be written.
 pub fn write_chunk(out: &Path, chunk: &OccupancyChunk) -> Result<PathBuf, FileError> {
     let path = detail_dir(out, chunk.detail).join(format!("{}.pgm", chunk.key));
     let pixels: Vec<u8> = flip_rows(chunk.cells(), chunk.side())
@@ -230,6 +258,10 @@ pub fn write_chunk(out: &Path, chunk: &OccupancyChunk) -> Result<PathBuf, FileEr
 }
 
 /// Read one chunk back; `None` if it has no file (nothing known there).
+///
+/// # Errors
+///
+/// [`FileError`]: the file can't be read or written, or isn't what it should be.
 pub fn read_chunk(
     out: &Path,
     grid: &Grid,
@@ -263,6 +295,10 @@ pub fn read_chunk(
 }
 
 /// Read the grid a folder of chunks was cut on.
+///
+/// # Errors
+///
+/// [`FileError`]: no `chunks.yaml`, a bad one, or a bad grid in it.
 pub fn read_grid(out: &Path) -> Result<Grid, FileError> {
     #[derive(Deserialize)]
     struct Index {
