@@ -1120,3 +1120,91 @@ fn calm_steering_still_turns_back_through_the_cusp() {
     turn_back_arriving_rolling_and_off_the_path();
     forward_stop_reverse_through_a_cusp();
 }
+
+/// A lock that holds forward commands once the car is past `x` (the stop zone before a
+/// wall), as twist_mux and ego do; `shift`: the path moved this far north each tick (the
+/// held map -> odom moving on, `map_correction`).
+fn drive_held(poses: &[Pose], x: f64, shift: f64) -> Run {
+    let truth = LagModel::default();
+    let ego = Ego::default();
+    let plant = Driven { ego, car: truth };
+    let (mppi, critics, follow) = set_up(Way::Reversing, settings(1.0));
+    let mut follower = Follower::new(truth, ego, mppi, critics, follow, Vec::new());
+    let mut car = plant.at_rest(poses[0], 0.0);
+    let path = GlobalPath::new(poses.to_vec()).expect("a path");
+    let (mut speeds, mut trace) = (Vec::new(), Vec::new());
+    let mut command = Command::default();
+    let mut t = 0.0;
+    let mut first = true;
+    while t < 60.0 {
+        follower.observe(&Observation {
+            pose: plant.pose(&car),
+            speed: plant.speed(&car),
+            steering: Some(plant.steering(&car)),
+            throttle: Some(car.car.throttle),
+            brake: Some(car.car.brake),
+        });
+        if first {
+            follower.follow(path.clone(), false);
+            first = false;
+        }
+        follower.move_path(|p| Pose::new(p.x, p.y + shift, p.yaw));
+        match follower.tick(t, None) {
+            Some(Tick::Drive(report)) => command = report.command,
+            Some(Tick::Done(outcome)) => {
+                let mut run = finish(outcome == Outcome::Succeeded, t, &[], speeds, trace);
+                run.outcome = Some(outcome);
+                return run;
+            }
+            None => {}
+        }
+        let held = if plant.pose(&car).x > x && command.speed > 0.0 {
+            Command {
+                speed: 0.0,
+                ..command
+            }
+        } else {
+            command
+        };
+        for _ in 0..(PERIOD / PHYSICS).round() as usize {
+            plant.step(&mut car, held, PHYSICS);
+        }
+        t += PERIOD;
+        speeds.push(plant.speed(&car));
+        trace.push(plant.pose(&car));
+    }
+    finish(false, t, &[], speeds, trace)
+}
+
+/// TODO 174: a lock holds the car over 1 m short of a cusp (the stop zone before a wall in
+/// a narrow street), out of the goal's tolerance. Standing there `cusp_wait` s within
+/// `cusp_reach` m, the stretch is done and the car backs on to the goal: before, it stood
+/// until the progress check gave up. (On the planner's tightest 3.6 m back it backs on
+/// too, but can't keep the curve from 1 m short: Stuck, and the navigator plans again.)
+#[test]
+fn held_short_of_a_cusp_the_car_backs_on() {
+    let run = drive_held(&forward_then_back(6.0, 5.0), 4.3, 0.0);
+    let slowest = run.speeds.iter().copied().fold(0.0, f64::min);
+    let stood = run.poses.iter().map(|p| p.x).fold(f64::MIN, f64::max);
+    println!(
+        "held short, stood at x {:.2}: {:?} in {:.1} s, slowest {slowest:.2} m/s",
+        stood, run.outcome, run.time
+    );
+    assert!(
+        stood < 5.0,
+        "held out of the inversion tolerance: {stood:.2}"
+    );
+    assert!(slowest < -0.3, "backed on: {slowest}");
+    assert_eq!(run.outcome, Some(Outcome::Succeeded));
+}
+
+/// The progress check fires while the path moves a little every tick (map_correction):
+/// held 4 m short of a cusp, out of `cusp_reach`, the follower gives up in time (Stuck),
+/// so the navigator can plan again. Before, a moved path counted as a new stretch every
+/// tick and the check started again each time: the car stood for ever.
+#[test]
+fn the_progress_check_fires_on_a_moving_path() {
+    let run = drive_held(&forward_then_back(6.0, 3.6), 2.0, 1e-4);
+    assert_eq!(run.outcome, Some(Outcome::Stuck), "{:.1} s", run.time);
+    assert!(run.time < 20.0, "{:.1} s", run.time);
+}

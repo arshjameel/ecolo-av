@@ -170,6 +170,11 @@ pub struct FollowerSettings {
     /// Follow a path that changes direction one stretch at a time, stopping at each cusp
     /// (Nav2's `enforce_path_inversion`; on when the car may reverse). `None`: one stretch.
     pub inversion: Option<Inversion>,
+    /// m: stopped this close to a cusp for `cusp_wait` s, the stretch is done (ours,
+    /// TODO 174: a lock may hold the car short of it).
+    pub cusp_reach: f64,
+    /// s: how long the car must stand there first.
+    pub cusp_wait: f64,
 }
 
 impl Default for FollowerSettings {
@@ -185,6 +190,8 @@ impl Default for FollowerSettings {
             progress_time: 10.0,
             tracking_unknown: false,
             inversion: None,
+            cusp_reach: 2.0,
+            cusp_wait: 3.0,
         }
     }
 }
@@ -202,8 +209,10 @@ pub struct Follower<M: CarModel> {
     last: Command,
     goal: GoalCheck,
     progress: ProgressCheck,
-    /// The end of the stretch followed last tick (`None`: a new path).
-    stretch: Option<Pose>,
+    /// The stretch followed last tick ([`GlobalPath::stretch`]; `None`: a new path).
+    stretch: Option<usize>,
+    /// When the car last stood still with a cusp ahead (s), while it still stands.
+    standing: Option<f64>,
 }
 
 impl<M: CarModel + Clone> Follower<M> {
@@ -230,6 +239,7 @@ impl<M: CarModel + Clone> Follower<M> {
                 settings.progress_time,
             ),
             stretch: None,
+            standing: None,
             settings,
         }
     }
@@ -268,6 +278,7 @@ impl<M: CarModel + Clone> Follower<M> {
             self.optimizer.reset(self.last);
         }
         self.stretch = None;
+        self.standing = None;
         self.path = Some(match self.settings.inversion {
             Some(tolerance) => path.with_inversion(tolerance),
             None => path,
@@ -346,11 +357,25 @@ impl<M: CarModel + Clone> Follower<M> {
             xy: s.xy_goal_tolerance,
             yaw: s.yaw_goal_tolerance,
         };
+        // Held short of a cusp: standing `cusp_wait` s within `cusp_reach` m of it, the
+        // stretch is done too. A lock holds the car there, not the follower: the stop zone
+        // keeps the bumper 1 m from a wall the plan's cusp comes closer to (a narrow street,
+        // TODO 174), and nothing else would move it on.
+        let stopped = model.speed(&state).abs() < STOPPED;
+        self.standing = (stopped && path.cusp_ahead()).then(|| self.standing.unwrap_or(now));
+        let held = Inversion {
+            xy: s.cusp_reach,
+            yaw: s.yaw_goal_tolerance,
+        };
+        let waited = self
+            .standing
+            .is_some_and(|since| now - since >= s.cusp_wait);
         if s.inversion.is_some()
-            && model.speed(&state).abs() < STOPPED
-            && path.near_cusp(&pose, at_goal)
+            && stopped
+            && (path.near_cusp(&pose, at_goal) || (waited && path.near_cusp(&pose, held)))
         {
             path.next_stretch();
+            self.standing = None;
         }
         // The goal the critics see: the next cusp while one lies ahead, so the car stops
         // there as it would at the goal (Nav2's critics see only the final goal, and stop
@@ -361,11 +386,13 @@ impl<M: CarModel + Clone> Follower<M> {
             .to_vec();
         // A new stretch (this tick or from the window's own check): the car stops and
         // changes gear there, which is not a lack of progress.
-        let stretch_end = path.stretch_end();
-        if self.stretch.is_some_and(|last| last != stretch_end) {
+        // By index: the path's poses move a little most ticks (map_correction), and a
+        // check by pose started the progress check again every tick, so it never fired.
+        let stretch = path.stretch();
+        if self.stretch.is_some_and(|last| last != stretch) {
             self.progress.reset();
         }
-        self.stretch = Some(stretch_end);
+        self.stretch = Some(stretch);
         if window.is_empty() {
             return Some(Tick::Done(Outcome::PathOutsideCostmap));
         }

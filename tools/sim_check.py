@@ -1393,6 +1393,11 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
         Path, '/plan', lambda m: plans.append(
             (seconds(m.header.stamp), [(p.pose.position.x, p.pose.position.y)
                                        for p in m.poses])), 10)
+    # The follower's own commands, before the mux and ego: (stamp, v, turn rate).
+    asked = []
+    asked_sub = probe.create_subscription(
+        TwistStamped, '/drivers/nav/cmd_vel', lambda m: asked.append(
+            (seconds(m.header.stamp), m.twist.linear.x, m.twist.angular.z)), 10)
     gx, gy, gyaw = x0 + goal * c, y0 + goal * s, math.atan2(-s, -c)
     done = probe.go_to(gx, gy, gyaw)
     if done is not None:
@@ -1400,6 +1405,7 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
         if not done.done():
             probe.goal.cancel_goal_async()
     probe.destroy_subscription(sub)
+    probe.destroy_subscription(asked_sub)
     for name in names:
         remove_model(name)
     if done is None:
@@ -1423,7 +1429,9 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
         # The run's raw data, to see where each change came from (TODO 174).
         with open(save, 'w') as f:
             json.dump({'track': drive, 'plans': plans, 'goal': (gx, gy, gyaw),
-                       'street': (x0, y0, h, half)}, f)
+                       'street': (x0, y0, h, half), 'commands': probe.commands,
+                       'actuator': probe.actuator_cmds, 'asked': asked, 'behaviour': probe.behaviour,
+                       'monitor': probe.monitor}, f)
 
 
 def check_stop_zone_shadow(probe, delay_limit=0.3, missed_limit=0.2):

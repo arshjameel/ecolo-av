@@ -1126,6 +1126,8 @@ impl Config {
             progress_time: d.number("progress_time", f.progress_time)?,
             tracking_unknown: d.flag("track_unknown_space", f.tracking_unknown)?,
             inversion: None,
+            cusp_reach: d.number("cusp_reach", f.cusp_reach)?,
+            cusp_wait: d.number("cusp_wait", f.cusp_wait)?,
         };
         // Nav2's enforce_path_inversion: stop at each cusp, then follow the next stretch.
         let inversion = Inversion::default();

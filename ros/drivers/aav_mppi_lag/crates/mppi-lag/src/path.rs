@@ -120,6 +120,13 @@ impl GlobalPath {
         self.poses[self.end - 1]
     }
 
+    /// Which stretch is followed: one past its last pose's index. Unlike the cusp's pose,
+    /// it stays the same while the path is moved (`move_by`).
+    #[must_use]
+    pub fn stretch(&self) -> usize {
+        self.end
+    }
+
     /// True while a change of direction lies ahead.
     #[must_use]
     pub fn cusp_ahead(&self) -> bool {
