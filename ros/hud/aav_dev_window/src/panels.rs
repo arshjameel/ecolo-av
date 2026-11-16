@@ -25,6 +25,7 @@ use map_core::{
 };
 
 use crate::{
+    chunks,
     feed::{self, Heard, Level, Update},
     set_viewport, CubesCamera, PictureImage, Source,
 };
@@ -123,6 +124,8 @@ pub struct Layers {
     pub ahead: bool,
     /// The things near the car, each box in its kind's colour, with its name (key K).
     pub things: bool,
+    /// The chunks loaded and their saved maps (`--chunks`; key H), and the route.
+    pub chunks: bool,
 }
 
 impl Default for Layers {
@@ -137,6 +140,7 @@ impl Default for Layers {
             plan: true,
             ahead: true,
             things: true,
+            chunks: true,
         }
     }
 }
@@ -251,9 +255,17 @@ pub struct WorldNews {
     pub road_ahead: feed::RoadAhead,
     /// The lane map's painted lines (`--lanes`, a Lanelet2 .osm), drawn with the road.
     pub lanes: Vec<LaneLine>,
-    /// The map's chunks (`--chunks`, a folder with chunks.yaml): the 3 x 3 round the car,
-    /// as the planner and NDT load them (TODO 175), drawn with the road.
+    /// The map's chunks (`--chunks`, a folder with chunks.yaml): those loaded for the car
+    /// and its route (`chunks::loaded`, as the planner and NDT load them, TODO 175), each
+    /// with its saved map (key H).
     pub chunks: Option<map_chunks::Grid>,
+    /// The folder `--chunks` named: the saved maps are read from it as chunks load.
+    pub chunk_folder: Option<std::path::PathBuf>,
+    saved_maps: chunks::SavedMaps,
+    saved_pictures:
+        std::collections::BTreeMap<(map_chunks::ChunkKey, map_chunks::Detail), egui::TextureHandle>,
+    /// The street route (`/drivers/nav/route/path`, map): the zoomed-out level's line.
+    pub route: Vec<Point>,
     /// The squiggly line, in base_link, and when its trace and numbers were last heard.
     pub ahead: Ahead,
     trace_heard: Option<Instant>,
@@ -273,6 +285,15 @@ pub struct WorldNews {
 }
 
 impl WorldNews {
+    /// The line the coarse chunks follow: the street route if there is one, else the plan.
+    pub fn chunk_route(&self) -> &[Point] {
+        if self.route.len() >= 2 {
+            &self.route
+        } else {
+            &self.plan
+        }
+    }
+
     /// A line for the console, from the window itself.
     pub fn note(&mut self, line: String) {
         self.push_line(Level::Info, line);
@@ -345,6 +366,7 @@ impl WorldNews {
                 self.things = things;
                 self.things_heard = Some(now);
             }
+            Update::Route(points) => self.route = points,
         }
     }
 
@@ -627,6 +649,7 @@ fn read_keys(ctx: &egui::Context, state: &mut UiState) {
             (egui::Key::P, &mut layers.plan),
             (egui::Key::T, &mut layers.ahead),
             (egui::Key::K, &mut layers.things),
+            (egui::Key::H, &mut layers.chunks),
         ] {
             if input.key_pressed(key) {
                 *layer = !*layer;
@@ -1053,8 +1076,16 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
     };
     // The window's size can change in its first frames, and when dragged: fit again, until
     // a person has chosen a view of their own.
-    let fit_to = state.world.map.grid.as_ref().map(|grid| grid.info.bounds());
     let car = state.world.car_map.position;
+    // With chunks, fit to those loaded (the car's 3 x 3 and the route's): the three levels.
+    let chunk_bounds = state
+        .world
+        .chunks
+        .as_ref()
+        .filter(|_| state.layers.chunks)
+        .and_then(|grid| chunks::bounds(&chunks::loaded(grid, car, state.world.chunk_route())));
+    let fit_to =
+        chunk_bounds.or_else(|| state.world.map.grid.as_ref().map(|grid| grid.info.bounds()));
     if let (Some(bounds), true) = (fit_to, state.fitted_to.is_some()) {
         let (width, height) = bounds.size();
         // A whole campus would make the car a dot: follow the car, until a person moves.
@@ -1154,31 +1185,8 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
             );
         }
     }
-    if let (true, Some(grid)) = (layers.road, world.chunks.as_ref()) {
-        let car = map_chunks::Point::new(world.car_map.position.x, world.car_map.position.y);
-        let here = grid.key_at(car);
-        for key in here.around(1) {
-            let c = grid.corner(key);
-            let s = grid.size();
-            let corners = [(0.0, 0.0), (s, 0.0), (s, s), (0.0, s), (0.0, 0.0)];
-            let line: Vec<_> = corners
-                .iter()
-                .map(|(dx, dy)| to(Point::new(c.x + dx, c.y + dy)))
-                .collect();
-            let colour = if key == here {
-                egui::Color32::from_rgb(120, 160, 255)
-            } else {
-                egui::Color32::from_rgb(60, 80, 140)
-            };
-            painter.add(egui::Shape::line(line, egui::Stroke::new(1.0, colour)));
-            painter.text(
-                to(Point::new(c.x + 1.0, c.y + s - 1.0)),
-                egui::Align2::LEFT_TOP,
-                key.to_string(),
-                egui::FontId::proportional(11.0),
-                colour,
-            );
-        }
+    if let (true, Some(grid)) = (layers.chunks, world.chunks) {
+        paint_chunks(ui, world, &grid, &painter, to);
     }
     if layers.road {
         for lane in &world.lanes {
@@ -1226,6 +1234,13 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
                 );
             }
         }
+    }
+    if layers.chunks && world.route.len() >= 2 {
+        let line: Vec<_> = world.route.iter().map(|p| to(*p)).collect();
+        painter.add(egui::Shape::line(
+            line,
+            egui::Stroke::new(4.0, egui::Color32::from_rgb(170, 90, 230)),
+        ));
     }
     if layers.plan && world.plan.len() >= 2 {
         let line: Vec<_> = world.plan.iter().map(|p| to(*p)).collect();
@@ -1416,6 +1431,11 @@ fn keys_tab(ui: &mut egui::Ui, state: &UiState) {
         ("S", "cubes on the map", on(layers.scan)),
         ("P", "plan", on(layers.plan)),
         (
+            "H",
+            "chunks loaded, their saved map; route",
+            on(layers.chunks),
+        ),
+        (
             "T",
             "squiggly line: trace, plan ahead, stop",
             on(layers.ahead),
@@ -1440,6 +1460,68 @@ fn keys_tab(ui: &mut egui::Ui, state: &UiState) {
 const FOLLOWER_ROW: usize = 1;
 
 /// Whether `pick` is one of aav_track's followers, which swap live (`tracker` parameter).
+/// The chunks loaded for the car (`chunks::loaded`): each one's saved map under its
+/// outline, bright round the car (0.25 m) and amber along the route (1 m), labelled (i, j).
+fn paint_chunks(
+    ui: &egui::Ui,
+    world: &mut WorldNews,
+    grid: &map_chunks::Grid,
+    painter: &egui::Painter,
+    to: impl Fn(Point) -> egui::Pos2,
+) {
+    let boxes = chunks::loaded(grid, world.car_map.position, world.chunk_route());
+    if let Some(folder) = world.chunk_folder.clone() {
+        let maps = world.saved_maps.of(&folder, grid, &boxes);
+        for (key, detail, saved) in maps {
+            let texture = world
+                .saved_pictures
+                .entry((key, detail))
+                .or_insert_with(|| {
+                    let image = egui::ColorImage::from_rgba_unmultiplied(
+                        [saved.info.width as usize, saved.info.height as usize],
+                        &saved.to_rgba(&MAP_COLOURS),
+                    );
+                    ui.ctx().load_texture(
+                        format!("chunk {key} {}", chunks::detail_word(detail)),
+                        image,
+                        egui::TextureOptions::NEAREST,
+                    )
+                });
+            let bounds = saved.info.bounds();
+            painter.image(
+                texture.id(),
+                egui::Rect::from_min_max(
+                    to(Point::new(bounds.min.x, bounds.max.y)),
+                    to(Point::new(bounds.max.x, bounds.min.y)),
+                ),
+                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                egui::Color32::WHITE,
+            );
+        }
+        let errors = std::mem::take(&mut world.saved_maps.errors);
+        for why in errors {
+            world.push_line(Level::Warn, format!("a chunk's saved map: {why}"));
+        }
+    }
+    for b in &boxes {
+        let colour = match (b.here, b.detail) {
+            (true, _) => egui::Color32::from_rgb(120, 200, 255),
+            (false, map_chunks::Detail::Fine) => egui::Color32::from_rgb(70, 120, 220),
+            (false, map_chunks::Detail::Coarse) => egui::Color32::from_rgb(220, 150, 60),
+        };
+        let line: Vec<_> = b.outline.iter().map(|p| to(*p)).collect();
+        painter.add(egui::Shape::line(line, egui::Stroke::new(1.5, colour)));
+        let top_left = b.outline[3];
+        painter.text(
+            to(Point::new(top_left.x + 1.0, top_left.y - 1.0)),
+            egui::Align2::LEFT_TOP,
+            &b.label,
+            egui::FontId::proportional(12.0),
+            colour,
+        );
+    }
+}
+
 fn live_tracker(pick: &str) -> Option<&'static str> {
     Tracker::ALL.iter().map(|t| t.name()).find(|n| *n == pick)
 }

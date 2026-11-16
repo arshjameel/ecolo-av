@@ -15,6 +15,7 @@
 //! through `--seconds`. `--click-goal X,Y` is what a click and the two presses do, after
 //! `CLICK_AFTER` seconds, through the same gates: macOS blocks scripted clicks.
 
+mod chunks;
 mod feed;
 mod lanes;
 mod panels;
@@ -265,6 +266,7 @@ fn main() -> AppExit {
                     .world
                     .note(format!("{path}: {} m chunks", grid.size()));
                 ui_state.world.chunks = Some(grid);
+                ui_state.world.chunk_folder = Some(path.into());
             }
             Err(why) => ui_state.world.note(format!("{path}: {why}")),
         }

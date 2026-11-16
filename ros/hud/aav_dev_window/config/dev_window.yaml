@@ -25,4 +25,5 @@ plan_ahead: /ego/plan_ahead                      # Path, base_link: what the pla
 stop_point: /ego/stop_point                      # PoseStamped, base_link: where a full brake now stops
 road_ahead: /world/road_ahead                    # RoadAhead, map: the road ahead, coloured by its speed limit
 ahead: /ego/ahead                                # DiagnosticStatus: the gap, the stop, the room
+route: /drivers/nav/route/path                   # Path, map, latched: the street route (street_router)
 things: /world/things                            # Things, odom: the things near the car, named by the camera (aav_things)
