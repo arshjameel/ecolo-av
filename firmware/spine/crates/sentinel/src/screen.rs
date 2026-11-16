@@ -14,6 +14,7 @@ pub struct Line {
 }
 
 impl Line {
+    /// An empty line: it shows as sixteen spaces.
     #[must_use]
     pub const fn blank() -> Self {
         Line {
@@ -75,7 +76,9 @@ impl fmt::Debug for Line {
 /// The two lines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Screen {
+    /// The first line.
     pub top: Line,
+    /// The second line.
     pub bottom: Line,
 }
 

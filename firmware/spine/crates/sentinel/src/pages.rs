@@ -14,10 +14,13 @@ pub enum Page {
     Overview,
     /// Steering, speed and acceleration, as commanded.
     Drive,
+    /// The steering Jrk: OK or not, its flags in hex.
     SteeringJrk,
+    /// The brake Jrk: OK or not, its flags in hex.
     BrakeJrk,
     /// The steering Jrk's error flags, one by one.
     SteeringFlags,
+    /// The brake Jrk's error flags, one by one.
     BrakeFlags,
     /// The throttle DAC.
     Throttle,
@@ -29,6 +32,7 @@ pub enum Page {
     Computers,
     /// Which ROS nodes are up.
     Nodes,
+    /// Latitude and longitude.
     Gps,
     /// The car's error code.
     Error,

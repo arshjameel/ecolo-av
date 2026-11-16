@@ -37,22 +37,33 @@ pub enum TelemetryError {
     /// A packet layout this crate doesn't know.
     Version(u8),
     /// The checksum didn't match.
-    Checksum { got: u8, expected: u8 },
+    Checksum {
+        /// The XOR of the bytes before it.
+        got: u8,
+        /// The packet's last byte.
+        expected: u8,
+    },
 }
 
 /// Who drives.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DriveMode {
+    /// A person, on the RC transmitter (byte 0).
     Rc,
+    /// The computer (byte 1).
     Autonomous,
 }
 
 /// What the car is doing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DriveState {
+    /// Stopped (byte 0).
     Stop,
+    /// Driving forward (1).
     Forward,
+    /// Driving backward (2).
     Reverse,
+    /// Braking (3).
     Brake,
 }
 
@@ -119,6 +130,7 @@ impl JrkFlag {
 pub struct JrkErrors(pub u16);
 
 impl JrkErrors {
+    /// True if any of `flag`'s bits is set.
     #[must_use]
     pub fn has(self, flag: JrkFlag) -> bool {
         self.0 & flag.mask() != 0
@@ -128,13 +140,16 @@ impl JrkErrors {
 /// A Jrk G2 (steering or brake), as the actuator board saw it.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Jrk {
+    /// It answered.
     pub ok: bool,
+    /// Its "errors halting" flags.
     pub errors: JrkErrors,
 }
 
 /// The throttle DAC.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Dac {
+    /// It answered.
     pub ok: bool,
     /// 0 to 1023.
     pub value: u16,
@@ -143,9 +158,13 @@ pub struct Dac {
 /// The RC receiver's raw channels, in microseconds (about 1000 to 2000).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Ibus {
+    /// The enable channel.
     pub enable: u16,
+    /// The throttle stick.
     pub throttle: u16,
+    /// The steering stick.
     pub steering: u16,
+    /// The mode switch.
     pub mode: u16,
 }
 
@@ -162,19 +181,30 @@ impl Ibus {
 /// A computer or a ROS node, each one LED on the bar.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Unit {
+    /// The Jetson Orin (bit 0).
     JetsonOrin,
+    /// The Motor Pi (bit 1).
     MotorPi,
+    /// The radar's Pi (bit 2).
     RadarPi,
+    /// The screens' Pi (bit 3).
     UiPi,
+    /// The cameras' Pi (bit 4).
     CameraPi,
+    /// The IMU's node (bit 5).
     Imu,
+    /// The radar's node (bit 6).
     Radar,
+    /// The lidar's node (bit 7).
     Lidar,
+    /// The camera's node (bit 8).
     Camera,
+    /// The GPS's node (bit 9).
     Gps,
 }
 
 impl Unit {
+    /// The five computers, in bit order.
     pub const COMPUTERS: [Unit; 5] = [
         Unit::JetsonOrin,
         Unit::MotorPi,
@@ -182,6 +212,7 @@ impl Unit {
         Unit::UiPi,
         Unit::CameraPi,
     ];
+    /// The five ROS nodes, in bit order.
     pub const NODES: [Unit; 5] = [Unit::Imu, Unit::Radar, Unit::Lidar, Unit::Camera, Unit::Gps];
 
     /// Its bit in the status word, and its LED on the bar: 0 to 9.
@@ -213,6 +244,7 @@ impl Unit {
 pub struct Status(pub u16);
 
 impl Status {
+    /// True if `unit`'s bit is set.
     #[must_use]
     pub fn is_up(self, unit: Unit) -> bool {
         self.0 & (1 << unit.index()) != 0
@@ -228,18 +260,28 @@ impl Status {
 /// The car's error, one at a time.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorCode {
+    /// No error (0x00).
     Ok,
+    /// The IMU (0x01).
     Imu,
+    /// The barometer (0x02).
     Barometer,
+    /// The GPS has no fix (0x03).
     GpsNoFix,
+    /// The battery is low (0x04).
     BatteryLow,
+    /// The motor (0x05).
     Motor,
+    /// The link is lost (0x06).
     CommsLost,
+    /// The e-stop (0xFF).
     EStop,
+    /// A code this crate doesn't know.
     Unknown(u8),
 }
 
 impl ErrorCode {
+    /// The code for the packet's byte 44.
     #[must_use]
     pub fn from_byte(b: u8) -> Self {
         match b {
@@ -255,6 +297,7 @@ impl ErrorCode {
         }
     }
 
+    /// Byte 44 for this code.
     #[must_use]
     pub fn to_byte(self) -> u8 {
         match self {
@@ -290,27 +333,43 @@ impl ErrorCode {
 /// One packet, read.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Telemetry {
+    /// Who drives.
     pub drive_mode: DriveMode,
+    /// What the car is doing.
     pub drive_state: DriveState,
     /// -1 to 1, as the actuator board takes them.
     pub steering: f32,
+    /// -1 to 1.
     pub speed: f32,
+    /// -1 to 1.
     pub accel: f32,
+    /// The steering Jrk.
     pub steering_jrk: Jrk,
+    /// The brake Jrk.
     pub brake_jrk: Jrk,
+    /// The throttle DAC.
     pub dac: Dac,
+    /// The RC receiver's channels.
     pub ibus: Ibus,
+    /// The RC signal is good.
     pub rc_active: bool,
+    /// Which computers and nodes are up.
     pub status: Status,
     /// Degrees.
     pub latitude: f32,
+    /// Degrees.
     pub longitude: f32,
+    /// The car's error.
     pub error: ErrorCode,
 }
 
 impl Telemetry {
     /// Read one I2C write. As the 2025-26 display did, bytes before the first 0xAA are
     /// skipped; after it must come a whole packet. Bytes after the packet are ignored.
+    ///
+    /// # Errors
+    ///
+    /// [`TelemetryError`]: no 0xAA, too short, another version, or a bad checksum.
     pub fn from_write(write: &[u8]) -> Result<Self, TelemetryError> {
         let start = write
             .iter()
@@ -325,6 +384,10 @@ impl Telemetry {
     }
 
     /// Read exactly one packet.
+    ///
+    /// # Errors
+    ///
+    /// [`TelemetryError::Version`] or [`TelemetryError::Checksum`].
     pub fn from_packet(p: &[u8; LEN]) -> Result<Self, TelemetryError> {
         if p[1] != VERSION {
             return Err(TelemetryError::Version(p[1]));
