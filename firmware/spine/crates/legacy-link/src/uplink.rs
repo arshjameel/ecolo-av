@@ -162,6 +162,7 @@ mod flag {
 
 impl Uplink {
     /// The 40 bytes of version 3.
+    #[must_use]
     pub fn encode(&self) -> [u8; UPLINK_LEN] {
         let bit = |on: bool, mask: u8| if on { mask } else { 0 };
         let mut b = [0; UPLINK_LEN];

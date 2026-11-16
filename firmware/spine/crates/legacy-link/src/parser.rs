@@ -16,6 +16,7 @@ pub struct Parser {
 }
 
 impl Parser {
+    #[must_use]
     pub const fn new() -> Self {
         Parser {
             buf: [0; FRAME_LEN],
@@ -57,6 +58,7 @@ pub struct ParserV2 {
 }
 
 impl ParserV2 {
+    #[must_use]
     pub const fn new() -> Self {
         ParserV2 {
             buf: [0; FRAME_V2_LEN],
@@ -117,6 +119,7 @@ pub struct Accepted {
 }
 
 impl ParserV3 {
+    #[must_use]
     pub const fn new() -> Self {
         ParserV3 {
             buf: [0; FRAME_V3_LEN],
@@ -127,6 +130,7 @@ impl ParserV3 {
 
     /// The version and CRC of the last frame [`ParserV3::push`] gave back as `Ok`;
     /// `None` before the first.
+    #[must_use]
     pub fn last_accepted(&self) -> Option<Accepted> {
         self.last
     }
@@ -198,6 +202,7 @@ pub struct ParserV4 {
 }
 
 impl ParserV4 {
+    #[must_use]
     pub const fn new() -> Self {
         ParserV4 {
             buf: [0; FRAME_V4_LEN],
@@ -208,6 +213,7 @@ impl ParserV4 {
 
     /// The version and CRC of the last frame [`ParserV4::push`] gave back as `Ok`;
     /// `None` before the first. As [`ParserV3::last_accepted`].
+    #[must_use]
     pub fn last_accepted(&self) -> Option<Accepted> {
         self.last
     }

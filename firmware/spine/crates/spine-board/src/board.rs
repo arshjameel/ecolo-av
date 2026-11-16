@@ -27,6 +27,7 @@ impl CanFrame {
     pub const MAX_ID: u16 = 0x7FF;
 
     /// None if the ID needs more than 11 bits, or there are more than 8 bytes.
+    #[must_use]
     pub fn new(id: u16, data: &[u8]) -> Option<Self> {
         if id > Self::MAX_ID || data.len() > 8 {
             return None;
@@ -40,10 +41,12 @@ impl CanFrame {
         Some(frame)
     }
 
+    #[must_use]
     pub fn id(&self) -> u16 {
         self.id
     }
 
+    #[must_use]
     pub fn data(&self) -> &[u8] {
         &self.data[..usize::from(self.len)]
     }

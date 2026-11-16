@@ -81,6 +81,7 @@ pub enum CalState {
 
 impl CalState {
     /// The state as the uplink's byte 38.
+    #[must_use]
     pub fn to_byte(self) -> u8 {
         match self {
             CalState::Off => 0,
@@ -97,6 +98,7 @@ impl CalState {
     }
 
     /// The state in byte 38, if it is a known one.
+    #[must_use]
     pub fn from_byte(byte: u8) -> Option<CalState> {
         Some(match byte {
             0 => CalState::Off,
@@ -177,6 +179,7 @@ pub struct SteerCal {
 
 impl SteerCal {
     /// The rules, with the software limits (counts): a target never leaves them.
+    #[must_use]
     pub const fn new(min: u16, max: u16) -> Self {
         SteerCal {
             min,
@@ -220,6 +223,7 @@ impl SteerCal {
     }
 
     /// What it is doing, for the uplink.
+    #[must_use]
     pub fn state(&self) -> CalState {
         if let Some(why) = self.refusal {
             return CalState::Refused(why);

@@ -35,6 +35,7 @@ pub struct BusScan {
 }
 
 impl BusScan {
+    #[must_use]
     pub const fn new() -> Self {
         BusScan {
             state: ScanState::Idle,
@@ -77,6 +78,7 @@ impl BusScan {
         };
     }
 
+    #[must_use]
     pub fn state(&self) -> ScanState {
         self.state
     }

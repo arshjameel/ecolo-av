@@ -20,6 +20,7 @@ impl Default for Parser {
 }
 
 impl Parser {
+    #[must_use]
     pub const fn new() -> Self {
         Parser {
             buf: [0; FRAME_LEN],

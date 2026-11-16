@@ -97,6 +97,7 @@ impl RcMap {
     };
 
     /// Where the mode switch is, for its channel's value.
+    #[must_use]
     pub fn switch(&self, value: u16) -> RcSwitch {
         if value > self.direct_above {
             RcSwitch::Direct
@@ -114,6 +115,7 @@ impl RcMap {
     ///   ROS the board sends them up; on computer they do nothing.
     /// - A stick or the gear switch out of range: zero speed and straight wheels. The
     ///   C++ did a safe stop here (`jrkSafeStop()`).
+    #[must_use]
     pub fn rc_input(&self, ch: &Channels) -> Option<RcInput> {
         let usable = |index: usize| {
             ch.get(index)

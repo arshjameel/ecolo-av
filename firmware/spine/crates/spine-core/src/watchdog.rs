@@ -8,6 +8,7 @@ pub struct Watchdog {
 }
 
 impl Watchdog {
+    #[must_use]
     pub const fn new(timeout_ms: u32) -> Self {
         Watchdog {
             timeout_ms,
@@ -21,6 +22,7 @@ impl Watchdog {
     }
 
     /// True until the first command, and whenever the last one is too old.
+    #[must_use]
     pub fn expired(&self, now_ms: u32) -> bool {
         match self.last_ms {
             None => true,

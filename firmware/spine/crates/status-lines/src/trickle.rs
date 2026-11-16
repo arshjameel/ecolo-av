@@ -56,6 +56,7 @@ impl From<TooLong> for Dropped {
 }
 
 impl<const SLOTS: usize, const N: usize> Trickle<SLOTS, N> {
+    #[must_use]
     pub const fn new() -> Self {
         Trickle {
             slots: [Slot {
@@ -120,15 +121,18 @@ impl<const SLOTS: usize, const N: usize> Trickle<SLOTS, N> {
     }
 
     /// How many lines wait, the one being sent included.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.queued
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.queued == 0
     }
 
     /// Lines dropped since boot.
+    #[must_use]
     pub fn dropped(&self) -> u32 {
         self.dropped
     }

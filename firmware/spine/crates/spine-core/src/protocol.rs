@@ -104,6 +104,7 @@ pub enum Wheel {
 
 impl Wheel {
     /// The ID of this wheel's WHEEL_SPEED frame.
+    #[must_use]
     pub const fn id(self) -> u16 {
         match self {
             Wheel::Left => WHEEL_SPEED_L_ID,
@@ -112,6 +113,7 @@ impl Wheel {
     }
 
     /// The wheel a WHEEL_SPEED frame ID belongs to, if it is one.
+    #[must_use]
     pub const fn from_id(id: u16) -> Option<Wheel> {
         match id {
             WHEEL_SPEED_L_ID => Some(Wheel::Left),
@@ -184,11 +186,13 @@ fn crc8_update(mut crc: u8, byte: u8) -> u8 {
 }
 
 /// CRC-8/SAE-J1850: poly 0x1D, init 0xFF, not reflected, xorout 0xFF.
+#[must_use]
 pub fn crc8_sae_j1850(bytes: &[u8]) -> u8 {
     bytes.iter().fold(0xFF, |crc, &b| crc8_update(crc, b)) ^ 0xFF
 }
 
 /// CRC of a frame: the ID (low byte, high byte), then the body.
+#[must_use]
 pub fn frame_crc(id: u16, body: &[u8]) -> u8 {
     let crc = crc8_update(crc8_update(0xFF, (id & 0xFF) as u8), (id >> 8) as u8);
     body.iter().fold(crc, |crc, &b| crc8_update(crc, b)) ^ 0xFF
@@ -254,6 +258,7 @@ fn check<const N: usize>(id: u16, data: &[u8]) -> Result<u64, FrameError> {
 }
 
 impl EstopCmd {
+    #[must_use]
     pub fn encode(&self) -> [u8; 2] {
         let mut w = 0;
         put(&mut w, 0, 1, self.estop_request as u64);
@@ -271,6 +276,7 @@ impl EstopCmd {
 }
 
 impl DriveCmd {
+    #[must_use]
     pub fn encode(&self) -> [u8; 8] {
         let mut w = 0;
         put(&mut w, 0, 16, raw_signed(self.target_speed, 1000.0, 16));
@@ -296,6 +302,7 @@ impl DriveCmd {
 }
 
 impl VehicleFeedback {
+    #[must_use]
     pub fn encode(&self) -> [u8; 8] {
         let mut w = 0;
         put(&mut w, 0, 16, raw_signed(self.measured_speed, 1000.0, 16));
@@ -322,6 +329,7 @@ impl VehicleFeedback {
 }
 
 impl VehicleStatus {
+    #[must_use]
     pub fn encode(&self) -> [u8; 8] {
         let mut w = 0;
         put(&mut w, 0, 2, self.mode as u64);
@@ -349,6 +357,7 @@ impl VehicleStatus {
 }
 
 impl WheelSpeed {
+    #[must_use]
     pub fn encode(&self) -> [u8; 8] {
         let mut w = 0;
         put(&mut w, 0, 16, raw_signed(self.wheel_speed, 1000.0, 16));
@@ -374,6 +383,7 @@ impl WheelSpeed {
 
 /// Frames advanced since the previous counter: 1 is normal, 0 a repeat,
 /// more than 1 means frames were lost.
+#[must_use]
 pub fn counter_step(previous: Option<u8>, current: u8) -> u8 {
     match previous {
         None => 1,

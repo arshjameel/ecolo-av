@@ -41,6 +41,7 @@ pub enum Lifecycle {
 
 impl Lifecycle {
     /// One tick. `devices_ok`: no driver fault that stops the car this tick.
+    #[must_use]
     pub fn next(self, devices_ok: bool) -> Lifecycle {
         match self {
             Lifecycle::Boot => Lifecycle::SelfTest,
@@ -50,6 +51,7 @@ impl Lifecycle {
         }
     }
 
+    #[must_use]
     pub fn is_running(self) -> bool {
         self == Lifecycle::Running
     }
@@ -78,6 +80,7 @@ pub enum Safety {
 
 impl Safety {
     /// The state for this tick. Highest first: e-stop, fault, lost input, overspeed, latch.
+    #[must_use]
     pub fn of(
         estop: bool,
         driver_fault: bool,
@@ -192,6 +195,7 @@ pub enum Overspeed {
 
 impl Overspeed {
     /// One tick. `over_trip`: past the trip speed. `over_limit`: still over the limit.
+    #[must_use]
     pub fn next(self, over_trip: bool, over_limit: bool, now_ms: u32) -> Overspeed {
         match self {
             Overspeed::Clear if over_trip => Overspeed::Slowing { since_ms: now_ms },
@@ -201,11 +205,13 @@ impl Overspeed {
         }
     }
 
+    #[must_use]
     pub fn is_slowing(self) -> bool {
         matches!(self, Overspeed::Slowing { .. })
     }
 
     /// Slowing for the whole window, and still over the limit.
+    #[must_use]
     pub fn expired(self, now_ms: u32) -> bool {
         match self {
             Overspeed::Clear => false,
@@ -230,6 +236,7 @@ pub enum Authority {
 
 impl Authority {
     /// What VEHICLE_STATUS reports.
+    #[must_use]
     pub fn mode(self) -> Mode {
         match self {
             Authority::Idle => Mode::Manual,
@@ -239,6 +246,7 @@ impl Authority {
         }
     }
 
+    #[must_use]
     pub fn in_test(self) -> bool {
         matches!(self, Authority::Test(_))
     }
@@ -274,6 +282,7 @@ pub enum TestRequest {
 
 impl TestRequest {
     /// The stage a request leaves the test mode in.
+    #[must_use]
     pub fn stage(self) -> TestStage {
         match self {
             TestRequest::Steering(_) | TestRequest::Brake(_) | TestRequest::Throttle(_) => {
@@ -286,6 +295,7 @@ impl TestRequest {
     /// Whether the spine carries this request out at this [`Confidence`]. A throttle test
     /// needs a wheel speed: without one, the "faster than [`TEST_MAX_SPEED`]" exit can't
     /// fire. A refused request holds still, like [`TestRequest::Hold`].
+    #[must_use]
     pub fn allowed(self, confidence: Confidence) -> bool {
         match self {
             TestRequest::Throttle(_) => confidence.measures_speed(),
@@ -315,6 +325,7 @@ pub enum Motion {
 
 impl Motion {
     /// What this tick's outputs and the measured speed show.
+    #[must_use]
     pub fn observe(measured_speed: f32, throttle: f32, reverse: bool) -> Motion {
         let still = measured_speed.abs() < STANDSTILL_SPEED;
         if still && throttle == 0.0 {
@@ -342,6 +353,7 @@ pub enum Confidence {
 impl Confidence {
     /// The spine sees the car's speed: the overspeed check and the test mode's speed
     /// exit work.
+    #[must_use]
     pub fn measures_speed(self) -> bool {
         matches!(self, Confidence::Full)
     }

@@ -32,12 +32,14 @@ impl ErrorFlags {
     pub const HARD_OVERCURRENT: u16 = 1 << 13;
 
     /// True if every bit in `bits` is set.
+    #[must_use]
     pub fn contains(self, bits: u16) -> bool {
         self.0 & bits == bits
     }
 
     /// True if anything other than "awaiting command" is set: something is wrong
     /// with the motor, its power or its sensor.
+    #[must_use]
     pub fn is_fault(self) -> bool {
         self.0 & !Self::AWAITING_COMMAND != 0
     }

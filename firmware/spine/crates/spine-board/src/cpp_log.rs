@@ -123,6 +123,7 @@ pub struct CppStatus {
 }
 
 impl CppStatus {
+    #[must_use]
     pub fn new(out: &Outputs, max_steering_angle: f32, check: &DeviceCheck) -> Self {
         let answered = |device| check.iter().any(|f| f.device == device && f.answered);
         let steering = if max_steering_angle > 0.0 {
@@ -228,6 +229,7 @@ impl Display for JrkErrorLine {
 }
 
 /// The name `/scan` gives an address, as `handleScan()` labelled it; `None` for any other.
+#[must_use]
 pub const fn scan_label(address: u8, a: &Addresses) -> Option<&'static str> {
     if address == a.steering {
         Some("JRK steer")

@@ -25,6 +25,7 @@ pub enum Pattern {
 
 impl Pattern {
     /// Each row, top first; bit 7 is the left column.
+    #[must_use]
     pub fn rows(self) -> [u8; 8] {
         match self {
             Pattern::Smile => [
@@ -112,6 +113,7 @@ impl Pattern {
 
     /// What to show now. Normally the drive mode and the direction take turns, 0.8 s
     /// each; the e-stop and a lost link hold their own picture instead.
+    #[must_use]
     pub fn now(telemetry: Option<&Telemetry>, comms_lost: bool, now_ms: u32) -> Pattern {
         let Some(t) = telemetry else {
             return Pattern::Smile;

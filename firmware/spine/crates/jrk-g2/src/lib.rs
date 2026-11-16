@@ -55,6 +55,7 @@ pub enum FeedbackMode {
 
 impl FeedbackMode {
     /// The mode for the setting's byte.
+    #[must_use]
     pub fn from_byte(byte: u8) -> FeedbackMode {
         match byte {
             0 => FeedbackMode::None,
@@ -65,6 +66,7 @@ impl FeedbackMode {
     }
 
     /// True if the scaled feedback says where the motor is: analog feedback only.
+    #[must_use]
     pub fn is_position(self) -> bool {
         self == FeedbackMode::Analog
     }

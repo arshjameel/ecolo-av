@@ -154,6 +154,7 @@ pub struct LastFrame {
 
 impl LastFrame {
     /// How old it is at `now_ms`.
+    #[must_use]
     pub fn age_ms(&self, now_ms: u32) -> u32 {
         now_ms.wrapping_sub(self.at_ms)
     }
@@ -288,6 +289,7 @@ impl<U: Read + ReadReady, T: Write> LegacyLink<U, T> {
     /// clear, the steering calibration) still cuts it at once, as the C++ cut it for a
     /// brake demand; so do a change of direction and every stop the spine makes. Off by
     /// default: the board's `cpp-throttle-ramp` feature.
+    #[must_use]
     pub fn with_cpp_ramp(mut self) -> Self {
         self.ramp = Some(DacRamp::new());
         self

@@ -45,6 +45,7 @@ pub(crate) struct FilterRegisters {
 
 impl Filters {
     /// Every frame: for a bus monitor, or to look for traffic while debugging.
+    #[must_use]
     pub const fn all() -> Filters {
         Filters(Kind::All)
     }
@@ -69,6 +70,7 @@ impl Filters {
     }
 
     /// The ID each of the six filters holds; None with the filters off.
+    #[must_use]
     pub fn ids(&self) -> Option<[StandardId; MAX_IDS]> {
         match self.0 {
             Kind::All => None,

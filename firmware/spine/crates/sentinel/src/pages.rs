@@ -56,6 +56,7 @@ impl Page {
     pub const HOME: Page = Page::Overview;
 
     /// The page `steps` on (back, if negative), round the end.
+    #[must_use]
     pub fn turn(self, steps: i8) -> Page {
         let n = Page::ALL.len() as i32;
         let here = self as i32;
@@ -63,6 +64,7 @@ impl Page {
     }
 
     /// What it shows, from the latest packet (or a waiting message before the first).
+    #[must_use]
     pub fn render(self, telemetry: Option<&Telemetry>, pinned: bool) -> Screen {
         let Some(t) = telemetry else {
             return Screen {

@@ -177,6 +177,7 @@ pub enum Verdict {
 
 impl Verdict {
     /// Its name in a line.
+    #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Verdict::NoFrames => "no_frames",
@@ -400,6 +401,7 @@ pub enum Switch {
 
 impl Switch {
     /// Its name in a line.
+    #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Switch::Computer => "computer",
@@ -423,6 +425,7 @@ pub enum Mode {
 
 impl Mode {
     /// Its name in a line.
+    #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Mode::Stopped => "stopped",
@@ -741,6 +744,7 @@ impl<'a> Config<'a> {
     /// after boot. Its first keys, up to `last_reset`, are the ones the first check has
     /// always read; the rest follow in the JSON line's order. An unknown value is `none`
     /// (JSON's `null`), never 0: `frame=none` on CAN, `i2c_khz=none` with QEMU's stand-ins.
+    #[must_use]
     pub fn text(&self, now_ms: u32) -> ConfigText<'_, 'a> {
         ConfigText {
             config: self,
@@ -918,6 +922,7 @@ pub struct LineBuf<const N: usize = MAX_LINE> {
 
 impl<const N: usize> LineBuf<N> {
     /// An empty buffer.
+    #[must_use]
     pub const fn new() -> Self {
         LineBuf {
             buf: [0; N],
@@ -947,15 +952,18 @@ impl<const N: usize> LineBuf<N> {
     }
 
     /// The line, without a newline; empty if none.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         // `set` only keeps what `write_to` checked.
         core::str::from_utf8(&self.buf[..self.len]).unwrap_or("")
     }
 
+    #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
         &self.buf[..self.len]
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }

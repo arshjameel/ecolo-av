@@ -86,6 +86,7 @@ pub struct ImageInfo {
 
 impl ImageInfo {
     /// The version, up to its first zero byte.
+    #[must_use]
     pub fn version_str(&self) -> &str {
         let end = self.version.iter().position(|&b| b == 0).unwrap_or(32);
         core::str::from_utf8(&self.version[..end]).unwrap_or("?")
@@ -130,6 +131,7 @@ pub struct ImageCheck<'a> {
 }
 
 impl<'a> ImageCheck<'a> {
+    #[must_use]
     pub fn new(expect: Expect<'a>) -> Self {
         ImageCheck {
             expect,
@@ -157,15 +159,18 @@ impl<'a> ImageCheck<'a> {
 
     /// The header and the app descriptor have been read and are right: the bytes so far
     /// may be written.
+    #[must_use]
     pub fn ready_to_write(&self) -> bool {
         self.desc_checked
     }
 
     /// The bytes taken so far.
+    #[must_use]
     pub fn len(&self) -> u32 {
         self.pos
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.pos == 0
     }
@@ -319,6 +324,7 @@ pub struct Crc32 {
 }
 
 impl Crc32 {
+    #[must_use]
     pub const fn new() -> Self {
         Crc32 { state: !0 }
     }
@@ -333,6 +339,7 @@ impl Crc32 {
         }
     }
 
+    #[must_use]
     pub const fn value(&self) -> u32 {
         !self.state
     }

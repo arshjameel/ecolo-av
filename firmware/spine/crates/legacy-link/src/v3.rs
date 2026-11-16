@@ -48,6 +48,7 @@ impl From<FrameV2> for FrameV3 {
 
 impl FrameV3 {
     /// The 20 bytes, as `legacy_protocol.pack_frame_v3` sends them (without its clamp).
+    #[must_use]
     pub fn encode(&self) -> [u8; FRAME_V3_LEN] {
         let mut bytes = [0; FRAME_V3_LEN];
         bytes[0] = SYNC;

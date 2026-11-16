@@ -36,6 +36,7 @@ pub enum LinkVerdict {
 
 impl LinkVerdict {
     /// Its name in a line: `no_frames`, `ok`, `stale`, `counter_frozen`, `bad_frames`.
+    #[must_use]
     pub const fn name(&self) -> &'static str {
         match self {
             LinkVerdict::NoFramesYet => "no_frames",
@@ -46,6 +47,7 @@ impl LinkVerdict {
         }
     }
 
+    #[must_use]
     pub const fn is_ok(&self) -> bool {
         matches!(self, LinkVerdict::Ok)
     }
@@ -77,6 +79,7 @@ pub struct LinkHealth {
 
 impl LinkHealth {
     /// `timeout_ms`: the spine's command timeout (`SpineConfig::cmd_timeout_ms`).
+    #[must_use]
     pub const fn new(timeout_ms: u32) -> Self {
         LinkHealth {
             timeout_ms,
@@ -115,6 +118,7 @@ impl LinkHealth {
     }
 
     /// The verdict at `now_ms`, from what [`update`](Self::update) saw last.
+    #[must_use]
     pub fn report(&self, now_ms: u32) -> LinkReport {
         let age = |at: Option<u32>| at.map(|t| now_ms.wrapping_sub(t));
         let within = |at: Option<u32>| age(at).is_some_and(|a| a <= self.timeout_ms);

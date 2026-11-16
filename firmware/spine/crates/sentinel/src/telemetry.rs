@@ -88,6 +88,7 @@ impl JrkFlag {
     ];
 
     /// The flag's bits.
+    #[must_use]
     pub fn mask(self) -> u16 {
         match self {
             JrkFlag::AwaitingCommand => 1 << 0,
@@ -100,6 +101,7 @@ impl JrkFlag {
     }
 
     /// Three letters for the LCD.
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             JrkFlag::AwaitingCommand => "AWT",
@@ -117,6 +119,7 @@ impl JrkFlag {
 pub struct JrkErrors(pub u16);
 
 impl JrkErrors {
+    #[must_use]
     pub fn has(self, flag: JrkFlag) -> bool {
         self.0 & flag.mask() != 0
     }
@@ -148,6 +151,7 @@ pub struct Ibus {
 
 impl Ibus {
     /// The 2025-26 check: every channel above 100.
+    #[must_use]
     pub fn channels_ok(&self) -> bool {
         [self.enable, self.throttle, self.steering, self.mode]
             .iter()
@@ -181,11 +185,13 @@ impl Unit {
     pub const NODES: [Unit; 5] = [Unit::Imu, Unit::Radar, Unit::Lidar, Unit::Camera, Unit::Gps];
 
     /// Its bit in the status word, and its LED on the bar: 0 to 9.
+    #[must_use]
     pub fn index(self) -> u8 {
         self as u8
     }
 
     /// Three letters for the LCD.
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Unit::JetsonOrin => "JET",
@@ -207,11 +213,13 @@ impl Unit {
 pub struct Status(pub u16);
 
 impl Status {
+    #[must_use]
     pub fn is_up(self, unit: Unit) -> bool {
         self.0 & (1 << unit.index()) != 0
     }
 
     /// The ten LEDs of the bar, LED 0 first.
+    #[must_use]
     pub fn leds(self) -> [bool; 10] {
         core::array::from_fn(|i| self.0 & (1 << i) != 0)
     }
@@ -232,6 +240,7 @@ pub enum ErrorCode {
 }
 
 impl ErrorCode {
+    #[must_use]
     pub fn from_byte(b: u8) -> Self {
         match b {
             0x00 => ErrorCode::Ok,
@@ -246,6 +255,7 @@ impl ErrorCode {
         }
     }
 
+    #[must_use]
     pub fn to_byte(self) -> u8 {
         match self {
             ErrorCode::Ok => 0x00,
@@ -261,6 +271,7 @@ impl ErrorCode {
     }
 
     /// For the LCD: at most 16 characters.
+    #[must_use]
     pub fn text(self) -> &'static str {
         match self {
             ErrorCode::Ok => "OK",
@@ -368,6 +379,7 @@ impl Telemetry {
     }
 
     /// The packet, as a sender builds it: for tests, and for whoever writes the sender.
+    #[must_use]
     pub fn to_packet(&self) -> [u8; LEN] {
         let mut p = [0; LEN];
         p[0] = MAGIC;
@@ -410,6 +422,7 @@ impl Telemetry {
 }
 
 /// The 2025-26 checksum: every byte XORed together.
+#[must_use]
 pub fn checksum(bytes: &[u8]) -> u8 {
     bytes.iter().fold(0, |acc, b| acc ^ b)
 }

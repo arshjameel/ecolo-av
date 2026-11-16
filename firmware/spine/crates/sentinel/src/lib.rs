@@ -55,6 +55,7 @@ pub struct Sentinel {
 }
 
 impl Sentinel {
+    #[must_use]
     pub const fn new(now_ms: u32) -> Self {
         Sentinel {
             telemetry: None,
@@ -112,28 +113,34 @@ impl Sentinel {
     }
 
     /// The LCD.
+    #[must_use]
     pub fn screen(&self) -> Screen {
         self.page.render(self.telemetry.as_ref(), self.pinned)
     }
 
     /// The matrix.
+    #[must_use]
     pub fn pattern(&self, now_ms: u32) -> Pattern {
         Pattern::now(self.telemetry.as_ref(), self.alerts.comms_lost(), now_ms)
     }
 
     /// The LED bar, LED 0 first: all off until the first packet.
+    #[must_use]
     pub fn leds(&self) -> [bool; 10] {
         self.telemetry.map(|t| t.status.leds()).unwrap_or_default()
     }
 
+    #[must_use]
     pub fn page(&self) -> Page {
         self.page
     }
 
+    #[must_use]
     pub fn pinned(&self) -> bool {
         self.pinned
     }
 
+    #[must_use]
     pub fn telemetry(&self) -> Option<&Telemetry> {
         self.telemetry.as_ref()
     }

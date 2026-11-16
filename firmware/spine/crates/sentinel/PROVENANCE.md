@@ -20,3 +20,9 @@ what changed: `boards/sentinel-pico2/PROVENANCE.md`.
 | `matrix` | the `pat_*` pictures; `matrix_tick()` |
 | `Sentinel` | `handle_input()` (pages, pin, home, the 10 s timeout) |
 | the `hd44780` crate | `lcd_display.cpp` (the LCD's 4-bit start-up and commands, from the datasheet) |
+
+## Changes since
+
+| When | What |
+|---|---|
+| 15 Nov (TODO 176) | the Rust API Guidelines pass: `#[must_use]` on pure functions, doc comments, `Debug` derives. No change in behaviour |

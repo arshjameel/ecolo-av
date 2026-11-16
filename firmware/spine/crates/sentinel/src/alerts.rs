@@ -46,6 +46,7 @@ pub enum Beep {
 }
 
 impl Beep {
+    #[must_use]
     pub fn tones(self) -> &'static [Tone] {
         const BOOT: &[Tone] = &[SHORT, SHORT, SHORT];
         const READY: &[Tone] = &[tone(800, 0)];
@@ -96,6 +97,7 @@ pub struct Alerts {
 }
 
 impl Alerts {
+    #[must_use]
     pub const fn new() -> Self {
         Alerts {
             last_packet_ms: None,
@@ -154,6 +156,7 @@ impl Alerts {
     }
 
     /// No packet for 3 s, after at least one.
+    #[must_use]
     pub fn comms_lost(&self) -> bool {
         self.lost
     }

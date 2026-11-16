@@ -10,6 +10,7 @@ pub struct Spread {
 }
 
 impl Spread {
+    #[must_use]
     pub const fn new() -> Self {
         Spread { range: None }
     }

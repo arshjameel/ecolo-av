@@ -45,6 +45,7 @@ impl Frame {
     /// should have passed [`Frame::check`]; values outside -1..1 are clamped here.
     ///
     /// The arithmetic is the C++'s: `f32`, then truncated to a whole number.
+    #[must_use]
     pub fn targets(&self) -> Targets {
         let steering = self.steering.clamp(-1.0, 1.0);
         let speed = self.speed.clamp(-1.0, 1.0);
@@ -104,6 +105,7 @@ pub struct DacRamp {
 }
 
 impl DacRamp {
+    #[must_use]
     pub const fn new() -> Self {
         DacRamp { code: 0 }
     }
@@ -124,6 +126,7 @@ impl DacRamp {
         self.code = 0;
     }
 
+    #[must_use]
     pub const fn code(&self) -> u16 {
         self.code
     }

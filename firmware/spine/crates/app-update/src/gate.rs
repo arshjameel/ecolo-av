@@ -34,6 +34,7 @@ pub enum NotNow {
 
 impl NotNow {
     /// For the reply and the log.
+    #[must_use]
     pub const fn reason(self) -> &'static str {
         match self {
             NotNow::Driving => "someone is driving (RC, computer or test)",
@@ -72,6 +73,7 @@ pub enum PasswordError {
 }
 
 impl PasswordError {
+    #[must_use]
     pub const fn reason(self) -> &'static str {
         match self {
             PasswordError::NotSetUp => {
@@ -94,6 +96,7 @@ pub struct Guard<'a> {
 impl<'a> Guard<'a> {
     /// `expected`: the build's password (from the untracked secrets file). `example`: the
     /// example file's, which is never taken.
+    #[must_use]
     pub const fn new(expected: &'a str, example: &'a str) -> Self {
         Guard {
             expected,

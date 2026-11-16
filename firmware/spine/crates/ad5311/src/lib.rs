@@ -74,12 +74,14 @@ pub struct Register {
 /// The two bytes for a code and a mode (Figure 27): `x x PD1 PD0 D9 D8 D7 D6`, then
 /// `D5 D4 D3 D2 D1 D0 x x`, with the x bits sent as 0. Above 1023 the code is sent
 /// as 1023.
+#[must_use]
 pub fn encode(code: u16, mode: Mode) -> [u8; 2] {
     let code = code.min(MAX_CODE);
     [(mode as u8) << 4 | (code >> 6) as u8, (code << 2) as u8]
 }
 
 /// Read the two bytes the DAC sends back ("Read operation"): the same layout.
+#[must_use]
 pub fn decode(bytes: [u8; 2]) -> Register {
     let code = u16::from(bytes[0] & 0x0F) << 6 | u16::from(bytes[1]) >> 2;
     Register {

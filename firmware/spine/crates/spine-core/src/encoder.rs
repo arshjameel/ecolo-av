@@ -16,6 +16,7 @@ pub struct Quadrature {
 }
 
 impl Quadrature {
+    #[must_use]
     pub fn new(a: bool, b: bool) -> Self {
         Quadrature {
             last: (a as u8) << 1 | b as u8,
@@ -32,6 +33,7 @@ impl Quadrature {
         step
     }
 
+    #[must_use]
     pub fn count(&self) -> i32 {
         self.count
     }
@@ -49,6 +51,7 @@ pub struct SpeedEstimator {
 
 impl SpeedEstimator {
     /// `timeout_us`: with no count for this long, the car counts as stopped.
+    #[must_use]
     pub fn new(metres_per_count: f32, timeout_us: u32) -> Self {
         SpeedEstimator {
             metres_per_count,
@@ -75,6 +78,7 @@ impl SpeedEstimator {
     }
 
     /// Signed speed in m/s.
+    #[must_use]
     pub fn speed(&self, now_us: u32) -> f32 {
         let (Some(last), Some(period)) = (self.last_count_us, self.period_us) else {
             return 0.0;

@@ -52,6 +52,7 @@ impl From<FrameV3> for FrameV4 {
 
 impl FrameV4 {
     /// The 24 bytes.
+    #[must_use]
     pub fn encode(&self) -> [u8; FRAME_V4_LEN] {
         let mut bytes = [0; FRAME_V4_LEN];
         bytes[..FRAME_V3_LEN - 1].copy_from_slice(&self.command.encode()[..FRAME_V3_LEN - 1]);

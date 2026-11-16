@@ -18,6 +18,7 @@ pub struct WheelSpeed {
 }
 
 impl WheelSpeed {
+    #[must_use]
     pub fn new(metres_per_count: f32, timeout_ms: u32) -> Self {
         WheelSpeed {
             estimator: SpeedEstimator::new(metres_per_count, timeout_ms.saturating_mul(1000)),

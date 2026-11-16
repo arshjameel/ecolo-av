@@ -33,6 +33,7 @@ impl Flags {
     const ESTOP: u8 = 1 << 1;
 
     /// The flags as byte 15.
+    #[must_use]
     pub fn to_byte(self) -> u8 {
         let bit = |on: bool, mask: u8| if on { mask } else { 0 };
         bit(self.armed, Self::ARMED) | bit(self.estop, Self::ESTOP)
@@ -62,6 +63,7 @@ pub struct FrameV2 {
 
 impl FrameV2 {
     /// The 17 bytes, as `legacy_protocol.pack_frame_v2` sends them (without its clamp).
+    #[must_use]
     pub fn encode(&self) -> [u8; FRAME_V2_LEN] {
         let mut bytes = [0; FRAME_V2_LEN];
         bytes[0] = SYNC;
@@ -109,6 +111,7 @@ impl FrameV2 {
 /// CRC-8/SAE-J1850: polynomial 0x1D, start 0xFF, not reflected, final XOR 0xFF. The same
 /// CRC as every CAN frame in `firmware/can/aav.dbc`. Its check value: 0x4B for
 /// "123456789".
+#[must_use]
 pub fn crc8(bytes: &[u8]) -> u8 {
     let step = |crc: u8| {
         if crc & 0x80 != 0 {
@@ -136,6 +139,7 @@ pub struct Heartbeat {
 }
 
 impl Heartbeat {
+    #[must_use]
     pub const fn new() -> Self {
         Heartbeat { last: None }
     }
@@ -148,6 +152,7 @@ impl Heartbeat {
     }
 
     /// The last counter seen, if any.
+    #[must_use]
     pub fn last(&self) -> Option<u8> {
         self.last
     }

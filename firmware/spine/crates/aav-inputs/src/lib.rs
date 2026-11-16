@@ -51,12 +51,14 @@ pub struct Debouncer {
 
 impl Debouncer {
     /// The same time in both directions.
+    #[must_use]
     pub const fn new(initial: bool, stable_ms: u32) -> Self {
         Debouncer::with_times(initial, stable_ms, stable_ms)
     }
 
     /// `to_high_ms`: how long the input must stay high before the output goes high;
     /// `to_low_ms` the same for low. 0 means at once.
+    #[must_use]
     pub const fn with_times(initial: bool, to_high_ms: u32, to_low_ms: u32) -> Self {
         Debouncer {
             to_high_ms,
@@ -83,6 +85,7 @@ impl Debouncer {
     }
 
     /// The cleaned-up level.
+    #[must_use]
     pub fn level(&self) -> bool {
         self.level
     }
@@ -100,6 +103,7 @@ pub struct Lockout {
 }
 
 impl Lockout {
+    #[must_use]
     pub const fn new(initial: bool, lockout_ms: u32) -> Self {
         Lockout {
             lockout_ms,
@@ -124,6 +128,7 @@ impl Lockout {
     }
 
     /// The level after the last change that counted.
+    #[must_use]
     pub fn level(&self) -> bool {
         self.level
     }

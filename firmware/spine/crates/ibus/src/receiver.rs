@@ -20,6 +20,7 @@ pub struct Receiver {
 impl Receiver {
     /// `timeout_ms`: no good frame for longer than this, and the receiver is silent.
     /// Frames come about every 7 ms.
+    #[must_use]
     pub const fn new(timeout_ms: u32) -> Self {
         Receiver {
             parser: Parser::new(),
@@ -44,12 +45,14 @@ impl Receiver {
 
     /// The latest channels, or None before the first frame and once the receiver
     /// has been silent for longer than the timeout.
+    #[must_use]
     pub fn channels(&self, now_ms: u32) -> Option<Channels> {
         let (channels, at) = self.latest?;
         (now_ms.wrapping_sub(at) <= self.timeout_ms).then_some(channels)
     }
 
     /// Good frames so far (wraps).
+    #[must_use]
     pub fn frames(&self) -> u32 {
         self.frames
     }

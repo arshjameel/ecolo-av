@@ -104,6 +104,7 @@ impl LqiConfig {
     };
 
     /// The pedals for a signed acceleration (m/s²): throttle or brake (0..1), never both.
+    #[must_use]
     pub fn pedals(&self, accel: f32) -> (f32, f32) {
         if accel > self.dead_band {
             (clamp01(accel / self.max_accel), 0.0)
@@ -179,6 +180,7 @@ impl SpeedLoopConfig {
     /// - setpoint weight 0.75: the zero moves to −ki/(b·kp) = −0.33, past the slow pole.
     /// - integral limit 1.0 and clamping: the integral may hold up to full throttle (a weak
     ///   throttle needs it), but never winds up while the throttle is pinned.
+    #[must_use]
     pub fn smooth() -> Self {
         SpeedLoopConfig {
             kp: 1.0,
@@ -195,6 +197,7 @@ impl SpeedLoopConfig {
     /// The `firm` profile (TODO 163): `smooth`, with a firmer brake past a narrower coast
     /// band. On the car model a set speed ramped to 0 at 1 m/s² is overrun by 0.68 m with
     /// `smooth`'s brake (0.5 per m/s past 0.2 m/s), 0.21 m with this one. To try on stands.
+    #[must_use]
     pub fn firm() -> Self {
         SpeedLoopConfig {
             brake_gain: 2.0,
@@ -205,6 +208,7 @@ impl SpeedLoopConfig {
 
     /// The `lqi` profile (TODO 3: a comparison, not the default): [`LqiConfig::MODEL`],
     /// with today's stop (brake at least `hold_brake` until stopped, then hold it).
+    #[must_use]
     pub fn lqi() -> Self {
         SpeedLoopConfig {
             law: SpeedLaw::Lqi(LqiConfig::MODEL),
@@ -237,6 +241,7 @@ impl SpeedLoopProfile {
     ];
 
     /// The profile's name, as the parameter and the docs spell it.
+    #[must_use]
     pub fn name(self) -> &'static str {
         match self {
             SpeedLoopProfile::Default => "default",
@@ -247,6 +252,7 @@ impl SpeedLoopProfile {
     }
 
     /// The profile's parameters.
+    #[must_use]
     pub fn config(self) -> SpeedLoopConfig {
         match self {
             SpeedLoopProfile::Default => SpeedLoopConfig::default(),
@@ -303,6 +309,7 @@ fn clamp01(x: f32) -> f32 {
 }
 
 impl SpeedLoop {
+    #[must_use]
     pub fn new(cfg: SpeedLoopConfig) -> Self {
         SpeedLoop {
             cfg,
@@ -315,6 +322,7 @@ impl SpeedLoop {
 
     /// The PI's integral (throttle, 0..its ceiling): for a model that predicts the loop
     /// from where it is now (aav_mpc_lag's estimate). 0 under the LQI.
+    #[must_use]
     pub fn integral(&self) -> f32 {
         self.integral
     }

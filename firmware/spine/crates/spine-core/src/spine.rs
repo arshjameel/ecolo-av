@@ -230,6 +230,7 @@ impl SpineConfig {
     /// then the throttle is cut while the car is at or over the limit instead.
     ///
     /// The spine caps each command with this; the board's settings line reports it.
+    #[must_use]
     pub fn open_loop_throttle_cap(&self, reverse: bool) -> Option<f32> {
         let limit = if reverse {
             self.max_reverse_speed
@@ -412,6 +413,7 @@ pub struct Spine {
 }
 
 impl Spine {
+    #[must_use]
     pub fn new(cfg: SpineConfig) -> Self {
         Spine {
             cfg,
@@ -461,6 +463,7 @@ impl Spine {
     }
 
     /// All five regions, as the latest tick left them.
+    #[must_use]
     pub fn state(&self) -> State {
         State {
             lifecycle: self.lifecycle,
@@ -951,11 +954,13 @@ impl Spine {
         frame
     }
 
+    #[must_use]
     pub fn mode(&self) -> Mode {
         self.authority.mode()
     }
 
     /// The rate-limited speed the speed loop is chasing (m/s).
+    #[must_use]
     pub fn speed_setpoint(&self) -> f32 {
         self.speed_setpoint
     }

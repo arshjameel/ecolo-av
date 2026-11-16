@@ -60,6 +60,7 @@ pub enum Pin {
 
 impl Pin {
     /// This pin's bit in a 16-bit value.
+    #[must_use]
     pub const fn mask(self) -> u16 {
         1 << self as u8
     }

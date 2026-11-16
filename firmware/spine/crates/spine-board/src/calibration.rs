@@ -158,6 +158,7 @@ impl Default for Calibration {
 impl Steering {
     /// The Jrk target for an angle (rad, positive left), inside the limits.
     /// Not a number gives the centre.
+    #[must_use]
     pub fn target(&self, angle: f32) -> u16 {
         let target = if angle.is_finite() {
             f32::from(self.centre) + angle * self.counts_per_rad
@@ -169,6 +170,7 @@ impl Steering {
 
     /// The angle (rad) for a reading in target units, such as the Jrk's scaled
     /// feedback.
+    #[must_use]
     pub fn angle(&self, target: u16) -> f32 {
         (f32::from(target) - f32::from(self.centre)) / self.counts_per_rad
     }
@@ -176,6 +178,7 @@ impl Steering {
 
 impl Brake {
     /// The Jrk target for 0 (released) to 1 (full). Not a number gives full.
+    #[must_use]
     pub fn target(&self, brake: f32) -> u16 {
         let b = if brake.is_nan() {
             1.0
@@ -190,6 +193,7 @@ impl Brake {
 
 impl Brake {
     /// The fraction (0 to 1) for a target: the inverse of [`Brake::target`].
+    #[must_use]
     pub fn fraction(&self, target: u16) -> f32 {
         let span = f32::from(self.full) - f32::from(self.released);
         if span == 0.0 {
@@ -201,6 +205,7 @@ impl Brake {
 
 impl Throttle {
     /// The fraction (0 to 1) for a DAC code: the inverse of [`Throttle::code`].
+    #[must_use]
     pub fn fraction(&self, code: u16) -> f32 {
         if self.full_code == 0 {
             return 0.0;
@@ -209,6 +214,7 @@ impl Throttle {
     }
 
     /// The DAC code for 0 to 1. Not a number gives 0.
+    #[must_use]
     pub fn code(&self, throttle: f32) -> u16 {
         if throttle > 0.0 {
             round_within(throttle * f32::from(self.full_code), 0, self.full_code)
@@ -218,6 +224,7 @@ impl Throttle {
     }
 
     /// How far the code may rise in `dt_ms`.
+    #[must_use]
     pub fn max_rise(&self, dt_ms: u32) -> u16 {
         let rise = u32::from(self.rise_per_s) * dt_ms / 1000;
         rise.min(u32::from(u16::MAX)) as u16
@@ -226,6 +233,7 @@ impl Throttle {
 
 impl Direction {
     /// All sixteen expander levels, for forward or reverse.
+    #[must_use]
     pub fn levels(&self, reverse: bool) -> u16 {
         if self.forward_high != reverse {
             self.other_pins | self.pin.mask()

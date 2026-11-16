@@ -46,6 +46,7 @@ pub const TAKE_ERRORS_OCCURRED: u8 = GET_VARIABLE_16 + offset::ERROR_FLAGS_OCCUR
 
 /// The two bytes of a "Set target" command. Above 4095 the target is sent as
 /// 4095, as Pololu's Arduino library does.
+#[must_use]
 pub fn set_target(target: u16) -> [u8; 2] {
     let target = target.min(MAX_TARGET);
     [

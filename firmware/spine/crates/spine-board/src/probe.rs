@@ -31,6 +31,7 @@ impl Device {
     ];
 
     /// Its name in a line: `steering`, `brake`, `dac`, `expander`.
+    #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Device::SteeringJrk => "steering",
@@ -40,6 +41,7 @@ impl Device {
         }
     }
 
+    #[must_use]
     pub const fn address(self, a: &Addresses) -> u8 {
         match self {
             Device::SteeringJrk => a.steering,
@@ -49,6 +51,7 @@ impl Device {
         }
     }
 
+    #[must_use]
     pub const fn is_jrk(self) -> bool {
         matches!(self, Device::SteeringJrk | Device::BrakeJrk)
     }
@@ -98,10 +101,12 @@ impl DeviceCheck {
     }
 
     /// How many answered, of [`Self::expected`].
+    #[must_use]
     pub fn answered(&self) -> usize {
         self.found.iter().filter(|f| f.answered).count()
     }
 
+    #[must_use]
     pub const fn expected(&self) -> usize {
         self.found.len()
     }
@@ -113,6 +118,7 @@ impl DeviceCheck {
 }
 
 /// A feedback mode's name in a line: `none`, `analog`, `frequency`, `other`.
+#[must_use]
 pub const fn feedback_name(mode: FeedbackMode) -> &'static str {
     match mode {
         FeedbackMode::None => "none",
