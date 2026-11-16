@@ -103,7 +103,7 @@ topics:
     pub: [sensor_watchdog]
     sub: [twist_mux, point_driver, behaviour]
     live: [sim]
-    note: true while a sensor Nav2 or the AI slot needs is stale, NaN, frozen, jumped, or (the wheels) disagrees with the IMU; false otherwise (aav_safety sensor_watchdog, 10 Hz) - a heartbeat. A twist_mux lock at priority 30, as the stop sign - it holds Nav2 and the AI slot, never a person or a test. Fail-safe - the lock's 1 s timeout holds them too when the watchdog dies or hangs (aav_command_mux mux.launch.py sensor_lock, true wherever a watchdog runs - Gazebo with watchdog:=true, the bench, and the car next to the mux; false on the turtle).
+    note: true while a sensor Nav2 or the AI slot needs is stale, NaN, frozen, jumped, or (the wheels) disagrees with the IMU, or the steering is STUCK off its command, or the car runs over ego's speed (OVERSPEED - 0.2 m/s over for 2 s while not slowing, sim only so far, TODO 207); false otherwise (aav_safety sensor_watchdog, 10 Hz) - a heartbeat. A twist_mux lock at priority 30, as the stop sign - it holds Nav2 and the AI slot, never a person or a test. Fail-safe - the lock's 1 s timeout holds them too when the watchdog dies or hangs (aav_command_mux mux.launch.py sensor_lock, true wherever a watchdog runs - Gazebo with watchdog:=true, the bench, and the car next to the mux; false on the turtle).
   /safety/legacy_uart_bridge/lock:
     type: std_msgs/msg/Bool
     pub: [legacy_uart_bridge]
@@ -261,7 +261,7 @@ topics:
   /ego/actuator_cmd:
     type: ackermann_msgs/msg/AckermannDriveStamped
     pub: [ego]
-    sub: [output_mux, hw_panel]
+    sub: [output_mux, hw_panel, sensor_watchdog]
     live: [turtle, sim, car, bench]
     note: 50 Hz, always. speed (m/s), steering_angle (rad, + left), acceleration, steering_angle_velocity. No backend reads it - the output mux passes it on to the one target's /control/<target>/actuator_cmd (aav_io_mux, docs/sources-and-targets.md). The hardware panel's GRAPHS page reads it only to judge the first hop (ego), and pairs it with the mux's output by stamp. With ego_impl:=rust (ego.launch.py, sim.launch.py) aav_ego_rs publishes it instead, from one Rust process holding the nodes ego and look_ahead, with the same names, QoS and answers (a challenger, TODO 185).
 

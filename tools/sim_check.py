@@ -132,8 +132,10 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             --low-box-only skips the road world's run)
     pixi run sim-check --actuator-faults  (TODO 159, the empty world: the e-stop from 1 m/s
                                             healthy, with a weak brake, a dead one and a
-                                            stuck throttle: metres to stand; the steering
-                                            stuck in a turn: does anything stop the car.
+                                            stuck throttle: metres to stand; the throttle
+                                            stuck while speeding up: the watchdog's
+                                            OVERSPEED; the steering stuck in a turn: does
+                                            anything stop the car.
                                             Evidence for docs/safety-case.md; one more run,
                                             --actuator-faults-only skips the road world's)
     pixi run sim-check --kerb             (TODO 119: a 0.3 m kerb across the road, the
@@ -613,6 +615,8 @@ class Probe(Node):
         threading.Thread(target=self.beat_for_the_hud, daemon=True).start()
         self.disagreed = False      # the wheels' cross check ever said DISAGREE
         self.steer_stuck_at = None  # when the watchdog first said steering STUCK (TODO 207)
+        self.over_at = None         # ... first said speed OVER (a warning), then OVERSPEED
+        self.overspeed_at = None
         self.gaps = {}              # its worst gaps, from /diagnostics
         self.create_subscription(DiagnosticArray, '/diagnostics', self.on_diagnostics, 10)
         # The car's status (the spine's, with spine:=true), and the actuators' demands as
@@ -733,6 +737,10 @@ class Probe(Node):
         self.disagreed = self.disagreed or 'DISAGREE' in msg.data
         if self.steer_stuck_at is None and 'steering STUCK' in msg.data:
             self.steer_stuck_at = self.now()
+        if self.over_at is None and 'speed OVER' in msg.data:
+            self.over_at = self.now()
+        if self.overspeed_at is None and 'speed OVERSPEED' in msg.data:
+            self.overspeed_at = self.now()
 
     def on_diagnostics(self, msg):
         for status in msg.status:
@@ -2071,6 +2079,71 @@ def actuator_stop(probe, fault):
 TURNING = 0.06     # rad/s: the car is in the bend (check_actuator_faults)
 
 
+def clear_watchdog(probe):
+    """Clear the watchdog's latches, as a person would, and forget what it said."""
+    clear = probe.create_client(Trigger, '/safety/sensor_watchdog/clear')
+    if clear.wait_for_service(timeout_sec=5.0):
+        cleared = clear.call_async(Trigger.Request())
+        probe.spin_for(10.0, cleared.done)
+    probe.spin_for(1.0)
+    probe.over_at = probe.overspeed_at = None
+
+
+def check_overspeed(probe, watch=20.0):
+    """
+    Stick the throttle while speeding up to 1 m/s: the watchdog must say OVERSPEED.
+
+    TODO 207.
+
+    Stuck at 0.4 m/s, the throttle holds more than cruising needs and the speed loop's
+    brake only partly beats it. Passes if the watchdog latches OVERSPEED within `watch` s;
+    then the fault is mended, the drive ended and the latch cleared.
+    """
+    name = 'actuator throttle stuck: speeding up'
+    probe.spin_for(30.0, lambda: abs(probe.speed()) < STILL)
+    clear_watchdog(probe)
+    handle = probe.send_drive()
+    if handle is None or not probe.spin_for(30.0, lambda: probe.speed() > 0.4):
+        result(name, False, 'the car would not get going')
+        if handle is not None:
+            finish(probe, handle)
+        return
+    if not set_fault(probe, 'throttle', 'stuck'):
+        result(name, False, 'refused the fault')
+        finish(probe, handle)
+        return
+    t0 = probe.now()
+    top = [0.0]
+    # Ego's speed and the wheels', as the watchdog sees them, for the record.
+    rows, wheels = [], [math.nan]
+    subs = [probe.create_subscription(AckermannDriveStamped, '/ego/actuator_cmd',
+                                      lambda m: rows.append((probe.now(), m.drive.speed,
+                                                             wheels[0], probe.speed())), 10),
+            probe.create_subscription(Odometry, '/vehicle/odom',
+                                      lambda m: wheels.__setitem__(0, m.twist.twist.linear.x),
+                                      10)]
+    probe.spin_for(watch, lambda: top.__setitem__(0, max(top[0], probe.speed()))
+                   or probe.overspeed_at is not None)
+    for sub in subs:
+        probe.destroy_subscription(sub)
+    stem = os.path.splitext(LAUNCH.get('log', '/tmp/aav-sim-check.log'))[0]
+    with open(f'{stem}-overspeed.csv', 'w') as out:
+        out.write('t,command,wheels,truth\n')
+        out.writelines(f'{t - t0:.3f},{c:.3f},{w:.3f},{v:.3f}\n' for t, c, w, v in rows)
+    set_fault(probe, 'throttle', 'ok')
+    over_at, overspeed_at = probe.over_at, probe.overspeed_at
+    finish(probe, handle)
+    probe.spin_for(30.0, lambda: abs(probe.speed()) < STILL)
+    clear_watchdog(probe)
+    warned = (f'OVER (a warning) {over_at - t0:.1f} s after, '
+              if over_at is not None else 'no OVER warning, ')
+    said = (f'OVERSPEED {overspeed_at - t0:.1f} s after the fault'
+            if overspeed_at is not None
+            else f'the watchdog never said OVERSPEED in {watch:.0f} s')
+    result(name, overspeed_at is not None,
+           f'asked 1.00 m/s, top {top[0]:.2f} m/s; {warned}{said}')
+
+
 def check_actuator_faults(probe, react=40.0):
     """
     Actuator faults on purpose (TODO 159, faults.ACTUATORS): what each does, as evidence.
@@ -2087,7 +2160,10 @@ def check_actuator_faults(probe, react=40.0):
         return
     base = None
     for fault in (None, ('brake', 'weak'), ('brake', 'dead'), ('throttle', 'stuck')):
+        clear_watchdog(probe)
         out = actuator_stop(probe, fault)
+        over = ('; the watchdog said OVERSPEED' if probe.overspeed_at is not None
+                else '; no OVERSPEED')
         if out is None:
             continue
         name, v0, metres, took, standing, v_end = out
@@ -2095,7 +2171,9 @@ def check_actuator_faults(probe, react=40.0):
         than = f' ({metres / base:.1f} x the healthy {base:.2f} m)' if base and fault else ''
         ended = (f'stood still after {took:.1f} s' if standing
                  else f'still at {v_end:.2f} m/s after {took:.0f} s')
-        result(name, True, f'from {v0:.2f} m/s: {metres:.2f} m{than}, {ended}')
+        result(name, True, f'from {v0:.2f} m/s: {metres:.2f} m{than}, {ended}{over}')
+    check_overspeed(probe)
+    clear_watchdog(probe)
     # The steering stuck in a turn: a goal 10 m on and 10 m left, facing left (a bend of
     # about 10 m radius: 0.1 rad/s at 1 m/s), stuck once the car turns at TURNING.
     x0, y0 = probe.xy(probe.truth)
@@ -3153,8 +3231,8 @@ def main():
     profile = 'default'
     if '--speed-loop' in args:
         at = args.index('--speed-loop')
-        if at + 1 >= len(args) or args[at + 1] not in ('default', 'smooth', 'lqi'):
-            print('--speed-loop takes default, smooth or lqi', file=sys.stderr)
+        if at + 1 >= len(args) or args[at + 1] not in ('default', 'smooth', 'lqi', 'firm'):
+            print('--speed-loop takes default, smooth, lqi or firm', file=sys.stderr)
             return 2
         profile = args[at + 1]
         EVERY_RUN.append(f'speed_loop:={profile}')

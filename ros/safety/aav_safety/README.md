@@ -37,6 +37,8 @@ The watchdog works through a twist_mux lock (priority 30, in `aav_command_mux`).
 | `JUMP` | two GPS fixes too far apart for the car. Latched |
 | `DISAGREE` | the wheels' speed or turn against the IMU and the GPS (`wheel_check.py`). Latched |
 | `STUCK` | an actuator (`/vehicle/steering`) more than `follow_tolerance` off its command for `follow_persist` s (TODO 207). Latched; NaN on a side is no check, not a fault |
+| `OVER` | the car more than `over_margin` over ego's speed for `over_warn` s while not slowing (TODO 207). A warning only |
+| `OVERSPEED` | the same for `over_persist` s: a stuck throttle. Latched |
 | `LOST` | a `latch` input (the HUD) dropped out after its start-up. Latched |
 
 A person clears latched faults: `pixi run clear watchdog`. More in
@@ -49,7 +51,7 @@ A person clears latched faults: `pixi run clear watchdog`. More in
 | In / out | Topic | Type |
 |---|---|---|
 | in | each input's `topic` (below) | by `kind` |
-| in | `/vehicle/odom` (always), `/sensors/imu/data` (for the cross check) | |
+| in | `/vehicle/odom` (always; also the speed input's measured speed), `/sensors/imu/data` (for the cross check) | |
 | out | `/safety/sensor_watchdog/lock`, at `rate_hz` | `std_msgs/Bool`: true while a `stop` input isn't OK; a heartbeat |
 | out | `/safety/sensor_watchdog/state`, at `rate_hz` | `std_msgs/String`: `OK`, or `STOP`/`WARN` and why |
 | out | `/diagnostics`, 1 Hz | `diagnostic_msgs/DiagnosticArray`: one status per input |
@@ -142,6 +144,7 @@ it starts the mux; the bench always; Gazebo with `geofence:=true` (the default).
 | `front_left_stream`, `front_right_stream` | `/perception/detections` (by `frame_id`) | detections | 1.0 s | yes |
 | `hud` | `/hud/heartbeat` | heartbeat, latched | 1.0 s | yes |
 | `steering` | `/vehicle/steering` | actuator (STUCK: 0.15 rad for 1 s) | 1.0 s | yes; the sim only so far (not with `esp32:=true`), the car's uplink has no measured angle |
+| `speed` | `/ego/actuator_cmd`, against `/vehicle/odom`'s speed | speed (0.2 m/s over while not slowing: OVER after 1 s, OVERSPEED after 2 s) | 1.0 s | yes; the sim only so far |
 | `radar` | `/sensors/radar/points` | cloud | 1.0 s | no (collision_monitor stops Nav2 itself) |
 | `node_costmap`, `node_planner`, `node_navigator`, `node_mppi_lag`, `node_smoother`, `node_behaviour`, `node_voxels`, `node_things`, `node_ego`, `node_look_ahead` | the node's full name (`/planner`...), looked for in the ROS graph | node | 3.0 s | no: warn only (Ben, 14 Nov). The sim watches the ones it starts |
 
@@ -149,7 +152,8 @@ Per input parameters: `topic`, `kind`, `max_age` (s), `stop`, `frozen_after` (s)
 `max_jump_speed` (m/s), `jump_margin` (m), `frame_id`, `latch`, `latch_grace` (s);
 for odom, `cross_check`, `cross_window` (s), `cross_speed_tolerance` (m/s),
 `cross_yaw_tolerance` (rad/s), `cross_persist` (s), `cross_gps_window` (s),
-`cross_gps_tolerance` (m/s); for actuator, `follow_tolerance` and `follow_persist` (s). Global: `inputs`, `rate_hz` (10).
+`cross_gps_tolerance` (m/s); for actuator, `follow_tolerance` and `follow_persist` (s); for speed, `over_margin`
+(m/s), `over_warn` (s), `over_persist` (s), `over_slowing` (m/s²). Global: `inputs`, `rate_hz` (10).
 
 ### Launch and modules
 
@@ -184,6 +188,8 @@ each profile passes the inputs it has (sim, bench, car).
 - The stop hold's lock holds Nav2 (20) and the AI slot (10) only. Timeout 0: its silence
   locks nothing, and a `stop_hold` that dies while true keeps the stop.
 - The stop hold times on the steady clock, so a jump in sim time can't end it early.
+- Speeds compare as sizes, so reversing counts too. A car that slows at 0.3 m/s² or
+  more is never over: a healthy stop lags its command (the car model, `test_watchdog.py`).
 - The lock holds the point driver (25), Nav2 (20) and the AI slot (10), never a person or a test.
 - Fail-safe: twist_mux treats 1 s without a lock message as locked, so a dead or hung
   watchdog stops them too.
