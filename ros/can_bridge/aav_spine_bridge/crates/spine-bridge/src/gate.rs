@@ -28,6 +28,7 @@ pub enum Target {
 
 impl Target {
     /// The output mux's name for it, as its state line says it.
+    #[must_use]
     pub fn name(self) -> &'static str {
         match self {
             Target::Car => "car",
@@ -78,7 +79,12 @@ pub enum GateShut {
     /// The output mux says WAIT or STOP: its line, with the reason.
     Shut(String),
     /// An output mux for another target says OPEN: not this bridge's gate.
-    OtherTarget { line: String, target: Target },
+    OtherTarget {
+        /// The mux's line.
+        line: String,
+        /// The target it is open for.
+        target: Target,
+    },
 }
 
 impl fmt::Display for GateShut {
@@ -116,6 +122,7 @@ pub struct OutputGate {
 impl OutputGate {
     /// A gate not heard from yet. `timeout`: an older line counts as silence (the mux
     /// says its state twice a second).
+    #[must_use]
     pub fn new(target: Target, timeout: Duration) -> Self {
         Self {
             target,
@@ -130,6 +137,10 @@ impl OutputGate {
     }
 
     /// Ok if the output mux said OPEN for this bridge's target within the timeout.
+    ///
+    /// # Errors
+    ///
+    /// [`GateShut`]: why not.
     pub fn check(&self, now: Instant) -> Result<(), GateShut> {
         let Some((line, at)) = &self.last else {
             return Err(GateShut::NotHeard);

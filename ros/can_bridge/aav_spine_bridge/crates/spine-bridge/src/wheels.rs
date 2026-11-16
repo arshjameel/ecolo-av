@@ -16,6 +16,7 @@ pub const STANDSTILL_SPEED: f64 = 0.01;
 pub const STANDSTILL_VARIANCE: f64 = 1e-6;
 
 /// Whether base_link's speed says the car stands still (NaN: no).
+#[must_use]
 pub fn is_standstill(speed: f64) -> bool {
     speed.is_finite() && speed.abs() < STANDSTILL_SPEED
 }
@@ -23,13 +24,16 @@ pub fn is_standstill(speed: f64) -> bool {
 /// Which way the car is going.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
+    /// Forward.
     Forward,
+    /// Backward.
     Reverse,
 }
 
 impl Direction {
     /// Which way the car is going, for a wheel sensor that sees only a magnitude: the
     /// spine's measured speed first, then the commanded speed, then forward.
+    #[must_use]
     pub fn of_drive(measured_speed: Option<f32>, target_speed: Option<f32>) -> Direction {
         match [measured_speed, target_speed]
             .into_iter()
@@ -42,6 +46,7 @@ impl Direction {
     }
 
     /// +1 forward, -1 in reverse.
+    #[must_use]
     pub fn sign(self) -> f64 {
         match self {
             Direction::Forward => 1.0,
@@ -55,6 +60,7 @@ impl Direction {
 /// In a turn the front axle travels on a wider circle than the rear one: with the bicycle
 /// model, v_rear = v_front * cos(steering). The two front wheels' mean is close to the
 /// front axle's centre (within 0.2 % at full lock on this car).
+#[must_use]
 pub fn rear_axle_speed(front_mean: f64, steering_angle: f64) -> f64 {
     front_mean * steering_angle.cos()
 }
@@ -79,6 +85,7 @@ pub struct Side {
 
 impl Side {
     /// The speed, while it's fresh.
+    #[must_use]
     pub fn fresh_speed(&self) -> Option<f64> {
         self.fresh.then_some(self.speed)
     }
@@ -87,7 +94,9 @@ impl Side {
 /// Both front wheels at one moment, for /vehicle/wheels.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Reading {
+    /// The left front wheel.
     pub left: Side,
+    /// The right front wheel.
     pub right: Side,
     /// Every wheel heard from measures its own sign.
     pub direction_measured: bool,
@@ -95,6 +104,7 @@ pub struct Reading {
 
 impl Reading {
     /// The two wheels' mean speed, while both are fresh.
+    #[must_use]
     pub fn mean(&self) -> Option<f64> {
         Some((self.left.fresh_speed()? + self.right.fresh_speed()?) / 2.0)
     }
@@ -126,6 +136,7 @@ fn other(wheel: Wheel) -> Wheel {
 
 impl FrontWheels {
     /// A wheel older than `timeout` is stale.
+    #[must_use]
     pub fn new(timeout: Duration) -> Self {
         Self {
             timeout,
@@ -161,12 +172,14 @@ impl FrontWheels {
     }
 
     /// The wheel has sent within the timeout.
+    #[must_use]
     pub fn fresh(&self, wheel: Wheel, now: Duration) -> bool {
         self.sample(wheel)
             .is_some_and(|s| now.saturating_sub(s.time) <= self.timeout)
     }
 
     /// Both wheels at `now`; `direction` signs a wheel that sent only a magnitude.
+    #[must_use]
     pub fn reading(&self, now: Duration, direction: Direction) -> Reading {
         let side = |wheel| {
             let sample = self.sample(wheel);
