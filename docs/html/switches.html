@@ -348,11 +348,15 @@ KISS-ICP needs its own environment once: <code>pixi install --locked -e kiss</co
 <td><code>speed_loop:=smooth</code></td>
 <td>the PI with a smooth stop</td>
 </tr>
+<tr>
+<td><code>speed_loop:=firm</code></td>
+<td><code>smooth</code> with a firmer brake: stops where it was told</td>
+</tr>
 </tbody>
 </table></div>
-<p><code>tracker:=mpc_lag</code> predicts the speed loop it is told about: <code>default</code> or <code>smooth</code> (its
-<code>mpc_lag.speed_loop</code> setting in <code>track.yaml</code>; it doesn't follow <code>speed_loop:=</code> on its own,
-and doesn't model <code>lqi</code> yet).</p>
+<p>Every model of the car follows <code>speed_loop:=</code> (TODO 163): the path follower's
+(<code>mppi_lag</code>, <code>mpc_lag</code>, <code>mpc_lag_rs</code>), ego's trace and the behaviour planner's stopping
+law. <code>tracker:=mpc_lag</code> and <code>mpc_lag_rs</code> don't model <code>lqi</code> yet: the launch refuses it.</p>
 </section>
 <section class="card"><h2 id="the-world-and-the-rest">The world and the rest</h2>
 <div class="table-wrap"><table>
