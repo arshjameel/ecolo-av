@@ -426,6 +426,21 @@ def check_ego_impl(impl):
     return name
 
 
+# Which behaviour node runs, with behaviour:=true (navigation.launch.py, sim.launch.py
+# behaviour_impl:=): python (aav_behaviour, the default) or rust (aav_behaviour_rs: the same
+# node name, topics and answers; a challenger, TODO 185). Each one's package.
+BEHAVIOUR_IMPLS = {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
+DEFAULT_BEHAVIOUR_IMPL = 'python'
+
+
+def check_behaviour_impl(impl):
+    """Return the behaviour node's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in BEHAVIOUR_IMPLS:
+        raise ValueError(f'behaviour_impl:={impl}: pick one of {", ".join(BEHAVIOUR_IMPLS)}')
+    return name
+
+
 # The spine's speed loop profile the car runs (sim.launch.py and bench.launch.py
 # speed_loop:=): spine-core's SpeedLoopProfile, car_model.SPEED_LOOP_PROFILES. Every node
 # with a model of the car predicts with the one the simulated car runs (TODO 163): ego's

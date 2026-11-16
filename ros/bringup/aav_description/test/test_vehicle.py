@@ -960,3 +960,11 @@ def test_ego_impl_is_python_or_rust():
     assert vehicle.EGO_IMPLS['rust'] == 'aav_ego_rs'
     with pytest.raises(ValueError, match='ego_impl:=c'):
         vehicle.check_ego_impl('c')
+
+
+def test_behaviour_impl_is_python_or_rust():
+    assert vehicle.DEFAULT_BEHAVIOUR_IMPL == 'python'
+    assert vehicle.check_behaviour_impl(' Rust ') == 'rust'
+    assert vehicle.BEHAVIOUR_IMPLS == {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
+    with pytest.raises(ValueError, match='behaviour_impl:=c'):
+        vehicle.check_behaviour_impl('c')

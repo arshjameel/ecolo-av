@@ -1,0 +1,18 @@
+[package]
+name = "behaviour-core"
+description = "The behaviour planner's maths, no ROS: the Rust twin of aav_behaviour's behaviour.py, with the road ahead's writer, the lane map and the fence's depth"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# ego's crate (ours): the stopping law, Python's own hypot, `fmt_g`, the TF transform;
+# reused, not copied.
+ego-core = { path = "../../../../ego/aav_ego_rs/crates/ego-core" }
+# The lane map's file (lanes.yaml), as car-model reads vehicle.yaml.
+serde_yaml_ng = "0.10"
+
+[dev-dependencies]
+# float_roundtrip: read each number exactly as Python wrote it (the default may be 1 bit off).
+serde_json = { version = "1", features = ["float_roundtrip"] }
