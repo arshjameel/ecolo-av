@@ -7,7 +7,7 @@
 <!-- Generated from docs/release-0.4.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>0.4-rc1: start here</h1>
-<div class="meta">3 min read · 5 sections</div></header>
+<div class="meta">4 min read · 5 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a class="here" href="release-0.4.html">0.4-rc1</a>
@@ -117,7 +117,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#what-04-means">What 0.4 means</a><a href="#one-command-per-job">One command per job</a><a href="#how-ours-compares-14-nov-3-runs-each-reversing-on">How ours compares (14 Nov, 3 runs each, reversing on)</a><a href="#whats-new-since-03">What&#x27;s new since 0.3</a><a href="#not-in-04-rc1">Not in 0.4-rc1</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#what-04-means">What 0.4 means</a><a href="#one-command-per-job">One command per job</a><a href="#how-ours-compares-15-nov-3-runs-each-reversing-on">How ours compares (15 Nov, 3 runs each, reversing on)</a><a href="#whats-new-since-03">What&#x27;s new since 0.3</a><a href="#not-in-04-rc1">Not in 0.4-rc1</a></nav>
 <div class="lead"><p>The first release candidate of 0.4. <strong>Beta, not 1.0</strong> (Ben, 14 Nov: "We are still in beta
 stages"). It is about refining what we have, not adding more.</p></div>
 <section class="card"><h2 id="what-04-means">What 0.4 means</h2>
@@ -135,11 +135,11 @@ stages"). It is about refining what we have, not adding more.</p></div>
 </tr>
 <tr>
 <td><strong>Reverse</strong> everywhere the plan says</td>
-<td>✅ on the lot and the campus; a three-point turn in a narrow street still to test (TODO 174)</td>
+<td>✅ on the lot and the campus; a three-point turn in a 6.5 m street works, with 4-6 changes of direction where 3 are planned (TODO 174)</td>
 </tr>
 <tr>
 <td><strong>No oscillation</strong> (no swaying)</td>
-<td>🔧 ours sways 3-5 times more than Nav2: being fixed (TODO 168)</td>
+<td>🔧 ours now sways about 2 times more than Nav2 (was 3-5 times); on mapped road, <code>path:=lane</code> sways least of all (TODO 167, 168)</td>
 </tr>
 <tr>
 <td>Nav2 and Gazebo only as yardsticks</td>
@@ -192,7 +192,7 @@ stages"). It is about refining what we have, not adding more.</p></div>
 </tbody>
 </table></div>
 </section>
-<section class="card"><h2 id="how-ours-compares-14-nov-3-runs-each-reversing-on">How ours compares (14 Nov, 3 runs each, reversing on)</h2>
+<section class="card"><h2 id="how-ours-compares-15-nov-3-runs-each-reversing-on">How ours compares (15 Nov, 3 runs each, reversing on)</h2>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -205,22 +205,29 @@ stages"). It is about refining what we have, not adding more.</p></div>
 <tr>
 <td>Legs reached, lot + campus</td>
 <td><strong>21 of 21</strong></td>
-<td>16 of 21</td>
+<td>16 of 21 (14 Nov)</td>
 </tr>
 <tr>
 <td>Off the path, on average</td>
-<td><strong>0.12 m</strong></td>
+<td><strong>0.21-0.22 m</strong></td>
 <td>0.31-0.44 m</td>
 </tr>
 <tr>
+<td>Sway (side-to-side), lot</td>
+<td>0.031 m/s²</td>
+<td><strong>0.017 m/s²</strong></td>
+</tr>
+<tr>
 <td>Sway (side-to-side), campus</td>
-<td>0.66 m/s²</td>
+<td>0.231 m/s²</td>
 <td><strong>0.12 m/s²</strong></td>
 </tr>
 </tbody>
 </table></div>
 <p>Ours wins on reaching goals and tracking; Nav2 still drives more smoothly. The details:
-<code>TODO.md</code> rows 167 and 168.</p>
+<code>TODO.md</code> rows 164, 167 and 168.</p>
+<p>On University Drive (16 Nov, 3 runs each), ours with <code>path:=lane</code> (now its default):
+0 % of the time over the centre line (61 % before), 0.11 m off the lane centre, sway 0.055 m/s².</p>
 </section>
 <section class="card"><h2 id="whats-new-since-03">What's new since 0.3</h2>
 <div class="table-wrap"><table>
@@ -255,6 +262,18 @@ stages"). It is about refining what we have, not adding more.</p></div>
 <td>Credit</td>
 <td><a href="acknowledgements.html">Acknowledgements</a>: every project and paper we built on</td>
 </tr>
+<tr>
+<td>Lanes (16 Nov)</td>
+<td><code>path:=lane</code>: the plan follows the right lane's centre on mapped road (the lot falls back to the lattice); now <code>ours</code>' path</td>
+</tr>
+<tr>
+<td>Map chunks (16 Nov)</td>
+<td>NDT on the campus loads 64 m chunks (ready in 0.02 s, not 2.5 s); the things list drops low cubes on the map's walls (9.9 things to 1.7, every person still found); the dev window draws the chunks (key H)</td>
+</tr>
+<tr>
+<td>Safety (16 Nov)</td>
+<td>the watchdog latches OVERSPEED (a stuck throttle) as it does STUCK steering</td>
+</tr>
 </tbody>
 </table></div>
 </section>
@@ -272,8 +291,12 @@ stages"). It is about refining what we have, not adding more.</p></div>
 <td>needs the hardware lead's go-ahead (TODO 173)</td>
 </tr>
 <tr>
-<td>Lanelet2 maps and the three map levels</td>
-<td>designed, not built (TODO 175)</td>
+<td>The middle level planning far goals in chunks</td>
+<td>NDT and the things use chunks; the planner's rolling window loses far campus goals, so it stays a challenger (TODO 175)</td>
+</tr>
+<tr>
+<td>The <code>firm</code> speed loop</td>
+<td>stops on the line, but sways more on the lot: a challenger (TODO 163)</td>
 </tr>
 <tr>
 <td>Heavy Python nodes in Rust</td>
