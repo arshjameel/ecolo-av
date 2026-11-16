@@ -75,6 +75,10 @@ pub fn build(
 
 /// One `/perception/voxels/cubes` cloud, start to finish: its frame (base_link, or one
 /// `/tf_static` knows), the pose at its stamp, its points.
+///
+/// # Errors
+///
+/// [`ScanError`] if the cloud can't be read, its frame isn't known, or there's no pose at its stamp.
 pub fn place(
     view: &CloudView<'_>,
     frame: &str,
@@ -100,6 +104,7 @@ pub enum Road {
 }
 
 impl Road {
+    /// From the status message's level: 0 (OK) is fitted.
     #[must_use]
     pub fn from_level(level: u8) -> Self {
         if level == 0 {
@@ -122,6 +127,7 @@ impl Road {
 /// What the panel shows of `/perception/voxels/status`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VoxelStatus {
+    /// Whether the road's tilt was fitted.
     pub road: Road,
     /// The node's own words: "road fitted", or why it took the road as flat.
     pub message: String,
@@ -131,8 +137,11 @@ pub struct VoxelStatus {
     pub cubes: Option<u64>,
     /// Flat squares of road seen (they clear the costmap).
     pub ground_cubes: Option<u64>,
+    /// Points in the cloud.
     pub points: Option<u64>,
+    /// The road's roll (degrees).
     pub roll_deg: Option<f64>,
+    /// The road's pitch (degrees).
     pub pitch_deg: Option<f64>,
     /// Clouds that came while one was being worked on.
     pub clouds_dropped: Option<u64>,

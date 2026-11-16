@@ -57,6 +57,7 @@ impl Localizer {
         Localizer::Ndt,
     ];
 
+    /// Its name on the screen.
     #[must_use]
     pub fn label(self) -> &'static str {
         match self {
@@ -78,14 +79,23 @@ impl Localizer {
 /// A row of the panel: one sensor, actuator or estimate, from its own topic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Source {
+    /// The IMU.
     Imu,
+    /// The GPS receiver.
     Gps,
+    /// The lidar.
     Lidar,
+    /// The wheel speeds.
     Wheels,
+    /// The wheels' odometry.
     WheelOdom,
+    /// The car's status.
     Vehicle,
+    /// The trial tracker.
     Track,
+    /// A localizer's pose.
     Estimate(Localizer),
+    /// map to odom, from `/tf`.
     MapToOdom,
     /// NDT's status (its own panel section, not a row).
     NdtStatus,
@@ -119,6 +129,7 @@ impl Source {
         Source::Track,
     ];
 
+    /// Its name on the screen.
     #[must_use]
     pub fn label(self) -> &'static str {
         match self {
@@ -145,8 +156,11 @@ impl Source {
 pub enum Update {
     /// A pose from a localizer, in `frame`.
     Pose {
+        /// Which localizer.
         who: Localizer,
+        /// Where it puts the car.
         pose: Pose,
+        /// Its frame.
         frame: String,
         /// m/s forward, if the message has it.
         speed: Option<f64>,
@@ -155,15 +169,21 @@ pub enum Update {
     MapToOdom(Pose),
     /// Nav2's plan, in `frame`.
     Plan {
+        /// Its points.
         points: Vec<Point>,
+        /// Its frame.
         frame: String,
     },
     /// A topic was heard, with a short detail for the panel.
     Heard {
+        /// Which row.
         source: Source,
+        /// What the row says.
         detail: String,
     },
+    /// A `/vehicle/status` message.
     Vehicle(VehicleStatus),
+    /// The trial tracker's status.
     Track(TrackStatus),
     /// `/system/source`: the SIMULATED banner.
     Origin(Announcement),
@@ -175,7 +195,9 @@ pub enum Update {
     Ndt(NdtStatus),
     /// AMCL's particles, in `frame` (the map).
     Particles {
+        /// Their poses.
         poses: Vec<Pose>,
+        /// Their frame.
         frame: String,
     },
     /// `/perception/voxels/status`.
@@ -197,13 +219,18 @@ pub struct DebugState {
     poses: HashMap<Localizer, Pose>,
     /// m/s, the local EKF's.
     pub speed: Option<f64>,
+    /// The latest map to odom.
     pub map_to_odom: MapToOdom,
     plan: Vec<Point>,
     seen: HashMap<Source, LastSeen>,
     details: HashMap<Source, String>,
+    /// The car's last status.
     pub vehicle: Option<VehicleStatus>,
+    /// The trial tracker's last status.
     pub track: Option<TrackStatus>,
+    /// Where each sensor's data comes from.
     pub origins: Origins,
+    /// The last cloud's cubes.
     pub scan: Option<CubeScan>,
     /// The last cloud's problem, until a good one comes.
     pub scan_problem: Option<String>,
@@ -241,6 +268,7 @@ const TRAIL_STEP: f64 = 0.25;
 pub const MAX_PARTICLES: usize = 5000;
 
 impl DebugState {
+    /// Nothing heard yet, with these settings.
     #[must_use]
     pub fn new(config: &DebugConfig) -> Self {
         Self {

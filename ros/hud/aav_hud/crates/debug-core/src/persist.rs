@@ -19,7 +19,9 @@ use crate::{
 pub enum Fade {
     /// Seen in the newest scan (or within the first quarter of `keep_for`).
     New,
+    /// A little older.
     Recent,
+    /// Older still.
     Older,
     /// About to go.
     Oldest,
@@ -61,7 +63,9 @@ impl Fade {
 pub struct FadedCube {
     /// Its centre in odom, metres.
     pub centre: [f32; 3],
+    /// How high it is above base_link.
     pub band: Band,
+    /// How old it is.
     pub fade: Fade,
 }
 
@@ -159,6 +163,7 @@ impl KeptCubes {
         self.cells.len()
     }
 
+    /// True if no cube is kept.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.cells.is_empty()

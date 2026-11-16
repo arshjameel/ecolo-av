@@ -23,6 +23,9 @@
 //! | [`topdown`] | the seeing screen's top-downs: the map frame in a rectangle of the window |
 //! | [`state`] | everything above, as one value the screen draws |
 //! | [`easter_egg`] | when the little robot's eyes may peek: the car still, no warning, nothing changed |
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod cloud;
 pub mod config;

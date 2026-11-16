@@ -13,10 +13,13 @@ use crate::{
 /// Why a cloud became no cubes.
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum ScanError {
+    /// The cloud can't be read.
     #[error("unreadable cloud: {0}")]
     Cloud(#[from] CloudError),
+    /// Its frame can't be placed.
     #[error("{0}")]
     Frame(#[from] FrameError),
+    /// No pose at its stamp.
     #[error("no pose at the cloud's stamp: {0}")]
     Pose(#[from] Lookup),
 }
@@ -30,6 +33,10 @@ impl ScanError {
 }
 
 /// Places one cloud: `frame` is its frame_id, `base` the car's (base_link).
+///
+/// # Errors
+///
+/// [`ScanError`] if the cloud can't be read, its frame isn't known, or there's no pose at its stamp.
 pub fn place(
     view: &CloudView<'_>,
     frame: &str,

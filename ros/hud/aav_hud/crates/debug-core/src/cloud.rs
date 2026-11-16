@@ -9,6 +9,10 @@
 pub use radar_clustering::cloud::{CloudError, CloudView, Field};
 
 /// Every point's x, y, z, in the cloud's frame.
+///
+/// # Errors
+///
+/// [`CloudError`] if the cloud has no float32 x, y or z, or is shorter than it says.
 pub fn positions(cloud: &CloudView<'_>) -> Result<Vec<[f32; 3]>, CloudError> {
     Ok(radar_clustering::cloud::read_points(cloud)?
         .into_iter()

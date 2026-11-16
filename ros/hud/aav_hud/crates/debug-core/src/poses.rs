@@ -14,6 +14,7 @@ use crate::frames::Stamp;
 /// Why there is no pose at a stamp.
 #[derive(Debug, Clone, Copy, PartialEq, Error)]
 pub enum Lookup {
+    /// No pose kept yet.
     #[error("no local EKF pose yet")]
     Empty,
     /// Older than the oldest pose kept: drop the cloud.
@@ -32,6 +33,7 @@ pub struct PoseBuffer {
 }
 
 impl PoseBuffer {
+    /// An empty buffer that keeps `window` of poses.
     #[must_use]
     pub fn new(window: Duration) -> Self {
         Self {
@@ -78,6 +80,7 @@ impl PoseBuffer {
         self.poses.len()
     }
 
+    /// True if no pose is kept.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.poses.is_empty()
@@ -85,6 +88,10 @@ impl PoseBuffer {
 
     /// The pose at `stamp`: interpolated between the two around it (the heading the
     /// short way round), or exactly a kept one.
+    ///
+    /// # Errors
+    ///
+    /// [`Lookup`] if no pose is kept, or `stamp` is outside the ones kept.
     pub fn at(&self, stamp: Stamp) -> Result<Pose, Lookup> {
         let (&(oldest, first), &(newest, last)) = match (self.poses.front(), self.poses.back()) {
             (Some(a), Some(b)) => (a, b),

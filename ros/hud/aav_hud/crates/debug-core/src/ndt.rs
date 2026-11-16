@@ -43,6 +43,7 @@ impl NdtState {
         }
     }
 
+    /// Its word, as the message says it.
     #[must_use]
     pub fn word(self) -> &'static str {
         match self {
@@ -79,6 +80,7 @@ impl Fit {
 /// What the panel shows of NDT.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NdtStatus {
+    /// How the last cloud went.
     pub fit: Fit,
     /// `None` if the message's first word is none of NDT's.
     pub state: Option<NdtState>,
@@ -90,9 +92,11 @@ pub struct NdtStatus {
     pub match_ms: Option<f64>,
     /// The share of the scan's points that landed in map cubes.
     pub overlap: Option<f64>,
+    /// The match's iterations.
     pub iterations: Option<u64>,
     /// Points matched, after the filters.
     pub points: Option<u64>,
+    /// Poor fits in a row.
     pub poor_in_row: Option<u64>,
     /// Restarts from ekf_global after LOST.
     pub restarts: Option<u64>,
@@ -190,15 +194,21 @@ impl NdtStatus {
 pub enum MapFile {
     /// No file at the path: say how to make one.
     Missing {
+        /// The file looked for.
         path: String,
     },
     /// The file is there but can't be read.
     Unreadable {
+        /// The file.
         path: String,
+        /// Why it can't be read.
         why: String,
     },
+    /// The map is read.
     Loaded {
+        /// The file.
         path: String,
+        /// Its occupied cells.
         cells: MapCells,
     },
 }
@@ -227,6 +237,7 @@ impl MapFile {
         }
     }
 
+    /// The cells, once the map is read.
     #[must_use]
     pub fn cells(&self) -> Option<&MapCells> {
         match self {
@@ -255,6 +266,7 @@ impl fmt::Display for MapFile {
 pub struct MapCells {
     /// One cell's edge, metres.
     pub size: f32,
+    /// Each occupied cell's centre, map frame (m).
     pub centres: Vec<[f32; 3]>,
     /// The map from above: its points, thinned, and each column's ellipse.
     pub footprint: Footprint,
@@ -421,11 +433,13 @@ impl MapCells {
         }
     }
 
+    /// How many cells.
     #[must_use]
     pub fn len(&self) -> usize {
         self.centres.len()
     }
 
+    /// True if there are no cells.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.centres.is_empty()

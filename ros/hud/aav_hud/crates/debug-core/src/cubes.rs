@@ -38,7 +38,9 @@ pub struct CubeSettings {
 /// trail behind the car (30 Oct).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct OwnBox {
+    /// The rear-right corner (x, y).
     pub min: [f64; 2],
+    /// The front-left corner (x, y).
     pub max: [f64; 2],
 }
 
@@ -132,7 +134,9 @@ impl Band {
 /// One cube: its centre in odom (metres) and its band.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Cube {
+    /// m, in odom.
     pub centre: [f32; 3],
+    /// How high it is above base_link.
     pub band: Band,
 }
 
@@ -143,6 +147,7 @@ pub struct CubeScan {
     pub stamp: Stamp,
     /// Where base_link was at that stamp, in odom.
     pub car: Pose,
+    /// The cubes.
     pub cubes: Vec<Cube>,
     /// The edge of every cube, metres.
     pub size: f32,

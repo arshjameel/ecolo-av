@@ -16,8 +16,11 @@ use map_core::geom::Pose;
 /// How the camera follows the car.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
+    /// Behind the car, turning with it.
     Chase,
+    /// On the car, its heading fixed.
     Follow,
+    /// Where it was panned to, its heading fixed.
     Free,
 }
 
@@ -32,6 +35,7 @@ impl Mode {
         }
     }
 
+    /// Its name on the screen.
     #[must_use]
     pub fn label(self) -> &'static str {
         match self {
@@ -53,6 +57,7 @@ const MAX_DISTANCE: f32 = 400.0;
 /// The camera.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Orbit {
+    /// How it follows the car.
     pub mode: Mode,
     /// The point looked at, odom, metres.
     pub target: [f32; 3],

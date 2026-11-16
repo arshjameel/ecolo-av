@@ -10,13 +10,18 @@ use map_core::geom::Point;
 /// A rectangle of the window, in window points: left, top, width, height.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rect {
+    /// The left edge.
     pub x: f32,
+    /// The top edge.
     pub y: f32,
+    /// Width.
     pub w: f32,
+    /// Height.
     pub h: f32,
 }
 
 impl Rect {
+    /// A rectangle from its left, top, width and height.
     #[must_use]
     pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
         Self { x, y, w, h }
@@ -36,6 +41,7 @@ pub struct View {
     pub centre: Point,
     /// Window points per metre.
     pub scale: f32,
+    /// Where on the window it's drawn.
     pub rect: Rect,
 }
 

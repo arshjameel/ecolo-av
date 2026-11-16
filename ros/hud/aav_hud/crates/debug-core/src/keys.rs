@@ -17,6 +17,7 @@ pub enum CubeView {
 }
 
 impl CubeView {
+    /// The other view.
     #[must_use]
     pub fn toggled(self) -> Self {
         match self {
@@ -25,6 +26,7 @@ impl CubeView {
         }
     }
 
+    /// Its name in the legend.
     #[must_use]
     pub fn label(self) -> &'static str {
         match self {
@@ -47,6 +49,7 @@ pub enum Layout {
 }
 
 impl Layout {
+    /// The other layout.
     #[must_use]
     pub fn toggled(self) -> Self {
         match self {
@@ -55,6 +58,7 @@ impl Layout {
         }
     }
 
+    /// Its name in the legend.
     #[must_use]
     pub fn label(self) -> &'static str {
         match self {
@@ -69,6 +73,7 @@ impl Layout {
 pub struct Layers {
     /// The seeing screen, or the sensor panel (key L).
     pub layout: Layout,
+    /// Which cubes the 3D view shows (key K).
     pub cubes: CubeView,
     /// NDT's map as faint wireframe cubes (key M).
     pub ndt_map: bool,
@@ -219,7 +224,9 @@ impl Layers {
 /// One line of the key legend.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeyLine {
+    /// The key.
     pub key: &'static str,
+    /// What it does.
     pub what: &'static str,
     /// Its state now, or empty.
     pub now: String,

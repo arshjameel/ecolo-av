@@ -37,10 +37,12 @@ pub type Vec3 = [f64; 3];
 pub struct Transform3 {
     /// Row-major.
     pub rotation: [[f64; 3]; 3],
+    /// m.
     pub translation: Vec3,
 }
 
 impl Transform3 {
+    /// No turn, no move.
     pub const IDENTITY: Transform3 = Transform3 {
         rotation: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
         translation: [0.0, 0.0, 0.0],
@@ -147,8 +149,14 @@ pub fn frame_name(name: &str) -> &str {
 /// Why a frame can't be placed.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum FrameError {
+    /// `/tf_static` hasn't linked the two frames yet.
     #[error("no transform from {from} to {to} on /tf_static yet")]
-    NoChain { from: String, to: String },
+    NoChain {
+        /// The frame the points are in.
+        from: String,
+        /// The frame they're wanted in.
+        to: String,
+    },
 }
 
 /// The static frames: each child's parent and its transform (parent from child).
@@ -172,6 +180,7 @@ impl StaticFrames {
         self.parents.len()
     }
 
+    /// True if no frame is known.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.parents.is_empty()
@@ -179,6 +188,10 @@ impl StaticFrames {
 
     /// The transform that takes points in `source` into `target`, when `target` is
     /// `source` or one of its ancestors (base_link above lidar_link).
+    ///
+    /// # Errors
+    ///
+    /// [`FrameError::NoChain`] if `/tf_static` hasn't linked the two frames yet.
     pub fn lookup(&self, target: &str, source: &str) -> Result<Transform3, FrameError> {
         let target = frame_name(target);
         let mut frame = frame_name(source);
