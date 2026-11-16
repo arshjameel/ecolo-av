@@ -141,10 +141,12 @@ bench's argument names:
   things:=true        the lidar's cubes as things with an id, a speed and a memory, on
                       /world/things (aav_things; voxels runs for it): only with nav:=true
                       and the lidar. Nothing reads the list yet
-  things_background:=true  with things: cubes on the saved map are not things (TODO 175);
+  things_background:=true  with things (the default): low cubes on the saved map are not
+                      things (TODO 175); false: every cube is;
                       things_background_chunks:=maps/campus/chunks/ndt: the NDT map's
                       chunks round the car instead of /map;
-                      things_background_below:=0.7: only cubes under 0.7 m drop
+                      things_background_below:=0.7 (the default): only cubes under
+                      it drop
   amcl:=true          stock AMCL beside the global EKF, scored only (docs/trials.md): only
                       in world:=test_lot with nav:=true and the lidar, from the start pose
   voxels:=true        Nav2's local costmap and collision_monitor read the lidar as 0.25 m
@@ -809,14 +811,15 @@ def generate_launch_description():
         DeclareLaunchArgument('global_window', default_value='0.0',
                               description='m: the global costmap a square rolling with the '
                                           'car (192: the 3 x 3 chunks; 0: the whole map)'),
-        DeclareLaunchArgument('things_background', default_value='false',
-                              description='with things:=true: cubes on the saved map are '
-                                          'not things (TODO 175 step 5)'),
+        DeclareLaunchArgument('things_background', default_value='true',
+                              description='with things:=true: low cubes on the saved map '
+                                          'are not things (TODO 175 step 5; the default '
+                                          'since 16 Nov); false: every cube'),
         DeclareLaunchArgument('things_background_chunks', default_value='',
                               description='with things_background: a folder of the NDT '
                                           "map's chunks (maps/campus/chunks/ndt) as the "
                                           'background instead of /map'),
-        DeclareLaunchArgument('things_background_below', default_value='',
+        DeclareLaunchArgument('things_background_below', default_value='0.7',
                               description='with things_background: m, only cubes lower '
                                           'than this drop (kerbs, grass; not a body). '
                                           'Empty: any height'),
