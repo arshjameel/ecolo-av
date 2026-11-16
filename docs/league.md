@@ -14,7 +14,7 @@ waiting to beat it.
   │ path       │ lattice   │ lattice_rs, lattice_smooth,  │
   │            │           │ lattice_rs_smooth, hybrid,   │
   │            │           │ hybrid_rs, diffusion,        │
-  │            │           │ lattice_rs_strong            │
+  │            │           │ lattice_rs_strong, lane      │
   │ steer      │ mppi      │ mppi_lag, mppi_lag_calm,     │
   │            │           │ mpc_lag, rpp                 │
   │ smoother   │ nav2      │ ours                         │
@@ -65,12 +65,13 @@ Fable's clean-up (one shape, "From 36 switches to 8"): pick a level's option by 
 | Switch | Options | Sets |
 |---|---|---|
 | `pose:=` | `ekf`, `ndt_ekf`, `kiss_ekf` | `ndt_ekf`, `kiss_ekf` |
-| `path:=` | `lattice`, `lattice_rs`, `lattice_smooth`, `lattice_rs_smooth`, `hybrid`, `hybrid_rs`, `lattice_rs_strong`, `diffusion` | `planner`, `planner_search`, `plan_smoothing`, `lattice_moves` |
+| `path:=` | `lattice`, `lattice_rs`, `lattice_smooth`, `lattice_rs_smooth`, `hybrid`, `hybrid_rs`, `lattice_rs_strong`, `lane`, `diffusion` | `planner`, `planner_search`, `plan_smoothing`, `lattice_moves`, `lane_route` |
 | `steer:=` | `mppi`, `mppi_lag`, `mppi_lag_calm`, `mpc_lag`, `rpp` | `controller`, `tracker`, `map_correction`, `mppi_lag_steer_gamma` |
 | `lanes:=` | `off`, `ramp` | `lane_costs` |
 
 ```sh
 pixi run sim world:=campus path:=hybrid_rs       # all ours, but our Hybrid-A*
+pixi run sim world:=campus path:=lane            # all ours, the path on the right lane's centre
 pixi run sim stack:=stock steer:=mppi_lag_calm   # Nav2's, but our calm MPPI
 ```
 

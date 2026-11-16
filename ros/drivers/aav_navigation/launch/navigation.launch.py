@@ -894,9 +894,9 @@ def generate_launch_description():
 
                                           "lane's centre (TODO 148); empty: off"),
         DeclareLaunchArgument('lane_route', default_value='',
-                              description="with planner:=own: a lanes.yaml; the path is the "
+                              description='with planner:=own: a lanes.yaml; the path is the '
                                           "right lane's centre along it, the lattice joining "
-                                          "the ends (TODO 148, path:=lane); empty: off"),
+                                          'the ends (TODO 148, path:=lane); empty: off'),
         DeclareLaunchArgument('things', default_value='false',
                               description='true (with lidar:=true): aav_things, the cubes as '
                                           'tracked things on /world/things (voxels runs too)'),

@@ -16,7 +16,7 @@ planner_server keeps the lattice beside it: /compute_path_to_pose, /drivers/nav/
 
 | Part | What it is |
 |---|---|
-| `crates/lattice-planner` | the maths, no ROS: the primitives file and Hybrid-A*'s arcs (`Lattice::hybrid`), the A* search (`Expansion`: lattice or Hybrid), the Reeds-Shepp and Dubins curves, the car's outline check, the two estimates (heuristics), the smoother; `scenes.rs`: the hand-made maps and the example lot |
+| `crates/lattice-planner` | the maths, no ROS: the primitives file and Hybrid-A*'s arcs (`Lattice::hybrid`), the A* search (`Expansion`: lattice or Hybrid), the Reeds-Shepp and Dubins curves, the car's outline check, the two estimates (heuristics), the smoother; `lane.rs`: the lane-centre planner (`path:=lane`: the right lane's centre by the lane map's road graph, the lattice joining the ends); `scenes.rs`: the hand-made maps and the example lot |
 | `crates/planner-node` | the ROS node, binary `planner` (rclrs): messages in and out only, one thread a plan |
 
 ```sh
@@ -36,7 +36,7 @@ pixi run sim planner:=own planner_search:=hybrid                 # Hybrid-A* ins
 | Subscribes | the global costmap (`costmap_topic`: Nav2's `/global_costmap/costmap_raw`, latched, with `_raw_updates`; or ours, `/drivers/nav/costmap/global_raw`); `/tf` (map -> odom -> base_link; older than 1 s is no pose: TF_ERROR) |
 | Serves | `is_path_valid_service` (nav2_msgs/srv/IsPathValid, as planner_server's; `/is_path_valid` where planner_server doesn't run, else none): from the pose nearest the car on, a pose on a lethal or inscribed cell makes the path invalid |
 | Publishes | `/plan` (nav_msgs/Path); `/drivers/nav/planner/status` (DiagnosticStatus, one a plan) |
-| Parameters | `settings`: one JSON block from `aav_description`'s `vehicle.planner_params` (nav2.yaml's Lattice block as tuned, with its `smoother` weights when `plan_smoothing:=strong`, or with `"search": "hybrid"` its Hybrid-A* block; the car's outline, the global inflation); `costmap_topic`, `costmap_updates_topic`, `costmap_latched`, the frames |
+| Parameters | `settings`: one JSON block from `aav_description`'s `vehicle.planner_params` (nav2.yaml's Lattice block as tuned, with its `smoother` weights when `plan_smoothing:=strong`, or with `"search": "hybrid"` its Hybrid-A* block; the car's outline, the global inflation; with `lane_route:=`, `lanes`: the lane map's roads, and the lane-centre planner runs); `costmap_topic`, `costmap_updates_topic`, `costmap_latched`, the frames |
 
 ## Invariants
 
@@ -61,5 +61,6 @@ cargo run --release -p lattice-planner --example moves       # Nav2's moves agai
 cargo run --release -p lattice-planner --example hybrid      # Hybrid-A* against the lattice, the lot tour and the maps
 W_DATA=0.02 cargo run --release -p lattice-planner --example staircase   # a road at an angle: the plan's own swing (TODO 168)
 cargo run --release -p lattice-planner --example cusps       # the turns in a street by cusp_penalty (TODO 174)
+cargo run --release -p lattice-planner --example lane -- <lanes.json>   # path:=lane on the campus's legs (its header: how to make the file)
 pixi run build && colcon test --packages-select aav_planner
 ```

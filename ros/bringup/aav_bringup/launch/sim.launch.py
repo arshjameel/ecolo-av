@@ -843,9 +843,9 @@ def generate_launch_description():
                                           "lowest at the right lane's centre (TODO 148); "
                                           "false: none. Empty: the stack's choice (off)"),
         DeclareLaunchArgument('lane_route', default_value=stacks.CHOSEN,
-                              description="true: the lane-centre planner (path:=lane): "
+                              description='true: the lane-centre planner (path:=lane): '
                                           "the right lane's centre along the lane map, "
-                                          "planner:=own (TODO 148); false: none. Empty: "
+                                          'planner:=own (TODO 148); false: none. Empty: '
                                           "the stack's choice (off)"),
         DeclareLaunchArgument('navigator', default_value=stacks.CHOSEN,
                               description="own (aav_navigator, in bt_navigator's place; "
