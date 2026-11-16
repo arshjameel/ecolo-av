@@ -38,4 +38,4 @@ replaces its turn-rate limits with the car's steering. Rewritten in Rust's own s
 
 ## Changes since
 
-None yet.
+- 15 Nov 2026 (TODO 176): the Rust API Guidelines pass: `#[must_use]` on pure functions, doc comments, `Debug`, and the lints that keep them; no change in behaviour.
