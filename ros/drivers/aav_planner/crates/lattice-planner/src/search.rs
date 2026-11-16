@@ -477,6 +477,12 @@ impl Search<'_> {
             if st.nodes[next].visited {
                 continue;
             }
+            // The move at its cheapest (on free ground) can't beat the node's cost so far:
+            // skip the outline check, as it can only add (TODO 152: the same paths, fewer
+            // checks; a move's cost never falls as the ground's cost rises).
+            if g + self.travel(from, by, 0) >= st.nodes[next].g {
+                continue;
+            }
             let Some(cost) = self.sweep(st.grid, x, y, by) else {
                 continue;
             };
