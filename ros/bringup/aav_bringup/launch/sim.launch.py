@@ -142,7 +142,8 @@ bench's argument names:
                       3 x 3 round the car and those along the route ahead, read and
                       inflated each on its own core (TODO 175). auto: the campus's chunks
                       when pixi run campus made them, else the whole map; off: the whole
-                      map; a folder: those chunks. Empty: the stack's choice
+                      map; a folder: those chunks. Empty: the stack's choice (auto in
+                      ours since 16 Nov, else off)
   lane_route:=true    the lane-centre planner (path:=lane; ours' pick since 16 Nov, TODO
                       148): our planner (planner:=own) routes along the lane map
                       (lane_map:='s, else the world's own) and plans the right lane's
@@ -936,7 +937,7 @@ def generate_launch_description():
                                           'round the car and along the route (the '
                                           "campus's, when pixi run campus made them); off, "
                                           'the whole map; or a folder (TODO 175). Empty: '
-                                          "the stack's choice"),
+                                          "the stack's choice (auto in ours)"),
         DeclareLaunchArgument('lane_route', default_value=stacks.CHOSEN,
                               description='true: the lane-centre planner (path:=lane): '
                                           "the right lane's centre along the lane map, "

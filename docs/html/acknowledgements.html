@@ -579,7 +579,7 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><strong>rayon</strong></td>
 <td>MIT / Apache-2.0</td>
 <td>runs</td>
-<td>each map chunk loaded and built on its own core (<code>map-chunks</code> <code>Store::update</code>, TODO 195)</td>
+<td>each map chunk loaded and built on its own core (<code>map-chunks</code> <code>Store::update</code>, TODO 195); our global costmap's 64 m tiles and chunks inflated each on its own core (<code>aav_costmap</code> <code>layered.rs</code>, TODO 175)</td>
 </tr>
 <tr>
 <td><strong>proptest</strong></td>

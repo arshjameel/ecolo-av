@@ -9,7 +9,7 @@ waiting to beat it.
   │ Level      │ Champion  │ Challengers                  │
   ├────────────┼───────────┼──────────────────────────────┤
   │ pose       │ ekf       │ ndt_ekf, kiss_ekf            │
-  │ costmap    │ nav2      │ ours                         │
+  │ costmap    │ nav2      │ ours, ours_chunks            │
   │ navigator  │ nav2      │ ours                         │
   │ path       │ lattice   │ lattice_rs, lattice_smooth,  │
   │            │           │ lattice_rs_smooth, hybrid,   │
@@ -34,7 +34,7 @@ The champions above stay as they are: they are what the car runs.
 
 | `stack:=` | What it runs |
 |---|---|
-| `ours` (the default) | every level we built: our costmap, navigator, planner (`lane` since 16 Nov: the right lane's centre on the lane map, `lattice_rs_strong` off it, [why](own-planner.md#the-swap-16-nov-3-clean-runs-each)), `mppi_lag_calm` (`mppi_lag` with `map_correction:=slow` and `mppi_lag_steer_gamma:=0.05`), and the road ahead (`behaviour:=true`). The two calm picks since 15 Nov: they took ours' sway to Nav2's ([why](mppi-lag.md#the-sway-that-was-left)) |
+| `ours` (the default) | every level we built: our costmap (`ours_chunks` since 16 Nov: only the map's 64 m chunks round the car and along the route, [why](own-costmap.md#from-map-chunks-on-every-core-16-nov-todo-175-195)), navigator, planner (`lane` since 16 Nov: the right lane's centre on the lane map, `lattice_rs_strong` off it, [why](own-planner.md#the-swap-16-nov-3-clean-runs-each)), `mppi_lag_calm` (`mppi_lag` with `map_correction:=slow` and `mppi_lag_steer_gamma:=0.05`), and the road ahead (`behaviour:=true`). The two calm picks since 15 Nov: they took ours' sway to Nav2's ([why](mppi-lag.md#the-sway-that-was-left)) |
 | `stock` | every level stock: Nav2 and robot_localization |
 | `best` | every level's champion |
 | `car` | the champions approved for the car (`car.launch.py` runs these today) |
@@ -50,7 +50,7 @@ pixi run sim stack:=stock planner:=own           # Nav2's, but our planner
 ```
 
 The launch prints what it picked, such as
-`stack:=ours - pose ekf, costmap ours, navigator ours, path lane, steer mppi_lag_calm, ...`.
+`stack:=ours - pose ekf, costmap ours_chunks, navigator ours, path lane, steer mppi_lag_calm, ...`.
 
 !!! note "How a hand-set switch is seen"
     The switches a stack sets are empty by default in `sim.launch.py`, meaning "the

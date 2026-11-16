@@ -20,6 +20,9 @@ Nav2's with `costmap:=nav2` or `stack:=stock`). Nav2 stays on the car.
 > - **Big maps:** each costmap has its own thread, and the global one is worked out once
 >   per map, so the campus never makes the local one late ([threads](#threads-and-bounds-14-nov)).
 > - **With `tracker:=mppi_lag`**, MPPI reads ours instead of Nav2's.
+> - **From map chunks** (16 Nov, on in `stack:=ours`): the global costmap holds only the
+>   64 m chunks round the car and along the route, each inflated on its own core. Every
+>   leg as before, a third of the memory ([chunks](#from-map-chunks-on-every-core-16-nov-todo-175-195)).
 
 ## How it fits
 
@@ -252,7 +255,33 @@ map's costmap, as the car drives (with and without a lidar layer); tiles against
 
 ### The scores
 
-SCORES_COSTMAP
+Our simulator, 16 Nov, `measure controllers --stacks own_calm own_calm_chunks --tours lot
+campus university --runs 2 --reversing --launch behaviour:=true lane_route:=true` (as
+`stack:=ours` drives; results in /tmp/r2, not in git). Load 7-10 at the start, this Mac only.
+The lot has no chunks, so both are the whole map there: its rows show the noise.
+
+| Tour | Costmap | Legs | Time (s) | Sway (m/s²) | Off the path (m), mean / worst | Plan (ms, median) | Costmap: CPU, memory | Planner: CPU, memory |
+|---|---|---|---|---|---|---|---|---|
+| lot | whole map | 8 of 8 | 320 | 0.022 | 0.16 / 0.83 | 2 | 4 %, 37 MB | 4 %, 41 MB |
+| lot | (chunks: none here) | 8 of 8 | 331 | 0.019 | 0.14 / 0.47 | 2 | 3 %, 36 MB | 4 %, 48 MB |
+| campus | whole map | 6 of 6 | 557 | 0.087 | 0.16 / 1.87 | 28 | 12 %, 474 MB | 10 %, 403 MB |
+| campus | **chunks** | 6 of 6 | 574 | 0.090 | 0.16 / 1.78 | **21** | **4 %, 145 MB** | **5 %, 65 MB** |
+| University Drive | whole map | 6 of 6 | 344 | 0.065 | 0.10 / 0.99 | 0 (the lane) | 12 %, 470 MB | 10 %, 242 MB |
+| University Drive | **chunks** | 6 of 6 | 342 | 0.060 | 0.09 / 0.57 | 0 (the lane) | **4 %, 135 MB** | **5 %, 60 MB** |
+
+| What it says | So |
+|---|---|
+| every leg reached, either way | the far goals in steps work; no goal was cut (each was inside the 5 x 5 window) |
+| the campus 17 s slower | run 1 the same to a second each leg; run 2 slower (41 against 31 s on the first leg): the whole map's run 2 was slower than its run 1 too. Noise |
+| a third of the memory and CPU | no 41 M-cell grid, and no 41 MB message once a second |
+| the global costmap's moves | 11-12 a tour; each 0.2-14 ms (read, stitch), 5-15 chunks redone |
+
+**On since 16 Nov in `stack:=ours`** (`costmap:=ours_chunks`, `stacks.yaml`). Nav2's
+costmap and `costmap:=ours` keep the whole map.
+
+**Found on the way**, both fixed: a goal near the map's edge (the test lot's) was cut
+short of; and a 430 m loop of lanes round the block to a goal 10 m off
+([own-planner.md](own-planner.md#far-goals-in-steps-16-nov-todo-175)).
 
 ## Try it
 
@@ -356,9 +385,13 @@ Our local update: **0.50-0.55 ms** on average, 0.58 ms at the 95th percentile.
 - **The planner** reads Nav2's global costmap (`planner_server`). Our planner
   ([page](own-planner.md), `planner:=own`) reads `/drivers/nav/costmap/global_raw` when
   `costmap:=own` is on too.
-- **The global costmap's size:** fixed 14 Nov ([threads](#threads-and-bounds-14-nov)).
-  Untested in the simulator on the campus. Sending it in full each second is left;
-  partial updates (Nav2's `_updates`) only if that proves slow.
+- **The global costmap's size:** fixed 14 Nov ([threads](#threads-and-bounds-14-nov));
+  with chunks (16 Nov) only 5 x 5 or so chunks (1.6 M cells). Sending it in full each
+  second is left; partial updates (Nav2's `_updates`) only if that proves slow.
+- **Coarse chunks** (1 m far away): the planner's lattice is fixed to 0.25 m cells, so
+  every chunk held is the fine one.
+- **The local costmap from chunks:** it is 20 x 20 m round the car, inside one chunk's
+  reach; it reads `/map` still.
 - **The global clear:** ours serves it. Our navigator calls it (8 Nov); Nav2's trees
   still clear Nav2's global costmap.
 - **Radar, cubes and cameras** (point clouds, placed by `/tf_static`'s mounts): built,

@@ -599,7 +599,7 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <tr>
 <td>Map chunks, NDT by chunk, Lanelet2 in Rust (15 Nov)</td>
 <td><code>aav_description</code> <code>map-chunks</code>, <code>lanelet-map</code>; <code>ndt_chunks:=</code>; <code>global_window:=</code></td>
-<td><span class="badge b-works">works</span> in their tests; the campus cut in 1.5 s; <code>global_window:=192</code> passes <code>sim-check</code>. Scored 15 Nov: NDT by chunk as good as the whole map on the campus, so the default there with <code>ndt:=true</code>; <code>global_window:=192</code> reached 2 of 6 campus legs (the long roads leave the window), a challenger (<a href="../designs/2026-11-15_three-levels.md">Three levels</a>)</td>
+<td><span class="badge b-works">works</span> in their tests; the campus cut in 1.5 s; <code>global_window:=192</code> passes <code>sim-check</code>. Scored 15 Nov: NDT by chunk as good as the whole map on the campus, so the default there with <code>ndt:=true</code>; <code>global_window:=192</code> reached 2 of 6 campus legs (the long roads leave the window), a challenger. 16 Nov: our global costmap from chunks (<code>costmap_chunks:=auto</code>, on in <code>stack:=ours</code>): 20 of 20 legs on 3 tours, as the whole map, a third of the memory (<a href="own-costmap.html#from-map-chunks-on-every-core-16-nov-todo-175-195">own costmap</a>)</td>
 </tr>
 <tr>
 <td><strong>Control and safety</strong></td>

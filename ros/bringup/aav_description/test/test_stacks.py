@@ -89,6 +89,15 @@ def test_the_lanes_layer_is_a_challenger_off_in_every_stack():
         assert stacks.switches(LEAGUE, stack).get('lane_costs', 'false') == 'false', stack
 
 
+def test_ours_global_costmap_is_made_of_chunks():
+    # TODO 175 (16 Nov): no worse on the lot, campus and University Drive tours, a third of
+    # the memory: ours holds only the chunks it needs; the others the whole map.
+    assert stacks.choices(LEAGUE, 'ours')['costmap'] == 'ours_chunks'
+    for stack in stacks.names(LEAGUE):
+        want = 'auto' if stack == 'ours' else 'off'
+        assert stacks.switches(LEAGUE, stack).get('costmap_chunks', 'off') == want, stack
+
+
 def test_the_lane_centre_planner_is_ours_only():
     # TODO 148: path:=lane (lane_route) won on the scorecard (16 Nov): ours plans the lane's
     # centre; the champion (the car's) and stock don't.

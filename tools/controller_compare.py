@@ -79,6 +79,12 @@ The trials (docs/trials.md):
                     mppi_lag_steer_gamma:=0.05); own_slow and own_strong(_slow) each step;
                     own_nav2mppi and nav2_mppilag swap only the follower (which stage
                     sways?). --series keeps each leg's raw series for it
+    pixi run measure controllers --stacks own_calm own_calm_chunks --tours lot campus
+            university --runs 2 --reversing --launch behaviour:=true lane_route:=true
+                    TODO 175: our global costmap from the map's chunks (costmap_chunks:=auto,
+                    ours' since 16 Nov) against the whole map; each leg's notes give the
+                    costmap's and planner's CPU and memory, the plan times and the plans
+                    cut at the costmap's edge
     pixi run measure controllers --stacks own_calm --tours university --runs 2 --reversing
             --launch behaviour:=true lane_route:=true
                     TODO 148, path:=lane: University Drive, about 290 m of mapped road

@@ -99,13 +99,36 @@ New: `/maps/chunks/loaded` (which chunks are in memory, for the dev window and t
 |---|---|---|
 | 1 | **The chunk store** (Rust crate, no ROS): `(i, j)` from x, y; load and drop by distance; each chunk's layers | laptop tests: the right 15 chunks load along a campus route |
 | 2 | **Chunk files**: `chunk-map` cuts a map server's map into one `.pgm` per chunk; then `pixi run campus` and `ndt-map` call it | ✅ occupancy, 15 Nov: the campus in 625 chunks per detail, 1.5 s; read back cell for cell. NDT next |
-| 3 | **The middle planner on chunks**: our planner plans ~100 m ahead on the loaded chunks, then again as the car goes | 🔧 first form, `global_window:=192` (the global costmap rolls with the car, the 3 x 3 chunks): **scored 15 Nov, worse, stays a challenger**. Lot 8/8 either way (sway 0.022 against 0.021 m/s², 313 against 322 s); campus **2/6** against 6/6: a far goal's road leaves the window ("out of time or iterations"), or the goal is off it. It needs the next part first: a far goal planned via the lane route, in steps that fit |
+| 3 | **The middle planner on chunks**: our planner plans ~100 m ahead on the loaded chunks, then again as the car goes | ✅ 16 Nov, **on in `stack:=ours`** (`costmap:=ours_chunks`): our global costmap holds the 3 x 3 round the car, the chunks along the route's next 100 m (`/drivers/nav/planner/route`, the whole way) and one ring more, each chunk read and inflated on its own core (rayon), only the chunks a move changed redone; a goal off it is planned to where the way there leaves it, then again. Lot, campus, University Drive, 2 runs each: every leg, the same driving, a third of the memory and CPU (below, "Step 3: the scores"). The first form, `global_window:=192` (15 Nov, campus 2/6), stays a challenger |
 | 4 | **NDT on chunks** | ✅ 15 Nov, `ndt-core` `chunks.rs`; the campus NDT map in 699 chunk files. Scored on the campus tour (3 runs against 2 on the whole map): as good (off 0.058 / 0.014 / 0.011 m a leg against 0.051 / 0.014 / 0.011), ready in 0.02 s against 2.5 s, a new 3 x 3 read in 0-3 ms (rayon) and built in 8-22 ms. Fixed on the way: the chunks follow a restart from `ekf_global`. **On by default** with `ndt:=true` on the campus once `pixi run campus` made them (`ndt_chunks:=off`: the whole map) |
 | 5 | **The subtraction**: the things from new occupancies only | ✅ 16 Nov, the default where `aav_things` runs: cubes under 0.7 m on `/map`'s walls drop. On the campus, driving: 1.7 things listed, not 9.9; every walker found. Below, "Step 5: the scores" |
 | 6 | **Lanelet2 in Rust** as the route level's map (TODO 175) | a route by lanes, stop lines in the road ahead |
 | 7 | **The dev window** draws the chunks, the lanes, the static map | 🔧 16 Nov: the route, the chunks loaded (`(i, j) fine` or `coarse`), each one's saved map, the lanes and stop lines (key H). Seen off screen only (the screen was locked); live: untested |
 
 Each step is a drop-in beside today's, with `sim-check` and `measure` against the same tours.
+
+### Step 3: the scores (16 Nov)
+
+Our simulator, `measure controllers --stacks own_calm own_calm_chunks --reversing --runs 2`
+with `behaviour:=true lane_route:=true` (as `stack:=ours`). The page:
+[own-costmap.md](../own-costmap.md#from-map-chunks-on-every-core-16-nov-todo-175-195).
+
+| Tour | Legs, whole map / chunks | Time (s) | Sway (m/s²) | Costmap memory | Planner memory |
+|---|---|---|---|---|---|
+| lot (no chunks: the noise) | 8 / 8 of 8 | 320 / 331 | 0.022 / 0.019 | 37 / 36 MB | 41 / 48 MB |
+| campus | 6 / 6 of 6 | 557 / 574 | 0.087 / 0.090 | 474 / **145** MB | 403 / **65** MB |
+| University Drive | 6 / 6 of 6 | 344 / 342 | 0.065 / 0.060 | 470 / **135** MB | 242 / **60** MB |
+
+| Timed (this Mac, 16 cores) | 1 core | rayon |
+|---|---|---|
+| first window (25 chunks): read, stitch, inflate | 14 ms | 2.0 ms |
+| the car one chunk on | 8 ms | 1.3 ms |
+| the whole campus map worked out (for comparison) | 326 ms | 32 ms |
+
+Fixed on the way: a goal near a map's edge was cut short of (the lot), and a 430 m loop of
+lanes round the block to a goal 10 m off (`Fallback::Detour`). Left: coarse chunks (the
+lattice is fixed to 0.25 m cells, so every chunk held is fine), and the local costmap still
+reads `/map`.
 
 ### Step 5: the scores (16 Nov)
 

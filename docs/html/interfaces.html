@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">120 min read · 4 sections</div></header>
+<div class="meta">121 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -1324,7 +1324,15 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>planner</code></td>
 <td>-</td>
 <td>-</td>
-<td>Only with planner:=own - one a plan. name planner; level OK (a path) or ERROR (none - message why, values error_code and failures). values search_ms, total_ms (with smoothing), iterations, length_m, cusps, poses, plans and failures since the node started; with lane_route (path:=lane) also how (lane, or lattice and why - off_map, short, blocked, join_failed) and lane_m.</td>
+<td>Only with planner:=own - one a plan. name planner; level OK (a path) or ERROR (none - message why, values error_code and failures). values search_ms, total_ms (with smoothing), iterations, length_m, cusps, poses, plans and failures since the node started; with lane_route (path:=lane) also how (lane, or lattice and why - off_map, short, blocked, join_failed, detour) and lane_m; cut (true - the goal was off the costmap, so the path ends where the way there leaves it, TODO 175).</td>
+</tr>
+<tr>
+<td><code>/drivers/nav/planner/route</code></td>
+<td><code>nav_msgs/msg/Path</code></td>
+<td><code>planner</code></td>
+<td><code>costmap</code></td>
+<td>-</td>
+<td>Only with planner:=own - one with each plan, in map. The route level's whole way to the goal - with lane_route the right lane's centre along the lane map, else the start and the goal - however far, even when /plan stops short at the costmap's edge. With costmap_chunks (TODO 175) our global costmap holds the chunks it crosses in the next 100 m.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/diffusion/lattice_plan</code></td>
@@ -1444,7 +1452,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>costmap</code></td>
 <td>-</td>
 <td>-</td>
-<td>Only with costmap:=own. One message per costmap each time it is sent. name 'costmap local' or 'costmap global'; level OK (0), or WARN (1) while it waits for something; values costmap (local, global), update_ms (the last update's time, wall clock), worst_ms, updates, lethal_cells, cells (width x height), waiting_for (odometry, map -&gt; odom, the map, a silent sensor topic, a sensor frame with no mount in /tf_static; empty when nothing is missing), lane_routes (the routes that changed the lanes layer's costs; 0 without lane_costs).</td>
+<td>Only with costmap:=own. One message per costmap each time it is sent. name 'costmap local' or 'costmap global'; level OK (0), or WARN (1) while it waits for something; values costmap (local, global), update_ms (the last update's time, wall clock), worst_ms, updates, lethal_cells, cells (width x height), waiting_for (odometry, map -&gt; odom, the map, a silent sensor topic, a sensor frame with no mount in /tf_static; empty when nothing is missing), lane_routes (the routes that changed the lanes layer's costs; 0 without lane_costs), chunk_moves and chunks (with costmap_chunks, TODO 175 - how often the global window moved, and the last move - its chunks, the corner chunk, read, dropped, redone, ms).</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/route/destination</code></td>
