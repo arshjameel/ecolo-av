@@ -32,6 +32,9 @@ CAMPUS_NDT = os.path.join('maps', 'ndt', 'campus.pcd')
 # The same map in 64 m chunks (pixi run campus; TODO 175): NDT holds only the 3 x 3 round
 # the car. Scored against the whole map, 15 Nov: as good, ready in 0.02 s, not 2.5 s.
 CAMPUS_NDT_CHUNKS = os.path.join('maps', 'campus', 'chunks', 'ndt')
+# Its occupancy map in the same chunks (chunks.yaml, fine/, coarse/): our global costmap
+# holds only those round the car and along the route (costmap_chunks:=auto).
+CAMPUS_CHUNKS = os.path.join('maps', 'campus', 'chunks')
 # The campus's lane map: its painted roads (aav_description lane_map.py's format).
 CAMPUS_LANES = os.path.join('maps', 'campus', 'lanes.yaml')
 # NDT's poor-fit floor on the campus. ndt.yaml's 2.3 is the test lot's: walls close by. Here

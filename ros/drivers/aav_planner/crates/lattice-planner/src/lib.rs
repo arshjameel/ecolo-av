@@ -27,6 +27,7 @@ pub mod lattice;
 pub mod scenes;
 pub mod search;
 pub mod smoother;
+pub mod steps;
 
 use std::sync::{Arc, Mutex};
 use std::time::Instant;

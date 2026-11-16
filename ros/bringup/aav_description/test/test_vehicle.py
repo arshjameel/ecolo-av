@@ -894,6 +894,18 @@ def test_a_global_window_rolls_the_global_costmap_and_0_leaves_it():
         vehicle.with_global_window(cfg(), -1.0)
 
 
+def test_the_chunks_block_needs_a_chunks_folder(tmp_path):
+    """TODO 175 step 3: our global costmap from the map's chunks (costmap_chunks:=)."""
+    with pytest.raises(ValueError):
+        vehicle.costmap_chunks_block(str(tmp_path))
+    (tmp_path / 'chunks.yaml').write_text('origin: [0, 0]\nsize: 64\n')
+    block = vehicle.costmap_chunks_block(str(tmp_path))
+    assert block == {'dir': str(tmp_path), 'ahead': vehicle.CHUNKS_AHEAD,
+                     'margin': vehicle.CHUNKS_MARGIN}
+    with pytest.raises(ValueError):
+        vehicle.costmap_chunks_block(str(tmp_path), margin=-1)
+
+
 def test_plan_smoothing_strong_weights_the_smoother_for_both_planners():
     """TODO 168: plan_smoothing:=strong lowers w_data in GridBased's smoother block."""
     nav2 = yaml.safe_load(NAV2_YAML.read_text())

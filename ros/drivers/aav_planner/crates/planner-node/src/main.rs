@@ -25,7 +25,12 @@
 //!                                         own goes to /drivers/nav/planner/nav2_plan)
 //!             drivers/nav/planner/status  diagnostic_msgs/DiagnosticStatus, one a plan: the
 //!                                         times, iterations, length, cusps, error; with
-//!                                         a lane map, "how": lane, or lattice and why
+//!                                         a lane map, "how": lane, or lattice and why;
+//!                                         "cut": the goal was off the costmap
+//!             drivers/nav/planner/route   nav_msgs/Path: the route level's whole way to the
+//!                                         goal with each plan (the lane line, or the
+//!                                         start and the goals off it), for a costmap
+//!                                         made of chunks (costmap_chunks:=, TODO 175)
 //! Serves      is_path_valid_service (empty: none; navigation.launch.py gives
 //!             /is_path_valid where planner_server doesn't run)
 //!                                         nav2_msgs/srv/IsPathValid, as planner_server's:
@@ -44,6 +49,10 @@
 //!             the lane map, the lattice joining the car and the goal to it; off the map,
 //!             the lattice alone.
 //!
+//! A goal off the costmap (a global costmap made of the chunks round the car): the path
+//! goes as far as the way there stays on it (lattice_planner::steps), and the navigator's
+//! next replan goes on from there.
+//!
 //! The maths is the `lattice-planner` crate; this file only moves messages. Each goal is
 //! planned on its own thread, on the newest costmap.
 
@@ -56,6 +65,7 @@ use anyhow::{anyhow, bail, Context as _, Result};
 use costmap::{footprint, Arrival, Grid, Inflation};
 use futures::channel::oneshot;
 use lattice_planner::lane::{roads_from_json, How, LaneRouter, LaneSettings};
+use lattice_planner::steps;
 use lattice_planner::{
     cusps, length, Hybrid, Lattice, Plan, PlanError, Planner, Pose, Settings, SmootherSettings,
 };
@@ -81,6 +91,7 @@ const ACTION: &str = "/drivers/nav/planner/compute_path_to_pose";
 const THROUGH_ACTION: &str = "/drivers/nav/planner/compute_path_through_poses";
 const PLAN_TOPIC: &str = "/plan";
 const STATUS_TOPIC: &str = "/drivers/nav/planner/status";
+const ROUTE_TOPIC: &str = "/drivers/nav/planner/route";
 
 fn main() -> Result<()> {
     let context = Context::default_from_env()?;
@@ -149,6 +160,7 @@ fn main() -> Result<()> {
         map_odom: None,
         odom_base: None,
         plan_pub: node.create_publisher(PLAN_TOPIC)?,
+        route_pub: node.create_publisher(ROUTE_TOPIC)?,
         status: node.create_publisher(STATUS_TOPIC)?,
         clock: node.get_clock(),
         logger: node.logger().clone(),
@@ -223,20 +235,20 @@ fn main() -> Result<()> {
                 let (done, finished) = oneshot::channel();
                 std::thread::spawn(move || {
                     let stop = || stop_thread.load(Ordering::Relaxed);
+                    let goal = goal_poses[0];
                     let r = match &lanes {
                         Some(l) => l
-                            .plan(&planner, &grid, &start, &goal_poses[0], &stop)
-                            .map(|p| (p.plan, Some(p.how))),
-                        None => planner
-                            .plan(&grid, &start, &goal_poses[0], &stop)
-                            .map(|p| (p, None)),
+                            .plan(&planner, &grid, &start, &goal, &stop)
+                            .map(|p| (p.plan, Some(p.how), p.cut, p.route)),
+                        None => steps::plan_toward(&planner, &grid, &start, &goal, &stop)
+                            .map(|(p, cut)| (p, None, cut, vec![start, goal])),
                     };
                     let _ = done.send(r);
                 });
                 match goal.until_cancel_requested(finished).await {
-                    Ok(Ok(Ok((plan, how)))) => {
+                    Ok(Ok(Ok((plan, how, cut, route)))) => {
                         let reply = worker
-                            .run(move |s: &mut Core| s.succeeded(&plan, how, stamp))
+                            .run(move |s: &mut Core| s.succeeded(&plan, how, cut, &route, stamp))
                             .await;
                         match reply {
                             Ok(a) => goal.succeeded_with(a),
@@ -295,17 +307,20 @@ fn main() -> Result<()> {
                     let r = match &lanes {
                         Some(l) => l
                             .plan_through(&planner, &grid, &start, &goal_poses, &stop)
-                            .map(|p| (p.plan, Some(p.how))),
+                            .map(|p| (p.plan, Some(p.how), p.cut, p.route)),
                         None => planner
                             .plan_through(&grid, &start, &goal_poses, &stop)
-                            .map(|p| (p, None)),
+                            .map(|p| {
+                                let route = std::iter::once(start).chain(goal_poses).collect();
+                                (p, None, false, route)
+                            }),
                     };
                     let _ = done.send(r);
                 });
                 match goal.until_cancel_requested(finished).await {
-                    Ok(Ok(Ok((plan, how)))) => {
+                    Ok(Ok(Ok((plan, how, cut, route)))) => {
                         let reply = worker
-                            .run(move |s: &mut Core| s.succeeded(&plan, how, stamp))
+                            .run(move |s: &mut Core| s.succeeded(&plan, how, cut, &route, stamp))
                             .await;
                         match reply {
                             Ok(a) => goal.succeeded_with(ThroughAnswer {
@@ -573,11 +588,35 @@ struct Core {
     map_odom: Option<(Pose, f64)>,
     odom_base: Option<(Pose, f64)>,
     plan_pub: Publisher<Path>,
+    route_pub: Publisher<Path>,
     status: Publisher<DiagnosticStatus>,
     clock: Clock,
     logger: Logger,
     plans: u64,
     failures: u64,
+}
+
+/// Poses as a Path's, each with `header`.
+fn stamped(header: &Header, poses: &[Pose]) -> Vec<PoseStamped> {
+    poses
+        .iter()
+        .map(|p| PoseStamped {
+            header: header.clone(),
+            pose: PoseMsg {
+                position: ros_env::geometry_msgs::msg::Point {
+                    x: p.x,
+                    y: p.y,
+                    z: 0.0,
+                },
+                orientation: Quaternion {
+                    x: 0.0,
+                    y: 0.0,
+                    z: (p.yaw / 2.0).sin(),
+                    w: (p.yaw / 2.0).cos(),
+                },
+            },
+        })
+        .collect()
 }
 
 fn yaw_of(q: &Quaternion) -> f64 {
@@ -787,33 +826,31 @@ impl Core {
     }
 
     /// `how`: with a lane map, the lane or the lattice and why (the status's "how").
-    fn succeeded(&mut self, plan: &Plan, how: Option<How>, stamp: Time) -> Answer {
+    /// `cut`: the goal was off the costmap; `route`: the whole way, on its own topic.
+    fn succeeded(
+        &mut self,
+        plan: &Plan,
+        how: Option<How>,
+        cut: bool,
+        route: &[Pose],
+        stamp: Time,
+    ) -> Answer {
         self.plans += 1;
         let header = Header {
             stamp,
             frame_id: self.frames.map.clone(),
         };
-        let poses = plan
-            .poses
-            .iter()
-            .map(|p| PoseStamped {
-                header: header.clone(),
-                pose: PoseMsg {
-                    position: ros_env::geometry_msgs::msg::Point {
-                        x: p.x,
-                        y: p.y,
-                        z: 0.0,
-                    },
-                    orientation: Quaternion {
-                        x: 0.0,
-                        y: 0.0,
-                        z: (p.yaw / 2.0).sin(),
-                        w: (p.yaw / 2.0).cos(),
-                    },
-                },
-            })
-            .collect();
-        let path = Path { header, poses };
+        let route = Path {
+            header: header.clone(),
+            poses: stamped(&header, route),
+        };
+        if let Err(e) = self.route_pub.publish(&route) {
+            log_error!(&self.logger, "{ROUTE_TOPIC}: {e}");
+        }
+        let path = Path {
+            header: header.clone(),
+            poses: stamped(&header, &plan.poses),
+        };
         if let Err(e) = self.plan_pub.publish(&path) {
             log_error!(&self.logger, "/plan: {e}");
         }
@@ -830,6 +867,7 @@ impl Core {
             kv("poses", plan.poses.len().to_string()),
             kv("plans", self.plans.to_string()),
             kv("failures", self.failures.to_string()),
+            kv("cut", cut.to_string()),
         ];
         match how {
             Some(How::Lane(m)) => {

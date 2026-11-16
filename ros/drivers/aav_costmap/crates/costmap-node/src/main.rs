@@ -11,6 +11,9 @@
 //!             /plan                       nav_msgs/Path (route_topic), only with a lanes
 //!                                         block: the newest route, so the lanes layer
 //!                                         knows which way each road is driven
+//!             drivers/nav/planner/route   nav_msgs/Path (ahead_topic), only with a
+//!                                         chunks block: the route level's whole way to
+//!                                         the goal; its chunks ahead are held too
 //!             each source's topic         sensor_msgs/LaserScan or PointCloud2, best
 //!                                         effort, as nav2.yaml's layers name them (the
 //!                                         lidar scan; the radar, the cubes, the cameras'
@@ -36,6 +39,9 @@
 //!             vehicle.costmap_params, from nav2.yaml); empty: that costmap doesn't run.
 //!             A global block with "lanes" (navigation.launch.py lane_costs:=) adds the
 //!             lanes layer: the roads as a soft cost (costmap::lanes, TODO 148).
+//!             A global block with "chunks" ({dir, ahead, margin}; navigation.launch.py
+//!             costmap_chunks:=) builds it from the map's 64 m chunks round the car and
+//!             along the route ahead, not from /map (costmap::chunked, TODO 175).
 //!             odom_topic, map_topic, base_frame, and the topic names above.
 //!
 //! navigation.launch.py costmap:=own starts it. Nav2's own costmaps keep running. The
@@ -62,8 +68,8 @@ use std::{
 use anyhow::{anyhow, bail, Context as _, Result};
 use costmap::{
     cost::{occupancy, LETHAL},
-    footprint, Arrival, Changed, Costmap, Lanes, Observation, ObstacleLayer, Pose2, PoseHistory,
-    Ramp, Road, Settings, Source, StaticMap, Transform3,
+    footprint, Arrival, Changed, ChunkSource, Costmap, Lanes, Observation, ObstacleLayer, Pose2,
+    PoseHistory, Ramp, Road, Settings, Source, StaticMap, Transform3,
 };
 use rclrs::*;
 use ros_env::builtin_interfaces::msg::Time;
@@ -110,6 +116,7 @@ fn main() -> Result<()> {
     let status_topic = text_param("status_topic", "/drivers/nav/costmap/status")?;
     let clear_prefix = text_param("clear_prefix", "/drivers/nav/costmap/clear_entirely_")?;
     let route_topic = text_param("route_topic", "/plan")?;
+    let ahead_topic = text_param("ahead_topic", "/drivers/nav/planner/route")?;
 
     let status: Publisher<DiagnosticStatus> = node.create_publisher(status_topic.as_str())?;
     let mut maps = Vec::new();
@@ -130,6 +137,7 @@ fn main() -> Result<()> {
             name,
             in_map: spec.frame == "map",
             lanes: spec.costmap.lanes().is_some(),
+            chunks: spec.costmap.chunked(),
             inputs: spec.inputs.clone(),
             update_hz: spec.update_hz,
             transform_tolerance: spec.transform_tolerance,
@@ -163,6 +171,9 @@ fn main() -> Result<()> {
     }
     let rates: Vec<f64> = maps.iter().map(|m| m.update_hz).collect();
     let lanes = maps.iter().any(|m| m.lanes);
+    let chunks = maps.iter().any(|m| m.chunks);
+    // Every costmap made of chunks: /map isn't needed (on the campus, 41 million cells).
+    let wants_map = maps.iter().any(|m| !m.chunks);
     let names: Vec<&'static str> = maps.iter().map(|m| m.name).collect();
 
     let core = Core {
@@ -181,10 +192,6 @@ fn main() -> Result<()> {
     let worker = node.create_worker(core);
     // Held until exit: rclrs drops a subscription or timer with its handle.
     let mut keep: Vec<Box<dyn Any>> = vec![
-        Box::new(worker.create_subscription(
-            map_topic.as_str().keep_last(1).reliable().transient_local(),
-            |s: &mut Core, msg: OccupancyGrid| s.on_map(msg),
-        )?),
         Box::new(
             worker.create_subscription(odom_topic.as_str(), |s: &mut Core, msg: Odometry| {
                 s.on_odom(&msg)
@@ -196,10 +203,22 @@ fn main() -> Result<()> {
             |s: &mut Core, msg: TFMessage| s.on_tf_static(&msg),
         )?),
     ];
+    if wants_map {
+        keep.push(Box::new(worker.create_subscription(
+            map_topic.as_str().keep_last(1).reliable().transient_local(),
+            |s: &mut Core, msg: OccupancyGrid| s.on_map(msg),
+        )?));
+    }
     if lanes {
         keep.push(Box::new(worker.create_subscription(
             route_topic.as_str(),
             |s: &mut Core, msg: Path| s.on_route(&msg),
+        )?));
+    }
+    if chunks {
+        keep.push(Box::new(worker.create_subscription(
+            ahead_topic.as_str(),
+            |s: &mut Core, msg: Path| s.on_ahead(&msg),
         )?));
     }
     for (topic, kind) in topics {
@@ -437,6 +456,21 @@ impl Spec {
             Value::Null => {}
             l => costmap.set_lanes(lanes_from(l).context("lanes")?),
         }
+        match &spec["chunks"] {
+            Value::Null => {}
+            c => {
+                let dir = text(c, "dir")?;
+                let source = ChunkSource::open(
+                    std::path::Path::new(&dir),
+                    num(c, "ahead")?,
+                    num(c, "margin")? as i32,
+                )
+                .with_context(|| format!("chunks: {dir}"))?;
+                costmap
+                    .set_chunks(source)
+                    .with_context(|| format!("chunks: {dir}"))?;
+            }
+        }
         Ok(Spec {
             name,
             frame: text(spec, "global_frame")?,
@@ -455,6 +489,8 @@ impl Spec {
                 "a {} m x {} m window of {} m cells",
                 s.width, s.height, s.resolution
             )
+        } else if self.costmap.chunked() {
+            "the map's 64 m chunks round the car and along the route ahead".to_owned()
         } else {
             "the map's size and cells".to_owned()
         };
@@ -490,6 +526,8 @@ enum Job {
     Clear,
     /// A new route (map frame), for the lanes layer.
     Route(Arc<Vec<(f64, f64)>>),
+    /// The route level's whole way (map frame), for the chunks ahead.
+    Ahead(Arc<Vec<(f64, f64)>>),
     /// The timer: update now with these inputs, or say why it can't.
     Tick(Tick),
 }
@@ -527,6 +565,8 @@ struct Handle {
     in_map: bool,
     /// It has a lanes layer: it takes the routes.
     lanes: bool,
+    /// It is made of chunks: it takes the route ahead, not /map.
+    chunks: bool,
     inputs: Vec<Vec<Input>>,
     update_hz: f64,
     transform_tolerance: f64,
@@ -548,6 +588,11 @@ struct One {
     clears: u64,
     /// The routes that changed the lanes' costs.
     lane_routes: u64,
+    /// Made of chunks: how many times the window moved, and the last move (chunks read,
+    /// dropped and redone; ms reading and stitching: the next update's redo is in
+    /// update_ms).
+    chunk_moves: u64,
+    chunk_last: String,
     waiting: String,
     /// The grid changed since the messages were last made.
     dirty: bool,
@@ -584,6 +629,8 @@ impl One {
             skipped: 0,
             clears: 0,
             lane_routes: 0,
+            chunk_moves: 0,
+            chunk_last: String::new(),
             waiting: String::new(),
             dirty: true,
             lethal: 0,
@@ -618,6 +665,7 @@ impl One {
                             self.lane_routes += 1;
                         }
                     }
+                    Job::Ahead(route) => self.spec.costmap.set_ahead(&route),
                     Job::Tick(t) => {
                         if let Some(Tick::Update(_)) = tick.replace(t) {
                             self.skipped += 1;
@@ -661,6 +709,38 @@ impl One {
 
     /// One update, and its publish when due.
     fn update(&mut self, inputs: Inputs) {
+        if self.spec.costmap.chunked() {
+            let started = Instant::now();
+            match self
+                .spec
+                .costmap
+                .follow_chunks((inputs.robot.x, inputs.robot.y))
+            {
+                Ok(None) => {}
+                Ok(Some(moved)) => {
+                    let w = moved.window;
+                    self.chunk_moves += 1;
+                    self.chunk_last = format!(
+                        "{}x{} chunks from ({}, {}); read {}, dropped {}, redo {}; {:.1} ms",
+                        w.across(),
+                        w.up(),
+                        w.i0,
+                        w.j0,
+                        moved.changes.loaded.len(),
+                        moved.changes.dropped.len(),
+                        moved.redo,
+                        started.elapsed().as_secs_f64() * 1e3
+                    );
+                    log_info!(
+                        &self.logger,
+                        "{} costmap: {}",
+                        self.spec.name,
+                        self.chunk_last
+                    );
+                }
+                Err(e) => return self.stalled(format!("the map's chunks: {e}")),
+            }
+        }
         if !self.spec.costmap.ready() {
             return self.stalled("the map".to_owned());
         }
@@ -780,6 +860,8 @@ impl One {
             kv("skipped", &self.skipped.to_string()),
             kv("clears", &self.clears.to_string()),
             kv("lane_routes", &self.lane_routes.to_string()),
+            kv("chunk_moves", &self.chunk_moves.to_string()),
+            kv("chunks", &self.chunk_last),
             kv("lethal_cells", &self.lethal.to_string()),
             kv("cells", &format!("{}x{}", g.width, g.height)),
             kv("waiting_for", &self.waiting),
@@ -890,6 +972,25 @@ impl Core {
         for k in 0..self.maps.len() {
             if self.maps[k].lanes {
                 self.send(k, Job::Route(Arc::clone(&route)));
+            }
+        }
+    }
+
+    /// The route level's whole way: to each costmap made of chunks.
+    fn on_ahead(&mut self, msg: &Path) {
+        if bare(&msg.header.frame_id) != "map" {
+            return;
+        }
+        let route: Arc<Vec<(f64, f64)>> = Arc::new(
+            msg.poses
+                .iter()
+                .map(|p| (p.pose.position.x, p.pose.position.y))
+                .filter(|p| p.0.is_finite() && p.1.is_finite())
+                .collect(),
+        );
+        for k in 0..self.maps.len() {
+            if self.maps[k].chunks {
+                self.send(k, Job::Ahead(Arc::clone(&route)));
             }
         }
     }

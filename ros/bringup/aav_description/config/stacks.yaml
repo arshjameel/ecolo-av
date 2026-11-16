@@ -26,7 +26,11 @@ levels:
     champion: nav2
     options:
       nav2: {costmap: nav2}
-      ours: {costmap: own}
+      ours: {costmap: own, costmap_chunks: 'off'}
+      # Ours, the global costmap from the map's 64 m chunks round the car and along the
+      # route ahead (costmap_chunks:=auto; the campus's when pixi run campus made them, the
+      # whole map elsewhere), each read and inflated on its own core (TODO 175, 195).
+      ours_chunks: {costmap: own, costmap_chunks: auto}
     score: ''
   navigator:
     what: plan, follow, replan, recover (bt_navigator, or aav_navigator)

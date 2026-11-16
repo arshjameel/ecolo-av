@@ -9,6 +9,7 @@
 //! | [`obstacle`] | `ObstacleLayer`: marks the sensors' points, clears along each ray |
 //! | [`inflation`] | `InflationLayer`: the cost falling away from each lethal cell |
 //! | [`lanes`] | none: ours, the roads as a soft cost, lowest at the right lane's centre |
+//! | [`chunked`] | none: ours, the global costmap from map chunks (TODO 175) |
 //! | [`layered`] | `LayeredCostmap`: the layers in order, into one grid |
 //! | [`age`] | `isCurrent` and `transform_tolerance`: how old an input is, poses by stamp |
 //!
@@ -20,6 +21,7 @@
 #![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod age;
+pub mod chunked;
 pub mod cost;
 pub mod footprint;
 pub mod grid;
@@ -31,10 +33,11 @@ pub mod static_layer;
 pub mod transform;
 
 pub use age::{Arrival, PoseHistory, Stale};
+pub use chunked::{ChunkError, ChunkSource, Window};
 pub use grid::{Bounds, Grid};
 pub use inflation::Inflation;
 pub use lanes::{LaneError, Lanes, Ramp, Road, Way};
-pub use layered::{Changed, Costmap, Settings};
+pub use layered::{Changed, Costmap, Moved, Settings};
 pub use obstacle::{Observation, ObstacleLayer, Source};
 pub use static_layer::StaticMap;
 pub use transform::{Pose2, Transform3};

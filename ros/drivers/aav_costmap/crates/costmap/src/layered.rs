@@ -6,7 +6,18 @@
 //! otherwise only the cells its obstacle layers touched, grown by the inflation's reach
 //! (Nav2's `updateBounds` and `updateCosts`). A rolling one moves every update, so it is
 //! recomputed whole (a 200 x 200 window: well under a millisecond).
+//!
+//! A fixed costmap is worked out in tiles, each on its own core (rayon, TODO 195): a tile
+//! reads its cells and the inflation's reach round them, so the tiles agree with one pass
+//! over the whole grid. Made of map chunks ([`Costmap::set_chunks`], TODO 175), its tiles
+//! are the chunks, and a move of the window redoes only the chunks it changed.
 
+use std::collections::BTreeMap;
+
+use map_chunks::{Changes, ChunkKey, Detail, Store};
+use rayon::prelude::*;
+
+use crate::chunked::{copy_shared, stitch, ChunkError, ChunkSource, Window};
 use crate::cost::{FREE, NO_INFORMATION};
 use crate::footprint;
 use crate::grid::{self, Bounds, Grid};
@@ -52,7 +63,37 @@ pub struct Costmap {
     lanes: Option<(Lanes, Grid)>,
     /// The cells a new route redrew, for the next update.
     lanes_touched: Option<Bounds>,
+    /// Made of map chunks (a fixed costmap only): the chunks held and where.
+    chunks: Option<Chunked>,
+    /// The cells a moved window must work out again, in the next update.
+    redo: Option<Vec<Bounds>>,
 }
+
+/// A fixed costmap's chunks: where they come from, which are held, the route ahead.
+#[derive(Debug, Clone)]
+struct Chunked {
+    source: ChunkSource,
+    store: Store<Vec<u8>>,
+    window: Option<Window>,
+    route: Vec<(f64, f64)>,
+}
+
+/// What [`Costmap::follow_chunks`] did when the window moved.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Moved {
+    /// The chunks read and dropped.
+    pub changes: Changes,
+    /// The window now.
+    pub window: Window,
+    /// Chunks whose cells the next update works out again (the rest kept theirs).
+    pub redo: usize,
+}
+
+/// Cells along a tile's side when a whole fixed costmap is worked out: a 64 m chunk at
+/// 0.25 m.
+const TILE: usize = 256;
+/// Tiles worked out at once: their parts are held at the same time (memory).
+const TILES_AT_ONCE: usize = 64;
 
 /// What an update changed in the grid.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -97,9 +138,118 @@ impl Costmap {
             whole: true,
             lanes: None,
             lanes_touched: None,
+            chunks: None,
+            redo: None,
         };
         c.resize_layers();
         c
+    }
+
+    /// Build the static map from map chunks, not a whole map (TODO 175): only the chunks
+    /// round the car and along the route ahead are held, as the car goes
+    /// ([`Costmap::follow_chunks`]). A map given later ([`Costmap::set_map`]) is ignored.
+    ///
+    /// # Errors
+    ///
+    /// [`ChunkError::Rolling`] for a rolling costmap; [`ChunkError::Resolution`] if the
+    /// costmap's cells aren't the fine chunks'.
+    pub fn set_chunks(&mut self, source: ChunkSource) -> Result<(), ChunkError> {
+        if self.settings.rolling {
+            return Err(ChunkError::Rolling);
+        }
+        let fine = Detail::Fine.cell();
+        if (self.settings.resolution - fine).abs() > 1e-9 {
+            return Err(ChunkError::Resolution {
+                costmap: self.settings.resolution,
+                chunks: fine,
+            });
+        }
+        self.chunks = Some(Chunked {
+            source,
+            store: Store::new(),
+            window: None,
+            route: Vec::new(),
+        });
+        self.map = None;
+        self.whole = true;
+        Ok(())
+    }
+
+    /// The route ahead (map frame, in driving order): its chunks for the next `ahead` m are
+    /// held too. Only with chunks.
+    pub fn set_ahead(&mut self, route: &[(f64, f64)]) {
+        if let Some(c) = self.chunks.as_mut() {
+            c.route = route.to_vec();
+        }
+    }
+
+    /// Made of chunks: the window held now (None until the first
+    /// [`Costmap::follow_chunks`]), and how many chunks.
+    #[must_use]
+    pub fn chunk_window(&self) -> Option<(Window, usize)> {
+        let c = self.chunks.as_ref()?;
+        c.window.map(|w| (w, c.store.len()))
+    }
+
+    /// Is it made of chunks?
+    #[must_use]
+    pub fn chunked(&self) -> bool {
+        self.chunks.is_some()
+    }
+
+    /// Made of chunks: the window for the car at `car` (map frame) and the route ahead.
+    /// If it moved, the new chunks are read (each on its own core), the static map is
+    /// stitched from them, the cells shared with the old window are kept, and the next
+    /// [`Costmap::update`] works out only the chunks the move changed. `None`: no chunks,
+    /// or the window is where it was.
+    ///
+    /// # Errors
+    ///
+    /// [`ChunkError::File`]: a chunk couldn't be read; nothing changes.
+    pub fn follow_chunks(&mut self, car: (f64, f64)) -> Result<Option<Moved>, ChunkError> {
+        let Some(c) = self.chunks.as_mut() else {
+            return Ok(None);
+        };
+        let window = c.source.window(car, &c.route);
+        if c.window == Some(window) {
+            return Ok(None);
+        }
+        let want: BTreeMap<ChunkKey, Detail> = window.keys().map(|k| (k, Detail::Fine)).collect();
+        let track = self.settings.track_unknown;
+        let source = &c.source;
+        let changes = c.store.update(&want, |key, _| source.load(key, track))?;
+        let side = source.side();
+        let mut map = source.grid_for(&window, default(&self.settings));
+        for key in window.keys() {
+            if let Some((_, cells)) = c.store.get(key) {
+                stitch(&mut map, &window, key, side, cells);
+            }
+        }
+        // A lanes layer's costs follow the newest route: redo every chunk then.
+        let fresh = self.whole || self.lanes.is_some();
+        let redo = window.to_redo(if fresh { None } else { c.window.as_ref() });
+        let mut master = map.like(default(&self.settings));
+        let all = everything(&master);
+        copy_shared(&mut master, &self.master, all);
+        for layer in &mut self.layers {
+            let mut g = master.like(layer.default);
+            copy_shared(&mut g, &layer.grid, all);
+            layer.grid = g;
+        }
+        self.master = master;
+        if let Some((lanes, grid)) = self.lanes.as_mut() {
+            *grid = self.master.like(0);
+            lanes.draw(grid, all);
+            self.lanes_touched = None;
+        }
+        self.map = Some(StaticMap { grid: map });
+        c.window = Some(window);
+        self.redo = Some(redo.iter().map(|&k| window.cells_of(k, side)).collect());
+        Ok(Some(Moved {
+            changes,
+            window,
+            redo: redo.len(),
+        }))
     }
 
     /// The lanes layer on: the roads' costs go over the inflation (TODO 148). A rolling
@@ -178,6 +328,9 @@ impl Costmap {
     /// A new map. A fixed costmap takes its size, cells and corner (Nav2's static layer
     /// resizes the master), and its obstacle layers start again.
     pub fn set_map(&mut self, map: StaticMap) {
+        if self.chunks.is_some() {
+            return;
+        }
         if !self.settings.rolling {
             let g = &map.grid;
             self.master = Grid::new(
@@ -257,7 +410,16 @@ impl Costmap {
         touched = grid::union(touched, self.lanes_touched.take());
         if self.settings.rolling || self.whole {
             self.whole = false;
+            self.redo = None;
             self.compose_all(map_from_frame);
+            return Changed::All;
+        }
+        if let Some(mut tiles) = self.redo.take() {
+            // A moved window: its changed chunks, and what the sensors touched.
+            if let Some(t) = touched {
+                tiles.push(t.grown(self.reach(), self.master.width, self.master.height));
+            }
+            self.compose_tiles(&tiles);
             return Changed::All;
         }
         match touched {
@@ -266,8 +428,31 @@ impl Costmap {
         }
     }
 
-    /// Every cell: the map, each layer, then the inflation.
+    /// Every cell: the map, each layer, then the inflation. A fixed costmap in tiles, each
+    /// on its own core; a rolling one in one pass.
     fn compose_all(&mut self, map_from_frame: Option<&Pose2>) {
+        if self.settings.rolling {
+            self.compose_whole(map_from_frame);
+            return;
+        }
+        let (w, h) = (self.master.width, self.master.height);
+        let tiles: Vec<Bounds> = (0..h)
+            .step_by(TILE)
+            .flat_map(|y0| {
+                (0..w).step_by(TILE).map(move |x0| Bounds {
+                    x0,
+                    y0,
+                    x1: (x0 + TILE).min(w),
+                    y1: (y0 + TILE).min(h),
+                })
+            })
+            .collect();
+        self.compose_tiles(&tiles);
+    }
+
+    /// Every cell in one pass over the whole grid: the rolling window's way, and what the
+    /// tiles must agree with.
+    fn compose_whole(&mut self, map_from_frame: Option<&Pose2>) {
         self.master.data.fill(default(&self.settings));
         // Not static_map(): it would borrow all of self, the master too.
         if let Some(map) = self.map.as_ref().filter(|_| self.settings.static_layer) {
@@ -296,13 +481,44 @@ impl Costmap {
     /// Returns the cells written.
     fn compose_area(&mut self, touched: Bounds) -> Bounds {
         let (w, h) = (self.master.width, self.master.height);
-        // In cells, and one more: Inflation::apply's cut-off is cell_distance(radius).
-        let reach = self
-            .inflation
+        let changed = touched.grown(self.reach(), w, h);
+        let (part, read) = self.compose_part(changed);
+        self.master.paste(&part, (read.x0, read.y0), changed);
+        changed
+    }
+
+    /// The inflation's reach in cells, and one more: Inflation::apply's cut-off is
+    /// cell_distance(radius).
+    fn reach(&self) -> usize {
+        self.inflation
             .as_ref()
-            .map_or(0, |i| self.master.cell_distance(i.inflation_radius) + 1);
-        let changed = touched.grown(reach, w, h);
-        let read = changed.grown(reach, w, h);
+            .map_or(0, |i| self.master.cell_distance(i.inflation_radius) + 1)
+    }
+
+    /// Work out each of `tiles` on its own core (rayon), then write them into the grid.
+    /// Tiles may overlap: where they do, they agree.
+    fn compose_tiles(&mut self, tiles: &[Bounds]) {
+        for batch in tiles.chunks(TILES_AT_ONCE) {
+            let parts: Vec<(Grid, Bounds, Bounds)> = batch
+                .par_iter()
+                .filter(|t| t.width() > 0 && t.height() > 0)
+                .map(|&t| {
+                    let (part, read) = self.compose_part(t);
+                    (part, read, t)
+                })
+                .collect();
+            for (part, read, t) in parts {
+                self.master.paste(&part, (read.x0, read.y0), t);
+            }
+        }
+    }
+
+    /// The cells of `changed` as compose_all gives them, worked out from the cells a reach
+    /// further out (an obstacle further away inflates none of them): the grid round
+    /// `changed`, and where it starts in the master.
+    fn compose_part(&self, changed: Bounds) -> (Grid, Bounds) {
+        let (w, h) = (self.master.width, self.master.height);
+        let read = changed.grown(self.reach(), w, h);
         let mut part = self.master.crop(read);
         match self.static_map() {
             Some(map) => part.data.copy_from_slice(&map.grid.crop(read).data),
@@ -317,8 +533,7 @@ impl Costmap {
         if let Some((_, grid)) = &self.lanes {
             lanes::combine(&mut part.data, &grid.crop(read).data);
         }
-        self.master.paste(&part, (read.x0, read.y0), changed);
-        changed
+        (part, read)
     }
 
     /// The map, if the static layer is on and it has come.
@@ -437,7 +652,7 @@ mod tests {
                 let changed = c.update(&pose, None, &[vec![vec![&obs]]]);
                 assert!(matches!(changed, Changed::Area(_)), "{changed:?}");
                 let mut whole = c.clone();
-                whole.compose_all(None);
+                whole.compose_whole(None);
                 assert_eq!(
                     c.grid(),
                     whole.grid(),
@@ -445,6 +660,32 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn the_tiles_on_their_cores_agree_with_one_pass() {
+        // 700 x 600 cells: 3 x 3 tiles, the last ones cut short; walls across tile edges.
+        let (w, h) = (700usize, 600usize);
+        let values: Vec<i8> = (0..w * h)
+            .map(|i| {
+                let (x, y) = (i % w, i / w);
+                if x < 30 && y < 30 {
+                    -1
+                } else if y == 255 || x == 258 && y > 100 || (x + y) % 97 == 0 {
+                    100
+                } else {
+                    0
+                }
+            })
+            .collect();
+        let mut c = global(true);
+        c.layers.clear();
+        let map = StaticMap::from_occupancy((-30.0, -20.0), 0.25, w, h, &values, true);
+        c.set_map(map.expect("the map's size and data agree"));
+        assert_eq!(c.update(&Pose2::IDENTITY, None, &[]), Changed::All);
+        let mut whole = c.clone();
+        whole.compose_whole(None);
+        assert_eq!(c.grid(), whole.grid());
     }
 
     #[test]
@@ -497,7 +738,7 @@ mod tests {
         assert!(cost(&c, -11.5) <= 7);
         assert_eq!(cost(&c, -8.5), Ramp::default().wrong_lane);
         let mut whole = c.clone();
-        whole.compose_all(None);
+        whole.compose_whole(None);
         assert_eq!(c.grid(), whole.grid());
         // The map's walls stay walls.
         assert_eq!(c.grid().cost_at(-20.0, 0.1, 0), crate::cost::LETHAL);

@@ -153,6 +153,11 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           cost, lowest at the right lane's centre, so the planner keeps
                           right and crosses a line only when it pays. Which lane is right
                           comes from /plan. Empty (the default): off
+  costmap_chunks:=<folder>  with costmap:=own: our global costmap from the map's 64 m
+                          chunks (map-chunks' chunk-map wrote the folder: chunks.yaml,
+                          fine/): the 3 x 3 round the car and those along the route ahead
+                          (/drivers/nav/planner/route), read and inflated each on its own
+                          core, not the whole map (TODO 175). Empty (the default): /map
   lane_route:=<lanes.yaml>  with planner:=own: the lane-centre planner, a challenger (TODO
                           148, path:=lane): on the lane map the path is the right lane's
                           centre, routed along its roads, our lattice joining the car and
@@ -433,6 +438,11 @@ def nodes(context):
     if lane_costs and costmap != 'own':
         raise ValueError(f'lane_costs:={lane_costs}: the lanes layer is in our costmap only: '
                          'add costmap:=own')
+    # costmap_chunks:=<folder>: our global costmap from the map's chunks (TODO 175).
+    costmap_chunks = LaunchConfiguration('costmap_chunks').perform(context).strip()
+    if costmap_chunks and costmap != 'own':
+        raise ValueError(f'costmap_chunks:={costmap_chunks}: the chunks are in our costmap '
+                         'only: add costmap:=own')
     # lane_route:=<lanes.yaml>: the lane-centre planner, inside ours (TODO 148, path:=lane).
     lane_route = LaunchConfiguration('lane_route').perform(context).strip()
     if lane_route and not own_planner:
@@ -593,6 +603,8 @@ def nodes(context):
             blocks = vehicle.costmap_params(yaml.safe_load(f), v, radar, camera)
         if lane_costs:
             blocks['global']['lanes'] = lane_map.costmap_block(lane_map.load(lane_costs))
+        if costmap_chunks:
+            blocks['global']['chunks'] = vehicle.costmap_chunks_block(costmap_chunks)
         actions.append(Node(
             package='aav_costmap', executable='costmap', name='costmap', output='screen',
             respawn=True, respawn_delay=RESPAWN_DELAY,
@@ -925,6 +937,11 @@ def generate_launch_description():
                                           'global costmap as soft costs, lowest at the right '
 
                                           "lane's centre (TODO 148); empty: off"),
+        DeclareLaunchArgument('costmap_chunks', default_value='',
+                              description="with costmap:=own: a folder of the map's chunks "
+                                          '(chunks.yaml, fine/); the global costmap holds '
+                                          'only those round the car and along the route '
+                                          '(TODO 175). Empty: the whole map (/map)'),
         DeclareLaunchArgument('lane_route', default_value='',
                               description='with planner:=own: a lanes.yaml; the path is the '
                                           "right lane's centre along it, the lattice joining "

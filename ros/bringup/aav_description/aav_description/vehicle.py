@@ -1133,6 +1133,30 @@ def stop_zone_params(tuned, car):
             'bands': bands, 'sources': sources}
 
 
+# Our global costmap from the map's 64 m chunks (costmap_chunks:=, TODO 175 step 3): the
+# chunks the route crosses in the next CHUNKS_AHEAD m are held besides the 3 x 3 round the
+# car (the design's C3), and CHUNKS_MARGIN more chunks round them all, room for the planner
+# to go round a block the route's own chunks leave out.
+CHUNKS_AHEAD = 100.0
+CHUNKS_MARGIN = 1
+
+
+def costmap_chunks_block(folder, ahead=CHUNKS_AHEAD, margin=CHUNKS_MARGIN):
+    """
+    Return the global costmap's `chunks` block for aav_costmap: {dir, ahead, margin}.
+
+    folder: what map-chunks' chunk-map wrote (chunks.yaml, fine/i_j.pgm); made absolute.
+    Raises ValueError without its chunks.yaml, or with a negative ahead or margin.
+    """
+    path = os.path.abspath(folder)
+    if not os.path.isfile(os.path.join(path, 'chunks.yaml')):
+        raise ValueError(f'costmap_chunks:={folder}: no chunks.yaml there. Make the chunks '
+                         'with pixi run campus (or map-chunks chunk-map)')
+    if not (math.isfinite(ahead) and ahead >= 0.0) or int(margin) < 0:
+        raise ValueError(f'chunks: ahead {ahead} m and margin {margin} must be 0 or more')
+    return {'dir': path, 'ahead': float(ahead), 'margin': int(margin)}
+
+
 def with_global_window(cfg, metres):
     """
     Return nav2.yaml's dict with the global costmap a `metres` square rolling with the car.

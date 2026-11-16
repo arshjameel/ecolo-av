@@ -147,3 +147,45 @@ fn off_the_map_short_or_blocked_is_the_lattices() {
         How::Lattice(Fallback::Blocked)
     );
 }
+
+#[test]
+fn a_goal_off_the_costmap_is_planned_to_where_the_lane_leaves_it() {
+    // TODO 175: a costmap of only the chunks near the car, 70 m tall from (-20, -20); the
+    // goal up the north road at y = 70, off it. The path keeps to the lane as far as 10 m
+    // inside the edge (steps::EDGE_MARGIN), and says it was cut; the route is whole.
+    let planner = scenes::planner(false);
+    let near = Grid::new((-20.0, -20.0), scenes::RESOLUTION, 560, 280, 0);
+    let start = Pose::new(5.0, 0.5, 0.0);
+    let goal = Pose::new(101.5, 70.0, std::f64::consts::FRAC_PI_2);
+    let got = ell()
+        .plan(&planner, &near, &start, &goal, &never)
+        .expect("a path");
+    assert!(got.cut);
+    assert!(matches!(got.how, How::Lane(_)), "{:?}", got.how);
+    let last = got.plan.poses[got.plan.poses.len() - 1];
+    assert!((last.x - 101.5).abs() < 0.1, "{last:?}");
+    assert!(last.y > 35.0 && last.y <= 40.0, "{last:?}");
+    let end = got.route[got.route.len() - 1];
+    assert!(end.y > 69.0, "the route reaches the goal: {end:?}");
+    // On the whole map: not cut.
+    let whole = ell()
+        .plan(&planner, &free(), &start, &goal, &never)
+        .expect("a path");
+    assert!(!whole.cut);
+}
+
+#[test]
+fn off_the_lane_map_a_far_goal_is_a_step_along_the_straight_line() {
+    let planner = scenes::planner(false);
+    let near = Grid::new((-20.0, -20.0), scenes::RESOLUTION, 280, 280, 0);
+    let start = Pose::new(0.0, 30.0, 0.0);
+    let goal = Pose::new(300.0, 30.0, 0.0);
+    let got = ell()
+        .plan(&planner, &near, &start, &goal, &never)
+        .expect("a path");
+    assert!(got.cut);
+    assert_eq!(got.how, How::Lattice(Fallback::OffMap));
+    let last = got.plan.poses[got.plan.poses.len() - 1];
+    assert!(last.x > 35.0 && last.x <= 40.0, "{last:?}");
+    assert_eq!(got.route.len(), 2);
+}

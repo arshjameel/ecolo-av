@@ -138,6 +138,11 @@ bench's argument names:
                       own) as soft costs, lowest at the right lane's centre, so our planner
                       keeps right. A world with no lane map (the test lot): nothing drawn.
                       Empty: the stack's choice (off)
+  costmap_chunks:=auto  our global costmap (costmap:=own) from the map's 64 m chunks: the
+                      3 x 3 round the car and those along the route ahead, read and
+                      inflated each on its own core (TODO 175). auto: the campus's chunks
+                      when pixi run campus made them, else the whole map; off: the whole
+                      map; a folder: those chunks. Empty: the stack's choice
   lane_route:=true    the lane-centre planner (path:=lane; ours' pick since 16 Nov, TODO
                       148): our planner (planner:=own) routes along the lane map
                       (lane_map:='s, else the world's own) and plans the right lane's
@@ -288,6 +293,25 @@ def campus_ndt_chunks(given, world, ndt_map):
     return ''
 
 
+def campus_costmap_chunks(given, world):
+    """
+    Return costmap_chunks:= for navigation.launch.py: '' for the whole map, else a folder.
+
+    off (or false): the whole map. auto (or true): the campus's chunks when pixi run
+    campus made them, else the whole map (the test lot and the road world have none).
+    Anything else: that folder.
+    """
+    given = given.strip()
+    if given.lower() in ('', 'off', 'false'):
+        return ''
+    if given.lower() in ('auto', 'true'):
+        chunks = worlds.CAMPUS_CHUNKS
+        if world == worlds.CAMPUS and os.path.isfile(os.path.join(chunks, 'chunks.yaml')):
+            return os.path.abspath(chunks)
+        return ''
+    return os.path.abspath(given)
+
+
 # What each world shows in RViz: the road world adds the camera, the radar and the truth.
 LAYOUTS = {'road': 'road.rviz', 'test_lot': 'road.rviz', worlds.CAMPUS: 'road.rviz'}
 # The parts that read the camera, so need a world that renders it.
@@ -312,7 +336,8 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'lattice_moves': vehicle.LATTICE_MOVES[0],
                   'planner_search': vehicle.PLANNER_SEARCHES[0],
                   'plan_smoothing': 'nav2', 'map_correction': 'newest',
-                  'mppi_lag_steer_gamma': '', 'lane_costs': 'false', 'lane_route': 'false'}
+                  'mppi_lag_steer_gamma': '', 'lane_costs': 'false', 'lane_route': 'false',
+                  'costmap_chunks': 'off'}
 
 
 # Each level switch's options, for its help text (config/stacks.yaml).
@@ -529,6 +554,8 @@ def launch_setup(context):
                                lattice_moves=arg('lattice_moves'),
                                lidar_memory=arg('lidar_memory'),
                                global_window=arg('global_window'),
+                               costmap_chunks=campus_costmap_chunks(arg('costmap_chunks'),
+                                                                    world),
                                stop_zone_shadow=arg('stop_zone_shadow'),
                                things_background=arg('things_background'),
                                things_background_below=arg('things_background_below'),
@@ -904,6 +931,12 @@ def generate_launch_description():
 
                                           "lowest at the right lane's centre (TODO 148); "
                                           "false: none. Empty: the stack's choice (off)"),
+        DeclareLaunchArgument('costmap_chunks', default_value=stacks.CHOSEN,
+                              description="with costmap:=own: auto, the map's 64 m chunks "
+                                          'round the car and along the route (the '
+                                          "campus's, when pixi run campus made them); off, "
+                                          'the whole map; or a folder (TODO 175). Empty: '
+                                          "the stack's choice"),
         DeclareLaunchArgument('lane_route', default_value=stacks.CHOSEN,
                               description='true: the lane-centre planner (path:=lane): '
                                           "the right lane's centre along the lane map, "

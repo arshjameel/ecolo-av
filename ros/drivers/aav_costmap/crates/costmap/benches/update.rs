@@ -114,6 +114,26 @@ fn update(c: &mut Criterion) {
         b.iter(|| global.update(&Pose2::IDENTITY, None, &[]))
     });
 
+    // Worked out whole (a new map, or a clear): its 64 m tiles on one core, and on all
+    // (rayon, TODO 195).
+    let cores = std::thread::available_parallelism().map_or(1, usize::from);
+    for threads in [1, cores] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .expect("a thread pool");
+        let mut fresh = Costmap::new(global_settings.clone(), Vec::new());
+        group.bench_function(
+            format!("a new map, worked out whole, {threads} thread(s)"),
+            |b| {
+                b.iter(|| {
+                    fresh.set_map(map.clone());
+                    pool.install(|| fresh.update(&Pose2::IDENTITY, None, &[]))
+                })
+            },
+        );
+    }
+
     let probe = Costmap::new(global_settings.clone(), Vec::new());
     let layer = ObstacleLayer::new("lidar_layer", vec![lidar()], probe.grid(), true);
     let mut sensed = Costmap::new(global_settings, vec![layer]);

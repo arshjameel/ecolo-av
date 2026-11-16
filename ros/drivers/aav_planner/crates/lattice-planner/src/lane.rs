@@ -19,12 +19,17 @@
 //! It falls back to the lattice for the whole path, and says why ([`Fallback`]), when:
 //! the start or the goal is off the lane map (the lot), the route is too short for both
 //! joins, the line runs over an obstacle (the lattice goes round), or a join has no path.
+//!
+//! A goal off the costmap (a global costmap made of the chunks round the car, TODO 175):
+//! the lane line still runs the whole way, but the path stops on it where it leaves the
+//! costmap ([`crate::steps`]), and the next plan goes on from there ([`LanePlan::cut`]).
 
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
 use costmap::{Grid, Road};
 
+use crate::steps::{self, EDGE_MARGIN};
 use crate::{curves::wrap, Plan, PlanError, Planner, Pose};
 
 /// m past a road's kerb a pose still counts as on that road (`lane_map.py` MARGIN).
@@ -111,6 +116,10 @@ pub struct LanePlan {
     pub plan: Plan,
     /// The lane, or the lattice and why.
     pub how: How,
+    /// The goal is off the costmap: the path ends where the way there leaves it.
+    pub cut: bool,
+    /// The route level's whole way to the goal: the lane line, or start and goal off it.
+    pub route: Vec<Pose>,
 }
 
 /// Where a pose meets the lane map: a point on one road's centre line, and the way along.
@@ -451,18 +460,29 @@ impl LaneRouter {
         goal: &Pose,
         cancelled: &dyn Fn() -> bool,
     ) -> Result<LanePlan, PlanError> {
-        let lattice = |why| {
-            planner
-                .plan(grid, start, goal, cancelled)
-                .map(|plan| LanePlan {
-                    plan,
-                    how: How::Lattice(why),
-                })
+        let lattice = |why, route: Vec<Pose>| {
+            steps::plan_toward(planner, grid, start, goal, cancelled).map(|(plan, cut)| LanePlan {
+                plan,
+                how: How::Lattice(why),
+                cut,
+                route,
+            })
         };
         let radius = planner.turning_radius();
-        let Some(line) = self.lane_line(start, goal, radius) else {
-            return lattice(Fallback::OffMap);
+        let Some(mut line) = self.lane_line(start, goal, radius) else {
+            return lattice(Fallback::OffMap, vec![*start, *goal]);
         };
+        let route = line.clone();
+        // A goal off the costmap: the line as far as it stays on it, the path ending there.
+        let mut cut = false;
+        if !steps::inside(grid, goal.x, goal.y, EDGE_MARGIN) {
+            if let Some(k) = steps::last_inside(grid, &line, EDGE_MARGIN) {
+                line.truncate(k + 1);
+                cut = true;
+            }
+        }
+        let lattice = |why| lattice(why, route.clone());
+        let target = if cut { line[line.len() - 1] } else { *goal };
         let join = self.settings.join.max(s_bend(radius, ONE_LANE) + 2.0);
         let along = arc_lengths(&line);
         let total = along.last().copied().unwrap_or(0.0);
@@ -473,7 +493,7 @@ impl LaneRouter {
             (p.x - q.x).hypot(p.y - q.y) <= snap_m && wrap(p.yaw - q.yaw).abs() <= snap_yaw
         };
         let snap_start = near(start, &line[0]);
-        let snap_goal = near(goal, &line[line.len() - 1]);
+        let snap_goal = cut || near(goal, &line[line.len() - 1]);
         let head_m = if snap_start { self.settings.ease } else { join };
         let tail_m = if snap_goal { 0.0 } else { join };
         if total - head_m - tail_m < self.settings.min_lane {
@@ -512,7 +532,7 @@ impl LaneRouter {
             planner.plan(grid, start, &entry, cancelled)
         };
         let tail = if snap_goal {
-            Ok(straight(&exit, goal))
+            Ok(straight(&exit, &target))
         } else {
             planner.plan(grid, &exit, goal, cancelled)
         };
@@ -537,12 +557,14 @@ impl LaneRouter {
                 total_time: head.total_time + tail.total_time,
             },
             how: How::Lane(along[last] - along[first]),
+            cut,
+            route,
         })
     }
 
     /// Through each of `goals` in turn, a [`LaneRouter::plan`] a leg, joined (as
     /// [`Planner::plan_through`]). How: the lane if any leg used it (its metres summed),
-    /// else the first leg's fallback.
+    /// else the first leg's fallback. A leg cut at the costmap's edge is the last.
     ///
     /// # Errors
     ///
@@ -568,6 +590,8 @@ impl LaneRouter {
         let mut lane = 0.0;
         let mut fallback = None;
         let mut from = *start;
+        let mut cut = false;
+        let mut route = Vec::new();
         for (leg, goal) in goals.iter().enumerate() {
             let p = self
                 .plan(planner, grid, &from, goal, cancelled)
@@ -584,13 +608,23 @@ impl LaneRouter {
             whole.iterations += p.plan.iterations;
             whole.search_time += p.plan.search_time;
             whole.total_time += p.plan.total_time;
+            route.extend(p.route.iter().skip(usize::from(!route.is_empty())));
             from = *goal;
+            if p.cut {
+                cut = true;
+                break;
+            }
         }
         let how = match fallback {
             Some(why) if lane <= 0.0 => How::Lattice(why),
             _ => How::Lane(lane),
         };
-        Ok(LanePlan { plan: whole, how })
+        Ok(LanePlan {
+            plan: whole,
+            how,
+            cut,
+            route,
+        })
     }
 }
 
