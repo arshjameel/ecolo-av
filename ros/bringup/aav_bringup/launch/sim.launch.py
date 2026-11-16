@@ -143,7 +143,8 @@ bench's argument names:
                       and the lidar. Nothing reads the list yet
   things_background:=true  with things: cubes on the saved map are not things (TODO 175);
                       things_background_chunks:=maps/campus/chunks/ndt: the NDT map's
-                      chunks round the car instead of /map
+                      chunks round the car instead of /map;
+                      things_background_below:=0.7: only cubes under 0.7 m drop
   amcl:=true          stock AMCL beside the global EKF, scored only (docs/trials.md): only
                       in world:=test_lot with nav:=true and the lidar, from the start pose
   voxels:=true        Nav2's local costmap and collision_monitor read the lidar as 0.25 m
@@ -478,6 +479,7 @@ def launch_setup(context):
                                global_window=arg('global_window'),
                                stop_zone_shadow=arg('stop_zone_shadow'),
                                things_background=arg('things_background'),
+                               things_background_below=arg('things_background_below'),
                                things_background_chunks=os.path.abspath(
                                    arg('things_background_chunks'))
                                if arg('things_background_chunks') else '',
@@ -814,6 +816,10 @@ def generate_launch_description():
                               description='with things_background: a folder of the NDT '
                                           "map's chunks (maps/campus/chunks/ndt) as the "
                                           'background instead of /map'),
+        DeclareLaunchArgument('things_background_below', default_value='',
+                              description='with things_background: m, only cubes lower '
+                                          'than this drop (kerbs, grass; not a body). '
+                                          'Empty: any height'),
         DeclareLaunchArgument('things_names', default_value='false',
                               description='with things:=true: things take the camera '
                                           "detector's labels (TODO 192)"),

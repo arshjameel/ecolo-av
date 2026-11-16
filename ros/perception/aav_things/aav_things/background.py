@@ -13,6 +13,7 @@ Two backgrounds, the same test (`Background.on_map`):
 | From | What is "taken" | Made by |
 |---|---|---|
 | `/map` (the occupancy grid) | every wall cell; on the campus, all that isn't road | `Background.from_grid` |
+| `/map`, low cubes only (`below`) | the same cells, but only cubes under `below` m drop: kerbs and raised grass go, a person's body stays | `new_only(..., below=)` |
 | the NDT map's chunks (`ChunkBackground`) | only where the saved 3D map has points over `min_z`: buildings, poles, not grass or paths | `Background.from_points`, the 3 x 3 chunks round the car |
 
 Only the tracker uses this. The stop zone and the costmaps see every point, always.
@@ -90,17 +91,23 @@ def _shifted(a: np.ndarray, dx: int, dy: int) -> np.ndarray:
     return out
 
 
-def new_only(points: np.ndarray, pose, background: Background) -> np.ndarray:
+def new_only(points: np.ndarray, pose, background: Background,
+             below: Optional[float] = None) -> np.ndarray:
     """
     Return the (N, 3) cubes, in the car's frame, that are not on the saved map.
 
-    pose: (x, y, yaw) of the cubes' frame in the map's frame.
+    pose: (x, y, yaw) of the cubes' frame in the map's frame. below (m, the cubes' z): if
+    given, only cubes lower than it may be dropped; a taller one is kept even on the map,
+    so a person on the grass beside the road keeps their body (`/map` marks the grass).
     """
     x, y, yaw = pose
     c, s = math.cos(yaw), math.sin(yaw)
     xy = np.column_stack([x + c * points[:, 0] - s * points[:, 1],
                           y + s * points[:, 0] + c * points[:, 1]])
-    return points[~background.on_map(xy)]
+    drop = background.on_map(xy)
+    if below is not None:
+        drop &= points[:, 2] < below
+    return points[~drop]
 
 
 def read_pcd(path: str) -> np.ndarray:

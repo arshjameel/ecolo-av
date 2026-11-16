@@ -22,7 +22,8 @@ Subscribes  perception/voxels/cubes     sensor_msgs/PointCloud2 (aav_voxels), ba
                                         chunks, maps/campus/chunks/ndt) the NDT map's
                                         3 x 3 chunks round the car are the background
                                         instead, read again in each new chunk, and /map is
-                                        not read
+                                        not read. With background_below, only cubes
+                                        lower than it drop (kerbs and grass, not a body)
 Publishes   world/things                aav_interfaces/Things, odom, 10 Hz: every confirmed
                                         thing, moved on its speed to the stamp
             world/things/markers        visualization_msgs/MarkerArray, odom: a box coloured by
@@ -108,6 +109,9 @@ class ThingsNode(Node):
         # The NDT map's chunks as the background (the design's form), not /map.
         folder = str(self.declare_parameter('background_chunks', '').value)
         min_z = float(self.declare_parameter('background_min_z', 0.3).value)
+        # m: only cubes lower than this drop (0: any height). Launch: things_background_below.
+        below = float(self.declare_parameter('background_below', 0.0).value)
+        self.background_below = below if below > 0.0 else None
         self.chunks = None
         if self.use_background and folder:
             self.chunks = ChunkBackground(folder, *read_grid(folder),
@@ -228,7 +232,8 @@ class ThingsNode(Node):
             self.background = self.chunks.update(tr.x, tr.y)
             if self.chunks.loads != loads:
                 self.get_logger().info(f'background: the NDT chunks round {self.chunks.here}')
-        kept = new_only(points, (tr.x, tr.y, yaw_of(t.transform.rotation)), self.background)
+        kept = new_only(points, (tr.x, tr.y, yaw_of(t.transform.rotation)), self.background,
+                        self.background_below)
         self.background_dropped += len(points) - len(kept)
         self.get_logger().info(f'background: {self.background_dropped} cubes on the saved map '
                                'so far, not things', throttle_duration_sec=10.0)

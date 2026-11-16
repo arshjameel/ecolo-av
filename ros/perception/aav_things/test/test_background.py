@@ -87,3 +87,11 @@ def test_chunks_load_round_the_car_and_again_in_a_new_chunk():
         assert chunks.loads == 2
         assert new_only(cubes, (0.0, 0.0, 0.0), bg).tolist() == [[10.0, 5.0, 1.0],
                                                                    [30.0, 5.0, 1.0]]
+
+
+def test_below_drops_only_the_low_cubes_on_the_map():
+    bg = lot()
+    # On the wall's cells: a kerb's cube (0.4 m) and a person's (0.4 m and 1.2 m).
+    cubes = np.array([[5.1, 0.0, 0.4], [5.1, 0.0, 1.2], [2.0, 0.0, 0.4]])
+    kept = new_only(cubes, (0.0, 0.0, 0.0), bg, below=0.7)
+    assert kept.tolist() == [[5.1, 0.0, 1.2], [2.0, 0.0, 0.4]]
