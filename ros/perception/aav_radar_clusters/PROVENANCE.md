@@ -72,3 +72,4 @@ through ROS.
 - 2026-10-11: written (Ben's request, 10 Oct), not yet tested.
 - 2026-10-15: finished. Topic names by area; the C++ vectors recorded and checked; wired
   into car, bench and sim launch files; `aav_object_detection` removed.
+- 2026-11-15 (TODO 176): the Rust API Guidelines pass: `#[must_use]` on pure functions, doc comments, `Debug`, and the lints that keep them; no change in behaviour.
