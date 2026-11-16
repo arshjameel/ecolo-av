@@ -2079,6 +2079,16 @@ def actuator_stop(probe, fault):
 TURNING = 0.06     # rad/s: the car is in the bend (check_actuator_faults)
 
 
+def clear_watchdog(probe):
+    """Clear the watchdog's latches, as a person would, and forget what it said."""
+    clear = probe.create_client(Trigger, '/safety/sensor_watchdog/clear')
+    if clear.wait_for_service(timeout_sec=5.0):
+        cleared = clear.call_async(Trigger.Request())
+        probe.spin_for(10.0, cleared.done)
+    probe.spin_for(1.0)
+    probe.over_at = probe.overspeed_at = None
+
+
 def check_overspeed(probe, watch=20.0):
     """
     Stick the throttle while speeding up to 1 m/s: the watchdog must say OVERSPEED.
@@ -2090,8 +2100,8 @@ def check_overspeed(probe, watch=20.0):
     then the fault is mended, the drive ended and the latch cleared.
     """
     name = 'actuator throttle stuck: speeding up'
-    probe.over_at = probe.overspeed_at = None
     probe.spin_for(30.0, lambda: abs(probe.speed()) < STILL)
+    clear_watchdog(probe)
     handle = probe.send_drive()
     if handle is None or not probe.spin_for(30.0, lambda: probe.speed() > 0.4):
         result(name, False, 'the car would not get going')
@@ -2104,21 +2114,33 @@ def check_overspeed(probe, watch=20.0):
         return
     t0 = probe.now()
     top = [0.0]
+    # Ego's speed and the wheels', as the watchdog sees them, for the record.
+    rows, wheels = [], [math.nan]
+    subs = [probe.create_subscription(AckermannDriveStamped, '/ego/actuator_cmd',
+                                      lambda m: rows.append((probe.now(), m.drive.speed,
+                                                             wheels[0], probe.speed())), 10),
+            probe.create_subscription(Odometry, '/vehicle/odom',
+                                      lambda m: wheels.__setitem__(0, m.twist.twist.linear.x),
+                                      10)]
     probe.spin_for(watch, lambda: top.__setitem__(0, max(top[0], probe.speed()))
                    or probe.overspeed_at is not None)
+    for sub in subs:
+        probe.destroy_subscription(sub)
+    stem = os.path.splitext(LAUNCH.get('log', '/tmp/aav-sim-check.log'))[0]
+    with open(f'{stem}-overspeed.csv', 'w') as out:
+        out.write('t,command,wheels,truth\n')
+        out.writelines(f'{t - t0:.3f},{c:.3f},{w:.3f},{v:.3f}\n' for t, c, w, v in rows)
     set_fault(probe, 'throttle', 'ok')
+    over_at, overspeed_at = probe.over_at, probe.overspeed_at
     finish(probe, handle)
     probe.spin_for(30.0, lambda: abs(probe.speed()) < STILL)
-    clear = probe.create_client(Trigger, '/safety/sensor_watchdog/clear')
-    if clear.wait_for_service(timeout_sec=5.0):
-        cleared = clear.call_async(Trigger.Request())
-        probe.spin_for(10.0, cleared.done)
-    warned = (f'OVER (a warning) {probe.over_at - t0:.1f} s after, '
-              if probe.over_at is not None else 'no OVER warning, ')
-    said = (f'OVERSPEED {probe.overspeed_at - t0:.1f} s after the fault'
-            if probe.overspeed_at is not None
+    clear_watchdog(probe)
+    warned = (f'OVER (a warning) {over_at - t0:.1f} s after, '
+              if over_at is not None else 'no OVER warning, ')
+    said = (f'OVERSPEED {overspeed_at - t0:.1f} s after the fault'
+            if overspeed_at is not None
             else f'the watchdog never said OVERSPEED in {watch:.0f} s')
-    result(name, probe.overspeed_at is not None,
+    result(name, overspeed_at is not None,
            f'asked 1.00 m/s, top {top[0]:.2f} m/s; {warned}{said}')
 
 
@@ -2138,7 +2160,10 @@ def check_actuator_faults(probe, react=40.0):
         return
     base = None
     for fault in (None, ('brake', 'weak'), ('brake', 'dead'), ('throttle', 'stuck')):
+        clear_watchdog(probe)
         out = actuator_stop(probe, fault)
+        over = ('; the watchdog said OVERSPEED' if probe.overspeed_at is not None
+                else '; no OVERSPEED')
         if out is None:
             continue
         name, v0, metres, took, standing, v_end = out
@@ -2146,8 +2171,9 @@ def check_actuator_faults(probe, react=40.0):
         than = f' ({metres / base:.1f} x the healthy {base:.2f} m)' if base and fault else ''
         ended = (f'stood still after {took:.1f} s' if standing
                  else f'still at {v_end:.2f} m/s after {took:.0f} s')
-        result(name, True, f'from {v0:.2f} m/s: {metres:.2f} m{than}, {ended}')
+        result(name, True, f'from {v0:.2f} m/s: {metres:.2f} m{than}, {ended}{over}')
     check_overspeed(probe)
+    clear_watchdog(probe)
     # The steering stuck in a turn: a goal 10 m on and 10 m left, facing left (a bend of
     # about 10 m radius: 0.1 rad/s at 1 m/s), stuck once the car turns at TURNING.
     x0, y0 = probe.xy(probe.truth)
