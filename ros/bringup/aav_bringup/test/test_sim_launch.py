@@ -202,7 +202,7 @@ def test_the_defaults_start_what_pixi_run_sim_always_has():
     inputs = sent['watchdog.launch.py']['inputs'].split(',')
     # The sensors, then our own nodes the stack starts (warn only: TODO 180).
     sensors = [i for i in inputs if not i.startswith('node_')]
-    assert sensors == 'odom,imu,gps,local,global,steering'.split(',')
+    assert sensors == 'odom,imu,gps,local,global,steering,speed'.split(',')
     assert {'node_ego', 'node_planner', 'node_mppi_lag'} <= set(inputs)
     assert nav['map'].endswith(os.path.join('maps', 'empty.yaml'))
     assert names(actions) == {'goal_leash', 'imu_filter_madgwick', 'run_info', 'rviz2'}
@@ -244,7 +244,7 @@ def test_the_road_world_adds_the_radar_to_nav2_and_its_clusters():
     inputs = sent['watchdog.launch.py']['inputs'].split(',')
     # The sensors, then our own nodes the stack starts (warn only: TODO 180).
     sensors = [i for i in inputs if not i.startswith('node_')]
-    assert sensors == 'odom,imu,gps,local,global,radar,steering'.split(',')
+    assert sensors == 'odom,imu,gps,local,global,radar,steering,speed'.split(',')
     assert {'node_ego', 'node_planner', 'node_mppi_lag'} <= set(inputs)
 
 
