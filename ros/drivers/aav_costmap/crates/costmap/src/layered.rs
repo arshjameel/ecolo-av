@@ -663,6 +663,47 @@ mod tests {
     }
 
     #[test]
+    fn chunks_with_a_lidar_layer_agree_with_one_pass_as_the_window_moves() {
+        // A 320 m map in 5 x 5 chunks of 64 m: walls every 30 m. The car drives east with
+        // a post ahead every other scan; after each update the grid must be what one pass
+        // over the window's static map and layers gives.
+        let (n, res) = (1280usize, 0.25);
+        let values: Vec<i8> = (0..n * n)
+            .map(|i| {
+                if (i % n) % 120 == 0 && (i / n) % 7 != 0 {
+                    100
+                } else {
+                    0
+                }
+            })
+            .collect();
+        let dir = std::env::temp_dir().join(format!("costmap-layers-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let grid = map_chunks::Grid::new(map_chunks::Point::new(-160.0, -160.0), 64.0).unwrap();
+        let whole = map_chunks::WholeMap {
+            origin: map_chunks::Point::new(-160.0, -160.0),
+            resolution: res,
+            width: n,
+            height: n,
+            data: &values,
+        };
+        map_chunks::files::write_chunks(&grid, &whole, &dir).unwrap();
+        let mut c = global(true);
+        c.set_chunks(ChunkSource::open(&dir, 100.0, 0).unwrap())
+            .unwrap();
+        for k in 0..40 {
+            let pose = Pose2::new(-150.0 + 7.0 * f64::from(k), -3.0, 0.0);
+            c.follow_chunks((pose.x, pose.y)).unwrap();
+            let obs = seen(&pose, k % 2 == 0);
+            c.update(&pose, None, &[vec![vec![&obs]]]);
+            let mut one = c.clone();
+            one.compose_whole(None);
+            assert_eq!(c.grid(), one.grid(), "step {k}");
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn the_tiles_on_their_cores_agree_with_one_pass() {
         // 700 x 600 cells: 3 x 3 tiles, the last ones cut short; walls across tile edges.
         let (w, h) = (700usize, 600usize);

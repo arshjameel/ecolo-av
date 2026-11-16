@@ -101,7 +101,7 @@ fn one_pass(source: &ChunkSource, cars: &[(f64, f64)]) {
     }
 }
 
-fn whole(yaml: &Path) {
+fn whole(yaml: &Path, check: Option<(&ChunkSource, (f64, f64))>) {
     let t = Instant::now();
     let map = read_map(yaml).expect("the map");
     let read = ms(t);
@@ -128,6 +128,25 @@ fn whole(yaml: &Path) {
         w.height,
         (w.width * w.height) as f64 / 1e6
     );
+    // The same cells: the chunks' window against the whole map, away from its edge.
+    if let Some((source, car)) = check {
+        let mut whole = Costmap::new(settings(), Vec::new());
+        whole.set_map(stat);
+        whole.update(&Pose2::IDENTITY, None, &[]);
+        let mut c = Costmap::new(settings(), Vec::new());
+        c.set_chunks(source.clone()).expect("chunks");
+        c.follow_chunks(car).expect("the chunks");
+        c.update(&Pose2::new(car.0, car.1, 0.0), None, &[]);
+        let (g, all) = (c.grid(), whole.grid());
+        let dx = ((g.origin_x - all.origin_x) / 0.25).round() as usize;
+        let dy = ((g.origin_y - all.origin_y) / 0.25).round() as usize;
+        let edge = 14;
+        let differ = (edge..g.height - edge)
+            .flat_map(|y| (edge..g.width - edge).map(move |x| (x, y)))
+            .filter(|&(x, y)| g.get(x, y) != all.get(x + dx, y + dy))
+            .count();
+        println!("  the chunks' window against the whole map: {differ} cells differ");
+    }
 }
 
 fn main() {
@@ -163,7 +182,7 @@ fn main() {
         pool.install(|| {
             one_pass(&source, &cars);
             if let Some(y) = yaml {
-                whole(Path::new(y));
+                whole(Path::new(y), (threads == 1).then_some((&source, cars[0])));
             }
         });
     }

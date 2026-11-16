@@ -56,6 +56,9 @@ pub struct LaneSettings {
     pub snap: (f64, f64),
     /// m along the line where a snapped car's path meets it.
     pub ease: f64,
+    /// A lane route longer than `detour.0` times the straight distance plus `detour.1` m
+    /// is a loop round the block to reach a goal close by: the lattice's instead.
+    pub detour: (f64, f64),
 }
 
 impl Default for LaneSettings {
@@ -70,6 +73,9 @@ impl Default for LaneSettings {
             spacing: 0.25,
             snap: (0.6, 20f64.to_radians()),
             ease: 2.0,
+            // 16 Nov (TODO 175): on the campus tour a replan 10 m short of the goal (off
+            // the road, at 45 degrees to it) gave a 430 m loop of lanes; the car drove it.
+            detour: (2.0, 40.0),
         }
     }
 }
@@ -85,6 +91,8 @@ pub enum Fallback {
     Blocked,
     /// The lattice found no join, at one end or the other.
     JoinFailed,
+    /// The lane route loops far round to a goal close by ([`LaneSettings::detour`]).
+    Detour,
 }
 
 impl Fallback {
@@ -96,6 +104,7 @@ impl Fallback {
             Self::Short => "short",
             Self::Blocked => "blocked",
             Self::JoinFailed => "join_failed",
+            Self::Detour => "detour",
         }
     }
 }
@@ -473,6 +482,11 @@ impl LaneRouter {
             return lattice(Fallback::OffMap, vec![*start, *goal]);
         };
         let route = line.clone();
+        let (times, plus) = self.settings.detour;
+        let straight = (goal.x - start.x).hypot(goal.y - start.y);
+        if arc_lengths(&line).last().copied().unwrap_or(0.0) > times * straight + plus {
+            return lattice(Fallback::Detour, vec![*start, *goal]);
+        }
         // A goal off the costmap: the line as far as it stays on it, the path ending there.
         let mut cut = false;
         if !steps::inside(grid, goal.x, goal.y, EDGE_MARGIN) {

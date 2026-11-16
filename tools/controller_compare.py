@@ -243,6 +243,12 @@ STACKS = {
                  ['planner:=own', 'costmap:=own', 'navigator:=own',
                   'plan_smoothing:=strong', 'map_correction:=slow',
                   'mppi_lag_steer_gamma:=0.05']),
+    # own_calm with our global costmap from the map's chunks round the car and along the
+    # route (costmap_chunks:=auto, TODO 175): the campus's; elsewhere the whole map.
+    'own_calm_chunks': ('tracker', 'mppi_lag',
+                        ['planner:=own', 'costmap:=own', 'navigator:=own',
+                         'plan_smoothing:=strong', 'map_correction:=slow',
+                         'mppi_lag_steer_gamma:=0.05', 'costmap_chunks:=auto']),
     # One stage swapped (TODO 168, which stage sways?): ours with Nav2's MPPI following,
     # and Nav2's with mppi_lag following. Beside own and nav2, the follower's share.
     'own_nav2mppi': ('controller', 'mppi',
@@ -253,7 +259,8 @@ STACKS = {
 STACK_LABELS = {'nav2': 'all-nav2', 'own': 'all-ours', 'own32': 'all-ours-32',
                 'own_slow': 'all-ours-slow', 'own_nav2mppi': 'ours+nav2-mppi',
                 'nav2_mppilag': 'nav2+mppi_lag', 'own_strong': 'all-ours-strong',
-                'own_strong_slow': 'all-ours-strong-slow', 'own_calm': 'all-ours-calm'}
+                'own_strong_slow': 'all-ours-strong-slow', 'own_calm': 'all-ours-calm',
+                'own_calm_chunks': 'all-ours-calm-chunks'}
 BOX = 1.0               # m: the bench's obstacle, a cube (aav_gazebo models/obstacle)
 UP_TIME = 150.0         # s for Gazebo, the EKF, then Nav2, to come up
 SETTLE = 5.0            # s after that, before the first goal
@@ -275,7 +282,7 @@ COLOURS = {'rpp': '#1f6fb4', 'mppi': '#e8590c', 'pure_pursuit': '#2b8a3e', 'stan
            'all-ours-32': '#5f3dc4', 'all-ours-slow': '#e67700',
            'ours+nav2-mppi': '#862e9c', 'nav2+mppi_lag': '#2b8a3e',
            'all-ours-strong': '#c92a2a', 'all-ours-strong-slow': '#e8590c',
-           'all-ours-calm': '#2f9e44'}
+           'all-ours-calm': '#2f9e44', 'all-ours-calm-chunks': '#e67700'}
 # --smoothers: Nav2's smoother keeps the follower's colour; ours is red.
 COLOURS.update({f'{k}+{w}-smoother': (c if w == 'nav2' else '#c92a2a')
                 for k, c in list(COLOURS.items()) for w in vehicle.SMOOTHERS})
@@ -326,6 +333,17 @@ def cpu_seconds(pid):
     return total + (float(days) * 86400.0 if days else 0.0)
 
 
+# Our own nodes whose CPU and memory each leg's notes give, when they run.
+OWN_PROCESSES = ('costmap', 'planner')
+
+
+def rss_mb(pid):
+    """Return a process's resident memory (MB), from ps; 0 if gone."""
+    out = subprocess.run(['ps', '-o', 'rss=', '-p', str(pid)], capture_output=True,
+                         text=True).stdout.strip()
+    return float(out) / 1024.0 if out else 0.0
+
+
 def follower_pid(pgid, name='controller_server'):
     """Return the pid of the run's follower (controller_server, or aav_track's track)."""
     out = subprocess.run(['ps', '-ax', '-o', 'pid=,pgid=,command='], capture_output=True,
@@ -356,6 +374,7 @@ class Recorder(Node):
         self.voxels = []     # (ms a cloud, cubes) from the voxels trial's status
         self.kiss, self.kiss_status, self.local = [], [], []
         self.diffusion = []  # each plan's status, with planner:=diffusion
+        self.own_plans = []  # (total ms, cut) from our planner's status (planner:=own)
         self.last_truth = self.glob = None
         self.lock, self.locked, self.states = None, False, set()
         self.monitor, self.monitor_stops = None, 0
@@ -381,6 +400,8 @@ class Recorder(Node):
                                  self.on_loop, 10)
         self.create_subscription(DiagnosticStatus, '/drivers/nav/diffusion/status',
                                  self.on_diffusion, 10)
+        self.create_subscription(DiagnosticStatus, '/drivers/nav/planner/status',
+                                 self.on_own_plan, 10)
         self.create_subscription(AckermannDriveStamped, '/ego/actuator_cmd', self.on_steering,
                                  10)
         self.create_subscription(TwistStamped, '/cmd_vel_nav', self.on_asked, 10)
@@ -410,6 +431,7 @@ class Recorder(Node):
         self.voxels = []
         self.kiss, self.kiss_status, self.local = [], [], []
         self.diffusion = []
+        self.own_plans = []
         self.locked, self.states, self.monitor_stops = False, set(), 0
         self.fence = set()
         self.recording = True
@@ -463,6 +485,14 @@ class Recorder(Node):
             v = {kv.key: kv.value for kv in msg.values}
             try:
                 self.voxels.append((float(v['ms']), int(v['cubes'])))
+            except (KeyError, ValueError):
+                pass
+
+    def on_own_plan(self, msg):
+        if self.recording:
+            v = {kv.key: kv.value for kv in msg.values}
+            try:
+                self.own_plans.append((float(v['total_ms']), v.get('cut') == 'true'))
             except (KeyError, ValueError):
                 pass
 
@@ -682,6 +712,9 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server
     timeout = LEG_TIME + 4.0 * math.hypot(x - here.x, y - here.y) / speed
     pid = follower_pid(pgid, process)
     cpu0, wall0 = cpu_seconds(pid), time.monotonic()
+    # Our costmap's and planner's own CPU and memory (TODO 175: the chunks against /map).
+    ours = {name: follower_pid(pgid, f'lib/aav_{name}/{name}') for name in OWN_PROCESSES}
+    ours_cpu0 = {name: cpu_seconds(p) for name, p in ours.items()}
     rec.start()
     start = rec.now()
     reached = False
@@ -713,6 +746,16 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server
     end = rec.now()
     rec.recording = False
     cpu1, wall1 = cpu_seconds(pid), time.monotonic()
+    for name, p in ours.items():
+        c0, c1 = ours_cpu0[name], cpu_seconds(p)
+        if None not in (c0, c1) and wall1 > wall0:
+            notes.append(f'{name}: CPU {100.0 * (c1 - c0) / (wall1 - wall0):.0f} %, '
+                         f'{rss_mb(p):.0f} MB')
+    if rec.own_plans:
+        ms = sorted(m for m, _ in rec.own_plans)
+        cut = sum(1 for _, c in rec.own_plans if c)
+        notes.append(f'planner {ms[len(ms) // 2]:.0f} ms a plan median, {ms[-1]:.0f} worst, '
+                     f'{len(ms)} plans, {cut} cut at the costmap edge')
     if rec.locked:
         notes.append('the sensor watchdog stopped Nav2' +
                      (': ' + '; '.join(sorted(rec.states)) if rec.states else ''))

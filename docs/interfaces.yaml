@@ -878,7 +878,7 @@ topics:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [planner]
     sub: []
-    note: Only with planner:=own - one a plan. name planner; level OK (a path) or ERROR (none - message why, values error_code and failures). values search_ms, total_ms (with smoothing), iterations, length_m, cusps, poses, plans and failures since the node started; with lane_route (path:=lane) also how (lane, or lattice and why - off_map, short, blocked, join_failed) and lane_m; cut (true - the goal was off the costmap, so the path ends where the way there leaves it, TODO 175).
+    note: Only with planner:=own - one a plan. name planner; level OK (a path) or ERROR (none - message why, values error_code and failures). values search_ms, total_ms (with smoothing), iterations, length_m, cusps, poses, plans and failures since the node started; with lane_route (path:=lane) also how (lane, or lattice and why - off_map, short, blocked, join_failed, detour) and lane_m; cut (true - the goal was off the costmap, so the path ends where the way there leaves it, TODO 175).
   /drivers/nav/planner/route:
     type: nav_msgs/msg/Path
     pub: [planner]

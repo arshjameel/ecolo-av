@@ -189,3 +189,39 @@ fn off_the_lane_map_a_far_goal_is_a_step_along_the_straight_line() {
     assert!(last.x > 35.0 && last.x <= 40.0, "{last:?}");
     assert_eq!(got.route.len(), 2);
 }
+
+#[test]
+fn a_loop_round_the_block_to_a_goal_close_by_is_the_lattices() {
+    // A one-way U: east along y = 0, north at x = 100, west along y = 30. The goal 33 m
+    // north of the car, on the west road: by the lanes 200 m round, so the lattice's.
+    let one_way = |name: &str, points: Vec<(f64, f64)>| Road {
+        name: name.to_owned(),
+        points,
+        width: 7.0,
+        lanes: 0,
+        oneway: true,
+        edge_inset: EDGE_INSET,
+    };
+    let u = LaneRouter::new(
+        vec![
+            one_way("east", vec![(0.0, 0.0), (100.0, 0.0)]),
+            one_way("north", vec![(100.0, 0.0), (100.0, 30.0)]),
+            one_way("west", vec![(100.0, 30.0), (0.0, 30.0)]),
+        ],
+        LaneSettings::default(),
+    );
+    let planner = scenes::planner(true);
+    let start = Pose::new(10.0, 0.0, 0.0);
+    let goal = Pose::new(20.0, 30.0, std::f64::consts::PI);
+    let got = u
+        .plan(&planner, &free(), &start, &goal, &never)
+        .expect("a path");
+    assert_eq!(got.how, How::Lattice(Fallback::Detour));
+    // Further along the same road, the lane is taken: 160 m by the lanes, 120 m straight.
+    let far = Pose::new(10.0, 30.0, std::f64::consts::PI);
+    let from = Pose::new(90.0, 0.0, 0.0);
+    let got = u
+        .plan(&planner, &free(), &from, &far, &never)
+        .expect("a path");
+    assert!(matches!(got.how, How::Lane(_)), "{:?}", got.how);
+}
