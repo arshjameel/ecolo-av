@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">93 min read · 15 sections</div></header>
+<div class="meta">94 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -588,6 +588,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tr>
 <td><a href="own-planner.html#the-lane-centre-planner-pathlane-16-nov">Lane-centre planner</a> (<code>path:=lane</code>, <code>lane_route:=true</code>; <code>aav_planner</code> <code>lane.rs</code>; <strong>ours' path since 16 Nov</strong>; the <code>university</code> tour in <code>measure controllers</code>)</td>
 <td>TODO 148 and 169, the Fable review's change 7: Autoware's idea, follow the lane's centre and leave it only to go round. Our planner routes along the lane map (Dijkstra on its roads, one-way roads their way), plans the right lane's centre with its corners rounded at the turning radius, and the lattice joins the car and the goal to it (straight when the car is already on its lane: the lattice join backed up on bends). Off the lane map (the lot), blocked or too short: the lattice alone, and the status says why. University Drive, our simulator, 16 Nov: 0.10 m off the lane's centre and never over the centre line (the ramp 0.59 m and 1 %; nothing 1.51 m and 68 %), sway 0.063 m/s² against 0.087-0.093, the same time a leg; legs missed only to a second simulator's load. The swap, 16 Nov, 3 clean runs each on a quiet machine: 9 of 9 legs for all three, the same time (512 s), and the lane centre no worse on any column (sway 0.055 against 0.087-0.090, off the path 0.09 m against 0.11-0.13, left-right changes 5.4 against 8.7-9.6 a 100 m, never over the centre line against 61 % and 1 %): <code>path:=lane</code> is <code>ours</code>' pick</td>
+<td>Ben</td>
+<td>2026-11-16</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="own-planner.html#passing-something-parked-16-nov">Passing something parked</a> (<code>path:=lane</code>'s pass; <code>aav_planner</code> <code>pass.rs</code>, <code>lane_pass:=</code>; the planner's lidar layer to 18 m; the <code>university_box</code> tour, <code>lane_score.py --box</code>; <strong>in <code>ours</code> since 16 Nov</strong>)</td>
+<td>Ben, 16 Nov: "stick to the right side of the lane unless we need to for obstical avoidance". A box on the lane line used to give the whole path to the lattice, which stayed over the centre line long past it. Now only the blocked stretch moves left, by the least that clears it plus 0.5 m, never past the kerb, then back; no room: the lattice, as before. While passing, the road ahead follows and opens its left soft edge, so <code>LaneCritic</code> lets it. University Drive, a 1 m box, 3 runs each: over the centre line 4.8 s against 13.2, back near the lane's centre 9 m after it against 18.5, at most 0.78 m over against 1.20, sway 0.067 against 0.093, no stops or reversals; a person crossing still waited for; the tour with no obstacles unchanged</td>
 <td>Ben</td>
 <td>2026-11-16</td>
 <td>sim</td>

@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-planner.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own planner</h1>
-<div class="meta">26 min read · 11 sections</div></header>
+<div class="meta">32 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -117,7 +117,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#hand-made-maps-no-ros">Hand-made maps (no ROS)</a><a href="#in-our-simulator-8-nov">In our simulator (8 Nov)</a><a href="#hybrid-a-a-second-search-14-nov">Hybrid-A*: a second search (14 Nov)</a><a href="#the-staircase-and-the-strong-smoother-15-nov">The staircase and the strong smoother (15 Nov)</a><a href="#re-timed-in-the-sim-16-nov-todo-152">Re-timed in the sim (16 Nov, TODO 152)</a><a href="#the-lane-centre-planner-pathlane-16-nov">The lane-centre planner (path:=lane, 16 Nov)</a><a href="#far-goals-in-steps-16-nov-todo-175">Far goals in steps (16 Nov, TODO 175)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#hand-made-maps-no-ros">Hand-made maps (no ROS)</a><a href="#in-our-simulator-8-nov">In our simulator (8 Nov)</a><a href="#hybrid-a-a-second-search-14-nov">Hybrid-A*: a second search (14 Nov)</a><a href="#the-staircase-and-the-strong-smoother-15-nov">The staircase and the strong smoother (15 Nov)</a><a href="#re-timed-in-the-sim-16-nov-todo-152">Re-timed in the sim (16 Nov, TODO 152)</a><a href="#the-lane-centre-planner-pathlane-16-nov">The lane-centre planner (path:=lane, 16 Nov)</a><a href="#passing-something-parked-16-nov">Passing something parked (16 Nov)</a><a href="#far-goals-in-steps-16-nov-todo-175">Far goals in steps (16 Nov, TODO 175)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
 <div class="lead"><p>Ben, 8 Nov: move off Nav2 <strong>one piece at a time</strong>, each beside Nav2 until it wins. The
 order: the costmap (<a href="own-costmap.html">done</a>), then <strong>the path planner</strong> (this page), then
 the navigator. Since 14 Nov ours is the simulator's default (<code>stack:=ours</code>; Nav2's
@@ -160,6 +160,11 @@ lattice with <code>planner:=lattice</code> or <code>stack:=stock</code>). Nav2 s
   along the lane map, the lattice only at the ends
   (<a href="#the-lane-centre-planner-pathlane-16-nov">below</a>). <strong><code>ours</code>' path since 16 Nov</strong>
   (3 clean runs each: <a href="#the-swap-16-nov-3-clean-runs-each">the swap</a>).</p>
+</li>
+<li>
+<p><strong>Passing something parked (16 Nov):</strong> only the blocked stretch moves left, then
+  back: over the centre line 4.8 s instead of 13, back in 9 m instead of 18
+  (<a href="#passing-something-parked-16-nov">below</a>). In <code>ours</code>.</p>
 </li>
 </ul>
 </blockquote></div>
@@ -841,12 +846,16 @@ go round": Autoware's idea). A challenger beside the lanes layer (<code>lane_cos
 <td>the lattice from the car to the line 8.1 m on, and from 8.1 m before the end to the goal. A car within 0.6 m and 20° of the line goes straight onto it 2 m on; a goal on its end, straight too</td>
 </tr>
 <tr>
+<td>Something parked on it</td>
+<td>only that stretch moves left, the least that clears it, then back (<a href="#passing-something-parked-16-nov">below</a>)</td>
+</tr>
+<tr>
 <td>Off the map</td>
-<td>the start or goal over 20 m from every road (the lot), a route too short, the line over an obstacle, no join, or a loop round the block (over 2 x the straight distance + 40 m): <strong>the lattice, all of it</strong></td>
+<td>the start or goal over 20 m from every road (the lot), a route too short, the line blocked with no room to pass, no join, or a loop round the block (over 2 x the straight distance + 40 m): <strong>the lattice, all of it</strong></td>
 </tr>
 <tr>
 <td>Says how</td>
-<td><code>/drivers/nav/planner/status</code> <code>how</code>: <code>lane</code> (and <code>lane_m</code>), or <code>lattice: off_map</code>, <code>short</code>, <code>blocked</code>, <code>join_failed</code>, <code>detour</code></td>
+<td><code>/drivers/nav/planner/status</code> <code>how</code>: <code>lane</code> (and <code>lane_m</code>), <code>pass</code> (and <code>pass_m</code>), or <code>lattice: off_map</code>, <code>short</code>, <code>blocked</code>, <code>join_failed</code>, <code>detour</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1034,6 +1043,197 @@ machine's load under 8 (no other simulator running). Results in <code>/tmp/w152<
 <p><strong>No worse on any column: <code>path:=lane</code> is <code>ours</code>' path since 16 Nov</strong> (<code>stacks.yaml</code>;
 <code>decisions.md</code>). Off the lane map (the lot, a three-point turn in the road world) it is
 the lattice, as before. The ramp stays a challenger (<code>lanes:=ramp</code>).</p>
+</section>
+<section class="card"><h2 id="passing-something-parked-16-nov">Passing something parked (16 Nov)</h2>
+<p>Ben, 16 Nov: "stick to the right side of the lane unless we need to for obstical
+avoidance." Autoware's idea again: keep the lane line, move only the blocked stretch.</p>
+<pre class="highlight"><code class="language-text">                 ramp in      hold (blocked + 1 m each side)      ramp out
+ lane line ═════════╗ ╭────────────────────────────────────────╮ ╔═════════════ ▶
+                    ╚═╯                 ▓ the box                 ╚═╝
+           (left by the least shift that fits, plus 0.5 m; never past the left kerb)</code></pre>
+<h3 id="before-the-whole-path-went-to-the-lattice">Before: the whole path went to the lattice</h3>
+<p>A lane line over an obstacle gave <strong>the whole path</strong> to the lattice. It swung 2 m left
+late (0.2-0.7 m before the box), then <strong>stayed over the centre line</strong> until 18 m past
+the box, or near the goal.</p>
+<h3 id="what-changed">What changed</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pass.rs</code> (no ROS, 7 tests)</td>
+<td>each lane-line pose where the car's padded outline doesn't fit: a blocked run, 1 m added each side. The shift: the least left step (every 0.25 m) whose whole ramp-hold-ramp fits, plus 0.5 m when that fits too; at most to the left kerb, less half the car and 0.25 m</td>
+</tr>
+<tr>
+<td>The ramps</td>
+<td>half cosines, curving at most half as sharply as the turning radius; shorter only where the car is already close, never sharper than the radius</td>
+</tr>
+<tr>
+<td>No room</td>
+<td>the other lane taken too, or the goal inside the stretch: the lattice, as before</td>
+</tr>
+<tr>
+<td>The status</td>
+<td><code>how: pass</code>, <code>pass_m</code> (the shift)</td>
+</tr>
+<tr>
+<td>Off switch</td>
+<td><code>lane_pass:=false</code> (sim and navigation launch): the old way</td>
+</tr>
+<tr>
+<td>Sees further</td>
+<td>the planner's copy of the lidar layer marks to <strong>18 m</strong> (the follower's: 12 m). At 12 m the box was planned round only 7-11 m ahead at 2.5 m/s; once the car stood 45 s at the stop zone</td>
+</tr>
+<tr>
+<td>The road ahead</td>
+<td>with a lane map, the behaviour planner reads the status: during a pass the line follows it and the left soft edge opens to the kerb, so <code>LaneCritic</code> doesn't pull the car back in. Not yet driven with <code>lane_map:=</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-scores-our-simulator-16-nov">The scores (our simulator, 16 Nov)</h3>
+<p><code>measure controllers --stacks own_calm_chunks --tours university_box --runs 3 --reversing
+--launch behaviour:=true lane_route:=true</code>: the car starts in University Drive's right
+lane, a 1 m box on the lane's centre 35 m ahead, the goal 90 m on. Scored by
+<code>tools/lane_score.py --box 118.39 -145.69</code>. Load 6-12. Results in <code>/tmp/r3</code> (not in git).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Runs</th>
+<th>Reached</th>
+<th>Over the centre line, most (m)</th>
+<th>Over it (s)</th>
+<th>Left the lane, m before the box</th>
+<th>Back near the lane centre, m after</th>
+<th>Closest to the box (m)</th>
+<th>Sway (m/s²)</th>
+<th>Stops, reversals</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Before (the lattice, 12 m)</td>
+<td>3</td>
+<td>3/3</td>
+<td>1.20 (1.05-1.29)</td>
+<td>13.2 (8.5-22.5)</td>
+<td>0.4</td>
+<td>18.5</td>
+<td>0.84</td>
+<td>0.093</td>
+<td>0, 2</td>
+</tr>
+<tr>
+<td>The lattice, 18 m</td>
+<td>2</td>
+<td>2/2</td>
+<td>1.11</td>
+<td>9.3</td>
+<td>8.3</td>
+<td>13.6</td>
+<td>0.91</td>
+<td>0.096</td>
+<td>0, 0</td>
+</tr>
+<tr>
+<td>Pass, 12 m, clearance 0.3</td>
+<td>3</td>
+<td>3/3</td>
+<td>0.74</td>
+<td>4.0</td>
+<td>0.7</td>
+<td>8.5</td>
+<td>0.46</td>
+<td>0.063</td>
+<td>1, 2 (one run stood 45 s)</td>
+</tr>
+<tr>
+<td><strong>Pass, 18 m, clearance 0.5 (now)</strong></td>
+<td>3</td>
+<td>3/3</td>
+<td><strong>0.78 (0.52-1.03)</strong></td>
+<td><strong>4.8</strong></td>
+<td>3.4</td>
+<td><strong>9.1</strong></td>
+<td>0.58 (0.32-0.83)</td>
+<td><strong>0.067</strong></td>
+<td><strong>0, 0</strong></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it says</th>
+<th>So</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>over the line a third as long, back in half the distance</td>
+<td>the pass leaves the lane only beside the box</td>
+</tr>
+<tr>
+<td>closer to the box (0.58 m, least 0.32)</td>
+<td>it moves the least that clears; the box's place wanders with the EKF (0.35 m)</td>
+</tr>
+<tr>
+<td>clearance 0.3 m came within 0.16 m once (seen far off, the box looked narrower)</td>
+<td>hence 0.5 m</td>
+</tr>
+<tr>
+<td>the first try, 12 m: one run stood 45 s at the stop zone, then backed</td>
+<td>hence 18 m</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>A person crossing</strong> (<code>sim-check --moving-only</code>, the road world): still waited for
+(APPROACH, WAIT, GO, 0.61 m from the walker), goal reached. A parked box there
+(<code>--behaviour-things-only</code>): passed, never waited for, 2.20 m clear. By the sums the
+road world's one lane (4.5 m) has no room for a pass (1.45 m to the kerb, 1.5 m needed),
+so that was the lattice, as before (the status wasn't recorded).</p>
+<p><strong>Nothing worse without obstacles</strong> (<code>--tours university --runs 2</code>, the same stack):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Legs</th>
+<th>Time (s)</th>
+<th>Sway (m/s²)</th>
+<th>Off the path, mean / worst (m)</th>
+<th>Off the lane's centre (m)</th>
+<th>Over the centre line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Before (16 Nov, <a href="own-costmap.html#the-scores">chunks</a>)</td>
+<td>6 of 6</td>
+<td>342</td>
+<td>0.060</td>
+<td>0.09 / 0.57</td>
+<td>0.05-0.17</td>
+<td>0 %</td>
+</tr>
+<tr>
+<td>Now</td>
+<td>6 of 6</td>
+<td>341</td>
+<td>0.056</td>
+<td>0.09 / 0.58</td>
+<td>0.06-0.18</td>
+<td>0 %</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In <code>ours</code> since 16 Nov</strong> (the defaults: <code>lane_pass:=true</code>, the 18 m layer).</p>
+<p><strong>Left:</strong> a car coming the other way (the costmap sees only where it is now); a
+one-lane road (the lattice still leaves the road); a longer box (a parked car) and two in
+a row; <code>lane_map:=</code> with <code>LaneCritic</code> driven; the car.</p>
 </section>
 <section class="card"><h2 id="far-goals-in-steps-16-nov-todo-175">Far goals in steps (16 Nov, TODO 175)</h2>
 <p>With the global costmap made of chunks (<a href="own-costmap.html#from-map-chunks-on-every-core-16-nov-todo-175-195">own-costmap.md</a>),

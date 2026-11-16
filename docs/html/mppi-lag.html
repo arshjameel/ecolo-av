@@ -7,7 +7,7 @@
 <!-- Generated from docs/mppi-lag.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>MPPI that knows the lag</h1>
-<div class="meta">43 min read · 16 sections</div></header>
+<div class="meta">44 min read · 16 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -1679,7 +1679,7 @@ cd ros/drivers/aav_mppi_lag &amp;&amp; cargo test --release -p mppi-lag</code></
 </tr>
 <tr>
 <td>The lane's soft edge, opened</td>
-<td>the behaviour planner will open a soft edge to pass a parked car; <code>LaneCritic</code> then reads the wider edge as sent</td>
+<td>✅ 16 Nov: while our planner passes something parked (status <code>how: pass</code>), the road ahead follows the pass and its left soft edge opens to the kerb there; <code>LaneCritic</code> reads it as sent (<a href="own-planner.html#passing-something-parked-16-nov">own-planner.md</a>). Not yet driven with <code>lane_map:=</code> on</td>
 </tr>
 </tbody>
 </table></div>

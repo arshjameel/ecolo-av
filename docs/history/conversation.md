@@ -1671,6 +1671,16 @@ The accelerator has no position sensor. IMU and GPS aren't on the ESP32, so its 
 A: Two EGM reviews found the first plan bigger than the question. Ben chose the second review's order,
 with the graphs in `hw_panel`: `docs/designs/2026-11-07_esp32-debug-link_brief.md`, "The plan now".
 
+## 16 November: keep right
+
+### "yes we want to know about lanes and yes we want to stick to the right side of the lane unless we need to for obstical avoidance."
+
+On a mapped road `ours` already planned the right lane's centre (`path:=lane`). But a box
+parked on that line gave the whole path to the lattice, which stayed over the centre
+line 18 m past it. Now only the blocked stretch moves left, the least that clears it,
+then back; a person or moving thing is still waited for (the behaviour planner). Scores:
+[own-planner.md](../own-planner.md#passing-something-parked-16-nov); TODO 208.
+
 ## Open threads
 
 Checked 13 Nov against the code, `TODO.md`, the audits and the pull requests. **Closed**, **Folded** and **Dead** threads keep their old text, with what ended them.

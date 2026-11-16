@@ -44,6 +44,7 @@ That also sets controller_server's `speed_limit_topic` to `/drivers/nav/speed_li
 | in | `/drivers/point/plan` | `nav_msgs/Path` (latched): a drive to a point's line; while it runs it is the plan (`active_plan`) |
 | in | `/sensors/lidar/scan` | `sensor_msgs/LaserScan` (not with `voxels:=true`) |
 | in | `/navigate_to_pose/_action/status` | `action_msgs/GoalStatusArray` |
+| in | `/drivers/nav/planner/status` | `diagnostic_msgs/DiagnosticStatus`: our planner's `how`; while it says `pass`, with `lane_map` the road ahead follows the pass and its left soft edge opens to the kerb there (Ben, 16 Nov) |
 | out | `/drivers/nav/speed_limit` | `nav2_msgs/SpeedLimit`, 20 Hz, absolute m/s |
 | out | `/drivers/nav/behaviour/state` | `diagnostic_msgs/DiagnosticStatus`, 5 Hz: state, reason, cap, left, warnings |
 | in | `/world/things` | `aav_interfaces/Things` (odom), with `things`: what moves ahead |

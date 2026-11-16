@@ -28,6 +28,9 @@ lattice with `planner:=lattice` or `stack:=stock`). Nav2 stays on the car.
 >   along the lane map, the lattice only at the ends
 >   ([below](#the-lane-centre-planner-pathlane-16-nov)). **`ours`' path since 16 Nov**
 >   (3 clean runs each: [the swap](#the-swap-16-nov-3-clean-runs-each)).
+> - **Passing something parked (16 Nov):** only the blocked stretch moves left, then
+>   back: over the centre line 4.8 s instead of 13, back in 9 m instead of 18
+>   ([below](#passing-something-parked-16-nov)). In `ours`.
 
 ## How it fits
 
@@ -327,8 +330,9 @@ go round": Autoware's idea). A challenger beside the lanes layer (`lane_costs:=t
 | The route | Dijkstra over the road segments, never turning back on one; one-way roads only their way |
 | The line | each segment moved onto the right lane's centre (`Road::lane`, the same as the lanes layer), corners rounded at the turning radius (3.6 m) |
 | The ends | the lattice from the car to the line 8.1 m on, and from 8.1 m before the end to the goal. A car within 0.6 m and 20° of the line goes straight onto it 2 m on; a goal on its end, straight too |
-| Off the map | the start or goal over 20 m from every road (the lot), a route too short, the line over an obstacle, no join, or a loop round the block (over 2 x the straight distance + 40 m): **the lattice, all of it** |
-| Says how | `/drivers/nav/planner/status` `how`: `lane` (and `lane_m`), or `lattice: off_map`, `short`, `blocked`, `join_failed`, `detour` |
+| Something parked on it | only that stretch moves left, the least that clears it, then back ([below](#passing-something-parked-16-nov)) |
+| Off the map | the start or goal over 20 m from every road (the lot), a route too short, the line blocked with no room to pass, no join, or a loop round the block (over 2 x the straight distance + 40 m): **the lattice, all of it** |
+| Says how | `/drivers/nav/planner/status` `how`: `lane` (and `lane_m`), `pass` (and `pass_m`), or `lattice: off_map`, `short`, `blocked`, `join_failed`, `detour` |
 
 | Try it | Run |
 |---|---|
@@ -394,6 +398,76 @@ Each leg's time, every run: 42-44, 60 and 68-69 s in all three (the ramp's first
 **No worse on any column: `path:=lane` is `ours`' path since 16 Nov** (`stacks.yaml`;
 `decisions.md`). Off the lane map (the lot, a three-point turn in the road world) it is
 the lattice, as before. The ramp stays a challenger (`lanes:=ramp`).
+
+## Passing something parked (16 Nov)
+
+Ben, 16 Nov: "stick to the right side of the lane unless we need to for obstical
+avoidance." Autoware's idea again: keep the lane line, move only the blocked stretch.
+
+```text
+                 ramp in      hold (blocked + 1 m each side)      ramp out
+ lane line ═════════╗ ╭────────────────────────────────────────╮ ╔═════════════ ▶
+                    ╚═╯                 ▓ the box                 ╚═╝
+           (left by the least shift that fits, plus 0.5 m; never past the left kerb)
+```
+
+### Before: the whole path went to the lattice
+
+A lane line over an obstacle gave **the whole path** to the lattice. It swung 2 m left
+late (0.2-0.7 m before the box), then **stayed over the centre line** until 18 m past
+the box, or near the goal.
+
+### What changed
+
+| Part | What |
+|---|---|
+| `pass.rs` (no ROS, 7 tests) | each lane-line pose where the car's padded outline doesn't fit: a blocked run, 1 m added each side. The shift: the least left step (every 0.25 m) whose whole ramp-hold-ramp fits, plus 0.5 m when that fits too; at most to the left kerb, less half the car and 0.25 m |
+| The ramps | half cosines, curving at most half as sharply as the turning radius; shorter only where the car is already close, never sharper than the radius |
+| No room | the other lane taken too, or the goal inside the stretch: the lattice, as before |
+| The status | `how: pass`, `pass_m` (the shift) |
+| Off switch | `lane_pass:=false` (sim and navigation launch): the old way |
+| Sees further | the planner's copy of the lidar layer marks to **18 m** (the follower's: 12 m). At 12 m the box was planned round only 7-11 m ahead at 2.5 m/s; once the car stood 45 s at the stop zone |
+| The road ahead | with a lane map, the behaviour planner reads the status: during a pass the line follows it and the left soft edge opens to the kerb, so `LaneCritic` doesn't pull the car back in. Not yet driven with `lane_map:=` |
+
+### The scores (our simulator, 16 Nov)
+
+`measure controllers --stacks own_calm_chunks --tours university_box --runs 3 --reversing
+--launch behaviour:=true lane_route:=true`: the car starts in University Drive's right
+lane, a 1 m box on the lane's centre 35 m ahead, the goal 90 m on. Scored by
+`tools/lane_score.py --box 118.39 -145.69`. Load 6-12. Results in `/tmp/r3` (not in git).
+
+| Variant | Runs | Reached | Over the centre line, most (m) | Over it (s) | Left the lane, m before the box | Back near the lane centre, m after | Closest to the box (m) | Sway (m/s²) | Stops, reversals |
+|---|---|---|---|---|---|---|---|---|---|
+| Before (the lattice, 12 m) | 3 | 3/3 | 1.20 (1.05-1.29) | 13.2 (8.5-22.5) | 0.4 | 18.5 | 0.84 | 0.093 | 0, 2 |
+| The lattice, 18 m | 2 | 2/2 | 1.11 | 9.3 | 8.3 | 13.6 | 0.91 | 0.096 | 0, 0 |
+| Pass, 12 m, clearance 0.3 | 3 | 3/3 | 0.74 | 4.0 | 0.7 | 8.5 | 0.46 | 0.063 | 1, 2 (one run stood 45 s) |
+| **Pass, 18 m, clearance 0.5 (now)** | 3 | 3/3 | **0.78 (0.52-1.03)** | **4.8** | 3.4 | **9.1** | 0.58 (0.32-0.83) | **0.067** | **0, 0** |
+
+| What it says | So |
+|---|---|
+| over the line a third as long, back in half the distance | the pass leaves the lane only beside the box |
+| closer to the box (0.58 m, least 0.32) | it moves the least that clears; the box's place wanders with the EKF (0.35 m) |
+| clearance 0.3 m came within 0.16 m once (seen far off, the box looked narrower) | hence 0.5 m |
+| the first try, 12 m: one run stood 45 s at the stop zone, then backed | hence 18 m |
+
+**A person crossing** (`sim-check --moving-only`, the road world): still waited for
+(APPROACH, WAIT, GO, 0.61 m from the walker), goal reached. A parked box there
+(`--behaviour-things-only`): passed, never waited for, 2.20 m clear. By the sums the
+road world's one lane (4.5 m) has no room for a pass (1.45 m to the kerb, 1.5 m needed),
+so that was the lattice, as before (the status wasn't recorded).
+
+**Nothing worse without obstacles** (`--tours university --runs 2`, the same stack):
+
+| | Legs | Time (s) | Sway (m/s²) | Off the path, mean / worst (m) | Off the lane's centre (m) | Over the centre line |
+|---|---|---|---|---|---|---|
+| Before (16 Nov, [chunks](own-costmap.md#the-scores)) | 6 of 6 | 342 | 0.060 | 0.09 / 0.57 | 0.05-0.17 | 0 % |
+| Now | 6 of 6 | 341 | 0.056 | 0.09 / 0.58 | 0.06-0.18 | 0 % |
+
+**In `ours` since 16 Nov** (the defaults: `lane_pass:=true`, the 18 m layer).
+
+**Left:** a car coming the other way (the costmap sees only where it is now); a
+one-lane road (the lattice still leaves the road); a longer box (a parked car) and two in
+a row; `lane_map:=` with `LaneCritic` driven; the car.
 
 ## Far goals in steps (16 Nov, TODO 175)
 

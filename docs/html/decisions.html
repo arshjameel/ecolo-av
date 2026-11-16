@@ -7,7 +7,7 @@
 <!-- Generated from docs/decisions.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Decisions and open questions</h1>
-<div class="meta">57 min read · 16 sections</div></header>
+<div class="meta">58 min read · 16 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -962,6 +962,11 @@ answer.</p>
 <td>16 Nov</td>
 <td><strong>The sim's <code>ours</code> builds its global costmap from map chunks</strong> (<code>costmap:=ours_chunks</code>, TODO 175): only the chunks round the car and along the route, each read and inflated on its own core (rayon); a goal off them planned in steps. Lot, campus and University Drive, 2 runs each: 20/20 legs as the whole map, the same time and sway, the costmap 474 to 145 MB. Nav2's costmap, <code>costmap:=ours</code>, the champions and the car are unchanged (<a href="own-costmap.html#from-map-chunks-on-every-core-16-nov-todo-175-195">why</a>)</td>
 <td>Ben: "Lets turn on chunking for sure"; no worse on legs and driving</td>
+</tr>
+<tr>
+<td>16 Nov</td>
+<td><strong><code>ours</code> passes something parked on the lane</strong> (TODO 208): only the blocked stretch moves left, the least that clears it plus 0.5 m, never past the kerb, then back; the planner's lidar layer marks to 18 m (was 12). University Drive with a 1 m box, 3 runs each: over the centre line 4.8 s against 13.2, back in 9 m against 18.5, no stops; a person crossing still waited for; no worse with no obstacles. <code>lane_pass:=false</code> keeps the old way (<a href="own-planner.html#passing-something-parked-16-nov">why</a>)</td>
+<td>Ben: "stick to the right side of the lane unless we need to for obstical avoidance"</td>
 </tr>
 </tbody>
 </table></div>

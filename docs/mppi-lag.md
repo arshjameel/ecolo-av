@@ -708,7 +708,7 @@ cd ros/drivers/aav_mppi_lag && cargo test --release -p mppi-lag
 | The goal at speed, the CPU | passes a goal at 2.5 m/s; twice Nav2's MPPI's CPU (8 Nov; TODO 152) |
 | A gap in odometry | gives up after 1 s, as `aav_track`; Nav2's MPPI drives on: decide which is right |
 | A live swap | it is its own node: `tracker:=` at launch only |
-| The lane's soft edge, opened | the behaviour planner will open a soft edge to pass a parked car; `LaneCritic` then reads the wider edge as sent |
+| The lane's soft edge, opened | ✅ 16 Nov: while our planner passes something parked (status `how: pass`), the road ahead follows the pass and its left soft edge opens to the kerb there; `LaneCritic` reads it as sent ([own-planner.md](own-planner.md#passing-something-parked-16-nov)). Not yet driven with `lane_map:=` on |
 
 Code: [`ros/drivers/aav_mppi_lag`](../ros/drivers/aav_mppi_lag/README.md). Ported from
 Nav2 (Apache-2.0): [PROVENANCE](../ros/drivers/aav_mppi_lag/PROVENANCE.md).
