@@ -331,6 +331,33 @@ def test_map_correction_newest_turns_the_followers_slew_off():
                               map_correction='slow')['map_correction'] == 'slow'
 
 
+def test_every_model_of_the_car_gets_the_speed_loop_asked_for():
+    # TODO 163: the follower and the behaviour planner predict the loop the car runs.
+    for tracker, name, key in (('mppi_lag', 'mppi_lag', 'speed_loop'),
+                               ('mpc_lag', 'track', 'mpc_lag.speed_loop'),
+                               ('mpc_lag_rs', 'mpc_lag_rs', 'mpc_lag.speed_loop')):
+        assert given(nav_nodes(tracker=tracker)[name])[key] == 'default', tracker
+        firm = nav_nodes(tracker=tracker, speed_loop='firm', behaviour='true')
+        assert given(firm[name])[key] == 'firm', tracker
+        assert given(firm['behaviour'])['speed_loop'] == 'firm'
+    # mppi_lag runs the LQI on the shared model; the two MPCs can't, so the launch says so.
+    assert given(nav_nodes(tracker='mppi_lag', speed_loop='lqi')['mppi_lag'])[
+        'speed_loop'] == 'lqi'
+    for tracker in ('mpc_lag', 'mpc_lag_rs'):
+        with pytest.raises(ValueError, match='PI'):
+            nav_nodes(tracker=tracker, speed_loop='lqi')
+    with pytest.raises(ValueError, match='speed_loop:=fast'):
+        nav_nodes(tracker='mppi_lag', speed_loop='fast')
+
+
+def test_the_sim_and_the_bench_pass_their_speed_loop_on():
+    assert sent_to_navigation(SIM)['speed_loop'] == 'default'
+    assert sent_to_navigation(SIM, speed_loop='firm')['speed_loop'] == 'firm'
+    assert sent_to_navigation(BENCH, nav='true', speed_loop='smooth')['speed_loop'] == 'smooth'
+    with pytest.raises(ValueError, match='speed_loop:=fast'):
+        sent_to_navigation(SIM, speed_loop='fast')
+
+
 def test_the_steering_gamma_and_the_strong_smoother_reach_their_nodes():
     # TODO 168: mppi_lag_steer_gamma:= gives mppi_lag its steer_gamma (none: gamma's);
     # plan_smoothing:=strong gives our planner the smoother's weights.

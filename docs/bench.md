@@ -46,7 +46,7 @@ don't.
 | `plan_around` | `true` | Nav2 plans round what the radar and lidar see; `false`: the car stops for it |
 | `reversing` | `true` | Nav2 may drive backwards |
 | `bridge` | `rust` | which `spine_bridge`: `rust` or `python` |
-| `speed_loop` | `default` | `spine_sim`'s speed loop: `default` or `smooth` ([The car as a linear model](vehicle-model.md)) |
+| `speed_loop` | `default` | `spine_sim`'s speed loop: `default`, `smooth`, `lqi` or `firm` ([The car as a linear model](vehicle-model.md)); ego's trace and a lag-aware follower assume the same (TODO 163) |
 
 `start_y`, `start_yaw` and `bend_radius` are under [Lane keeping](#lane-keeping).
 

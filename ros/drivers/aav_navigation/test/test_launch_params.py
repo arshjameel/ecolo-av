@@ -23,6 +23,23 @@ LAUNCH_EXTRA = {'use_sim_time', 'costmap_topic', 'map_correction'}
 TRACK_EXTRA = {'tracker', 'use_sim_time', 'road_ahead_topic', 'live_swap', 'map_correction'}
 
 
+def flat(params, prefix=''):
+    """Return a file's parameter names as ROS sees them: nested blocks as `a.b`."""
+    names = set()
+    for key, value in params.items():
+        if isinstance(value, dict):
+            names |= flat(value, f'{prefix}{key}.')
+        else:
+            names.add(prefix + key)
+    return names
+
+
+def test_flat_names_the_nested_parameters():
+    # mpc_lag.speed_loop (TODO 163) is the launch's: a nested key in a file must count.
+    assert flat({'a': 1, 'mpc_lag': {'speed_loop': 'x', 'q': [1]}}) == \
+        {'a', 'mpc_lag.speed_loop', 'mpc_lag.q'}
+
+
 def test_mppi_lag_yaml_sets_nothing_the_launch_sets():
     own = yaml.safe_load((ROS / 'drivers' / 'aav_mppi_lag' / 'config' / 'mppi_lag.yaml')
                          .read_text())['mppi_lag']['ros__parameters']
@@ -31,7 +48,7 @@ def test_mppi_lag_yaml_sets_nothing_the_launch_sets():
     ego = yaml.safe_load((ROS / 'ego' / 'aav_ego' / 'config' / 'ego.yaml')
                          .read_text())['ego']['ros__parameters']
     launch = set(vehicle.mppi_lag_params(nav2, cfg, ego)) | LAUNCH_EXTRA
-    both = sorted(set(own) & launch)
+    both = sorted(flat(own) & launch)
     assert not both, f'config/mppi_lag.yaml sets what the launch sets (the file wins): {both}'
 
 
@@ -43,7 +60,7 @@ def test_track_yaml_sets_nothing_the_launch_sets():
     ego = yaml.safe_load((ROS / 'ego' / 'aav_ego' / 'config' / 'ego.yaml')
                          .read_text())['ego']['ros__parameters']
     launch = set(vehicle.track_params(nav2, cfg, ego)) | TRACK_EXTRA
-    both = sorted(set(own) & launch)
+    both = sorted(flat(own) & launch)
     assert not both, f'config/track.yaml sets what the launch sets (the file wins): {both}'
 
 
@@ -56,7 +73,7 @@ def test_mpc_lag_rs_yaml_sets_nothing_the_launch_sets_and_races_on_the_pythons_g
                          .read_text())['ego']['ros__parameters']
     extra = {'use_sim_time', 'map_correction'}
     launch = set(vehicle.mpc_lag_rs_params(nav2, cfg, ego)) | extra
-    both = sorted(set(own) & launch)
+    both = sorted(flat(own) & launch)
     assert not both, f'config/mpc_lag_rs.yaml sets what the launch sets (the file wins): {both}'
     # A challenger beside the Python mpc_lag: the same gains, the same rates.
     track = yaml.safe_load((ROS / 'drivers' / 'aav_track' / 'config' / 'track.yaml')

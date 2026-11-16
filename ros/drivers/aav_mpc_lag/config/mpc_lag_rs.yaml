@@ -21,4 +21,5 @@ mpc_lag_rs:
       r_speed: 0.5            # on each tick's change of set speed
       latency: 0.1            # s the ROS chain adds before the actuators: whole ticks,
                               # added to the dead times
-      speed_loop: default     # the spine's speed loop it predicts: default or smooth
+      # speed_loop: the spine's profile it predicts comes from the launch (sim.launch.py
+      # speed_loop:=, vehicle.mpc_lag_rs_params), never from here: this file would win.

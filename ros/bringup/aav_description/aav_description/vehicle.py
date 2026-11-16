@@ -19,6 +19,7 @@ The launch files use this so the car's measurements live in one file:
     vehicle.track_params(nav2, cfg, ego, max_speed)  # aav_track: a trial tracker (tracker:=)
     vehicle.mppi_lag_params(nav2, cfg, ego, max_speed, reversing, lane)  # aav_mppi_lag's
     vehicle.mpc_lag_rs_params(nav2, cfg, ego, max_speed)  # aav_mpc_lag's (tracker:=mpc_lag_rs)
+    vehicle.check_speed_loop(name, tracker)  # speed_loop:=, the profile every car model assumes
     vehicle.centre_of_mass(v, front, rear, front_lifted, lift)   # from the scales (M7, M7b)
     vehicle.wheel_angles(v, centre)  # each front wheel's angle for a centre (bicycle) angle
     vehicle.centre_angle(v, inner, outer)       # the reverse: from M5's two measured angles
@@ -29,6 +30,7 @@ import copy
 import math
 import os
 
+from aav_description.car_model import SPEED_LOOP_PROFILES
 import yaml
 
 
@@ -419,6 +421,31 @@ def check_ego_impl(impl):
     return name
 
 
+# The spine's speed loop profile the car runs (sim.launch.py and bench.launch.py
+# speed_loop:=): spine-core's SpeedLoopProfile, car_model.SPEED_LOOP_PROFILES. Every node
+# with a model of the car predicts with the one the simulated car runs (TODO 163): ego's
+# trace (trace_speed_loop), the behaviour planner's stopping law, aav_track's mpc_lag and
+# aav_mpc_lag (mpc_lag.speed_loop), mppi_lag (speed_loop). The car's spine runs default.
+DEFAULT_SPEED_LOOP = 'default'
+# Trackers whose model has only the PI's law: they can't predict the LQI.
+PI_ONLY_TRACKERS = ('mpc_lag', 'mpc_lag_rs')
+
+
+def check_speed_loop(name, tracker=None):
+    """
+    Return a speed loop profile's name (lower case), or raise ValueError saying what to pick.
+
+    tracker: the path follower that will predict it; mpc_lag and mpc_lag_rs refuse the LQI.
+    """
+    profile = str(name).strip().lower()
+    if profile not in SPEED_LOOP_PROFILES:
+        raise ValueError(f'speed_loop:={name}: pick one of {", ".join(SPEED_LOOP_PROFILES)}')
+    if tracker in PI_ONLY_TRACKERS and SPEED_LOOP_PROFILES[profile].lqi is not None:
+        raise ValueError(f"speed_loop:={profile}: tracker:={tracker} models the PI's "
+                         'profiles only (default, smooth, firm)')
+    return profile
+
+
 def smoother_params(cfg, ego, vehicle_yaml):
     """
     Return car_smoother's car parameters (smoother:=own), beside nav2.yaml's own block.
@@ -666,7 +693,7 @@ def lattice_problems(meta, v, resolution):
     return out
 
 
-def track_params(nav2, cfg, ego=None, max_speed=None):
+def track_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_LOOP):
     """
     Return aav_track's parameters: the same speed and "done" as Nav2's controllers.
 
@@ -674,7 +701,7 @@ def track_params(nav2, cfg, ego=None, max_speed=None):
     cfg: vehicle.yaml (load()); ego: ego.yaml's ros__parameters, for its steering rate.
     The cruise speed is RPP's desired_linear_vel, or `max_speed` (sim_speed:=); the goal
     and progress checks are controller_server's; speeding up and slowing down are the
-    velocity smoother's.
+    velocity smoother's. `speed_loop`: the profile mpc_lag predicts (check_speed_loop).
     """
     server = nav2['controller_server']['ros__parameters']
     goal = server[server['goal_checker_plugins'][0]]
@@ -706,6 +733,7 @@ def track_params(nav2, cfg, ego=None, max_speed=None):
         'max_steering_angle': float(v['max_steering_angle']),
         'max_steering_rate': rate,
         'stamped': bool(server.get('enable_stamped_cmd_vel', False)),
+        'mpc_lag.speed_loop': check_speed_loop(speed_loop),
     }
 
 
@@ -719,7 +747,7 @@ MPPI_LAG_ACTUATORS = ('max_accel', 'throttle_deadband', 'throttle_lag', 'max_bra
 MPC_LAG_RS_UNUSED = ('lookahead_min', 'lookahead_max', 'lookahead_time')
 
 
-def mpc_lag_rs_params(nav2, cfg, ego=None, max_speed=None):
+def mpc_lag_rs_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_LOOP):
     """
     Return aav_mpc_lag's parameters: aav_track's (track_params), and the car's actuators.
 
@@ -727,7 +755,7 @@ def mpc_lag_rs_params(nav2, cfg, ego=None, max_speed=None):
     on the same terms; vehicle.yaml's actuators as actuators.<key> (MPPI_LAG_ACTUATORS, the
     dead times 0 when unset), where aav_track reads the file itself.
     """
-    params = {k: v for k, v in track_params(nav2, cfg, ego, max_speed).items()
+    params = {k: v for k, v in track_params(nav2, cfg, ego, max_speed, speed_loop).items()
               if k not in MPC_LAG_RS_UNUSED}
     act = cfg['actuators']
     params.update({f'actuators.{k}': float(act.get(k, 0.0)) for k in MPPI_LAG_ACTUATORS})
@@ -770,7 +798,8 @@ def costmap_timeout(server, costmap):
     return round(wait + 1.0 / float(costmap.get('publish_frequency', 1.0)), 3)
 
 
-def mppi_lag_params(nav2, cfg, ego=None, max_speed=None, reversing=False, lane=False):
+def mppi_lag_params(nav2, cfg, ego=None, max_speed=None, reversing=False, lane=False,
+                    speed_loop=DEFAULT_SPEED_LOOP):
     """
     Return aav_mppi_lag's parameters: Nav2's MPPI block, its checks, and the car's lag.
 
@@ -786,6 +815,7 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None, reversing=False, lane=F
     `lane` (behaviour:=true with a lane map: the road ahead has edges) reads
     `ROAD_AHEAD_TOPIC` and adds our LaneCritic (`LANE_CRITIC`) to the critics; without it
     the topic is empty and the critics are Nav2's, as before.
+    `speed_loop`: the spine's profile its model predicts (check_speed_loop).
     """
     server = nav2['controller_server']['ros__parameters']
     mppi = server['MPPI']
@@ -829,6 +859,7 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None, reversing=False, lane=F
         # controller waits costmap_update_timeout for a current one; ours sees the
         # costmap only when it is published, so one publish period more.
         'costmap_timeout': costmap_timeout(server, local),
+        'speed_loop': check_speed_loop(speed_loop),
     })
     for key in MPPI_LAG_ACTUATORS:
         out[f'actuators.{key}'] = float(act.get(key, 0.0))
@@ -988,7 +1019,8 @@ def costmap_params(tuned, v, radar=False, camera=False):
     return out
 
 
-def behaviour_params(nav2, cfg, ego=None, max_speed=None, controller=DEFAULT_CONTROLLER):
+def behaviour_params(nav2, cfg, ego=None, max_speed=None, controller=DEFAULT_CONTROLLER,
+                     speed_loop=DEFAULT_SPEED_LOOP):
     """
     Return aav_behaviour's parameters: the cap's top, the lane ahead, ego's limits.
 
@@ -996,6 +1028,7 @@ def behaviour_params(nav2, cfg, ego=None, max_speed=None, controller=DEFAULT_CON
     or `max_speed`, sim_speed:=): a higher cap would raise MPPI's envelope. front and
     half_width are the body's front bumper and half its width plus the stop zone's margin;
     stop_gap is the stop zone's reach (STOP_ZONE_AHEAD): the obstacle's final stop.
+    speed_loop: the spine's profile the stopping law's lag comes from (check_speed_loop).
     """
     server = nav2['controller_server']['ros__parameters']
     if max_speed:
@@ -1009,7 +1042,8 @@ def behaviour_params(nav2, cfg, ego=None, max_speed=None, controller=DEFAULT_CON
     out = {'base_speed': base,
            'front': float(body['length'] - body['rear_overhang']),
            'half_width': float(body['width'] / 2.0 + STOP_ZONE_MARGIN),
-           'stop_gap': float(STOP_ZONE_AHEAD)}
+           'stop_gap': float(STOP_ZONE_AHEAD),
+           'speed_loop': check_speed_loop(speed_loop)}
     for key in ('max_deceleration', 'max_jerk'):
         if ego and key in ego:
             out[key] = float(ego[key])

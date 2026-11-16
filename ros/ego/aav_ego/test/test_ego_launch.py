@@ -80,3 +80,34 @@ def test_ego_impl_rust_without_look_ahead():
 def test_ego_impl_is_checked():
     with pytest.raises(ValueError, match='ego_impl'):
         nodes(ego_impl='cpp')
+
+
+def last_value(node, name):
+    """Return the last value a Python node's parameter dicts give `name` (the one that wins)."""
+    context = LaunchContext()
+
+    def text(part):   # launch_ros keeps names and text values as tuples of substitutions
+        if isinstance(part, tuple):
+            return ''.join(s.perform(context) for s in part)
+        return part
+
+    import yaml
+    found = [text(value) for p in node._Node__parameters if isinstance(p, dict)
+             for key, value in p.items() if text(key) == name]
+    # A text value comes back as YAML ('firm\n...\n').
+    return yaml.safe_load(found[-1]) if found else None
+
+
+def test_speed_loop_reaches_the_trace_in_either_ego():
+    # TODO 163: the trace's twin assumes the loop the car runs; default unchanged.
+    ego, _ = nodes()
+    assert last_value(ego, 'trace_speed_loop') == 'default'
+    ego, _ = nodes(speed_loop='firm')
+    assert last_value(ego, 'trace_speed_loop') == 'firm'
+    (process,) = nodes(ego_impl='rust', speed_loop='smooth')
+    assert rust_params(process)['/ego']['ros__parameters']['trace_speed_loop'] == 'smooth'
+
+
+def test_an_unknown_speed_loop_is_refused():
+    with pytest.raises(ValueError, match='speed_loop'):
+        nodes(speed_loop='fast')

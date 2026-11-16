@@ -3,6 +3,7 @@ ego: /control/cmd_vel (TwistStamped from twist_mux) -> /ego/actuator_cmd (Ackerm
 
   ros2 launch aav_ego ego.launch.py [use_sim_time:=false] [max_speed:=0.3] [look_ahead:=true]
                                 [road_ahead:=false] [ego_impl:=python]
+                                [speed_loop:=default]
 
 ego_impl (python): rust runs aav_ego_rs instead, a challenger: ego and look_ahead in one
 Rust process, with the same node names, topics, parameters and answers (TODO 185). Its
@@ -11,6 +12,10 @@ and the body outline, which the Python nodes read themselves.
 
 road_ahead (false): true holds Nav2's commands to /world/road_ahead's speed limit
 (ego_node.py, road_limit.py); sim.launch.py sets it with behaviour:=true, its writer.
+
+speed_loop (default): the spine's speed loop profile the car runs (default, smooth, lqi,
+firm), which the trace's twin assumes (trace_speed_loop, over ego.yaml's); sim.launch.py
+and bench.launch.py pass theirs on (TODO 163). An unknown name is refused.
 
 look_ahead (true) also starts look_ahead: the squiggly line's numbers for the screens
 (/ego/plan_ahead, /ego/ahead; look_ahead_node.py). It only listens and publishes those two.
@@ -67,6 +72,8 @@ def ego_node(context):
             raise ValueError(f'sim_max_speed:={sim} must be above 0 and at most '
                              f'{SIM_MAX_SPEED} m/s')
         params.append({'max_speed': limit})
+    params.append({'trace_speed_loop': vehicle.check_speed_loop(
+        context.launch_configurations.get('speed_loop', vehicle.DEFAULT_SPEED_LOOP))})
     if context.launch_configurations.get('road_ahead', 'false').strip().lower() == 'true':
         params.append({'road_ahead': True})
     look_ahead = context.launch_configurations.get('look_ahead', 'true').strip().lower() == 'true'
@@ -118,5 +125,8 @@ def generate_launch_description():
         DeclareLaunchArgument('ego_impl', default_value=vehicle.DEFAULT_EGO_IMPL,
                               description='python or rust: which ego runs (aav_ego, or '
                                           'aav_ego_rs: ego and look_ahead in one process)'),
+        DeclareLaunchArgument('speed_loop', default_value=vehicle.DEFAULT_SPEED_LOOP,
+                              description="the spine's speed loop profile the car runs "
+                                          '(default, smooth, lqi, firm): the trace assumes it'),
         OpaqueFunction(function=ego_node),
     ])

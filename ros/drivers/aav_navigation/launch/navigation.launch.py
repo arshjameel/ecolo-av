@@ -9,7 +9,7 @@ Nav2 as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out to tw
       [diffusion_python:=] [diffusion_smoothing:=gear]
       [plan_around:=true] [behaviour:=false] [things:=false] [replan_hz:=1.0]
       [tracker:=none] [costmap:=nav2] [navigator:=nav2] [smoother:=nav2] [live_swap:=false]
-      [map_correction:=newest]
+      [map_correction:=newest] [speed_loop:=default]
       [amcl:=false]
       [amcl_x:=0.0] [amcl_y:=0.0] [amcl_yaw:=0.0] [amcl_map:=]
       [use_sim_time:=false]
@@ -120,7 +120,12 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           map -> odom. Given to the follower as its bool map_correction.
                           slow is a challenger: it won offline, not yet in the
                           simulator (15 Nov)
-  amcl:=true              stock nav2_amcl on the map and /sensors/lidar/scan (so only with
+  speed_loop:=firm        the spine's speed loop profile the car runs (default, smooth,
+                          lqi, firm): the follower's model (mppi_lag, mpc_lag,
+                          mpc_lag_rs; the two MPCs refuse lqi) and the behaviour planner's
+                          stopping law assume it (TODO 163). sim.launch.py and
+                          bench.launch.py pass theirs; default: the car's spine
+  amcl:=true             stock nav2_amcl on the map and /sensors/lidar/scan (so only with
                           lidar:=true), from amcl_x, amcl_y, amcl_yaw (map frame), with its
                           own lifecycle manager. tf_broadcast false: ekf_global keeps
                           map -> odom; AMCL's pose, /localization/amcl/pose, is only scored
@@ -334,6 +339,9 @@ def nodes(context):
                          else monitor == 'true')
     reversing = flag(context, 'reversing')
     tracker = vehicle.check_tracker(LaunchConfiguration('tracker').perform(context), reversing)
+    # The spine's speed loop profile the car runs: every model of the car here assumes it.
+    speed_loop = vehicle.check_speed_loop(LaunchConfiguration('speed_loop').perform(context),
+                                          tracker)
     amcl = flag(context, 'amcl')
     voxels = flag(context, 'voxels')
     screen_cubes = flag(context, 'screen_cubes')
@@ -493,7 +501,8 @@ def nodes(context):
             package='aav_behaviour', executable='behaviour', name='behaviour',
             output='screen', respawn=True, respawn_delay=1.0,
             parameters=[vehicle.behaviour_params(nav2, cfg, ego,
-                                                 float(speed) if speed else None, controller),
+                                                 float(speed) if speed else None, controller,
+                                                 speed_loop),
                         {'obstacles': lidar and not voxels, 'use_sim_time': use_sim_time,
                          'lane_map': LaunchConfiguration('lane_map').perform(context),
                          # The things: wait only for what moves, a parked thing is the
@@ -659,7 +668,8 @@ def nodes(context):
             actions.append(Node(
                 package='aav_mpc_lag', executable='mpc_lag_rs', name='mpc_lag_rs',
                 output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
-                parameters=[own, vehicle.mpc_lag_rs_params(nav2, cfg, ego, max_speed),
+                parameters=[own, vehicle.mpc_lag_rs_params(nav2, cfg, ego, max_speed,
+                                                           speed_loop),
                             {'use_sim_time': use_sim_time,
                              'map_correction': slew['map_correction']}]))
         elif tracker == 'mppi_lag':
@@ -670,7 +680,7 @@ def nodes(context):
                 package='aav_mppi_lag', executable='mppi_lag', name='mppi_lag',
                 output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
                 parameters=[own, vehicle.mppi_lag_params(nav2, cfg, ego, max_speed,
-                                                         reversing, lane),
+                                                         reversing, lane, speed_loop),
                             {'use_sim_time': use_sim_time,
                              'costmap_topic': vehicle.COSTMAP_RAW_TOPICS[costmap], **slew}]))
         else:
@@ -678,7 +688,8 @@ def nodes(context):
             actions.append(Node(
                 package='aav_track', executable='track', name='track', output='screen',
                 respawn=True, respawn_delay=RESPAWN_DELAY,
-                parameters=[own, vehicle.track_params(nav2, cfg, ego, max_speed),
+                parameters=[own, vehicle.track_params(nav2, cfg, ego, max_speed,
+                                                      speed_loop),
                             {'tracker': tracker, 'use_sim_time': use_sim_time,
                              'road_ahead_topic': '/world/road_ahead' if lane else '',
                              'live_swap': IfCondition(
@@ -900,6 +911,11 @@ def generate_launch_description():
                                           'the turn rate from where the wheels can be (sim; '
                                           'car.launch.py always passes nav2: '
                                           'docs/own-smoother.md)'),
+        DeclareLaunchArgument('speed_loop', default_value=vehicle.DEFAULT_SPEED_LOOP,
+                              description="the spine's speed loop profile the car runs "
+                                          '(default, smooth, lqi, firm): the follower and '
+                                          "the behaviour planner's models assume it "
+                                          '(mpc_lag, mpc_lag_rs: not lqi)'),
         DeclareLaunchArgument('tracker', default_value=vehicle.DEFAULT_TRACKER,
                               description="a trial path follower in controller_server's "
                                           'place (aav_track; mppi_lag: aav_mppi_lag): ' +

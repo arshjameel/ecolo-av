@@ -502,6 +502,40 @@ def test_track_params_are_nav2s_own_checks_and_speeds():
     assert vehicle.track_params(nav2, cfg, ego, max_speed=3.0)['cruise_speed'] == 3.0
 
 
+def test_check_speed_loop_takes_spine_cores_names_and_refuses_the_rest():
+    from aav_description.car_model import SPEED_LOOP_PROFILES
+    assert vehicle.DEFAULT_SPEED_LOOP == 'default'
+    for name in SPEED_LOOP_PROFILES:
+        assert vehicle.check_speed_loop(name) == name
+    assert vehicle.check_speed_loop(' Firm ') == 'firm'
+    with pytest.raises(ValueError, match='pick one of'):
+        vehicle.check_speed_loop('fast')
+    # The two MPCs model the PI only; mppi_lag and the rest take the LQI too.
+    for tracker in vehicle.PI_ONLY_TRACKERS:
+        with pytest.raises(ValueError, match='PI'):
+            vehicle.check_speed_loop('lqi', tracker)
+        assert vehicle.check_speed_loop('firm', tracker) == 'firm'
+    assert vehicle.check_speed_loop('lqi', 'mppi_lag') == 'lqi'
+
+
+def test_every_model_of_the_car_gets_the_speed_loop_asked_for():
+    # TODO 163: the followers' and the behaviour planner's models predict the simulated
+    # car's loop; default unchanged, an unknown name refused.
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+    cfg = vehicle.load(CONFIG)
+    ego = yaml.safe_load(EGO_YAML.read_text())['ego']['ros__parameters']
+    makers = {
+        'mpc_lag.speed_loop': (vehicle.track_params, vehicle.mpc_lag_rs_params),
+        'speed_loop': (vehicle.mppi_lag_params, vehicle.behaviour_params),
+    }
+    for key, fns in makers.items():
+        for fn in fns:
+            assert fn(nav2, cfg, ego)[key] == 'default', fn.__name__
+            assert fn(nav2, cfg, ego, speed_loop='firm')[key] == 'firm', fn.__name__
+            with pytest.raises(ValueError):
+                fn(nav2, cfg, ego, speed_loop='fast')
+
+
 def test_behaviour_params_from_nav2_the_body_and_ego():
     nav2 = yaml.safe_load(NAV2_YAML.read_text())
     cfg = vehicle.load(CONFIG)

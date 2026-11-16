@@ -175,6 +175,18 @@ def test_ego_waits_for_the_road_ahead_only_where_its_writer_runs():
     assert included(started(SIM))['ego.launch.py']['road_ahead'] == 'true'
 
 
+def test_the_simulated_cars_speed_loop_reaches_ego_and_the_car():
+    # TODO 163: the car model runs it, and ego's trace assumes the same one.
+    sent = included(started(SIM, speed_loop='firm'))
+    assert sent['ego.launch.py']['speed_loop'] == 'firm'
+    assert sent['gazebo.launch.py']['speed_loop'] == 'firm'
+    assert included(started(SIM))['ego.launch.py']['speed_loop'] == 'default'
+    with pytest.raises(ValueError, match='speed_loop:=fast'):
+        started(SIM, speed_loop='fast')
+    with pytest.raises(ValueError, match='PI'):
+        started(SIM, speed_loop='lqi', tracker='mpc_lag', reversing='false')
+
+
 def test_the_stacks_switches_are_declared_empty_so_a_hand_set_one_is_seen():
     declared = {a.name: a.default_value
                 for a in SIM.generate_launch_description().get_launch_arguments()}

@@ -59,6 +59,7 @@ ego.yaml; nothing copied):
 | `progress_radius`, `progress_angle`, `progress_time` | `progress_checker` |
 | `wheelbase`, `max_steering_angle` | vehicle.yaml |
 | `max_steering_rate` | the lower of vehicle.yaml `steer_rate` and ego.yaml `max_steering_rate` |
+| `mpc_lag.speed_loop` | the spine's speed loop profile `mpc_lag` predicts: the sim's `speed_loop:=` (`default`, `smooth`, `firm`; `lqi` refused at launch with `tracker:=mpc_lag`); never in `track.yaml` (TODO 163) |
 
 From `config/track.yaml`: `lateral_accel` (1.0 m/s², slow for bends), `odom_timeout`, the
 map correction (TODO 186: `map_correction_speed` 0.1 m/s, 0 the old way;

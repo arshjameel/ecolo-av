@@ -224,7 +224,12 @@ bench's argument names:
                       vehicle.yaml's, while every driver still reads vehicle.yaml: how a
                       follower copes with a car slower than it was told (1.0: as written).
                       Gazebo's adapter only (simulator:=gazebo)
-  simulator:=own      the default (8 Nov): our own Rust simulator (aav_simulator,
+  speed_loop:=firm    the spine's speed loop profile the modelled car runs (default,
+                      smooth, lqi, firm), and the one every model of the car assumes: the
+                      path follower's (mppi_lag, aav_track's mpc_lag, mpc_lag_rs; those
+                      two refuse lqi), ego's trace and the behaviour planner's stopping
+                      law (TODO 163). The real car's spine runs default
+  simulator:=own     the default (8 Nov): our own Rust simulator (aav_simulator,
                       docs/own-simulator.md) in gz sim's place: the same worlds, topics
                       and rates, the lidar and radar by ray casting, the cameras by Bevy
                       (aav_sim_cameras; needs a GPU), no window.
@@ -346,6 +351,8 @@ def launch_setup(context):
     if controller not in vehicle.CONTROLLERS:
         raise ValueError(f'controller:={controller}: pick one of {", ".join(vehicle.CONTROLLERS)}')
     tracker = vehicle.check_tracker(arg('tracker'), flag['reversing'])
+    # The simulated car's speed loop: the followers', ego's and behaviour's models take it.
+    speed_loop = vehicle.check_speed_loop(arg('speed_loop'), tracker if flag['nav'] else None)
     planner = vehicle.check_planner(arg('planner'))
     amcl = arg('amcl').lower() == 'true'
     # ndt_ekf: ekf_global takes NDT's pose, so NDT runs too.
@@ -418,7 +425,7 @@ def launch_setup(context):
                 obstacle=arg('obstacle'), start_x=start_x, start_y=start_y, start_yaw=start_yaw,
                 lidar=arg('lidar'), radar=arg('radar'), chase_camera=arg('chase_camera'),
                 cameras=str(cameras).lower(),
-                actuator_model=arg('actuator_model'), speed_loop=arg('speed_loop'),
+                actuator_model=arg('actuator_model'), speed_loop=speed_loop,
                 payload=arg('payload'), adaptive_brake=arg('adaptive_brake'),
                 lag_scale=arg('lag_scale'),
                 faults=flag['faults'],
@@ -432,7 +439,9 @@ def launch_setup(context):
         include(context, 'aav_ego', 'ego.launch.py', use_sim_time='true',
                 sim_max_speed=sim_speed,
                 road_ahead=str(flag['behaviour'] and flag['nav']).lower(),
-                ego_impl=vehicle.check_ego_impl(arg('ego_impl'))),
+                ego_impl=vehicle.check_ego_impl(arg('ego_impl')),
+                # The car's speed loop, so ego's trace predicts the car it drives (TODO 163).
+                speed_loop=speed_loop),
         # ego's commands go to Gazebo (gazebo_adapter, or spine_bridge with spine:=true)
         # only while every source is SIM (aav_io_mux).
         include(context, 'aav_io_mux', 'io_mux.launch.py', target='sim', source='sim',
@@ -522,7 +531,9 @@ def launch_setup(context):
                                map_correction=arg('map_correction'),
                                behaviour=str(flag['behaviour']).lower(),
                                things=str(flag['things']).lower(),
-                               lane_map=lane_map, lane_costs=lane_costs))
+                               lane_map=lane_map, lane_costs=lane_costs,
+                               # Every model of the car predicts the loop it runs (TODO 163).
+                               speed_loop=speed_loop))
     if ndt:
         # Scored only (measure controllers --ndt), unless ndt_ekf:=true: then ekf_global
         # reads its pose (measure controllers --ndt-ekf scores the difference).
@@ -718,7 +729,8 @@ def generate_launch_description():
                                           'robustness test; the drivers keep vehicle.yaml)'),
         DeclareLaunchArgument('speed_loop', default_value='default',
                               description="the speed loop's profile: default (today's gains)"
-                                          ', smooth (TODO 27) or lqi (TODO 3)'),
+                                          ', smooth (TODO 27), lqi (TODO 3) or firm (TODO '
+                                          '163); every model of the car assumes it'),
         DeclareLaunchArgument('payload', default_value='0',
                               description='kg aboard the modelled car: it speeds up and '
                                           'brakes less (ego is not told)'),

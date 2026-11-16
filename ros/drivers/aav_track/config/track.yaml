@@ -49,5 +49,5 @@ track:
       r_speed: 0.5            # on each tick's change of set speed
       latency: 0.1            # s the ROS chain adds before the actuators (ego's 50 Hz ramp, the
                               # 20 Hz hold, the adapter): whole ticks, added to the dead times
-      speed_loop: default     # the spine's speed loop it predicts: default or smooth (as
-                              # sim.launch.py speed_loop:=; lqi isn't modelled)
+      # speed_loop: the spine's profile it predicts comes from the launch (sim.launch.py
+      # speed_loop:=, vehicle.track_params), never from here: this file would win.

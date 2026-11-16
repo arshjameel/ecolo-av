@@ -73,10 +73,10 @@ lookahead, and vehicle.yaml's actuators; nothing copied):
 | `max_brake`, `wheelbase`, `max_steering_angle`, `actuators.*` | vehicle.yaml (dead times 0 while unset) |
 | `max_steering_rate` | the lower of vehicle.yaml's `steer_rate` and ego.yaml's |
 | `map_correction` | the launch's switch (never in the yaml) |
+| `mpc_lag.speed_loop` | the spine's speed loop profile the car runs: the sim's `speed_loop:=` (`default`, `smooth`, `firm`; `lqi` is refused at launch); never in the yaml (TODO 163) |
 
 From `config/mpc_lag_rs.yaml`: `lateral_accel`, `odom_timeout`, the map correction's rates,
-and `mpc_lag.*` (`horizon`, `q`, `r`, `r_rate`, `q_speed`, `r_speed`, `latency`,
-`speed_loop`; also `w_slack`, `terminal`, `substeps`, `max_iter`, `rho`, `sqp` at the
+and `mpc_lag.*` (`horizon`, `q`, `r`, `r_rate`, `q_speed`, `r_speed`, `latency`; also `w_slack`, `terminal`, `substeps`, `max_iter`, `rho`, `sqp` at the
 Python's defaults). `aav_navigation`'s `test_launch_params.py` checks they match
 `track.yaml`'s.
 

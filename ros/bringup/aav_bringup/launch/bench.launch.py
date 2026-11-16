@@ -90,11 +90,13 @@ def launch_setup(context):
     with open(os.path.join(share('aav_localization'), 'config', 'navsat.yaml')) as f:
         datum = yaml.safe_load(f)['navsat_transform']['ros__parameters']['datum']
 
+    speed_loop = vehicle.check_speed_loop(LaunchConfiguration('speed_loop').perform(context))
     actions = [
         # The car's own software, as car.launch.py starts it.
         include('aav_description', 'description.launch.py'),
         include('aav_command_mux', 'mux.launch.py', geofence_lock='true'),
-        include('aav_ego', 'ego.launch.py'),
+        # spine_sim's speed loop, so ego's trace predicts the car it drives (TODO 163).
+        include('aav_ego', 'ego.launch.py', speed_loop=speed_loop),
         # ego's commands go to spine_bridge (source bench) only while everything is BENCH.
         include('aav_io_mux', 'io_mux.launch.py', target='bench', source='bench'),
         include('aav_scripted', 'scripted.launch.py'),
@@ -118,7 +120,7 @@ def launch_setup(context):
              parameters=[{'wheelbase': float(v['wheelbase']), 'track': float(v['track']),
                           'wheel_radius': float(v['wheel_diameter']) / 2,
                           'max_steering': float(v['max_steering_angle']),
-                          'speed_loop': LaunchConfiguration('speed_loop').perform(context),
+                          'speed_loop': speed_loop,
                           **start}]),
         Node(package='aav_bench', executable='mock_imu', name='mock_imu',
              parameters=[bench_config]),
@@ -147,7 +149,8 @@ def launch_setup(context):
                                radar='true', lidar=str(flag['lidar']).lower(),
                                camera_obstacles=flag['camera_obstacles'],
                                reversing=str(flag['reversing']).lower(),
-                               plan_around=str(flag['plan_around']).lower()))
+                               plan_around=str(flag['plan_around']).lower(),
+                               speed_loop=speed_loop))
     # The sensor watchdog guards Nav2 and the AI slot (lane keeping) as on the car, always:
     # the mux's sensors lock needs its heartbeat (aav_command_mux mux.launch.py sensor_lock).
     actions.append(include('aav_safety', 'watchdog.launch.py',

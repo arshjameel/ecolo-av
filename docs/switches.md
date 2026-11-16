@@ -96,10 +96,11 @@ KISS-ICP needs its own environment once: `pixi install --locked -e kiss`.
 | `speed_loop:=default` | today's PI loop |
 | `speed_loop:=lqi` | no overshoot, settles in 4-5 s |
 | `speed_loop:=smooth` | the PI with a smooth stop |
+| `speed_loop:=firm` | `smooth` with a firmer brake: stops where it was told |
 
-`tracker:=mpc_lag` predicts the speed loop it is told about: `default` or `smooth` (its
-`mpc_lag.speed_loop` setting in `track.yaml`; it doesn't follow `speed_loop:=` on its own,
-and doesn't model `lqi` yet).
+Every model of the car follows `speed_loop:=` (TODO 163): the path follower's
+(`mppi_lag`, `mpc_lag`, `mpc_lag_rs`), ego's trace and the behaviour planner's stopping
+law. `tracker:=mpc_lag` and `mpc_lag_rs` don't model `lqi` yet: the launch refuses it.
 
 ## The world and the rest
 
