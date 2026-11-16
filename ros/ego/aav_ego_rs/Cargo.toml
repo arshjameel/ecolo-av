@@ -4,7 +4,7 @@ resolver = "2"
 #   cargo test -p ego-core
 # ego-node: the ROS process (rclrs), binary `ego`: the nodes ego and look_ahead in one
 #   process. colcon builds it through CMakeLists.txt.
-members = ["crates/ego-core"]
+members = ["crates/ego-core", "crates/ego-node"]
 
 [workspace.package]
 version = "0.1.0"

@@ -876,3 +876,11 @@ def test_the_stop_zone_shadow_reads_what_collision_monitor_reads():
     assert radar['kind'] == 'pointcloud' and radar['min_range'] == 0.2
     assert radar['mount'][:3] == [float(x) for x in car['sensors']['radar_link']['xyz']]
     assert p['sources'][1]['kind'] == 'scan' and p['sources'][1]['mount'] == [0.0] * 4
+
+
+def test_ego_impl_is_python_or_rust():
+    assert vehicle.DEFAULT_EGO_IMPL == 'python'
+    assert vehicle.check_ego_impl(' Rust ') == 'rust'
+    assert vehicle.EGO_IMPLS['rust'] == 'aav_ego_rs'
+    with pytest.raises(ValueError, match='ego_impl:=c'):
+        vehicle.check_ego_impl('c')

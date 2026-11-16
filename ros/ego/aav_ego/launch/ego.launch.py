@@ -2,7 +2,12 @@
 ego: /control/cmd_vel (TwistStamped from twist_mux) -> /ego/actuator_cmd (AckermannDriveStamped).
 
   ros2 launch aav_ego ego.launch.py [use_sim_time:=false] [max_speed:=0.3] [look_ahead:=true]
-                                [road_ahead:=false]
+                                [road_ahead:=false] [ego_impl:=python]
+
+ego_impl (python): rust runs aav_ego_rs instead, a challenger: ego and look_ahead in one
+Rust process, with the same node names, topics, parameters and answers (TODO 185). Its
+parameters go in a file of their own (both nodes have a rate_hz), with vehicle.yaml's path
+and the body outline, which the Python nodes read themselves.
 
 road_ahead (false): true holds Nav2's commands to /world/road_ahead's speed limit
 (ego_node.py, road_limit.py); sim.launch.py sets it with behaviour:=true, its writer.
@@ -19,6 +24,7 @@ aav_description/config/vehicle.yaml; the other limits and the payload from confi
 """
 
 import os
+import tempfile
 
 from aav_description import vehicle
 from ament_index_python.packages import get_package_share_directory
@@ -63,11 +69,37 @@ def ego_node(context):
         params.append({'max_speed': limit})
     if context.launch_configurations.get('road_ahead', 'false').strip().lower() == 'true':
         params.append({'road_ahead': True})
+    look_ahead = context.launch_configurations.get('look_ahead', 'true').strip().lower() == 'true'
+    impl = vehicle.check_ego_impl(context.launch_configurations.get(
+        'ego_impl', vehicle.DEFAULT_EGO_IMPL))
+    if impl == 'rust':
+        return [rust_node(context, params, car, look_ahead)]
     nodes = [Node(package='aav_ego', executable='ego', name='ego', parameters=params)]
-    if context.launch_configurations.get('look_ahead', 'true').strip().lower() == 'true':
+    if look_ahead:
         nodes.append(Node(package='aav_ego', executable='look_ahead', name='look_ahead',
                           parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}]))
     return nodes
+
+
+def rust_node(context, params, car, look_ahead):
+    """
+    Return aav_ego_rs's process: the nodes ego and look_ahead, each with its own parameters.
+
+    One file, by node name: a plain dict would reach both nodes, and each has a rate_hz.
+    """
+    sim = LaunchConfiguration('use_sim_time').perform(context).strip().lower() == 'true'
+    ego = {}
+    for p in params:
+        ego.update({k: v for k, v in p.items() if k != 'use_sim_time'})
+    ego.update(use_sim_time=sim, vehicle_yaml=vehicle.config_path())
+    (front, half), _, (rear, _), _ = vehicle.footprint_points(car['vehicle'])
+    look = {'use_sim_time': sim, 'body': [float(front), float(rear), float(half)]}
+    with tempfile.NamedTemporaryFile('w', prefix='ego_rs_', suffix='.yaml',
+                                     delete=False) as f:
+        yaml.safe_dump({'/ego': {'ros__parameters': ego},
+                        '/look_ahead': {'ros__parameters': look}}, f)
+    return Node(package=vehicle.EGO_IMPLS['rust'], executable='ego', parameters=[f.name],
+                arguments=[] if look_ahead else ['--ego-only'])
 
 
 def generate_launch_description():
@@ -83,5 +115,8 @@ def generate_launch_description():
                                           'allows (needs the behaviour planner)'),
         DeclareLaunchArgument('look_ahead', default_value='true',
                               description='also start look_ahead (the squiggly line)'),
+        DeclareLaunchArgument('ego_impl', default_value=vehicle.DEFAULT_EGO_IMPL,
+                              description='python or rust: which ego runs (aav_ego, or '
+                                          'aav_ego_rs: ego and look_ahead in one process)'),
         OpaqueFunction(function=ego_node),
     ])
