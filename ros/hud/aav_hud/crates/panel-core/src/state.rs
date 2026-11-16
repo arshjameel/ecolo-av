@@ -62,6 +62,7 @@ impl Row {
         Row::Vehicle,
     ];
 
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Vehicle => "vehicle",
@@ -120,6 +121,7 @@ pub struct Actuator {
 
 impl Actuator {
     /// What it did, if known.
+    #[must_use]
     pub fn measured(self) -> Option<f32> {
         self.measured.is_finite().then_some(self.measured)
     }
@@ -250,6 +252,7 @@ pub struct PanelState {
 }
 
 impl PanelState {
+    #[must_use]
     pub fn new(stale_after: Duration) -> Self {
         Self {
             stale_after,
@@ -389,6 +392,7 @@ impl PanelState {
     }
 
     /// One row's health at `now`.
+    #[must_use]
     pub fn health(&self, row: Row, now: Instant) -> Health {
         self.seen
             .get(&row)
@@ -398,6 +402,7 @@ impl PanelState {
     }
 
     /// Messages a second over the last 2 s, by arrival.
+    #[must_use]
     pub fn rate(&self, row: Row, now: Instant) -> Option<f64> {
         let times = self.arrivals.get(&row)?;
         let recent: Vec<Instant> = times
@@ -411,6 +416,7 @@ impl PanelState {
     }
 
     /// What `/system/source` says we're driving (safety.py's rules).
+    #[must_use]
     pub fn kind(&self) -> Kind {
         if !self.announced {
             return Kind::Unknown;
@@ -419,11 +425,13 @@ impl PanelState {
     }
 
     /// The e-stop is on: `/safety/estop` said true last, or `/vehicle/status` says so.
+    #[must_use]
     pub fn estop_on(&self) -> bool {
         self.estop == Some(true) || self.vehicle.is_some_and(|v| v.estop_active)
     }
 
     /// The geofence's lock holds the buttons (51 is above their 45).
+    #[must_use]
     pub fn geofence_holds(&self, now: Instant) -> bool {
         self.geofence_lock == Some(true) && self.health(Row::GeofenceLock, now).is_ok()
     }
@@ -431,6 +439,7 @@ impl PanelState {
     /// The speed `/vehicle/status` gives: measured, or why it isn't known. NaN is
     /// unknown, never stopped: the legacy ESP32's uplink has no wheel speed, so its
     /// bridge sends NaN all the time (review 2, M5).
+    #[must_use]
     pub fn speed(&self, now: Instant) -> Speed {
         let Some(v) = self.vehicle else {
             return Speed::Unknown(SpeedUnknown::Never);
@@ -447,6 +456,7 @@ impl PanelState {
     }
 
     /// The measured speed, m/s (`/vehicle/status`), while fresh and a number.
+    #[must_use]
     pub fn seen_speed(&self, now: Instant) -> Option<f64> {
         match self.speed(now) {
             Speed::Measured(v) => Some(v),
@@ -455,6 +465,7 @@ impl PanelState {
     }
 
     /// The measured steering, rad (`/vehicle/steering`), while fresh.
+    #[must_use]
     pub fn seen_steer(&self, now: Instant) -> Option<f64> {
         let m = self.steering?.measured()?;
         self.health(Row::Steering, now)
@@ -463,6 +474,7 @@ impl PanelState {
     }
 
     /// The raw position message, while fresh.
+    #[must_use]
     pub fn fresh_raw(&self, now: Instant) -> Option<Raw> {
         self.steering_raw
             .filter(|_| self.health(Row::SteeringRaw, now).is_ok())
@@ -470,6 +482,7 @@ impl PanelState {
 
     /// What the calibration page needs to know to be allowed. `still_confirmed`: a
     /// person pressed ON STANDS, STILL (the page's [`crate::calibration::CalPage`]).
+    #[must_use]
     pub fn calibration_situation(&self, now: Instant, still_confirmed: bool) -> CalSituation {
         CalSituation {
             estop: self.estop_on(),
@@ -568,6 +581,7 @@ impl PanelState {
 
 /// The wheel note on stands: the measured wheels when they aren't the driven ones
 /// ("front, not driven"; TODO 49b).
+#[must_use]
 pub fn wheels_note(stands: bool, kind: Kind, wheels: Option<&SpeedWheels>) -> Option<String> {
     let measured = wheels?;
     (stands && kind.is_real() && !measured.are_driven()).then(|| format!("{measured}, not driven"))

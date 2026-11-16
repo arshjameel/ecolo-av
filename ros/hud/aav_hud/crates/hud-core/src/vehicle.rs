@@ -64,6 +64,7 @@ pub enum Gear {
 impl Gear {
     /// Moving: the direction. Standing still: Drive only when the computer drives and
     /// may move (armed, no e-stop), otherwise Park. The same rule as aav_hud's.
+    #[must_use]
     pub fn pick(mode: Mode, armed: bool, estop: bool, speed: MetresPerSecond) -> Self {
         if speed.0 < -MOVING.0 {
             Self::Reverse
@@ -75,6 +76,7 @@ impl Gear {
     }
 
     /// The one letter: D, R or P.
+    #[must_use]
     pub fn letter(self) -> &'static str {
         match self {
             Self::Drive => "D",
@@ -115,11 +117,13 @@ impl Fault {
     ];
 
     /// Its bit in `faults` (VehicleStatus's FAULT_* constants).
+    #[must_use]
     pub fn bit(self) -> u16 {
         1 << (self as u16)
     }
 
     /// A short name for the screen.
+    #[must_use]
     pub fn name(self) -> &'static str {
         match self {
             Self::CmdTimeout => "no commands",
@@ -142,6 +146,7 @@ pub struct Faults(pub u16);
 
 impl Faults {
     /// No fault at all.
+    #[must_use]
     pub fn is_empty(self) -> bool {
         self.0 == 0
     }
@@ -154,6 +159,7 @@ impl Faults {
     }
 
     /// Bits that no [`Fault`] names (a newer firmware), or 0.
+    #[must_use]
     pub fn unknown_bits(self) -> u16 {
         let known = Fault::ALL.iter().fold(0, |bits, f| bits | f.bit());
         self.0 & !known
@@ -190,6 +196,7 @@ pub struct VehicleStatus {
 
 impl VehicleStatus {
     /// The gear letter for this status.
+    #[must_use]
     pub fn gear(&self) -> Gear {
         Gear::pick(self.mode, self.armed, self.estop_active, self.speed)
     }

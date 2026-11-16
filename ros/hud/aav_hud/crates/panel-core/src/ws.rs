@@ -73,6 +73,7 @@ impl fmt::Display for Url {
 }
 
 /// The opening request. `nonce`: 16 bytes, different each time.
+#[must_use]
 pub fn request(url: &Url, nonce: [u8; 16]) -> String {
     format!(
         "GET {} HTTP/1.1\r\nHost: {}:{}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\
@@ -104,6 +105,7 @@ pub fn check_answer(head: &str) -> Result<(), WsError> {
 }
 
 /// Standard base64, with padding.
+#[must_use]
 pub fn base64(bytes: &[u8]) -> String {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
@@ -280,6 +282,7 @@ fn whole(kind: Opcode, payload: Vec<u8>) -> Message {
 
 /// A frame from this client: always masked, as RFC 6455 asks. Only for the protocol's
 /// own replies (a pong, a close).
+#[must_use]
 pub fn client_frame(opcode: Opcode, payload: &[u8], mask: [u8; 4]) -> Vec<u8> {
     let mut out = vec![0x80 | opcode.bits()];
     match payload.len() {

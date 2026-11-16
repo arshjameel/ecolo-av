@@ -44,6 +44,7 @@ pub enum Press {
 
 impl KeyCap {
     /// The words on the key.
+    #[must_use]
     pub fn label(self) -> String {
         match self {
             Self::Char(c) => c.to_string(),
@@ -56,6 +57,7 @@ impl KeyCap {
     }
 
     /// What pressing it does.
+    #[must_use]
     pub fn press(self) -> Press {
         match self {
             Self::Char(c) => Press::Search(Key::Char(c)),
@@ -68,6 +70,7 @@ impl KeyCap {
     }
 
     /// Whether it's an editing or command key (drawn in another colour), not a letter.
+    #[must_use]
     pub fn is_command(self) -> bool {
         !matches!(self, Self::Char(_) | Self::Space)
     }
@@ -165,6 +168,7 @@ impl Keyboard {
     /// middle) when it fits, else kept inside the window. `u`: the window's scale, 1 at
     /// 1600 x 900. Keys grow with `u`, shrink to fit a narrow window, and are never
     /// under [`MIN_KEY_PX`] unless the window itself is too narrow for that.
+    #[must_use]
     pub fn new(window: Viewport, centre_x: f64, u: f64) -> Self {
         let gap = (6.0 * u).max(4.0);
         let pad = 2.0 * gap;
@@ -211,11 +215,13 @@ impl Keyboard {
     }
 
     /// The keyboard's whole area, its back: taps there never reach the map.
+    #[must_use]
     pub fn area(&self) -> Viewport {
         self.back
     }
 
     /// Whether `at` is on the keyboard (a key or the gaps between).
+    #[must_use]
     pub fn contains(&self, at: ScreenPoint) -> bool {
         self.back.contains(at)
     }
@@ -226,11 +232,13 @@ impl Keyboard {
     }
 
     /// One key's height, in pixels (the window sizes the letters by it).
+    #[must_use]
     pub fn key_height(&self) -> f64 {
         self.key_h
     }
 
     /// The key at `at`, if any: a tap between two keys hits neither.
+    #[must_use]
     pub fn key_at(&self, at: ScreenPoint) -> Option<KeyCap> {
         self.keys
             .iter()

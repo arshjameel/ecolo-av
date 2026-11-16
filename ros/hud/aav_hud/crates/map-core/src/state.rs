@@ -70,6 +70,7 @@ pub enum Remaining {
 }
 
 impl Remaining {
+    #[must_use]
     pub fn metres(self) -> Metres {
         match self {
             Self::AlongPlan(m) | Self::StraightLine(m) => m,
@@ -103,6 +104,7 @@ pub struct MapState {
 }
 
 impl MapState {
+    #[must_use]
     pub fn new(config: MapConfig) -> Self {
         Self {
             config,
@@ -170,6 +172,7 @@ impl MapState {
 
     /// OK / STALE / NEVER for one topic. The map, the goal and the source are sent once
     /// (latched, or by a person), so they never go stale.
+    #[must_use]
     pub fn health(&self, topic: Topic, now: Instant) -> Health {
         let limit = match topic {
             Topic::Odom | Topic::Watchdog => self.config.stale_after(),
@@ -200,11 +203,13 @@ impl MapState {
 
     /// What the sensor watchdog says is wrong, for a banner; None when all is well. The
     /// same words as on the HUD ([`watchdog::alarm`]).
+    #[must_use]
     pub fn sensor_alarm(&self, now: Instant) -> Option<Alarm> {
         watchdog::alarm(self.health(Topic::Watchdog, now), self.watchdog.as_deref())
     }
 
     /// The car's position, if any has come.
+    #[must_use]
     pub fn car_position(&self) -> Option<Point> {
         self.car.as_ref().map(|c| c.pose.position)
     }
@@ -219,6 +224,7 @@ impl MapState {
     }
 
     /// Where the car is going: the plan's end, or RViz's newer goal.
+    #[must_use]
     pub fn goal(&self) -> Option<Point> {
         if self.goal_is_newer() {
             self.goal_pose.map(|p| p.position)
@@ -228,11 +234,13 @@ impl MapState {
     }
 
     /// Where the car is along the plan.
+    #[must_use]
     pub fn progress(&self) -> Option<Progress> {
         self.route.progress(self.car_position()?)
     }
 
     /// How far is left: along the plan, or in a straight line to a goal with no plan yet.
+    #[must_use]
     pub fn remaining(&self) -> Option<Remaining> {
         let car = self.car_position()?;
         if self.goal_is_newer() {
@@ -243,6 +251,7 @@ impl MapState {
     }
 
     /// The trip's status at `now`.
+    #[must_use]
     pub fn trip(&self, now: Instant) -> Trip {
         let plan = if self.goal_is_newer() {
             Health::Never
@@ -258,6 +267,7 @@ impl MapState {
     }
 
     /// The frame the map is in.
+    #[must_use]
     pub fn frame(&self) -> &str {
         self.grid
             .as_ref()
@@ -265,6 +275,7 @@ impl MapState {
     }
 
     /// What's drawn in a frame other than the map's: it would be in the wrong place.
+    #[must_use]
     pub fn frame_problems(&self) -> Vec<String> {
         let map = self.frame();
         let car = self.car.as_ref().map(|c| ("the car", c.frame.as_str()));

@@ -19,6 +19,7 @@ pub enum Encoding {
 
 impl Encoding {
     /// Bytes in one pixel.
+    #[must_use]
     pub fn bytes_per_pixel(self) -> usize {
         match self {
             Self::Rgb8 | Self::Bgr8 => 3,

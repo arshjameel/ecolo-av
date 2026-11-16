@@ -47,6 +47,7 @@ impl Rgba {
     pub const WHITE: Rgba = Rgba::hex(0xffffff);
 
     /// A solid colour from its web code: `Rgba::hex(0x1e1e2e)` is `#1e1e2e`.
+    #[must_use]
     pub const fn hex(rgb: u32) -> Self {
         Self {
             r: ((rgb >> 16) & 0xff) as u8,
@@ -57,12 +58,14 @@ impl Rgba {
     }
 
     /// The same colour, `alpha` see-through (0-255).
+    #[must_use]
     pub const fn alpha(self, alpha: u8) -> Self {
         Self { a: alpha, ..self }
     }
 
     /// `percent` of the way from this colour to `other` (0 = this, 100 = other). The
     /// alpha is this colour's.
+    #[must_use]
     pub const fn mix(self, other: Rgba, percent: u8) -> Self {
         const fn channel(a: u8, b: u8, t: u16) -> u8 {
             let t = if t > 100 { 100 } else { t };
@@ -78,6 +81,7 @@ impl Rgba {
     }
 
     /// What this colour looks like painted over a solid `back`: its alpha blended away.
+    #[must_use]
     pub fn over(self, back: Rgba) -> Rgba {
         let k = f64::from(self.a) / 255.0;
         let blend = |f: u8, b: u8| (f64::from(f) * k + f64::from(b) * (1.0 - k)).round() as u8;
@@ -90,6 +94,7 @@ impl Rgba {
     }
 
     /// WCAG 2's relative luminance: 0 for black, 1 for white. Alpha ignored.
+    #[must_use]
     pub fn luminance(self) -> f64 {
         let lin = |c: u8| {
             let c = f64::from(c) / 255.0;
@@ -104,6 +109,7 @@ impl Rgba {
 
     /// WCAG 2's contrast ratio, 1 to 21: 4.5 or more for text, 3 or more for large text
     /// and shapes. Both solid (use [`Rgba::over`] first for a see-through one).
+    #[must_use]
     pub fn contrast(self, other: Rgba) -> f64 {
         let (a, b) = (self.luminance(), other.luminance());
         (a.max(b) + 0.05) / (a.min(b) + 0.05)
@@ -111,6 +117,7 @@ impl Rgba {
 
     /// The colour in OKLab (<https://bottosson.github.io/posts/oklab/>): lightness, then
     /// green-red, then blue-yellow, spaced as eyes see them. Alpha ignored.
+    #[must_use]
     pub fn oklab(self) -> [f64; 3] {
         let lin = |c: u8| {
             let c = f64::from(c) / 255.0;
@@ -134,6 +141,7 @@ impl Rgba {
     /// How different two colours look: the distance between them in OKLab. 0 is the same
     /// colour, about 0.02 the least an eye notices, 0.1 or more plainly two colours;
     /// black to white is 1. Alpha ignored.
+    #[must_use]
     pub fn difference(self, other: Rgba) -> f64 {
         let (a, b) = (self.oklab(), other.oklab());
         a.iter()
@@ -171,6 +179,7 @@ impl ThemeName {
     ];
 
     /// The name as written in the settings.
+    #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Mocha => "mocha",
@@ -181,6 +190,7 @@ impl ThemeName {
     }
 
     /// The theme's colours.
+    #[must_use]
     pub fn theme(self) -> &'static Theme {
         match self {
             Self::Mocha => &MOCHA,
@@ -348,6 +358,7 @@ impl Style {
     /// A corner in this style, from the glass style's: a radius in pixels, or raylib's
     /// roundness (0 to 1). The same in glass; under a third in arcade, so its panels,
     /// pills and buttons are sharp.
+    #[must_use]
     pub fn corner(self, glass: f32) -> f32 {
         match self {
             Style::Glass => glass,
@@ -381,6 +392,7 @@ impl Arcade {
     /// The car's lines where words sit straight on the window, with no panel over the
     /// car (the hardware panel): as faint as the car under a panel of `glass`, so the
     /// words read as well as they do on a panel.
+    #[must_use]
     pub fn silhouette_under(self, glass: Rgba) -> Rgba {
         let seen = u16::from(self.silhouette.a) * u16::from(255 - glass.a) / 255;
         self.silhouette.alpha(u8::try_from(seen).unwrap_or(u8::MAX))
@@ -486,6 +498,7 @@ pub struct Theme {
 
 impl Theme {
     /// A pill's fill and words for `tone`.
+    #[must_use]
     pub fn pill(&self, tone: Tone) -> Pill {
         let (fill, ink) = match tone {
             Tone::Go => (self.go_fill, self.go_ink),
@@ -831,6 +844,7 @@ pub const CALM: Theme = MOCHA;
 /// same as the RViz markers' (aav_things `looks.py`): person yellow, vehicle blue, stop
 /// sign red, any other name green, unknown orange. Their words are drawn in the theme's
 /// own ink, so these only colour shapes.
+#[must_use]
 pub fn thing_colour(kind: crate::things::Kind) -> Rgba {
     use crate::things::Kind;
     match kind {
@@ -1639,6 +1653,7 @@ pub struct RobotColours {
 
 impl RobotColours {
     /// The colour of one part.
+    #[must_use]
     pub fn of(&self, part: crate::robot::Part) -> Rgba {
         use crate::robot::Part;
         match part {
@@ -1656,6 +1671,7 @@ impl RobotColours {
 
 impl Theme {
     /// The little robot's colours in this theme.
+    #[must_use]
     pub fn robot(&self) -> RobotColours {
         RobotColours {
             tread: self.idle_fill.mix(Rgba::BLACK, 45),

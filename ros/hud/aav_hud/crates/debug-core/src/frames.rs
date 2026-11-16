@@ -17,11 +17,13 @@ pub struct Stamp(pub i64);
 
 impl Stamp {
     /// From `builtin_interfaces/Time`.
+    #[must_use]
     pub fn new(sec: i32, nanosec: u32) -> Self {
         Self(i64::from(sec) * 1_000_000_000 + i64::from(nanosec))
     }
 
     /// Seconds from `earlier` to `self` (negative if `self` is earlier).
+    #[must_use]
     pub fn seconds_since(self, earlier: Stamp) -> f64 {
         (self.0 - earlier.0) as f64 * 1e-9
     }
@@ -46,6 +48,7 @@ impl Transform3 {
 
     /// From a ROS transform (or pose): a translation and a quaternion. A zero quaternion
     /// (an unset message) is no rotation; any other is normalised.
+    #[must_use]
     pub fn from_ros(translation: Vec3, q: Quaternion) -> Self {
         let n = (q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w).sqrt();
         if !(n.is_finite() && n > 1e-12) {
@@ -80,6 +83,7 @@ impl Transform3 {
 
     /// A pose on the ground (a 2D EKF's): x, y and the heading about z; z = 0, no roll
     /// or pitch.
+    #[must_use]
     pub fn from_planar(pose: Pose) -> Self {
         let (s, c) = pose.yaw.sin_cos();
         Self {
@@ -89,6 +93,7 @@ impl Transform3 {
     }
 
     /// Seen from above: x, y and the heading. Roll, pitch and z are dropped.
+    #[must_use]
     pub fn planar(&self) -> Pose {
         let r = &self.rotation;
         Pose::new(
@@ -99,6 +104,7 @@ impl Transform3 {
     }
 
     /// `p` moved by this transform.
+    #[must_use]
     pub fn apply(&self, p: Vec3) -> Vec3 {
         let r = &self.rotation;
         let t = &self.translation;
@@ -106,6 +112,7 @@ impl Transform3 {
     }
 
     /// `self * other`: first `other`, then `self`.
+    #[must_use]
     pub fn then_after(&self, other: &Transform3) -> Transform3 {
         let a = &self.rotation;
         let b = &other.rotation;
@@ -118,6 +125,7 @@ impl Transform3 {
     }
 
     /// The inverse: `p = R^T (p' - t)`.
+    #[must_use]
     pub fn inverse(&self) -> Transform3 {
         let r = &self.rotation;
         let rotation = [0, 1, 2].map(|i| [0, 1, 2].map(|j| r[j][i]));
@@ -131,6 +139,7 @@ impl Transform3 {
 }
 
 /// A frame's name as tf2 compares them: without a leading `/`.
+#[must_use]
 pub fn frame_name(name: &str) -> &str {
     name.trim_start_matches('/')
 }
@@ -158,10 +167,12 @@ impl StaticFrames {
     }
 
     /// How many frames are known.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.parents.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.parents.is_empty()
     }
@@ -199,12 +210,14 @@ pub struct MapToOdom {
 
 impl MapToOdom {
     /// A point on the map, in odom. Without `map -> odom` yet: `None`.
+    #[must_use]
     pub fn to_odom(&self, p: Point) -> Option<Point> {
         let o = self.odom_in_map?;
         Some((p - o.position).rotated(-o.yaw))
     }
 
     /// A pose on the map, in odom.
+    #[must_use]
     pub fn pose_to_odom(&self, p: Pose) -> Option<Pose> {
         let o = self.odom_in_map?;
         let at = self.to_odom(p.position)?;

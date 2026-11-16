@@ -23,6 +23,7 @@ pub enum ScanError {
 
 impl ScanError {
     /// Worth trying again shortly: the pose at the cloud's stamp hasn't come yet.
+    #[must_use]
     pub fn is_too_new(&self) -> bool {
         matches!(self, Self::Pose(Lookup::TooNew(_)))
     }

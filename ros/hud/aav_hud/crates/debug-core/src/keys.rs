@@ -17,6 +17,7 @@ pub enum CubeView {
 }
 
 impl CubeView {
+    #[must_use]
     pub fn toggled(self) -> Self {
         match self {
             Self::Kept => Self::Scan,
@@ -24,6 +25,7 @@ impl CubeView {
         }
     }
 
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Kept => "kept, fading",
@@ -45,6 +47,7 @@ pub enum Layout {
 }
 
 impl Layout {
+    #[must_use]
     pub fn toggled(self) -> Self {
         match self {
             Self::Seeing => Self::Panel,
@@ -52,6 +55,7 @@ impl Layout {
         }
     }
 
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Seeing => "seeing: cubes, map, NDT",
@@ -127,6 +131,7 @@ impl Action {
     ];
 
     /// The key, as printed.
+    #[must_use]
     pub fn key(self) -> &'static str {
         match self {
             Self::Camera => "C",
@@ -142,6 +147,7 @@ impl Action {
     }
 
     /// What it does, in a few words.
+    #[must_use]
     pub fn what(self) -> &'static str {
         match self {
             Self::Camera => "camera",
@@ -173,6 +179,7 @@ impl Layers {
 
     /// The legend: each key, what it does, and what it is now (if it has a state).
     /// `has_map`: whether NDT's map was loaded (else M says so).
+    #[must_use]
     pub fn legend(&self, camera: Mode, has_map: bool) -> Vec<KeyLine> {
         let on = |b: bool| if b { "on" } else { "off" };
         let mut lines: Vec<KeyLine> = Action::ALL

@@ -34,6 +34,7 @@ pub struct Battery {
 
 impl Battery {
     /// From the message's fields: volts, charge 0..1, amps. NaN means not measured.
+    #[must_use]
     pub fn from_message(voltage: f32, percentage: f32, current: f32) -> Self {
         let measured = |x: f32| x.is_finite().then_some(x);
         Self {
@@ -87,6 +88,7 @@ pub enum Update {
 
 impl Update {
     /// The topic this news came from, if any.
+    #[must_use]
     pub fn topic(&self) -> Option<Topic> {
         match self {
             Self::Vehicle(_) => Some(Topic::VehicleStatus),
@@ -140,6 +142,7 @@ pub struct HudState {
 
 impl HudState {
     /// A state with nothing heard yet.
+    #[must_use]
     pub fn new(config: HudConfig) -> Self {
         Self {
             config,
@@ -178,6 +181,7 @@ impl HudState {
 
     /// The things to draw and the car's pose to place them, both fresh; None if either
     /// is quiet (old things would sit where the car no longer is).
+    #[must_use]
     pub fn things_now(&self, now: Instant) -> Option<(&[Thing], CarPose)> {
         let fresh =
             self.health(Topic::Things, now).is_ok() && self.health(Topic::Odom, now).is_ok();
@@ -197,6 +201,7 @@ impl HudState {
     }
 
     /// OK / STALE / NEVER for one topic, at `now`.
+    #[must_use]
     pub fn health(&self, topic: Topic, now: Instant) -> Health {
         self.last_seen
             .get(&topic)
@@ -207,11 +212,13 @@ impl HudState {
 
     /// What the sensor watchdog says is wrong, for a banner; None when all is well
     /// ([`watchdog::alarm`]: the map window shows the same).
+    #[must_use]
     pub fn sensor_alarm(&self, now: Instant) -> Option<Alarm> {
         watchdog::alarm(self.health(Topic::Watchdog, now), self.watchdog.as_deref())
     }
 
     /// May the car move? GO / WAIT / STOP and the one main reason ([`gate::verdict`]).
+    #[must_use]
     pub fn verdict(&self, now: Instant) -> Verdict {
         let fresh = self.health(Topic::VehicleStatus, now).is_ok();
         let estop_on = fresh && self.vehicle.is_some_and(|v| v.estop_active);

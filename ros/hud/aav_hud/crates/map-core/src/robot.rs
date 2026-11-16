@@ -30,6 +30,7 @@ impl CarMarker {
     /// Every marker, as the settings write them.
     pub const ALL: [CarMarker; 2] = [CarMarker::Outline, CarMarker::Robot];
 
+    #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Outline => "outline",
@@ -54,6 +55,7 @@ impl std::str::FromStr for CarMarker {
 ///
 /// `min_length`: metres; a car shorter than this is drawn this long, about its middle.
 /// `travelled`: metres rolled ([`robot::Odometer`]), for the treads.
+#[must_use]
 pub fn pieces(shape: &CarShape, pose: Pose, min_length: f64, travelled: f64) -> Vec<Piece<Xyz>> {
     let grow = (min_length / shape.length).max(1.0);
     let view = robot::top_view(shape.length, shape.width, travelled);

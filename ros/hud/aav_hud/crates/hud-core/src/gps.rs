@@ -41,6 +41,7 @@ pub enum FixKind {
 
 impl FixKind {
     /// Whether there is a position to show.
+    #[must_use]
     pub fn has_position(self) -> bool {
         self != Self::NoFix
     }

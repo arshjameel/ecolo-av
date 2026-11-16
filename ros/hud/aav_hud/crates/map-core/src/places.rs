@@ -107,6 +107,7 @@ pub enum Match {
 
 impl Match {
     /// How `name` matches `query`; both already lower case. None: it doesn't.
+    #[must_use]
     pub fn of(name: &str, query: &str) -> Option<Self> {
         if query.is_empty() {
             return None;
@@ -149,6 +150,7 @@ pub struct Place {
 
 impl Place {
     /// The line under the title: "university · 1125 Colonel By Drive".
+    #[must_use]
     pub fn detail(&self) -> String {
         let kind = self.kind.replace('_', " ");
         match &self.address {
@@ -451,6 +453,7 @@ fn escape_like(s: &str) -> String {
 
 /// The distance along the Earth's surface (a sphere of the mean radius: within 0.5 %,
 /// plenty to rank places across a city).
+#[must_use]
 pub fn great_circle(a: LatLon, b: LatLon) -> Metres {
     const R: f64 = 6_371_008.8;
     let (p1, p2) = (a.lat.to_radians(), b.lat.to_radians());

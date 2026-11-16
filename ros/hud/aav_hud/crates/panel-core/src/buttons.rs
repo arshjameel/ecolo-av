@@ -114,6 +114,7 @@ impl Command {
 
     /// `speed` with the front wheels at `steer` radians: the bicycle model,
     /// ω = v · tan δ / L. ego turns it back into the same angle.
+    #[must_use]
     pub fn from_steering(speed: f64, steer: f64, wheelbase: f64) -> Self {
         Self {
             speed,
@@ -156,6 +157,7 @@ pub struct Buttons {
 }
 
 impl Buttons {
+    #[must_use]
     pub fn new(steps: Steps) -> Self {
         Self {
             steps,
@@ -173,31 +175,37 @@ impl Buttons {
     }
 
     /// m/s the buttons ask for while GO is held.
+    #[must_use]
     pub fn asked_speed(&self) -> f64 {
         self.asked_speed
     }
 
     /// rad the buttons ask for, + = left.
+    #[must_use]
     pub fn asked_steer(&self) -> f64 {
         self.asked_steer
     }
 
     /// GO held, and not waiting for it to be let go after a zero.
+    #[must_use]
     pub fn is_driving(&self) -> bool {
         self.go && !self.needs_release
     }
 
     /// GO is held but must be let go first (after a zero).
+    #[must_use]
     pub fn needs_release(&self) -> bool {
         self.go && self.needs_release
     }
 
     /// CENTRE is straightening the wheels.
+    #[must_use]
     pub fn is_centring(&self) -> bool {
         self.centring.is_some()
     }
 
     /// Why the buttons were last zeroed, if they were.
+    #[must_use]
     pub fn last_zero(&self) -> Option<&Zeroed> {
         self.last_zero.as_ref()
     }

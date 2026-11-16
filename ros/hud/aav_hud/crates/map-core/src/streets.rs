@@ -57,6 +57,7 @@ impl RoadClass {
     ];
 
     /// About how wide the real road is, in metres: the line's width when zoomed in.
+    #[must_use]
     pub fn width_m(self) -> f64 {
         match self {
             Self::Path => 2.0,
@@ -125,6 +126,7 @@ pub struct TileShapes {
 
 impl TileShapes {
     /// The triangles of one kind of area.
+    #[must_use]
     pub fn triangles(&self, area: Area) -> &[[f32; 2]] {
         self.areas
             .iter()
@@ -133,6 +135,7 @@ impl TileShapes {
     }
 
     /// How many points it holds: what it costs to keep and to draw.
+    #[must_use]
     pub fn points(&self) -> usize {
         self.areas.iter().map(|(_, t)| t.len()).sum::<usize>()
             + self.lines.iter().map(|l| l.points.len()).sum::<usize>()
@@ -158,6 +161,7 @@ pub struct TileProjection {
 }
 
 impl TileProjection {
+    #[must_use]
     pub fn new(id: TileId, datum: &Datum) -> Self {
         let step = 1.0 / LATTICE as f64;
         let corners = (0..=LATTICE)
@@ -168,6 +172,7 @@ impl TileProjection {
     }
 
     /// `(u, v)` from 0 to 1 across the tile (v down), a little past the edges allowed.
+    #[must_use]
     pub fn to_map(&self, u: f64, v: f64) -> Point {
         let n = LATTICE as f64;
         let (fu, fv) = (u * n, v * n);

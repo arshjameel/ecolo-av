@@ -27,6 +27,7 @@ pub struct Xy {
 }
 
 impl Xy {
+    #[must_use]
     pub const fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
@@ -42,6 +43,7 @@ pub struct Xyz {
 }
 
 impl Xyz {
+    #[must_use]
     pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
@@ -171,6 +173,7 @@ const TREAD_HIGH: f64 = 0.18;
 const CLEATS: usize = 7;
 
 /// The robot from above: see [`TopView`].
+#[must_use]
 pub fn top_view(length: f64, width: f64, travelled: f64) -> TopView {
     let (hl, hw) = (length / 2.0, width / 2.0);
     let tread_w = TREAD_SHARE * width;
@@ -327,6 +330,7 @@ pub struct Strip {
 }
 
 impl Strip {
+    #[must_use]
     pub const fn new(x: f64, y: f64, width: f64, height: f64) -> Self {
         Self {
             x,
@@ -337,11 +341,13 @@ impl Strip {
     }
 
     /// Its bottom edge's y.
+    #[must_use]
     pub fn bottom(&self) -> f64 {
         self.y + self.height
     }
 
     /// Whether `p` is inside (edges included).
+    #[must_use]
     pub fn contains(&self, p: Xy) -> bool {
         p.x >= self.x && p.x <= self.x + self.width && p.y >= self.y && p.y <= self.bottom()
     }
@@ -359,11 +365,13 @@ pub struct PeekPose {
 }
 
 /// An eye's radius in a strip `height` high: the eyes, fully up, just fit.
+#[must_use]
 pub fn peek_radius(height: f64) -> f64 {
     height / PEEK_HEIGHTS
 }
 
 /// The eyes' whole width, for a strip `height` high: what the strip must leave free.
+#[must_use]
 pub fn peek_width(height: f64) -> f64 {
     2.0 * (EYES_APART + 1.0) * peek_radius(height)
 }
@@ -377,6 +385,7 @@ const LID_POINTS: usize = 16;
 
 /// The two eyes rising over `strip`'s bottom edge, their middle at `centre_x`. Clip to
 /// the strip when drawing: what is under the edge is hidden.
+#[must_use]
 pub fn peek(strip: Strip, centre_x: f64, pose: PeekPose) -> Vec<Piece<Xy>> {
     let r = peek_radius(strip.height);
     let rise = pose.rise.clamp(0.0, 1.0);
@@ -446,6 +455,7 @@ fn lid_cap(c: Xy, r: f64, shut: f64) -> Option<Vec<Xy>> {
 /// The robot from the side, `height` pixels tall, standing on `ground` (its middle's x,
 /// the ground's y; screen y down), facing right or left. `rolled`: pixels it has driven;
 /// it turns the wheels. Its outline fits [`side_width`] by `height`.
+#[must_use]
 pub fn side_view(ground: Xy, height: f64, rolled: f64, facing_right: bool) -> Vec<Piece<Xy>> {
     let h = height;
     let dir = if facing_right { 1.0 } else { -1.0 };
@@ -499,6 +509,7 @@ pub fn side_view(ground: Xy, height: f64, rolled: f64, facing_right: bool) -> Ve
 }
 
 /// The side view's whole width, for a robot `height` tall.
+#[must_use]
 pub fn side_width(height: f64) -> f64 {
     2.0 * 0.51 * height
 }
@@ -583,6 +594,7 @@ pub struct EasterEgg {
 }
 
 impl EasterEgg {
+    #[must_use]
     pub fn new(settings: EggSettings, now: Instant) -> Self {
         Self {
             settings,
@@ -652,6 +664,7 @@ impl EasterEgg {
 
 /// The eyes `t` after they started to peek: rise, look ahead, left, right, ahead; blink
 /// now and then (`seed` picks when).
+#[must_use]
 pub fn peek_pose(t: Duration, seed: u64) -> PeekPose {
     let secs = t.as_secs_f64();
     let rise = ease((secs / RISE.as_secs_f64()).min(1.0));

@@ -264,16 +264,19 @@ impl Sweep {
     }
 
     /// The leg it is on.
+    #[must_use]
     pub fn leg(&self) -> Leg {
         self.leg
     }
 
     /// How it ended, once it has.
+    #[must_use]
     pub fn outcome(&self) -> Option<&Outcome> {
         self.outcome.as_ref()
     }
 
     /// The target now (counts), always between the limits.
+    #[must_use]
     pub fn target(&self) -> u16 {
         // Between lo and hi by construction; clamped again, so it can never leave them.
         (self.target.round() as u16).clamp(self.lo, self.hi)

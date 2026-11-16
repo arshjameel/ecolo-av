@@ -44,11 +44,13 @@ pub struct OwnBox {
 
 impl OwnBox {
     /// Is this base_link point inside, seen from above?
+    #[must_use]
     pub fn contains(&self, p: Vec3) -> bool {
         (self.min[0]..=self.max[0]).contains(&p[0]) && (self.min[1]..=self.max[1]).contains(&p[1])
     }
 
     /// Reads `x_min,y_min,x_max,y_max` (m), as `--own-box` takes it.
+    #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         let v: Vec<f64> = text
             .split(',')
@@ -95,6 +97,7 @@ impl Band {
     ];
 
     /// The band of a cube whose centre is `height` above base_link.
+    #[must_use]
     pub fn of(height: Metres, ground: Metres) -> Self {
         let h = height.0;
         if h < ground.0 {
@@ -113,6 +116,7 @@ impl Band {
     }
 
     /// The legend's words.
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Ground => "ground",

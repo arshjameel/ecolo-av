@@ -24,6 +24,7 @@ pub const STILL: f64 = 0.05;
 
 /// What the debug screen shows this frame, for the easter egg. `input`: a key, a click,
 /// the mouse or the wheel this frame.
+#[must_use]
 pub fn watch(state: &DebugState, input: bool, now: Instant) -> Watch {
     let ekf_still = state.speed.is_none_or(|v| v.abs() < STILL);
     let wheels_still = state

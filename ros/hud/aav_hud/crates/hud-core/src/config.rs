@@ -85,6 +85,7 @@ impl Topic {
     ];
 
     /// The ROS parameter that holds this topic's name.
+    #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
             Self::VehicleStatus => "vehicle_status_topic",
@@ -179,6 +180,7 @@ impl HudConfig {
     }
 
     /// [`HudConfig::max_speed`] in its type.
+    #[must_use]
     pub fn max_speed(&self) -> MetresPerSecond {
         MetresPerSecond(self.max_speed as f32)
     }
@@ -189,6 +191,7 @@ impl HudConfig {
     }
 
     /// The name of one topic.
+    #[must_use]
     pub fn topic(&self, topic: Topic) -> &str {
         match topic {
             Topic::VehicleStatus => &self.vehicle_status_topic,
@@ -236,6 +239,7 @@ impl HudConfig {
     }
 
     /// [`HudConfig::stale_after`] as a Duration.
+    #[must_use]
     pub fn stale_after(&self) -> Duration {
         Duration::from_secs_f64(self.stale_after)
     }

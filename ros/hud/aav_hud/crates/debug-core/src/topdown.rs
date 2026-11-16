@@ -17,11 +17,13 @@ pub struct Rect {
 }
 
 impl Rect {
+    #[must_use]
     pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
         Self { x, y, w, h }
     }
 
     /// Whether a window point is inside.
+    #[must_use]
     pub fn contains(&self, at: [f32; 2]) -> bool {
         at[0] >= self.x && at[0] <= self.x + self.w && at[1] >= self.y && at[1] <= self.y + self.h
     }
@@ -45,6 +47,7 @@ const MIN_SPAN: f32 = 20.0;
 impl View {
     /// The whole of `bounds` (lowest x, y, then highest x, y; metres) in `rect`, with a
     /// margin, the same scale both ways.
+    #[must_use]
     pub fn fit(bounds: [f32; 4], rect: Rect) -> Self {
         let [x0, y0, x1, y1] = bounds;
         let span_x = (x1 - x0).abs().max(MIN_SPAN) * (1.0 + 2.0 * MARGIN);
@@ -58,6 +61,7 @@ impl View {
     }
 
     /// A square `width` metres across round `centre`, filling the rectangle's shorter side.
+    #[must_use]
     pub fn around(centre: Point, width: f32, rect: Rect) -> Self {
         Self {
             centre,
@@ -67,6 +71,7 @@ impl View {
     }
 
     /// A map point in window points.
+    #[must_use]
     pub fn to_screen(&self, p: Point) -> [f32; 2] {
         let dx = (p.x - self.centre.x) as f32 * self.scale;
         let dy = (p.y - self.centre.y) as f32 * self.scale;
@@ -77,17 +82,20 @@ impl View {
     }
 
     /// Whether a map point is drawn inside the rectangle.
+    #[must_use]
     pub fn shows(&self, p: Point) -> bool {
         self.rect.contains(self.to_screen(p))
     }
 
     /// Half the shown width and height, in metres: what to look up round the centre.
+    #[must_use]
     pub fn half_span(&self) -> f64 {
         f64::from(self.rect.w.max(self.rect.h) / 2.0 / self.scale.max(1e-6))
     }
 
     /// The points of an ellipse (map frame: centre, half-axes, the long one's heading)
     /// round its edge, in window points: `n` of them, the first repeated at the end.
+    #[must_use]
     pub fn ellipse(
         &self,
         centre: [f32; 2],

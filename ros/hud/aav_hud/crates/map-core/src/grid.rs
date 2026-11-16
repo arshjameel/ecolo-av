@@ -22,6 +22,7 @@ pub struct GridInfo {
 
 impl GridInfo {
     /// The grid's size in metres: (across, up).
+    #[must_use]
     pub fn size(&self) -> (f64, f64) {
         (
             f64::from(self.width) * self.resolution,
@@ -30,6 +31,7 @@ impl GridInfo {
     }
 
     /// The four corners on the map, counter-clockwise from the origin's.
+    #[must_use]
     pub fn corners(&self) -> [Point; 4] {
         let (w, h) = self.size();
         [
@@ -42,6 +44,7 @@ impl GridInfo {
     }
 
     /// The smallest box, on the map's axes, that holds the whole grid.
+    #[must_use]
     pub fn bounds(&self) -> Bounds {
         Bounds::around(self.corners()).unwrap_or_default()
     }
@@ -52,11 +55,13 @@ impl GridInfo {
     }
 
     /// Whether a map point is on the grid (edges included).
+    #[must_use]
     pub fn contains(&self, p: Point) -> bool {
         self.distance_outside(p).0 == 0.0
     }
 
     /// How far a map point is from the grid: 0 on it, else to its nearest edge.
+    #[must_use]
     pub fn distance_outside(&self, p: Point) -> Metres {
         let q = self.local(p);
         let (w, h) = self.size();
@@ -87,11 +92,13 @@ impl Bounds {
         })
     }
 
+    #[must_use]
     pub fn centre(&self) -> Point {
         (self.min + self.max) * 0.5
     }
 
     /// (across, up), in metres.
+    #[must_use]
     pub fn size(&self) -> (f64, f64) {
         (self.max.x - self.min.x, self.max.y - self.min.y)
     }
@@ -125,6 +132,7 @@ pub struct Palette {
 
 impl Palette {
     /// One cell's colour: free and occupied mix by the cell's occupancy.
+    #[must_use]
     pub fn colour(&self, cell: Cell) -> [u8; 4] {
         match cell {
             Cell::Unknown => self.unknown,
@@ -187,6 +195,7 @@ impl Grid {
     }
 
     /// The cell at (column, row), counted from the origin corner.
+    #[must_use]
     pub fn cell(&self, column: u32, row: u32) -> Option<Cell> {
         if column >= self.info.width || row >= self.info.height {
             return None;
@@ -197,6 +206,7 @@ impl Grid {
 
     /// The picture: width x height RGBA pixels, top row first, the grid's highest row
     /// (north, when the grid isn't turned) at the top.
+    #[must_use]
     pub fn to_rgba(&self, palette: &Palette) -> Vec<u8> {
         let width = self.info.width as usize;
         self.cells

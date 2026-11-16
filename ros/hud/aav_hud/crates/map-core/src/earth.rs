@@ -38,11 +38,13 @@ pub struct LatLon {
 }
 
 impl LatLon {
+    #[must_use]
     pub const fn new(lat: f64, lon: f64) -> Self {
         Self { lat, lon }
     }
 
     /// On the globe: finite, |lat| <= 90, |lon| <= 180.
+    #[must_use]
     pub fn is_valid(self) -> bool {
         self.lat.is_finite()
             && self.lon.is_finite()
@@ -61,6 +63,7 @@ pub struct UtmZone {
 impl UtmZone {
     /// The standard zone of a place (6 degrees wide; Norway's and Svalbard's exceptions
     /// are left out: they are far from Ottawa).
+    #[must_use]
     pub fn of(p: LatLon) -> Self {
         let number = (((p.lon + 180.0) / 6.0).floor() as i32).clamp(0, 59) + 1;
         Self {
@@ -133,6 +136,7 @@ impl Series {
 }
 
 /// A place in UTM, in a given zone (navsat_transform keeps the datum's zone).
+#[must_use]
 pub fn to_utm(p: LatLon, zone: UtmZone) -> Utm {
     let s = Series::wgs84();
     let phi = p.lat.to_radians();
@@ -160,6 +164,7 @@ pub fn to_utm(p: LatLon, zone: UtmZone) -> Utm {
 }
 
 /// The opposite of [`to_utm`].
+#[must_use]
 pub fn from_utm(easting: f64, northing: f64, zone: UtmZone) -> LatLon {
     let s = Series::wgs84();
     let xi = (northing - zone.false_northing()) / s.k0a;
@@ -264,12 +269,14 @@ impl Datum {
     }
 
     /// A place on the map, in metres from the datum.
+    #[must_use]
     pub fn to_map(&self, p: LatLon) -> Point {
         let u = to_utm(p, self.zone);
         Point::new(u.easting - self.easting, u.northing - self.northing).rotated(-self.turn)
     }
 
     /// A map point on the Earth: the opposite of [`Datum::to_map`].
+    #[must_use]
     pub fn to_lat_lon(&self, p: Point) -> LatLon {
         let grid = p.rotated(self.turn);
         from_utm(grid.x + self.easting, grid.y + self.northing, self.zone)
@@ -277,6 +284,7 @@ impl Datum {
 }
 
 /// Web Mercator (the tiles' projection): x and y from 0 to 1 across the world, y down.
+#[must_use]
 pub fn to_web_mercator(p: LatLon) -> (f64, f64) {
     let lat = p.lat.clamp(-85.051_128_78, 85.051_128_78).to_radians();
     let x = (p.lon + 180.0) / 360.0;
@@ -285,6 +293,7 @@ pub fn to_web_mercator(p: LatLon) -> (f64, f64) {
 }
 
 /// The opposite of [`to_web_mercator`].
+#[must_use]
 pub fn from_web_mercator(x: f64, y: f64) -> LatLon {
     let lat = (PI * (1.0 - 2.0 * y)).sinh().atan().to_degrees();
     LatLon::new(lat, x * 360.0 - 180.0)

@@ -89,6 +89,7 @@ pub struct Caps {
 }
 
 /// Where the speed buttons may drive now.
+#[must_use]
 pub fn gate(s: &Situation<'_>, caps: Caps) -> Gate {
     let on = |cap: f64, watch_unseen| Gate::On {
         cap: if s.stands { cap.min(caps.stands) } else { cap },

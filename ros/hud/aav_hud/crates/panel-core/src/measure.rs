@@ -62,6 +62,7 @@ impl Odometer {
     }
 
     /// The mean speed over the counted time (m/s), once there is some.
+    #[must_use]
     pub fn mean(&self) -> Option<f64> {
         let t = self.timed.as_secs_f64();
         (t > 0.0).then(|| self.distance / t)
@@ -76,6 +77,7 @@ pub struct Entry {
 
 impl Entry {
     /// What has been typed.
+    #[must_use]
     pub fn text(&self) -> &str {
         &self.text
     }
@@ -98,6 +100,7 @@ impl Entry {
     }
 
     /// The number, if it is one above zero.
+    #[must_use]
     pub fn value(&self) -> Option<f64> {
         self.text.parse().ok().filter(|v: &f64| *v > 0.0)
     }
@@ -120,6 +123,7 @@ pub enum WheelCheck {
 }
 
 /// The check: the odometer's run against the tape, with vehicle.yaml's `diameter`.
+#[must_use]
 pub fn wheel_check(odometer: &Odometer, tape: Option<f64>, diameter: Option<f64>) -> WheelCheck {
     let Some(diameter) = diameter.filter(|d| *d > 0.0) else {
         return WheelCheck::NotYet("vehicle.yaml has no wheel_diameter");
@@ -145,6 +149,7 @@ pub fn wheel_check(odometer: &Odometer, tape: Option<f64>, diameter: Option<f64>
 }
 
 /// SAVE's file: what was measured, and what to copy into vehicle.yaml if anything.
+#[must_use]
 pub fn report(odometer: &Odometer, tape: Option<f64>, diameter: Option<f64>, when: &str) -> String {
     let mut out = format!(
         "# The hardware panel's MEASURE page, {when}\n\

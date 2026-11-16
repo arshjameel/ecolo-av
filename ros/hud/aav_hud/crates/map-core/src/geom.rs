@@ -15,31 +15,37 @@ pub struct Point {
 }
 
 impl Point {
+    #[must_use]
     pub const fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
 
     /// The straight-line distance to another point.
+    #[must_use]
     pub fn distance(self, other: Point) -> Metres {
         Metres((other - self).length())
     }
 
     /// The length of this point seen as a vector from the origin.
+    #[must_use]
     pub fn length(self) -> f64 {
         self.x.hypot(self.y)
     }
 
     /// The dot product, as vectors.
+    #[must_use]
     pub fn dot(self, other: Point) -> f64 {
         self.x * other.x + self.y * other.y
     }
 
     /// Turned `yaw` radians counter-clockwise about the origin.
+    #[must_use]
     pub fn rotated(self, yaw: f64) -> Point {
         let (s, c) = yaw.sin_cos();
         Point::new(c * self.x - s * self.y, s * self.x + c * self.y)
     }
 
+    #[must_use]
     pub fn is_finite(self) -> bool {
         self.x.is_finite() && self.y.is_finite()
     }
@@ -75,6 +81,7 @@ pub struct Pose {
 }
 
 impl Pose {
+    #[must_use]
     pub const fn new(x: f64, y: f64, yaw: f64) -> Self {
         Self {
             position: Point::new(x, y),
@@ -84,6 +91,7 @@ impl Pose {
 
     /// From a ROS pose: its position and its orientation quaternion. Only the heading is
     /// kept: the map is flat.
+    #[must_use]
     pub fn from_ros(x: f64, y: f64, q: Quaternion) -> Self {
         Self {
             position: Point::new(x, y),
@@ -92,6 +100,7 @@ impl Pose {
     }
 
     /// A point given in this pose's own frame (x forward, y left), on the map.
+    #[must_use]
     pub fn transform(self, local: Point) -> Point {
         self.position + local.rotated(self.yaw)
     }
@@ -109,6 +118,7 @@ pub struct Quaternion {
 impl Quaternion {
     /// The heading about z (yaw), radians. A zero quaternion (all fields 0, an unset
     /// message) comes out facing east.
+    #[must_use]
     pub fn yaw(self) -> f64 {
         let Self { x, y, z, w } = self;
         let siny = 2.0 * (w * z + x * y);

@@ -90,6 +90,7 @@ impl Topic {
     ];
 
     /// The ROS parameter that holds this topic's name.
+    #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
             Self::ScreenAlive => "screen_alive_topic",
@@ -148,6 +149,7 @@ impl Number {
         Number::EasterEggAfter,
     ];
 
+    #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
             Self::StaleAfter => "stale_after",
@@ -180,6 +182,7 @@ impl Count {
         Count::SweepMaxError,
     ];
 
+    #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
             Self::JogStep => "jog_step",
@@ -321,6 +324,7 @@ impl PanelConfig {
     }
 
     /// The name of one topic.
+    #[must_use]
     pub fn topic(&self, topic: Topic) -> &str {
         match topic {
             Topic::ScreenAlive => &self.screen_alive_topic,
@@ -383,6 +387,7 @@ impl PanelConfig {
         *slot = name;
     }
 
+    #[must_use]
     pub fn number(&self, n: Number) -> f64 {
         match n {
             Number::StaleAfter => self.stale_after,
@@ -412,6 +417,7 @@ impl PanelConfig {
         *slot = value;
     }
 
+    #[must_use]
     pub fn count(&self, c: Count) -> u16 {
         match c {
             Count::JogStep => self.jog_step,
@@ -435,6 +441,7 @@ impl PanelConfig {
     }
 
     /// The little robot's settings.
+    #[must_use]
     pub fn easter_egg_settings(&self) -> EggSettings {
         EggSettings {
             on: self.easter_egg,
@@ -443,6 +450,7 @@ impl PanelConfig {
     }
 
     /// The calibration page's numbers; the check's others are sweep's defaults.
+    #[must_use]
     pub fn calibration(&self) -> CalSettings {
         CalSettings {
             jog_step: self.jog_step,
@@ -466,6 +474,7 @@ impl PanelConfig {
     }
 
     /// [`PanelConfig::stale_after`] as a Duration.
+    #[must_use]
     pub fn stale_after(&self) -> Duration {
         Duration::from_secs_f64(self.stale_after)
     }

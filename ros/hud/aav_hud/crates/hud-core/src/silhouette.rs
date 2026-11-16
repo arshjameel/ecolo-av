@@ -44,6 +44,7 @@ pub struct Placement {
 impl Placement {
     /// As long as it fits in the box (`x`, `y`, `width`, `height`), standing on the
     /// box's bottom, at its right end.
+    #[must_use]
     pub fn bottom_right(x: f32, y: f32, width: f32, height: f32) -> Self {
         let length = width.min(height / HEIGHT).max(0.0);
         Self {
@@ -54,6 +55,7 @@ impl Placement {
     }
 
     /// A point of the drawing on the screen.
+    #[must_use]
     pub fn at(self, (x, y): Point) -> Point {
         (self.left + x * self.length, self.ground - y * self.length)
     }
@@ -84,6 +86,7 @@ fn arch(axle: f32) -> impl Iterator<Item = Point> {
 }
 
 /// The hatchback coupe.
+#[must_use]
 pub fn hatchback() -> Silhouette {
     // Round the top, from the tail's bottom to the nose's bottom.
     let top = [

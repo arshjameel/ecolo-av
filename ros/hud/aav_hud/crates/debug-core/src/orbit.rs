@@ -23,6 +23,7 @@ pub enum Mode {
 
 impl Mode {
     /// The next one, for the `C` key.
+    #[must_use]
     pub fn next(self) -> Self {
         match self {
             Self::Chase => Self::Follow,
@@ -31,6 +32,7 @@ impl Mode {
         }
     }
 
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Chase => "CHASE",
@@ -81,6 +83,7 @@ impl Default for Orbit {
 
 impl Orbit {
     /// The heading the camera looks from (the camera sits that way from the target).
+    #[must_use]
     pub fn heading(&self) -> f32 {
         match self.mode {
             Mode::Chase => self.car_yaw + PI + self.turn,
@@ -89,6 +92,7 @@ impl Orbit {
     }
 
     /// Where the camera is, odom.
+    #[must_use]
     pub fn position(&self) -> [f32; 3] {
         let (h, e) = (self.heading(), self.elevation);
         let [x, y, z] = self.target;

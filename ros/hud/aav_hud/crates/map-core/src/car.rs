@@ -41,6 +41,7 @@ impl CarShape {
 
     /// The four corners on the map, for the car at `pose`: rear right, front right,
     /// front left, rear left (counter-clockwise).
+    #[must_use]
     pub fn outline(&self, pose: Pose) -> [Point; 4] {
         let (rear, front) = (-self.rear_overhang, self.length - self.rear_overhang);
         let half = self.width / 2.0;
@@ -55,6 +56,7 @@ impl CarShape {
 
     /// An arrow inside the body, pointing the way the car faces: tip, then the back
     /// corners (counter-clockwise).
+    #[must_use]
     pub fn arrow(&self, pose: Pose) -> [Point; 3] {
         let front = self.length - self.rear_overhang;
         let (tip, back) = (front - 0.12 * self.length, front - 0.6 * self.length);
@@ -68,6 +70,7 @@ impl CarShape {
     }
 
     /// The middle of the body, on the map: what the view keeps centred.
+    #[must_use]
     pub fn centre(&self, pose: Pose) -> Point {
         pose.transform(Point::new(self.length / 2.0 - self.rear_overhang, 0.0))
     }

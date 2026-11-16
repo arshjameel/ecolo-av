@@ -41,6 +41,7 @@ pub enum StatusLine {
 
 impl StatusLine {
     /// The line's sequence number: a gap means lines were lost.
+    #[must_use]
     pub fn seq(&self) -> u64 {
         match self {
             Self::Heartbeat(h) => h.seq,
@@ -247,6 +248,7 @@ pub fn parse_line(line: &str) -> Result<StatusLine, LineError> {
 }
 
 /// Lines lost between two sequence numbers (0: none).
+#[must_use]
 pub fn lost_between(last: u64, next: u64) -> u64 {
     next.saturating_sub(last).saturating_sub(1)
 }

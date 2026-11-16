@@ -57,6 +57,7 @@ impl Localizer {
         Localizer::Ndt,
     ];
 
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Local => "EKF local",
@@ -68,6 +69,7 @@ impl Localizer {
     }
 
     /// Whether its poses are in the map frame (so drawn through map -> odom).
+    #[must_use]
     pub fn in_map(self) -> bool {
         !matches!(self, Self::Local)
     }
@@ -117,6 +119,7 @@ impl Source {
         Source::Track,
     ];
 
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Imu => "IMU",
@@ -238,6 +241,7 @@ const TRAIL_STEP: f64 = 0.25;
 pub const MAX_PARTICLES: usize = 5000;
 
 impl DebugState {
+    #[must_use]
     pub fn new(config: &DebugConfig) -> Self {
         Self {
             odom_frame: config.odom_frame.clone(),
@@ -439,6 +443,7 @@ impl DebugState {
     }
 
     /// Clouds a second, by their stamps.
+    #[must_use]
     pub fn scan_rate(&self) -> Option<f64> {
         let (first, last) = (self.scan_times.front()?, self.scan_times.back()?);
         let span = last.seconds_since(*first);
@@ -446,6 +451,7 @@ impl DebugState {
     }
 
     /// A localizer's pose, in odom. Map-frame ones need map -> odom.
+    #[must_use]
     pub fn pose_in_odom(&self, who: Localizer) -> Option<Pose> {
         let pose = *self.poses.get(&who)?;
         if who.in_map() {
@@ -457,6 +463,7 @@ impl DebugState {
 
     /// A localizer's pose, in the map frame (the seeing screen's top-downs). The local
     /// EKF's needs map -> odom.
+    #[must_use]
     pub fn pose_in_map(&self, who: Localizer) -> Option<Pose> {
         let pose = *self.poses.get(&who)?;
         if who.in_map() {
@@ -471,6 +478,7 @@ impl DebugState {
 
     /// The latest scan's cubes above the ground, seen from above in the map frame (none
     /// without map -> odom): what NDT matches against its map.
+    #[must_use]
     pub fn scan_in_map(&self) -> Vec<Point> {
         let (Some(scan), Some(odom)) = (&self.scan, self.map_to_odom.odom_in_map) else {
             return Vec::new();
@@ -483,11 +491,13 @@ impl DebugState {
     }
 
     /// The car as the local EKF has it: what the camera follows.
+    #[must_use]
     pub fn car(&self) -> Option<Pose> {
         self.pose_in_odom(Localizer::Local)
     }
 
     /// Nav2's plan, in odom.
+    #[must_use]
     pub fn plan_in_odom(&self) -> Vec<Point> {
         self.plan
             .iter()
@@ -513,6 +523,7 @@ impl DebugState {
     }
 
     /// How many cubes [`DebugState::drawn_cubes`] gives, and how many were cut.
+    #[must_use]
     pub fn drawn_count(&self) -> (usize, usize) {
         match self.layers.cubes {
             CubeView::Kept => (self.kept.cubes().len(), self.kept.cut()),
@@ -536,6 +547,7 @@ impl DebugState {
     }
 
     /// How far a localizer is from the local EKF, seen from above (metres).
+    #[must_use]
     pub fn offset_from_local(&self, who: Localizer) -> Option<f64> {
         let a = self.pose_in_odom(who)?;
         let b = self.car()?;
@@ -544,6 +556,7 @@ impl DebugState {
 
     /// One row's health at `now`. `/localization/health` comes once a second, so it
     /// has its own, longer limit.
+    #[must_use]
     pub fn health(&self, source: Source, now: Instant) -> Health {
         let limit = match source {
             Source::LocalizationHealth => self.health_stale_after,

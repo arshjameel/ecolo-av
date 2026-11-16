@@ -18,6 +18,7 @@ pub enum Alarm {
 /// A watchdog never heard is none of the screen's business (the turtle runs none). One
 /// that went quiet is: then nothing watches the sensors, and twist_mux holds Nav2 for
 /// its silence, so say so.
+#[must_use]
 pub fn alarm(health: Health, verdict: Option<&str>) -> Option<Alarm> {
     match health {
         Health::Never => None,

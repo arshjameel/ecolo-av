@@ -64,6 +64,7 @@ pub enum FirmwareState {
 }
 
 impl FirmwareState {
+    #[must_use]
     pub fn from_byte(byte: u8) -> Self {
         match byte {
             0 => Self::Off,
@@ -159,6 +160,7 @@ pub struct Situation {
 }
 
 /// Every reason the page may not ask now; empty: the software allows it.
+#[must_use]
 pub fn readiness(s: &Situation) -> Vec<NotReady> {
     let mut why = Vec::new();
     if s.estop {
@@ -200,6 +202,7 @@ pub enum Allowance {
 }
 
 /// [`readiness`], with what "still" rests on.
+#[must_use]
 pub fn allowance(s: &Situation) -> Allowance {
     let why = readiness(s);
     if !why.is_empty() {
@@ -309,6 +312,7 @@ pub struct CalPage {
 }
 
 impl CalPage {
+    #[must_use]
     pub fn new(settings: CalSettings) -> Self {
         Self {
             settings,
@@ -323,6 +327,7 @@ impl CalPage {
     }
 
     /// Whether a person said ON STANDS, STILL (and hasn't withdrawn it).
+    #[must_use]
     pub fn still_confirmed(&self) -> bool {
         self.still_confirmed
     }
@@ -332,27 +337,33 @@ impl CalPage {
         self.still_confirmed = false;
     }
 
+    #[must_use]
     pub fn mode(&self) -> &Mode {
         &self.mode
     }
 
+    #[must_use]
     pub fn settings(&self) -> &CalSettings {
         &self.settings
     }
 
+    #[must_use]
     pub fn note(&self) -> Option<&str> {
         self.note.as_deref()
     }
 
+    #[must_use]
     pub fn checked(&self) -> Option<&Outcome> {
         self.checked.as_ref()
     }
 
     /// Whether anything is being asked of the firmware (limp, jog, the check).
+    #[must_use]
     pub fn is_asking(&self) -> bool {
         matches!(self.mode, Mode::Limp | Mode::Jog { .. } | Mode::Sweep(_))
     }
 
+    #[must_use]
     pub fn mark(&self, m: Mark) -> Option<u16> {
         match m {
             Mark::Left => self.left,
@@ -362,11 +373,13 @@ impl CalPage {
     }
 
     /// The three marks (left, centre, right), once all are there.
+    #[must_use]
     pub fn marks(&self) -> Option<(u16, u16, u16)> {
         Some((self.left?, self.centre?, self.right?))
     }
 
     /// The limits from the three marks, once all are there.
+    #[must_use]
     pub fn limits(&self) -> Option<Result<Limits, MeasurementError>> {
         let marks = Marks {
             left: self.left?,
@@ -380,6 +393,7 @@ impl CalPage {
 
     /// +1 if steering left raises the count: from the marks once they say, otherwise the
     /// firmware's guess today (calibration.rs: 3100 counts a radian, positive left).
+    #[must_use]
     pub fn left_sign(&self) -> i32 {
         let known = |a: u16, b: u16| if a > b { 1 } else { -1 };
         match (self.left, self.centre, self.right) {
@@ -592,6 +606,7 @@ pub fn result_file(limits: &Limits, marks: (u16, u16, u16), checked: Option<&Out
 }
 
 /// A file name's time, UTC, from seconds since 1970: `2026-11-01T21-05-33Z`.
+#[must_use]
 pub fn utc_stamp(unix_secs: u64) -> String {
     let (days, secs) = (unix_secs / 86_400, unix_secs % 86_400);
     // Howard Hinnant's civil_from_days, for days since 1970-01-01.

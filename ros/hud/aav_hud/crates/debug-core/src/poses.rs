@@ -32,6 +32,7 @@ pub struct PoseBuffer {
 }
 
 impl PoseBuffer {
+    #[must_use]
     pub fn new(window: Duration) -> Self {
         Self {
             window,
@@ -66,15 +67,18 @@ impl PoseBuffer {
     }
 
     /// The newest pose.
+    #[must_use]
     pub fn latest(&self) -> Option<(Stamp, Pose)> {
         self.poses.back().copied()
     }
 
     /// How many poses are kept.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.poses.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.poses.is_empty()
     }

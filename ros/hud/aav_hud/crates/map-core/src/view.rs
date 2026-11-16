@@ -36,6 +36,7 @@ pub struct ScreenPoint {
 }
 
 impl ScreenPoint {
+    #[must_use]
     pub const fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
@@ -51,10 +52,12 @@ pub struct Viewport {
 }
 
 impl Viewport {
+    #[must_use]
     pub fn centre(&self) -> ScreenPoint {
         ScreenPoint::new(self.x + self.width / 2.0, self.y + self.height / 2.0)
     }
 
+    #[must_use]
     pub fn contains(&self, p: ScreenPoint) -> bool {
         (self.x..self.x + self.width).contains(&p.x)
             && (self.y..self.y + self.height).contains(&p.y)
@@ -72,6 +75,7 @@ pub enum Mode {
 
 impl Mode {
     /// The words on the screen.
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::FollowCar => "FOLLOWING THE CAR",
@@ -110,6 +114,7 @@ impl Default for View {
 
 impl View {
     /// A map point on the screen. North (+y) is up.
+    #[must_use]
     pub fn to_screen(&self, p: Point, vp: &Viewport) -> ScreenPoint {
         let c = vp.centre();
         let k = self.scale.0;
@@ -120,6 +125,7 @@ impl View {
     }
 
     /// A screen point on the map: the opposite of [`View::to_screen`].
+    #[must_use]
     pub fn to_map(&self, s: ScreenPoint, vp: &Viewport) -> Point {
         let c = vp.centre();
         let k = self.scale.0;
@@ -130,6 +136,7 @@ impl View {
     }
 
     /// The map area the viewport shows.
+    #[must_use]
     pub fn visible(&self, vp: &Viewport) -> Bounds {
         let a = self.to_map(ScreenPoint::new(vp.x, vp.y + vp.height), vp);
         let b = self.to_map(ScreenPoint::new(vp.x + vp.width, vp.y), vp);
@@ -216,6 +223,7 @@ impl View {
 }
 
 /// The largest of 1, 2, 5, 10, 20, 50... that is at most `limit`; None below 0.01.
+#[must_use]
 pub fn nice_at_most(limit: f64) -> Option<f64> {
     if !(limit.is_finite() && limit >= 0.01) {
         return None;
@@ -229,12 +237,14 @@ pub fn nice_at_most(limit: f64) -> Option<f64> {
 
 /// The scale bar: a round number of metres, and its length in pixels, no longer than
 /// `max_px`.
+#[must_use]
 pub fn scale_bar(scale: PixelsPerMetre, max_px: f64) -> Option<(f64, f64)> {
     let metres = nice_at_most(max_px / scale.0)?;
     Some((metres, metres * scale.0))
 }
 
 /// The grid lines' spacing in metres: a round number, at least `min_px` apart.
+#[must_use]
 pub fn grid_step(scale: PixelsPerMetre, min_px: f64) -> f64 {
     let at_least = min_px / scale.0;
     // The smallest 1-2-5 number at or above `at_least`.

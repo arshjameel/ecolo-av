@@ -5,11 +5,13 @@ use std::time::Duration;
 use crate::{health::Health, units::MetresPerSecond};
 
 /// Speed in whole km/h, without a sign: "0", "12". The gear letter says the direction.
+#[must_use]
 pub fn speed_km_per_hour(speed: MetresPerSecond) -> String {
     format!("{:.0}", speed.to_km_per_hour().abs())
 }
 
 /// How long ago: "0.3 s", "12 s", "4 min", "2 h".
+#[must_use]
 pub fn age(age: Duration) -> String {
     let s = age.as_secs_f64();
     if s < 10.0 {
@@ -24,6 +26,7 @@ pub fn age(age: Duration) -> String {
 }
 
 /// A topic's line: "OK 0.1 s", "STALE 12 s", "NEVER".
+#[must_use]
 pub fn health(health: Health) -> String {
     match health.age() {
         Some(a) => format!("{} {}", health.word(), age(a)),
@@ -32,16 +35,19 @@ pub fn health(health: Health) -> String {
 }
 
 /// Latitude or longitude: 6 decimals (about 0.1 m), with N/S or E/W.
+#[must_use]
 pub fn latitude(deg: f64) -> String {
     format!("{:.6} {}", deg.abs(), if deg < 0.0 { 'S' } else { 'N' })
 }
 
 /// See [`latitude`].
+#[must_use]
 pub fn longitude(deg: f64) -> String {
     format!("{:.6} {}", deg.abs(), if deg < 0.0 { 'W' } else { 'E' })
 }
 
 /// A distance in metres, sized to its value: "0.02 m", "1.5 m", "12 m".
+#[must_use]
 pub fn metres(m: f64) -> String {
     if m < 1.0 {
         format!("{m:.2} m")
@@ -54,6 +60,7 @@ pub fn metres(m: f64) -> String {
 
 /// A steering angle in degrees with L or R: "12° L". Positive turns left (REP-103).
 /// raylib's built-in font has no degree sign, so it says "deg".
+#[must_use]
 pub fn steering(deg: f32) -> String {
     let side = if deg > 0.5 {
         " L"

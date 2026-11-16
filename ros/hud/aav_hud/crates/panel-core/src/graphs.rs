@@ -58,6 +58,7 @@ pub enum Channel {
 impl Channel {
     pub const ALL: [Channel; 3] = [Channel::Steering, Channel::Brake, Channel::Throttle];
 
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Steering => "STEERING",
@@ -67,6 +68,7 @@ impl Channel {
     }
 
     /// The channel's number in a frame's (steering, speed, accel), -1..1.
+    #[must_use]
     pub fn of_frame(self, steering: f64, speed: f64, accel: f64) -> f64 {
         match self {
             Self::Steering => steering,
@@ -77,6 +79,7 @@ impl Channel {
     }
 
     /// The channel in ego's command: rad, m/s; ego has no brake value (review 2, M3).
+    #[must_use]
     pub fn of_drive(self, d: &Drive) -> Option<f64> {
         match self {
             Self::Steering => Some(d.steering),
@@ -113,6 +116,7 @@ pub struct PiFrame {
 }
 
 impl PiFrame {
+    #[must_use]
     pub fn value(&self, c: Channel) -> f64 {
         c.of_frame(self.steering, self.speed, self.accel)
     }
@@ -139,6 +143,7 @@ pub enum Hop {
 impl Hop {
     pub const ALL: [Hop; 4] = [Hop::Ego, Hop::Mux, Hop::PiWrote, Hop::Esp32Got];
 
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Ego => "ego",
@@ -164,6 +169,7 @@ pub enum Verdict {
 }
 
 impl Verdict {
+    #[must_use]
     pub fn word(&self) -> &'static str {
         match self {
             Self::Ok(_) => "OK",
@@ -175,6 +181,7 @@ impl Verdict {
     }
 
     /// Why, in a few words (empty for STALE and NO DATA).
+    #[must_use]
     pub fn why(&self) -> &str {
         match self {
             Self::Ok(s) | Self::Different(s) | Self::NotTested(s) => s,
@@ -237,6 +244,7 @@ pub struct Stats {
 }
 
 impl Stats {
+    #[must_use]
     pub fn of(points: &[Point]) -> Option<Self> {
         let now = points.last()?.value;
         let (sum, low, high) = points
@@ -412,6 +420,7 @@ impl Graphs {
     }
 
     /// Where the ESP32's line comes from now, if anywhere.
+    #[must_use]
     pub fn esp32_line(&self, now: Instant) -> Option<Esp32Line> {
         if self.rx.since(Self::from(now)).next().is_some() {
             Some(Esp32Line::Received)
@@ -423,6 +432,7 @@ impl Graphs {
     }
 
     /// One graph's line over the window.
+    #[must_use]
     pub fn line(&self, c: Channel, line: Line, now: Instant) -> Vec<Point> {
         let from = Self::from(now);
         let raw: Vec<(Instant, f64)> = match line {
@@ -457,6 +467,7 @@ impl Graphs {
     }
 
     /// The IMU's turn rate over the window, deg/s.
+    #[must_use]
     pub fn imu_line(&self, now: Instant) -> Vec<Point> {
         let raw = self
             .imu_yaw
@@ -485,11 +496,13 @@ impl Graphs {
     }
 
     /// When the board restarted, in the window (the graphs mark it).
+    #[must_use]
     pub fn restarts(&self, now: Instant) -> Vec<Instant> {
         self.restarts.since(Self::from(now)).map(|t| t.at).collect()
     }
 
     /// The status strip.
+    #[must_use]
     pub fn counts(&self, now: Instant) -> Counts {
         let from = Self::from(now);
         let rise = |first: u32, last: u32| last.saturating_sub(first);
@@ -526,6 +539,7 @@ impl Graphs {
     }
 
     /// Each hop's verdict, ego first.
+    #[must_use]
     pub fn hops(&self, now: Instant, stale_after: Duration) -> Vec<HopReport> {
         let from = Self::from(now);
         vec![
@@ -861,11 +875,13 @@ impl Freezer {
         self.estop_was = estop;
     }
 
+    #[must_use]
     pub fn frozen(&self) -> Option<(Instant, FreezeWhy)> {
         self.frozen.as_ref().map(|(at, why, _)| (*at, *why))
     }
 
     /// What to draw, and as of when.
+    #[must_use]
     pub fn view<'a>(&'a self, live: &'a Graphs, now: Instant) -> (&'a Graphs, Instant) {
         match &self.frozen {
             Some((at, _, copy)) => (copy, *at),

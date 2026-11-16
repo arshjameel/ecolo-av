@@ -42,6 +42,7 @@ pub const UNKNOWN: &str = "unknown";
 
 impl Kind {
     /// The kind of a detector label (`person`, `stop sign`...); empty is unknown.
+    #[must_use]
     pub fn of(label: &str) -> Self {
         let label = label.trim().to_lowercase();
         match label.as_str() {
@@ -54,6 +55,7 @@ impl Kind {
     }
 
     /// Its colour on every screen (the markers' too: `looks.py`).
+    #[must_use]
     pub fn colour(self) -> Rgba {
         theme::thing_colour(self)
     }
@@ -78,16 +80,19 @@ pub struct Thing {
 }
 
 impl Thing {
+    #[must_use]
     pub fn kind(&self) -> Kind {
         Kind::of(&self.name)
     }
 
     /// Whether a camera named it.
+    #[must_use]
     pub fn is_named(&self) -> bool {
         self.kind() != Kind::Unknown
     }
 
     /// Its words: `person 3`; an unnamed thing, its id only.
+    #[must_use]
     pub fn label(&self) -> String {
         if self.is_named() {
             format!("{} {}", self.name.trim(), self.id)
@@ -97,6 +102,7 @@ impl Thing {
     }
 
     /// Its colour: by kind, grey while coasting.
+    #[must_use]
     pub fn colour(&self) -> Rgba {
         if self.coasting {
             theme::THING_COASTING
@@ -106,6 +112,7 @@ impl Thing {
     }
 
     /// Its middle in base_link, for the car at (x, y, yaw) in odom.
+    #[must_use]
     pub fn in_base(&self, (cx, cy, yaw): CarPose) -> (f64, f64) {
         let (dx, dy) = (self.x - cx, self.y - cy);
         let (sin, cos) = yaw.sin_cos();
@@ -113,6 +120,7 @@ impl Thing {
     }
 
     /// Its box's four corners in base_link (the box is upright and square to odom).
+    #[must_use]
     pub fn corners_in_base(&self, car: CarPose) -> [(f64, f64); 4] {
         let (hl, hw) = (self.length / 2.0, self.width / 2.0);
         [(-hl, -hw), (hl, -hw), (hl, hw), (-hl, hw)].map(|(dx, dy)| {
@@ -129,6 +137,7 @@ impl Thing {
 /// The named things ahead of the car and within `range` m, nearest first, with their
 /// distance (m, from the rear axle): for a short list of words, such as `PERSON 4.2 m`.
 /// "Ahead" is in front of the rear axle, within 45 degrees either side.
+#[must_use]
 pub fn named_ahead(things: &[Thing], car: CarPose, range: f64) -> Vec<(&Thing, f64)> {
     let mut ahead: Vec<_> = things
         .iter()

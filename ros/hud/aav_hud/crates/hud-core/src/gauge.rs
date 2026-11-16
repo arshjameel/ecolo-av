@@ -67,6 +67,7 @@ pub struct Tick {
 
 impl Tick {
     /// The number beside a major tick: "0", "1", "20".
+    #[must_use]
     pub fn label(&self) -> Option<String> {
         self.major.then(|| format!("{:.0}", self.kmh))
     }
@@ -105,27 +106,32 @@ impl Scale {
     }
 
     /// The top of the dial, in km/h.
+    #[must_use]
     pub fn full_scale(&self) -> f32 {
         self.full as f32
     }
 
     /// Where the red blocks start, in km/h: the configured top speed.
+    #[must_use]
     pub fn redline(&self) -> f32 {
         self.redline
     }
 
     /// The step between numbered ticks, in km/h.
+    #[must_use]
     pub fn major_step(&self) -> f32 {
         self.major as f32
     }
 
     /// The step between any two ticks, in km/h.
+    #[must_use]
     pub fn minor_step(&self) -> f32 {
         self.major as f32 / self.minors as f32
     }
 
     /// Where `kmh` points, in radians on the screen (clockwise from right). Below 0 or
     /// above the full scale, the needle stops at the end.
+    #[must_use]
     pub fn angle(&self, kmh: f32) -> f32 {
         let k = if kmh.is_nan() {
             0.0
@@ -161,6 +167,7 @@ impl Scale {
 }
 
 /// A point `radius` from `centre` at `angle` (radians, clockwise from right on a screen).
+#[must_use]
 pub fn point(centre: (f32, f32), radius: f32, angle: f32) -> (f32, f32) {
     (
         centre.0 + radius * angle.cos(),
@@ -180,6 +187,7 @@ pub struct Needle {
 
 impl Needle {
     /// Where the needle points now, in km/h.
+    #[must_use]
     pub fn kmh(&self) -> f32 {
         self.kmh
     }
@@ -220,6 +228,7 @@ pub enum GearBox {
 
 impl GearBox {
     /// The box for the newest status, if there is one.
+    #[must_use]
     pub fn of(status: Option<&VehicleStatus>) -> Self {
         match status {
             None => Self::Unknown,
@@ -229,6 +238,7 @@ impl GearBox {
     }
 
     /// Its words: "E-STOP", "D", "R", "P" or "--".
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Estop => "E-STOP",

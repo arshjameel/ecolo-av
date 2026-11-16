@@ -75,6 +75,7 @@ impl Topic {
     ];
 
     /// The ROS parameter that holds this topic's name.
+    #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
             Self::Lidar => "lidar_topic",
@@ -114,6 +115,7 @@ impl Frame {
     pub const ALL: [Frame; 3] = [Frame::Odom, Frame::Base, Frame::Map];
 
     /// The ROS parameter that holds this frame's name.
+    #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
             Self::Odom => "odom_frame",
@@ -150,6 +152,7 @@ impl Number {
         Number::EasterEggAfter,
     ];
 
+    #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
             Self::StaleAfter => "stale_after",
@@ -291,6 +294,7 @@ impl DebugConfig {
     }
 
     /// The name of one topic.
+    #[must_use]
     pub fn topic(&self, topic: Topic) -> &str {
         match topic {
             Topic::Lidar => &self.lidar_topic,
@@ -346,6 +350,7 @@ impl DebugConfig {
     }
 
     /// The name of one frame.
+    #[must_use]
     pub fn frame(&self, frame: Frame) -> &str {
         match frame {
             Frame::Odom => &self.odom_frame,
@@ -365,6 +370,7 @@ impl DebugConfig {
     }
 
     /// One number.
+    #[must_use]
     pub fn number(&self, n: Number) -> f64 {
         match n {
             Number::StaleAfter => self.stale_after,
@@ -396,21 +402,25 @@ impl DebugConfig {
     }
 
     /// [`DebugConfig::stale_after`] as a Duration.
+    #[must_use]
     pub fn stale_after(&self) -> Duration {
         Duration::from_secs_f64(self.stale_after)
     }
 
     /// [`DebugConfig::pose_window`] as a Duration.
+    #[must_use]
     pub fn pose_window(&self) -> Duration {
         Duration::from_secs_f64(self.pose_window)
     }
 
     /// [`DebugConfig::keep_cubes_for`] as a Duration.
+    #[must_use]
     pub fn keep_cubes_for(&self) -> Duration {
         Duration::from_secs_f64(self.keep_cubes_for)
     }
 
     /// The little robot's settings.
+    #[must_use]
     pub fn easter_egg_settings(&self) -> EggSettings {
         EggSettings {
             on: self.easter_egg,
@@ -419,11 +429,13 @@ impl DebugConfig {
     }
 
     /// [`DebugConfig::health_stale_after`] as a Duration.
+    #[must_use]
     pub fn health_stale_after(&self) -> Duration {
         Duration::from_secs_f64(self.health_stale_after)
     }
 
     /// What Nav2's cubes need.
+    #[must_use]
     pub fn voxel_settings(&self) -> VoxelSettings {
         VoxelSettings {
             size: Metres(self.voxels_cube_size),
@@ -432,6 +444,7 @@ impl DebugConfig {
     }
 
     /// What the cube grid needs.
+    #[must_use]
     pub fn cube_settings(&self) -> CubeSettings {
         CubeSettings {
             size: Metres(self.cube_size),

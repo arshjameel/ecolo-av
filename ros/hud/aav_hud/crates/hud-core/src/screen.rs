@@ -115,6 +115,7 @@ impl Monitor {
 }
 
 /// What `--list-monitors` prints: one line each, the number, the name, the size and where.
+#[must_use]
 pub fn listing(monitors: &[MonitorInfo]) -> String {
     if monitors.is_empty() {
         return "no monitor found (is DISPLAY set? is the screen on?)\n".to_owned();

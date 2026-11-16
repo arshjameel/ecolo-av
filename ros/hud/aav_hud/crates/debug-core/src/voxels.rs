@@ -100,6 +100,7 @@ pub enum Road {
 }
 
 impl Road {
+    #[must_use]
     pub fn from_level(level: u8) -> Self {
         if level == 0 {
             Self::Fitted
@@ -109,6 +110,7 @@ impl Road {
     }
 
     /// The panel's word.
+    #[must_use]
     pub fn word(self) -> &'static str {
         match self {
             Self::Fitted => "OK",
@@ -173,6 +175,7 @@ impl VoxelStatus {
     }
 
     /// The big numbers, in one short line: "412 cubes   3.2 ms".
+    #[must_use]
     pub fn numbers(&self) -> String {
         let mut parts = Vec::new();
         if let Some(n) = self.cubes {
@@ -185,6 +188,7 @@ impl VoxelStatus {
     }
 
     /// The road's fit and the smaller numbers.
+    #[must_use]
     pub fn details(&self) -> String {
         let mut parts = vec![self.message.clone()];
         if let (Some(r), Some(p)) = (self.roll_deg, self.pitch_deg) {

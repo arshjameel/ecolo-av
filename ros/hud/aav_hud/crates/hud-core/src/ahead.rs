@@ -30,6 +30,7 @@ pub enum Grade {
 
 impl Grade {
     /// From diagnostic_msgs/DiagnosticStatus's level: 0 OK, 1 WARN, 2 ERROR (3 STALE).
+    #[must_use]
     pub fn from_level(level: u8) -> Self {
         match level {
             0 => Self::Ok,
@@ -61,6 +62,7 @@ impl PlanSource {
     }
 
     /// A short word for the screen.
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Local => "MPPI",
@@ -181,11 +183,13 @@ pub struct Ahead {
 impl Ahead {
     /// The line the car will drive past the trace's end: the trace, then straight on
     /// from its last heading, `total` m long in all. Where the obstacle and the stop sit.
+    #[must_use]
     pub fn point_along(&self, s: f64) -> Option<Point> {
         point_along(&self.trace, s)
     }
 
     /// Where the front bumper stops: the stop point carried `front` m on along its yaw.
+    #[must_use]
     pub fn bumper_stop(&self) -> Option<StopMark> {
         let stop = self.stop?;
         let front = self.summary.as_ref()?.body?.front;
@@ -200,6 +204,7 @@ impl Ahead {
 
 /// The point `s` m along a polyline, carried on straight past its end. None: fewer than
 /// two points, or a polyline with no length.
+#[must_use]
 pub fn point_along(points: &[Point], s: f64) -> Option<Point> {
     let mut walked = 0.0;
     let mut last = None;
@@ -324,6 +329,7 @@ pub fn lines(summary: Option<&Summary>) -> [Line; 3] {
 }
 
 /// The road ahead in words: "ROAD 0.6 m/s, SIGN IN 12 m" (`stop at` its end: 0 m/s).
+#[must_use]
 pub fn road_line(road: &Road) -> Line {
     let end = if road.why.is_empty() {
         "END".to_owned()
@@ -359,11 +365,13 @@ pub struct View {
 
 impl View {
     /// Screen units per metre.
+    #[must_use]
     pub fn scale(&self) -> f32 {
         self.rect.3 / (self.ahead + self.behind) as f32
     }
 
     /// A base_link point on the panel.
+    #[must_use]
     pub fn to_panel(&self, (x, y): Point) -> (f32, f32) {
         let k = self.scale();
         let (rx, ry, rw, rh) = self.rect;
@@ -372,6 +380,7 @@ impl View {
     }
 
     /// Whether a base_link point falls inside the panel.
+    #[must_use]
     pub fn shows(&self, p: Point) -> bool {
         let (px, py) = self.to_panel(p);
         let (rx, ry, rw, rh) = self.rect;
@@ -380,6 +389,7 @@ impl View {
 
     /// A polyline clipped to the points the panel shows: a line that leaves the panel
     /// stops at the last point inside it (good enough for a few metres of line).
+    #[must_use]
     pub fn polyline(&self, points: &[Point]) -> Vec<(f32, f32)> {
         points
             .iter()
@@ -390,6 +400,7 @@ impl View {
 
     /// The stop bar's two ends: across the car's path at the stop point, `half_width` m
     /// each side.
+    #[must_use]
     pub fn stop_bar(&self, stop: StopMark, half_width: f64) -> ((f32, f32), (f32, f32)) {
         let (s, c) = stop.yaw.sin_cos();
         let left = (stop.x - half_width * s, stop.y + half_width * c);

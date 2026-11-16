@@ -35,6 +35,7 @@ impl From<String> for SpeedWheels {
 
 impl SpeedWheels {
     /// The word vehicle.yaml uses.
+    #[must_use]
     pub fn word(&self) -> &str {
         match self {
             Self::Front => "front",
@@ -44,6 +45,7 @@ impl SpeedWheels {
     }
 
     /// Whether these are the driven wheels (the rear: docs/learn-car.md).
+    #[must_use]
     pub fn are_driven(&self) -> bool {
         *self == Self::Rear
     }

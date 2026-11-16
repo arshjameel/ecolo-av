@@ -75,6 +75,7 @@ pub enum Gate {
 
 impl Gate {
     /// Reads the output mux's line (aav_io_mux `provenance.Gate.state`).
+    #[must_use]
     pub fn parse(text: &str) -> Self {
         if let Some(rest) = text.strip_prefix("OPEN - ") {
             let what = rest
@@ -108,6 +109,7 @@ pub enum Sensors {
 impl Sensors {
     /// Reads the watchdog's line (aav_safety `watchdog.Watchdog.summary`: the inputs that
     /// stop come first).
+    #[must_use]
     pub fn parse(text: &str) -> Self {
         let Some(rest) = text.strip_prefix("STOP: ") else {
             return Self::Drive;
@@ -123,6 +125,7 @@ impl Sensors {
 
     /// Whether only a person clears it (`/safety/sensor_watchdog/clear`): a GPS jump,
     /// wheels that disagreed, a HUD that dropped out.
+    #[must_use]
     pub fn is_latched(&self) -> bool {
         matches!(self, Self::Held { state, .. } if ["JUMP", "DISAGREE", "LOST"].contains(&state.as_str()))
     }
@@ -133,6 +136,7 @@ impl Sensors {
 ///
 /// The order: the e-stop; the gate latched or silent (nothing reaches the car); the
 /// watchdog holding Nav2; the gate waiting; no gate heard; then GO.
+#[must_use]
 pub fn verdict(
     estop_on: bool,
     gate: (Health, Option<&str>),

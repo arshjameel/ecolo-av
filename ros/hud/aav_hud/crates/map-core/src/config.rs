@@ -50,6 +50,7 @@ impl Topic {
     ];
 
     /// The ROS parameter that holds this topic's name.
+    #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
             Self::Map => "map_topic",
@@ -143,6 +144,7 @@ impl MapConfig {
     }
 
     /// The name of one topic.
+    #[must_use]
     pub fn topic(&self, topic: Topic) -> &str {
         match topic {
             Topic::Map => &self.map_topic,
@@ -170,16 +172,19 @@ impl MapConfig {
     }
 
     /// [`MapConfig::stale_after`] as a Duration.
+    #[must_use]
     pub fn stale_after(&self) -> Duration {
         Duration::from_secs_f64(self.stale_after)
     }
 
     /// [`MapConfig::plan_stale_after`] as a Duration.
+    #[must_use]
     pub fn plan_stale_after(&self) -> Duration {
         Duration::from_secs_f64(self.plan_stale_after)
     }
 
     /// [`MapConfig::plan_kept_for`] as a Duration.
+    #[must_use]
     pub fn plan_kept_for(&self) -> Duration {
         Duration::from_secs_f64(self.plan_kept_for)
     }

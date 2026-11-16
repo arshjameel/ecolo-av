@@ -25,6 +25,7 @@ impl Tracker {
     ];
 
     /// aav_track's name for it (its `tracker` parameter).
+    #[must_use]
     pub fn name(self) -> &'static str {
         match self {
             Self::PurePursuit => "pure_pursuit",
@@ -35,6 +36,7 @@ impl Tracker {
     }
 
     /// The tracker on key `digit` (1 to 4).
+    #[must_use]
     pub fn on_key(digit: u8) -> Option<Self> {
         Self::ALL.get(usize::from(digit.checked_sub(1)?)).copied()
     }
@@ -73,6 +75,7 @@ pub struct Reply {
 
 impl Reply {
     /// The panel's line.
+    #[must_use]
     pub fn line(&self) -> String {
         match &self.outcome {
             Ok(()) => format!("swapped to {}", self.asked),

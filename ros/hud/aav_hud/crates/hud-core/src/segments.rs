@@ -63,6 +63,7 @@ impl Lit {
     }
 
     /// The segments for a digit, a minus, or a space. Anything else: `None`.
+    #[must_use]
     pub fn of(c: char) -> Option<Self> {
         use Segment::*;
         let segments: &[Segment] = match c {
@@ -84,11 +85,13 @@ impl Lit {
     }
 
     /// Whether this character lights `segment`.
+    #[must_use]
     pub fn has(self, segment: Segment) -> bool {
         self.0 & segment.bit() != 0
     }
 
     /// How many segments are lit.
+    #[must_use]
     pub fn count(self) -> u32 {
         self.0.count_ones()
     }
@@ -104,6 +107,7 @@ pub struct Cell {
 /// `text` as `width` cells, right-aligned, as a display shows a number. A `.` lights
 /// the point of the digit before it. Characters with no segments (letters) show blank;
 /// text too long keeps its right end.
+#[must_use]
 pub fn cells(text: &str, width: usize) -> Vec<Cell> {
     let mut out: Vec<Cell> = Vec::new();
     for c in text.chars() {
@@ -156,6 +160,7 @@ impl Digit {
     }
 
     /// The segment's shape: a hexagon, pointed at both ends, corners in order round it.
+    #[must_use]
     pub fn polygon(&self, segment: Segment) -> [Point; 6] {
         let (w, h, k) = (self.width, self.height, self.thick / 2.0);
         let g = self.gap();
@@ -196,6 +201,7 @@ impl Digit {
     }
 
     /// The decimal point: a square's corners, just right of the bottom.
+    #[must_use]
     pub fn point(&self) -> [Point; 4] {
         let s = self.thick;
         let (u, v) = (self.width + s * 0.35, self.height - s);

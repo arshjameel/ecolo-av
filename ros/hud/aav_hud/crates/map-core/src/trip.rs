@@ -38,6 +38,7 @@ pub enum Tone {
 
 impl Trip {
     /// Works the status out.
+    #[must_use]
     pub fn of(
         goal: Option<Point>,
         car: Option<Point>,
@@ -61,6 +62,7 @@ impl Trip {
     }
 
     /// The words on the screen.
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::NoGoal => "NO GOAL",
@@ -73,6 +75,7 @@ impl Trip {
     }
 
     /// One line under the word, saying what it means.
+    #[must_use]
     pub fn hint(self) -> &'static str {
         match self {
             Self::NoGoal => "Send a goal from RViz or Foxglove",
@@ -84,6 +87,7 @@ impl Trip {
         }
     }
 
+    #[must_use]
     pub fn tone(self) -> Tone {
         match self {
             Self::NoGoal => Tone::Quiet,
@@ -98,6 +102,7 @@ impl Trip {
 const ETA_MIN_SPEED: f64 = 0.2;
 
 /// The time left at the current speed; None when stopped or going backwards.
+#[must_use]
 pub fn time_left(remaining: Metres, speed_m_per_s: f64) -> Option<Duration> {
     (speed_m_per_s.is_finite() && speed_m_per_s >= ETA_MIN_SPEED && remaining.0.is_finite())
         .then(|| Duration::from_secs_f64(remaining.0.max(0.0) / speed_m_per_s))

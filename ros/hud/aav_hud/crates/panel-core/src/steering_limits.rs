@@ -144,6 +144,7 @@ pub struct Limits {
 
 impl Limits {
     /// The limit on the left (full left lock's side), counts.
+    #[must_use]
     pub fn left_limit(&self) -> u16 {
         if self.sign > 0 {
             self.hi
@@ -153,6 +154,7 @@ impl Limits {
     }
 
     /// The limit on the right, counts.
+    #[must_use]
     pub fn right_limit(&self) -> u16 {
         if self.sign > 0 {
             self.lo
@@ -250,6 +252,7 @@ pub fn compute_with_margin(m: &Marks, margin: f64) -> Result<Limits, Measurement
 }
 
 /// spine-board calibration.rs's `Steering` for the result: a person pastes it.
+#[must_use]
 pub fn firmware_steering(r: &Limits) -> String {
     let cpr = r.counts_per_rad.map_or_else(
         || "TODO: measure the wheel angles".to_owned(),
@@ -263,6 +266,7 @@ pub fn firmware_steering(r: &Limits) -> String {
 }
 
 /// vehicle.yaml's `max_steering_angle` line for the result.
+#[must_use]
 pub fn vehicle_yaml(r: &Limits) -> String {
     match r.max_steering_angle {
         None => "# max_steering_angle: measure the wheel angles at each end first".to_owned(),
@@ -271,6 +275,7 @@ pub fn vehicle_yaml(r: &Limits) -> String {
 }
 
 /// The result for people, in short lines: `steering_limits.py`'s `report`.
+#[must_use]
 pub fn report(r: &Limits) -> String {
     let mut lines = vec![
         format!(

@@ -280,6 +280,7 @@ fn find(entries: &[Entry], wanted: u64) -> Option<Entry> {
 
 /// A tile's number in PMTiles: all the tiles of the zooms before it, then its place
 /// along a Hilbert curve at its own zoom.
+#[must_use]
 pub fn tile_number(id: TileId) -> u64 {
     let before: u64 = (0..id.z).map(|z| 1u64 << (2 * u32::from(z))).sum();
     let n = 1u64 << id.z;

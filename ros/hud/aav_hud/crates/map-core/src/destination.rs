@@ -128,28 +128,34 @@ pub struct Finder {
 }
 
 impl Finder {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    #[must_use]
     pub fn step(&self) -> Step {
         self.step
     }
 
+    #[must_use]
     pub fn query(&self) -> &str {
         &self.query
     }
 
+    #[must_use]
     pub fn results(&self) -> &[Place] {
         &self.results
     }
 
     /// The highlighted result (Up and Down move it).
+    #[must_use]
     pub fn selected(&self) -> usize {
         self.selected
     }
 
     /// The chosen place, while it's on the map (Picked or Confirming).
+    #[must_use]
     pub fn picked(&self) -> Option<&Place> {
         match self.step {
             Step::Picked | Step::Confirming => self.picked.as_ref(),
@@ -157,16 +163,19 @@ impl Finder {
         }
     }
 
+    #[must_use]
     pub fn problem(&self) -> Option<&str> {
         self.problem.as_deref()
     }
 
     /// Whether keys are letters for the box, not the map's own keys.
+    #[must_use]
     pub fn is_typing(&self) -> bool {
         self.step == Step::Typing
     }
 
     /// Whether the box takes Enter and Esc (it's open).
+    #[must_use]
     pub fn is_open(&self) -> bool {
         self.step != Step::Closed
     }
