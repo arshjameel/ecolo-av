@@ -143,6 +143,7 @@ cargo run --release -p mppi-lag --example follow_plan -- paths/*.csv     # plann
 cargo run --release -p mppi-lag --example follow_plan -- bags/<drive>/<drive>_0.mcap   # a recording's own plans on /plan (TOPIC, LIMIT 10), followed again offline (TODO 202)
 cargo run --release -p mppi-lag --example wiggle                         # the wiggle: each suspect at 2.5 m/s, before and after (docs/mppi-lag.md)
 STEER_GAMMA=0.05 SPEED=1.0 ONLY=after cargo run --release -p mppi-lag --example wiggle   # one setting tried (also BATCH, TEMP, CORR, STD, GAMMA)
+ONLY=sim-like SPEED=1.0 cargo run --release -p mppi-lag --features shared --example wiggle   # TODO 163: the car on the firm or smooth speed loop, the model told or not
 ```
 
 Where a tick's time goes (TODO 196), off by default:

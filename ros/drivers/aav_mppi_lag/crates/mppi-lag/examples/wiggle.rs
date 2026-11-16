@@ -494,6 +494,52 @@ fn main() {
             ..before.clone()
         },
     ];
+    // TODO 163: the car on spine-core's `firm` speed loop, the model told or not
+    // (feature `shared`: `--features shared`).
+    #[cfg(feature = "shared")]
+    let cases = {
+        use mppi_lag::car_model::SpeedLoopProfile;
+        let firm = LagModel {
+            speed_loop: SpeedLoop::from_profile(SpeedLoopProfile::Firm).expect("a PI"),
+            ..LagModel::default()
+        };
+        let sim_like = Case {
+            mppi: after.clone(),
+            noise: Some(EKF),
+            pose_delay: 0.15,
+            ..before.clone()
+        };
+        let mut all = cases.to_vec();
+        all.push(Case {
+            name: "after, sim-like: firm car, default model",
+            truth: firm,
+            ..sim_like.clone()
+        });
+        all.push(Case {
+            name: "after, sim-like: firm car, firm model",
+            truth: firm,
+            model: firm,
+            ..sim_like.clone()
+        });
+        // Which half of firm: smooth's PI, or the firmer brake?
+        let smooth = LagModel {
+            speed_loop: SpeedLoop::from_profile(SpeedLoopProfile::Smooth).expect("a PI"),
+            ..LagModel::default()
+        };
+        all.push(Case {
+            name: "after, sim-like: smooth car, smooth model",
+            truth: smooth,
+            model: smooth,
+            ..sim_like.clone()
+        });
+        all.push(Case {
+            name: "after, sim-like: firm car, smooth model",
+            truth: firm,
+            model: smooth,
+            ..sim_like
+        });
+        all
+    };
     let mut paths: Vec<(String, Vec<Pose>, bool)> = vec![
         (
             "straight 100 m".into(),
