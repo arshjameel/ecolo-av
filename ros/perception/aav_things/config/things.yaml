@@ -21,6 +21,7 @@ things:
     start_speed_sigma: 3.0  # m/s
     still_speed: 0.5        # m/s: slower, an unseen thing is taken as parked
     # The saved map as background (background.py, TODO 175 step 5): cubes on /map's walls,
-    # grown by the slack for pose error, are not things. Off until it scores in the sim.
-    background: false
+    # grown by the slack for pose error, are not things. Its switch, `background`, is the
+    # launch's things_background:=, never here: a node's own block in this file outranks
+    # the launch's /** parameters, so a value here would always win.
     background_slack: 0.25  # m
