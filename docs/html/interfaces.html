@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">115 min read · 4 sections</div></header>
+<div class="meta">117 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -162,7 +162,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/joy/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>teleop_twist_joy_node</code></td>
-<td><code>twist_mux</code>, <code>language_drive</code></td>
+<td><code>twist_mux</code>, <code>language_drive</code>, <code>ego</code></td>
 <td>-</td>
 <td>Priority 100. Only while the deadman (trigger) is held.</td>
 </tr>
@@ -170,7 +170,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/keyboard/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>teleop_twist_keyboard</code></td>
-<td><code>twist_mux</code>, <code>language_drive</code></td>
+<td><code>twist_mux</code>, <code>language_drive</code>, <code>ego</code></td>
 <td>-</td>
 <td>Priority 90 (twist_mux's keyboard slot). A person driving from a laptop - teleop_twist_keyboard in the namespace /drivers/keyboard (tools/keyboard.sh, stamped:=true), or the Foxglove teleop panel set to this topic - on the stand-ins only, as the car's bridge only watches (foxglove.launch.py).</td>
 </tr>
@@ -178,7 +178,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/rc/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>rc_driver</code></td>
-<td><code>twist_mux</code>, <code>language_drive</code></td>
+<td><code>twist_mux</code>, <code>language_drive</code>, <code>ego</code></td>
 <td>-</td>
 <td>Priority 95 (proposed, TODO 48) - a person with the RC transmitter, below the joystick's deadman (100), above the keyboard (90). rc_driver (aav_rc) turns /vehicle/rc into a command only while the transmitter's mode switch is on RC via ROS - throttle stick x max_speed (1.0 m/s; reverse 0.5), steering stick x the steering limit, as a turn rate by the bicycle model - at the uplink's 50 Hz, zeros included, so nothing below it drives. It publishes one zero when the switch leaves RC via ROS; if /vehicle/rc goes quiet while on RC via ROS it keeps publishing zeros (a stop) until the uplink comes back. RC direct never comes here - the ESP32 drives from the sticks itself.</td>
 </tr>
@@ -426,9 +426,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/safety/estop</code></td>
 <td><code>std_msgs/msg/Bool</code></td>
 <td><code>joy_teleop</code>, <code>hud</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>hw_panel</code>, <code>dev_window</code></td>
-<td><code>twist_mux</code>, <code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>carla_adapter</code>, <code>point_driver</code>, <code>hw_panel</code>, <code>behaviour</code></td>
+<td><code>twist_mux</code>, <code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>carla_adapter</code>, <code>point_driver</code>, <code>hw_panel</code>, <code>behaviour</code>, <code>ego</code></td>
 <td>-</td>
-<td>true = stop. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop. None of them ever publishes false.</td>
+<td>true = stop. ego turns the pedal off (full braking) while true. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop. None of them ever publishes false.</td>
 </tr>
 <tr>
 <td><code>/control/cmd_vel</code></td>
@@ -444,7 +444,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>ego</code></td>
 <td><code>look_ahead</code>, <code>hud</code>, <code>dev_window</code></td>
 <td>turtle, sim, car, bench</td>
-<td>Where the car is going, like a tail but in front (Ben, 7 Nov) - ego's prediction over trace_horizon (2 s), 10 Hz (trace_rate_hz), a pose every 0.1 s from now (21 poses), frame base_link at the header's stamp (each pose stamped with its own time ahead). From the shared car model (aav_description car_model.py - the speed loop, dead times, lags, steering motor and bicycle), started from ego's twin of the car (its actuators as ego drove them, its speed the last /vehicle/odom), driven by a copy of ego with the request held (its lead, ramps and limits). base_link, not odom - ego needs no localization (stands, the turtle), and a driver turns it into odom with TF at the stamp. Every number is a guess until car tests 3.10-3.12 and 4.1-4.5. For drivers to match against their plan, and for screens - the squiggly line's bold line (docs/hud.md). aav_ego trace_ahead.py.</td>
+<td>Where the car is going, like a tail but in front (Ben, 7 Nov) - ego's prediction over trace_horizon (2 s), 10 Hz (trace_rate_hz), a pose every 0.1 s from now (21 poses), frame base_link at the header's stamp (each pose stamped with its own time ahead). From the shared car model (aav_description car_model.py - the speed loop, dead times, lags, steering motor and bicycle), started from ego's twin of the car (its actuators as ego drove them, its speed the last /vehicle/odom), driven by a copy of ego with the request held (its lead, ramps and limits). base_link, not odom - ego needs no localization (stands, the turtle), and a driver turns it into odom with TF at the stamp. Every number is a guess until car tests 3.10-3.12 and 4.1-4.5. For drivers to match against their plan, and for screens - the squiggly line's bold line (docs/hud.md). aav_ego trace_ahead.py. With ego_impl:=rust (ego.launch.py, sim.launch.py) aav_ego_rs publishes it instead, from one Rust process holding the nodes ego and look_ahead, with the same names, QoS and answers (a challenger, TODO 185).</td>
 </tr>
 <tr>
 <td><code>/ego/stop_point</code></td>
@@ -452,7 +452,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>ego</code></td>
 <td><code>look_ahead</code>, <code>hud</code>, <code>dev_window</code></td>
 <td>turtle, sim, car, bench</td>
-<td>Where the car stops if it brakes fully now (Ben, 7 Nov) - the one answer every screen and the stop-point check read. ego, with each /ego/trace (10 Hz), from the same twin and shared car model (aav_ego stop_ahead.py) - the throttle let go, the brake full (its dead time and lag), the wheels held where they point, stepped until the speed is 0. Frame base_link, stamped as the trace (now), so TF at the stamp puts it in odom or map; (0, 0) when parked. Its distance is docs/designs/2026-11-05_how-the-car-stops.md's S(v) - v x the brake's delay + v^2 / 2 max_brake, a little less for the drag. Every number is a guess until car test 4.3.</td>
+<td>Where the car stops if it brakes fully now (Ben, 7 Nov) - the one answer every screen and the stop-point check read. ego, with each /ego/trace (10 Hz), from the same twin and shared car model (aav_ego stop_ahead.py) - the throttle let go, the brake full (its dead time and lag), the wheels held where they point, stepped until the speed is 0. Frame base_link, stamped as the trace (now), so TF at the stamp puts it in odom or map; (0, 0) when parked. Its distance is docs/designs/2026-11-05_how-the-car-stops.md's S(v) - v x the brake's delay + v^2 / 2 max_brake, a little less for the drag. Every number is a guess until car test 4.3. With ego_impl:=rust (ego.launch.py, sim.launch.py) aav_ego_rs publishes it instead, from one Rust process holding the nodes ego and look_ahead, with the same names, QoS and answers (a challenger, TODO 185).</td>
 </tr>
 <tr>
 <td><code>/ego/plan_ahead</code></td>
@@ -460,7 +460,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>look_ahead</code></td>
 <td><code>hud</code>, <code>dev_window</code></td>
 <td>turtle, sim, car, bench</td>
-<td>The squiggly line's faint line - what the planner WANTS, in base_link, so a screen needs no TF (aav_ego look_ahead, 10 Hz while /ego/trace is fresh). /drivers/nav/local_plan while fresh (0.5 s), else Nav2's /plan, moved into base_link with the newest TF and cut from beside the car to plan_ahead_m (10 m) on. No poses - no plan (a person drives); it is still sent, so a screen clears its old line. Header as the trace's.</td>
+<td>The squiggly line's faint line - what the planner WANTS, in base_link, so a screen needs no TF (aav_ego look_ahead, 10 Hz while /ego/trace is fresh). /drivers/nav/local_plan while fresh (0.5 s), else Nav2's /plan, moved into base_link with the newest TF and cut from beside the car to plan_ahead_m (10 m) on. No poses - no plan (a person drives); it is still sent, so a screen clears its old line. Header as the trace's. With ego_impl:=rust (ego.launch.py, sim.launch.py) aav_ego_rs publishes it instead, from one Rust process holding the nodes ego and look_ahead, with the same names, QoS and answers (a challenger, TODO 185).</td>
 </tr>
 <tr>
 <td><code>/ego/ahead</code></td>
@@ -468,7 +468,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>look_ahead</code></td>
 <td><code>hud</code>, <code>dev_window</code></td>
 <td>turtle, sim, car, bench</td>
-<td>The squiggly line's numbers, worked out once for every screen (aav_ego look_ahead look_ahead.py, 10 Hz with /ego/plan_ahead). name look_ahead; level OK (green - the trace keeps within gap_warn, 0.3 m, of the plan, or there is no plan), WARN (amber - within gap_bad, 0.6 m), ERROR (red - further); message one line for people, such as 'ON PLAN 0.12 m - stops in 1.4 m, 0.8 m short of the goal, 3.0 m before an obstacle'. values gap_m (the most a trace pose strays from the faint line), plan (local, global, none), stop_m (/ego/stop_point's distance), goal_m (from the stop point to /plan's end, along it - + short, - past), obstacle_m (how far base_link goes along the trace, then straight on to look_m, 15 m, before the front bumper meets a lethal cell of /local_costmap/costmap), room_m (obstacle_m - stop_m - below 0 a full brake now still hits it); 'nan' - unknown; front_m, rear_m, half_width_m - the body outline from base_link (vehicle.yaml), so a screen draws the car and where its front bumper stops without copying a measurement; road_mps, road_m, road_why - what /world/road_ahead allows where the car is (the writer's limit), the metres to its end, and its nearest stop's reason (sign, obstacle, fence, goal; empty for none), 'nan' and empty with no fresh road ahead. No stop lines yet - no topic gives where one is.</td>
+<td>The squiggly line's numbers, worked out once for every screen (aav_ego look_ahead look_ahead.py, 10 Hz with /ego/plan_ahead). name look_ahead; level OK (green - the trace keeps within gap_warn, 0.3 m, of the plan, or there is no plan), WARN (amber - within gap_bad, 0.6 m), ERROR (red - further); message one line for people, such as 'ON PLAN 0.12 m - stops in 1.4 m, 0.8 m short of the goal, 3.0 m before an obstacle'. values gap_m (the most a trace pose strays from the faint line), plan (local, global, none), stop_m (/ego/stop_point's distance), goal_m (from the stop point to /plan's end, along it - + short, - past), obstacle_m (how far base_link goes along the trace, then straight on to look_m, 15 m, before the front bumper meets a lethal cell of /local_costmap/costmap), room_m (obstacle_m - stop_m - below 0 a full brake now still hits it); 'nan' - unknown; front_m, rear_m, half_width_m - the body outline from base_link (vehicle.yaml), so a screen draws the car and where its front bumper stops without copying a measurement; road_mps, road_m, road_why - what /world/road_ahead allows where the car is (the writer's limit), the metres to its end, and its nearest stop's reason (sign, obstacle, fence, goal; empty for none), 'nan' and empty with no fresh road ahead. No stop lines yet - no topic gives where one is. With ego_impl:=rust (ego.launch.py, sim.launch.py) aav_ego_rs publishes it instead, from one Rust process holding the nodes ego and look_ahead, with the same names, QoS and answers (a challenger, TODO 185).</td>
 </tr>
 <tr>
 <td><code>/ego/actuator_cmd</code></td>
@@ -476,7 +476,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>ego</code></td>
 <td><code>output_mux</code>, <code>hw_panel</code></td>
 <td>turtle, sim, car, bench</td>
-<td>50 Hz, always. speed (m/s), steering_angle (rad, + left), acceleration, steering_angle_velocity. No backend reads it - the output mux passes it on to the one target's /control/<target>/actuator_cmd (aav_io_mux, docs/sources-and-targets.md). The hardware panel's GRAPHS page reads it only to judge the first hop (ego), and pairs it with the mux's output by stamp.</td>
+<td>50 Hz, always. speed (m/s), steering_angle (rad, + left), acceleration, steering_angle_velocity. No backend reads it - the output mux passes it on to the one target's /control/<target>/actuator_cmd (aav_io_mux, docs/sources-and-targets.md). The hardware panel's GRAPHS page reads it only to judge the first hop (ego), and pairs it with the mux's output by stamp. With ego_impl:=rust (ego.launch.py, sim.launch.py) aav_ego_rs publishes it instead, from one Rust process holding the nodes ego and look_ahead, with the same names, QoS and answers (a challenger, TODO 185).</td>
 </tr>
 <tr>
 <td><code>/control/car/actuator_cmd</code></td>

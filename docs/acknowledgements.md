@@ -101,6 +101,7 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **ROS 2 Jazzy** | Apache-2.0 | runs | everything |
 | twist_mux; teleop_twist_joy and teleop_twist_keyboard | Apache-2.0; BSD | runs | the command mux and the locks; the joystick and keyboard |
 | **rclrs** (ros2-rust) | Apache-2.0 | runs | our Rust ROS nodes |
+| CPython's `math.hypot` (`vector_norm` in `Modules/mathmodule.c`, R. Hettinger) | PSF-2.0 | idea | `aav_ego_rs`'s `hypot`: the same algorithm, so the Rust ego gives the Python's last bit (TODO 185) |
 | **RoboStack**; **Pixi** | BSD-3 | runs | ROS on Macs and any Linux, without admin rights |
 | Embassy; embedded-hal | MIT / Apache-2.0 | runs | the spine's firmware |
 | PlatformIO | Apache-2.0 | runs | building the 2025-26 boards' firmware |

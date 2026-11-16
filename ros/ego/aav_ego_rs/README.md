@@ -124,8 +124,25 @@ bit for bit, with two details:
 
 ## Measured
 
-Our simulator's road world, headless, `tools/ros.sh --local` (see TODO 185's row and the
-commit for the run).
+Our simulator's road world, headless (`pixi run sim-check`, through `tools/ros.sh
+--local`), Ben's MacBook (M4 Max), 15 Nov. CPU: each process's CPU seconds a second over
+the same 35-40 s of the run, sampled with `ps`.
+
+| `/clock` | Python `ego` | Python `look_ahead` | Python, both | Rust, both (one process) |
+|---|---|---|---|---|
+| 100 Hz (`--with clock_hz:=100`) | 10.5 % | 6.5 % | **17 %** | **2.4 %** |
+| 1000 Hz (the simulator's default) | 34 % | 24 % | **58 %** | **4.0 %** |
+
+| The drive (sim-check's road world) | Python | Rust |
+|---|---|---|
+| every check (start-up, the graph against the contract, sensors, the scripted drive, the EKF) | pass | pass |
+| scripted drive | 5.83 m (plan 6.5), +0.00 m to the side | 5.83 m, +0.00 m |
+| `--behaviour-only` (`road_ahead` on: an obstacle, then a Nav2 goal) | pass: stopped 0.93 m short, goal 1.40 m off | pass, twice: 0.97 and 0.90 m short, goal 0.14 and 0.27 m off |
+| ego trims Nav2 to the road ahead; the lead turns off for the lag-aware `nav` | logged | logged, the same lines |
+
+Nav2's runs differ a little from run to run, whichever ego drives.
+
+Most of the Python's cost at 1000 Hz is `/clock` itself: rclpy wakes for each message.
 
 ## Side Effects
 

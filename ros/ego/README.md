@@ -20,6 +20,7 @@ ego holds the car model (`docs/car-model.md`): it can lead for the actuators' la
 | Package | What it is |
 |---|---|
 | [aav_ego](./aav_ego/README.md) | the `ego` node, its bicycle-model maths (`ackermann.py`, `dynamics.py`) and a linear vehicle model for tuning |
+| [aav_ego_rs](./aav_ego_rs/README.md) | a challenger: `ego` and `look_ahead` in Rust, one process, the same topics and answers (`ego_impl:=rust`) |
 
 ## Invariants
 

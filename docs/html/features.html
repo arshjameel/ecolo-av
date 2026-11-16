@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">78 min read · 15 sections</div></header>
+<div class="meta">80 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -375,7 +375,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="../designs/2026-11-14_the-whole-car.md">The things, a trial</a> (<code>aav_things</code> <code>things</code>, <code>things:=true</code>, <code>/world/things</code>)</td>
-<td>The whole car (14 Nov): nothing near the car had an id, a speed or a memory. The lidar's cubes grouped into things, one constant-velocity Kalman filter each (AB3DMOT: the simple tracker is a strong baseline; no stock tracker on RoboStack), the radar's speed along its ray, and a memory, so a box that goes into the blind zone before the bumper stays known. 15 Nov, names (<code>things_names:=true</code>, TODO 192): each thing's box drawn into the cameras' pictures takes the detector's label it overlaps (person, car, stop sign): the lidar says where, the camera says what; exact in the simulator, calibration first on the car (Q22); the stop sign watcher then takes a named stop sign's distance from the lidar, not its pixel height. 14 Nov: the behaviour planner reads it (<code>behaviour:=true things:=true</code>): it waits for what moves and leaves a parked thing to the planner to go round. 15 Nov, names on the screens (Ben: "object deteciton and display like a stop sign"): the markers say <code>person 3</code> and colour each box by kind (yellow person, blue vehicle, red stop sign); the developer window (3D and map, key K) and the HUD's AHEAD draw each thing with its name</td>
+<td>The whole car (14 Nov): nothing near the car had an id, a speed or a memory. The lidar's cubes grouped into things, one constant-velocity Kalman filter each (AB3DMOT: the simple tracker is a strong baseline; no stock tracker on RoboStack), the radar's speed along its ray, and a memory, so a box that goes into the blind zone before the bumper stays known. 15 Nov, names (<code>things_names:=true</code>, TODO 192): each thing's box drawn into the cameras' pictures takes the detector's label it overlaps (person, car, stop sign): the lidar says where, the camera says what (a thing over the lidar's 2 m ceiling, such as a stop sign's pole, is matched on its bearing; passed in the sim with the detector, <code>sim-check --thing-names</code>); exact in the simulator, calibration first on the car (Q22); the stop sign watcher then takes a named stop sign's distance from the lidar, not its pixel height. 14 Nov: the behaviour planner reads it (<code>behaviour:=true things:=true</code>): it waits for what moves and leaves a parked thing to the planner to go round. 15 Nov, names on the screens (Ben: "object deteciton and display like a stop sign"): the markers say <code>person 3</code> and colour each box by kind (yellow person, blue vehicle, red stop sign); the developer window (3D and map, key K) and the HUD's AHEAD draw each thing with its name</td>
 <td>Ben</td>
 <td>2026-11-14</td>
 <td>built</td>
@@ -750,6 +750,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
+<td>The pedal (<code>aav_ego</code> <code>pedal.py</code>; <code>pedal_drivers</code>, <code>pedal_let_off</code>, <code>pedal_full</code> in <code>ego.yaml</code>)</td>
+<td>Ben, 15 Nov: on the test drive the driver had to switch between speeding up, braking and reversing. With the pedal, a person's stick is an accelerator and a brake: let off part way slows gently, let go slows at 1.0 m/s² (Ben's choice, like engine braking), pulled back brakes by how far (full back: 2.0 m/s²), then reverses at a standstill. People only (joy, rc, keyboard): a computer driver plans its own slowing (the stop law) and needs its speeds followed at once; the AI can join as a challenger in the sim. The e-stop, a stale command and a turn's cap still brake fully</td>
+<td>Ben</td>
+<td>2026-11-15</td>
+<td>built</td>
+</tr>
+<tr>
 <td><a href="vehicle-model.html">Linear model of the car</a> (<code>vehicle_model.py</code>)</td>
 <td>Transfer functions and state space, to tune the loops and write the report in SYSC 3600's terms</td>
 <td>Ben</td>
@@ -776,6 +783,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben</td>
 <td>2026-11-07</td>
 <td>built</td>
+</tr>
+<tr>
+<td><a href="../../ros/ego/aav_ego_rs/README.md">ego and look_ahead in Rust</a> (<code>aav_ego_rs</code>, <code>ego_impl:=rust</code>): both nodes in one process, a challenger beside the Python</td>
+<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust". The same answers as the Python modules (0 difference, but the trace's f32 speed loop: 4e-8); our simulator's road world, /clock at 100 Hz: 2.4 % of a core against 17 % (ego 10.5, look_ahead 6.5); at 1000 Hz 4 % against 58 %; the same scripted drive (5.83 m, 0.00 m to the side)</td>
+<td>Ben</td>
+<td>2026-11-15</td>
+<td>sim</td>
 </tr>
 <tr>
 <td><a href="stopping.html#4-a-heavier-car-the-adaptive-brake">The adaptive brake</a> (<code>aav_description</code> <code>adaptive_brake.py</code>, <code>adaptive_brake:=true</code>, a sim trial): after the speed loop, it compares the slowing measured with the empty car model's, and brakes harder when the car stops too slowly, never above the brake's safe max, rising at a set rate, high force only for a set time; the brake's limits in <code>vehicle.yaml</code> <code>brake:</code> (placeholders until car day A7); the car model's <code>payload</code> (kg aboard: <code>payload:=</code>); <code>sim-check --loaded-stop</code></td>

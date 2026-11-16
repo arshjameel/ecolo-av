@@ -39,6 +39,7 @@ Launch arguments:
 | `sim_max_speed` | m/s, a higher cap, up to 5.0, only with `use_sim_time:=true` |
 | `look_ahead` | `true`: also start `look_ahead` (the screens' squiggly line); `false`: ego alone |
 | `road_ahead` | `false`; `true`: hold Nav2 to `/world/road_ahead` (`sim.launch.py` sets it with `behaviour:=true`, its writer) |
+| `ego_impl` | `python`; `rust`: [`aav_ego_rs`](../aav_ego_rs/README.md) instead, ego and look_ahead in one Rust process with the same names, topics and answers (a challenger, TODO 185; `sim.launch.py` passes it on) |
 
 Parameters. From `config/ego.yaml`:
 
