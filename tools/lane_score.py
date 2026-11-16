@@ -302,6 +302,72 @@ def keep_right(lanes, track: Sequence[Tuple[float, ...]]) -> KeepRight:
                      crossings=crossings, over_kerb=share(kerb))
 
 
+@dataclass(frozen=True)
+class PassScore:
+    """
+    How the car passed a parked box in its lane (Ben, 16 Nov: leave the lane only to pass).
+
+    `over` is the car's left side past a two-way road's centre line (base_link's offset
+    plus half the car's width): 0 if it never crossed.
+    """
+
+    passed: bool             # the car's rear went by the box's far side
+    max_over: float          # m: the most the car's left side went over the centre line
+    over_s: float            # s with its left side over it
+    over_m: float            # m driven with its left side over it
+    left_before: Optional[float]   # m before the box's near side it first went over
+    back_after: Optional[float]    # m past the box's far side it was back near its lane's centre
+    end_off: Optional[float]       # m: |offset| from the lane's centre at the track's end
+
+    def line(self) -> str:
+        def m(v):
+            return 'never' if v is None else f'{v:.1f} m'
+        return (f'passed: {self.passed}; over the centre line by {self.max_over:.2f} m at '
+                f'most, for {self.over_s:.1f} s and {self.over_m:.1f} m; left the lane '
+                f'{m(self.left_before)} before the box, back {m(self.back_after)} after it; '
+                f'at the end {m(self.end_off)} off the lane centre')
+
+
+def pass_score(lanes, track: Sequence[Tuple[float, ...]], box: Tuple[float, float],
+               box_side: float, width: float, front: float, back: float = 0.3) -> PassScore:
+    """
+    Score passing a square box (centre `box`, `box_side` m) by a track (t, x, y, yaw, ...).
+
+    width: the car's (m); front: base_link (the rear axle) to its front bumper (m). The rear is
+    past the box once base_link is past its far side. Back: the first sample past its far side
+    within `back` m of the lane's centre. Lanes: an aav_description lane_map.LaneMap.
+    """
+    max_over = over_s = over_m = 0.0
+    left_before = back_after = end_off = None
+    passed = False
+    bx, by = box
+    half = box_side / 2.0
+    for (t0, x0, y0, *_), (t1, x, y, yaw, *_) in zip(track, track[1:]):
+        lane = lanes.lane_at(x, y, yaw)
+        if lane is None:
+            continue
+        c, s = math.cos(lane.heading), math.sin(lane.heading)
+        left = (x - lane.x) * -s + (y - lane.y) * c
+        along = (x - bx) * c + (y - by) * s          # base_link past the box's centre
+        two_way = any(not r.oneway and r.lane_count() > 1 for r in lanes.roads_at(x, y)
+                      if r.name == lane.road)
+        over = left + width / 2.0 - lane.left_soft if two_way else -math.inf
+        end_off = abs(left)
+        if over > 0.0:
+            max_over = max(max_over, over)
+            over_s += t1 - t0
+            over_m += math.hypot(x - x0, y - y0)
+            bumper = along + front
+            if left_before is None:
+                left_before = max(0.0, -half - bumper)
+        if along > half:
+            passed = True
+            if back_after is None and abs(left) <= back:
+                back_after = along - half
+    return PassScore(passed=passed, max_over=max_over, over_s=over_s, over_m=over_m,
+                     left_before=left_before, back_after=back_after, end_off=end_off)
+
+
 def main(argv=None):
     """Score measure controllers' results.json files by a lane map: did each run keep right."""
     import argparse
@@ -309,11 +375,15 @@ def main(argv=None):
     import os
     here = os.path.dirname(os.path.abspath(__file__))
     sys.path.insert(0, os.path.join(os.path.dirname(here), 'ros', 'bringup', 'aav_description'))
-    from aav_description import lane_map
+    from aav_description import lane_map, vehicle
+    vehicle_yaml = os.path.join(os.path.dirname(here), 'ros', 'bringup', 'aav_description',
+                                'config', 'vehicle.yaml')
     parser = argparse.ArgumentParser(description=main.__doc__)
     parser.add_argument('results', nargs='+', help="measure controllers' results.json files")
     parser.add_argument('--lanes', default=os.path.join('maps', 'campus', 'lanes.yaml'),
                         help='the lane map (default: the campus)')
+    parser.add_argument('--box', nargs=2, type=float, metavar=('X', 'Y'),
+                        help='a parked 1 m box there: how each run passed it (pass_score)')
     args = parser.parse_args(argv)
     lanes = lane_map.load(args.lanes)
     print('| results | follower | run | leg | reached | road s | off centre (m) | in lane | '
@@ -332,6 +402,11 @@ def main(argv=None):
                   f'{k.road_s:.0f} | {k.off_centre:.2f} | {100 * k.in_lane:.0f} % | '
                   f'{k.two_way_s:.0f} | {100 * k.over_centre:.0f} % | {k.crossings} | '
                   f'{100 * k.over_kerb:.0f} % |')
+            if args.box:
+                body = vehicle.load(vehicle_yaml)['vehicle']['body']
+                p = pass_score(lanes, row['track'], tuple(args.box), 1.0, body['width'],
+                               body['length'] - body['rear_overhang'])
+                print(f'|  | run {row.get("run", 1)}, the box | {p.line()} |')
 
 
 if __name__ == '__main__':

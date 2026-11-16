@@ -97,3 +97,30 @@ def test_keep_right_counts_the_time_over_the_centre_line_and_each_crossing():
     # Off every road: nothing counts.
     off = s.keep_right(lanes, [(0.0, 0.0, 30.0, 0.0), (1.0, 1.0, 30.0, 0.0)])
     assert off.road_s == 0.0 and math.isnan(off.in_lane)
+
+
+def test_pass_score_measures_how_far_over_how_long_and_how_soon_back():
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'ros' / 'bringup'
+                           / 'aav_description'))
+    from aav_description.lane_map import from_dict
+    # Two-way, 7 m: the eastbound lane's centre at y = -1.5, the centre line y = 0. A 1 m
+    # box at x = 50 on the lane's centre; a 1 m wide car, 1.8 m from base_link to bumper.
+    lanes = from_dict({'roads': [{'name': 'r', 'width': 7.0, 'points': [[0, 0], [100, 0]]}]})
+    # Out to y = 0.2 (its left side 0.7 m over) from x = 40 to 60, back on the centre at 64.
+    track = []
+    for i in range(101):
+        x = float(i)
+        y = 0.2 if 40.0 <= x <= 60.0 else -0.5 if 60.0 < x < 64.0 else -1.5
+        track.append((x, x, y, 0.0))
+    p = s.pass_score(lanes, track, (50.0, -1.5), 1.0, 1.0, 1.8)
+    assert p.passed
+    assert p.max_over == pytest.approx(0.7)
+    assert p.over_s == pytest.approx(20.0, abs=1.0)
+    assert p.left_before == pytest.approx(49.5 - 41.8)
+    assert p.back_after == pytest.approx(64.0 - 50.5)
+    assert p.end_off == pytest.approx(0.0)
+    assert 'passed: True' in p.line()
+    # Stopped behind it, never over: not passed, never back.
+    stopped = [(float(i), float(i), -1.5, 0.0) for i in range(45)]
+    q = s.pass_score(lanes, stopped, (50.0, -1.5), 1.0, 1.0, 1.8)
+    assert not q.passed and q.max_over == 0.0 and q.back_after is None

@@ -207,6 +207,16 @@ TOURS = {
                        ('down University Drive', 139.9, -196.4, -67.0),
                        ('round the bend south', 169.0, -337.4, -129.0),
                    ]},
+    # Ben, 16 Nov: keep right, leave the lane only to pass. The car starts on University
+    # Drive's right lane (its straight 115 m, heading -66.9 deg), a 1 m box parked on that
+    # lane's centre 35 m ahead; the goal is the university tour's second, 90 m on. The car
+    # must pass the box (into the other lane only as needed), then come back to its lane.
+    # lane_score.py's pass_score scores it. Our simulator only (spawn_entity).
+    'university_box': {'obstacle': False, 'world': worlds.CAMPUS,
+                       'launch': [CAMPUS_FENCE, 'start_x:=104.68', 'start_y:=-113.49',
+                                  'start_yaw:=-1.1676'],
+                       'boxes': [(118.39, -145.69)],
+                       'legs': [('past the parked box', 139.9, -196.4, -67.0)]},
     # TODO 149: the wiggle's road, in one goal from lot P4: out of the lot, then about 120 m
     # of gently bending road (the campus tour's second leg, without its stop in between,
     # which left the car on a cell the costmap called occupied: "Start occupied").
@@ -923,6 +933,21 @@ def campus_route(start, end):
     return waypoints, waypoints[-1]
 
 
+def place_box(name, x, y):
+    """Put the bench's 1 m box at (x, y) by our simulator's spawn_entity: what it said."""
+    model = os.path.join(ROOT, 'ros', 'sim', 'aav_gazebo', 'models', 'obstacle', 'model.sdf')
+    try:
+        done = subprocess.run(
+            ['ros2', 'service', 'call', '/vehicle/sim/spawn_entity',
+             'simulation_interfaces/srv/SpawnEntity',
+             f'{{name: "{name}", uri: "{model}", initial_pose: {{pose: {{position: '
+             f'{{x: {x}, y: {y}, z: 0.0}}}}}}}}'],
+            capture_output=True, text=True, timeout=60)
+    except subprocess.TimeoutExpired:
+        return 'no answer in 60 s'
+    return 'placed' if 'result=1' in done.stdout else ' '.join(done.stdout.split())[-200:]
+
+
 def tour_legs(tour, args):
     """Return the tour's legs to drive: all, or only the first --legs."""
     return TOURS[tour]['legs'][:args.legs]
@@ -1075,6 +1100,8 @@ def session(tour, follower, args, out_dir, body, used, run=1):
           f'(this computer only)...', flush=True)
     rows = []
     obstacle = (*worlds.OBSTACLE, BOX) if plan['obstacle'] else None
+    if plan.get('boxes'):
+        obstacle = (*plan['boxes'][0], BOX)
     # The car's full lock: tighter than this, a planned turn can't be driven as drawn.
     lock = vehicle.min_turning_radius(vehicle.load()['vehicle'])
     with open(log_path, 'w') as log:
@@ -1091,6 +1118,11 @@ def session(tour, follower, args, out_dir, body, used, run=1):
                 return [(tour, name, label, None, ['never came up'], {'run': run})
                         for name, *_ in tour_legs(tour, args)]
             rec.spin_for(SETTLE)
+            for k, (bx, by) in enumerate(plan.get('boxes', [])):
+                said = place_box(f'parked_box_{k}', bx, by)
+                print(f'   a 1 m box at ({bx:.1f}, {by:.1f}): {said}', flush=True)
+            if plan.get('boxes'):
+                rec.spin_for(3.0)          # the lidar sees it before the first goal
             if args.gps_off:
                 # After the EKF's first fix (the wait above): it knows where it started.
                 print(f'   {gps_off(rec)}', flush=True)
