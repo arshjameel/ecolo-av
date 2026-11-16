@@ -16,6 +16,7 @@ pub struct Triangle {
 }
 
 impl Triangle {
+    #[must_use]
     pub fn new(a: Vec3, b: Vec3, c: Vec3) -> Self {
         Self { a, b, c }
     }
@@ -69,6 +70,7 @@ pub struct Mesh {
 
 impl Mesh {
     /// A box centred on the origin, `size` across.
+    #[must_use]
     pub fn cuboid(size: Vec3) -> Mesh {
         let (x, y, z) = (size.x / 2.0, size.y / 2.0, size.z / 2.0);
         let c = |i: usize| {
@@ -100,6 +102,7 @@ impl Mesh {
     }
 
     /// An upright cylinder centred on the origin, as `sides` flat faces and two caps.
+    #[must_use]
     pub fn cylinder(radius: f64, length: f64, sides: usize) -> Mesh {
         let h = length / 2.0;
         let rim = |i: usize, z: f64| {
@@ -122,6 +125,7 @@ impl Mesh {
     }
 
     /// A flat rectangle on z = 0, `x` by `y`, facing up (SDF's `<plane>` with normal 0 0 1).
+    #[must_use]
     pub fn plane(x: f64, y: f64) -> Mesh {
         let (hx, hy) = (x / 2.0, y / 2.0);
         let c = [
@@ -177,6 +181,7 @@ impl Mesh {
     }
 
     /// The mesh scaled along each axis (SDF's `<scale>`).
+    #[must_use]
     pub fn scaled(mut self, s: Vec3) -> Mesh {
         let k = |v: Vec3| Vec3::new(v.x * s.x, v.y * s.y, v.z * s.z);
         for t in &mut self.triangles {
@@ -186,6 +191,7 @@ impl Mesh {
     }
 
     /// The mesh moved into its parent's frame.
+    #[must_use]
     pub fn transformed(&self, pose: &Pose) -> Mesh {
         Mesh {
             triangles: self.triangles.iter().map(|t| t.transformed(pose)).collect(),
@@ -279,10 +285,12 @@ impl Bvh {
         bvh
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.triangles.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.triangles.is_empty()
     }
@@ -331,6 +339,7 @@ impl Bvh {
     }
 
     /// The nearest hit closer than `limit`, along the ray.
+    #[must_use]
     pub fn cast(&self, ray: &Ray, limit: f64) -> Option<f64> {
         if self.nodes.is_empty() {
             return None;
@@ -388,6 +397,7 @@ pub struct Scene {
 }
 
 impl Scene {
+    #[must_use]
     pub fn new(triangles: Vec<Triangle>) -> Self {
         Self {
             fixed: Bvh::new(triangles),
@@ -396,6 +406,7 @@ impl Scene {
     }
 
     /// How many triangles the fixed world has.
+    #[must_use]
     pub fn triangle_count(&self) -> usize {
         self.fixed.len()
     }
@@ -427,12 +438,14 @@ impl Scene {
     }
 
     /// The distance to the nearest surface along the ray, if one is closer than `limit`.
+    #[must_use]
     pub fn cast(&self, ray: &Ray, limit: f64) -> Option<f64> {
         self.cast_named(ray, limit).map(|(d, _)| d)
     }
 
     /// As [`Scene::cast`], with the placed object's name if the ray hit one (`None`: the
     /// fixed world).
+    #[must_use]
     pub fn cast_named(&self, ray: &Ray, limit: f64) -> Option<(f64, Option<&str>)> {
         let mut best = self.fixed.cast(ray, limit).map(|d| (d, None));
         let inverse = Vec3::new(

@@ -13,14 +13,17 @@ pub struct Vec3 {
 impl Vec3 {
     pub const ZERO: Vec3 = Vec3::new(0.0, 0.0, 0.0);
 
+    #[must_use]
     pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
 
+    #[must_use]
     pub fn dot(self, o: Vec3) -> f64 {
         self.x * o.x + self.y * o.y + self.z * o.z
     }
 
+    #[must_use]
     pub fn cross(self, o: Vec3) -> Vec3 {
         Vec3::new(
             self.y * o.z - self.z * o.y,
@@ -29,19 +32,23 @@ impl Vec3 {
         )
     }
 
+    #[must_use]
     pub fn length(self) -> f64 {
         self.dot(self).sqrt()
     }
 
+    #[must_use]
     pub fn min(self, o: Vec3) -> Vec3 {
         Vec3::new(self.x.min(o.x), self.y.min(o.y), self.z.min(o.z))
     }
 
+    #[must_use]
     pub fn max(self, o: Vec3) -> Vec3 {
         Vec3::new(self.x.max(o.x), self.y.max(o.y), self.z.max(o.z))
     }
 
     /// The component along an axis: 0 x, 1 y, 2 z.
+    #[must_use]
     pub fn axis(self, axis: usize) -> f64 {
         match axis {
             0 => self.x,
@@ -97,6 +104,7 @@ impl Rot3 {
     };
 
     /// Roll about x, then pitch about y, then yaw about z (fixed axes), as SDF and URDF.
+    #[must_use]
     pub fn from_rpy(roll: f64, pitch: f64, yaw: f64) -> Self {
         let (sr, cr) = roll.sin_cos();
         let (sp, cp) = pitch.sin_cos();
@@ -110,10 +118,12 @@ impl Rot3 {
         }
     }
 
+    #[must_use]
     pub fn from_yaw(yaw: f64) -> Self {
         Self::from_rpy(0.0, 0.0, yaw)
     }
 
+    #[must_use]
     pub fn apply(&self, v: Vec3) -> Vec3 {
         let m = &self.m;
         Vec3::new(
@@ -123,6 +133,7 @@ impl Rot3 {
         )
     }
 
+    #[must_use]
     pub fn then(&self, inner: &Rot3) -> Rot3 {
         let a = &self.m;
         let b = &inner.m;
@@ -135,6 +146,7 @@ impl Rot3 {
         Rot3 { m }
     }
 
+    #[must_use]
     pub fn transpose(&self) -> Rot3 {
         let a = &self.m;
         Rot3 {
@@ -147,6 +159,7 @@ impl Rot3 {
     }
 
     /// Roll, pitch and yaw (rad), as `from_rpy` takes them.
+    #[must_use]
     pub fn rpy(&self) -> (f64, f64, f64) {
         let m = &self.m;
         let pitch = (-m[2][0]).clamp(-1.0, 1.0).asin();
@@ -154,6 +167,7 @@ impl Rot3 {
     }
 
     /// The rotation as a unit quaternion: (x, y, z, w).
+    #[must_use]
     pub fn quaternion(&self) -> [f64; 4] {
         let m = &self.m;
         let trace = m[0][0] + m[1][1] + m[2][2];
@@ -206,11 +220,13 @@ impl Pose {
         rotation: Rot3::IDENTITY,
     };
 
+    #[must_use]
     pub fn new(position: Vec3, rotation: Rot3) -> Self {
         Self { position, rotation }
     }
 
     /// x y z roll pitch yaw, as SDF's `<pose>` and vehicle.yaml's xyz and rpy.
+    #[must_use]
     pub fn from_xyz_rpy(xyz: [f64; 3], rpy: [f64; 3]) -> Self {
         Self::new(
             Vec3::new(xyz[0], xyz[1], xyz[2]),
@@ -219,11 +235,13 @@ impl Pose {
     }
 
     /// A point in this frame, in the parent's.
+    #[must_use]
     pub fn apply(&self, p: Vec3) -> Vec3 {
         self.rotation.apply(p) + self.position
     }
 
     /// This pose, then `inner` inside it: parent <- self <- inner.
+    #[must_use]
     pub fn then(&self, inner: &Pose) -> Pose {
         Pose::new(
             self.apply(inner.position),
@@ -231,6 +249,7 @@ impl Pose {
         )
     }
 
+    #[must_use]
     pub fn inverse(&self) -> Pose {
         let r = self.rotation.transpose();
         Pose::new(-r.apply(self.position), r)
@@ -238,6 +257,7 @@ impl Pose {
 }
 
 /// Wrap an angle into (-pi, pi].
+#[must_use]
 pub fn wrap(angle: f64) -> f64 {
     let a = angle.rem_euclid(std::f64::consts::TAU);
     if a > std::f64::consts::PI {

@@ -63,6 +63,7 @@ impl Body {
     /// that reaches into the car crosses one of them first. The diagonals catch a thing
     /// exactly as wide as the car and in line with it, whose faces lie along the sides.
     /// Cheap (18 short rays a step), and enough to stop at a wall.
+    #[must_use]
     pub fn touches(&self, scene: &crate::scene::Scene, base: &Pose) -> bool {
         let c = self.corners();
         const LINES: [(usize, usize); 6] = [(0, 1), (1, 2), (2, 3), (3, 0), (0, 2), (1, 3)];
@@ -146,6 +147,7 @@ pub struct SensorNoise {
 
 impl SensorNoise {
     /// Whether the wheels' odometry is read from noisy wheels rather than the truth.
+    #[must_use]
     pub fn wheels_noisy(&self) -> bool {
         self.wheel_speed > 0.0 || self.wheel_slip != 0.0
     }
@@ -260,6 +262,7 @@ pub enum Output {
 }
 
 /// What a plug-in sees when it's its turn.
+#[derive(Debug)]
 pub struct Frame<'a> {
     pub time_ns: u64,
     pub world: &'a World,
@@ -293,6 +296,7 @@ fn period_ns(hz: f64, step_ns: u64) -> u64 {
 }
 
 /// The loop's state.
+// Debug by hand: the car model and the plug-ins are trait objects, shown by name.
 pub struct Simulator {
     settings: Settings,
     world: World,
@@ -317,6 +321,18 @@ pub struct Simulator {
     wheel_heights: [f64; 4],
     /// Placed models that move on their own (`set_motion`): a person walking.
     movers: Vec<Mover>,
+}
+
+impl std::fmt::Debug for Simulator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let plugins: Vec<&str> = self.plugins.iter().map(|p| p.name()).collect();
+        f.debug_struct("Simulator")
+            .field("settings", &self.settings)
+            .field("time_ns", &self.time_ns)
+            .field("plugins", &plugins)
+            .field("movers", &self.movers.len())
+            .finish_non_exhaustive()
+    }
 }
 
 /// A placed model moving at a steady velocity in the world: a person crossing, a car
@@ -346,6 +362,7 @@ pub struct Velocity {
 
 impl Velocity {
     /// Whether it moves at all.
+    #[must_use]
     pub fn is_still(&self) -> bool {
         self.x == 0.0 && self.y == 0.0 && self.yaw_rate == 0.0
     }
@@ -353,6 +370,7 @@ impl Velocity {
 
 impl Simulator {
     /// A simulator with the car at (x, y, yaw) in the world.
+    #[must_use]
     pub fn new(
         settings: Settings,
         world: World,
@@ -398,18 +416,22 @@ impl Simulator {
         self.plugins.push(plugin);
     }
 
+    #[must_use]
     pub fn time_ns(&self) -> u64 {
         self.time_ns
     }
 
+    #[must_use]
     pub fn car(&self) -> CarState {
         self.car.state()
     }
 
+    #[must_use]
     pub fn car_model(&self) -> &dyn CarModel {
         self.car.as_ref()
     }
 
+    #[must_use]
     pub fn world(&self) -> &World {
         &self.world
     }
@@ -419,12 +441,14 @@ impl Simulator {
         &mut self.world
     }
 
+    #[must_use]
     pub fn settings(&self) -> &Settings {
         &self.settings
     }
 
     /// `base_link` in the world: on the ground under the rear axle, tilted to the wheels
     /// (flat at z = 0 without `ground_step`).
+    #[must_use]
     pub fn base_link(&self) -> Pose {
         let s = self.car.state();
         match self.ground() {
@@ -469,6 +493,7 @@ impl Simulator {
     }
 
     /// Where a moving model is now (x, y, yaw in the world), if it moves.
+    #[must_use]
     pub fn mover(&self, name: &str) -> Option<(f64, f64, f64)> {
         self.movers
             .iter()
@@ -768,6 +793,7 @@ impl Simulator {
 
 /// Each front wheel's angle for the centre wheel's `steering` (Ackermann), left then right:
 /// both point at the same turning centre.
+#[must_use]
 pub fn wheel_angles(steering: f64, wheelbase: f64, track: f64) -> [f64; 2] {
     if steering.abs() < 1e-9 {
         return [0.0, 0.0];

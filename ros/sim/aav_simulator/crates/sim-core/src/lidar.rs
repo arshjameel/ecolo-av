@@ -209,6 +209,7 @@ impl Scan {
     }
 
     /// The cloud's bytes, packed as Gazebo packs them (see the module's notes).
+    #[must_use]
     pub fn pack(&self) -> Vec<u8> {
         let (rings, steps) = self.spec.angles();
         let mut data = Vec::with_capacity(self.ranges.len() * POINT_STEP);
@@ -231,6 +232,7 @@ impl Scan {
     }
 
     /// Whether every ray hit something within range (PointCloud2's `is_dense`).
+    #[must_use]
     pub fn dense(&self) -> bool {
         self.ranges.iter().all(|r| r.is_finite())
     }

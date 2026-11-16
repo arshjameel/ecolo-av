@@ -128,6 +128,7 @@ pub struct TwistFollower {
 }
 
 impl TwistFollower {
+    #[must_use]
     pub fn new(wheelbase: f64, max_steering: f64) -> Self {
         Self {
             wheelbase,
@@ -312,6 +313,7 @@ pub struct ActuatorCar {
 
 impl ActuatorCar {
     /// `dt`: the step the dead times are counted in (the simulator's).
+    #[must_use]
     pub fn new(cfg: ActuatorConfig, dt: f64) -> Self {
         Self {
             throttle_delay: DeadTime::new(cfg.throttle_dead_time, dt, 0.0),
@@ -328,6 +330,7 @@ impl ActuatorCar {
         }
     }
 
+    #[must_use]
     pub fn config(&self) -> &ActuatorConfig {
         &self.cfg
     }

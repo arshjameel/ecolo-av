@@ -40,6 +40,7 @@ const LOOK_DOWN: f64 = 2.0;
 impl Ground {
     /// The wheels' contact points in base_link: rear right, rear left, front right,
     /// front left.
+    #[must_use]
     pub fn wheels(&self) -> [Vec3; 4] {
         let (half, wb) = (self.track / 2.0, self.wheelbase);
         [
@@ -83,6 +84,7 @@ impl Ground {
     }
 
     /// base_link on the ground under the rear axle, tilted to the four wheels.
+    #[must_use]
     pub fn pose(&self, x: f64, y: f64, yaw: f64, h: [f64; 4]) -> Pose {
         let rear = (h[0] + h[1]) / 2.0;
         let front = (h[2] + h[3]) / 2.0;

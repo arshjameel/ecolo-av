@@ -23,6 +23,7 @@ pub struct SharedCar {
 }
 
 impl SharedCar {
+    #[must_use]
     pub fn new(cfg: SharedConfig) -> Self {
         Self {
             cfg,
@@ -36,6 +37,7 @@ impl SharedCar {
         SharedConfig::from_vehicle_yaml(path).map(Self::new)
     }
 
+    #[must_use]
     pub fn config(&self) -> &SharedConfig {
         &self.cfg
     }

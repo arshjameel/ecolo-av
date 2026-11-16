@@ -125,6 +125,7 @@ pub struct World {
 
 impl World {
     /// Nothing but flat ground everywhere: for tests.
+    #[must_use]
     pub fn flat(size: f64) -> World {
         World {
             scene: Scene::new(Mesh::plane(size, size).triangles),

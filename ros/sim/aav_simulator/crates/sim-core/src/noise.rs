@@ -11,6 +11,7 @@ pub struct Noise {
 }
 
 impl Noise {
+    #[must_use]
     pub fn new(seed: u64) -> Self {
         Self {
             state: seed,
@@ -20,6 +21,7 @@ impl Noise {
 
     /// Another stream, its own seed taken from this one: one per sensor, so adding a
     /// sensor doesn't change another's noise.
+    #[must_use]
     pub fn fork(&mut self) -> Noise {
         Noise::new(self.next_u64())
     }

@@ -35,6 +35,7 @@ impl Datum {
     };
 
     /// A world position (m east, north, up of the datum) on the Earth.
+    #[must_use]
     pub fn to_geodetic(&self, enu: Vec3) -> Geodetic {
         let (lat0, lon0) = (self.latitude.to_radians(), self.longitude.to_radians());
         let origin = ecef(lat0, lon0, self.elevation);
