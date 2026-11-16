@@ -1482,9 +1482,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/nav/route/path</code></td>
 <td><code>nav_msgs/msg/Path</code></td>
 <td><code>street_router</code></td>
-<td><code>map</code></td>
+<td><code>map</code>, <code>dev_window</code></td>
 <td>-</td>
-<td>Transient local (latched). The whole route in the map frame (each point through /fromLL). The map window (map, aav_hud) draws it violet under Nav2's blue plan; RViz and Foxglove can too. Not a plan Nav2 follows.</td>
+<td>Transient local (latched). The whole route in the map frame (each point through /fromLL). The map window (map, aav_hud) draws it violet under Nav2's blue plan; the developer window too (key H), and the chunks along its next 100 m are the ones it shows loaded (TODO 175); RViz and Foxglove can too. Not a plan Nav2 follows.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/route/status</code></td>
