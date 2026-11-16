@@ -104,7 +104,7 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **ROS 2 Jazzy** | Apache-2.0 | runs | everything |
 | twist_mux; teleop_twist_joy and teleop_twist_keyboard | Apache-2.0; BSD | runs | the command mux and the locks; the joystick and keyboard |
 | **rclrs** (ros2-rust) | Apache-2.0 | runs | our Rust ROS nodes |
-| **rayon** | MIT / Apache-2.0 | runs | each map chunk loaded and built on its own core (`map-chunks` `Store::update`, TODO 195) |
+| **rayon** | MIT / Apache-2.0 | runs | each map chunk loaded and built on its own core (`map-chunks` `Store::update`, TODO 195); our global costmap's 64 m tiles and chunks inflated each on its own core (`aav_costmap` `layered.rs`, TODO 175) |
 | **proptest** | MIT / Apache-2.0 | tests only | the stop zone's, the map chunks' and the car model's rules checked on thousands of random inputs (`tests/props.rs`, TODO 204) |
 | **rstar** (the georust project) | MIT / Apache-2.0 | runs | an R-tree of the Lanelet2 map's centre lines, for the nearest lane (`lanelet-map`, TODO 201) |
 | **Rerun** (rerun.io) | MIT / Apache-2.0 | a trial viewer, laptops only | our MCAP recordings opened as they are (`pixi run -e rerun view-bag`, TODO 197) |

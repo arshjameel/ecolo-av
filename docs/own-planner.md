@@ -327,15 +327,15 @@ go round": Autoware's idea). A challenger beside the lanes layer (`lane_costs:=t
 | The route | Dijkstra over the road segments, never turning back on one; one-way roads only their way |
 | The line | each segment moved onto the right lane's centre (`Road::lane`, the same as the lanes layer), corners rounded at the turning radius (3.6 m) |
 | The ends | the lattice from the car to the line 8.1 m on, and from 8.1 m before the end to the goal. A car within 0.6 m and 20° of the line goes straight onto it 2 m on; a goal on its end, straight too |
-| Off the map | the start or goal over 20 m from every road (the lot), a route too short, the line over an obstacle, or no join: **the lattice, all of it** |
-| Says how | `/drivers/nav/planner/status` `how`: `lane` (and `lane_m`), or `lattice: off_map`, `short`, `blocked`, `join_failed` |
+| Off the map | the start or goal over 20 m from every road (the lot), a route too short, the line over an obstacle, no join, or a loop round the block (over 2 x the straight distance + 40 m): **the lattice, all of it** |
+| Says how | `/drivers/nav/planner/status` `how`: `lane` (and `lane_m`), or `lattice: off_map`, `short`, `blocked`, `join_failed`, `detour` |
 
 | Try it | Run |
 |---|---|
 | See it | `pixi run sim world:=campus path:=lane` (or `lane_route:=true`; needs `planner:=own`) |
 | The legs, no ROS | `cargo run --release -p lattice-planner --example lane -- <lanes.json>` (its header says how to make the file) |
 | Score it | `pixi run measure controllers --stacks own_calm --tours university --runs 2 --reversing --launch behaviour:=true lane_route:=true` |
-| Code | `crates/lattice-planner/src/lane.rs` (no ROS; 6 tests, and `tests/lane.rs` with the real lattice: 3) |
+| Code | `crates/lattice-planner/src/lane.rs` (no ROS; 6 tests, and `tests/lane.rs` with the real lattice: 6) |
 
 **The campus tour can't show it.** Its start (lot P4) and two of its goals are off the lane
 map, so every leg falls back to the lattice (`examples/lane.rs`). A new tour,
@@ -394,6 +394,35 @@ Each leg's time, every run: 42-44, 60 and 68-69 s in all three (the ramp's first
 **No worse on any column: `path:=lane` is `ours`' path since 16 Nov** (`stacks.yaml`;
 `decisions.md`). Off the lane map (the lot, a three-point turn in the road world) it is
 the lattice, as before. The ramp stays a challenger (`lanes:=ramp`).
+
+## Far goals in steps (16 Nov, TODO 175)
+
+With the global costmap made of chunks ([own-costmap.md](own-costmap.md#from-map-chunks-on-every-core-16-nov-todo-175-195)),
+a far goal can be off the costmap. The route level still covers the whole way; the path
+goes as far as the costmap does, and the next replan (once a second) goes on.
+
+```text
+  ┌──────────── the costmap: the chunks held ─────────────┐
+  │ car ════ the lane line (the route level) ═══════ ✕ ◀──┼── 10 m in from the edge
+  └───────────────────────────────────────────────────────┘ ═════ ▶ goal
+```
+
+| Case | The path |
+|---|---|
+| goal on the costmap (even near its edge: the test lot's are) | as before |
+| goal off it, on the lane map | the lane line, cut where it first comes within 10 m of the edge (`steps::last_inside`) |
+| goal off it, off the lane map | the lattice to the farthest free point on the straight line (`steps::toward`) |
+| every plan | the whole way on `/drivers/nav/planner/route`: the costmap holds the chunks along it |
+
+The status says `cut: true`. `cargo run --release -p lattice-planner --example steps`
+plans the campus and University Drive tours on the chunks, no ROS: every leg's goal was
+inside the window (5 x 5 chunks, 320 m), so none was cut.
+
+**A loop round the block** (found with the chunks, 16 Nov): 10 m short of the campus
+tour's first goal (off the road, at 45° to it) a replan gave a 430 m route of lanes, and the
+car drove it. A lane route longer than 2 x the straight distance + 40 m is now the
+lattice's (`Fallback::Detour`, `detour` in the status). It could happen on the whole map
+too: there the leg ended first.
 
 ## What's missing
 

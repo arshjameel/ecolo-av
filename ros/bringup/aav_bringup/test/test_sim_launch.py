@@ -178,6 +178,21 @@ def test_ours_plans_the_lanes_centre_where_the_world_has_a_lane_map():
     assert lane_route(world='road', path='lattice_rs_strong') == ''
 
 
+def test_the_global_costmap_is_made_of_chunks_only_where_there_are_chunks(tmp_path):
+    # TODO 175: costmap_chunks:=auto is the campus's chunks (pixi run campus makes them);
+    # a world without any (the empty world, the lot) keeps the whole map.
+    def chunks(**args):
+        return included(started(SIM, **args))['navigation.launch.py']['costmap_chunks']
+    assert chunks() == ''
+    assert chunks(costmap_chunks='auto') == ''
+    assert chunks(world='test_lot', costmap_chunks='auto') == ''
+    assert chunks(costmap_chunks='off') == ''
+    (tmp_path / 'chunks.yaml').write_text('origin: [0, 0]\nsize: 64\n')
+    assert chunks(costmap_chunks=str(tmp_path)) == str(tmp_path)
+    assert SIM.campus_costmap_chunks('auto', 'test_lot') == ''
+    assert SIM.campus_costmap_chunks('off', 'campus') == ''
+
+
 def test_ego_waits_for_the_road_ahead_only_where_its_writer_runs():
     # The behaviour node writes /world/road_ahead inside navigation: with nav:=false ego
     # must not wait for it, or it holds the point driver at 0 (TODO 94, found 15 Nov).

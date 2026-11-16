@@ -489,7 +489,7 @@ impl LaneRouter {
         }
         // A goal off the costmap: the line as far as it stays on it, the path ending there.
         let mut cut = false;
-        if !steps::inside(grid, goal.x, goal.y, EDGE_MARGIN) {
+        if !steps::inside(grid, goal.x, goal.y, 0.0) {
             if let Some(k) = steps::last_inside(grid, &line, EDGE_MARGIN) {
                 line.truncate(k + 1);
                 cut = true;

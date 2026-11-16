@@ -10,13 +10,15 @@ The page: [docs/own-costmap.md](../../../docs/own-costmap.md).
              -> /drivers/nav/costmap/global (+ _raw)  map, the map's size, 1 Hz
   local_raw -> mppi_lag (tracker:=mppi_lag), instead of Nav2's /local_costmap/costmap_raw
 lane_costs:= a lanes.yaml, and /plan -> the lanes layer on the global one (a challenger)
+costmap_chunks:= a chunks folder, and /drivers/nav/planner/route -> the global one holds
+  only the 64 m chunks round the car and along the route ahead, not /map (TODO 175)
 ```
 
 ## Overview
 
 | Part | What it is |
 |---|---|
-| `crates/costmap` | the maths, no ROS: grid, static map, obstacle layers, inflation, the layered costmap; `lanes.rs`, the lanes layer (ours, TODO 148) |
+| `crates/costmap` | the maths, no ROS: grid, static map, obstacle layers, inflation, the layered costmap (a fixed one in 64 m tiles, each on its own core: rayon); `lanes.rs`, the lanes layer (ours, TODO 148); `chunked.rs`, the global costmap from map chunks (ours, TODO 175) |
 | `crates/costmap-node` | the ROS node, binary `costmap` (rclrs): messages in and out only |
 
 ```sh
@@ -31,10 +33,10 @@ pixi run sim-check --costmap own --tracker mppi_lag --lidar-obstacle --plan-arou
 
 | Item | What |
 |---|---|
-| Subscribes | `/map` (transient local); `/localization/odom/local`; `/tf` (map -> odom); `/tf_static` (sensor mounts); each layer's sources from nav2.yaml (`/sensors/lidar/scan`; the radar, cubes, camera points and ghost where they run), best effort; `/plan` (`route_topic`) only with a lanes block |
+| Subscribes | `/map` (transient local; not when the global one is made of chunks); `/localization/odom/local`; `/tf` (map -> odom); `/tf_static` (sensor mounts); each layer's sources from nav2.yaml (`/sensors/lidar/scan`; the radar, cubes, camera points and ghost where they run), best effort; `/plan` (`route_topic`) only with a lanes block; `/drivers/nav/planner/route` (`ahead_topic`) only with a chunks block |
 | Publishes | `/drivers/nav/costmap/local`, `/global` (OccupancyGrid); `/drivers/nav/costmap/local_raw`, `/global_raw` (nav2_msgs/Costmap); `/drivers/nav/costmap/status` (DiagnosticStatus) |
 | Serves | `/drivers/nav/costmap/clear_entirely_local`, `_global` (nav2_msgs/srv/ClearEntireCostmap): forget every mark. With `tracker:=mppi_lag`, `bt_navigator`'s local clear is remapped here |
-| Parameters | `local`, `global`: one JSON block each, made by `aav_description`'s `vehicle.costmap_params` from the tuned nav2.yaml; the global one may hold `lanes` (`lane_map.costmap_block`, from `navigation.launch.py lane_costs:=<lanes.yaml>`); `odom_topic`, `map_topic`, `base_frame`, `route_topic`, the topic names |
+| Parameters | `local`, `global`: one JSON block each, made by `aav_description`'s `vehicle.costmap_params` from the tuned nav2.yaml; the global one may hold `lanes` (`lane_map.costmap_block`, from `navigation.launch.py lane_costs:=<lanes.yaml>`) and `chunks` (`vehicle.costmap_chunks_block`: `dir`, `ahead` 100 m, `margin` 1 chunk; from `costmap_chunks:=<folder>`); `odom_topic`, `map_topic`, `base_frame`, `route_topic`, the topic names |
 
 ### The lanes layer (`lane_costs`, a challenger, TODO 148)
 
@@ -73,6 +75,8 @@ are never lowered.
 ```sh
 cargo test -p costmap                                  # the layers and hand-made scenes
 cargo run --release -p costmap --example timing        # how long an update takes (local; global at the campus's size)
+cargo run --release -p costmap --example chunks -- ../../../maps/campus/chunks ../../../maps/campus/campus.yaml
+                                                       # the chunks timed on 1 core and all; checked against the whole map
 cargo bench -p costmap                                  # the same cases, measured by criterion
 pixi run build && colcon test --packages-select aav_costmap
 ```

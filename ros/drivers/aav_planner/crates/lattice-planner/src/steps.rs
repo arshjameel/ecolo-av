@@ -19,6 +19,9 @@ use crate::{Plan, PlanError, Planner, Pose};
 
 /// m: a step's end stays this far inside the costmap's edge, past the inflation's reach
 /// (3 m), so walls just off the costmap can't be missed near it, with room to join.
+/// Only a goal off the grid is cut: one on it, however near its edge, is planned to as
+/// before (the test lot's goals are 5-8 m from its map's edge: cut, the car never got
+/// there, 16 Nov).
 pub const EDGE_MARGIN: f64 = 10.0;
 /// m between the points tried along a straight way.
 const STEP: f64 = 0.5;
@@ -54,7 +57,7 @@ fn free(grid: &Grid, x: f64, y: f64) -> bool {
 /// `None` when the goal is on the grid already, or no such point is.
 #[must_use]
 pub fn toward(grid: &Grid, start: &Pose, goal: &Pose, margin: f64) -> Option<Pose> {
-    if inside(grid, goal.x, goal.y, margin) {
+    if inside(grid, goal.x, goal.y, 0.0) {
         return None;
     }
     let (dx, dy) = (goal.x - start.x, goal.y - start.y);
@@ -145,7 +148,8 @@ mod tests {
         }
         let step = toward(&g, &start, &far, 10.0).expect("a step");
         assert!(step.x < 86.0 && step.x > 84.0, "{step:?}");
-        // A goal on the grid: no step.
+        // A goal on the grid: no step, even within the margin of its edge.
         assert!(toward(&g, &start, &Pose::new(40.0, 30.0, 0.0), 10.0).is_none());
+        assert!(toward(&g, &start, &Pose::new(97.0, 55.0, 0.0), 10.0).is_none());
     }
 }

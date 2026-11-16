@@ -204,6 +204,56 @@ simulator running beside it):
   and that takes 0.4 ms.
 - **New status values:** `publish_ms` (the last publish) and `skipped`.
 
+## From map chunks, on every core (16 Nov, TODO 175, 195)
+
+Ben, 16 Nov: "why are map chunks and obstical avoidance not using rayon ... we should load
+the closest ones or atleas the ones on the path. Lets turn on chunking for sure."
+
+**The idea.** The global costmap holds only the 64 m chunks it needs, not the whole map.
+
+```text
+ car + the route ahead ─▶ map_chunks::wanted: the 3 x 3 round the car + 100 m of route
+                          ─▶ the rectangle round them, one chunk more each side
+   ┌────┬────┬────┬────┬────┐
+   │kept│kept│kept│new │new │   new chunks: read from fine/i_j.pgm, each on its own core
+   ├────┼────┼────┼────┼────┤   kept chunks: their cells kept as they were
+   │kept│kept│CAR │redo│new │   redo: a chunk whose neighbour came or went
+   └────┴────┴────┴────┴────┘   each chunk inflated on its own core (rayon), then stitched
+```
+
+| Part | What |
+|---|---|
+| `costmap_chunks:=auto` (`sim.launch.py`) | the campus's chunks (`maps/campus/chunks/`, made by `pixi run campus`); the lot and the road world have none, so the whole map |
+| `chunked.rs` | the window (`Window`), which chunks to redo, reading a chunk (`ChunkSource`), stitching |
+| `layered.rs` | `set_chunks`, `follow_chunks` (each update), `set_ahead` (the route) |
+| the route ahead | our planner's `/drivers/nav/planner/route`: the lane line to the goal, however far |
+| the same cells | a chunk's costs need only its 8 neighbours (the 3 m inflation is less than a chunk) |
+
+**Every fixed costmap uses the cores now**, chunks or not: the grid is worked out in
+64 m tiles, each on its own core, each reading its tile plus the inflation's reach.
+
+### How long it takes (this Mac, M4 Max, 16 cores)
+
+`cargo run --release -p costmap --example chunks` on the campus's chunks; criterion for
+the whole map (`cargo bench -p costmap`).
+
+| Step | 1 core | 16 cores (rayon) |
+|---|---|---|
+| read one chunk (256 x 256 cells) | 0.11 ms | 0.07 ms |
+| stitch one chunk | 0.001 ms | 0.001 ms |
+| first window, 25 chunks: read and stitch | 1.9 ms | 0.6 ms |
+| first window: inflate | 12-13 ms (0.5 ms a chunk) | **1.4 ms** |
+| the car one chunk on: read 5, redo 10-15 | 8 ms | **1.3 ms** |
+| the whole campus map (41 M cells), worked out | 326 ms | **32 ms** |
+
+**The same cells:** the window against the whole campus map's costmap, away from its
+edge: 0 cells differ. Tests: a 320 m map in chunks, cell for cell against the whole
+map's costmap, as the car drives (with and without a lidar layer); tiles against one pass.
+
+### The scores
+
+SCORES_COSTMAP
+
 ## Try it
 
 | To | Run |

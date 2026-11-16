@@ -3,8 +3,8 @@
 ## Overview
 
 The map cut into **fixed 64 m squares (chunks)**: step 1 of the three map levels
-(`docs/designs/2026-11-15_three-levels.md`, TODO 175). A Rust crate with no ROS, to be
-shared by our planner, NDT, the things and the dev window. Nothing uses it yet.
+(`docs/designs/2026-11-15_three-levels.md`, TODO 175). A Rust crate with no ROS, shared
+by NDT (`ndt-core`), our global costmap (`aav_costmap` `chunked.rs`) and the dev window.
 
 ```text
  car + route ─▶ wanted ─▶ { chunk: Fine | Coarse }  ─▶ Store::update ─▶ loaded / dropped
