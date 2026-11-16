@@ -17,23 +17,32 @@ pub const FLOAT64: u8 = 8;
 /// A field of every point, as `sensor_msgs/PointField` describes it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Field<'a> {
+    /// `x`, `y`, `intensity`...
     pub name: &'a str,
     /// Where it starts in each point, in bytes.
     pub offset: u32,
     /// PointField's number for its type: [`FLOAT32`] or [`FLOAT64`] for x, y and z.
     pub datatype: u8,
+    /// How many of that type.
     pub count: u32,
 }
 
 /// The parts of a `sensor_msgs/PointCloud2` needed for its x, y and z.
 #[derive(Clone, Debug)]
 pub struct CloudView<'a> {
+    /// What each point holds.
     pub fields: Vec<Field<'a>>,
+    /// Points in a row.
     pub width: u32,
+    /// Rows.
     pub height: u32,
+    /// Bytes a point.
     pub point_step: u32,
+    /// Bytes a row.
     pub row_step: u32,
+    /// The numbers are big-endian.
     pub is_bigendian: bool,
+    /// The points' bytes.
     pub data: &'a [u8],
 }
 
@@ -47,7 +56,12 @@ pub enum CloudError {
     /// The field doesn't fit inside a point.
     OutsidePoint(&'static str),
     /// The cloud says it has more points than its bytes hold.
-    TooShort { points: usize, bytes: usize },
+    TooShort {
+        /// Points the cloud says it has.
+        points: usize,
+        /// Bytes it has.
+        bytes: usize,
+    },
 }
 
 impl fmt::Display for CloudError {
@@ -115,6 +129,10 @@ impl Float {
 }
 
 /// Every point's x, y and z, row by row, in the cloud's frame.
+///
+/// # Errors
+///
+/// [`CloudError`] if x, y or z is missing or not a float, or the bytes are too few.
 pub fn read_xyz(cloud: &CloudView<'_>) -> Result<Vec<Point>, CloudError> {
     let xyz = [
         Float::of(cloud, "x")?,
@@ -164,6 +182,7 @@ pub const XYZ32_FIELDS: [Field<'static>; 3] = [
 pub const XYZ32_STEP: u32 = 12;
 
 /// The points as an x y z float32 cloud's data, little-endian, one row.
+#[must_use]
 pub fn write_xyz32(points: &[Point]) -> Vec<u8> {
     points
         .iter()

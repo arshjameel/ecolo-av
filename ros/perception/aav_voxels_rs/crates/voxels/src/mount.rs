@@ -25,6 +25,7 @@ impl Mount {
     }
 
     /// `p`, from the lidar's frame, in `base_link`.
+    #[must_use]
     pub fn to_base(&self, p: &Point) -> Point {
         let [x, y, z] = [0, 1, 2].map(|row| {
             let r = self.turn[row];

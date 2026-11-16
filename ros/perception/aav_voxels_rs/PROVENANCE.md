@@ -28,3 +28,4 @@ add to `docs/acknowledgements.md`. The Python stays, as the default.
 
 - 2026-11-15: written; the Python's answers on 9 recorded clouds and one whole turn;
   `voxels_impl:=` in `navigation.launch.py`, `sim.launch.py` and `car.launch.py`.
+- 2026-11-15 (TODO 176): the Rust API Guidelines pass: `#[must_use]` on pure functions, doc comments, `Debug`, and the lints that keep them; no change in behaviour.

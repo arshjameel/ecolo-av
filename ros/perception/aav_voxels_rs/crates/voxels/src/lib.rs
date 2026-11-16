@@ -14,6 +14,9 @@
 //! Points on the car itself ([`Body`]) never count. The same answers as the Python, checked
 //! on its recorded clouds (`tests/python_vectors.rs`). The design:
 //! `docs/designs/2026-10-30_voxels.md`.
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod cloud;
 mod mount;
@@ -25,17 +28,23 @@ pub use mount::Mount;
 /// A point in `base_link` (m), or in the lidar's frame before [`Mount::to_base`].
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Point {
+    /// m, + forward.
     pub x: f64,
+    /// m, + left.
     pub y: f64,
+    /// m, + up.
     pub z: f64,
 }
 
 impl Point {
+    /// The point (`x`, `y`, `z`).
+    #[must_use]
     pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
 
     /// The distance from `base_link`, flat (m).
+    #[must_use]
     pub fn flat(&self) -> f64 {
         self.x.hypot(self.y)
     }
@@ -56,6 +65,7 @@ pub struct Body {
 
 impl Body {
     /// Whether `p` is on the car.
+    #[must_use]
     pub fn contains(&self, p: &Point) -> bool {
         p.x >= self.back && p.x <= self.front && p.y.abs() <= self.half_width
     }
@@ -119,7 +129,12 @@ pub enum ShapeError {
     /// The cube's edge isn't a length above 0.
     Size(f64),
     /// min_height isn't below max_height.
-    Heights { min: f64, max: f64 },
+    Heights {
+        /// min_height (m).
+        min: f64,
+        /// max_height (m).
+        max: f64,
+    },
     /// range_max isn't a distance above 0.
     Range(f64),
 }
@@ -140,6 +155,10 @@ impl Error for ShapeError {}
 
 impl CubeShape {
     /// The shape, if it can cut a cloud.
+    ///
+    /// # Errors
+    ///
+    /// [`ShapeError::Size`] or [`ShapeError::Heights`].
     pub fn checked(self) -> Result<Self, ShapeError> {
         if !(self.size.is_finite() && self.size > 0.0) {
             return Err(ShapeError::Size(self.size));
@@ -160,13 +179,17 @@ impl CubeShape {
 /// A plane z = a x + b y + c in `base_link` (m).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Plane {
+    /// The slope along x.
     pub a: f64,
+    /// The slope along y.
     pub b: f64,
+    /// The height at the origin (m).
     pub c: f64,
 }
 
 impl Plane {
     /// The plane's height under (x, y).
+    #[must_use]
     pub fn height(&self, x: f64, y: f64) -> f64 {
         // As cubes.py: (a x + b y) + c, so the two agree to the last bit.
         self.a * x + self.b * y + self.c
@@ -177,10 +200,18 @@ impl Plane {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Road {
     /// A plane the checks believed, through this many candidates.
-    Fitted { plane: Plane, candidates: usize },
+    Fitted {
+        /// The plane.
+        plane: Plane,
+        /// The road points it was fitted through.
+        candidates: usize,
+    },
     /// No fit believed (too few candidates, too steep, too far off, too spread): the road
     /// is taken as flat, z = 0, as `lidar_scan` takes it.
-    Flat { candidates: usize },
+    Flat {
+        /// The road points there were.
+        candidates: usize,
+    },
 }
 
 impl Default for Road {
@@ -191,6 +222,7 @@ impl Default for Road {
 
 impl Road {
     /// The road as a plane: z = 0 when flat.
+    #[must_use]
     pub fn plane(&self) -> Plane {
         match self {
             Self::Fitted { plane, .. } => *plane,
@@ -198,11 +230,14 @@ impl Road {
         }
     }
 
+    /// A plane was believed.
+    #[must_use]
     pub fn is_fitted(&self) -> bool {
         matches!(self, Self::Fitted { .. })
     }
 
     /// The candidates the last fit used (or found, if too few).
+    #[must_use]
     pub fn candidates(&self) -> usize {
         match self {
             Self::Fitted { candidates, .. } | Self::Flat { candidates } => *candidates,
@@ -210,17 +245,20 @@ impl Road {
     }
 
     /// The road's height in `base_link` under (x, y).
+    #[must_use]
     pub fn height(&self, x: f64, y: f64) -> f64 {
         self.plane().height(x, y)
     }
 
     /// The body's lean on the road, side to side (rad, REP-103: + = right side down).
     /// Leaning right, the road on the right looks higher: it rises as y falls.
+    #[must_use]
     pub fn roll(&self) -> f64 {
         -self.plane().b.atan()
     }
 
     /// The body's lean on the road, front to back (rad, REP-103: + = nose down).
+    #[must_use]
     pub fn pitch(&self) -> f64 {
         self.plane().a.atan()
     }
@@ -233,6 +271,7 @@ pub struct Cubes {
     pub obstacles: Vec<Point>,
     /// The centre of each flat square of road seen, at the road's height.
     pub ground: Vec<Point>,
+    /// The road's plane, or flat.
     pub road: Road,
     /// Finite points, off the car, within `range_max`.
     pub points: usize,
@@ -272,6 +311,7 @@ fn cube_of(p: &Point, size: f64) -> [i64; 3] {
 }
 
 /// The lowest of the points in each `cell` x `cell` square, one per square.
+#[must_use]
 pub fn lowest_per_cell(points: &[Point], cell: f64) -> Vec<Point> {
     least_per_key(points, |p| square_of(p, cell), |p| p.z)
 }
@@ -282,6 +322,7 @@ pub fn nearest_per_cube(points: &[Point], size: f64) -> Vec<Point> {
 }
 
 /// The centre of every `size` cube holding one of the points, each once, sorted.
+#[must_use]
 pub fn cube_centres(points: &[Point], size: f64) -> Vec<Point> {
     let mut keys: Vec<[i64; 3]> = points.iter().map(|p| cube_of(p, size)).collect();
     keys.sort_unstable();
@@ -294,6 +335,7 @@ pub fn cube_centres(points: &[Point], size: f64) -> Vec<Point> {
 
 /// The centre of every flat `size` square holding one of the points, each once, sorted;
 /// z = 0, for the caller to set.
+#[must_use]
 pub fn square_centres(points: &[Point], size: f64) -> Vec<Point> {
     let mut keys: Vec<[i64; 2]> = points.iter().map(|p| square_of(p, size)).collect();
     keys.sort_unstable();
@@ -368,6 +410,7 @@ pub fn fit_plane<'a>(points: impl Iterator<Item = &'a Point> + Clone) -> Option<
 /// then within 0.1 m: the walls drop out. A fit with too few candidates, steeper than
 /// `max_tilt`, further than `max_offset` from `base_link`, or whose road points spread more
 /// than `max_spread` off it (a crest, a crowned road: not one plane), is not believed.
+#[must_use]
 pub fn fit_ground(points: &[Point], shape: &CubeShape) -> Road {
     let near: Vec<Point> = points
         .iter()
@@ -426,6 +469,7 @@ pub fn fit_ground(points: &[Point], shape: &CubeShape) -> Road {
 }
 
 /// The points that count: finite, within `range_max`, off the car.
+#[must_use]
 pub fn usable(points: &[Point], shape: &CubeShape) -> Vec<Point> {
     points
         .iter()
@@ -445,6 +489,7 @@ pub fn usable(points: &[Point], shape: &CubeShape) -> Vec<Point> {
 ///
 /// Points that are NaN or inf (rays that hit nothing), on the car itself or further than
 /// `range_max` don't count.
+#[must_use]
 pub fn cubes(points: &[Point], shape: &CubeShape) -> Cubes {
     let good = usable(points, shape);
     let road = fit_ground(&good, shape);
@@ -453,6 +498,7 @@ pub fn cubes(points: &[Point], shape: &CubeShape) -> Cubes {
 
 /// As [`cubes`], measured from this `road` instead of a fit: `Road::default()` is the
 /// flat cut, as `lidar_scan`'s.
+#[must_use]
 pub fn cubes_on(points: &[Point], shape: &CubeShape, road: Road) -> Cubes {
     cut(usable(points, shape), shape, road)
 }
