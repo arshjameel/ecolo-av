@@ -53,6 +53,10 @@ levels:
       # staircase on a road at an angle (TODO 168, 15 Nov; docs/mppi-lag.md, "The sway
       # that was left"). Ours' pick since 15 Nov, scored with mppi_lag_calm.
       lattice_rs_strong: {planner: own, plan_smoothing: strong}
+      # The lane-centre planner (TODO 148, 169; the Fable review's change 7): on the lane
+      # map, the right lane's centre by the road graph, our lattice joining the car and the
+      # goal to it; off it (the lot), the lattice alone. A challenger (16 Nov).
+      lane: {planner: own, plan_smoothing: strong, lane_route: 'true'}
       diffusion: {planner: diffusion}
     score: ''
   steer:

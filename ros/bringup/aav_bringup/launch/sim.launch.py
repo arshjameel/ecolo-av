@@ -138,6 +138,11 @@ bench's argument names:
                       own) as soft costs, lowest at the right lane's centre, so our planner
                       keeps right. A world with no lane map (the test lot): nothing drawn.
                       Empty: the stack's choice (off)
+  lane_route:=true    the lane-centre planner (path:=lane), a challenger (TODO 148): our
+                      planner (planner:=own) routes along the lane map (lane_map:='s, else
+                      the world's own) and plans the right lane's centre, the lattice
+                      joining the car and the goal to it; off the map, the lattice alone.
+                      Empty: the stack's choice (off)
   things:=true        the lidar's cubes as things with an id, a speed and a memory, on
                       /world/things (aav_things; voxels runs for it): only with nav:=true
                       and the lidar. Nothing reads the list yet
@@ -300,7 +305,7 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'lattice_moves': vehicle.LATTICE_MOVES[0],
                   'planner_search': vehicle.PLANNER_SEARCHES[0],
                   'plan_smoothing': 'nav2', 'map_correction': 'newest',
-                  'mppi_lag_steer_gamma': '', 'lane_costs': 'false'}
+                  'mppi_lag_steer_gamma': '', 'lane_costs': 'false', 'lane_route': 'false'}
 
 
 # Each level switch's options, for its help text (config/stacks.yaml).
@@ -382,6 +387,13 @@ def launch_setup(context):
             lane_costs = lane_map or worlds.lane_map_file(gazebo_share, world, 'world')
         except ValueError as e:
             print(f'[sim.launch.py] lane_costs:=true, but no lane map here: {e}', flush=True)
+    # lane_route (path:=lane): the lane map lane_map:= names, else the world's own.
+    lane_route = ''
+    if arg('lane_route').lower() == 'true':
+        try:
+            lane_route = lane_map or worlds.lane_map_file(gazebo_share, world, 'world')
+        except ValueError as e:
+            print(f'[sim.launch.py] lane_route:=true, but no lane map here: {e}', flush=True)
     # lane_pose: the lane map lane_map:= names, else the world's own.
     pose_map = ((lane_map or worlds.lane_map_file(gazebo_share, world, 'world'))
                 if lane_pose else '')
@@ -533,7 +545,8 @@ def launch_setup(context):
                                things=str(flag['things']).lower(),
                                lane_map=lane_map, lane_costs=lane_costs,
                                # Every model of the car predicts the loop it runs (TODO 163).
-                               speed_loop=speed_loop))
+                               speed_loop=speed_loop,
+                               lane_route=lane_route))
     if ndt:
         # Scored only (measure controllers --ndt), unless ndt_ekf:=true: then ekf_global
         # reads its pose (measure controllers --ndt-ekf scores the difference).
@@ -870,6 +883,11 @@ def generate_launch_description():
 
                                           "lowest at the right lane's centre (TODO 148); "
                                           "false: none. Empty: the stack's choice (off)"),
+        DeclareLaunchArgument('lane_route', default_value=stacks.CHOSEN,
+                              description='true: the lane-centre planner (path:=lane): '
+                                          "the right lane's centre along the lane map, "
+                                          'planner:=own (TODO 148); false: none. Empty: '
+                                          "the stack's choice (off)"),
         DeclareLaunchArgument('navigator', default_value=stacks.CHOSEN,
                               description="own (aav_navigator, in bt_navigator's place; "
                                           'docs/own-navigator.md) or nav2. Empty: the '

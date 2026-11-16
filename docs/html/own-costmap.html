@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-costmap.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own costmap</h1>
-<div class="meta">18 min read · 9 sections</div></header>
+<div class="meta">19 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -483,6 +483,12 @@ nothing there (1 run, 4 of 4 legs, as without).</p>
 <li>The runs are noisy: legs failed for reasons the lanes don't touch (the sensor
   watchdog, "the car doesn't fit at the start", the follower giving up).</li>
 </ul>
+<p><strong>16 Nov: against <code>path:=lane</code>, on more road.</strong> A new tour, <code>university</code> (about 290 m of
+University Drive), 3 runs each: the ramp kept the car 0.59 m off the lane's centre and
+over the centre line 1 % of the time (nothing: 1.51 m, 68 %); the lane-centre planner
+0.10 m and 0 %, with less sway (0.063 against 0.087 m/s²), the same time a leg. The
+table: <a href="own-planner.html#the-scores-16-nov-our-simulator-the-university-drive-tour">own-planner.md</a>.
+Both stay challengers; <code>path:=lane</code> is proposed for <code>ours</code> (TODO 148).</p>
 </section>
 <section class="card"><h2 id="threads-and-bounds-14-nov">Threads and bounds (14 Nov)</h2>
 <p><strong>The problem.</strong> On the campus map (6400 × 6400 cells, 41 million) every leg with

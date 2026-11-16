@@ -130,7 +130,7 @@ waiting to beat it.</p>
   │ path       │ lattice   │ lattice_rs, lattice_smooth,  │
   │            │           │ lattice_rs_smooth, hybrid,   │
   │            │           │ hybrid_rs, diffusion,        │
-  │            │           │ lattice_rs_strong            │
+  │            │           │ lattice_rs_strong, lane      │
   │ steer      │ mppi      │ mppi_lag, mppi_lag_calm,     │
   │            │           │ mpc_lag, rpp                 │
   │ smoother   │ nav2      │ ours                         │
@@ -207,8 +207,8 @@ stack's choice". Any value you give is yours, even one that matches the champion
 </tr>
 <tr>
 <td><code>path:=</code></td>
-<td><code>lattice</code>, <code>lattice_rs</code>, <code>lattice_smooth</code>, <code>lattice_rs_smooth</code>, <code>hybrid</code>, <code>hybrid_rs</code>, <code>lattice_rs_strong</code>, <code>diffusion</code></td>
-<td><code>planner</code>, <code>planner_search</code>, <code>plan_smoothing</code>, <code>lattice_moves</code></td>
+<td><code>lattice</code>, <code>lattice_rs</code>, <code>lattice_smooth</code>, <code>lattice_rs_smooth</code>, <code>hybrid</code>, <code>hybrid_rs</code>, <code>lattice_rs_strong</code>, <code>lane</code>, <code>diffusion</code></td>
+<td><code>planner</code>, <code>planner_search</code>, <code>plan_smoothing</code>, <code>lattice_moves</code>, <code>lane_route</code></td>
 </tr>
 <tr>
 <td><code>steer:=</code></td>
@@ -223,6 +223,7 @@ stack's choice". Any value you give is yours, even one that matches the champion
 </tbody>
 </table></div>
 <pre class="highlight"><code class="language-sh">pixi run sim world:=campus path:=hybrid_rs       # all ours, but our Hybrid-A*
+pixi run sim world:=campus path:=lane            # all ours, the path on the right lane's centre
 pixi run sim stack:=stock steer:=mppi_lag_calm   # Nav2's, but our calm MPPI</code></pre>
 <div class="table-wrap"><table>
 <thead>

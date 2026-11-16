@@ -24,7 +24,8 @@
 //! Publishes   /plan                       nav_msgs/Path: each path found (planner_server's
 //!                                         own goes to /drivers/nav/planner/nav2_plan)
 //!             drivers/nav/planner/status  diagnostic_msgs/DiagnosticStatus, one a plan: the
-//!                                         times, iterations, length, cusps, error
+//!                                         times, iterations, length, cusps, error; with
+//!                                         a lane map, "how": lane, or lattice and why
 //! Serves      is_path_valid_service (empty: none; navigation.launch.py gives
 //!             /is_path_valid where planner_server doesn't run)
 //!                                         nav2_msgs/srv/IsPathValid, as planner_server's:
@@ -38,6 +39,10 @@
 //!             its GridBased Hybrid-A* block; vehicle.yaml's outline and the global
 //!             costmap's inflation), costmap_topic, costmap_updates_topic (empty: none),
 //!             costmap_latched, map_frame, odom_frame, base_frame, is_path_valid_service.
+//!             With "lanes" in settings (navigation.launch.py lane_route:=, path:=lane), the
+//!             lane-centre planner (lattice_planner::lane): the right lane's centre along
+//!             the lane map, the lattice joining the car and the goal to it; off the map,
+//!             the lattice alone.
 //!
 //! The maths is the `lattice-planner` crate; this file only moves messages. Each goal is
 //! planned on its own thread, on the newest costmap.
@@ -50,6 +55,7 @@ use std::time::Duration;
 use anyhow::{anyhow, bail, Context as _, Result};
 use costmap::{footprint, Arrival, Grid, Inflation};
 use futures::channel::oneshot;
+use lattice_planner::lane::{roads_from_json, How, LaneRouter, LaneSettings};
 use lattice_planner::{
     cusps, length, Hybrid, Lattice, Plan, PlanError, Planner, Pose, Settings, SmootherSettings,
 };
@@ -116,10 +122,23 @@ fn main() -> Result<()> {
             .ok_or_else(|| anyhow!("costmap_timeout: a number is needed"))?,
     };
     let planner_through = Arc::clone(&planner);
+    // path:=lane: the lane-centre planner, the lattice joining its ends.
+    let lanes = match &spec["lanes"] {
+        Value::Null => None,
+        block => Some(Arc::new(LaneRouter::new(
+            roads_from_json(block).map_err(|e| anyhow!("lanes: {e}"))?,
+            LaneSettings::default(),
+        ))),
+    };
+    let lanes_through = lanes.clone();
     log_info!(
         node.logger(),
-        "{} (ours); costmap {costmap_topic}",
-        planner.describe()
+        "{} (ours){}; costmap {costmap_topic}",
+        planner.describe(),
+        lanes.as_ref().map_or(String::new(), |l| format!(
+            "; along the lane map's right lane ({} roads), the lattice off it",
+            l.roads().len()
+        ))
     );
 
     let core = Core {
@@ -177,6 +196,7 @@ fn main() -> Result<()> {
         move |requested: RequestedGoal<ComputePathToPose>| {
             let worker = goals.clone();
             let planner = Arc::clone(&planner);
+            let lanes = lanes.clone();
             async move {
                 let goal = requested.accept().execute();
                 let asked = goal.goal().clone();
@@ -202,15 +222,21 @@ fn main() -> Result<()> {
                 let stop_thread = Arc::clone(&stop);
                 let (done, finished) = oneshot::channel();
                 std::thread::spawn(move || {
-                    let r = planner.plan(&grid, &start, &goal_poses[0], &|| {
-                        stop_thread.load(Ordering::Relaxed)
-                    });
+                    let stop = || stop_thread.load(Ordering::Relaxed);
+                    let r = match &lanes {
+                        Some(l) => l
+                            .plan(&planner, &grid, &start, &goal_poses[0], &stop)
+                            .map(|p| (p.plan, Some(p.how))),
+                        None => planner
+                            .plan(&grid, &start, &goal_poses[0], &stop)
+                            .map(|p| (p, None)),
+                    };
                     let _ = done.send(r);
                 });
                 match goal.until_cancel_requested(finished).await {
-                    Ok(Ok(Ok(plan))) => {
+                    Ok(Ok(Ok((plan, how)))) => {
                         let reply = worker
-                            .run(move |s: &mut Core| s.succeeded(&plan, stamp))
+                            .run(move |s: &mut Core| s.succeeded(&plan, how, stamp))
                             .await;
                         match reply {
                             Ok(a) => goal.succeeded_with(a),
@@ -240,6 +266,7 @@ fn main() -> Result<()> {
         move |requested: RequestedGoal<ComputePathThroughPoses>| {
             let worker = goals.clone();
             let planner = Arc::clone(&planner_through);
+            let lanes = lanes_through.clone();
             async move {
                 let goal = requested.accept().execute();
                 let asked = goal.goal().clone();
@@ -264,15 +291,21 @@ fn main() -> Result<()> {
                 let stop_thread = Arc::clone(&stop);
                 let (done, finished) = oneshot::channel();
                 std::thread::spawn(move || {
-                    let r = planner.plan_through(&grid, &start, &goal_poses, &|| {
-                        stop_thread.load(Ordering::Relaxed)
-                    });
+                    let stop = || stop_thread.load(Ordering::Relaxed);
+                    let r = match &lanes {
+                        Some(l) => l
+                            .plan_through(&planner, &grid, &start, &goal_poses, &stop)
+                            .map(|p| (p.plan, Some(p.how))),
+                        None => planner
+                            .plan_through(&grid, &start, &goal_poses, &stop)
+                            .map(|p| (p, None)),
+                    };
                     let _ = done.send(r);
                 });
                 match goal.until_cancel_requested(finished).await {
-                    Ok(Ok(Ok(plan))) => {
+                    Ok(Ok(Ok((plan, how)))) => {
                         let reply = worker
-                            .run(move |s: &mut Core| s.succeeded(&plan, stamp))
+                            .run(move |s: &mut Core| s.succeeded(&plan, how, stamp))
                             .await;
                         match reply {
                             Ok(a) => goal.succeeded_with(ThroughAnswer {
@@ -753,7 +786,8 @@ impl Core {
         Ok((grid, start, goals, stamp))
     }
 
-    fn succeeded(&mut self, plan: &Plan, stamp: Time) -> Answer {
+    /// `how`: with a lane map, the lane or the lattice and why (the status's "how").
+    fn succeeded(&mut self, plan: &Plan, how: Option<How>, stamp: Time) -> Answer {
         self.plans += 1;
         let header = Header {
             stamp,
@@ -787,21 +821,30 @@ impl Core {
             key: k.into(),
             value: v,
         };
+        let mut values = vec![
+            kv("search_ms", format!("{:.2}", plan.search_time * 1e3)),
+            kv("total_ms", format!("{:.2}", plan.total_time * 1e3)),
+            kv("iterations", plan.iterations.to_string()),
+            kv("length_m", format!("{:.2}", length(&plan.poses))),
+            kv("cusps", cusps(&plan.poses).to_string()),
+            kv("poses", plan.poses.len().to_string()),
+            kv("plans", self.plans.to_string()),
+            kv("failures", self.failures.to_string()),
+        ];
+        match how {
+            Some(How::Lane(m)) => {
+                values.push(kv("how", "lane".into()));
+                values.push(kv("lane_m", format!("{m:.1}")));
+            }
+            Some(How::Lattice(why)) => values.push(kv("how", format!("lattice: {}", why.word()))),
+            None => {}
+        }
         let status = DiagnosticStatus {
             level: DiagnosticStatus::OK,
             name: "planner".into(),
             message: "path".into(),
             hardware_id: String::new(),
-            values: vec![
-                kv("search_ms", format!("{:.2}", plan.search_time * 1e3)),
-                kv("total_ms", format!("{:.2}", plan.total_time * 1e3)),
-                kv("iterations", plan.iterations.to_string()),
-                kv("length_m", format!("{:.2}", length(&plan.poses))),
-                kv("cusps", cusps(&plan.poses).to_string()),
-                kv("poses", plan.poses.len().to_string()),
-                kv("plans", self.plans.to_string()),
-                kv("failures", self.failures.to_string()),
-            ],
+            values,
         };
         let _ = self.status.publish(&status);
         let secs = plan.total_time;

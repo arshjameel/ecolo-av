@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-planner.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own planner</h1>
-<div class="meta">16 min read · 8 sections</div></header>
+<div class="meta">21 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -117,7 +117,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#hand-made-maps-no-ros">Hand-made maps (no ROS)</a><a href="#in-our-simulator-8-nov">In our simulator (8 Nov)</a><a href="#hybrid-a-a-second-search-14-nov">Hybrid-A*: a second search (14 Nov)</a><a href="#the-staircase-and-the-strong-smoother-15-nov">The staircase and the strong smoother (15 Nov)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#hand-made-maps-no-ros">Hand-made maps (no ROS)</a><a href="#in-our-simulator-8-nov">In our simulator (8 Nov)</a><a href="#hybrid-a-a-second-search-14-nov">Hybrid-A*: a second search (14 Nov)</a><a href="#the-staircase-and-the-strong-smoother-15-nov">The staircase and the strong smoother (15 Nov)</a><a href="#the-lane-centre-planner-pathlane-16-nov">The lane-centre planner (path:=lane, 16 Nov)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
 <div class="lead"><p>Ben, 8 Nov: move off Nav2 <strong>one piece at a time</strong>, each beside Nav2 until it wins. The
 order: the costmap (<a href="own-costmap.html">done</a>), then <strong>the path planner</strong> (this page), then
 the navigator. Since 14 Nov ours is the simulator's default (<code>stack:=ours</code>; Nav2's
@@ -149,8 +149,15 @@ lattice with <code>planner:=lattice</code> or <code>stack:=stock</code>). Nav2 s
 <li>
 <p><strong>Not yet a winner:</strong> as good on the lot, a little slower on the campus.</p>
 </li>
-<li><strong>Hybrid-A* too (14 Nov):</strong> <code>planner_search:=hybrid</code> runs Nav2's Hybrid-A*
-  ported, on the same search (<a href="#hybrid-a-a-second-search-14-nov">below</a>). A challenger.</li>
+<li>
+<p><strong>Hybrid-A* too (14 Nov):</strong> <code>planner_search:=hybrid</code> runs Nav2's Hybrid-A*
+  ported, on the same search (<a href="#hybrid-a-a-second-search-14-nov">below</a>). A challenger.</p>
+</li>
+<li>
+<p><strong>The lane-centre planner (16 Nov):</strong> <code>path:=lane</code> plans the right lane's centre
+  along the lane map, the lattice only at the ends
+  (<a href="#the-lane-centre-planner-pathlane-16-nov">below</a>). A challenger.</p>
+</li>
 </ul>
 </blockquote></div>
 <section class="card"><h2 id="how-it-fits">How it fits</h2>
@@ -725,6 +732,174 @@ take out wiggles shorter than ~2 m, so the steps stay, and the follower drives t
 2.86 m). In the sim it took a share of the campus's sway off; the rest, and the
 numbers: <a href="mppi-lag.html#the-sway-that-was-left">mppi-lag.md, The sway that was left</a>.
 <code>tests/scenes.rs</code> checks the steps go (8°: under half the swing).</p>
+</section>
+<section class="card"><h2 id="the-lane-centre-planner-pathlane-16-nov">The lane-centre planner (<code>path:=lane</code>, 16 Nov)</h2>
+<p>TODO 148 and 169; the Fable review's change 7 ("follow the lane's centre, shift only to
+go round": Autoware's idea). A challenger beside the lanes layer (<code>lane_costs:=true</code>,
+<a href="own-costmap.html#the-lanes-layer-15-nov-todo-148-a-challenger">own-costmap.md</a>).</p>
+<pre class="highlight"><code class="language-text"> car ─lattice─▶ ═══════ the right lane's centre, routed on the lane map ═══════ ─▶ goal
+   (or straight, if the car is on its lane)            (straight, if the goal is on it)</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The map</td>
+<td><code>lanes.yaml</code> (the world's own; the campus's from OpenStreetMap), as the lanes layer reads it. Roads join where they share a point</td>
+</tr>
+<tr>
+<td>The route</td>
+<td>Dijkstra over the road segments, never turning back on one; one-way roads only their way</td>
+</tr>
+<tr>
+<td>The line</td>
+<td>each segment moved onto the right lane's centre (<code>Road::lane</code>, the same as the lanes layer), corners rounded at the turning radius (3.6 m)</td>
+</tr>
+<tr>
+<td>The ends</td>
+<td>the lattice from the car to the line 8.1 m on, and from 8.1 m before the end to the goal. A car within 0.6 m and 20° of the line goes straight onto it 2 m on; a goal on its end, straight too</td>
+</tr>
+<tr>
+<td>Off the map</td>
+<td>the start or goal over 20 m from every road (the lot), a route too short, the line over an obstacle, or no join: <strong>the lattice, all of it</strong></td>
+</tr>
+<tr>
+<td>Says how</td>
+<td><code>/drivers/nav/planner/status</code> <code>how</code>: <code>lane</code> (and <code>lane_m</code>), or <code>lattice: off_map</code>, <code>short</code>, <code>blocked</code>, <code>join_failed</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Try it</th>
+<th>Run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>See it</td>
+<td><code>pixi run sim world:=campus path:=lane</code> (or <code>lane_route:=true</code>; needs <code>planner:=own</code>)</td>
+</tr>
+<tr>
+<td>The legs, no ROS</td>
+<td><code>cargo run --release -p lattice-planner --example lane -- &lt;lanes.json&gt;</code> (its header says how to make the file)</td>
+</tr>
+<tr>
+<td>Score it</td>
+<td><code>pixi run measure controllers --stacks own_calm --tours university --runs 2 --reversing --launch behaviour:=true lane_route:=true</code></td>
+</tr>
+<tr>
+<td>Code</td>
+<td><code>crates/lattice-planner/src/lane.rs</code> (no ROS; 6 tests, and <code>tests/lane.rs</code> with the real lattice: 3)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The campus tour can't show it.</strong> Its start (lot P4) and two of its goals are off the lane
+map, so every leg falls back to the lattice (<code>examples/lane.rs</code>). A new tour,
+<code>university</code>, has about 290 m of mapped road: out of P4 onto University Drive, down it
+135 m, then round the bend south 150 m.</p>
+<h3 id="the-scores-16-nov-our-simulator-the-university-drive-tour">The scores (16 Nov, our simulator, the University Drive tour)</h3>
+<p><code>own_calm</code> (ours) with <code>behaviour:=true</code>, <code>--reversing</code>, 2.5 m/s; kept right by
+<code>tools/lane_score.py</code>. Results in <code>/tmp/w148</code> (not in git).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Runs</th>
+<th>Legs reached</th>
+<th>Sway (m/s²)</th>
+<th>Left-right changes /100 m</th>
+<th>Off the lane's centre (m)</th>
+<th>Over the centre line</th>
+<th>Crossings</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>As now</td>
+<td>3</td>
+<td>7 of 9</td>
+<td>0.093</td>
+<td>9.7</td>
+<td>1.51</td>
+<td><strong>68 %</strong></td>
+<td>32</td>
+</tr>
+<tr>
+<td><code>lane_costs:=true</code> (the ramp)</td>
+<td>3</td>
+<td>8 of 9</td>
+<td>0.087</td>
+<td>9.1</td>
+<td>0.59</td>
+<td>1 %</td>
+<td>2</td>
+</tr>
+<tr>
+<td><code>path:=lane</code></td>
+<td>6</td>
+<td>11 of 18</td>
+<td><strong>0.063</strong></td>
+<td><strong>6.5</strong></td>
+<td><strong>0.10</strong></td>
+<td><strong>0 %</strong></td>
+<td>2</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Leg, s each run (x: not reached)</th>
+<th>Onto University Drive</th>
+<th>Down it</th>
+<th>Round the bend</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>As now</td>
+<td>43, x, 43</td>
+<td>60, x, 60</td>
+<td>69, 122, 68</td>
+</tr>
+<tr>
+<td><code>lane_costs:=true</code></td>
+<td>46, x, 41</td>
+<td>60, 102, 60</td>
+<td>68, 68, 68</td>
+</tr>
+<tr>
+<td><code>path:=lane</code></td>
+<td>x, 43, 43, 43, 44, 45</td>
+<td>x, 60, x, x, 61, 61</td>
+<td>x, 67, x, x, 68, 68</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Read with care.</strong></p>
+<ul>
+<li><strong>Every leg missed, in every variant, was the computer, not the path.</strong> Another
+  session ran a second simulator at the same time (load 17-37 on 16 cores): the local
+  costmap went over 0.8 s old and the follower gave up, the sensor watchdog went stale,
+  or (2 runs) the global costmap never came, so the planner had nothing to plan on.
+  On the quietest runs all three reached every leg (<code>path:=lane</code> 6 of 6, the others 3 of 3).</li>
+<li><strong>The time is the same</strong> when a leg is reached: 43, 60 and 68 s.</li>
+<li><strong>The first version</strong> joined the car with the lattice at every replan (once a second);
+  on the bends it backed up now and then: 10 reversals in 2 runs, the bend leg 86-109 s.
+  Now a car on its lane is joined straight: 0 reversals in 6 runs.</li>
+<li>The campus tour (2 runs each, the same load): 2, 1 and 4 of 6 legs; <code>path:=lane</code>
+  fell back to the lattice there, as expected.</li>
+</ul>
+<p><strong>The verdict: a challenger, proposed for <code>ours</code>.</strong> It keeps the lane best (0.10 m off
+its centre, never over the centre line) and sways least, at the same time a leg. Not
+swapped yet: its reached column is lower on paper (the load), and the league asks for 3
+clean runs of each on the same routes (TODO 148).</p>
 </section>
 <section class="card"><h2 id="whats-missing">What's missing</h2>
 <ul>

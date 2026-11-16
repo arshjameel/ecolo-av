@@ -22,6 +22,9 @@ lattice with `planner:=lattice` or `stack:=stock`). Nav2 stays on the car.
 > - **Not yet a winner:** as good on the lot, a little slower on the campus.
 > - **Hybrid-A\* too (14 Nov):** `planner_search:=hybrid` runs Nav2's Hybrid-A*
 >   ported, on the same search ([below](#hybrid-a-a-second-search-14-nov)). A challenger.
+> - **The lane-centre planner (16 Nov):** `path:=lane` plans the right lane's centre
+>   along the lane map, the lattice only at the ends
+>   ([below](#the-lane-centre-planner-pathlane-16-nov)). A challenger.
 
 ## How it fits
 
@@ -273,6 +276,74 @@ The plan's own swing on a 6.5 m road at 2.2 m/s: 0.08-0.16 m with Nav2's weights
 2.86 m). In the sim it took a share of the campus's sway off; the rest, and the
 numbers: [mppi-lag.md, The sway that was left](mppi-lag.md#the-sway-that-was-left).
 `tests/scenes.rs` checks the steps go (8°: under half the swing).
+
+## The lane-centre planner (`path:=lane`, 16 Nov)
+
+TODO 148 and 169; the Fable review's change 7 ("follow the lane's centre, shift only to
+go round": Autoware's idea). A challenger beside the lanes layer (`lane_costs:=true`,
+[own-costmap.md](own-costmap.md#the-lanes-layer-15-nov-todo-148-a-challenger)).
+
+```text
+ car ─lattice─▶ ═══════ the right lane's centre, routed on the lane map ═══════ ─▶ goal
+   (or straight, if the car is on its lane)            (straight, if the goal is on it)
+```
+
+| Step | What |
+|---|---|
+| The map | `lanes.yaml` (the world's own; the campus's from OpenStreetMap), as the lanes layer reads it. Roads join where they share a point |
+| The route | Dijkstra over the road segments, never turning back on one; one-way roads only their way |
+| The line | each segment moved onto the right lane's centre (`Road::lane`, the same as the lanes layer), corners rounded at the turning radius (3.6 m) |
+| The ends | the lattice from the car to the line 8.1 m on, and from 8.1 m before the end to the goal. A car within 0.6 m and 20° of the line goes straight onto it 2 m on; a goal on its end, straight too |
+| Off the map | the start or goal over 20 m from every road (the lot), a route too short, the line over an obstacle, or no join: **the lattice, all of it** |
+| Says how | `/drivers/nav/planner/status` `how`: `lane` (and `lane_m`), or `lattice: off_map`, `short`, `blocked`, `join_failed` |
+
+| Try it | Run |
+|---|---|
+| See it | `pixi run sim world:=campus path:=lane` (or `lane_route:=true`; needs `planner:=own`) |
+| The legs, no ROS | `cargo run --release -p lattice-planner --example lane -- <lanes.json>` (its header says how to make the file) |
+| Score it | `pixi run measure controllers --stacks own_calm --tours university --runs 2 --reversing --launch behaviour:=true lane_route:=true` |
+| Code | `crates/lattice-planner/src/lane.rs` (no ROS; 6 tests, and `tests/lane.rs` with the real lattice: 3) |
+
+**The campus tour can't show it.** Its start (lot P4) and two of its goals are off the lane
+map, so every leg falls back to the lattice (`examples/lane.rs`). A new tour,
+`university`, has about 290 m of mapped road: out of P4 onto University Drive, down it
+135 m, then round the bend south 150 m.
+
+### The scores (16 Nov, our simulator, the University Drive tour)
+
+`own_calm` (ours) with `behaviour:=true`, `--reversing`, 2.5 m/s; kept right by
+`tools/lane_score.py`. Results in `/tmp/w148` (not in git).
+
+| Variant | Runs | Legs reached | Sway (m/s²) | Left-right changes /100 m | Off the lane's centre (m) | Over the centre line | Crossings |
+|---|---|---|---|---|---|---|---|
+| As now | 3 | 7 of 9 | 0.093 | 9.7 | 1.51 | **68 %** | 32 |
+| `lane_costs:=true` (the ramp) | 3 | 8 of 9 | 0.087 | 9.1 | 0.59 | 1 % | 2 |
+| `path:=lane` | 6 | 11 of 18 | **0.063** | **6.5** | **0.10** | **0 %** | 2 |
+
+| Leg, s each run (x: not reached) | Onto University Drive | Down it | Round the bend |
+|---|---|---|---|
+| As now | 43, x, 43 | 60, x, 60 | 69, 122, 68 |
+| `lane_costs:=true` | 46, x, 41 | 60, 102, 60 | 68, 68, 68 |
+| `path:=lane` | x, 43, 43, 43, 44, 45 | x, 60, x, x, 61, 61 | x, 67, x, x, 68, 68 |
+
+**Read with care.**
+
+- **Every leg missed, in every variant, was the computer, not the path.** Another
+  session ran a second simulator at the same time (load 17-37 on 16 cores): the local
+  costmap went over 0.8 s old and the follower gave up, the sensor watchdog went stale,
+  or (2 runs) the global costmap never came, so the planner had nothing to plan on.
+  On the quietest runs all three reached every leg (`path:=lane` 6 of 6, the others 3 of 3).
+- **The time is the same** when a leg is reached: 43, 60 and 68 s.
+- **The first version** joined the car with the lattice at every replan (once a second);
+  on the bends it backed up now and then: 10 reversals in 2 runs, the bend leg 86-109 s.
+  Now a car on its lane is joined straight: 0 reversals in 6 runs.
+- The campus tour (2 runs each, the same load): 2, 1 and 4 of 6 legs; `path:=lane`
+  fell back to the lattice there, as expected.
+
+**The verdict: a challenger, proposed for `ours`.** It keeps the lane best (0.10 m off
+its centre, never over the centre line) and sways least, at the same time a leg. Not
+swapped yet: its reached column is lower on paper (the load), and the league asks for 3
+clean runs of each on the same routes (TODO 148).
 
 ## What's missing
 

@@ -157,6 +157,13 @@ nothing there (1 run, 4 of 4 legs, as without).
 - The runs are noisy: legs failed for reasons the lanes don't touch (the sensor
   watchdog, "the car doesn't fit at the start", the follower giving up).
 
+**16 Nov: against `path:=lane`, on more road.** A new tour, `university` (about 290 m of
+University Drive), 3 runs each: the ramp kept the car 0.59 m off the lane's centre and
+over the centre line 1 % of the time (nothing: 1.51 m, 68 %); the lane-centre planner
+0.10 m and 0 %, with less sway (0.063 against 0.087 m/s²), the same time a leg. The
+table: [own-planner.md](own-planner.md#the-scores-16-nov-our-simulator-the-university-drive-tour).
+Both stay challengers; `path:=lane` is proposed for `ours` (TODO 148).
+
 ## Threads and bounds (14 Nov)
 
 **The problem.** On the campus map (6400 × 6400 cells, 41 million) every leg with

@@ -75,7 +75,7 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **OSRM**; **Valhalla** | BSD-2; MIT | runs | street routes (`aav_routes`) |
 | Contraction Hierarchies: R. Geisberger et al., WEA 2008 | paper | idea | how OSRM answers fast; noted for the route planner |
 | **Lanelet2** (F. Poggenhans et al., ITSC 2018) | BSD-3 | idea | the lane map's shape and its `.osm` format; tried on RoboStack; our own Rust reader, `lanelet-map` (TODO 175) |
-| **Autoware** (the Autoware Foundation) | Apache-2.0 | idea | the three map levels, map chunks loaded near the car, its tracker as a reference (TODO 156, 175); its `roi_cluster_fusion` (a lidar cluster's box projected into the camera, matched by IoU) for the things' names (TODO 192) |
+| **Autoware** (the Autoware Foundation) | Apache-2.0 | idea | the three map levels, map chunks loaded near the car, its tracker as a reference (TODO 156, 175); its `roi_cluster_fusion` (a lidar cluster's box projected into the camera, matched by IoU) for the things' names (TODO 192); its route-then-lane-centre path (the mission planner routes on the lanelet map, the behaviour path planner follows the lane's centre and shifts only to go round) for our lane-centre planner (`aav_planner` `lane.rs`, `path:=lane`, TODO 148; Fable's review, change 7) |
 | **Apollo** (Baidu) | Apache-2.0 | idea | routing on a lane graph, then planning along the road ahead; its HD map cut into fixed tiles (`map-chunks`) |
 | **roxmltree** (Y. Kladov and contributors) | MIT or Apache-2.0 | dependency | reading Lanelet2's `.osm` XML in `lanelet-map` |
 | **OctoMap** (A. Hornung et al., *Autonomous Robots*, 2013) | paper | idea | 3D occupancy; why our chunks hold a flat hash of voxels instead of a tree (TODO 175) |
