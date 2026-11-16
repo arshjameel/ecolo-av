@@ -18,6 +18,11 @@ Subscribes  perception/voxels/cubes     sensor_msgs/PointCloud2 (aav_voxels), ba
                                         true only): the saved map; cubes on its walls (with
                                         background_slack m for pose error) are dropped
                                         before grouping (background.py, TODO 175 step 5)
+                                        With background_chunks (a folder of the NDT map's
+                                        chunks, maps/campus/chunks/ndt) the NDT map's
+                                        3 x 3 chunks round the car are the background
+                                        instead, read again in each new chunk, and /map is
+                                        not read
 Publishes   world/things                aav_interfaces/Things, odom, 10 Hz: every confirmed
                                         thing, moved on its speed to the stamp
             world/things/markers        visualization_msgs/MarkerArray, odom: a box coloured by
@@ -45,7 +50,7 @@ import signal
 
 from aav_detector import ground
 from aav_interfaces.msg import Thing, Things
-from aav_things.background import Background, new_only
+from aav_things.background import Background, ChunkBackground, new_only, read_grid
 from aav_things import looks
 from aav_things.groups import group, GroupShape, to_frame
 from aav_things.naming import Camera, Namer, Seen
@@ -100,6 +105,13 @@ class ThingsNode(Node):
         self.background_slack = float(self.declare_parameter('background_slack', 0.25).value)
         self.background = None
         self.background_dropped = 0
+        # The NDT map's chunks as the background (the design's form), not /map.
+        folder = str(self.declare_parameter('background_chunks', '').value)
+        min_z = float(self.declare_parameter('background_min_z', 0.3).value)
+        self.chunks = None
+        if self.use_background and folder:
+            self.chunks = ChunkBackground(folder, *read_grid(folder),
+                                          slack=self.background_slack, min_z=min_z)
         self.tf = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf, self)
         self.car = (0.0, 0.0)
@@ -134,17 +146,19 @@ class ThingsNode(Node):
             self.create_subscription(Detection2DArray, '/perception/detections',
                                      self.on_detections, 10)
             self.tracker.name = self.name_of
-        if self.use_background:
+        if self.use_background and self.chunks is None:
             latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                                  durability=DurabilityPolicy.TRANSIENT_LOCAL)
             self.create_subscription(OccupancyGrid, '/map', self.on_map, latched)
         self.create_timer(1.0 / rate, self.publish)
+        background = ('off' if not self.use_background
+                      else f'on: the NDT chunks in {folder}' if self.chunks else 'on: /map')
         self.get_logger().info(
             f'things: cubes within {self.group_shape.gap:.2f} m make a thing; kept '
             f'{self.tracker.shape.keep:.0f} s unseen ({self.tracker.shape.keep_blind:.0f} s '
             f'within {self.tracker.shape.blind_range:.1f} m); radar '
             f'{"on" if self.use_radar else "off"}; the saved map as background '
-            f'{"on" if self.use_background else "off"}')
+            f'{background}')
 
     def on_camera_info(self, msg):
         lens = ground.lens_from_k(msg.k, msg.width, msg.height)
@@ -202,13 +216,18 @@ class ThingsNode(Node):
 
     def drop_background(self, points, msg):
         """Return the cubes not on the saved map; all of them without a map or map pose."""
-        if self.background is None or len(points) == 0:
+        if (self.background is None and self.chunks is None) or len(points) == 0:
             return points
         try:
             t = self.tf.lookup_transform('map', msg.header.frame_id, Time())
         except tf2_ros.TransformException:
             return points
         tr = t.transform.translation
+        if self.chunks is not None:
+            loads = self.chunks.loads
+            self.background = self.chunks.update(tr.x, tr.y)
+            if self.chunks.loads != loads:
+                self.get_logger().info(f'background: the NDT chunks round {self.chunks.here}')
         kept = new_only(points, (tr.x, tr.y, yaw_of(t.transform.rotation)), self.background)
         self.background_dropped += len(points) - len(kept)
         self.get_logger().info(f'background: {self.background_dropped} cubes on the saved map '

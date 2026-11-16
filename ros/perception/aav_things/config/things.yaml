@@ -25,3 +25,4 @@ things:
     # launch's things_background:=, never here: a node's own block in this file outranks
     # the launch's /** parameters, so a value here would always win.
     background_slack: 0.25  # m
+    background_min_z: 0.3   # m, map frame: NDT chunk points lower are the ground, not walls

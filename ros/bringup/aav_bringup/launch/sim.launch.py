@@ -141,6 +141,9 @@ bench's argument names:
   things:=true        the lidar's cubes as things with an id, a speed and a memory, on
                       /world/things (aav_things; voxels runs for it): only with nav:=true
                       and the lidar. Nothing reads the list yet
+  things_background:=true  with things: cubes on the saved map are not things (TODO 175);
+                      things_background_chunks:=maps/campus/chunks/ndt: the NDT map's
+                      chunks round the car instead of /map
   amcl:=true          stock AMCL beside the global EKF, scored only (docs/trials.md): only
                       in world:=test_lot with nav:=true and the lidar, from the start pose
   voxels:=true        Nav2's local costmap and collision_monitor read the lidar as 0.25 m
@@ -475,6 +478,9 @@ def launch_setup(context):
                                global_window=arg('global_window'),
                                stop_zone_shadow=arg('stop_zone_shadow'),
                                things_background=arg('things_background'),
+                               things_background_chunks=os.path.abspath(
+                                   arg('things_background_chunks'))
+                               if arg('things_background_chunks') else '',
                                things_names=arg('things_names'),
                                planner_search=arg('planner_search'),
                                diffusion_model=arg('diffusion_model'),
@@ -804,6 +810,10 @@ def generate_launch_description():
         DeclareLaunchArgument('things_background', default_value='false',
                               description='with things:=true: cubes on the saved map are '
                                           'not things (TODO 175 step 5)'),
+        DeclareLaunchArgument('things_background_chunks', default_value='',
+                              description='with things_background: a folder of the NDT '
+                                          "map's chunks (maps/campus/chunks/ndt) as the "
+                                          'background instead of /map'),
         DeclareLaunchArgument('things_names', default_value='false',
                               description='with things:=true: things take the camera '
                                           "detector's labels (TODO 192)"),
