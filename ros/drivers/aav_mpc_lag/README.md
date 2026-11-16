@@ -27,6 +27,7 @@ controller_server keeps running; its own action is renamed follow_path_unused
 | A tick on a Mac (U-turn at 2 m/s) | 5.3 ms mean, 26 ms worst | 0.75 ms mean, 2.4 ms worst |
 | Lane keeping (`road_ahead_topic`, TODO 169) | yes, with `behaviour:=true` and a lane map | not yet |
 | Live swap | yes (`live_swap`) | no: chosen at launch |
+| Our simulator, the lot tour (15 Nov, one run) | 4 of 4 legs; a tick 3.7-7.7 ms; 28-35 % CPU | 4 of 4 legs; a tick 0.7-1.3 ms; 4-6 % CPU |
 
 ```sh
 pixi run sim world:=test_lot reversing:=false tracker:=mpc_lag_rs
