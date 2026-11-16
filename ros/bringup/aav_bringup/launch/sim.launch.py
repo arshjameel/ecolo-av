@@ -520,6 +520,8 @@ def launch_setup(context):
                   # The steering asked against measured (TODO 207): the adapter or
                   # spine_bridge publishes it; not checked yet with the ESP32 in the loop.
                   + ([] if arg('esp32').lower() == 'true' else ['steering'])
+                  # Ego's speed against the wheels' (TODO 207): a stuck throttle.
+                  + ['speed']
                   + (['hud'] if flag['hud'] or flag['watch_hud'] else [])
                   + our_nodes(nav=flag['nav'], costmap=vehicle.check_costmap(arg('costmap')),
                               planner=planner, tracker=tracker,

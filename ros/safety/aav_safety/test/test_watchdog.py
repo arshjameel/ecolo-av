@@ -379,3 +379,122 @@ def test_only_an_actuator_input_has_a_follow_check():
         Rule('odom', '/vehicle/odom', 'odom', max_age=0.5, follow_tolerance=0.1)
     with pytest.raises(ValueError, match='follow_persist'):
         Rule('steering', '/vehicle/steering', 'actuator', max_age=1.0, follow_persist=0.0)
+
+
+# TODO 207, the throttle half: the car faster than ego asked (a stuck throttle, a loop that
+# runs away). The margin, warning and persist are config/sensor_watchdog.yaml's.
+SPEED = Rule('speed', '/ego/actuator_cmd', 'speed', max_age=1.0, over_margin=0.2,
+             over_warn=1.0, over_persist=2.0, over_slowing=0.3)
+
+
+def drive(dog, start, seconds, command, measured, dt=0.02):
+    """Feed (command, measured) at 50 Hz; each may be a number or a function of t."""
+    t = start
+    for i in range(int(round(seconds / dt))):
+        t = start + i * dt
+        c = command(t) if callable(command) else command
+        m = measured(t) if callable(measured) else measured
+        dog.watches['speed'].arrived(t, (c, m))
+    return t
+
+
+def test_the_loops_overshoot_is_under_the_margin():
+    dog = Watchdog([SPEED])
+    # The car model's default loop: 1.144 m/s for 1.0 asked, held 10 s.
+    t = drive(dog, 0.0, 10.0, 1.0, 1.144)
+    assert state(dog, 'speed', t) == OK
+    assert not dog.locked(t)
+
+
+def test_a_healthy_stop_lagging_its_command_never_counts():
+    dog = Watchdog([SPEED])
+    t = drive(dog, 0.0, 2.0, 1.0, 1.0)
+    # Ego ramps 1 -> 0 at 1 m/s^2; the car follows 0.3 s late, then brakes at 1 m/s^2,
+    # 0.7 m/s over its command at worst: slowing all the while, so no warning.
+    t = drive(dog, t, 3.0, lambda s: max(0.0, 1.0 - (s - 2.0)),
+              lambda s: 1.0 if s < 2.7 else max(0.0, 1.0 - (s - 2.7)))
+    assert state(dog, 'speed', t) == OK
+    # An e-stop: the command 0 at once, the car 2.5 -> 0 at 1.5 m/s^2 (1.7 s over 0.2).
+    t = drive(dog, t, 2.0, 2.5, 2.5)
+    t = drive(dog, t, 2.5, 0.0, lambda s, t0=t: max(0.0, 2.5 - 1.5 * (s - t0)))
+    assert state(dog, 'speed', t) == OK
+
+
+def test_a_stuck_throttle_warns_then_latches_overspeed_and_stops_the_drivers():
+    dog = Watchdog([SPEED])
+    t = drive(dog, 0.0, 1.2, 1.0, 1.3)          # 0.3 m/s over, steady: not slowing
+    s, words = dog.watches['speed'].state(t)
+    assert s == watchdog.OVER and 'asked 1.00 m/s, did 1.30' in words
+    assert not dog.locked(t)                    # a warning only
+    assert dog.summary(t).startswith('WARN')
+    t = drive(dog, t, 1.0, 1.0, 1.3)
+    s, words = dog.watches['speed'].state(t)
+    assert s == watchdog.OVERSPEED
+    assert dog.locked(t) and dog.summary(t).startswith('STOP')
+    # Latched: back under the command doesn't undo it; a person's clear does.
+    t = drive(dog, t, 1.0, 1.0, 1.0)
+    assert state(dog, 'speed', t) == watchdog.OVERSPEED
+    dog.clear()
+    t = drive(dog, t, 0.1, 1.0, 1.0)
+    assert state(dog, 'speed', t) == OK
+
+
+def test_reversing_counts_by_size_and_nan_is_no_check():
+    dog = Watchdog([SPEED])
+    t = drive(dog, 0.0, 3.0, -0.5, -0.9)        # backing 0.4 m/s faster than asked
+    assert state(dog, 'speed', t) == watchdog.OVERSPEED
+    dog = Watchdog([SPEED])
+    t = drive(dog, 0.0, 3.0, 1.0, math.nan)     # no wheel speed yet: no check
+    assert state(dog, 'speed', t) == OK
+
+
+def test_the_car_models_healthy_drives_never_warn():
+    """Every speed loop profile, ramps up and down and a step to 0: never OVER."""
+    car_model = pytest.importorskip('aav_description.car_model')
+    for profile in car_model.SPEED_LOOP_PROFILES:
+        for top in (1.0, 2.5):
+            for step_stop in (False, True):
+                dog = Watchdog([SPEED])
+                car = car_model.Actuators(loop=car_model.speed_loop_profile(profile))
+                command, dt = 0.0, 0.02
+                for i in range(int(30 / dt)):
+                    t = i * dt
+                    target = top if t < 15.0 else 0.0
+                    if step_stop and t >= 15.0:
+                        command = 0.0
+                    elif target > command:
+                        command = min(target, command + 0.5 * dt)
+                    else:
+                        command = max(target, command - 1.0 * dt)
+                    s = car.step(command, 0.0, dt)
+                    dog.watches['speed'].arrived(t, (command, s.speed))
+                    assert state(dog, 'speed', t) == OK, (profile, top, step_stop, t)
+
+
+def test_only_a_speed_input_has_an_overspeed_check():
+    with pytest.raises(ValueError, match='speed input'):
+        Rule('odom', '/vehicle/odom', 'odom', max_age=0.5, over_margin=0.2)
+    with pytest.raises(ValueError, match='over_warn'):
+        Rule('speed', '/ego/actuator_cmd', 'speed', max_age=1.0, over_margin=0.2,
+             over_warn=3.0, over_persist=2.0)
+
+
+def test_the_car_model_with_its_throttle_stuck_while_speeding_up_latches_overspeed():
+    """The throttle stuck 1 s into speeding up to 1 m/s: the car holds 1.25 m/s or more."""
+    car_model = pytest.importorskip('aav_description.car_model')
+    dog = Watchdog([SPEED])
+    car = car_model.Actuators(loop=car_model.speed_loop_profile('default'))
+    command, dt, held, seen = 0.0, 0.02, None, None
+    for i in range(int(15 / dt)):
+        t = i * dt
+        command = min(1.0, command + 0.5 * dt)
+        fault = None
+        if t >= 1.0:
+            held = car.throttle if held is None else held
+            fault = (lambda h: lambda d, steer: (car_model.Demand(h, d.brake, d.reverse),
+                                                 steer))(held)
+        s = car.step(command, 0.0, dt, fault)
+        dog.watches['speed'].arrived(t, (command, s.speed))
+        if seen is None and state(dog, 'speed', t) == watchdog.OVERSPEED:
+            seen = t
+    assert seen is not None and seen < 15.0
