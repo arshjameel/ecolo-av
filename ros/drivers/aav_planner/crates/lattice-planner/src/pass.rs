@@ -45,7 +45,10 @@ impl Default for PassSettings {
         Self {
             margin: 1.0,
             step: 0.25,
-            clearance: 0.3,
+            // 16 Nov, University Drive: at 0.3 a box first seen 15 m off was passed by
+            // 1.24 m, then seen 0.5 m wider (the EKF's 0.35 m, the far face only); the car,
+            // already beside it, came within 0.16 m.
+            clearance: 0.5,
             comfort: 2.0,
             merge: 15.0,
         }
@@ -303,7 +306,7 @@ mod tests {
             .expect("a pass");
         // The least that clears it: 1.0 m (0.5 + 0.5), then the clearance.
         assert_eq!(pass.bumps.len(), 1);
-        assert!((pass.shift() - 1.3).abs() < 1e-9, "{}", pass.shift());
+        assert!((pass.shift() - 1.5).abs() < 1e-9, "{}", pass.shift());
         assert!(pass.line.iter().all(&fits));
         // Back on the lane line well before the end, and on it before the ramp.
         let b = pass.bumps[0];
@@ -326,7 +329,7 @@ mod tests {
     #[test]
     fn a_box_half_in_the_lane_needs_less() {
         let (line, along) = straight(80.0);
-        // It reaches 0.3 m into the car (y -0.8 to -0.2): 0.5 m clears it (a 0.25 m step), 0.8
+        // It reaches 0.3 m into the car (y -0.8 to -0.2): 0.5 m clears it (a 0.25 m step), 1.0
         // with the clearance.
         let fits = boxed(30.0, 31.0, -0.8, -0.2);
         let pass = plan(&line, &along, 3.6, &PassSettings::default(), &fits, &|_| {
@@ -334,7 +337,7 @@ mod tests {
         })
         .expect("room")
         .expect("a pass");
-        assert!((pass.shift() - 0.8).abs() < 1e-9, "{}", pass.shift());
+        assert!((pass.shift() - 1.0).abs() < 1e-9, "{}", pass.shift());
     }
 
     #[test]

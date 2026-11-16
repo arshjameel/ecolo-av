@@ -191,6 +191,11 @@ def blind_behind(reversing, **sensors):
 # car (0.3 m is the ground 10 m away, with the car pitched 1.7 degrees). Above the car's
 # roof by more than OVERHEAD_MARGIN: branches, signs, a garage door the car passes under.
 GROUND_CLEARANCE = 0.3  # m
+# m: how far the planner's copy of the lidar's layer marks (the follower's: 12 m). A box
+# parked in the lane was first planned round 7-11 m ahead at 2.5 m/s (the global costmap
+# and the plan each once a second), too late for a gentle pass (16 Nov). Not further: the
+# ground at 20 m is 0.6 m up with the car pitched 1.7 degrees.
+PLANNER_SEES = 18.0
 OVERHEAD_MARGIN = 0.5   # m above the body's height
 
 
@@ -1354,6 +1359,13 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
     for layer in seen:
         planner[layer] = copy.deepcopy(local[layer])
         planner[layer]['enabled'] = True
+        if layer == 'lidar_layer':
+            for source in planner[layer].get('observation_sources', '').split():
+                block = planner[layer][source]
+                block['obstacle_max_range'] = max(float(block.get('obstacle_max_range', 0.0)),
+                                                  PLANNER_SEES)
+                block['raytrace_max_range'] = max(float(block.get('raytrace_max_range', 0.0)),
+                                                  PLANNER_SEES + 3.0)
     if seen:
         at = planner['plugins'].index('inflation_layer')
         planner['plugins'] = planner['plugins'][:at] + seen + planner['plugins'][at:]

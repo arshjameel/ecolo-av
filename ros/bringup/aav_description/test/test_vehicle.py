@@ -282,6 +282,11 @@ def test_the_planner_sees_the_sensors_but_not_the_ghost():
     assert plugins == ['static_layer', 'obstacle_layer', 'lidar_layer', 'inflation_layer']
     assert cfg['obstacle_layer']['enabled'] is True          # the local one waits for launch
     assert cfg['lidar_layer']['lidar']['topic'] == '/sensors/lidar/scan'
+    # The planner's copy of the lidar looks further than the follower's (16 Nov).
+    assert cfg['lidar_layer']['lidar']['obstacle_max_range'] == vehicle.PLANNER_SEES
+    local = vehicle.nav2_tuned(nav2, v, radar=True, lidar=True)['local_costmap'][
+        'local_costmap']['ros__parameters']['lidar_layer']['lidar']
+    assert local['obstacle_max_range'] < vehicle.PLANNER_SEES
     assert 'ghost_layer' not in plugins
     assert layers(radar=False, lidar=True)[0] == ['static_layer', 'lidar_layer',
                                                   'inflation_layer']
