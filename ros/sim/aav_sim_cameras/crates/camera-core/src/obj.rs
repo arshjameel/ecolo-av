@@ -106,11 +106,13 @@ impl TriMesh {
     }
 
     /// How many triangles.
+    #[must_use]
     pub fn triangles(&self) -> usize {
         self.positions.len() / 3
     }
 
     /// Scaled along each axis (SDF's `<scale>`); the normals follow.
+    #[must_use]
     pub fn scaled(mut self, s: [f32; 3]) -> Self {
         for p in &mut self.positions {
             *p = [p[0] * s[0], p[1] * s[1], p[2] * s[2]];

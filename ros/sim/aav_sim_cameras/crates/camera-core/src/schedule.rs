@@ -17,6 +17,7 @@ pub struct Timer {
 }
 
 impl Timer {
+    #[must_use]
     pub fn new(rate: Hz) -> Self {
         Self {
             period: rate.period(),

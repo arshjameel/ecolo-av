@@ -26,11 +26,13 @@ impl Hz {
         }
     }
 
+    #[must_use]
     pub fn get(self) -> f64 {
         self.0
     }
 
     /// The time between two frames.
+    #[must_use]
     pub fn period(self) -> Duration {
         Duration::from_secs_f64(1.0 / self.0)
     }
@@ -62,18 +64,21 @@ pub struct CameraSpec {
 }
 
 impl CameraSpec {
+    #[must_use]
     pub fn image_topic(&self) -> String {
         self.image_override
             .clone()
             .unwrap_or_else(|| format!("{}/image_raw", self.topic))
     }
 
+    #[must_use]
     pub fn info_topic(&self) -> String {
         format!("{}/camera_info", self.topic)
     }
 
     /// Where a point in the world (map) lands in this camera's picture, with the car at
     /// `car` (base_link in map). `None` behind the camera.
+    #[must_use]
     pub fn project(&self, car: &Pose, world_point: Vec3) -> Option<Pixel> {
         let camera_in_map = car.then(&self.mount);
         let in_link = camera_in_map.inverse().apply(world_point);
@@ -227,6 +232,7 @@ impl Rig {
     }
 
     /// Only the named cameras, in the rig's order.
+    #[must_use]
     pub fn only(mut self, names: &[&str]) -> Self {
         self.cameras.retain(|c| names.contains(&c.name.as_str()));
         self

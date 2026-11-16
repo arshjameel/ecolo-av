@@ -22,11 +22,13 @@ pub struct Rgb {
 }
 
 impl Rgb {
+    #[must_use]
     pub const fn new(r: f32, g: f32, b: f32) -> Self {
         Self { r, g, b }
     }
 
     /// As a picture's bytes (sRGB, 0 to 255).
+    #[must_use]
     pub fn to_srgb8(self) -> [u8; 3] {
         let encode = |c: f32| {
             let c = c.clamp(0.0, 1.0);
@@ -68,6 +70,7 @@ pub struct Look {
 }
 
 impl Look {
+    #[must_use]
     pub fn colour(r: f32, g: f32, b: f32) -> Self {
         Self {
             colour: Rgb::new(r, g, b),
@@ -146,6 +149,7 @@ fn plain(c: Rgb) -> Look {
 
 /// A stop sign as `aav_gazebo/models/stop_sign`: a 0.75 m plate with its centre 2 m up,
 /// on a grey post. `foot` is the post's foot; `yaw` turns the face (0 = facing +x).
+#[must_use]
 pub fn stop_sign(name: &str, foot: [f64; 2], yaw: f64, texture: Option<PathBuf>) -> Vec<Shape> {
     let r = Rotation::from_yaw(yaw);
     let at = |dx: f64, z: f64| {
@@ -188,6 +192,7 @@ impl SimWorld {
     /// lines, a 0.3 m concrete kerb along its right edge, a 1 m box on the left, and a red
     /// stop sign 25 m on at the right, facing the car. The car starts at the origin
     /// facing +x, as in Gazebo.
+    #[must_use]
     pub fn test_world() -> Self {
         use looks::*;
         let mut shapes = vec![

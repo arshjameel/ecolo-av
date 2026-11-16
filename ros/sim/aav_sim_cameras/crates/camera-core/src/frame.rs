@@ -20,11 +20,13 @@ impl Frame {
     pub const ENCODING: &'static str = "rgb8";
 
     /// Bytes a row: the Image's `step`.
+    #[must_use]
     pub fn step(&self) -> u32 {
         self.width * 3
     }
 
     /// The colour of pixel (column, row).
+    #[must_use]
     pub fn pixel(&self, u: u32, v: u32) -> Option<[u8; 3]> {
         if u >= self.width || v >= self.height {
             return None;
@@ -84,6 +86,7 @@ pub fn rgba_rows_to_rgb(
 }
 
 /// wgpu's copy alignment: a row of a texture copy is a multiple of 256 bytes.
+#[must_use]
 pub fn padded_row_bytes(width: u32) -> usize {
     (width as usize * 4).div_ceil(256) * 256
 }

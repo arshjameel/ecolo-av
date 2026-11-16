@@ -59,6 +59,16 @@ pub struct Cameras<R> {
     renderer: R,
 }
 
+// Debug by hand: the renderer is the GPU's, left out.
+impl<R> std::fmt::Debug for Cameras<R> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Cameras")
+            .field("rig", &self.rig)
+            .field("timers", &self.timers)
+            .finish_non_exhaustive()
+    }
+}
+
 impl<R: CameraRenderer> Cameras<R> {
     pub fn new(rig: Rig, renderer: R) -> Self {
         let timers = rig.cameras.iter().map(|c| Timer::new(c.rate)).collect();

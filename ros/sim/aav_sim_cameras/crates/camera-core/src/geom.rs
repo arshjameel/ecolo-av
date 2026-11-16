@@ -13,19 +13,23 @@ pub struct Vec3 {
 impl Vec3 {
     pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
 
+    #[must_use]
     pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
 
+    #[must_use]
     pub fn dot(self, other: Self) -> f64 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
+    #[must_use]
     pub fn length(self) -> f64 {
         self.dot(self).sqrt()
     }
 
     /// The same direction, one long; `None` for the zero vector.
+    #[must_use]
     pub fn normalized(self) -> Option<Self> {
         let length = self.length();
         (length > f64::EPSILON).then(|| self * (1.0 / length))
@@ -72,6 +76,7 @@ impl Rotation {
     };
 
     /// URDF's and SDF's roll, pitch, yaw (radians): about fixed x, then y, then z.
+    #[must_use]
     pub fn from_rpy(roll: f64, pitch: f64, yaw: f64) -> Self {
         let (sr, cr) = roll.sin_cos();
         let (sp, cp) = pitch.sin_cos();
@@ -86,11 +91,13 @@ impl Rotation {
     }
 
     /// A turn about z, the only one a car on flat ground makes.
+    #[must_use]
     pub fn from_yaw(yaw: f64) -> Self {
         Self::from_rpy(0.0, 0.0, yaw)
     }
 
     /// From a quaternion (x, y, z, w), as in geometry_msgs. Normalised first.
+    #[must_use]
     pub fn from_quaternion(x: f64, y: f64, z: f64, w: f64) -> Self {
         let n = (x * x + y * y + z * z + w * w).sqrt();
         if n < f64::EPSILON {
@@ -119,6 +126,7 @@ impl Rotation {
     }
 
     /// Built from where the local x, y and z axes point.
+    #[must_use]
     pub fn from_axes(x: Vec3, y: Vec3, z: Vec3) -> Self {
         Self {
             rows: [[x.x, y.x, z.x], [x.y, y.y, z.y], [x.z, y.z, z.z]],
@@ -126,15 +134,18 @@ impl Rotation {
     }
 
     /// The matrix, row by row.
+    #[must_use]
     pub fn rows(&self) -> [[f64; 3]; 3] {
         self.rows
     }
 
     /// Where the local axis `i` (0 = x, 1 = y, 2 = z) points.
+    #[must_use]
     pub fn axis(&self, i: usize) -> Vec3 {
         Vec3::new(self.rows[0][i], self.rows[1][i], self.rows[2][i])
     }
 
+    #[must_use]
     pub fn apply(&self, v: Vec3) -> Vec3 {
         let r = &self.rows;
         Vec3::new(
@@ -144,6 +155,7 @@ impl Rotation {
         )
     }
 
+    #[must_use]
     pub fn inverse(&self) -> Self {
         let r = &self.rows;
         Self {
@@ -156,6 +168,7 @@ impl Rotation {
     }
 
     /// This rotation after `inner`: `self * inner`.
+    #[must_use]
     pub fn then(&self, inner: &Self) -> Self {
         Self::from_axes(
             self.apply(inner.axis(0)),
@@ -165,6 +178,7 @@ impl Rotation {
     }
 
     /// As a quaternion (x, y, z, w).
+    #[must_use]
     pub fn to_quaternion(&self) -> [f64; 4] {
         let m = &self.rows;
         let trace = m[0][0] + m[1][1] + m[2][2];
@@ -223,6 +237,7 @@ impl Pose {
         rotation: Rotation::IDENTITY,
     };
 
+    #[must_use]
     pub fn new(translation: Vec3, rotation: Rotation) -> Self {
         Self {
             translation,
@@ -231,6 +246,7 @@ impl Pose {
     }
 
     /// URDF's `xyz` and `rpy`, as `vehicle.yaml` gives a sensor's mount.
+    #[must_use]
     pub fn from_xyz_rpy(xyz: [f64; 3], rpy: [f64; 3]) -> Self {
         Self::new(
             Vec3::new(xyz[0], xyz[1], xyz[2]),
@@ -239,16 +255,19 @@ impl Pose {
     }
 
     /// A car on flat ground: x, y (m) and its heading (rad, 0 = east in map, + = left).
+    #[must_use]
     pub fn planar(x: f64, y: f64, yaw: f64) -> Self {
         Self::new(Vec3::new(x, y, 0.0), Rotation::from_yaw(yaw))
     }
 
     /// A point in this frame, in the parent.
+    #[must_use]
     pub fn apply(&self, p: Vec3) -> Vec3 {
         self.rotation.apply(p) + self.translation
     }
 
     /// `self * child`: the child frame's pose in this frame's parent.
+    #[must_use]
     pub fn then(&self, child: &Self) -> Self {
         Self::new(
             self.apply(child.translation),
@@ -256,6 +275,7 @@ impl Pose {
         )
     }
 
+    #[must_use]
     pub fn inverse(&self) -> Self {
         let r = self.rotation.inverse();
         Self::new(-r.apply(self.translation), r)

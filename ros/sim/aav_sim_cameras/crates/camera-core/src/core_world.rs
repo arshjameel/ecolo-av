@@ -78,6 +78,7 @@ fn convert(s: &CoreShape, name: String, at: &Pose) -> Shape {
 
 /// A model placed while the world runs (sim-core `World::model_shapes`, in its own
 /// frame), as shapes in the map: each named `<name>/<shape>`.
+#[must_use]
 pub fn placed(name: &str, shapes: &[CoreShape], at: &Pose) -> Vec<Shape> {
     shapes
         .iter()
@@ -88,6 +89,7 @@ pub fn placed(name: &str, shapes: &[CoreShape], at: &Pose) -> Vec<Shape> {
 
 impl SimWorld {
     /// The core's world, as the cameras draw it. No car body: add it with `with_car`.
+    #[must_use]
     pub fn from_core(world: &World) -> Self {
         let light = &world.lighting;
         let mut seen: HashMap<&str, usize> = HashMap::new();
