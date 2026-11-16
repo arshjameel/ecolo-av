@@ -29,11 +29,16 @@ use crate::Point;
 pub enum ChunkError {
     /// The chunk size or the grid's origin isn't a whole number of cubes.
     Misaligned {
+        /// The chunk's side (m).
         chunk: f64,
+        /// The cube's side (m).
         cube: f64,
     },
+    /// A file couldn't be read or written.
     Io(PathBuf, io::Error),
+    /// A chunk's file isn't a PCD this reads.
     Pcd(PathBuf, PcdError),
+    /// The chunks' cubes couldn't be made.
     Map(MapError),
 }
 
@@ -54,6 +59,7 @@ impl fmt::Display for ChunkError {
 impl std::error::Error for ChunkError {}
 
 /// The map's points, by the chunk each falls in.
+#[must_use]
 pub fn split(points: &[Point], grid: &Grid) -> BTreeMap<ChunkKey, Vec<Point>> {
     let mut chunks: BTreeMap<ChunkKey, Vec<Point>> = BTreeMap::new();
     for p in points.iter().filter(|p| p.iter().all(|v| v.is_finite())) {
@@ -66,11 +72,16 @@ pub fn split(points: &[Point], grid: &Grid) -> BTreeMap<ChunkKey, Vec<Point>> {
 }
 
 /// The file of one chunk's points.
+#[must_use]
 pub fn chunk_path(dir: &Path, key: ChunkKey) -> PathBuf {
     dir.join(format!("{key}.pcd"))
 }
 
 /// Write each chunk's points as `<dir>/<i_j>.pcd`. Returns how many chunks were written.
+///
+/// # Errors
+///
+/// [`ChunkError::Io`] if a file can't be written.
 pub fn write_chunks(dir: &Path, grid: &Grid, points: &[Point]) -> Result<usize, ChunkError> {
     fs::create_dir_all(dir).map_err(|e| ChunkError::Io(dir.to_path_buf(), e))?;
     let chunks = split(points, grid);
@@ -95,6 +106,10 @@ pub struct ChunkedMap {
 
 impl ChunkedMap {
     /// A map that loads `<dir>/<i_j>.pcd` on `grid`, with cubes made by `settings`.
+    ///
+    /// # Errors
+    ///
+    /// [`ChunkError::Misaligned`] if the chunks aren't a whole number of cubes.
     pub fn new(dir: &Path, grid: Grid, settings: MapSettings) -> Result<Self, ChunkError> {
         let whole = |v: f64| (v / settings.cube - (v / settings.cube).round()).abs() < 1e-9;
         let origin = grid.origin();
@@ -115,6 +130,11 @@ impl ChunkedMap {
 
     /// Load the chunks the car needs (the 3 x 3 round it and the route's next `ahead` m)
     /// and drop the rest; the joined map is rebuilt only when something changed.
+    ///
+    /// # Errors
+    ///
+    /// [`ChunkError`]: a chunk's file can't be read, or isn't a good PCD, or its cubes can't be
+    /// made.
     pub fn update(
         &mut self,
         car: FlatPoint,
@@ -142,6 +162,7 @@ impl ChunkedMap {
     }
 
     /// The cubes of the loaded chunks; `None` before the first update or with none near.
+    #[must_use]
     pub fn map(&self) -> Option<&CubeMap> {
         self.joined.as_ref()
     }
@@ -164,6 +185,8 @@ pub struct ChunkedPoints {
 }
 
 impl ChunkedPoints {
+    /// The points of `<dir>/<i_j>.pcd` on `grid`, none loaded yet.
+    #[must_use]
     pub fn new(dir: &Path, grid: Grid) -> Self {
         Self {
             dir: dir.to_path_buf(),
@@ -173,6 +196,10 @@ impl ChunkedPoints {
     }
 
     /// Load the 3 x 3 chunks round `car`; true if they changed.
+    ///
+    /// # Errors
+    ///
+    /// [`ChunkError::Io`] or [`ChunkError::Pcd`] for a chunk's file.
     pub fn update(&mut self, car: FlatPoint) -> Result<bool, ChunkError> {
         let want: BTreeMap<ChunkKey, Detail> = wanted(&self.grid, car, &[], 0.0)
             .into_keys()
@@ -184,6 +211,7 @@ impl ChunkedPoints {
     }
 
     /// Every loaded chunk's points.
+    #[must_use]
     pub fn points(&self) -> Vec<Point> {
         self.store
             .loaded()

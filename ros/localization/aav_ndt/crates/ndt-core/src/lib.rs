@@ -15,6 +15,9 @@
 //! | [`guess`] | the odometry buffer and the guess for the next scan |
 //! | [`localizer`] | all of it per cloud: the guess, the match, LOST and the restarts, the covariance |
 //! | [`pcd`] | the map file: PCL's PCD, binary or ASCII |
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod chunks;
 pub mod cloud;

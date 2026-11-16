@@ -107,6 +107,10 @@ pub struct Matcher {
 impl Matcher {
     /// Builds the map's cubes at each size in `cubes` (m, biggest first: the design's
     /// `[2.0, 1.0]`), from points in the map frame.
+    ///
+    /// # Errors
+    ///
+    /// [`MapError`] if a size gives no map, or `cubes` is empty.
     pub fn new(
         map_points: &[Point],
         cubes: &[f64],
@@ -130,6 +134,10 @@ impl Matcher {
 
     /// As `new`, but a cube size with no curve gets an empty map instead of an error: the
     /// chunks near the car may hold nothing (`chunks.rs`); a match then finds no overlap.
+    ///
+    /// # Errors
+    ///
+    /// [`MapError::BadCube`] for a bad size, or `cubes` empty.
     pub fn new_or_empty(
         map_points: &[Point],
         cubes: &[f64],
@@ -161,12 +169,14 @@ impl Matcher {
     }
 
     /// The score per point of `scan` at `pose`, on the smallest cubes, with no search.
+    #[must_use]
     pub fn score_per_point(&self, scan: &[Point], pose: &Pose2) -> f64 {
         let fine = self.fine();
         evaluate(&fine.map, &fine.gauss, scan, pose, false).score / scan.len().max(1) as f64
     }
 
     /// The derivatives at `pose` on the smallest cubes (for tests and the covariance).
+    #[must_use]
     pub fn evaluate(&self, scan: &[Point], pose: &Pose2) -> Evaluation {
         let fine = self.fine();
         evaluate(&fine.map, &fine.gauss, scan, pose, true)
@@ -178,6 +188,10 @@ impl Matcher {
     }
 
     /// Where `scan` (points in `base_link`) sits best on the map, starting from `guess`.
+    ///
+    /// # Errors
+    ///
+    /// [`MatchError::EmptyScan`] or [`MatchError::NoOverlap`].
     pub fn align(&self, scan: &[Point], guess: Pose2) -> Result<Match, MatchError> {
         if scan.is_empty() {
             return Err(MatchError::EmptyScan);

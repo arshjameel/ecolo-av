@@ -16,7 +16,12 @@ pub enum Ground {
     Above(f64),
     /// Keep points more than `height` (m) above the lowest point in their `cell` (m)
     /// square: ground that slopes, as on the car.
-    AboveLowest { cell: f64, height: f64 },
+    AboveLowest {
+        /// The square's side (m).
+        cell: f64,
+        /// How far above its lowest point (m).
+        height: f64,
+    },
     /// Keep the ground.
     Keep,
 }
@@ -26,7 +31,9 @@ pub enum Ground {
 /// Gazebo's lidar draw the roof's corners and the cameras into the map (30 Oct).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BodyBox {
+    /// The back right corner (x, y m).
     pub min: [f64; 2],
+    /// The front left corner (x, y m).
     pub max: [f64; 2],
 }
 
@@ -39,6 +46,7 @@ impl BodyBox {
 /// What a scan goes through before matching, in `base_link`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ScanFilter {
+    /// How the ground is dropped.
     pub ground: Ground,
     /// The car's body; `None` keeps everything near.
     pub body: Option<BodyBox>,
@@ -79,6 +87,7 @@ impl ScanFilter {
 }
 
 /// The points that aren't ground.
+#[must_use]
 pub fn remove_ground(points: Vec<Point>, ground: Ground) -> Vec<Point> {
     match ground {
         Ground::Keep => points,
@@ -107,6 +116,7 @@ fn cell_of(p: &Point, cell: f64) -> [i64; 2] {
 
 /// One point per cube of side `size` (m): the mean of the points in it. In a fixed order
 /// (by cube), so the same scan always gives the same answer.
+#[must_use]
 pub fn thin(points: &[Point], size: f64) -> Vec<Point> {
     let mut cubes: BTreeMap<[i64; 3], (nalgebra::Vector3<f64>, usize)> = BTreeMap::new();
     for p in points {
@@ -128,23 +138,32 @@ pub fn thin(points: &[Point], size: f64) -> Vec<Point> {
 /// A field of every point, as `sensor_msgs/PointField` describes it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Field<'a> {
+    /// `x`, `y`, `intensity`...
     pub name: &'a str,
     /// Where it starts in each point, in bytes.
     pub offset: u32,
     /// PointField's number for its type: 7 is float32, 8 float64.
     pub datatype: u8,
+    /// How many of that type.
     pub count: u32,
 }
 
 /// The parts of a `sensor_msgs/PointCloud2` needed for its x, y and z.
 #[derive(Clone, Debug)]
 pub struct CloudView<'a> {
+    /// What each point holds.
     pub fields: Vec<Field<'a>>,
+    /// Points in a row.
     pub width: u32,
+    /// Rows.
     pub height: u32,
+    /// Bytes a point.
     pub point_step: u32,
+    /// Bytes a row.
     pub row_step: u32,
+    /// The numbers are big-endian.
     pub is_bigendian: bool,
+    /// The points' bytes.
     pub data: &'a [u8],
 }
 
@@ -158,7 +177,12 @@ pub enum CloudError {
     /// The field doesn't fit inside a point.
     OutsidePoint(&'static str),
     /// The cloud says it has more points than its bytes hold.
-    TooShort { points: usize, bytes: usize },
+    TooShort {
+        /// Points the cloud says it has.
+        points: usize,
+        /// Bytes it has.
+        bytes: usize,
+    },
 }
 
 impl fmt::Display for CloudError {
@@ -184,6 +208,10 @@ enum Float {
 
 /// Every point's x, y and z, row by row, in the cloud's frame. Points that hit nothing
 /// (inf, NaN) are kept: [`ScanFilter::apply`] drops them.
+///
+/// # Errors
+///
+/// [`CloudError`] if x, y or z is missing or not a float, or the bytes are too few.
 pub fn read_xyz(cloud: &CloudView<'_>) -> Result<Vec<Point>, CloudError> {
     let field = |name: &'static str| -> Result<Float, CloudError> {
         let f = cloud

@@ -19,6 +19,7 @@ pub struct OdomBuffer {
 impl OdomBuffer {
     /// Keeps `window` of poses (the design: 1 s). A stamp up to `hold` past the newest pose
     /// gets the newest (the EKF's next pose may not be in yet).
+    #[must_use]
     pub fn new(window: Duration, hold: Duration) -> Self {
         Self {
             window,
@@ -44,6 +45,7 @@ impl OdomBuffer {
 
     /// The pose at `stamp`, interpolated between the two around it; `None` if the buffer
     /// doesn't reach that far back, or that far forward.
+    #[must_use]
     pub fn at(&self, stamp: Duration) -> Option<Pose2> {
         let (newest, last) = self.samples.back()?;
         if stamp >= *newest {
@@ -59,12 +61,14 @@ impl OdomBuffer {
         Some(p0.lerp(&p1, (stamp - t0).as_secs_f64() / span))
     }
 
+    /// Forget every pose.
     pub fn clear(&mut self) {
         self.samples.clear();
     }
 }
 
 /// The last NDT pose moved on by odometry: `last ∘ odom_then⁻¹ ∘ odom_now`.
+#[must_use]
 pub fn predict(last: &Pose2, odom_then: &Pose2, odom_now: &Pose2) -> Pose2 {
     last.compose(&odom_then.between(odom_now))
 }

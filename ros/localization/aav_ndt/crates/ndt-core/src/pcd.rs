@@ -13,6 +13,7 @@ use crate::Point;
 /// Why a PCD file couldn't be read.
 #[derive(Debug)]
 pub enum PcdError {
+    /// It couldn't be read.
     Io(io::Error),
     /// A header line is missing or wrong.
     Header(String),
@@ -20,7 +21,9 @@ pub enum PcdError {
     Unsupported(String),
     /// The data ends before `POINTS` points.
     Short {
+        /// `POINTS`.
         expected: usize,
+        /// The points there.
         got: usize,
     },
 }
@@ -56,6 +59,10 @@ struct Column {
 }
 
 /// Reads a PCD file's points (x, y, z).
+///
+/// # Errors
+///
+/// [`PcdError`]: it can't be read, isn't a PCD this reads, or ends early.
 pub fn read(input: impl Read) -> Result<Vec<Point>, PcdError> {
     let mut input = io::BufReader::new(input);
     let mut header: Vec<(String, Vec<String>)> = Vec::new();
@@ -219,6 +226,10 @@ fn read_ascii(
 }
 
 /// Writes points as a binary PCD of float32 x, y, z (as `tools/ndt_map.py` does).
+///
+/// # Errors
+///
+/// The writer's error.
 pub fn write(mut output: impl Write, points: &[Point]) -> io::Result<()> {
     let n = points.len();
     write!(

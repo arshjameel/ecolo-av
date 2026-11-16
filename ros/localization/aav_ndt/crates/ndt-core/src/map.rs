@@ -38,6 +38,7 @@ pub struct MapSettings {
 
 impl MapSettings {
     /// Cubes of `cube` m, with the design's floors: 6 points, 1 %, (1 cm)².
+    #[must_use]
     pub fn with_cube(cube: f64) -> Self {
         Self {
             cube,
@@ -51,10 +52,13 @@ impl MapSettings {
 /// One cube's bell curve.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Cube {
+    /// The points' mean (m).
     pub mean: Vector3<f64>,
+    /// Their covariance (m²).
     pub covariance: Matrix3<f64>,
     /// The covariance's inverse, kept: the score needs it for every point.
     pub inverse: Matrix3<f64>,
+    /// How many points made it.
     pub points: usize,
 }
 
@@ -64,7 +68,12 @@ pub enum MapError {
     /// The cube's side isn't a positive, finite number of metres.
     BadCube(f64),
     /// No cube had `min_points` points: too few points, or cubes too small.
-    NoCubes { points: usize, cube: f64 },
+    NoCubes {
+        /// The points given.
+        points: usize,
+        /// The cube's side (m).
+        cube: f64,
+    },
 }
 
 impl fmt::Display for MapError {
@@ -92,6 +101,11 @@ pub struct CubeMap {
 
 impl CubeMap {
     /// Cuts `points` (map frame) into cubes and keeps a curve for each with enough points.
+    ///
+    /// # Errors
+    ///
+    /// [`MapError::BadCube`] for a bad side; [`MapError::NoCubes`] if no cube has enough
+    /// points.
     pub fn build(points: &[Point], settings: &MapSettings) -> Result<Self, MapError> {
         let side = settings.cube;
         if !(side.is_finite() && side > 0.0) {
@@ -116,6 +130,7 @@ impl CubeMap {
     }
 
     /// A map with no cubes (nothing loaded near the car): every match finds no overlap.
+    #[must_use]
     pub fn empty(side: f64) -> Self {
         Self {
             side,
@@ -124,20 +139,25 @@ impl CubeMap {
     }
 
     /// The side of a cube (m).
+    #[must_use]
     pub fn side(&self) -> f64 {
         self.side
     }
 
     /// How many cubes have a curve.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.cubes.len()
     }
 
+    /// It has no curve.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.cubes.is_empty()
     }
 
     /// The cube a point falls in, if it has a curve.
+    #[must_use]
     pub fn get(&self, p: &Point) -> Option<&Cube> {
         self.cubes.get(&key(p, self.side))
     }

@@ -31,6 +31,8 @@ pub enum Tracking {
 }
 
 impl Tracking {
+    /// Its name in the status.
+    #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
             Self::WaitingForStart => "WAITING",
@@ -68,7 +70,12 @@ pub enum Outcome {
     /// A good fit: publish it, with [`Localizer::covariance`].
     Pose(Match),
     /// A fit, but a poor one: not published.
-    Poor { fit: Match, why: Poor },
+    Poor {
+        /// The fit.
+        fit: Match,
+        /// Why it is poor.
+        why: Poor,
+    },
     /// No fit.
     Skipped(Skip),
 }
@@ -76,10 +83,13 @@ pub enum Outcome {
 /// One cloud's outcome and the localizer's state after it, for the status.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Report {
+    /// What came of the cloud.
     pub outcome: Outcome,
+    /// The state after it.
     pub tracking: Tracking,
     /// The scan's points after the filters.
     pub points: usize,
+    /// Poor fits in a row, this one included.
     pub poor_in_row: usize,
     /// Times it started again from `ekf_global` after getting lost.
     pub restarts: usize,
@@ -88,6 +98,7 @@ pub struct Report {
 /// The localizer's settings: the node's parameters.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LocalizerSettings {
+    /// What a scan goes through before matching.
     pub filter: ScanFilter,
     /// `base_link → lidar_link`.
     pub mount: Mount,
@@ -106,8 +117,9 @@ pub struct LocalizerSettings {
     pub variance_floor: [f64; 2],
     /// Height, roll and pitch: not measured.
     pub unknown_variance: f64,
-    /// The local EKF's buffer, and how far past its newest pose a cloud may be.
+    /// How long the local EKF's buffer is.
     pub odom_window: Duration,
+    /// How far past the buffer's newest pose a cloud may be.
     pub odom_hold: Duration,
 }
 
@@ -153,6 +165,8 @@ pub struct Localizer {
 }
 
 impl Localizer {
+    /// Waiting for its first pose, on `matcher`'s map.
+    #[must_use]
     pub fn new(matcher: Matcher, settings: LocalizerSettings) -> Self {
         Self {
             matcher,
@@ -166,10 +180,14 @@ impl Localizer {
         }
     }
 
+    /// Where it stands.
+    #[must_use]
     pub fn tracking(&self) -> Tracking {
         self.tracking
     }
 
+    /// How many times it was lost and started again.
+    #[must_use]
     pub fn restarts(&self) -> usize {
         self.restarts
     }
@@ -180,11 +198,14 @@ impl Localizer {
         self.matcher = matcher;
     }
 
+    /// The matcher, on the map it has now.
+    #[must_use]
     pub fn matcher(&self) -> &Matcher {
         &self.matcher
     }
 
     /// A good fit's covariance, for `PoseWithCovariance`: see [`covariance`].
+    #[must_use]
     pub fn covariance(&self, fit: &Match) -> [f64; 36] {
         covariance(&fit.hessian, &self.settings)
     }
@@ -298,6 +319,7 @@ impl Localizer {
 
 /// −H⁻¹ for x, y and yaw: the fit's own spread, before the scale k and the floors (`None`
 /// if −H isn't positive-definite). The status reports it, so k can be fitted (NEES).
+#[must_use]
 pub fn raw_covariance(hessian: &Matrix3<f64>) -> Option<Matrix3<f64>> {
     (-hessian)
         .cholesky()
@@ -307,6 +329,7 @@ pub fn raw_covariance(hessian: &Matrix3<f64>) -> Option<Matrix3<f64>> {
 
 /// The pose's covariance: x, y, yaw from k·(−H⁻¹) with the floors on the diagonal; height,
 /// roll and pitch unknown. If −H isn't positive-definite, x, y and yaw are unknown too.
+#[must_use]
 pub fn covariance(hessian: &Matrix3<f64>, settings: &LocalizerSettings) -> [f64; 36] {
     let unknown = settings.unknown_variance;
     let mut out = [0.0; 36];
