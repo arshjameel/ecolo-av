@@ -41,11 +41,13 @@ impl CanFrame {
         Some(frame)
     }
 
+    /// The 11-bit ID.
     #[must_use]
     pub fn id(&self) -> u16 {
         self.id
     }
 
+    /// The data bytes, 0 to 8.
     #[must_use]
     pub fn data(&self) -> &[u8] {
         &self.data[..usize::from(self.len)]

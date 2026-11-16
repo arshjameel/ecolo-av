@@ -60,7 +60,9 @@ pub trait CommandLink {
 /// One tick, as the spine saw it: for a link's status frame.
 #[derive(Debug, Clone, Copy)]
 pub struct Report {
+    /// When (ms since boot).
     pub now_ms: u32,
+    /// What the spine decided.
     pub outputs: Outputs,
     /// The RC this tick, or none (silent, or its mode switch out of range).
     pub rc: Option<RcInput>,
@@ -129,6 +131,7 @@ pub struct LinkStats {
     pub counter: Option<u8>,
     /// Uplink frames sent, and writes that failed (with an uplink).
     pub uplinks: u32,
+    /// Uplink writes that failed.
     pub uplink_errors: u32,
 }
 

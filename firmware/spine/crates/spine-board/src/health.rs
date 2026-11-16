@@ -27,11 +27,22 @@ pub enum LinkVerdict {
     /// A new command (a new counter) within the timeout.
     Ok,
     /// Good frames came, but none for `age_ms`, more than the timeout.
-    Stale { age_ms: u32 },
+    Stale {
+        /// How old the last good frame is.
+        age_ms: u32,
+    },
     /// Frames come, but the counter hasn't changed for `age_ms`: the Orin is not running.
-    CounterFrozen { age_ms: u32 },
+    CounterFrozen {
+        /// How long the counter has stood still.
+        age_ms: u32,
+    },
     /// Bad frames or stray bytes in the last [`BAD_WINDOW_MS`]: counts since boot.
-    BadFrames { bad: u32, skipped: u32 },
+    BadFrames {
+        /// Frames turned down since boot.
+        bad: u32,
+        /// Stray bytes since boot.
+        skipped: u32,
+    },
 }
 
 impl LinkVerdict {
@@ -47,6 +58,7 @@ impl LinkVerdict {
         }
     }
 
+    /// True only for [`LinkVerdict::Ok`].
     #[must_use]
     pub const fn is_ok(&self) -> bool {
         matches!(self, LinkVerdict::Ok)
@@ -56,6 +68,7 @@ impl LinkVerdict {
 /// One tick's verdict, with what it was judged from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LinkReport {
+    /// The verdict.
     pub verdict: LinkVerdict,
     /// How old the last good frame is (a new counter or not); `None` before the first.
     pub age_ms: Option<u32>,

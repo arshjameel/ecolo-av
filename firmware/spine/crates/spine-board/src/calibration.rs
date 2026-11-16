@@ -17,11 +17,17 @@ use pca9555::Pin;
 /// Everything about today's car that the board-independent code needs.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Calibration {
+    /// The I2C devices' addresses.
     pub addresses: Addresses,
+    /// The steering Jrk's targets.
     pub steering: Steering,
+    /// The brake Jrk's targets.
     pub brake: Brake,
+    /// The throttle DAC's codes.
     pub throttle: Throttle,
+    /// The direction pin.
     pub direction: Direction,
+    /// The wheel encoder.
     pub wheel: Wheel,
     /// Which RC channel does what.
     pub rc: RcMap,
@@ -37,9 +43,13 @@ pub struct Calibration {
 /// expander at the PCA95x5 library's default).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Addresses {
+    /// The steering Jrk.
     pub steering: u8,
+    /// The brake Jrk.
     pub brake: u8,
+    /// The throttle DAC.
     pub dac: u8,
+    /// The I/O expander.
     pub expander: u8,
 }
 
@@ -52,13 +62,16 @@ pub struct Steering {
     pub counts_per_rad: f32,
     /// The targets at full lock: never sent beyond these.
     pub min: u16,
+    /// The target at full lock the other way.
     pub max: u16,
 }
 
 /// The brake: 0 (released) to 1 (full) into brake Jrk targets.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Brake {
+    /// The target with the brake let go.
     pub released: u16,
+    /// The target with the brake full on.
     pub full: u16,
 }
 
@@ -85,6 +98,7 @@ pub struct Direction {
 /// The wheel encoder.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Wheel {
+    /// How far the car rolls a count (m).
     pub metres_per_count: f32,
     /// With no count for this long, the car counts as stopped.
     pub timeout_ms: u32,

@@ -15,9 +15,13 @@ use jrk_g2::{FeedbackMode, JrkG2};
 /// One of the car's I2C devices.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Device {
+    /// The steering Jrk.
     SteeringJrk,
+    /// The brake Jrk.
     BrakeJrk,
+    /// The throttle DAC.
     Dac,
+    /// The I/O expander.
     Expander,
 }
 
@@ -41,6 +45,7 @@ impl Device {
         }
     }
 
+    /// Its address in `a`.
     #[must_use]
     pub const fn address(self, a: &Addresses) -> u8 {
         match self {
@@ -51,6 +56,7 @@ impl Device {
         }
     }
 
+    /// One of the two Jrks.
     #[must_use]
     pub const fn is_jrk(self) -> bool {
         matches!(self, Device::SteeringJrk | Device::BrakeJrk)
@@ -60,8 +66,11 @@ impl Device {
 /// What one device did at boot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Found {
+    /// Which device.
     pub device: Device,
+    /// The address it was looked for at.
     pub address: u8,
+    /// It answered.
     pub answered: bool,
     /// A Jrk that answered: its feedback mode, or `None` if that read failed. Always
     /// `None` for the DAC and the expander.
@@ -106,6 +115,7 @@ impl DeviceCheck {
         self.found.iter().filter(|f| f.answered).count()
     }
 
+    /// How many devices were looked for.
     #[must_use]
     pub const fn expected(&self) -> usize {
         self.found.len()

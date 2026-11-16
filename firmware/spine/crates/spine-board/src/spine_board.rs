@@ -29,6 +29,7 @@ use spine_core::{faults, Inputs, Outputs, Spine, SpineConfig};
 
 /// VEHICLE_FEEDBACK at 50 Hz, and VEHICLE_STATUS at 10 Hz (`docs/firmware.md`).
 pub const FEEDBACK_PERIOD_MS: u32 = 20;
+/// VEHICLE_STATUS's period (ms).
 pub const STATUS_PERIOD_MS: u32 = 100;
 
 /// A limit on one tick's work, so a flood of bytes can't stall the loop.

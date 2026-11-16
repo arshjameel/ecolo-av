@@ -11,6 +11,7 @@ use spine_core::encoder::SpeedEstimator;
 /// wheel encoder Pico 2 shares.
 pub use wheel_encoder::SpokeSensors;
 
+/// The car's speed from the wheel encoder's counter.
 #[derive(Debug, Clone, Copy)]
 pub struct WheelSpeed {
     estimator: SpeedEstimator,
@@ -18,6 +19,7 @@ pub struct WheelSpeed {
 }
 
 impl WheelSpeed {
+    /// `metres_per_count` a count; with no count for `timeout_ms`, the car is stopped.
     #[must_use]
     pub fn new(metres_per_count: f32, timeout_ms: u32) -> Self {
         WheelSpeed {
