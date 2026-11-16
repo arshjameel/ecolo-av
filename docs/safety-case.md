@@ -45,7 +45,7 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 |---|---|---|---|---|---|
 | 1 | A person or obstacle ahead | stop zone + stop hold | stopped 0.16-0.55 m before a post | sim | ❌ |
 | 2 | An obstacle behind, reversing | the rear stop zone | stopped 0.75-0.85 m before a post | sim | ❌ |
-| 3 | Runaway speed | ego's cap; the spine's overspeed rule | **14 % over** the command | sim | ❌ |
+| 3 | Runaway speed | ego's cap; the spine's overspeed rule; the watchdog's OVERSPEED | **14 % over** the command; throttle stuck: OVERSPEED 4.6 s after | sim | 🟡 |
 | 4 | The e-stop | `/safety/estop`; Kar-Tech; red button | brake within 2-12 ms (spine) | sim | ❌ |
 | 5 | A dead or frozen node | sensor watchdog; mux timeouts; respawn | 13 faults stop within 6 s | sim | ❌ |
 | 6 | Commands to the spine lost | the firmware's 100 ms timeout | brakes 111-120 ms after | QEMU | ❌ |
@@ -108,6 +108,7 @@ command's.
 | Spine overspeed | over 1.25 m/s: throttle 0, brake 0.5; still over after 2 s: full brake, latched | `spine-core` (Arsh's stop rules) |
 | ESP32 throttle cap | DAC at most 700 of 1023; open-loop cap 1.0 / 3.0 (3.0 a guess) | `esp32-umod` |
 | Actuator tests | stop on a speed rising while the command falls (`runaway`) | `aav_actuator_tests` |
+| Watchdog (OVERSPEED) | the wheels over ego's speed by 0.2 m/s while not slowing (under 0.3 m/s²): OVER (a warning) after 1 s, OVERSPEED after 2 s, latched, holds the programs (TODO 207) | `aav_safety` `watchdog.py`, input `speed`; the sim only |
 
 | Number | Where, when | Who |
 |---|---|---|
@@ -116,6 +117,8 @@ command's.
 | `smooth` loop: 1.00 m/s, no overshoot | sim (ours), 14 Nov | Ben |
 | the overspeed rule | tests only (`spine-core`) | Arsh |
 | the throttle stuck at its cruise level, then the e-stop from 0.9 m/s: 1.48-1.50 m (healthy 1.18-1.20), stood in 2.2 s: the brake beats it | sim (ours), 15 Nov, 3 runs | Ben |
+| the throttle stuck while speeding up (at 0.4 m/s, `--actuator-faults`): the car held 1.37 m/s for 1.00 asked; the watchdog said OVER 3.6 s after, OVERSPEED 4.6 s after | sim (ours), 16 Nov, 2 runs | Ben |
+| OVERSPEED never in a healthy drive or stop: every loop profile on the car model; the healthy, weak-brake and stuck-throttle e-stops in the sim | the car model (tests); sim (ours), 16 Nov, 3 runs | Ben |
 | stuck wide open | not measured | |
 | the car | not measured | |
 
@@ -210,12 +213,14 @@ its 0.15 rad and 1 s are the sim's, not tuned on the car.
 | Adaptive brake | learns how well the brake works and brakes harder, never past `safe_max` (a trial, off) | `aav_description` `adaptive_brake.py` |
 | Geofence `COASTING` | holds every program until test 4.3 measures the stop | `aav_safety` `geofence.py` |
 | Spine | the overspeed rule (section 3) | `spine-core` |
+| Watchdog (OVERSPEED) | a car that doesn't slow when told: latched, holds the programs (section 3) | `aav_safety`, input `speed` |
 
 | Number | Where, when | Who |
 |---|---|---|
 | 150 kg aboard: +0.58 m past → +0.04 m with it | the car model, 8 Nov | Ben |
 | 150 kg: +0.87 m past → +0.21 m; the next stop +0.05 m | sim (ours), 8 Nov | Ben |
 | the e-stop from 0.9 m/s (`--actuator-faults`): healthy 1.18-1.20 m; a weak brake (30 %) 2.05-2.08 m, 3.6 s; a dead brake 9.7 m, still rolling at 0.05 m/s after 30 s | sim (ours), 15 Nov, 3 runs | Ben |
+| the dead brake is noticed: the watchdog's OVERSPEED (0.8 m/s for 0 asked, 2 s), 4 runs of 4 | sim (ours), 16 Nov | Ben |
 | the brake's limits (`released`, `full`, `safe_max`) | **placeholders** until car day A7 | |
 
 **Gap:** refused with today's ESP32. Today's car brakes only below `stop_speed`;
@@ -290,7 +295,7 @@ measurement.
 | Today's ESP32 has no command timeout; the Rust one is unflashed | 6 | 45, 158 |
 | What the Kar-Tech and the red button cut | 4 | S1, S2 |
 | The steering's centre, and the brake's limits | 7, 8 | 67, A7 |
-| A steering actuator that doesn't follow is noticed in the sim only (no feedback on the car yet); nothing but the e-stop and the drag stops a dead brake | 7, 8 | 159 |
+| A steering actuator that doesn't follow is noticed in the sim only (no feedback on the car yet); nothing but the e-stop and the drag stops a dead brake (the watchdog's OVERSPEED only notices it, in the sim) | 7, 8 | 159, 207 |
 | The car runs 14 % over its command in the sim | 3 | 163 |
 | Obstacles stop only Nav2 and the AI slot | 1 | |
 
