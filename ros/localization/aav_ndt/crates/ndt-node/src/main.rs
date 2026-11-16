@@ -102,9 +102,10 @@ fn main() -> Result<()> {
                 .with_context(|| format!("the cubes of {chunk_dir}"))?;
         log_info!(
             node.logger(),
-            "{chunk_dir}: the map in chunks, {} loaded; cubes (m, curves) {:?}",
+            "{chunk_dir}: the map in chunks, {} loaded; cubes (m, curves) {:?}; ready in {:.2} s",
             chunks.loaded().count(),
-            matcher.levels().collect::<Vec<_>>()
+            matcher.levels().collect::<Vec<_>>(),
+            started.elapsed().as_secs_f64()
         );
         (matcher, Some(chunks))
     };
@@ -267,9 +268,11 @@ impl State {
         let (Some(chunks), Some((x, y))) = (self.chunks.as_mut(), self.near) else {
             return;
         };
+        let read = Instant::now();
         match chunks.update(map_chunks::Point::new(x, y)) {
             Ok(false) => {}
             Ok(true) => {
+                let read_ms = read.elapsed().as_secs_f64() * 1e3;
                 let started = Instant::now();
                 match Matcher::new_or_empty(
                     &chunks.points(),
@@ -280,7 +283,8 @@ impl State {
                     Ok(matcher) => {
                         log_info!(
                             &self.logger,
-                            "the chunks round ({x:.0}, {y:.0}): cubes (m, curves) {:?}, in {:.0} ms",
+                            "the chunks round ({x:.0}, {y:.0}): cubes (m, curves) {:?}; \
+                             read in {read_ms:.0} ms, built in {:.0} ms",
                             matcher.levels().collect::<Vec<_>>(),
                             started.elapsed().as_secs_f64() * 1e3
                         );

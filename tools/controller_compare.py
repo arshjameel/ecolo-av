@@ -267,6 +267,13 @@ COLOURS.update({f'{k}+{w}-smoother': (c if w == 'nav2' else '#c92a2a')
 PLAN_TIME = 15.0        # s (wall) for the planner alone to answer, before each leg
 # NDT's map of the test lot (tools/ndt_map.py; maps/ is not in git).
 NDT_MAP = os.path.join(ROOT, 'maps', 'ndt', 'test_lot.pcd')
+
+
+def ndt_map(world):
+    """Return NDT's map for a tour's world: the campus's own (pixi run campus), else the lot's."""
+    return os.path.join(ROOT, worlds.CAMPUS_NDT) if world == worlds.CAMPUS else NDT_MAP
+
+
 NDT_CONFIG = os.path.join(ROOT, 'ros', 'localization', 'aav_ndt', 'config', 'ndt.yaml')
 # The process to time for each kind of follower (its command line, in the run's group).
 PROCESS = {'controller': 'controller_server', 'tracker': 'lib/aav_track/track',
@@ -977,9 +984,9 @@ def session(tour, follower, args, out_dir, body, used, run=1):
     if args.amcl:
         command.append('amcl:=true')
     if args.ndt_ekf:
-        command += ['ndt_ekf:=true', f'ndt_map:={NDT_MAP}']
+        command += ['ndt_ekf:=true', f'ndt_map:={ndt_map(plan.get("world"))}']
     elif args.ndt:
-        command += ['ndt:=true', f'ndt_map:={NDT_MAP}']
+        command += ['ndt:=true', f'ndt_map:={ndt_map(plan.get("world"))}']
     if args.gps_off:
         # The sensor watchdog and the geofence (LOST after 2 s without a GPS position)
         # would hold Nav2 with the GPS quiet: the drive is the test.
@@ -1367,11 +1374,12 @@ def main():
         parser.error('--runs must be 1 or more')
     args.ndt = args.ndt or args.ndt_ekf
     args.kiss_icp = args.kiss_icp or args.kiss_ekf
-    if args.ndt and not os.path.isfile(NDT_MAP):
-        parser.error(f'--ndt: no map at {NDT_MAP}; make it with pixi run ndt-map drive')
     for tour in args.tours:
         # The files a tour needs, before half an hour of driving finds one missing.
         plan = TOURS[tour]
+        if args.ndt and not os.path.isfile(ndt_map(plan.get('world'))):
+            parser.error(f'--ndt: no map at {ndt_map(plan.get("world"))}; make it with '
+                         'pixi run ndt-map drive (the lot) or pixi run campus')
         if plan.get('world') == worlds.CAMPUS and not os.path.isfile(
                 os.path.join(ROOT, worlds.CAMPUS_MAP)):
             parser.error(f'--tours {tour}: no {worlds.CAMPUS_MAP}; make it with pixi run campus')
