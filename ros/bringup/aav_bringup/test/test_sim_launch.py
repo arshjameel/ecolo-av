@@ -508,6 +508,25 @@ def test_the_campus_starts_the_car_in_its_lot_with_its_own_maps(tmp_path, monkey
     assert (ndt['ndt_x'], ndt['ndt_y']) == ('49.25', '-70.75')
     assert ndt['ndt_map'].endswith('campus.pcd') and ndt['ndt_min_score'] == '1.5'
     assert sent['geofence.launch.py']['centre_x'] == '49.25'
+    # No chunks made: the whole map.
+    assert ndt['ndt_chunks'] == ''
+
+
+def test_ndt_on_the_campus_takes_its_chunks_when_they_are_made(tmp_path, monkeypatch):
+    # TODO 175: scored as good as the whole map (15 Nov), so the default once made.
+    monkeypatch.chdir(tmp_path)
+    campus_files(tmp_path)
+    (tmp_path / 'maps' / 'campus' / 'chunks' / 'ndt').mkdir(parents=True)
+    (tmp_path / 'maps' / 'campus' / 'chunks' / 'chunks.yaml').write_text('size: 64\n')
+    ndt = included(started(SIM, world='campus', ndt='true'))['ndt.launch.py']
+    assert ndt['ndt_chunks'] == os.path.join('maps', 'campus', 'chunks', 'ndt')
+    # off: the whole map; another map of the campus: no chunks of it.
+    assert included(started(SIM, world='campus', ndt='true', ndt_chunks='off'))[
+        'ndt.launch.py']['ndt_chunks'] == ''
+    other = tmp_path / 'other.pcd'
+    other.write_bytes(b'')
+    assert included(started(SIM, world='campus', ndt='true', ndt_map=str(other)))[
+        'ndt.launch.py']['ndt_chunks'] == ''
 
 
 def test_the_campus_start_can_be_moved(tmp_path, monkeypatch):

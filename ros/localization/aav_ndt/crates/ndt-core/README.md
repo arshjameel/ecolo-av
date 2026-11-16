@@ -25,7 +25,7 @@ lidar points ──Mount──▶ base_link ──ScanFilter──▶ ~500 point
 | `score` | `Gauss::new(side, outlier_ratio)`, `evaluate` | Magnusson's score, gradient and Hessian in (x, y, yaw) |
 | `matcher` | `Matcher::new(map, cubes, settings)`, `align(scan, guess) -> Result<Match, MatchError>` | Newton: damping, a 0.1 m / 2° step cap, Armijo backtracking, coarse to fine |
 | `guess` | `OdomBuffer`, `predict` | 1 s of the local EKF, interpolated at a cloud's stamp; the guess |
-| `localizer` | `Localizer`, `LocalizerSettings`, `Outcome`, `Poor`, `Report`, `Tracking` | per cloud: the guess, the match, good or poor (low score, no convergence, or a jump from the guess while tracking: `max_correction`), LOST after 5 poor, restart from `ekf_global`; `covariance`, `raw_covariance` (-H⁻¹) |
+| `localizer` | `Localizer`, `LocalizerSettings`, `Outcome`, `Poor`, `Report`, `Tracking` | per cloud: the guess, the match, good or poor (low score, no convergence, or a jump from the guess while tracking: `max_correction`), LOST after 5 poor, restart from `ekf_global`; `guess` (where the next match starts: the map's chunks follow it); `covariance`, `raw_covariance` (-H⁻¹) |
 | `pcd` | `read`, `write` | the map file (PCD v0.7, binary or ASCII) |
 
 ## Invariants
