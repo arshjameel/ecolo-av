@@ -7,7 +7,7 @@
 <!-- Generated from docs/safety-case.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The safety case</h1>
-<div class="meta">18 min read · 17 sections</div></header>
+<div class="meta">20 min read · 17 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -209,10 +209,10 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
 <tr>
 <td>3</td>
 <td>Runaway speed</td>
-<td>ego's cap; the spine's overspeed rule</td>
-<td><strong>14 % over</strong> the command</td>
+<td>ego's cap; the spine's overspeed rule; the watchdog's OVERSPEED</td>
+<td><strong>14 % over</strong> the command; throttle stuck: OVERSPEED 4.6 s after</td>
 <td>sim</td>
-<td>❌</td>
+<td>🟡</td>
 </tr>
 <tr>
 <td>4</td>
@@ -469,6 +469,11 @@ command's.</p>
 <td>stop on a speed rising while the command falls (<code>runaway</code>)</td>
 <td><code>aav_actuator_tests</code></td>
 </tr>
+<tr>
+<td>Watchdog (OVERSPEED)</td>
+<td>the wheels over ego's speed by 0.2 m/s while not slowing (under 0.3 m/s²): OVER (a warning) after 1 s, OVERSPEED after 2 s, latched, holds the programs (TODO 207)</td>
+<td><code>aav_safety</code> <code>watchdog.py</code>, input <code>speed</code>; the sim only</td>
+</tr>
 </tbody>
 </table></div>
 <div class="table-wrap"><table>
@@ -496,6 +501,11 @@ command's.</p>
 <td>Ben</td>
 </tr>
 <tr>
+<td>a 25 m drive to a point: <code>default</code> 1.14 m/s, 7 s over the road ahead's limit; <code>firm</code> 1.00 m/s, 0 s over (but more sway on the lot tour: a challenger, TODO 163)</td>
+<td>sim (ours), 16 Nov, 2 runs each</td>
+<td>Ben</td>
+</tr>
+<tr>
 <td>the overspeed rule</td>
 <td>tests only (<code>spine-core</code>)</td>
 <td>Arsh</td>
@@ -503,6 +513,16 @@ command's.</p>
 <tr>
 <td>the throttle stuck at its cruise level, then the e-stop from 0.9 m/s: 1.48-1.50 m (healthy 1.18-1.20), stood in 2.2 s: the brake beats it</td>
 <td>sim (ours), 15 Nov, 3 runs</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the throttle stuck while speeding up (at 0.4 m/s, <code>--actuator-faults</code>): the car held 1.37 m/s for 1.00 asked; the watchdog said OVER 3.6 s after, OVERSPEED 4.6 s after</td>
+<td>sim (ours), 16 Nov, 2 runs</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>OVERSPEED never in a healthy drive or stop: every loop profile on the car model; the healthy, weak-brake and stuck-throttle e-stops in the sim</td>
+<td>the car model (tests); sim (ours), 16 Nov, 3 runs</td>
 <td>Ben</td>
 </tr>
 <tr>
@@ -834,6 +854,11 @@ its 0.15 rad and 1 s are the sim's, not tuned on the car.</p>
 <td>the overspeed rule (section 3)</td>
 <td><code>spine-core</code></td>
 </tr>
+<tr>
+<td>Watchdog (OVERSPEED)</td>
+<td>a car that doesn't slow when told: latched, holds the programs (section 3)</td>
+<td><code>aav_safety</code>, input <code>speed</code></td>
+</tr>
 </tbody>
 </table></div>
 <div class="table-wrap"><table>
@@ -858,6 +883,11 @@ its 0.15 rad and 1 s are the sim's, not tuned on the car.</p>
 <tr>
 <td>the e-stop from 0.9 m/s (<code>--actuator-faults</code>): healthy 1.18-1.20 m; a weak brake (30 %) 2.05-2.08 m, 3.6 s; a dead brake 9.7 m, still rolling at 0.05 m/s after 30 s</td>
 <td>sim (ours), 15 Nov, 3 runs</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the dead brake is noticed: the watchdog's OVERSPEED (0.8 m/s for 0 asked, 2 s), 4 runs of 4</td>
+<td>sim (ours), 16 Nov</td>
 <td>Ben</td>
 </tr>
 <tr>
@@ -1120,9 +1150,9 @@ measurement.</p>
 <td>67, A7</td>
 </tr>
 <tr>
-<td>A steering actuator that doesn't follow is noticed in the sim only (no feedback on the car yet); nothing but the e-stop and the drag stops a dead brake</td>
+<td>A steering actuator that doesn't follow is noticed in the sim only (no feedback on the car yet); nothing but the e-stop and the drag stops a dead brake (the watchdog's OVERSPEED only notices it, in the sim)</td>
 <td>7, 8</td>
-<td>159</td>
+<td>159, 207</td>
 </tr>
 <tr>
 <td>The car runs 14 % over its command in the sim</td>

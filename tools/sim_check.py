@@ -3231,8 +3231,8 @@ def main():
     profile = 'default'
     if '--speed-loop' in args:
         at = args.index('--speed-loop')
-        if at + 1 >= len(args) or args[at + 1] not in ('default', 'smooth', 'lqi'):
-            print('--speed-loop takes default, smooth or lqi', file=sys.stderr)
+        if at + 1 >= len(args) or args[at + 1] not in ('default', 'smooth', 'lqi', 'firm'):
+            print('--speed-loop takes default, smooth, lqi or firm', file=sys.stderr)
             return 2
         profile = args[at + 1]
         EVERY_RUN.append(f'speed_loop:={profile}')
