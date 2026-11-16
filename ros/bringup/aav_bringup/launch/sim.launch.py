@@ -32,7 +32,7 @@ planner, path follower, costmap, navigator, smoother, behaviour and pose at once
 (aav_description's config/stacks.yaml, docs/league.md). Those switches are empty by
 default, meaning "the stack's choice"; any value given by hand wins over the stack.
 One switch per level (one shape, "From 36 switches to 8"): pose:=, path:=, steer:= and
-lanes:= pick that level's option by its name in stacks.yaml (path:=lattice_rs_strong), over
+lanes:= pick that level's option by its name in stacks.yaml (path:=lane), over
 the stack's pick; a single switch given by hand (planner:=) still wins over both.
 stack:= (empty): no stack, each switch as given, else the champions' (Nav2's). The real
 car (car.launch.py) keeps its own choices until ours wins there too.
@@ -138,11 +138,12 @@ bench's argument names:
                       own) as soft costs, lowest at the right lane's centre, so our planner
                       keeps right. A world with no lane map (the test lot): nothing drawn.
                       Empty: the stack's choice (off)
-  lane_route:=true    the lane-centre planner (path:=lane), a challenger (TODO 148): our
-                      planner (planner:=own) routes along the lane map (lane_map:='s, else
-                      the world's own) and plans the right lane's centre, the lattice
-                      joining the car and the goal to it; off the map, the lattice alone.
-                      Empty: the stack's choice (off)
+  lane_route:=true    the lane-centre planner (path:=lane; ours' pick since 16 Nov, TODO
+                      148): our planner (planner:=own) routes along the lane map
+                      (lane_map:='s, else the world's own) and plans the right lane's
+                      centre, the lattice joining the car and the goal to it; off the map,
+                      or a world with none (the test lot), the lattice alone.
+                      Empty: the stack's choice (on in stack:=ours, else off)
   things:=true        the lidar's cubes as things with an id, a speed and a memory, on
                       /world/things (aav_things; voxels runs for it): only with nav:=true
                       and the lidar. Nothing reads the list yet
@@ -399,7 +400,8 @@ def launch_setup(context):
         try:
             lane_route = lane_map or worlds.lane_map_file(gazebo_share, world, 'world')
         except ValueError as e:
-            print(f'[sim.launch.py] lane_route:=true, but no lane map here: {e}', flush=True)
+            print(f'[sim.launch.py] lane_route:=true, but no lane map here ({e}): '
+                  'the lattice alone', flush=True)
     # lane_pose: the lane map lane_map:= names, else the world's own.
     pose_map = ((lane_map or worlds.lane_map_file(gazebo_share, world, 'world'))
                 if lane_pose else '')
@@ -906,7 +908,7 @@ def generate_launch_description():
                               description='true: the lane-centre planner (path:=lane): '
                                           "the right lane's centre along the lane map, "
                                           'planner:=own (TODO 148); false: none. Empty: '
-                                          "the stack's choice (off)"),
+                                          "the stack's choice (on in ours)"),
         DeclareLaunchArgument('navigator', default_value=stacks.CHOSEN,
                               description="own (aav_navigator, in bt_navigator's place; "
                                           'docs/own-navigator.md) or nav2. Empty: the '

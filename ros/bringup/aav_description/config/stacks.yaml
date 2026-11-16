@@ -55,7 +55,9 @@ levels:
       lattice_rs_strong: {planner: own, plan_smoothing: strong}
       # The lane-centre planner (TODO 148, 169; the Fable review's change 7): on the lane
       # map, the right lane's centre by the road graph, our lattice joining the car and the
-      # goal to it; off it (the lot), the lattice alone. A challenger (16 Nov).
+      # goal to it; off it (the lot), the lattice alone (lattice_rs_strong). Ours' pick
+      # since 16 Nov: no worse on any column, 3 runs each of the university tour
+      # (docs/own-planner.md, "The lane-centre planner").
       lane: {planner: own, plan_smoothing: strong, lane_route: 'true'}
       diffusion: {planner: diffusion}
     score: ''
@@ -119,7 +121,7 @@ stacks:
     pose: ekf
     costmap: ours
     navigator: ours
-    path: lattice_rs_strong
+    path: lane
     steer: mppi_lag_calm
     smoother: nav2
     behaviour: 'on'

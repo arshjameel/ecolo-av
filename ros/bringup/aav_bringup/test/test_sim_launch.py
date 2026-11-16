@@ -167,6 +167,17 @@ def test_a_switch_given_by_hand_wins_over_the_stack():
     assert stack_of(stack='stock', planner='own') == dict(STOCK, planner='own')
 
 
+def test_ours_plans_the_lanes_centre_where_the_world_has_a_lane_map():
+    # TODO 148 (16 Nov): path:=lane is ours' pick. With a lane map (the road world's) our
+    # planner gets it; without one (the empty world, the lot) the lattice alone.
+    def lane_route(**args):
+        return included(started(SIM, **args))['navigation.launch.py']['lane_route']
+    assert lane_route(world='road').endswith('road.lanes.yaml')
+    assert lane_route() == ''
+    assert lane_route(world='road', stack='stock') == ''
+    assert lane_route(world='road', path='lattice_rs_strong') == ''
+
+
 def test_ego_waits_for_the_road_ahead_only_where_its_writer_runs():
     # The behaviour node writes /world/road_ahead inside navigation: with nav:=false ego
     # must not wait for it, or it holds the point driver at 0 (TODO 94, found 15 Nov).

@@ -88,12 +88,15 @@ def test_the_lanes_layer_is_a_challenger_off_in_every_stack():
         assert stacks.switches(LEAGUE, stack).get('lane_costs', 'false') == 'false', stack
 
 
-def test_the_lane_centre_planner_is_a_challenger_off_in_every_stack():
-    # TODO 148: path:=lane (lane_route) stays a challenger until it wins on the scorecard.
+def test_the_lane_centre_planner_is_ours_only():
+    # TODO 148: path:=lane (lane_route) won on the scorecard (16 Nov): ours plans the lane's
+    # centre; the champion (the car's) and stock don't.
     assert LEAGUE['levels']['path']['options']['lane']['lane_route'] == 'true'
     assert LEAGUE['levels']['path']['options']['lane']['planner'] == 'own'
+    assert stacks.choices(LEAGUE, 'ours')['path'] == 'lane'
     for stack in stacks.names(LEAGUE):
-        assert stacks.switches(LEAGUE, stack).get('lane_route', 'false') == 'false', stack
+        want = 'true' if stack == 'ours' else 'false'
+        assert stacks.switches(LEAGUE, stack).get('lane_route', 'false') == want, stack
 
 
 def test_ours_reverses():
