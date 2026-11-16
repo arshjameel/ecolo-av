@@ -955,7 +955,7 @@ def generate_launch_description():
         DeclareLaunchArgument('lane_pass', default_value='true',
                               description='with lane_route: true, a parked obstacle on the '
                                           'lane is passed by moving only its stretch left; '
-                                          'false: the whole path is the lattice\'s'),
+                                          "false: the whole path is the lattice's"),
         DeclareLaunchArgument('things', default_value='false',
                               description='true (with lidar:=true): aav_things, the cubes as '
                                           'tracked things on /world/things (voxels runs too)'),

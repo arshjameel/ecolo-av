@@ -144,3 +144,25 @@ def test_the_costmap_block_carries_every_road_as_the_file_has_it():
     assert block['roads'][1] == {'name': 'b', 'points': [[0.0, 5.0], [10.0, 5.0], [20.0, 8.0]],
                                  'width': 4.5, 'lanes': 1, 'oneway': True, 'edge_inset': 0.4}
     assert block['roads'][0]['lanes'] == 0
+
+
+def test_a_pass_keeps_the_routes_line_and_opens_the_left_soft_edge():
+    # Ben, 16 Nov: the planner moves left round something parked (its status: pass). The
+    # route north, on the lane's centre (x 1.5), out to x 0.0 for y 0-10 (1.5 m left).
+    lanes = LaneMap([STREET])
+    route = [(1.5, -20.0), (1.5, -5.0), (0.0, 0.0), (0.0, 10.0), (1.5, 15.0), (1.5, 40.0)]
+    line = lane_line(lanes, route, (1.5, -20.0), length=50.0, passing=True)
+    beside = [x for x, y in line if 3.5 <= y <= 6.5]     # eased over 3 m at the ends
+    assert beside and all(x == pytest.approx(0.0, abs=0.01) for x in beside)
+    assert max(abs(b[0] - a[0]) for a, b in zip(line, line[1:])) < 0.3     # no jump
+    assert all(x == pytest.approx(1.5) for x, y in line if y < -10.0 or y > 25.0)
+    # Not passing: the old way, the lane's centre all along.
+    old = lane_line(lanes, route, (1.5, -20.0), length=50.0)
+    assert all(x == pytest.approx(1.5) for x, _ in old)
+    strip = build([(0.0, 0.0), (0.0, 10.0)], (0.0, 0.0), [], CURVE, 1.0)
+    shut = with_edges(strip, lanes)
+    opened = with_edges(strip, lanes, passing=True)
+    assert shut.left_soft[0] == pytest.approx(0.0)       # on the centre line already
+    assert opened.left_soft[0] == pytest.approx(3.5)     # to the left kerb (x -3.5)
+    assert opened.left_hard[0] == pytest.approx(shut.left_hard[0])
+    assert opened.right_soft[0] == pytest.approx(shut.right_soft[0])

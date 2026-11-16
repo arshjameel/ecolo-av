@@ -8,6 +8,10 @@ Subscribes  /perception/stop_sign/distance  geometry_msgs/PointStamped: a sign, 
             /safety/geofence/state   std_msgs/String: NEAR and why
             /safety/geofence/fence   geometry_msgs/PolygonStamped (map, transient local)
             /plan                    nav_msgs/Path (map): the goal's and the fence's distance
+            /drivers/nav/planner/status  diagnostic_msgs/DiagnosticStatus: our planner's
+                                     how; pass (it moves left round something parked):
+                                     with lane_map the road ahead follows the pass there
+                                     and its left soft edge opens to the kerb
             /drivers/point/plan      nav_msgs/Path (map, latched): a drive to a point's line
                                      A -> B; while it runs it is the plan (active_plan)
             /localization/odom/local   nav_msgs/Odometry: the speed, and its age
@@ -133,6 +137,11 @@ class BehaviourNode(Node):
         self.create_subscription(PolygonStamped, '/safety/geofence/fence', self.on_fence, latched)
         self.plan, self.plan_time = [], -math.inf
         self.create_subscription(Path, '/plan', self.on_plan, 10)
+        # Our planner passing something parked (path:=lane, Ben 16 Nov): the road ahead
+        # follows it, and LaneCritic lets the car out of its lane there.
+        self.passing = False
+        self.create_subscription(DiagnosticStatus, '/drivers/nav/planner/status',
+                                 self.on_planner, 10)
         self.point_plan = []
         self.create_subscription(
             Path, '/drivers/point/plan',
@@ -181,6 +190,11 @@ class BehaviourNode(Node):
     def on_plan(self, msg: Path):
         self.plan = [(s.pose.position.x, s.pose.position.y) for s in msg.poses]
         self.plan_time = self.now()
+
+    def on_planner(self, msg: DiagnosticStatus):
+        how = [v.value for v in msg.values if v.key == 'how']
+        if how:
+            self.passing = how[0] == 'pass'
 
     def on_local(self, msg: Odometry):
         self.speed, self.odom_time = msg.twist.twist.linear.x, self.now()
@@ -304,14 +318,14 @@ class BehaviourNode(Node):
         plan, _ = self.driving(now)
         if self.lanes is not None and plan and self.pose is not None:
             plan = lane_line(self.lanes, plan, self.pose, spacing=self.p['road_spacing'],
-                             length=self.p['road_length'])
+                             length=self.p['road_length'], passing=self.passing)
         d = self.decision
         strip = build(plan, self.pose, self.stops(now), self.curve,
                       self.p['base_speed'], state=d.state if d else '',
                       reason=d.reason if d else '', spacing=self.p['road_spacing'],
                       length=self.p['road_length'])
         if self.lanes is not None:
-            strip = with_edges(strip, self.lanes)
+            strip = with_edges(strip, self.lanes, passing=self.passing)
         self.road.publish(to_msg(strip, Header(stamp=self.get_clock().now().to_msg(),
                                                frame_id='map')))
 

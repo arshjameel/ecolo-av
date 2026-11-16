@@ -57,6 +57,11 @@ MAX_TURN = math.radians(45.0)   # the route and the road agree within this, or i
 CELL = 20.0             # m: the index's squares
 SMOOTH = 3.0            # m each side: the lane line eases from one road to the next over this
 MARGIN = 0.5            # m beyond the kerb a route point may be and still be on the road
+# m left of its lane's centre a route point is, while the planner passes something parked
+# (its status says how: pass), before it counts as the pass: the line follows the route
+# there and the left soft edge opens to the kerb (Ben, 16 Nov: leave the lane only to pass).
+PASS_LEFT = 0.2
+_PASSING = object()      # lane_line's mark for a point of the pass
 
 
 @dataclass(frozen=True)
@@ -221,9 +226,14 @@ def costmap_block(lanes: LaneMap) -> dict:
                        'edge_inset': r.edge_inset} for r in lanes.roads]}
 
 
+def _left_of(lane: Lane, x: float, y: float) -> float:
+    """Return m (x, y) is left of the lane's centre (+ left), the way the lane runs."""
+    return (x - lane.x) * -math.sin(lane.heading) + (y - lane.y) * math.cos(lane.heading)
+
+
 def lane_line(lanes: LaneMap, route: Sequence[Tuple[float, float]],
               car: Tuple[float, float], spacing: float = 0.5, length: float = 40.0,
-              smooth: float = SMOOTH) -> List[Tuple[float, float]]:
+              smooth: float = SMOOTH, passing: bool = False) -> List[Tuple[float, float]]:
     """
     Return the car's lane centre along the route ahead of the car: points, map frame.
 
@@ -232,6 +242,9 @@ def lane_line(lanes: LaneMap, route: Sequence[Tuple[float, float]],
     every road (a lot, a gap at a junction) it stays where the route is. Where the road
     changes, the points are averaged over `smooth` m each side, so the line eases from one
     lane to the next instead of stepping.
+
+    passing: the route moves left round something parked (the planner's `pass`): a point
+    more than PASS_LEFT left of its lane's centre stays where the route is.
     """
     ahead = resample(route, *car, spacing=spacing, length=length + smooth)
     if not ahead:
@@ -240,14 +253,19 @@ def lane_line(lanes: LaneMap, route: Sequence[Tuple[float, float]],
     targets = []
     for x, y, h in ahead:
         lane = lanes.lane_at(x, y, h)
-        targets.append((x, y, None) if lane is None else (lane.x, lane.y, lane.road))
+        if lane is None:
+            targets.append((x, y, None))
+        elif passing and _left_of(lane, x, y) > PASS_LEFT:
+            targets.append((x, y, _PASSING))
+        else:
+            targets.append((lane.x, lane.y, lane.road))
     k = max(0, int(round(smooth / spacing)))
     out = []
     for i, (x, y, road) in enumerate(targets):
         window = targets[max(0, i - k):i + k + 1]
         # On one road all along the window: the lane's centre itself, however the route
         # weaves inside the lane. Where roads change or one ends: the window's mean.
-        if road is not None and all(w[2] == road for w in window):
+        if road is not None and road is not _PASSING and all(w[2] == road for w in window):
             out.append((x, y))
         else:
             out.append((sum(w[0] for w in window) / len(window),
@@ -255,8 +273,13 @@ def lane_line(lanes: LaneMap, route: Sequence[Tuple[float, float]],
     return out
 
 
-def with_edges(strip: Strip, lanes: LaneMap) -> Strip:
-    """Return the strip with its edges from the lane map: NaN where a point is on no road."""
+def with_edges(strip: Strip, lanes: LaneMap, passing: bool = False) -> Strip:
+    """
+    Return the strip with its edges from the lane map: NaN where a point is on no road.
+
+    passing (the planner passes something parked): a point more than PASS_LEFT left of its
+    lane's centre has its left soft edge opened to the hard one (the kerb).
+    """
     if len(strip) == 0:
         return strip
     edges = {'left_hard': [], 'right_hard': [], 'left_soft': [], 'right_soft': []}
@@ -270,6 +293,9 @@ def with_edges(strip: Strip, lanes: LaneMap) -> Strip:
             # its edges are measured from where it is.
             nx, ny = -math.sin(lane.heading), math.cos(lane.heading)
             left = (x - lane.x) * nx + (y - lane.y) * ny      # + = left of the centre
-            value = getattr(lane, name) + (-left if name.startswith('left') else left)
+            edge = name
+            if passing and name == 'left_soft' and left > PASS_LEFT:
+                edge = 'left_hard'
+            value = getattr(lane, edge) + (-left if name.startswith('left') else left)
             edges[name].append(max(0.0, value))
     return replace(strip, **{k: tuple(v) for k, v in edges.items()})

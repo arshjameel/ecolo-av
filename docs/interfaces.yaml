@@ -877,8 +877,8 @@ topics:
   /drivers/nav/planner/status:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [planner]
-    sub: []
-    note: Only with planner:=own - one a plan. name planner; level OK (a path) or ERROR (none - message why, values error_code and failures). values search_ms, total_ms (with smoothing), iterations, length_m, cusps, poses, plans and failures since the node started; with lane_route (path:=lane) also how (lane, or lattice and why - off_map, short, blocked, join_failed, detour) and lane_m; cut (true - the goal was off the costmap, so the path ends where the way there leaves it, TODO 175).
+    sub: [behaviour]
+    note: Only with planner:=own - one a plan. name planner; level OK (a path) or ERROR (none - message why, values error_code and failures). values search_ms, total_ms (with smoothing), iterations, length_m, cusps, poses, plans and failures since the node started; with lane_route (path:=lane) also how (lane; pass - the lane's centre but for a stretch moved left round something parked on it, with pass_m, the most it moved, Ben 16 Nov; or lattice and why - off_map, short, blocked, join_failed, detour) and lane_m; the behaviour planner reads how, so with a lane map the road ahead follows a pass and opens its left soft edge there (LaneCritic doesn't fight it); cut (true - the goal was off the costmap, so the path ends where the way there leaves it, TODO 175).
   /drivers/nav/planner/route:
     type: nav_msgs/msg/Path
     pub: [planner]
