@@ -56,7 +56,7 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 | 11 | A stop sign missed | RF-DETR + the stop-sign lock | missed 1 in 8 runs | sim | ❌ |
 | 12 | The screen freezes | the HUD's heartbeat | STALE in 1 s | a Mac | ❌ |
 | 13 | A kerb | the step finder (`kerbs:=true`), kept 10 s; the costmap; the stop zone | a 0.3 m kerb seen 8.4 m out, stopped 0.80-0.82 m before it | sim | ❌ |
-| 14 | Something moving near | the behaviour's hold (WAIT, moving), ego, the stop zone | NUMBERS | sim | ❌ |
+| 14 | Something moving near | the behaviour's hold (WAIT, moving), ego, the stop zone | held for an oncoming car, a person on the roadside, cross traffic and a person crossing, every run; the parked box passed without a hold | sim | ❌ |
 
 ## 1. A person or obstacle ahead
 
@@ -331,7 +331,9 @@ stop." ([stopping](stopping.md#anything-moving-near-stop-and-wait-17-nov))
 
 | Number | Where, when | Who |
 |---|---|---|
-| NUMBERS | sim (ours), 17 Nov | Ben |
+| `sim-check --movers`, 2 runs each: held every time. Oncoming car 11.6 s, 2.4-3.5 m clear; a person on the roadside 20.3 s, 6.6-6.8 m clear; cross traffic 2.0 s, 19 m clear | sim (ours), 17 Nov | Ben |
+| `sim-check --moving` (a person crossing): APPROACH, then held 17.7 s, 1.9 m clear | sim (ours), 17 Nov | Ben |
+| `sim-check --behaviour-things` (a parked box): passed, never held, once the hold waits for 1 s of moving (it held 8 times before) | sim (ours), 17 Nov | Ben |
 | the car | not measured | |
 
 **Gaps:** a hold needs the things, which need the lidar: the radar alone holds nothing.

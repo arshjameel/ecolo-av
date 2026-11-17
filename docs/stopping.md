@@ -134,8 +134,24 @@ stop."
 - **Known limit:** a person walking beside the car the same way, within 10 m, holds it
   as long as they walk. That is the rule as asked.
 
-`behaviour.py` `moving_near`, `Nearby`; Rust `paths::moving_near`. Checked in our
-simulator by `pixi run sim-check --movers` (below).
+`behaviour.py` `moving_near`, `Nearby`, `MovingFor`; Rust `paths::moving_near`,
+`MovingFor`. `mppi_lag` waits too: while the road ahead says WAIT (moving) its progress
+check starts again, so a long hold is not "no progress" (it failed the path after 10 s).
+
+**In our simulator** (17 Nov, the road world, 2 runs each, `pixi run sim-check --movers
+--moving --behaviour-things`):
+
+| Case | Held | Clear of it ahead of the moving car | Then |
+|---|---|---|---|
+| an oncoming car, 3 m to the left, 2 m/s | 11.6 s | 2.4, 3.5 m | reached the goal 2/2 |
+| a person on the roadside, 5 m right, walking towards the car | 20.3 s | 6.6, 6.8 m | goal 1/2 |
+| cross traffic, 22 m ahead, 3 m/s | 2.0 s | 19 m | goal 1/2 |
+| a person crossing ahead (`--moving`) | APPROACH, then 17.7 s | 1.9 m | goal 1/2 |
+| the parked box (`--behaviour-things`) | never | passed 1.0 m clear | goal 1/1 |
+
+Every miss was the computer, not the rule: two simulators at a load of 15-20, the
+odometry or the costmap late ("no costmap yet", the sensor watchdog's lock), the goal
+aborted. Each held every time.
 
 ### The cap
 
