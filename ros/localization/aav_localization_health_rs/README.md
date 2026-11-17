@@ -20,7 +20,7 @@ anything that uses a lot of resources to rust" (TODO 185).
 | Where | Default |
 |---|---|
 | our simulator (`sim.launch.py`) | **Rust**, since 16 Nov (`localization_health_impl:=python` for the Python) |
-| the car, the bench (`localization.launch.py`) | Python, until the Rust one has run on the car |
+| the car, the bench (`localization.launch.py`, `car.launch.py`) | **Rust**, since 16 Nov (Ben); `localization_health_impl:=python` falls back until a car day proves it |
 
 ## Interface
 

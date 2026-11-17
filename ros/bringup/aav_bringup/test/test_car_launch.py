@@ -269,6 +269,22 @@ def test_the_sensor_watchdog_runs_wherever_the_mux_does():
             assert sent['mux.launch.py'].get('sensor_lock', 'true') == 'true', machine
 
 
+def test_the_rust_nodes_are_the_cars_default_and_python_one_switch_away():
+    # Ben, 16 Nov: ego, behaviour, the watchdog and localization_health in Rust on the car
+    # too; each *_impl:=python falls back, one switch each (docs/car-day.md).
+    switches = {'ego.launch.py': 'ego_impl', 'navigation.launch.py': 'behaviour_impl',
+                'watchdog.launch.py': 'watchdog_impl',
+                'localization.launch.py': 'localization_health_impl'}
+    sent = included(started(CAR, machine='all'))
+    for name, switch in switches.items():
+        assert sent[name][switch] == 'rust', name
+    back = included(started(CAR, machine='all', **dict.fromkeys(switches.values(), 'python')))
+    for name, switch in switches.items():
+        assert back[name][switch] == 'python', name
+    with pytest.raises(ValueError, match='watchdog_impl'):
+        started(CAR, machine='all', watchdog_impl='c')
+
+
 def test_the_output_mux_runs_next_to_ego_for_the_real_car():
     # The real backends read only /control/car/actuator_cmd: the output mux, target car,
     # must run wherever ego does, and nowhere else (two would both judge the same ego).

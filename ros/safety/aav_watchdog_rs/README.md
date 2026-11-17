@@ -2,12 +2,13 @@
 
 ## Overview
 
-The sensor watchdog in Rust (rclrs): a **challenger** beside `aav_safety`'s Python
+The sensor watchdog in Rust (rclrs): the **default**, in place of `aav_safety`'s Python
 `sensor_watchdog`. The same node name, topics, QoS, parameters and answers. Ben, 14 Nov:
 "convert anything that uses a lot of resources to rust" (TODO 185).
 
-**A safety lock.** The Python stays the default until a person decides; this one only
-runs when asked for.
+**A safety lock.** Ben decided (16 Nov: "watchdog in rust sure"): this one is the default
+on the car and in the simulator. `watchdog_impl:=python` falls back until a car day
+proves it.
 
 ```
 each input's topic (odom, IMU, GPS, cameras, lidar, detections, actuators, nodes...)

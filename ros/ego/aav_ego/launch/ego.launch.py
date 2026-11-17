@@ -2,13 +2,14 @@
 ego: /control/cmd_vel (TwistStamped from twist_mux) -> /ego/actuator_cmd (AckermannDriveStamped).
 
   ros2 launch aav_ego ego.launch.py [use_sim_time:=false] [max_speed:=0.3] [look_ahead:=true]
-                                [road_ahead:=false] [ego_impl:=python]
+                                [road_ahead:=false] [ego_impl:=rust]
                                 [speed_loop:=default]
 
-ego_impl (python): rust runs aav_ego_rs instead, a challenger: ego and look_ahead in one
-Rust process, with the same node names, topics, parameters and answers (TODO 185). Its
-parameters go in a file of their own (both nodes have a rate_hz), with vehicle.yaml's path
-and the body outline, which the Python nodes read themselves.
+ego_impl (rust): aav_ego_rs, ego and look_ahead in one Rust process, the default on the
+car and in the simulator (Ben, 16 Nov). python runs aav_ego's two nodes instead, with the
+same node names, topics, parameters and answers: the fall-back until a car day proves the
+Rust. The Rust process's parameters go in a file of their own (both nodes have a rate_hz),
+with vehicle.yaml's path and the body outline, which the Python nodes read themselves.
 
 road_ahead (false): true holds Nav2's commands to /world/road_ahead's speed limit
 (ego_node.py, road_limit.py); sim.launch.py sets it with behaviour:=true, its writer.
@@ -123,8 +124,8 @@ def generate_launch_description():
         DeclareLaunchArgument('look_ahead', default_value='true',
                               description='also start look_ahead (the squiggly line)'),
         DeclareLaunchArgument('ego_impl', default_value=vehicle.DEFAULT_EGO_IMPL,
-                              description='python or rust: which ego runs (aav_ego, or '
-                                          'aav_ego_rs: ego and look_ahead in one process)'),
+                              description='rust or python: which ego runs (aav_ego_rs: ego and '
+                                          'look_ahead in one process, or aav_ego)'),
         DeclareLaunchArgument('speed_loop', default_value=vehicle.DEFAULT_SPEED_LOOP,
                               description="the spine's speed loop profile the car runs "
                                           '(default, smooth, lqi, firm): the trace assumes it'),

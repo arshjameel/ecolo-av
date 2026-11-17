@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_localization_health_rs</name>
   <version>0.1.0</version>
-  <description>localization_health in Rust (rclrs): a challenger beside aav_localization_health's Python node (localization.launch.py localization_health_impl:=rust). The same node name, topics, QoS, parameters and answers: the IMU, the wheels, the GPS, both EKFs and TF in; /localization/health and /diagnostics out. Warn only. The checks are the health-core crate, with no ROS, checked against the Python module's answers.</description>
+  <description>localization_health in Rust (rclrs): the default since 16 Nov (Ben), beside aav_localization_health's Python node (localization.launch.py localization_health_impl:=rust). The same node name, topics, QoS, parameters and answers: the IMU, the wheels, the GPS, both EKFs and TF in; /localization/health and /diagnostics out. Warn only. The checks are the health-core crate, with no ROS, checked against the Python module's answers.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 

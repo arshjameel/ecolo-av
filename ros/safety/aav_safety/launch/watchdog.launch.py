@@ -2,16 +2,16 @@
 The sensor watchdog: stops Nav2 and the AI slot when a sensor they need dies or lies.
 
   ros2 launch aav_safety watchdog.launch.py inputs:=odom,imu,gps,local,global
-      [use_sim_time:=false] [watchdog_impl:=python]
+      [use_sim_time:=false] [watchdog_impl:=rust]
 
 inputs: the names in config/sensor_watchdog.yaml to watch, comma-separated; each profile
 passes the sensors it has (sim.launch.py, bench.launch.py, car.launch.py with Nav2).
 twist_mux's sensors lock (aav_command_mux config/twist_mux.yaml) reads its
 /safety/sensor_watchdog/lock. docs/simulation.md ("Sensor failures on purpose").
 
-watchdog_impl (python): rust runs aav_watchdog_rs instead, the same node in Rust (the same
-name, topics, parameters and answers): a challenger, TODO 185. A safety lock: the Python
-stays the default until a person decides.
+watchdog_impl (rust): aav_watchdog_rs, the default since Ben decided (16 Nov: "watchdog in
+rust sure"). python runs aav_safety's sensor_watchdog instead, the same node (name, topics,
+parameters and answers): the fall-back until a car day proves the Rust.
 """
 
 from aav_description import vehicle
@@ -41,7 +41,7 @@ def generate_launch_description():
                               description='which of config/sensor_watchdog.yaml to watch'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
-                              description='python (aav_safety) or rust (aav_watchdog_rs, the '
-                                          'same node in Rust, a challenger)'),
+                              description='rust (aav_watchdog_rs) or python (aav_safety, the '
+                                          'same node in Python)'),
         OpaqueFunction(function=watchdog),
     ])

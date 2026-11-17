@@ -11,7 +11,7 @@ drivers; they never move the car, and they never hold back a person on a live jo
 | Package | What it does | Main output |
 |---|---|---|
 | [aav_safety](./aav_safety/README.md) | the sensor watchdog: stale, NaN, frozen, jumped or disagreeing inputs, stuck steering or overspeed, lock twist_mux; the stop hold: keeps collision_monitor's stops from flickering; the geofence: every program stops before the fence's edge; the joystick-alive check: a silent or frozen joystick stops; the goal leash: a laptop driver that goes quiet loses its goals | `/safety/sensor_watchdog/lock`, `/safety/stop_hold/lock`, `/safety/geofence/lock` |
-| [aav_watchdog_rs](./aav_watchdog_rs/README.md) | the sensor watchdog in Rust, a challenger (`watchdog_impl:=rust`): the Python's answers, tick by tick; the Python stays the default | the same as the Python's |
+| [aav_watchdog_rs](./aav_watchdog_rs/README.md) | the sensor watchdog in Rust, the default (Ben, 16 Nov): the Python's answers, tick by tick; `watchdog_impl:=python` for the Python | the same as the Python's |
 | [aav_ghost](./aav_ghost/README.md) | ghost obstacles: a pretend person only Nav2 sees, to test stopping | `/safety/ghost/scan` |
 | [aav_stop_zone](./aav_stop_zone/README.md) | the stop zone in Rust, in shadow beside Nav2's collision_monitor (`stop_zone_shadow:=true`, TODO 182) | `/safety/stop_zone/shadow/cmd_vel`, `.../state` |
 

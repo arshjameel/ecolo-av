@@ -200,7 +200,7 @@ answer.</p>
 </tr>
 <tr>
 <td>8</td>
-<td>Languages: Python for the ROS nodes we write; Rust for the firmware, the drivers and the ports of the inherited C++; no C++ of our own (Ben, 10 Oct)</td>
+<td>Languages: Python for the ROS nodes we write (since 16 Nov: Rust for new ones, below); Rust for the firmware, the drivers and the ports of the inherited C++; no C++ of our own (Ben, 10 Oct)</td>
 <td>Our nodes run at 50 Hz or less, and the hard timing lives in the firmware. The spine logic is already Rust (<code>spine-core</code>)</td>
 </tr>
 <tr>
@@ -968,6 +968,16 @@ answer.</p>
 <td>16 Nov</td>
 <td><strong><code>ours</code> passes something parked on the lane</strong> (TODO 208): only the blocked stretch moves left, the least that clears it plus 0.5 m, never past the kerb, then back; the planner's lidar layer marks to 18 m (was 12). University Drive with a 1 m box, 3 runs each: over the centre line 4.8 s against 13.2, back in 9 m against 18.5, no stops; a person crossing still waited for; no worse with no obstacles. <code>lane_pass:=false</code> keeps the old way (<a href="own-planner.html#passing-something-parked-16-nov">why</a>)</td>
 <td>Ben: "stick to the right side of the lane unless we need to for obstical avoidance"</td>
+</tr>
+<tr>
+<td>16 Nov</td>
+<td><strong>Rust is the default on the car too</strong> for ego + look_ahead, behaviour, the sensor watchdog and localization_health (<code>aav_ego_rs</code>, <code>aav_behaviour_rs</code>, <code>aav_watchdog_rs</code>, <code>aav_localization_health_rs</code>). The Python stays installed, one switch each (<code>*_impl:=python</code>), until a car day proves the Rust (<a href="car-day.html#4f-the-rust-nodes-are-the-ones-running">car day, 4f</a>)</td>
+<td>Ben: "watchdog in rust sure"; the same answers as the Python, in the simulator first</td>
+</tr>
+<tr>
+<td>16 Nov</td>
+<td><strong>New ROS nodes are Rust</strong> (rclrs), replacing decision 8's "Python for the ROS nodes we write". Still Python: ML on the GPU (train in PyTorch; inference later through ONNX), launch files, tools and tests</td>
+<td>Ben: "lets remove python were possible. I trust rust more then python"</td>
 </tr>
 </tbody>
 </table></div>

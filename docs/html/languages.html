@@ -7,7 +7,7 @@
 <!-- Generated from docs/languages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Python and Rust (and the C++ we don&#x27;t write)</h1>
-<div class="meta">7 min read · 6 sections</div></header>
+<div class="meta">8 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -119,7 +119,8 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#how-languages-fit-into-ros-2">How languages fit into ROS 2</a><a href="#what-we-use-and-where">What we use, and where</a><a href="#is-c-too-risky">Is C++ too risky?</a><a href="#what-if-everything-were-rust">What if everything were Rust?</a><a href="#rust-on-the-pi-and-the-esp32">Rust on the Pi and the ESP32</a><a href="#the-plan">The plan</a></nav>
-<div class="lead"><p>Our ROS nodes are Python, and the firmware and hardware drivers are Rust. The C++ we
+<div class="lead"><p>New ROS nodes are Rust (Ben, 16 Nov: "lets remove python were possible. I trust rust more
+then python"); the older ones are Python, and the firmware and hardware drivers are Rust. The C++ we
 inherited is now Rust (Ben, 10 and 15 Oct): none of our ROS code is C++. Only today's
 ESP32 firmware still is, and the hardware lead's wheel-sensor Arduino (Ben, 23 Oct). ROS 2 lets each program pick its own language, because
 programs only meet through messages.</p></div>
@@ -143,9 +144,19 @@ programs only meet through messages.</p></div>
 </thead>
 <tbody>
 <tr>
-<td>Our ROS nodes: ego, drivers, bridges, adapters</td>
+<td>New ROS nodes</td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Ben, 16 Nov: "I trust rust more then python". Exceptions: ML on the GPU (train in PyTorch; inference later through ONNX), launch files, tools and tests</td>
+</tr>
+<tr>
+<td>ego + look_ahead, behaviour, the sensor watchdog, localization_health</td>
+<td>Rust (<code>rclrs</code>): <code>aav_ego_rs</code>, <code>aav_behaviour_rs</code>, <code>aav_watchdog_rs</code>, <code>aav_localization_health_rs</code></td>
+<td>Ports of the Python nodes, the same answers. The default on the car and in the simulator since 16 Nov (Ben); <code>*_impl:=python</code> falls back until a car day proves them</td>
+</tr>
+<tr>
+<td>Our older ROS nodes: drivers, bridges, adapters</td>
 <td>Python</td>
-<td>Glue that runs 50 times a second or less. Quick to write and read. The same file runs on any computer, with no cross-compiling.</td>
+<td>Glue that runs 50 times a second or less. Ported to Rust where possible (Ben, 16 Nov)</td>
 </tr>
 <tr>
 <td>Launch files</td>
@@ -324,8 +335,8 @@ pixi run build</code></pre>
 </thead>
 <tbody>
 <tr>
-<td>Now</td>
-<td>Python for ROS nodes; Rust for the firmware (<code>spine-core</code>, tested on a laptop) and the nodes where it pays off</td>
+<td>Now (16 Nov)</td>
+<td>Rust for new ROS nodes, the firmware (<code>spine-core</code>, tested on a laptop) and the four ports above, the car's defaults; Python for ML, launch files, tools and tests</td>
 </tr>
 <tr>
 <td>Done</td>
@@ -333,7 +344,7 @@ pixi run build</code></pre>
 </tr>
 <tr>
 <td>Later</td>
-<td>port a node where Rust pays off, such as ego</td>
+<td>port the other Python nodes where possible (Ben, 16 Nov)</td>
 </tr>
 </tbody>
 </table></div></section>

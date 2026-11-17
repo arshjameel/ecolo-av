@@ -1,6 +1,7 @@
 # Python and Rust (and the C++ we don't write)
 
-Our ROS nodes are Python, and the firmware and hardware drivers are Rust. The C++ we
+New ROS nodes are Rust (Ben, 16 Nov: "lets remove python were possible. I trust rust more
+then python"); the older ones are Python, and the firmware and hardware drivers are Rust. The C++ we
 inherited is now Rust (Ben, 10 and 15 Oct): none of our ROS code is C++. Only today's
 ESP32 firmware still is, and the hardware lead's wheel-sensor Arduino (Ben, 23 Oct). ROS 2 lets each program pick its own language, because
 programs only meet through messages.
@@ -18,7 +19,9 @@ programs only meet through messages.
 
 | Code | Language | Why |
 |---|---|---|
-| Our ROS nodes: ego, drivers, bridges, adapters | Python | Glue that runs 50 times a second or less. Quick to write and read. The same file runs on any computer, with no cross-compiling. |
+| New ROS nodes | Rust (`rclrs`) | Ben, 16 Nov: "I trust rust more then python". Exceptions: ML on the GPU (train in PyTorch; inference later through ONNX), launch files, tools and tests |
+| ego + look_ahead, behaviour, the sensor watchdog, localization_health | Rust (`rclrs`): `aav_ego_rs`, `aav_behaviour_rs`, `aav_watchdog_rs`, `aav_localization_health_rs` | Ports of the Python nodes, the same answers. The default on the car and in the simulator since 16 Nov (Ben); `*_impl:=python` falls back until a car day proves them |
+| Our older ROS nodes: drivers, bridges, adapters | Python | Glue that runs 50 times a second or less. Ported to Rust where possible (Ben, 16 Nov) |
 | Launch files | Python | That's how ROS 2 launch works |
 | Stock packages: Nav2, the EKFs, twist_mux | C++ | Not ours: we only configure them |
 | The IMU driver, `aav_imu_yahboom` | Rust (`rclrs`) | Ben's rewrite of the 2025-26 C++ driver, which it replaced on 11 Oct |
@@ -89,6 +92,6 @@ pixi run build
 
 | When | What |
 |---|---|
-| Now | Python for ROS nodes; Rust for the firmware (`spine-core`, tested on a laptop) and the nodes where it pays off |
+| Now (16 Nov) | Rust for new ROS nodes, the firmware (`spine-core`, tested on a laptop) and the four ports above, the car's defaults; Python for ML, launch files, tools and tests |
 | Done | the first `rclrs` nodes: the IMU, the radar clustering, the CAN bridge, the HUD; since 5 Nov our own trials beside Nav2 and our simulator |
-| Later | port a node where Rust pays off, such as ego |
+| Later | port the other Python nodes where possible (Ben, 16 Nov) |

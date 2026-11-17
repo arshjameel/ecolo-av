@@ -2,11 +2,11 @@
 
 ## Overview
 
-The behaviour planner in Rust (rclrs): a **challenger** beside `aav_behaviour`'s Python
-node. The same node name, topics, QoS, parameters and answers. Ben, 14 Nov: "convert
-anything that uses a lot of resources to rust" (TODO 185). The simulator's default since
-16 Nov (below); the car (`navigation.launch.py`) keeps the Python until this one has run
-on it.
+The behaviour planner in Rust (rclrs): the **default**, in place of `aav_behaviour`'s
+Python node. The same node name, topics, QoS, parameters and answers. Ben, 14 Nov:
+"convert anything that uses a lot of resources to rust" (TODO 185). The simulator's
+default since 16 Nov (below), and the car's too (Ben, 16 Nov); `behaviour_impl:=python`
+falls back until a car day proves this one.
 
 ```
 locks, odometry, /plan, the scan or the things, a stop sign, the fence
@@ -110,8 +110,8 @@ The Python's one fail was on a busy computer (load 9 on 16 cores); it isn't the 
 ### The simulator's default
 
 Since 16 Nov this is **the simulator's default** (`sim.launch.py`,
-`vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL`); the car (`navigation.launch.py`) keeps the Python until Rust has run on
-it. Both gates were no worse with Rust (ego, behaviour and voxels all Rust, against all Python):
+`vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL`), and the car's too (`vehicle.DEFAULT_BEHAVIOUR_IMPL`,
+`navigation.launch.py`, `car.launch.py`; Ben, 16 Nov). Both gates were no worse with Rust (ego, behaviour and voxels all Rust, against all Python):
 
 | Gate | Python | Rust |
 |---|---|---|

@@ -411,14 +411,14 @@ def check_voxels_impl(impl):
     return name
 
 
-# Which ego runs (ego.launch.py, sim.launch.py ego_impl:=): python (aav_ego's two nodes,
-# the default) or rust (aav_ego_rs: ego and look_ahead in one process, the same node
-# names, topics and answers; a challenger, TODO 185). Each one's package.
+# Which ego runs (ego.launch.py, car.launch.py, sim.launch.py ego_impl:=): rust
+# (aav_ego_rs: ego and look_ahead in one process; the default on the car and in the
+# simulator, Ben, 16 Nov) or python (aav_ego's two nodes: the same node names, topics and
+# answers; kept selectable until a car day proves the Rust). Each one's package.
 EGO_IMPLS = {'python': 'aav_ego', 'rust': 'aav_ego_rs'}
-DEFAULT_EGO_IMPL = 'python'
-# Our simulator's own default (sim.launch.py only; the car keeps DEFAULT_EGO_IMPL until
-# Rust has run on it): rust since 16 Nov, as sim-check and the scores were no worse.
-SIM_DEFAULT_EGO_IMPL = 'rust'
+DEFAULT_EGO_IMPL = 'rust'
+# The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
+SIM_DEFAULT_EGO_IMPL = DEFAULT_EGO_IMPL
 
 
 def check_ego_impl(impl):
@@ -429,21 +429,22 @@ def check_ego_impl(impl):
     return name
 
 
-# Which behaviour node runs, with behaviour:=true (navigation.launch.py, sim.launch.py
-# behaviour_impl:=): python (aav_behaviour, the default) or rust (aav_behaviour_rs: the same
-# node name, topics and answers; a challenger, TODO 185). Each one's package.
+# Which behaviour node runs, with behaviour:=true (navigation.launch.py, car.launch.py,
+# sim.launch.py behaviour_impl:=): rust (aav_behaviour_rs, the default on the car and in
+# the simulator, Ben, 16 Nov) or python (aav_behaviour: the same node name, topics and
+# answers; kept selectable until a car day proves the Rust). Each one's package.
 BEHAVIOUR_IMPLS = {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
-DEFAULT_BEHAVIOUR_IMPL = 'python'
-# Our simulator's own default (sim.launch.py only; navigation.launch.py on the car keeps
-# DEFAULT_BEHAVIOUR_IMPL): rust since 16 Nov, as sim-check and the scores were no worse.
-SIM_DEFAULT_BEHAVIOUR_IMPL = 'rust'
+DEFAULT_BEHAVIOUR_IMPL = 'rust'
+# The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
+SIM_DEFAULT_BEHAVIOUR_IMPL = DEFAULT_BEHAVIOUR_IMPL
 
 
-# Which sensor watchdog runs (watchdog.launch.py, sim.launch.py watchdog_impl:=): python
-# (aav_safety's, the default) or rust (aav_watchdog_rs: the same node name, topics and
-# answers). A safety lock: the Python stays the default until a person decides (TODO 185).
+# Which sensor watchdog runs (watchdog.launch.py, car.launch.py, sim.launch.py
+# watchdog_impl:=): rust (aav_watchdog_rs, the default since Ben decided, 16 Nov:
+# "watchdog in rust sure") or python (aav_safety's: the same node name, topics and
+# answers; kept selectable until a car day proves the Rust). Each one's package.
 WATCHDOG_IMPLS = {'python': 'aav_safety', 'rust': 'aav_watchdog_rs'}
-DEFAULT_WATCHDOG_IMPL = 'python'
+DEFAULT_WATCHDOG_IMPL = 'rust'
 
 
 def check_watchdog_impl(impl):
@@ -454,16 +455,16 @@ def check_watchdog_impl(impl):
     return name
 
 
-# Which localization_health runs (localization.launch.py, sim.launch.py
-# localization_health_impl:=): python (aav_localization_health, the default) or rust
-# (aav_localization_health_rs: the same node name, topics and answers; TODO 185). Each
-# one's package. Warn only, so no safety lock.
+# Which localization_health runs (localization.launch.py, car.launch.py, sim.launch.py
+# localization_health_impl:=): rust (aav_localization_health_rs, the default on the car and
+# in the simulator, Ben, 16 Nov: the same answers at 1.5 % of a core against 9.4 %) or
+# python (aav_localization_health: the same node name, topics and answers; kept selectable
+# until a car day proves the Rust). Each one's package. Warn only, so no safety lock.
 LOCALIZATION_HEALTH_IMPLS = {'python': 'aav_localization_health',
                              'rust': 'aav_localization_health_rs'}
-DEFAULT_LOCALIZATION_HEALTH_IMPL = 'python'
-# Our simulator's own default (sim.launch.py only; the car keeps the Python until Rust has
-# run on it): rust since 16 Nov, the same answers at 1.5 % of a core against 9.4 %.
-SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL = 'rust'
+DEFAULT_LOCALIZATION_HEALTH_IMPL = 'rust'
+# The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
+SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL = DEFAULT_LOCALIZATION_HEALTH_IMPL
 
 
 def check_localization_health_impl(impl):

@@ -158,10 +158,10 @@ for odom, `cross_check`, `cross_window` (s), `cross_speed_tolerance` (m/s),
 ### Launch and modules
 
 `launch/watchdog.launch.py inputs:=odom,imu,gps,local,global [use_sim_time:=false]
-[watchdog_impl:=python]`: each profile passes the inputs it has (sim, bench, car).
-`watchdog_impl:=rust` runs [`aav_watchdog_rs`](../aav_watchdog_rs/README.md) instead: the
-same node in Rust, with this one's answers tick by tick; a challenger (TODO 185). This one
-stays the default.
+[watchdog_impl:=rust]`: each profile passes the inputs it has (sim, bench, car).
+`watchdog_impl:=rust`, the default since Ben, 16 Nov ("watchdog in rust sure"), runs
+[`aav_watchdog_rs`](../aav_watchdog_rs/README.md): the same node in Rust, with this one's
+answers tick by tick. `watchdog_impl:=python` runs this one.
 
 | Module | No ROS? | Holds |
 |---|---|---|

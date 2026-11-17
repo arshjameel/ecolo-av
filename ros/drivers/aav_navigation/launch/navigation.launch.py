@@ -7,7 +7,7 @@ Nav2 as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out to tw
       [reversing:=false] [max_speed:=] [controller:=mppi] [planner:=lattice]
       [diffusion_model:=] [diffusion_provider:=CPUExecutionProvider] [diffusion_record:=]
       [diffusion_python:=] [diffusion_smoothing:=gear]
-      [plan_around:=true] [behaviour:=false] [behaviour_impl:=python] [things:=false]
+      [plan_around:=true] [behaviour:=false] [behaviour_impl:=rust] [things:=false]
       [replan_hz:=1.0]
       [tracker:=none] [costmap:=nav2] [navigator:=nav2] [smoother:=nav2] [live_swap:=false]
       [map_correction:=newest] [speed_loop:=default]
@@ -144,9 +144,9 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           a stop sign, an obstacle in the lane, the fence and the goal.
                           controller_server reads /drivers/nav/speed_limit; the locks still
                           make every stop. false (the default): the stock path, no cap
-  behaviour_impl:=rust    (with behaviour:=true) the Rust behaviour node (aav_behaviour_rs)
-                          in the Python one's place: the same name, topics and answers.
-                          python (aav_behaviour): the default
+  behaviour_impl:=rust    (with behaviour:=true) the Rust behaviour node (aav_behaviour_rs),
+                          the default since 16 Nov (Ben). python: aav_behaviour in its
+                          place, the same name, topics and answers
   lane_map:=<lanes.yaml>  with behaviour:=true: the road ahead's line is the car's lane's
                           centre along the route, with its edges (aav_description
                           lane_map.py); empty (the default): the line is /plan's
@@ -872,8 +872,8 @@ def generate_launch_description():
                                           "the costmap's lidar_layer and collision_monitor "
                                           'read 0.25 m cubes instead of the flat scan'),
         DeclareLaunchArgument('behaviour_impl', default_value=vehicle.DEFAULT_BEHAVIOUR_IMPL,
-                              description='python (aav_behaviour) or rust (aav_behaviour_rs, '
-                                          'the same node in Rust): which behaviour node runs, '
+                              description='rust (aav_behaviour_rs) or python (aav_behaviour, '
+                                          'the same node in Python): which behaviour node runs, '
                                           'with behaviour:=true'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python (aav_voxels) or rust (aav_voxels_rs, the '
