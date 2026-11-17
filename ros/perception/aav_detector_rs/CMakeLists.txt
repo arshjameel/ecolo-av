@@ -62,7 +62,8 @@ if(BUILD_TESTING)
     COMMAND ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${CARGO_TARGET_DIR}
       ${CARGO} test --release --locked --quiet -p detector-core ${DETECTOR_TEST_FEATURES}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    TIMEOUT 600
+    # A cold `cargo test --release` builds ort and the tests from scratch: over 10 min once (17 Nov).
+    TIMEOUT 1800
     GENERATE_RESULT_FOR_RETURN_CODE_ZERO)
 endif()
 
