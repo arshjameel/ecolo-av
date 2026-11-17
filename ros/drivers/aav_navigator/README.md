@@ -20,8 +20,8 @@ goal (RViz, the map window, street_router, language_drive, the tools)
 | `crates/navigator-node` | the ROS node, binary `navigator` (rclrs): messages in and out only |
 
 ```sh
-pixi run sim navigator:=own planner:=own costmap:=own tracker:=mppi_lag reversing:=false
-pixi run measure controllers --stacks nav2 own --tours lot obstacle --runs 3
+pixi run sim
+pixi run measure controllers --stacks own own_calm --tours lot obstacle --runs 3
 ```
 
 ## Interface

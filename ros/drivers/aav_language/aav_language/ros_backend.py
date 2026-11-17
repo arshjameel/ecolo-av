@@ -137,7 +137,7 @@ class RosBackend:
         try:
             from nav2_msgs.action import FollowGPSWaypoints
             self.gps_type = FollowGPSWaypoints
-            # Whichever navigator runs serves Nav2's name (navigator:=nav2 or own).
+            # Our navigator serves Nav2's name (Nav2's own went, 17 Nov).
             self.gps_action = ActionClient(n, FollowGPSWaypoints, '/follow_gps_waypoints')
         except ImportError:
             self.gps_type = None

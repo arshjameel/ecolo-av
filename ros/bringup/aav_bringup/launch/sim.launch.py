@@ -60,7 +60,7 @@ bench's argument names:
                       lane:=fake: control_interface on a pretend lane, in any world
   camera_obstacles    the detectors' boxes into our local costmap
   hud:=true           the HUD window (aav_hud, as pixi run hud): needs a screen
-  map:=true           the map window (aav_hud, as pixi run map): Nav2's map, the
+  map:=true           the map window (aav_hud, as pixi run map): the map, the
                       car, the plan, the distance left. Needs a screen
   foxglove:=true      foxglove_bridge on 127.0.0.1:8765, for Lichtblick or Foxglove on this
                       computer: open ws://localhost:8765 and a layout from tools/foxglove/
@@ -883,15 +883,14 @@ def generate_launch_description():
                                           "vehicle.yaml's max_reverse_speed "
                                           '(docs/learn-nav2.md, Reversing)'),
         DeclareLaunchArgument('controller', default_value=stacks.CHOSEN,
-                              description='mppi or rpp (Regulated Pure Pursuit): what '
-                                          'follows the path in controller_server, with '
-                                          'tracker:=none (docs/path-followers.md). Empty: '
-                                          "the stack's choice"),
+                              description="mppi: nav2.yaml's MPPI block, which mppi_lag "
+                                          'reads (Nav2\'s controller_server went, 17 Nov). '
+                                          "Empty: the stack's choice"),
         DeclareLaunchArgument('planner', default_value=stacks.CHOSEN,
                               description=', '.join(vehicle.PLANNERS) + ': the planner. '
-                                          "own (ours), hybrid and lattice keep to the car's "
-                                          'turning radius; the others are trials '
-                                          "(docs/controllers.md). Empty: the stack's choice"),
+                                          "own (ours) keeps to the car's turning radius; "
+                                          'diffusion is a trial (docs/own-planner.md). '
+                                          "Empty: the stack's choice"),
         DeclareLaunchArgument('diffusion_model', default_value='',
                               description='with planner:=diffusion: the model (.onnx); '
                                           'empty: models/diffusion/planner.onnx. A file '
@@ -907,12 +906,12 @@ def generate_launch_description():
                               description="with tracker:=mppi_lag: its steering's control cost "
                                           "weight (TODO 168): 0.05; nav2.yaml's gamma when "
                                           "nothing sets it. Empty: the stack's choice (ours: "
-                                          "0.05; stock: nav2.yaml's)"),
+                                          "0.05; best: nav2.yaml's)"),
         DeclareLaunchArgument('plan_smoothing', default_value=stacks.CHOSEN,
                               description="the planner's smoother: nav2, Nav2's weights; "
                                           "strong, it also takes out the lattice's staircase "
                                           "(TODO 168). Empty: the stack's choice (ours: "
-                                          'strong; stock: nav2)'),
+                                          'strong; best: nav2)'),
         DeclareLaunchArgument('lattice_headings',
                               default_value=str(vehicle.LATTICE_HEADINGS[0]),
                               description='with planner:=lattice: 16 headings (the default) '
@@ -939,12 +938,12 @@ def generate_launch_description():
                               description='with things:=true: things take the camera '
                                           "detector's labels (TODO 192)"),
         DeclareLaunchArgument('lattice_moves', default_value=stacks.CHOSEN,
-                              description="with planner:=lattice (or own): nav2, Nav2's "
+                              description="nav2, the moves Nav2's generator made; "
                                           'moves; smooth or smooth_fast, a trial '
                                           "(tools/lattice_smooth.py). Empty: the stack's "
                                           "choice (nav2's moves)"),
         DeclareLaunchArgument('planner_search', default_value=stacks.CHOSEN,
-                              description='with planner:=own: lattice, the State Lattice; '
+                              description='lattice, the State Lattice; '
                                           "hybrid, Nav2's Hybrid-A* in Rust (a challenger). "
                                           "Empty: the stack's choice (the lattice)"),
         DeclareLaunchArgument('behaviour', default_value=stacks.CHOSEN,
@@ -991,18 +990,18 @@ def generate_launch_description():
                                           "the whole path is the lattice's (before 16 Nov)"),
         DeclareLaunchArgument('navigator', default_value=stacks.CHOSEN,
                               description="own (aav_navigator, in bt_navigator's place; "
-                                          'docs/own-navigator.md) or nav2. Empty: the '
-                                          "stack's choice"),
+                                          'docs/own-navigator.md), the only one since Nav2 '
+                                          "went. Empty: the stack's choice"),
         DeclareLaunchArgument('smoother', default_value=stacks.CHOSEN,
-                              description="nav2 or own: our own velocity smoother in Nav2's "
-                                          'place, for a car (aav_smoother, a trial; '
-                                          "docs/own-smoother.md). Empty: the stack's choice"),
+                              description="own: our velocity smoother, for a car "
+                                          '(aav_smoother; docs/own-smoother.md), the only '
+                                          "one since Nav2 went. Empty: the stack's choice"),
         DeclareLaunchArgument('costmap', default_value=stacks.CHOSEN,
-                              description='own (aav_costmap; docs/own-costmap.md) or nav2. '
-                                          "Empty: the stack's choice"),
+                              description='own (aav_costmap; docs/own-costmap.md), the only '
+                                          "one since Nav2 went. Empty: the stack's choice"),
         DeclareLaunchArgument('tracker', default_value=stacks.CHOSEN,
-                              description="a path follower in controller_server's "
-                                          'place: ' + ', '.join(vehicle.TRACKERS) +
+                              description='the path follower: ' +
+                                          ', '.join(vehicle.TRACKERS) +
                                           " (aav_track's with reversing:=false; "
                                           'docs/trials.md); none: controller_server. Empty: '
                                           "the stack's choice"),
@@ -1044,7 +1043,7 @@ def generate_launch_description():
         DeclareLaunchArgument('map_correction', default_value=stacks.CHOSEN,
                               description='with a trial tracker: newest, or slow (the held '
                                           "map -> odom, TODO 186). Empty: the stack's "
-                                          'choice (ours: slow; stock: newest)'),
+                                          'choice (ours: slow; best: newest)'),
         DeclareLaunchArgument('replan_hz', default_value='1.0',
                               description="how often the navigator plans a to-pose goal "
                                           'again; 0: once per goal (a test)'),

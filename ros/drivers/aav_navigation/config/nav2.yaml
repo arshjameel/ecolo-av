@@ -491,13 +491,15 @@ velocity_smoother:
     deadband_velocity: [0.0, 0.0, 0.0]
     velocity_timeout: 1.0
 
-# Wherever a radar or a lidar is (navigation.launch.py radar:=true or lidar:=true;
-# collision_monitor:=false leaves it out): it sits between the smoother and twist_mux
-# (velocity_smoother -> /control/cmd_vel_smoothed -> collision_monitor -> /drivers/nav/cmd_vel)
+# The stop zone's settings: aav_stop_zone reads this block (vehicle.stop_zone_params), as
+# Nav2's collision_monitor did until 17 Nov. Wherever a radar or a lidar is
+# (navigation.launch.py radar:=true or lidar:=true; stop_zone:=false leaves it out): it sits
+# between the smoother and twist_mux
+# (velocity_smoother -> /control/cmd_vel_smoothed -> stop_zone -> /drivers/nav/cmd_vel)
 # and stops the car when radar or lidar points enter the stop zone. It reads the sensors
 # themselves, not the costmap, so it still
-# stops the car if the costmap, the planner or the controller goes wrong. It only guards
-# Nav2: the other drivers reach twist_mux without it.
+# stops the car if the costmap, the planner or the follower goes wrong. It only guards
+# navigation: the other drivers reach twist_mux without it.
 collision_monitor:
   ros__parameters:
     enable_stamped_cmd_vel: true

@@ -961,8 +961,8 @@ def test_mppi_lag_steer_gamma_is_a_number_0_or_more():
             vehicle.check_steer_gamma(bad)
 
 
-def test_the_stop_zone_shadow_reads_what_collision_monitor_reads():
-    """TODO 182: our stop zone's settings from the same tuned nav2.yaml and car."""
+def test_the_stop_zone_reads_the_collision_monitor_block():
+    """TODO 182: our stop zone's settings from the tuned nav2.yaml and the car."""
     share = Path(__file__).resolve().parents[3] / 'drivers' / 'aav_navigation' / 'config'
     car = vehicle.load(CONFIG)
     tuned = vehicle.nav2_tuned(yaml.safe_load((share / 'nav2.yaml').read_text()),

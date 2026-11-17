@@ -79,8 +79,8 @@ struct Run {
     steer_speed: f64,
 }
 
-/// MODEL=ideal: MPPI plans with the lag-free model Nav2's MPPI assumes (the champion,
-/// `tracker:=none`); else the lag model (`mppi_lag`).
+/// MODEL=ideal: MPPI plans with the lag-free model Nav2's MPPI assumed (its MPPI went on
+/// 17 Nov); else the lag model (`mppi_lag`).
 fn drive(poses: &[Pose], speed: f64) -> Run {
     let truth = LagModel::default();
     if std::env::var("MODEL").is_ok_and(|m| m == "ideal") {
