@@ -50,7 +50,7 @@ OPTIONAL = {
     '/sensors/lidar/scan': 'the lidar part (the sim: worlds with sensors)',
     '/perception/camera/front_left/preview/compressed':
         "a camera: camera_stream on the car, foxglove.launch.py's preview elsewhere",
-    '/safety/collision_monitor/stop_zone': 'a radar or lidar (collision_monitor)',
+    '/safety/stop_zone/box': 'a radar or lidar (the stop zone)',
     '/perception/voxels/cubes': 'voxels:=true (the voxels trial, with the lidar)',
     '/vehicle/sim/chase_camera/compressed':
         "Gazebo's chase camera (a world that renders sensors; sim only)",
@@ -66,8 +66,8 @@ OPTIONAL_SERVICES = {
 }
 # Topics a layout's own user scripts make, inside the app: never asked of the bridge.
 SCRIPT_PREFIX = '/studio_script/'
-# Nav2's own topics the layouts show, outside docs/interfaces.yaml (Nav2 names them).
-NAV2_OWN = {'/local_costmap/costmap'}
+# Topics the layouts show outside docs/interfaces.yaml: none since Nav2 went (17 Nov).
+NAV2_OWN = set()
 # What a 3D panel reads besides its topics: the frames, to place each one.
 FRAMES = {'/tf', '/tf_static'}
 # Topics that send only while the car drives to a goal: silent when parked is no fault.

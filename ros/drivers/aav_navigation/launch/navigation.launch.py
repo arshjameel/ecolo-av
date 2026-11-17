@@ -350,6 +350,7 @@ def nodes(context):
                          'cmd_out': '/drivers/nav/cmd_vel',
                          'state': '/safety/stop_zone/state',
                          'status': '/safety/stop_zone/status',
+                         'box': '/safety/stop_zone/box',
                          'use_sim_time': use_sim_time}]))
         # Holds the stop zone's stops (aav_safety stop_hold, twist_mux's stop_zone lock):
         # a zone flickers between stop and go at its edge. It locks nothing until the zone

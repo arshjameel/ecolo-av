@@ -7,7 +7,7 @@ Subscribes  ego/trace                 nav_msgs/Path, base_link: what the car WIL
             drivers/nav/local_plan    nav_msgs/Path, any frame: what the path follower
                                       WANTS over its own horizon (Nav2's MPPI, mppi_lag)
             plan                      nav_msgs/Path, map: Nav2's whole plan, to its goal
-            local_costmap/costmap     nav_msgs/OccupancyGrid, odom: what's in the way
+            /drivers/nav/costmap/local     nav_msgs/OccupancyGrid, odom: what's in the way
             world/road_ahead          aav_interfaces/RoadAhead, map: the road ahead
                                       (behaviour's), for road_mps, road_m, road_why
             /tf, /tf_static           each of those frames into base_link (the newest)
@@ -96,7 +96,7 @@ class LookAhead(Node):
                                   ('stop', PoseStamped, 'ego/stop_point'),
                                   ('local', Path, 'drivers/nav/local_plan'),
                                   ('plan', Path, 'plan'),
-                                  ('costmap', OccupancyGrid, 'local_costmap/costmap')):
+                                  ('costmap', OccupancyGrid, '/drivers/nav/costmap/local')):
             self.create_subscription(kind, topic, self.keeper(name), 10)
         self.road, self.road_frame = None, 'map'
         self.create_subscription(RoadAhead, 'world/road_ahead', self.on_road, 10)

@@ -31,7 +31,7 @@ Visualization Manager:
       Color Scheme: costmap
       Alpha: 0.4
       Topic:
-        Value: /global_costmap/costmap
+        Value: /drivers/nav/costmap/global
         Depth: 1
         Durability Policy: Transient Local
         History Policy: Keep Last
@@ -42,7 +42,7 @@ Visualization Manager:
       Color Scheme: costmap
       Alpha: 0.6
       Topic:
-        Value: /local_costmap/costmap
+        Value: /drivers/nav/costmap/local
         Depth: 1
         Durability Policy: Volatile
         History Policy: Keep Last

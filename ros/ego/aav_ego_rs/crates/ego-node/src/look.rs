@@ -128,7 +128,7 @@ pub fn start(node: &Node) -> Result<Running> {
         })?,
     ));
     keep.push(Box::new(worker.create_subscription(
-        "local_costmap/costmap",
+        "/drivers/nav/costmap/local",
         |s: &mut Look, msg: OccupancyGrid| s.costmap = Some((msg, s.now())),
     )?));
     keep.push(Box::new(worker.create_subscription(

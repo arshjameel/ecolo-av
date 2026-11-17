@@ -455,7 +455,7 @@ class Recorder(Node):
         self.create_subscription(TwistStamped, '/drivers/nav/cmd_vel', self.on_smoothed, 10)
         self.create_subscription(Bool, '/safety/sensor_watchdog/lock', self.on_lock, 10)
         self.create_subscription(String, '/safety/sensor_watchdog/state', self.on_state, 10)
-        self.create_subscription(CollisionMonitorState, '/safety/collision_monitor/state',
+        self.create_subscription(CollisionMonitorState, '/safety/stop_zone/state',
                                  self.on_monitor, 10)
         self.create_subscription(String, '/safety/geofence/state', self.on_fence, 10)
         # Whichever navigator runs (--stacks own: ours) serves Nav2's action names.

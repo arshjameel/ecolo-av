@@ -10,7 +10,7 @@ ndt_status: /localization/ndt/status             # DiagnosticStatus: its fit and
 log: /rosout                                     # rcl_interfaces Log: the console
 plan: /plan                                      # Path: Nav2's plan
 map: /map                                        # OccupancyGrid, latched
-costmap: /global_costmap/costmap                 # OccupancyGrid: the danger halo
+costmap: /drivers/nav/costmap/global                 # OccupancyGrid: the danger halo
 source: /system/source                           # DataSource, latched: SIM or real
 status: /vehicle/status                          # VehicleStatus: the e-stop
 gate: /safety/output_mux/state                   # String: the output gate

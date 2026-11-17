@@ -47,7 +47,7 @@
         "/robot_description": {
           "visible": true
         },
-        "/local_costmap/costmap": {
+        "/drivers/nav/costmap/local": {
           "visible": true,
           "colorMode": "costmap",
           "alpha": 0.45
@@ -89,7 +89,7 @@
           "lineWidth": 0.1,
           "color": "#9c27b0"
         },
-        "/safety/collision_monitor/stop_zone": {
+        "/safety/stop_zone/box": {
           "visible": true
         },
         "/map": {

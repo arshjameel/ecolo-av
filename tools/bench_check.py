@@ -151,7 +151,7 @@ class Probe(Node):
                                  lambda m: setattr(self, 'picture', m), 2)
         self.stop_picture = None
         self.monitor = []    # (time, action, polygon) from collision_monitor, as it changes
-        self.create_subscription(CollisionMonitorState, '/safety/collision_monitor/state',
+        self.create_subscription(CollisionMonitorState, '/safety/stop_zone/state',
                                  lambda m: self.monitor.append(
                                      (time.monotonic(), m.action_type, m.polygon_name)), 10)
         # Nav2's controller's turn command (rad/s), on the clock of the truth's stamps (the

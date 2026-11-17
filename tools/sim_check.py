@@ -643,7 +643,7 @@ class Probe(Node):
         self.hw_estop = self.create_publisher(Bool, '/vehicle/bench/hw_estop', 10)
         self.arm_client = self.create_client(SetBool, '/spine/arm')
         self.monitor = []    # (action, polygon) from collision_monitor, as it changes
-        self.create_subscription(CollisionMonitorState, '/safety/collision_monitor/state',
+        self.create_subscription(CollisionMonitorState, '/safety/stop_zone/state',
                                  lambda m: self.monitor.append((m.action_type, m.polygon_name)),
                                  10)
         self.output_mux = ''   # the output mux's state: OPEN, WAIT or STOP (aav_io_mux)
@@ -1472,7 +1472,7 @@ def check_stop_zone_shadow(probe, delay_limit=0.3, missed_limit=0.2):
     """
     nav2, ours = [], []
     probe.create_subscription(
-        CollisionMonitorState, '/safety/collision_monitor/state',
+        CollisionMonitorState, '/safety/stop_zone/state',
         lambda m: nav2.append((probe.now(), m.action_type == CollisionMonitorState.STOP)), 10)
     probe.create_subscription(
         DiagnosticStatus, '/safety/stop_zone/shadow/state',
@@ -1504,7 +1504,7 @@ def listen_to_both_stop_zones(probe):
     """Record both stop zones' states as (Gazebo's time, stop) on probe.shadow."""
     probe.shadow = {'nav2': [], 'ours': []}
     probe.create_subscription(
-        CollisionMonitorState, '/safety/collision_monitor/state',
+        CollisionMonitorState, '/safety/stop_zone/state',
         lambda m: probe.shadow['nav2'].append(
             (probe.now(), m.action_type == CollisionMonitorState.STOP)), 10)
     probe.create_subscription(

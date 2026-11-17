@@ -12,7 +12,7 @@
       },
       "topics": {
         "/robot_description": {"visible": true},
-        "/local_costmap/costmap": {"visible": true, "colorMode": "costmap", "alpha": 0.5},
+        "/drivers/nav/costmap/local": {"visible": true, "colorMode": "costmap", "alpha": 0.5},
         "/sensors/lidar/scan": {"visible": true, "pointSize": 4, "colorMode": "flat",
                                 "flatColor": "#00e5ff"},
         "/sensors/radar/points": {"visible": true, "pointSize": 6, "colorMode": "flat",
@@ -23,7 +23,7 @@
         "/plan": {"visible": true, "lineWidth": 0.15, "color": "#2196f3"},
         "/goal_pose": {"visible": true, "type": "arrow"},
         "/drivers/nav/route/path": {"visible": true, "lineWidth": 0.1, "color": "#9c27b0"},
-        "/safety/collision_monitor/stop_zone": {"visible": true},
+        "/safety/stop_zone/box": {"visible": true},
         "/safety/ghost/marker": {"visible": true}
       }
     },

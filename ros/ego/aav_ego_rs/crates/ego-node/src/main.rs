@@ -27,7 +27,7 @@
 //!
 //! Node `look_ahead`
 //! Subscribes  ego/trace, ego/stop_point, drivers/nav/local_plan (Path), plan (Path),
-//!             local_costmap/costmap (nav_msgs/OccupancyGrid), world/road_ahead, /tf and
+//!             /drivers/nav/costmap/local (nav_msgs/OccupancyGrid), world/road_ahead, /tf and
 //!             /tf_static (each frame into base_link: the newest)
 //! Publishes   ego/plan_ahead    nav_msgs/Path, base_link, at rate_hz: the faint line
 //!             ego/ahead         diagnostic_msgs/DiagnosticStatus, at rate_hz: gap_m, plan,

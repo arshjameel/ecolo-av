@@ -40,7 +40,7 @@ exec tools/ros.sh ros2 bag record -o "$out" --include-hidden-topics --topics \
   /sensors/camera/front_right/camera_info /sensors/camera/rear/camera_info /sensors/radar/points \
   /perception/detections /perception/stop_sign /perception/stop_sign/distance /perception/camera_obstacles \
   /perception/lane/geometry /perception/radar/clusters /perception/voxels/cubes /perception/voxels/status \
-  /safety/sensor_watchdog/lock /safety/sensor_watchdog/state /safety/collision_monitor/state \
+  /safety/sensor_watchdog/lock /safety/sensor_watchdog/state /safety/stop_zone/state \
   /safety/stop_hold/lock /safety/geofence/lock /safety/geofence/state /safety/output_mux/state \
   /world/road_ahead /drivers/nav/behaviour/state /drivers/nav/speed_limit /drivers/nav/local_plan \
   /drivers/point/plan /drivers/nav/track/status /drivers/nav/navigator/status /drivers/nav/planner/status \

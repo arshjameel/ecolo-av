@@ -155,7 +155,7 @@ class Asker:
         qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                          durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.costmap = None
-        self.node.create_subscription(OccupancyGrid, 'global_costmap/costmap',
+        self.node.create_subscription(OccupancyGrid, '/drivers/nav/costmap/global',
                                       self.on_costmap, qos)
 
     def on_costmap(self, msg):

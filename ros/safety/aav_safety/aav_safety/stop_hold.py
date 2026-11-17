@@ -38,7 +38,7 @@ class StopHoldNode(Node):
         self.hold = StopHold(self.declare_parameter('clear_time', 1.0).value)
         rate = self.declare_parameter('rate_hz', 10.0).value
         self.lock = self.create_publisher(Bool, '/safety/stop_hold/lock', 10)
-        self.create_subscription(CollisionMonitorState, '/safety/collision_monitor/state',
+        self.create_subscription(CollisionMonitorState, '/safety/stop_zone/state',
                                  self.on_state, 10)
         self.was = False
         self.create_timer(1.0 / rate, self.tick)

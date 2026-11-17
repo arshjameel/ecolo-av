@@ -509,7 +509,8 @@ def test_the_stop_zone_sits_between_the_smoother_and_twist_mux():
     assert zone._Node__package == 'aav_stop_zone'
     p = given(zone)
     assert (p['cmd_in'], p['cmd_out']) == ('/control/cmd_vel_smoothed', '/drivers/nav/cmd_vel')
-    assert (p['state'], p['status']) == ('/safety/stop_zone/state', '/safety/stop_zone/status')
+    assert (p['state'], p['status'], p['box']) == (
+        '/safety/stop_zone/state', '/safety/stop_zone/status', '/safety/stop_zone/box')
     assert remaps(nodes['velocity_smoother'])[1] == ('cmd_vel_smoothed',
                                                       '/control/cmd_vel_smoothed')
     s = json.loads(p['settings'])
