@@ -17,7 +17,7 @@ TODO 119.
 
 ## In the simulator
 
-`pixi run sim-check --kerb-only --with kerbs:=true` (our simulator, the road world, a
+`pixi run sim-check --kerb-only --with kerbs:=true` (on by default now; our simulator, the road world, a
 10 m x 0.3 m x 0.3 m kerb across the road, the planner blind to it):
 
 | Run | Seen from (past the bumper) | Stopped | By |
@@ -164,5 +164,5 @@ too (`campus_world.py` reads them).
 ```sh
 cd ros/perception/aav_voxels_rs && cargo test -p voxels          # the cast clouds
 cargo test -p voxels --release -- --ignored --nocapture steps_range   # the distances
-pixi run sim-check --kerb-only --with kerbs:=true                 # the car and a kerb
+pixi run sim-check --kerb-only                                   # the car and a kerb (ours: kerbs on)
 ```

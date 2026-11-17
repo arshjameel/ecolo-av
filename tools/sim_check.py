@@ -145,7 +145,8 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             says from how far the kerbs' step finder saw
                                             it. Two runs: the lidar alone, then with the
                                             radar; --kerb-only skips the road world's run;
-                                            add --with kerbs:=true for the step finder)
+                                            the step finder is ours' (--with kerbs:=false
+                                            for the flat scan alone))
     pixi run sim-check --three-point      (reverse, TODO 174: a 6.5 m street of walls, a
                                             goal behind the car facing back; the car must
                                             turn in it, backing at least once, without
