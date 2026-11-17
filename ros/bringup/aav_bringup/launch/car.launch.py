@@ -4,28 +4,25 @@ The real car. One launch file for every machine; a machine file picks the parts.
   ros2 launch aav_bringup car.launch.py machine:=orin
       [gps:=true] [gps_driver:=ublox] [map:=<map yaml>] [start_x:=0] [start_y:=0]
       [start_yaw:=0] [max_speed:=0.3]
-      [reversing:=true]   (on since 1 Nov: Nav2 may back up, at 0.5 m/s at most, where
+      [reversing:=true]   (on since 1 Nov: the car may back up, at 0.5 m/s at most, where
                            the machine runs something that sees behind: the lidar, or
                            camera_obstacles with a detector on the rear camera that keeps
                            people. Without, it stays forward only and says why. Until the
                            wheels tell direction (H5), the speed's sign is the last
                            command's. false: forward only)
-      [planner:=]         (Nav2's planner: empty picks lattice (SmacPlannerLattice, our
-                           primitives) if Nav2 may reverse, else hybrid (SmacPlannerHybrid):
-                           forward only, the lattice lost the U-turn. Only these two on
-                           the car: smac2d, navfn and theta_star ignore the turning
-                           radius, and are refused here, with no way round it
-                           (vehicle.check_planner real). diffusion (the model draws, the
-                           guard checks, the lattice behind it) only with diffusion_trial)
+      [planner:=]         (empty: own, our planner (aav_planner: Nav2's State Lattice in
+                           Rust, our primitives), forward or reversing: the only one on the
+                           car since Nav2 went (17 Nov). diffusion (the model draws, the
+                           guard checks, ours behind it) only with diffusion_trial)
       [diffusion_trial:=false]
                           (true: the diffusion planner's car trial, planner:=diffusion
-                           only. ego, Nav2 and the geofence are held to max_speed, which
+                           only. ego, the follower and the geofence are held to max_speed, which
                            must then be empty (0.5 m/s) or at most 0.5 m/s
                            (vehicle.DIFFUSION_TRIAL_SPEED); every lock as always.
                            diffusion_provider:=, diffusion_python:= pick the model's engine
                            and Python on the Orin. docs/car-day.md, the diffusion trial)
       [lidar:=true]       (false: no lidar anywhere, whatever the machine file says)
-      [voxels:=false]     (true: Nav2 reads the lidar as 0.25 m cubes, aav_voxels, a trial
+      [voxels:=false]     (true: the costmap reads the lidar as 0.25 m cubes, aav_voxels, a trial
                            not yet tried on the car: docs/designs/2026-10-30_voxels.md)
       [voxels_impl:=python] (rust: the same cubes from aav_voxels_rs, the Rust port)
       [ego_impl:=rust] [behaviour_impl:=rust] [watchdog_impl:=rust]
@@ -34,11 +31,11 @@ The real car. One launch file for every machine; a machine file picks the parts.
                            aav_watchdog_rs, aav_localization_health_rs. python: the Python
                            node instead, the same names and topics; one switch each, the
                            fall-back if one misbehaves. docs/car-day.md)
-      [ghost:=false]      (true: a pretend person in Nav2's view, where Nav2 runs, for
+      [ghost:=false]      (true: a pretend person only navigation sees, where it runs, for
                            stopping tests with nothing real to hit: pixi run ghost ahead 10)
       [geofence_radius:=30.0] [geofence_site:=] [stands:=false]
                           (the geofence, beside the mux, always: every program (scripted,
-                           replay, point, Nav2, AI; never a person) stops before its
+                           replay, point, navigation, AI; never a person) stops before its
                            stopping distance reaches a circle of geofence_radius m round
                            the marked start spot (start_x, start_y), or while the global
                            pose or the GPS is stale, unsure or jumped. geofence_site: a
@@ -49,7 +46,7 @@ The real car. One launch file for every machine; a machine file picks the parts.
                            stands:=true: the wheels are off the ground, so NO fence, said
                            loudly; gps:=false needs it. docs/geofence.md)
       [watch_hud:=true]   (the safety drivers rely on the HUD: the sensor watchdog stops
-                           Nav2 and the AI slot while its /hud/heartbeat is missing. false:
+                           navigation and the AI slot while its /hud/heartbeat is missing. false:
                            a session with no HUD screen, said in the test card)
       [bridge:=rust]      (spine_bridge's language, where the machine runs the spine: rust,
                            aav_spine_bridge; or python, aav_spine's)
@@ -70,7 +67,7 @@ PyTorch, no model file, no usb_cam, no decoder program) is skipped with a warnin
 Parts and what they start:
   description     robot_state_publisher (+ joint_state_publisher): the car's frames
   mux, ego        twist_mux -> /control/cmd_vel -> ego -> /ego/actuator_cmd; with the
-                  mux, the sensor watchdog (aav_safety): it stops Nav2 and the AI slot when
+                  mux, the sensor watchdog (aav_safety): it stops navigation and the AI slot when
                   a sensor they need fails, or the HUD's screen (watch_hud), and they stop
                   too if it goes quiet; and the geofence (aav_safety): every program stops
                   before the fence's edge, or with no trusted global pose. With ego,
@@ -102,17 +99,19 @@ Parts and what they start:
                   /perception/radar/clusters, /perception/radar/cluster_boxes
   camera_obstacles
                   the detectors' boxes as points on the road -> /perception/camera_obstacles,
-                  for Nav2's costmap. Off until the cameras are calibrated (Q22)
+                  for our costmap. Off until the cameras are calibrated (Q22)
   lane            lane keeping: lane_finder on /sensors/camera/front_left/image_raw ->
                   /perception/lane/geometry, and
                   control_interface -> /drivers/ai/cmd_vel (twist_mux's AI slot). Off on every
                   machine: it drives whenever it sees a lane, unless a driver above it does
   localization    ekf_local, ekf_global, navsat_transform
-  navigation      Nav2 -> /drivers/nav/cmd_vel. Nav2's local costmap reads the sensors
-                  this machine runs: with radar, /sensors/radar/points, and
-                  collision_monitor stops Nav2 for radar points just ahead; with
-                  camera_obstacles, the camera's points; with lidar, /sensors/lidar/points
-                  (and collision_monitor stops Nav2 for lidar points, or a silent lidar)
+  navigation      our navigation (Nav2's ports, Nav2 deleted 17 Nov: the map server,
+                  costmaps, planner, navigator, mppi_lag, smoother, stop zone) ->
+                  /drivers/nav/cmd_vel. The local costmap reads the sensors this machine
+                  runs: with radar, /sensors/radar/points, and the stop zone (aav_stop_zone)
+                  stops the car for radar points just ahead; with camera_obstacles, the
+                  camera's points; with lidar, /sensors/lidar/points (and the stop zone
+                  stops the car for lidar points, or a silent lidar)
   spine           the CAN bus, on the machine it is wired to (the Orin): ros2_socketcan +
                   spine_bridge. actuators:=uart: role sensors, the wheel nodes' frames
                   into /vehicle/odom and /vehicle/wheels, nothing sent (no CAN sender
@@ -414,7 +413,7 @@ def launch_setup(context):
     parts = config['parts']
     # The diffusion planner's car trial: only with diffusion_trial:=true, and then the
     # whole car is held to its speed before anything starts. The included files share
-    # this launch configuration: ego's cap, the geofence's and Nav2's top speed.
+    # this launch configuration: ego's cap, the geofence's and the follower's top speed.
     trial = flag('diffusion_trial')
     if trial:
         context.launch_configurations['planner'] = vehicle.check_planner(
@@ -472,9 +471,9 @@ def launch_setup(context):
         actions.append(include('aav_description', 'description.launch.py'))
     if on('mux'):
         actions.append(include('aav_command_mux', 'mux.launch.py', geofence_lock='true'))
-        # The sensor watchdog, next to the mux: twist_mux's sensors lock stops Nav2 and the
+        # The sensor watchdog, next to the mux: twist_mux's sensors lock stops navigation and the
         # AI slot when the wheels, the IMU, the GPS or an EKF fail (aav_safety), and when
-        # the watchdog itself goes quiet (the lock's 1 s timeout). Nav2 and the sensors may
+        # the watchdog itself goes quiet (the lock's 1 s timeout). Navigation and the sensors may
         # run on other machines: it watches their topics over the network. The HUD starts
         # on its own (aav-hud.service), wherever the screen is: its heartbeat says it lives.
         # And each camera stream this machine starts, through its detections.
@@ -556,7 +555,7 @@ def launch_setup(context):
                 get_logger('car.launch.py').warning(
                     f'camera_obstacles: {", ".join(blind)}: no calibration '
                     '(aav_camera_stream config/cameras.yaml), so no lens: those boxes '
-                    "won't reach Nav2's costmap")
+                    "won't reach the costmap")
         actions.append(Node(package='aav_detector', executable='camera_obstacles',
                             name='camera_obstacles', parameters=parameters))
     if on('lane'):
@@ -568,12 +567,12 @@ def launch_setup(context):
                                start_y=arg('start_y'), start_yaw=arg('start_yaw'),
                                localization_health_impl=impls['localization_health_impl']))
     if on('navigation'):
-        # Always pass a map: an empty `map` here would override Nav2's own default,
+        # Always pass a map: an empty `map` here would override navigation's own default,
         # because included launch files share launch arguments.
         empty_map = os.path.join(get_package_share_directory('aav_navigation'), 'maps',
                                  'empty.yaml')
-        # Nav2 backs up only if something here sees behind the car (Ben, 22 Oct: "Yes the
-        # car can reverse"); collision_monitor then watches a box behind the rear bumper.
+        # The car backs up only if something here sees behind it (Ben, 22 Oct: "Yes the
+        # car can reverse"); the stop zone then watches a box behind the rear bumper.
         reversing = flag('reversing')
         # The rear camera counts once its detector reads it and keeps people (machine file:
         # detector: {extra_images: /sensors/camera/rear/image_raw, labels: ""}).
@@ -586,9 +585,7 @@ def launch_setup(context):
             reversing = False
         # The local costmap reads the sensors this machine runs. Each is passed, on or
         # off, so none can leak in from another file.
-        # Only planners whose paths keep to the turning radius, on real data. None asked
-        # for: the lattice if Nav2 may reverse, else Hybrid-A* (the lattice lost the
-        # U-turn forward only).
+        # Only planners whose paths keep to the turning radius, on real data: ours.
         planner = vehicle.check_planner(arg('planner') or vehicle.default_planner(reversing),
                                         real=True, trial=trial)
         trial_args = ({'max_speed': arg('max_speed'),
@@ -600,22 +597,22 @@ def launch_setup(context):
                                voxels=bool(flag('voxels') and on('lidar')),
                                voxels_impl=vehicle.check_voxels_impl(arg('voxels_impl')),
                                behaviour_impl=impls['behaviour_impl'],
-                               collision_monitor=(on('radar') or on('lidar') or flag('ghost')
-                                                  or rear_camera),
+                               stop_zone=(on('radar') or on('lidar') or flag('ghost')
+                                          or rear_camera),
                                camera_obstacles=on('camera_obstacles'),
                                camera_guard=rear_camera,
-                               # Nav2's own navigator, costmaps and smoother, always: our
-                               # trials (navigator:=own, costmap:=own, smoother:=own) never
-                               # reach the car.
+                               # Ours, since Nav2 went (17 Nov, TODO 184): the champions,
+                               # the only options; the follower is mppi_lag (the default).
                                navigator=vehicle.DEFAULT_NAVIGATOR,
                                smoother=vehicle.DEFAULT_SMOOTHER,
                                costmap=vehicle.DEFAULT_COSTMAP,
                                reversing=reversing))
         # What this run uses, in words, for the cockpit's Algorithms table (aav_run_info).
-        # The car has no trial localizers and no trial trackers: Nav2's own follower.
+        # The car has no trial localizers and no trial trackers: mppi_lag, the champion.
         actions.append(Node(package='aav_run_info', executable='run_info', name='run_info',
                             parameters=[{'profile': f'car {machine}', 'planner': planner,
                                          'controller': vehicle.DEFAULT_CONTROLLER,
+                                         'tracker': vehicle.DEFAULT_TRACKER,
                                          'lidar': on('lidar'), 'radar': on('radar'),
                                          'voxels': bool(flag('voxels') and on('lidar'))}]))
     # Exactly one backend: legacy_uart_bridge with actuators:=uart, the CAN spine with can.
@@ -677,17 +674,17 @@ def generate_launch_description():
                                           'or ublox_dgnss (u-blox F9P, apt only). Tentative '
                                           'until the receiver is known: Q18'),
         DeclareLaunchArgument('map', default_value='',
-                              description='Map YAML for Nav2 (default: the empty map)'),
+                              description='Map YAML for navigation (default: the empty map)'),
         # The roof's Velodyne VLP-16 (the 16 Oct audit), where the machine file has the
-        # lidar part: its driver, and Nav2 reading it. false switches it off everywhere.
+        # lidar part: its driver, and the costmap reading it. false switches it off everywhere.
         DeclareLaunchArgument('lidar', default_value='true',
-                              description='false: no lidar driver, and Nav2 without the '
+                              description='false: no lidar driver, and the costmap without the '
                                           'lidar, whatever the machine file says'),
         # Off unless asked for: a pretend person, for stopping tests on the real car with
-        # nothing real to hit (aav_ghost, docs/ghost-obstacles.md). Where Nav2 runs.
+        # nothing real to hit (aav_ghost, docs/ghost-obstacles.md). Where navigation runs.
         # A trial (docs/designs/2026-10-30_voxels.md): the cubes instead of the flat scan.
         DeclareLaunchArgument('voxels', default_value='false',
-                              description='true (with the lidar): Nav2 reads the lidar as '
+                              description='true (with the lidar): the costmap reads the lidar as '
                                           '0.25 m cubes (aav_voxels) instead of the flat scan'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
@@ -698,7 +695,7 @@ def generate_launch_description():
                                           'process) or python (aav_ego)'),
         DeclareLaunchArgument('behaviour_impl', default_value=vehicle.DEFAULT_BEHAVIOUR_IMPL,
                               description='rust (aav_behaviour_rs) or python (aav_behaviour), '
-                                          'where Nav2 runs with behaviour:=true'),
+                                          'where navigation runs with behaviour:=true'),
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
                               description='rust (aav_watchdog_rs) or python (aav_safety): '
                                           'the sensor watchdog'),
@@ -707,7 +704,7 @@ def generate_launch_description():
                               description='rust (aav_localization_health_rs) or python '
                                           '(aav_localization_health)'),
         DeclareLaunchArgument('ghost', default_value='false',
-                              description="true: a pretend person in Nav2's view, placed "
+                              description="true: a pretend person only navigation sees, placed "
                                           'with pixi run ghost ahead 10 (it only adds)'),
         # The car's fence until the test lot's polygon is surveyed (a TODO for the team):
         # 30 m round where it first stood still. Change it per test card, not in passing.
@@ -722,9 +719,9 @@ def generate_launch_description():
                               description='true: the wheels are off the ground. The '
                                           'geofence opens its lock (no fence), and says so '
                                           'loudly. Needed with gps:=false'),
-        # The safety drivers rely on the HUD (PLAN T9.8): no heartbeat, no Nav2.
+        # The safety drivers rely on the HUD (PLAN T9.8): no heartbeat, no navigation.
         DeclareLaunchArgument('watch_hud', default_value='true',
-                              description='true: the sensor watchdog stops Nav2 and the AI '
+                              description='true: the sensor watchdog stops navigation and the AI '
                                           "slot while the HUD's /hud/heartbeat is missing; "
                                           'false: a session with no HUD screen'),
         DeclareLaunchArgument('start_x', default_value='0.0'),
@@ -735,17 +732,16 @@ def generate_launch_description():
         # design review F2). Until the wheel sensors tell direction (H5), the speed's sign
         # is the last command's: wrong only if the car is pushed or rolls back (tests.md
         # 4.24). Only where something sees behind (vehicle.blind_behind); at 0.5 m/s at
-        # most. People can always reverse (joystick, keyboard, RC); this is Nav2 only.
+        # most. People can always reverse (joystick, keyboard, RC); this is navigation only.
         DeclareLaunchArgument('reversing', default_value='true',
-                              description='true: Nav2 may back up, at 0.5 m/s at most, '
+                              description='true: the car may back up, at 0.5 m/s at most, '
                                           'where the lidar watches behind; false: forward '
-                                          'only (docs/learn-nav2.md)'),
+                                          'only'),
         DeclareLaunchArgument('planner', default_value='',
-                              description=', '.join(vehicle.CAR_PLANNERS) + ": Nav2's "
-                                          'planner on the car; empty: lattice if Nav2 may '
-                                          'reverse, else hybrid (the lattice lost the '
-                                          'U-turn forward only); the grid planners (sim and '
-                                          'bench trials) are refused here'),
+                              description=', '.join(vehicle.CAR_PLANNERS) + ': the '
+                                          'planner on the car; empty: own (ours, the only '
+                                          'one since Nav2 went); diffusion only with '
+                                          'diffusion_trial'),
         DeclareLaunchArgument('bridge', default_value=bridges.DEFAULT,
                               description='spine_bridge in rust (aav_spine_bridge) or python '
                                           '(aav_spine), where the machine runs the spine'),

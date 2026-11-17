@@ -5,11 +5,11 @@ The whole stack with CARLA as the car: the same nodes and configs as sim.launch.
       [town:=] [osm:=] [spawn:=] [frame:=auto] [control:=ackermann] [sync:=true]
       [cameras:=true] [radar:=true] [lidar:=true] [teleop:=false] [rviz:=false]
       [foxglove:=false] [watchdog:=true] [sim_speed:=] [reversing:=true]
-  pixi run carla-car host:=192.168.1.50                  a town, Nav2 and the sensors
+  pixi run carla-car host:=192.168.1.50                  a town, navigation and the sensors
   pixi run carla-car host:=127.0.0.1 osm:=maps/carla/carleton.osm   Carleton's roads
 
 Only the backend differs from Gazebo: aav_carla's carla_adapter in place of
-gazebo_adapter, so mux, ego, the EKFs, navsat_transform, Nav2, radar_clusters and the
+gazebo_adapter, so mux, ego, the EKFs, navsat_transform, navigation, radar_clusters and the
 sensor watchdog run with the car's own configs. Every node runs on CARLA's clock.
 
 Where things run (docs/carla.md): the CARLA server on an NVIDIA computer; this launch on
@@ -19,7 +19,7 @@ stays on this computer (pixi run carla-car uses tools/ros.sh --local, like every
 stand-in). To watch from a Mac: AAV_DISCOVERY=SUBNET pixi run carla-car ..., on a network
 with no real car on the same ROS_DOMAIN_ID.
 
-The map: Nav2 gets the empty map. In a town the car starts at the map origin facing east,
+The map: navigation gets the empty map. In a town the car starts at the map origin facing east,
 as in Gazebo; on a Carleton map (osm:=) the map frame is CARLA's world, round the datum.
 """
 
@@ -81,7 +81,7 @@ def launch_setup(context):
         actions.append(include(context, 'aav_navigation', 'navigation.launch.py',
                                use_sim_time='true',
                                map=os.path.join(nav_share, 'maps', 'empty.yaml'),
-                               radar=radar, lidar=lidar, collision_monitor=radar or lidar,
+                               radar=radar, lidar=lidar, stop_zone=radar or lidar,
                                max_speed=arg('sim_speed'),
                                reversing=str(flag['reversing']).lower()))
     if flag['watchdog']:
@@ -123,9 +123,10 @@ def generate_launch_description():
         DeclareLaunchArgument('watchdog', default_value='true',
                               description='the sensor watchdog (aav_safety)'),
         DeclareLaunchArgument('sim_speed', default_value='',
-                              description='m/s, up to 5: a higher top speed for ego and Nav2, '
+                              description='m/s, up to 5: a higher top speed for ego and the '
+                                          'follower, '
                                           'in simulators only'),
         DeclareLaunchArgument('reversing', default_value='true',
-                              description='Nav2 may drive backwards'),
+                              description='the car may drive backwards'),
     ]
     return LaunchDescription(args + [OpaqueFunction(function=launch_setup)])

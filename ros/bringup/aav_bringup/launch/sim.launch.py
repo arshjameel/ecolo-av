@@ -1,7 +1,7 @@
 """
 The whole stack in a simulator: same nodes and configs as the car, simulated hardware.
 
-  ros2 launch aav_bringup sim.launch.py [stack:=ours|stock|best|car|]
+  ros2 launch aav_bringup sim.launch.py [stack:=ours|best|car|]
       [pose:=] [path:=] [steer:=] [lanes:=]
       [world:=empty|test_lot|road|campus] [nav:=true]
       [teleop:=false] [gui:=true] [rviz:=true]
@@ -24,8 +24,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [ghost:=false] [simulator:=gazebo|own]
   pixi run sim world:=road                         the road: the car's camera and radar
   pixi run sim world:=campus                       Carleton, every level ours
-  pixi run sim stack:=stock                        every level Nav2's (the yardstick)
-  pixi run sim costmap:=nav2                       Nav2's costmaps, the rest ours
+  pixi run sim stack:=best                         every level's champion (as the car)
   pixi run sim path:=hybrid_rs steer:=mpc_lag      one level's league option each (stacks.yaml)
 
 Ours is the default (Ben, 14 Nov: "Ours default now, then delete"): stack:=ours sets the
@@ -35,10 +34,10 @@ default, meaning "the stack's choice"; any value given by hand wins over the sta
 One switch per level (one shape, "From 36 switches to 8"): pose:=, path:=, steer:= and
 lanes:= pick that level's option by its name in stacks.yaml (path:=lane), over
 the stack's pick; a single switch given by hand (planner:=) still wins over both.
-stack:= (empty): no stack, each switch as given, else the champions' (Nav2's). The real
+stack:= (empty): no stack, each switch as given, else the champions'. The real
 car (car.launch.py) keeps its own choices until ours wins there too.
   pixi run -e ml sim world:=road perception:=true  adds the detector and the stop-sign watcher
-  pixi run sim world:=test_lot sim_speed:=3 hud:=true   Gazebo, RViz, Nav2 and the HUD window
+  pixi run sim world:=test_lot sim_speed:=3 hud:=true   Gazebo, RViz, navigation and the HUD window
   pixi run sim world:=test_lot map:=true           ... and the big screen's map window
 
 world:=empty pairs with the empty map (phase 2); world:=test_lot with
@@ -53,13 +52,13 @@ roof lidar (aav_gazebo worlds.has_sensors), so the car's whole graph runs there,
 bench's argument names:
 
   the radar           where the world renders it (radar:=false drops it, to test the
-                      lidar alone): radar_clusters, and Nav2's obstacle layer and
-                      collision_monitor (navigation.launch.py radar:=true)
+                      lidar alone): radar_clusters, and our costmap's obstacle layer and
+                      the stop zone (navigation.launch.py radar:=true)
   perception:=true    the detector (RF-DETR; the ml environment) and stop_sign_watcher: twist_mux's
                       stop-sign lock
   lane:=true          lane keeping: lane_finder and control_interface, on /drivers/ai/cmd_vel.
                       lane:=fake: control_interface on a pretend lane, in any world
-  camera_obstacles    the detectors' boxes into Nav2's local costmap
+  camera_obstacles    the detectors' boxes into our local costmap
   hud:=true           the HUD window (aav_hud, as pixi run hud): needs a screen
   map:=true           the map window (aav_hud, as pixi run map): Nav2's map, the
                       car, the plan, the distance left. Needs a screen
@@ -77,24 +76,23 @@ bench's argument names:
                       /system/algorithms (aav_run_info), for the cockpit's Algorithms table
   obstacle:=true      the bench's 1 m box in the lane, 15 m ahead (aav_gazebo)
   lidar:=false        no roof lidar. It's on by default (15 Oct): a simulated 16-beam
-                      lidar on /sensors/lidar/points, which Nav2 reads as a 2D scan
+                      lidar on /sensors/lidar/points, which the costmap reads as a 2D scan
                       (navigation.launch.py lidar:=true: its local costmap and
                       collision_monitor). Its earlier flakiness on a Mac came from other
                       programs competing
   watch_screens:=dev_window,hw_panel  commands flow only while those screens beat (they
                       send it with --developer): close one and the output mux closes, and
                       with spine:=true the spine's own state machine latches
-  sim_speed:=3        a higher top speed (m/s, up to 5), for ego and Nav2, in Gazebo only:
+  sim_speed:=3        a higher top speed (m/s, up to 5), for ego and the follower, in a simulator only:
                       the car's 1.0 m/s cap (ego.yaml, nav2.yaml) is for its first drives.
                       ego refuses it outside a simulator
-  controller:=rpp     Nav2 follows the path with Regulated Pure Pursuit, not MPPI (the
-                      champion), with tracker:=none: pixi run measure controllers drives
-                      both (docs/path-followers.md)
-  planner:=hybrid     another planner (navigation.launch.py planner:=): own (ours, the
-                      default), lattice (Nav2's, stack:=stock) or hybrid keep to the car's
-                      turning radius;
-                      smac2d, navfn and theta_star don't, trials only. pixi run
-                      measure controllers --planners scores them (docs/controllers.md).
+  planner:=diffusion  a model draws the path, a guard checks it, our planner's path when it
+                      fails (aav_diffusion_planner, a trial: pixi install --locked -e
+                      learn, pixi run diffusion train first); diffusion_model:=<.onnx>
+                      another model; diffusion_record:=<folder> each plan's inputs, to
+                      replay offline; diffusion_smoothing:=average the 2 Nov smoothing.
+                      own (the default): our planner (aav_planner: Nav2's lattice in
+                      Rust; docs/own-planner.md). Nav2's planners went on 17 Nov.
                       lattice_headings:=32: the lattice's trial file, 32 headings
                       plan_smoothing:=strong: the planner's smoother pulls harder, so a
                       road at an angle is no staircase (a challenger, TODO 168)
@@ -103,33 +101,19 @@ bench's argument names:
                       jitter (TODO 168)
                       lattice_moves:=smooth|smooth_fast: the lattice's trial moves,
                       curvature no faster than the steering turns (tools/lattice_smooth.py)
-                      planner_search:=hybrid: with planner:=own, ours runs Nav2's
-                      Hybrid-A* ported instead of the lattice (a challenger, the league's
-                      hybrid_rs)
-                      planner:=diffusion: a model draws the path, a guard checks it,
-                      the lattice's path when it fails (aav_diffusion_planner, a trial:
-                      pixi install --locked -e learn, pixi run diffusion train first);
-                      diffusion_model:=<.onnx> another model; diffusion_record:=<folder>
-                      each plan's inputs, to replay offline; diffusion_smoothing:=average
-                      the 2 Nov smoothing
-                      planner:=own: our own planner (aav_planner: Nav2's lattice in
-                      Rust) answers the trees, Nav2's lattice beside it
-                      (docs/own-planner.md)
-  tracker:=lqr        another path follower in controller_server's place (mppi_lag, ours
-                      in Rust, is the default; aav_track: pure_pursuit, stanley, lqr or
-                      mpc), on the same planner, smoother and collision_monitor.
-                      aav_track's drive forwards only: with reversing:=false
-                      (docs/trials.md); mppi_lag reverses too. tracker:=none: Nav2's
-                      controller_server (controller:=)
-  costmap:=nav2       Nav2's costmaps instead of ours (aav_costmap, the default; with
-                      tracker:=mppi_lag, mppi_lag reads ours: docs/own-costmap.md)
-  navigator:=nav2     bt_navigator and waypoint_follower instead of our own navigator
-                      (aav_navigator, the default); with planner:=own costmap:=own
-                      tracker:=mppi_lag, no Nav2 server navigates (docs/own-navigator.md)
+                      planner_search:=hybrid: ours runs Nav2's Hybrid-A* ported instead
+                      of the lattice (a challenger, the league's hybrid_rs)
+  tracker:=lqr        another path follower (mppi_lag, ours in Rust, is the default;
+                      aav_track: pure_pursuit, stanley, lqr or mpc; mpc_lag_rs), on the
+                      same planner, smoother and stop zone. aav_track's drive forwards
+                      only: with reversing:=false (docs/trials.md); mppi_lag reverses too
+  costmap:=own, navigator:=own, smoother:=own, controller:=mppi
+                      each the only option since Nav2 went (17 Nov, TODO 184; its scores:
+                      docs/league-results-2026-11-16.md)
   behaviour:=false    no behaviour planner (on by default with stack:=ours). On:
-                      the behaviour states and a speed cap on Nav2 from the stopping law
+                      the behaviour states and a speed cap on the follower from the stopping law
                       (aav_behaviour, a trial: docs/stopping.md); it also sends the road ahead
-                      (/world/road_ahead), and ego holds Nav2 to it (ego road_ahead:=true)
+                      (/world/road_ahead), and ego holds navigation to it (ego road_ahead:=true)
   kerbs:=true         the kerbs (TODO 119), where the lidar runs: the Rust voxels node finds
                       steps in the ground (aav_voxels_rs steps:=true) and the local
                       costmap's kerb_layer and the stop zone read them. Empty: the
@@ -177,7 +161,7 @@ bench's argument names:
                       it drop
   amcl:=true          stock AMCL beside the global EKF, scored only (docs/trials.md): only
                       in world:=test_lot with nav:=true and the lidar, from the start pose
-  voxels:=true        Nav2's local costmap and collision_monitor read the lidar as 0.25 m
+  voxels:=true        our local costmap and the stop zone read the lidar as 0.25 m
                       cubes (aav_voxels, a trial: docs/designs/2026-10-30_voxels.md)
                       instead of the flat scan; only with the lidar
   voxels_impl:=rust   the Rust voxels node (aav_voxels_rs) in the Python one's place, for
@@ -224,22 +208,22 @@ bench's argument names:
                       No ekf_global; aav_gazebo's truth_localizer publishes
                       /localization/odom/global and map -> odom so that map -> base_link
                       is the truth. ekf_local still gives odom -> base_link. Never the car
-  replan_hz:=1.0      how often Nav2's navigate-to-pose tree plans again (navigation.launch.py;
+  replan_hz:=1.0      how often the navigator plans a to-pose goal again (navigation.launch.py;
                       1.0 as Nav2's own tree). replan_hz:=0: plan once per goal, the wiggle's
                       second test
   map_correction:=slow  with a trial tracker (mppi_lag, aav_track), a challenger: the
                       follower's held map -> odom, moved toward the newest slowly (TODO 186);
                       newest (the default): each new path by the newest map -> odom
-  plan_around:=false  Nav2's planner sees only the map, not the radar and lidar: the car
+  plan_around:=false  the planner sees only the map, not the radar and lidar: the car
                       stops for an obstacle instead of planning round it (the stop tests)
-  watchdog:=true      the sensor watchdog (aav_safety): twist_mux's sensors lock stops Nav2
+  watchdog:=true      the sensor watchdog (aav_safety): twist_mux's sensors lock stops navigation
                       and the AI slot when the wheels, the IMU, the GPS or an EKF go quiet,
                       NaN or frozen, or the GPS jumps; and the camera, where something
                       reads it (perception, lane, camera_obstacles, faults). With
                       hud:=true, the HUD too: its /hud/heartbeat stops when its screen
                       freezes or dies
   geofence:=true      the geofence (aav_safety): twist_mux's geofence lock holds every
-                      program (scripted, point, Nav2, AI; never a person) before its
+                      program (scripted, point, navigation, AI; never a person) before its
                       stopping distance reaches a circle of geofence_radius m (200 here,
                       600 on the campus: past every sim check's drive; the car's is 30)
                       round where the car starts (0, start_y), or while the global pose
@@ -259,9 +243,9 @@ bench's argument names:
                       firmware's logic: its throttle ramp, brake, no timeout) -> the
                       actuator model -> Gazebo. esp32_loop:= is the bridge's
                       speed_loop.mode: pi (the default here) or open (the 2025-26 mapping)
-  ghost:=true        a pretend person in Nav2's view (aav_ghost), for stopping tests
+  ghost:=true        a pretend person only navigation sees (aav_ghost), for stopping tests
                       with nothing in Gazebo: pixi run ghost ahead 10, pixi run ghost off.
-                      Its own costmap layer and collision_monitor source: it only adds
+                      Its own costmap layer and stop zone source: it only adds
                       (docs/ghost-obstacles.md)
   actuator_model:=false  the old instant car instead of the actuator model (gazebo_adapter;
                       vehicle.yaml's actuators:), to compare the two
@@ -357,7 +341,7 @@ def include(context, package, launch_file, **args):
 
 # The switches a stack (stack:=, config/stacks.yaml) may set. Each is declared empty
 # (stacks.CHOSEN: "the stack's choice"), so any value given by hand wins; with no stack,
-# an empty one takes its fallback here (the champions', Nav2's: as car.launch.py runs).
+# an empty one takes its fallback here (the champions': ours since Nav2 went, 17 Nov).
 STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.DEFAULT_TRACKER,
                   'planner': vehicle.DEFAULT_PLANNER, 'costmap': vehicle.DEFAULT_COSTMAP,
                   'navigator': vehicle.DEFAULT_NAVIGATOR, 'smoother': vehicle.DEFAULT_SMOOTHER,
@@ -509,7 +493,7 @@ def launch_setup(context):
                 esp32=arg('esp32'), esp32_loop=arg('esp32_loop'), simulator=simulator),
         include(context, 'aav_command_mux', 'mux.launch.py', use_sim_time='true',
                 sensor_lock=flag['watchdog'], geofence_lock=flag['geofence']),
-        # behaviour:=true: the road ahead's writer runs, so ego holds Nav2 to it. Its writer
+        # behaviour:=true: the road ahead's writer runs, so ego holds navigation to it. Its writer
         # runs inside navigation: with nav:=false there is no road ahead, and ego held the
         # point driver at 0 for ever waiting for one (TODO 94, 15 Nov).
         include(context, 'aav_ego', 'ego.launch.py', use_sim_time='true',
@@ -559,8 +543,8 @@ def launch_setup(context):
         actions.append(include(context, 'aav_radar_clusters', 'radar_clusters.launch.py',
                                minimum_points='5'))
     if flag['nav']:
-        # Where the world renders the radar and the lidar, Nav2's local costmap reads
-        # them, and collision_monitor guards Nav2's commands, as on a car with them.
+        # Where the world renders the radar and the lidar, our local costmap reads them,
+        # and the stop zone guards navigation's commands, as on a car with them.
         actions.append(include(context, 'aav_navigation', 'navigation.launch.py',
                                use_sim_time='true',
                                map=os.path.join(nav_share, 'maps', MAPS[world]),
@@ -568,11 +552,10 @@ def launch_setup(context):
                                voxels=flag['voxels'], kerbs=flag['kerbs'],
                                screen_cubes=flag['screen_cubes'],
                                voxels_impl=vehicle.check_voxels_impl(arg('voxels_impl')),
-                               full_costmap=world != worlds.CAMPUS,
                                cube_floor=(worlds.CAMPUS_CUBE_FLOOR
                                            if world == worlds.CAMPUS and not flag['voxels']
                                            else ''),
-                               collision_monitor=radar or lidar or flag['ghost'],
+                               stop_zone=radar or lidar or flag['ghost'],
                                camera_obstacles=flag['camera_obstacles'],
                                max_speed=sim_speed,
                                reversing=str(flag['reversing']).lower(),
@@ -589,7 +572,6 @@ def launch_setup(context):
                                global_window=arg('global_window'),
                                costmap_chunks=campus_costmap_chunks(arg('costmap_chunks'),
                                                                     world),
-                               stop_zone_shadow=arg('stop_zone_shadow'),
                                things_background=arg('things_background'),
                                things_background_below=arg('things_background_below'),
                                things_background_chunks=os.path.abspath(
@@ -755,10 +737,10 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('stack', default_value=stacks.DEFAULT,
                               description='the league (config/stacks.yaml): ours (the '
-                              'default), stock (Nav2), best or car sets the planner, path '
+                              'default), best or car sets the planner, path '
                               'follower, costmap, navigator, smoother, behaviour and pose '
                               'at once; a switch given by hand still wins. Empty: every '
-                              "switch as given, else the champions' (Nav2's)"),
+                              "switch as given, else the champions'"),
         *[DeclareLaunchArgument(level, default_value=stacks.CHOSEN,
                                 description=f'the {level} level by its league name '
                                 f'(config/stacks.yaml: {", ".join(options)}), over the '
@@ -807,11 +789,11 @@ def generate_launch_description():
                               'computer with no GPU (the parts that read them are refused)'),
         DeclareLaunchArgument('lidar', default_value='true',
                               description='a simulated 16-beam roof lidar, on '
-                                          '/sensors/lidar/points, read by Nav2 '
+                                          '/sensors/lidar/points, read by the costmap '
                                           '(world:=road or test_lot)'),
         DeclareLaunchArgument('radar', default_value='true',
                               description='the radar stand-in (world:=road or test_lot); '
-                                          'false: the lidar alone guards Nav2'),
+                                          'false: the lidar alone guards the car'),
         DeclareLaunchArgument('actuator_model', default_value='true',
                               description="the actuators as vehicle.yaml's actuators: say; "
                                           "false: Gazebo's old instant car"),
@@ -845,7 +827,7 @@ def generate_launch_description():
                               description='with spine:=true: spine_bridge in rust '
                                           '(aav_spine_bridge) or python (aav_spine)'),
         DeclareLaunchArgument('watchdog', default_value='true',
-                              description='the sensor watchdog: stops Nav2 and the AI slot '
+                              description='the sensor watchdog: stops navigation and the AI slot '
                                           'when a sensor they need fails (aav_safety)'),
         DeclareLaunchArgument('geofence', default_value='true',
                               description='the geofence: holds every program near the edge of '
@@ -866,12 +848,12 @@ def generate_launch_description():
                                           'spine:=true, the spine latches'),
         DeclareLaunchArgument('screen_cubes', default_value='false',
                               description='true: the cubes for the developer window, while '
-                                          'Nav2 stays on the flat scan'),
+                                          'the costmap stays on the flat scan'),
         DeclareLaunchArgument('things', default_value='false',
                               description='true: the cubes as tracked things on /world/things '
                                           '(aav_things; with nav and the lidar)'),
         DeclareLaunchArgument('voxels', default_value='false',
-                              description='true: Nav2 reads the lidar as 0.25 m cubes '
+                              description='true: the costmap reads the lidar as 0.25 m cubes '
                                           '(aav_voxels, a trial) instead of the flat scan'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
@@ -891,13 +873,13 @@ def generate_launch_description():
                               description='python or rust: which ego runs (aav_ego, or '
                                           'aav_ego_rs: ego and look_ahead in one process)'),
         DeclareLaunchArgument('ghost', default_value='false',
-                              description="a pretend person in Nav2's view (aav_ghost); "
+                              description="a pretend person only navigation sees (aav_ghost); "
                                           'place it with pixi run ghost ahead 10'),
         DeclareLaunchArgument('sim_speed', default_value='',
-                              description='m/s, up to 5: a higher top speed for ego and Nav2 '
+                              description='m/s, up to 5: a higher top speed for ego and the follower '
                                           "than the car's 1.0, in Gazebo only"),
         DeclareLaunchArgument('reversing', default_value='true',
-                              description='Nav2 may drive backwards, at up to '
+                              description='the car may drive backwards, at up to '
                                           "vehicle.yaml's max_reverse_speed "
                                           '(docs/learn-nav2.md, Reversing)'),
         DeclareLaunchArgument('controller', default_value=stacks.CHOSEN,
@@ -938,9 +920,6 @@ def generate_launch_description():
         DeclareLaunchArgument('lidar_memory', default_value='0.0',
                               description='s the local lidar layer keeps a mark after the '
                                           'lidar loses it (0: the newest scan only; TODO 188)'),
-        DeclareLaunchArgument('stop_zone_shadow', default_value='false',
-                              description='true: our stop zone in Rust beside '
-                                          'collision_monitor, never driving (TODO 182)'),
         DeclareLaunchArgument('global_window', default_value='0.0',
                               description='m: the global costmap a square rolling with the '
                                           'car (192: the 3 x 3 chunks; 0: the whole map)'),
@@ -1053,7 +1032,7 @@ def generate_launch_description():
                                           'twist into ekf_local, beside the wheels and IMU. '
                                           "Empty: the stack's choice (false)"),
         DeclareLaunchArgument('plan_around', default_value='true',
-                              description="true: Nav2's planner plans round what the radar "
+                              description="true: the planner plans round what the radar "
                                           'and lidar see; false: the map only, so the car '
                                           'stops for it'),
         DeclareLaunchArgument('lane_pose', default_value='false',
@@ -1067,7 +1046,7 @@ def generate_launch_description():
                                           "map -> odom, TODO 186). Empty: the stack's "
                                           'choice (ours: slow; stock: newest)'),
         DeclareLaunchArgument('replan_hz', default_value='1.0',
-                              description="how often Nav2's navigate-to-pose tree plans "
+                              description="how often the navigator plans a to-pose goal "
                                           'again; 0: once per goal (a test)'),
         DeclareLaunchArgument('simulator', default_value=worlds.DEFAULT_SIMULATOR,
                               description="gazebo, or own: our Rust simulator in gz sim's "
