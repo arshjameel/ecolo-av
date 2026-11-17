@@ -99,6 +99,8 @@ pub struct Look {
     pub colour: Rgb,
     /// A picture (PNG) laid over it, multiplied by the colour.
     pub texture: Option<PathBuf>,
+    /// Its bumps as a normal map (PNG), if it has one: drawn with `graphics:=pretty`.
+    pub normal_map: Option<PathBuf>,
 }
 
 impl Look {
@@ -108,6 +110,7 @@ impl Look {
         Self {
             colour: Rgb::new(r, g, b),
             texture: None,
+            normal_map: None,
         }
     }
 }
@@ -189,6 +192,7 @@ fn plain(c: Rgb) -> Look {
     Look {
         colour: c,
         texture: None,
+        normal_map: None,
     }
 }
 
@@ -217,6 +221,7 @@ pub fn stop_sign(name: &str, foot: [f64; 2], yaw: f64, texture: Option<PathBuf>)
                     looks::STOP_RED
                 },
                 texture,
+                normal_map: None,
             },
         ),
         shape(

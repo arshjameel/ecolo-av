@@ -6,7 +6,7 @@
 use std::time::{Duration, Instant};
 
 use camera_core::{world::looks, CameraRenderer, Frame, Pose, Rgb, Rig, SimWorld, Vec3};
-use sim_cameras::{BevyRenderer, RenderError};
+use sim_cameras::{Adapter, BevyRenderer, Graphics, RenderError};
 
 const CAMERAS: &str = include_str!("../config/cameras.yaml");
 const VEHICLE: &str = include_str!("../../../bringup/aav_description/config/vehicle.yaml");
@@ -188,4 +188,29 @@ fn the_test_world_as_the_lens_says() {
         .unwrap();
     let old = f[0].pixel(was_at.u as u32, was_at.v as u32).unwrap();
     assert!(!is_red(old), "still red after turning: {old:?}");
+
+    // Pretty (TODO 244): grain, a sky, haze far off, but the same things in the same
+    // colours where the checks look: the plate red, the road grey, the grass green.
+    drop(renderer);
+    let mut renderer =
+        BevyRenderer::with_graphics(&rig, &world, Adapter::Any, Some(Graphics::Pretty)).unwrap();
+    assert_eq!(renderer.graphics(), Graphics::Pretty);
+    let f = renderer.render(&car, Duration::ZERO, &[0]).unwrap();
+    let front = &f[0];
+    let plate = at(&rig, front, &car, Vec3::new(24.98, -3.0, 2.0));
+    assert!(is_red(plate), "pretty plate {plate:?}");
+    let road = at(&rig, front, &car, Vec3::new(8.0, 0.5, 0.004));
+    let (lo, hi) = (road.iter().min().unwrap(), road.iter().max().unwrap());
+    assert!(hi - lo <= 20, "pretty road {road:?}");
+    let grass = at(&rig, front, &car, Vec3::new(10.0, 5.0, 0.0));
+    assert!(
+        grass[1] > grass[0] + 20 && grass[1] > grass[2] + 20,
+        "pretty grass {grass:?}"
+    );
+    // The sky: bluer overhead than at the horizon.
+    let (top, horizon) = (front.pixel(320, 5).unwrap(), front.pixel(320, 170).unwrap());
+    assert!(
+        top[2] > top[0] + 40 && horizon[2] - horizon[0] < top[2] - top[0],
+        "pretty sky {top:?} over {horizon:?}"
+    );
 }

@@ -99,6 +99,9 @@ pub struct Shape {
     pub colour: Option<[f64; 4]>,
     /// SDF's `<pbr><metal><albedo_map>`: the picture laid over it, if it has one.
     pub texture: Option<PathBuf>,
+    /// SDF's `<pbr><metal><normal_map>`: its bumps, for the cameras only (rays hit the
+    /// flat shape).
+    pub normal_map: Option<PathBuf>,
 }
 
 /// How the world is lit and its sky, as SDF's `<scene>` and its directional `<light>`.
@@ -184,6 +187,7 @@ impl World {
                 pose: Pose::IDENTITY,
                 colour: None,
                 texture: None,
+                normal_map: None,
             }],
             lighting: Lighting::default(),
         }
@@ -452,11 +456,14 @@ impl Reader<'_> {
                     self.triangles.extend(mesh.transformed(&placed).triangles);
                     let material = child(shape, "material");
                     let colour = material.and_then(|m| colour(m, "diffuse"));
-                    let texture = match material
+                    let metal = material
                         .and_then(|m| child(m, "pbr"))
-                        .and_then(|p| child(p, "metal"))
-                        .and_then(|m| text(m, "albedo_map"))
-                    {
+                        .and_then(|p| child(p, "metal"));
+                    let texture = match metal.and_then(|m| text(m, "albedo_map")) {
+                        Some(uri) => Some(self.mesh_path(uri, folder)?),
+                        None => None,
+                    };
+                    let normal_map = match metal.and_then(|m| text(m, "normal_map")) {
                         Some(uri) => Some(self.mesh_path(uri, folder)?),
                         None => None,
                     };
@@ -468,6 +475,7 @@ impl Reader<'_> {
                         pose: placed,
                         colour,
                         texture,
+                        normal_map,
                     });
                 }
             }

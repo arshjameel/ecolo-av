@@ -12,6 +12,9 @@
 //!
 //! Lighting: no tone mapping, no dithering. A colour in the world (linear, as Gazebo's) comes
 //! out times the light, `ambient + sun.strength * cos(angle to the sun)`, then into sRGB.
+//! [`Graphics::Pretty`] (the program's default on a GPU) adds grain, a sky, haze and longer
+//! shadows ([`scene`]); [`Graphics::Simple`] (the default drawn in software, and
+//! [`BevyRenderer::new`]'s) is exactly the plain look above.
 
 pub mod scene;
 
@@ -41,6 +44,8 @@ use camera_core::{
     frame::{padded_row_bytes, rgba_rows_to_rgb, ShortCopy},
     CameraRenderer, Frame, Pose, Rig, SimWorld,
 };
+
+pub use camera_core::Graphics;
 
 pub use camera_core;
 
@@ -173,6 +178,7 @@ pub struct BevyRenderer {
     /// Everything spawned for the world, to replace it.
     world_entities: Vec<Entity>,
     adapter: AdapterUsed,
+    graphics: Graphics,
 }
 
 impl BevyRenderer {
@@ -187,6 +193,17 @@ impl BevyRenderer {
         rig: &Rig,
         world: &SimWorld,
         adapter: Adapter,
+    ) -> Result<Self, RenderError> {
+        Self::with_graphics(rig, world, adapter, Some(Graphics::Simple))
+    }
+
+    /// As [`BevyRenderer::with_adapter`], drawing `graphics`; `None` chooses by the adapter
+    /// it gets ([`Graphics::for_adapter`]: pretty on a GPU, simple in software).
+    pub fn with_graphics(
+        rig: &Rig,
+        world: &SimWorld,
+        adapter: Adapter,
+        graphics: Option<Graphics>,
     ) -> Result<Self, RenderError> {
         let app = panic::catch_unwind(AssertUnwindSafe(|| start_app(adapter))).map_err(|e| {
             let why = e
@@ -205,11 +222,13 @@ impl BevyRenderer {
                 software: info.device_type == wgpu::DeviceType::Cpu,
             })
             .ok_or_else(|| RenderError::NoGpu("Bevy started with no adapter".to_owned()))?;
+        let graphics = graphics.unwrap_or_else(|| Graphics::for_adapter(adapter.software));
         let mut renderer = Self {
             app,
             slots: Vec::new(),
             world_entities: Vec::new(),
             adapter,
+            graphics,
         };
         renderer.add_cameras(rig);
         renderer.set_world(world)?;
@@ -220,6 +239,11 @@ impl BevyRenderer {
     /// The adapter it draws with: say it in the log, so a slow picture has its reason.
     pub fn adapter(&self) -> &AdapterUsed {
         &self.adapter
+    }
+
+    /// How much it draws: simple or pretty.
+    pub fn graphics(&self) -> Graphics {
+        self.graphics
     }
 
     fn add_cameras(&mut self, rig: &Rig) {
@@ -351,7 +375,8 @@ impl CameraRenderer for BevyRenderer {
                 entity.despawn();
             }
         }
-        self.world_entities = scene::spawn(ecs, world, CAR_LAYER)?;
+        let cameras: Vec<Entity> = self.slots.iter().map(|s| s.entity).collect();
+        self.world_entities = scene::spawn(ecs, world, CAR_LAYER, self.graphics, &cameras)?;
         Ok(())
     }
 

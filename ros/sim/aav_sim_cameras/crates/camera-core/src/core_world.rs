@@ -72,6 +72,7 @@ fn convert(s: &CoreShape, name: String, at: &Pose) -> Shape {
         look: Look {
             colour: rgb(s.colour.unwrap_or([PLAIN, PLAIN, PLAIN, 1.0])),
             texture: s.texture.clone(),
+            normal_map: s.normal_map.clone(),
         },
     }
 }
