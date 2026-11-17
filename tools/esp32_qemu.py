@@ -45,12 +45,17 @@ full brake within 100-250 ms; and back on RC via ROS it stays braked until a sto
 Times: `t` is the firmware's clock (esp-hal's Instant, from QEMU's virtual clock, which
 follows the host's clock without -icount). The host notes when each line arrives;
 the smallest (arrival - t) maps one clock to the other (ClockMap).
+
+A busy host: if only the timings a slow host can stretch failed (TIMING_PROBLEMS), and
+no safety outcome did, it waits for the load to drop and runs once more (`--no-retry`:
+never). That run must pass whole.
 """
 
 from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
 import re
 import socket
@@ -833,30 +838,62 @@ def run_idle(qemu: Path, flash: Path, seconds: float, log: Path) -> int:
     return 0
 
 
-def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split('\n')[1])
-    ap.add_argument('--qemu', type=Path, required=True, help='qemu-system-xtensa')
-    ap.add_argument('--flash', type=Path, required=True, help='the merged 4 MB flash image')
-    ap.add_argument('--cycles', type=int, default=6,
-                    help='cycles, their gaps in turn: silence, frozen, bad_crc')
-    ap.add_argument('--no-rc', action='store_true', help='skip the RC modes after the cycles')
-    ap.add_argument('--log', type=Path, help='save the firmware log here')
-    ap.add_argument('--idle', type=float, metavar='SECONDS',
-                    help='only boot it and send nothing for this long, then save the log '
-                    '(--log): for the first check')
-    args = ap.parse_args(argv)
-    if args.idle:
-        if not args.log:
-            ap.error('--idle needs --log')
-        return run_idle(args.qemu, args.flash, args.idle, args.log)
+# --- Host timing or safety: what a second run may settle --------------------------------
+#
+# QEMU's virtual clock follows the host's (no -icount), so a busy computer (load 11 and
+# 32, Nov) starves QEMU and this script: uplink frames come late or bunched, and the stop
+# times measured against the host clock stretch. Those problems say "the host was slow",
+# not "the firmware is wrong". The safety outcomes say what the firmware did, whatever the
+# host's speed: it drove, the timeout fired, it braked full, it stayed latched, it counted
+# the bad frames, RC lost meant fault 256. So (TODO 245):
+#   - a safety outcome that failed fails the check at once: never retried;
+#   - if only timings failed, the check waits for the load to come down (up to 2 min) and
+#     runs once more; that run must pass whole, every bound as strict as before.
+# Loosening the bounds instead would let a slow firmware through on a quiet computer too.
+TIMING_PROBLEMS = (
+    'uplink frames a second while driving',   # judge_uplink's rate
+    'the uplink said stopped after',          # judge_uplink's stop, host clock
+    'fault 256 came up after',                # judge_rc's lost RC, host clock
+    'timeout after',                          # judge's timeout, through the clock map
+    'full brake after',                       # judge's brake, through the clock map
+    'full brake only after',                  # judge_rc's brake, through the clock map
+    'uplink frames lost',                     # frames dropped by a starved reader
+    'said too little to judge',               # QEMU barely ran
+)
+
+
+def timing_only(problems: List[str]) -> bool:
+    """Return True if every problem is one a slow host can cause (and there is one)."""
+    return bool(problems) and all(any(t in p for t in TIMING_PROBLEMS) for p in problems)
+
+
+def load_average() -> Optional[float]:
+    """Return this computer's one-minute load average, or None where there is none."""
+    try:
+        return os.getloadavg()[0]
+    except (AttributeError, OSError):
+        return None
+
+
+def wait_for_quiet(limit: float, seconds: float = 120.0) -> Optional[float]:
+    """Wait (up to `seconds`) until the load average is below `limit`; return it."""
+    end = time.monotonic() + seconds
+    load = load_average()
+    while load is not None and load >= limit and time.monotonic() < end:
+        time.sleep(5)
+        load = load_average()
+    return load
+
+
+def attempt(args) -> List[str]:
+    """Run the check once, print its tables, and return its problems (empty: a pass)."""
     try:
         results, uplink, rc, clock, lines, ups = run(args.qemu, args.flash, args.cycles,
                                                      rc=not args.no_rc)
     except ValueError as e:
         # Seen once on 24 Oct at load 17: QEMU printed almost nothing, so no clocks to map.
-        print(f'FAIL: the firmware in QEMU said too little to judge ({e}). '
-              'A starved computer? Run it again with less else running.')
-        return 1
+        print(f'the firmware in QEMU said too little to judge ({e}). A starved computer?')
+        return [f'said too little to judge ({e})']
     if args.log:
         args.log.write_text(''.join(f'{ln.host:.4f} {ln.text}\n' for ln in lines))
     boot = next((ln.text for ln in lines if 'spine-esp32-umod' in ln.text), '(no boot line)')
@@ -880,6 +917,37 @@ def main(argv=None) -> int:
         problems.append(('uplink', f'{lost} uplink frames lost'))
     for where, p in problems:
         print(f'{where}: {p}')
+    return [p for _, p in problems]
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split('\n')[1])
+    ap.add_argument('--qemu', type=Path, required=True, help='qemu-system-xtensa')
+    ap.add_argument('--flash', type=Path, required=True, help='the merged 4 MB flash image')
+    ap.add_argument('--cycles', type=int, default=6,
+                    help='cycles, their gaps in turn: silence, frozen, bad_crc')
+    ap.add_argument('--no-rc', action='store_true', help='skip the RC modes after the cycles')
+    ap.add_argument('--log', type=Path, help='save the firmware log here')
+    ap.add_argument('--idle', type=float, metavar='SECONDS',
+                    help='only boot it and send nothing for this long, then save the log '
+                    '(--log): for the first check')
+    ap.add_argument('--no-retry', action='store_true',
+                    help='one run only, even if only the host-speed timings failed')
+    args = ap.parse_args(argv)
+    if args.idle:
+        if not args.log:
+            ap.error('--idle needs --log')
+        return run_idle(args.qemu, args.flash, args.idle, args.log)
+    load = load_average()
+    if load is not None:
+        print(f'load average {load:.1f} at the start')
+    problems = attempt(args)
+    if timing_only(problems) and not args.no_retry:
+        quiet = max(4.0, (os.cpu_count() or 8) / 2)
+        load = wait_for_quiet(quiet)
+        print(f'\nOnly host-speed timings failed (no safety outcome did): one more run, '
+              f'at load {"?" if load is None else f"{load:.1f}"}. It must pass whole.')
+        problems = attempt(args)
     print('PASS: it brakes when the counter of the Orin stops (no frames, frozen, bad CRCs), '
           'and stays braked until a stop; the uplink echoes the counter and says the mode; '
           'RC via ROS, RC direct, and a lost RC in each' if not problems else 'FAIL')

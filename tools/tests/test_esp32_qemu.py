@@ -340,3 +340,19 @@ def test_a_local_clock_fit_ignores_a_drift_elsewhere_in_the_run():
     lines = early + late
     assert q.ClockMap.fit(lines).offset == pytest.approx(100.001)
     assert q.ClockMap.fit_local(lines, 110.3, 111.3).offset == pytest.approx(100.301)
+
+
+def test_only_host_timings_earn_a_second_run():
+    assert q.timing_only(['31 uplink frames a second while driving, not ~50'])
+    assert q.timing_only(['the uplink said stopped after 520 ms, not 100-400',
+                          '3 uplink frames lost'])
+    assert not q.timing_only([])
+
+
+def test_a_failed_safety_outcome_is_never_retried():
+    # A timing problem beside a safety one: the safety one decides.
+    assert not q.timing_only(['the uplink said stopped after 520 ms, not 100-400',
+                              'fresh frames without a stop drove again: EVENT t=1'])
+    assert not q.timing_only(['no timeout event after the frames stopped'])
+    assert not q.timing_only(['the brake Jrk never got 3500 with the DAC at 0'])
+    assert not q.timing_only(['the timeout event did not stop the car: EVENT t=1'])
