@@ -596,7 +596,7 @@ def test_the_car_day_stack_is_the_defaults():
     assert nav['reversing'] == 'true'
     assert nav['voxels'] == 'false'
     assert nav.get('controller', 'mppi') == 'mppi'
-    assert nav['tracker'] == 'mppi_lag'
+    assert nav.get('tracker', vehicle.DEFAULT_TRACKER) == 'mppi_lag'
     assert (nav['navigator'], nav['costmap'], nav['smoother']) == ('own', 'own', 'own')
     assert nav.get('amcl', 'false') == 'false'
     loc = included(started(CAR, machine='orin'))['localization.launch.py']

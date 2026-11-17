@@ -53,7 +53,8 @@ def context_for(launch_file, **args):
 
 def settings(**args):
     """Return {block: its ros__parameters}: the rewritten nav2.yaml the nodes read."""
-    return {name: block['ros__parameters'] for name, block in whole_file(**args).items()}
+    return {name: block['ros__parameters'] for name, block in whole_file(**args).items()
+            if 'ros__parameters' in block}
 
 
 def whole_file(**args):
@@ -222,7 +223,7 @@ def test_the_camera_guards_the_stop_zone_only_where_asked():
 
 def nav_nodes(**args):
     """Return each node navigation.launch.py starts with these arguments, by name."""
-    context = context_for(NAV, map=EMPTY_MAP, **args)
+    context = context_for(NAV, **{'map': EMPTY_MAP, **args})
     return {a._Node__node_name: a for a in NAV.nodes(context) if isinstance(a, Node)}
 
 

@@ -163,7 +163,7 @@ def test_stack_best_is_every_levels_champion():
 
 def test_a_switch_given_by_hand_wins_over_the_stack():
     # One piece a challenger, the rest ours: tracker:=lqr is told apart from "not given".
-    assert stack_of(tracker='lqr') == dict(OURS, tracker='lqr')
+    assert stack_of(tracker='lqr', reversing='false') == dict(OURS, tracker='lqr')
     assert stack_of(behaviour='false') == dict(OURS, behaviour='false', road_ahead='false')
     # And one piece ours' on the champions' stack.
     assert stack_of(stack='best', behaviour='true') == dict(BEST, behaviour='true',
@@ -413,7 +413,7 @@ def test_bad_values_stop_the_launch():
         started(SIM, world='moon')
     with pytest.raises(ValueError, match='lane:=maybe'):
         started(SIM, lane='maybe')
-    with pytest.raises(ValueError, match='controller:=dwb: pick one of rpp, mppi'):
+    with pytest.raises(ValueError, match='controller:=dwb: pick one of mppi'):
         started(SIM, controller='dwb')
 
 
