@@ -221,7 +221,9 @@ bench's argument names:
                       (aav_lane_pose) turns its lines and the lane map (lane_map:=, else
                       the world's own) into the car's place across its lane; ekf_global
                       takes its x and y beside the GPS (aav_localization
-                      config/ekf_global_lane.yaml). Needs the camera. Default false
+                      config/ekf_global_lane.yaml). Needs the camera. Empty: the
+                      stack's choice (on in ours since 17 Nov, where there is a camera
+                      and a lane map; stacks.yaml's pose level, ekf_lane)
   truth_pose:=true    a test (the wiggle, TODO 149): the simulator's truth is the car's pose.
                       No ekf_global; aav_gazebo's truth_localizer publishes
                       /localization/odom/global and map -> odom so that map -> base_link
@@ -370,7 +372,7 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'mppi_lag_steer_gamma': '', 'lane_costs': 'false', 'lane_route': 'false',
                   'costmap_chunks': 'off', 'kerbs': 'false', 'things': 'false',
                   'lane_graph': DEFAULT_LANE_GRAPH,
-                  'local_chunks': 'false'}
+                  'local_chunks': 'false', 'lane_pose': 'false'}
 
 
 # Each level switch's options, for its help text (config/stacks.yaml).
@@ -432,6 +434,11 @@ def launch_setup(context):
     if truth_pose and ndt_ekf:
         raise ValueError('truth_pose:=true has no ekf_global for ndt_ekf:=true to feed')
     lane_pose = arg('lane_pose').lower() == 'true'
+    # Picked by the stack (ours' pose level since 17 Nov), not by hand: only where it can run
+    # (an ekf_global, a camera, a lane map; below).
+    lane_pose_stack = raw('lane_pose').strip() == stacks.CHOSEN
+    if truth_pose and lane_pose and lane_pose_stack:
+        lane_pose = False
     if truth_pose and lane_pose:
         raise ValueError('truth_pose:=true has no ekf_global for lane_pose:=true to feed')
     # kiss_ekf: ekf_local takes KISS-ICP's twist, so KISS-ICP runs too.
@@ -460,12 +467,21 @@ def launch_setup(context):
         except ValueError as e:
             print(f'[sim.launch.py] lane_route:=true, but no lane map here ({e}): '
                   'the lattice alone', flush=True)
-    # lane_pose: the lane map lane_map:= names, else the world's own.
-    pose_map = ((lane_map or worlds.lane_map_file(gazebo_share, world, 'world'))
-                if lane_pose else '')
     # The lidar and radar where the world has them; the cameras only where they're drawn.
     sensors = worlds.has_sensors(world_path)
     cameras = worlds.has_cameras(world_path, simulator) and arg('cameras').lower() == 'true'
+    # lane_pose: the lane map lane_map:= names, else the world's own.
+    pose_map = ''
+    if lane_pose:
+        try:
+            pose_map = lane_map or worlds.lane_map_file(gazebo_share, world, 'world')
+        except ValueError:
+            if not lane_pose_stack:
+                raise
+        if lane_pose_stack and not (pose_map and cameras):
+            print("[sim.launch.py] the stack's lane_pose: off here (no camera or no lane "
+                  'map)', flush=True)
+            lane_pose, pose_map = False, ''
     # Each only where the world renders it, as gazebo.launch.py decides.
     radar = sensors and arg('radar').lower() == 'true'
     lidar = sensors and arg('lidar').lower() == 'true'
@@ -1063,9 +1079,11 @@ def generate_launch_description():
                               description="true: Nav2's planner plans round what the radar "
                                           'and lidar see; false: the map only, so the car '
                                           'stops for it'),
-        DeclareLaunchArgument('lane_pose', default_value='false',
-                              description='a trial: the lane finder as a pose sensor into '
-                                          'ekf_global (aav_lane_pose, TODO 155)'),
+        DeclareLaunchArgument('lane_pose', default_value=stacks.CHOSEN,
+                              description='the lane finder as a pose sensor into ekf_global '
+                                          '(aav_lane_pose, TODO 155). Empty: the stack\'s '
+                                          'choice (on in ours since 17 Nov, where a camera '
+                                          'and a lane map are)'),
         DeclareLaunchArgument('truth_pose', default_value='false',
                               description="a test: the simulator's truth as the pose, in "
                                           "ekf_global's place (aav_gazebo truth_localizer)"),

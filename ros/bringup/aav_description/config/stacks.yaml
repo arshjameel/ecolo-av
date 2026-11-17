@@ -17,9 +17,14 @@ levels:
     what: where the car is (robot_localization's EKFs; what steers, not what is scored beside)
     champion: ekf
     options:
-      ekf: {ndt_ekf: 'false', kiss_ekf: 'false'}
-      ndt_ekf: {ndt_ekf: 'true', kiss_ekf: 'false'}
-      kiss_ekf: {ndt_ekf: 'false', kiss_ekf: 'true'}
+      ekf: {ndt_ekf: 'false', kiss_ekf: 'false', lane_pose: 'false'}
+      ndt_ekf: {ndt_ekf: 'true', kiss_ekf: 'false', lane_pose: 'false'}
+      kiss_ekf: {ndt_ekf: 'false', kiss_ekf: 'true', lane_pose: 'false'}
+      # The EKF with the lane finder as a sideways pose (TODO 155, aav_lane_pose). Ours'
+      # pick since 17 Nov: our simulator, University Drive, the EKF's sideways error 9.2-9.6
+      # -> 6.9-7.8 cm RMS, its box tour 7.1-8.2 -> 1.9-2.1 cm; the campus tour no change
+      # (9.1 -> 9.4, little paint on its way); sway and off the lane's centre no worse.
+      ekf_lane: {ndt_ekf: 'false', kiss_ekf: 'false', lane_pose: 'true'}
     score: ''
   costmap:
     what: what is in the way (Nav2's layers, or aav_costmap)
@@ -148,7 +153,7 @@ stacks:
     behaviour: 'off'
   ours:
     what: every level ours that has one, as `measure controllers --stacks own`, plus the road ahead and the kerbs
-    pose: ekf
+    pose: ekf_lane
     costmap: ours_all_chunks
     navigator: ours
     path: lane
