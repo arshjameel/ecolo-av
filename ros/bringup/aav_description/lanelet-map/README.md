@@ -5,7 +5,8 @@
 Lanelet2 maps in Rust, with no ROS: step 6 of the three map levels
 (`docs/designs/2026-11-15_three-levels.md`, TODO 175). Ben, 14 Nov: "convert lanelet2 to
 rust". Our own reader of Lanelet2's standard `.osm` format; no crate for it exists.
-Nothing uses it yet: next, the route level and the behaviour planner.
+The route level routes on it (`aav_planner` `lane.rs`, `lane_graph:=lanelet2`); next, the
+behaviour planner (the stop lines into the road ahead).
 
 ```text
  map.osm ─▶ from_osm ─▶ lines, lanelets, rules ─▶ the routing graph
@@ -29,10 +30,15 @@ Nothing uses it yet: next, the route level and the behaviour planner.
 | `nearest(x, y)` | the lanelet whose centre line passes nearest (an R-tree of the centre lines' segments, `rstar`; of two as near, the smaller id) |
 | `route(from, to)` | A* over lanes: length driven, a lane change counted as 10 m; `None` if no way |
 | `stops_on(route)` | each stop line met: (lanelet, rule, the line's middle) |
+| `place_on(id, x, y)`, `places_near(x, y, within)` | where a point meets a lanelet: a `Place` (m along, m off, the lane's heading there, the foot) |
+| `point_at(id, along)`, `half_widths(id, along)` | a point on the centre line; m to the left and right bounds |
+| `route_between(from, to)` | Dijkstra from one `Place` to another: never backwards, a change of lane where the car is (`LANE_CHANGE_COST`, 10 m); a `Route` (lanelets, where each is joined, cost) |
+| `route_line(route, to)` | its line: the centre lines joined, a change eased across over `LANE_CHANGE_LENGTH` (20 m) |
+| `stops_between(route, to)` | the stop lines met between the two places |
 | `MapError` | why a file couldn't be read |
 | `lanelet-route <map.osm> x0 y0 x1 y1` (a binary) | route between two map points, timed; the campus map: `tools/campus_lanelet.py` (run by `pixi run campus`) |
 
-Not yet: lanes driven both ways (`one_way=no`), areas, a map writer, Lanelet2's traffic
+Not yet: right of way and all-way stops in the route (read, not used), lanes driven both ways (`one_way=no`), areas, a map writer, Lanelet2's traffic
 rules by country.
 
 ## Testing

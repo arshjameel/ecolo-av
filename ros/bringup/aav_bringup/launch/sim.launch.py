@@ -155,6 +155,14 @@ bench's argument names:
                       centre, the lattice joining the car and the goal to it; off the map,
                       or a world with none (the test lot), the lattice alone.
                       Empty: the stack's choice (on in stack:=ours, else off)
+  lane_graph:=lanelet2  with lane_route: route on the Lanelet2 map beside the lane map
+                      (pixi run campus: maps/campus/campus.osm; lanelet-map in Rust): its
+                      lanes, their neighbours, the stop lines on the way. lanes_yaml: the
+                      lane map's roads; a world with no Lanelet2 map uses them too.
+                      Empty: the stack's choice (TODO 175, step 6)
+  local_chunks:=true  with costmap_chunks: the local costmap's static layer from the 3 x 3
+                      chunks round the car too, so no costmap reads /map (TODO 175).
+                      Empty: the stack's choice (true in ours since 16 Nov)
   lane_pass:=false    with lane_route: a parked obstacle on the lane line gives the whole
                       path to the lattice (before 16 Nov); true (the default): only the
                       blocked stretch moves left, the least that clears it, then back
@@ -280,6 +288,7 @@ camera's parts need world:=road. Every node runs on simulated time.
 import os
 
 from aav_description import stacks, vehicle
+from aav_description.lane_map import check_lane_graph, DEFAULT_LANE_GRAPH
 from aav_gazebo import worlds
 from aav_spine import bridges
 from launch import LaunchDescription
@@ -357,7 +366,9 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'planner_search': vehicle.PLANNER_SEARCHES[0],
                   'plan_smoothing': 'nav2', 'map_correction': 'newest',
                   'mppi_lag_steer_gamma': '', 'lane_costs': 'false', 'lane_route': 'false',
-                  'costmap_chunks': 'off', 'kerbs': 'false'}
+                  'costmap_chunks': 'off', 'kerbs': 'false',
+                  'lane_graph': DEFAULT_LANE_GRAPH,
+                  'local_chunks': 'false'}
 
 
 # Each level switch's options, for its help text (config/stacks.yaml).
@@ -609,7 +620,9 @@ def launch_setup(context):
                                lane_map=lane_map, lane_costs=lane_costs,
                                # Every model of the car predicts the loop it runs (TODO 163).
                                speed_loop=speed_loop,
-                               lane_route=lane_route, lane_pass=arg('lane_pass')))
+                               lane_route=lane_route, lane_pass=arg('lane_pass'),
+                               lane_graph=check_lane_graph(arg('lane_graph')),
+                               local_chunks=arg('local_chunks')))
     if ndt:
         # Scored only (measure controllers --ndt), unless ndt_ekf:=true: then ekf_global
         # reads its pose (measure controllers --ndt-ekf scores the difference).
@@ -984,6 +997,15 @@ def generate_launch_description():
                                           "the right lane's centre along the lane map, "
                                           'planner:=own (TODO 148); false: none. Empty: '
                                           "the stack's choice (on in ours)"),
+        DeclareLaunchArgument('lane_graph', default_value=stacks.CHOSEN,
+                              description="with lane_route: lanes_yaml (the lane map's "
+                                          'roads) or lanelet2 (the Lanelet2 map beside it, '
+                                          'maps/campus/campus.osm; TODO 175). Empty: the '
+                                          "stack's choice"),
+        DeclareLaunchArgument('local_chunks', default_value=stacks.CHOSEN,
+                              description="true, with costmap_chunks: the local costmap's "
+                                          'static layer from the chunks round the car too, '
+                                          "not /map (TODO 175). Empty: the stack's choice"),
         DeclareLaunchArgument('lane_pass', default_value='true',
                               description='with lane_route: true, a parked obstacle is '
                                           'passed by moving only its stretch left; false: '

@@ -23,6 +23,9 @@ Nav2's with `costmap:=nav2` or `stack:=stock`). Nav2 stays on the car.
 > - **From map chunks** (16 Nov, on in `stack:=ours`): the global costmap holds only the
 >   64 m chunks round the car and along the route, each inflated on its own core. Every
 >   leg as before, a third of the memory ([chunks](#from-map-chunks-on-every-core-16-nov-todo-175-195)).
+> - **The local one too** (16 Nov, on in `stack:=ours`): its map from the 3 x 3 chunks round
+>   the car, not `/map`. Every leg as before, half the node's memory; nothing of ours reads
+>   `/map` on the campus now.
 
 ## How it fits
 
@@ -283,6 +286,59 @@ costmap and `costmap:=ours` keep the whole map.
 short of; and a 430 m loop of lanes round the block to a goal 10 m off
 ([own-planner.md](own-planner.md#far-goals-in-steps-16-nov-todo-175)).
 
+### The local costmap from the chunks too (`local_chunks:=true`, 16 Nov)
+
+The local costmap (20 x 20 m, 0.1 m cells, in odom) still took its static layer from
+`/map`: the node held the whole 41 M-cell campus map for a 20 m window.
+
+```text
+ car in map (map -> odom) ─▶ its chunk ─▶ the 3 x 3 round it (192 m square, 0.6 M cells)
+                                           │ read on a chunk change (each on its own core)
+                                           ▼
+                 the 20 m window, each 0.1 m cell looked up in them (as from /map)
+```
+
+| Part | What |
+|---|---|
+| `layered.rs` | a rolling costmap may now `set_chunks`; `follow_chunks` keeps the 3 x 3 as its static map; the window stamps from it as it did from `/map` |
+| the node | the car's place in map from map -> odom; no `/map` subscription when every costmap is made of chunks |
+| the same cells | a test drives a window across chunk edges, odom turned and moved off map: cell for cell the window `/map` gives |
+| Pick it | `local_chunks:=true` with `costmap_chunks:=` (`costmap:=ours_all_chunks` in `stacks.yaml`) |
+
+**The scores.** Our simulator, 16 Nov, `measure controllers --stacks own_calm_chunks
+own_calm_chunks_local --tours campus university_box --runs 2 --reversing --launch
+behaviour:=true lane_route:=true` (results in /tmp/maps/b2a, not in git). Load under 8 at
+the start, no other simulator running.
+
+| Tour | Local costmap from | Legs | Time (s) | Sway (m/s²) | Off the path (m), mean / worst | Costmap node: CPU, memory |
+|---|---|---|---|---|---|---|
+| campus | `/map` | 6 of 6 | 562 | 0.088 | 0.20 / 1.90 | 4-5 %, 131-148 MB |
+| campus | **the chunks** | 6 of 6 | 533 | 0.089 | 0.17 / 1.67 | 4 %, **66-81 MB** |
+| University Drive, a parked box | `/map` | 2 of 2 | 85 | 0.060 | 0.06 / 0.34 | 4 %, 138-140 MB |
+| University Drive, a parked box | **the chunks** | 2 of 2 | 87 | 0.065 | 0.07 / 0.34 | 4 %, **75-78 MB** |
+
+| What it says | So |
+|---|---|
+| every leg, the same times and sway | the same cells, as the test says |
+| half the node's memory | the 41 M-cell map (and its message) is gone; the 3 x 3 is 0.6 M cells |
+| a chunk change | read in 0.4-1.2 ms, every 10-30 s of driving |
+
+**On since 16 Nov in `stack:=ours`** (`costmap:=ours_all_chunks`). `ours_chunks` (the local
+one from `/map`) stays a challenger.
+
+**Who still reads `/map` in `ours` on the campus.** Checked while driving (`ros2 topic info
+/map -v`): `map_server` publishes it, **nobody subscribes**. It is still read by:
+
+| Reader | When |
+|---|---|
+| `aav_things` (the background: walls aren't things) | `things:=true` |
+| the screens: RViz, the map window, the dev window, Foxglove's cockpit | when they run |
+| AMCL | `amcl:=true`, without its own map |
+| Nav2's costmaps | `costmap:=nav2` (not ours) |
+| `sim_check.py` | its checks |
+
+Next: give those the chunks too, then `map_server` can stop on the campus.
+
 ## Try it
 
 | To | Run |
@@ -390,8 +446,8 @@ Our local update: **0.50-0.55 ms** on average, 0.58 ms at the 95th percentile.
   second is left; partial updates (Nav2's `_updates`) only if that proves slow.
 - **Coarse chunks** (1 m far away): the planner's lattice is fixed to 0.25 m cells, so
   every chunk held is the fine one.
-- **The local costmap from chunks:** it is 20 x 20 m round the car, inside one chunk's
-  reach; it reads `/map` still.
+- **The local costmap from chunks:** done 16 Nov ([above](#the-local-costmap-from-the-chunks-too-local_chunkstrue-16-nov)); `/map` is now
+  read in `ours` only by the things' background and the screens.
 - **The global clear:** ours serves it. Our navigator calls it (8 Nov); Nav2's trees
   still clear Nav2's global costmap.
 - **Radar, cubes and cameras** (point clouds, placed by `/tf_static`'s mounts): built,

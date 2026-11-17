@@ -102,7 +102,7 @@ New: `/maps/chunks/loaded` (which chunks are in memory, for the dev window and t
 | 3 | **The middle planner on chunks**: our planner plans ~100 m ahead on the loaded chunks, then again as the car goes | ✅ 16 Nov, **on in `stack:=ours`** (`costmap:=ours_chunks`): our global costmap holds the 3 x 3 round the car, the chunks along the route's next 100 m (`/drivers/nav/planner/route`, the whole way) and one ring more, each chunk read and inflated on its own core (rayon), only the chunks a move changed redone; a goal off it is planned to where the way there leaves it, then again. Lot, campus, University Drive, 2 runs each: every leg, the same driving, a third of the memory and CPU (below, "Step 3: the scores"). The first form, `global_window:=192` (15 Nov, campus 2/6), stays a challenger |
 | 4 | **NDT on chunks** | ✅ 15 Nov, `ndt-core` `chunks.rs`; the campus NDT map in 699 chunk files. Scored on the campus tour (3 runs against 2 on the whole map): as good (off 0.058 / 0.014 / 0.011 m a leg against 0.051 / 0.014 / 0.011), ready in 0.02 s against 2.5 s, a new 3 x 3 read in 0-3 ms (rayon) and built in 8-22 ms. Fixed on the way: the chunks follow a restart from `ekf_global`. **On by default** with `ndt:=true` on the campus once `pixi run campus` made them (`ndt_chunks:=off`: the whole map) |
 | 5 | **The subtraction**: the things from new occupancies only | ✅ 16 Nov, the default where `aav_things` runs: cubes under 0.7 m on `/map`'s walls drop. On the campus, driving: 1.7 things listed, not 9.9; every walker found. Below, "Step 5: the scores" |
-| 6 | **Lanelet2 in Rust** as the route level's map (TODO 175) | a route by lanes, stop lines in the road ahead |
+| 6 | **Lanelet2 in Rust** as the route level's map (TODO 175) | 🔧 16 Nov: `lanelet-map` routes (Dijkstra over lanelets, lane changes, one way, 98 stop lines on `/drivers/nav/planner/route_stops`), `lane_graph:=lanelet2`. Every leg on the campus and University Drive, but slower: a challenger. Stop lines into the road ahead: TODO 220. Below, "Step 6 and the close-up: the scores" |
 | 7 | **The dev window** draws the chunks, the lanes, the static map | 🔧 16 Nov: the route, the chunks loaded (`(i, j) fine` or `coarse`), each one's saved map, the lanes and stop lines (key H). Seen off screen only (the screen was locked); live: untested |
 
 Each step is a drop-in beside today's, with `sim-check` and `measure` against the same tours.
@@ -127,8 +127,9 @@ with `behaviour:=true lane_route:=true` (as `stack:=ours`). The page:
 
 Fixed on the way: a goal near a map's edge was cut short of (the lot), and a 430 m loop of
 lanes round the block to a goal 10 m off (`Fallback::Detour`). Left: coarse chunks (the
-lattice is fixed to 0.25 m cells, so every chunk held is fine), and the local costmap still
-reads `/map`.
+lattice is fixed to 0.25 m cells, so every chunk held is fine). The local costmap from the
+chunks too: done 16 Nov (`local_chunks:=true`, on in `stack:=ours`; below, "Step 6 and the
+close-up: the scores").
 
 ### Step 5: the scores (16 Nov)
 
@@ -169,6 +170,29 @@ things.
 Next: the NDT chunks with the kerbs (`campus_world.py`'s guessed map, or a mapping drive),
 then whole-body subtraction against them; a person under 0.7 m on a mapped wall's cell
 (a crouching child by a building) is still not a thing.
+
+### Step 6 and the close-up: the scores (16 Nov)
+
+Our simulator, `measure controllers --reversing --runs 2` with `behaviour:=true
+lane_route:=true`; load under 8 at each start. Results in `/tmp/maps/b2a`, `b2b`, `b2c`.
+
+| Stack | Tour | Legs | Time (s) | Sway | Costmap node |
+|---|---|---|---|---|---|
+| chunks (before) | campus | 6/6 | 562 | 0.088 | 131-148 MB, CPU 4-5 % |
+| **+ local costmap from chunks** | campus | 6/6 | 533 | 0.089 | **66-81 MB**, CPU 4-5 % |
+| chunks (before) | University box | 2/2 | 85 | - | 138-140 MB |
+| **+ local costmap from chunks** | University box | 2/2 | 87 | - | **75-78 MB** |
+| chunks, lanes.yaml | University Drive | 6/6 | 343 | 0.056 | - |
+| chunks, Lanelet2 | University Drive | 6/6 | 389 | 0.062 | - |
+| chunks, Lanelet2 | campus | 6/6 | 717 | 0.092 | - |
+
+| Finding | So |
+|---|---|
+| The local costmap from the 3 x 3 chunks drives the same, in half the memory | **on in `stack:=ours`** (`costmap:=ours_all_chunks`). In `ours`, nothing reads `/map` on the campus now (0 subscribers seen) |
+| Lanelet2 reaches every leg, but the campus's replans go round blocks on service roads | a challenger (`lane_graph:=lanelet2`) |
+
+Still reading `/map`: `aav_things`' background, the screens (RViz, map and dev windows,
+Foxglove), AMCL, Nav2's costmaps (`costmap:=nav2`), `sim_check`.
 
 ## Decisions for Ben
 

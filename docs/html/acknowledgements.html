@@ -433,7 +433,7 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><strong>Lanelet2</strong> (F. Poggenhans et al., ITSC 2018)</td>
 <td>BSD-3</td>
 <td>idea</td>
-<td>the lane map's shape and its <code>.osm</code> format; tried on RoboStack; our own Rust reader, <code>lanelet-map</code> (TODO 175)</td>
+<td>the lane map's shape and its <code>.osm</code> format (lanelets, their left and right bounds, <code>traffic_sign</code> rules with a <code>ref_line</code> stop line); its routing graph's idea (a lanelet's followers, its neighbours over a dashed line, a lane change's cost); tried on RoboStack; our own Rust reader and router, <code>lanelet-map</code>, which the route level routes on with <code>lane_graph:=lanelet2</code> (TODO 175)</td>
 </tr>
 <tr>
 <td><strong>Autoware</strong> (the Autoware Foundation)</td>

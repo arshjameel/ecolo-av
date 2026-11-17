@@ -131,8 +131,6 @@ pub enum ChunkError {
         /// The fine chunks' (m).
         chunks: f64,
     },
-    /// A rolling costmap moves on its own: chunks are for the fixed (global) one.
-    Rolling,
 }
 
 impl fmt::Display for ChunkError {
@@ -143,7 +141,6 @@ impl fmt::Display for ChunkError {
                 f,
                 "the costmap's cells are {costmap} m, the fine chunks' {chunks} m: they must match"
             ),
-            ChunkError::Rolling => write!(f, "a rolling costmap can't be made of chunks"),
         }
     }
 }

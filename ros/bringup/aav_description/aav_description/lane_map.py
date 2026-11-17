@@ -226,6 +226,53 @@ def costmap_block(lanes: LaneMap) -> dict:
                        'edge_inset': r.edge_inset} for r in lanes.roads]}
 
 
+# The route level's map for the lane-centre planner (lane_graph:=, TODO 175): lanes.yaml's
+# roads, or the Lanelet2 map beside it (lanelet-map in Rust: lanes, neighbours, stop lines).
+LANE_GRAPHS = ('lanes_yaml', 'lanelet2')
+DEFAULT_LANE_GRAPH = 'lanes_yaml'
+
+
+def check_lane_graph(name: str) -> str:
+    """Return lane_graph:= checked: one of LANE_GRAPHS (empty: the default)."""
+    name = (name or '').strip() or DEFAULT_LANE_GRAPH
+    if name not in LANE_GRAPHS:
+        raise ValueError(f'lane_graph:={name}: one of {", ".join(LANE_GRAPHS)}')
+    return name
+
+
+def lanelet2_beside(lanes_yaml: str) -> Optional[str]:
+    """
+    Return the Lanelet2 map made with a lanes.yaml, or None if there is none.
+
+    pixi run campus writes both in one folder: maps/campus/lanes.yaml and campus.osm. The
+    map is the folder's `<folder name>.osm`, else its only .osm file.
+    """
+    import os
+    folder = os.path.dirname(os.path.abspath(lanes_yaml))
+    named = os.path.join(folder, os.path.basename(folder) + '.osm')
+    if os.path.isfile(named):
+        return named
+    found = sorted(f for f in os.listdir(folder) if f.endswith('.osm')) \
+        if os.path.isdir(folder) else []
+    return os.path.join(folder, found[0]) if len(found) == 1 else None
+
+
+def planner_block(lanes_yaml: str, graph: str = DEFAULT_LANE_GRAPH) -> dict:
+    """
+    Return the lane-centre planner's lanes block (aav_planner's settings 'lanes').
+
+    lanes_yaml: graph's roads ({'roads': [...]}, as costmap_block); lanelet2: {'lanelet2':
+    the map beside it}, or, with none there, lanes.yaml's roads (a warning printed).
+    """
+    if check_lane_graph(graph) == 'lanelet2':
+        osm = lanelet2_beside(lanes_yaml)
+        if osm:
+            return {'lanelet2': osm}
+        print(f'[lane_map] lane_graph:=lanelet2, but no Lanelet2 map beside {lanes_yaml}: '
+              'its roads instead', flush=True)
+    return costmap_block(load(lanes_yaml))
+
+
 def _left_of(lane: Lane, x: float, y: float) -> float:
     """Return m (x, y) is left of the lane's centre (+ left), the way the lane runs."""
     return (x - lane.x) * -math.sin(lane.heading) + (y - lane.y) * math.cos(lane.heading)

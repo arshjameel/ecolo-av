@@ -12,6 +12,7 @@ The page: [docs/own-costmap.md](../../../docs/own-costmap.md).
 lane_costs:= a lanes.yaml, and /plan -> the lanes layer on the global one (a challenger)
 costmap_chunks:= a chunks folder, and /drivers/nav/planner/route -> the global one holds
   only the 64 m chunks round the car and along the route ahead, not /map (TODO 175)
+local_chunks:=true -> the local one stamps its window from the 3 x 3 chunks round the car too
 ```
 
 ## Overview
@@ -33,10 +34,10 @@ pixi run sim-check --costmap own --tracker mppi_lag --lidar-obstacle --plan-arou
 
 | Item | What |
 |---|---|
-| Subscribes | `/map` (transient local; not when the global one is made of chunks); `/localization/odom/local`; `/tf` (map -> odom); `/tf_static` (sensor mounts); each layer's sources from nav2.yaml (`/sensors/lidar/scan`; the radar, cubes, camera points and ghost where they run), best effort; `/plan` (`route_topic`) only with a lanes block; `/drivers/nav/planner/route` (`ahead_topic`) only with a chunks block |
+| Subscribes | `/map` (transient local; not when every costmap is made of chunks); `/localization/odom/local`; `/tf` (map -> odom); `/tf_static` (sensor mounts); each layer's sources from nav2.yaml (`/sensors/lidar/scan`; the radar, cubes, camera points and ghost where they run), best effort; `/plan` (`route_topic`) only with a lanes block; `/drivers/nav/planner/route` (`ahead_topic`) only with a chunks block |
 | Publishes | `/drivers/nav/costmap/local`, `/global` (OccupancyGrid); `/drivers/nav/costmap/local_raw`, `/global_raw` (nav2_msgs/Costmap); `/drivers/nav/costmap/status` (DiagnosticStatus) |
 | Serves | `/drivers/nav/costmap/clear_entirely_local`, `_global` (nav2_msgs/srv/ClearEntireCostmap): forget every mark. With `tracker:=mppi_lag`, `bt_navigator`'s local clear is remapped here |
-| Parameters | `local`, `global`: one JSON block each, made by `aav_description`'s `vehicle.costmap_params` from the tuned nav2.yaml; the global one may hold `lanes` (`lane_map.costmap_block`, from `navigation.launch.py lane_costs:=<lanes.yaml>`) and `chunks` (`vehicle.costmap_chunks_block`: `dir`, `ahead` 100 m, `margin` 1 chunk; from `costmap_chunks:=<folder>`); `odom_topic`, `map_topic`, `base_frame`, `route_topic`, the topic names |
+| Parameters | `local`, `global`: one JSON block each, made by `aav_description`'s `vehicle.costmap_params` from the tuned nav2.yaml; the global one may hold `lanes` (`lane_map.costmap_block`, from `navigation.launch.py lane_costs:=<lanes.yaml>`) and `chunks` (`vehicle.costmap_chunks_block`: `dir`, `ahead` 100 m, `margin` 1 chunk; from `costmap_chunks:=<folder>`); the local one may hold `chunks` too (`ahead` 0, `margin` 0: the 3 x 3 round the car, its static layer stamped from them; `local_chunks:=true`); `odom_topic`, `map_topic`, `base_frame`, `route_topic`, the topic names |
 
 ### The lanes layer (`lane_costs`, a challenger, TODO 148)
 

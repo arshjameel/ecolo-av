@@ -33,6 +33,7 @@ use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
 use costmap::{Grid, Road};
+use lanelet_map::{LaneletMap, Place};
 
 use crate::pass::{self, PassSettings};
 use crate::steps::{self, EDGE_MARGIN};
@@ -40,6 +41,9 @@ use crate::{curves::wrap, Plan, PlanError, Planner, Pose};
 
 /// m past a road's kerb a pose still counts as on that road (`lane_map.py` MARGIN).
 const ON_ROAD_MARGIN: f64 = 0.5;
+/// A join from off the lanes to them, in metres of lane: each metre off counts this much
+/// (Lanelet2: the lane picked near an off-road start or goal).
+const JOIN_WEIGHT: f64 = 2.0;
 /// m: the sideways step the joins must make room for: one lane.
 const ONE_LANE: f64 = 3.5;
 /// m a pass keeps from the left kerb, beyond half the car.
@@ -67,6 +71,9 @@ pub struct LaneSettings {
     /// A lane route longer than `detour.0` times the straight distance plus `detour.1` m
     /// is a loop round the block to reach a goal close by: the lattice's instead.
     pub detour: (f64, f64),
+    /// The same on a Lanelet2 map, tighter: its lanes run one way each, so a goal across
+    /// the road is reached round the block more often than on lanes.yaml's two-way roads.
+    pub detour_lanelets: (f64, f64),
     /// Something parked on the line: pass it ([`crate::pass`]); None: the lattice, all of
     /// it, as before 16 Nov.
     pub pass: Option<PassSettings>,
@@ -87,6 +94,9 @@ impl Default for LaneSettings {
             // 16 Nov (TODO 175): on the campus tour a replan 10 m short of the goal (off
             // the road, at 45 degrees to it) gave a 430 m loop of lanes; the car drove it.
             detour: (2.0, 40.0),
+            // 16 Nov (TODO 175): replans along the campus legs on Lanelet2 gave 153-234 m
+            // loops to goals 44-103 m away, inside (2, 40); the sim drove them.
+            detour_lanelets: (1.5, 20.0),
             pass: Some(PassSettings::default()),
         }
     }
@@ -145,6 +155,8 @@ pub struct LanePlan {
     pub cut: bool,
     /// The route level's whole way to the goal: the lane line, or start and goal off it.
     pub route: Vec<Pose>,
+    /// The stop lines the route meets (map frame; a Lanelet2 map only), in order.
+    pub stops: Vec<(f64, f64)>,
 }
 
 /// Where a pose meets the lane map: a point on one road's centre line, and the way along.
@@ -167,11 +179,26 @@ struct Edge {
     length: f64,
 }
 
-/// The lane map as a road graph, and how to join it.
+/// The lane map as a graph, and how to join it.
 #[derive(Debug, Clone)]
 pub struct LaneRouter {
-    roads: Vec<Road>,
     settings: LaneSettings,
+    graph: Graph,
+}
+
+/// The route level's map (`lane_graph:=`).
+#[derive(Debug, Clone)]
+enum Graph {
+    /// `lanes.yaml`: each road's centre line, the right lane offset from it.
+    Roads(RoadGraph),
+    /// Lanelet2: each lane its own lanelet, with followers, neighbours and stop lines.
+    Lanelets(Box<LaneletMap>),
+}
+
+/// `lanes.yaml`'s roads as a graph of their centre-line points.
+#[derive(Debug, Clone)]
+struct RoadGraph {
+    roads: Vec<Road>,
     /// Every centre-line point, once.
     nodes: Vec<(f64, f64)>,
     /// node_of[road][point].
@@ -203,6 +230,9 @@ fn foot(p: (f64, f64), a: (f64, f64), b: (f64, f64)) -> (f64, (f64, f64), f64) {
 fn distance(a: (f64, f64), b: (f64, f64)) -> f64 {
     (b.0 - a.0).hypot(b.1 - a.1)
 }
+
+/// A line, and the stop lines met on it (map frame).
+type WithStops<P> = (Vec<P>, Vec<(f64, f64)>);
 
 /// A route: its metres, and its points each with the road (index) it was reached on.
 type Route = (f64, Vec<((f64, f64), usize)>);
@@ -274,19 +304,44 @@ impl LaneRouter {
             }
         }
         Self {
-            roads,
             settings,
-            nodes,
-            node_of,
-            edges,
-            out,
+            graph: Graph::Roads(RoadGraph {
+                roads,
+                nodes,
+                node_of,
+                edges,
+                out,
+            }),
         }
     }
 
-    /// The roads.
+    /// The route level on a Lanelet2 map (`lane_graph:=lanelet2`, TODO 175): routed by
+    /// lanes (A lanelet's followers, its neighbours over a dashed line, one way each), the
+    /// line each lane's own centre, the stop lines on the way found.
+    #[must_use]
+    pub fn from_lanelets(map: LaneletMap, settings: LaneSettings) -> Self {
+        Self {
+            settings,
+            graph: Graph::Lanelets(Box::new(map)),
+        }
+    }
+
+    /// The roads (`lanes.yaml`); none on a Lanelet2 map.
     #[must_use]
     pub fn roads(&self) -> &[Road] {
-        &self.roads
+        match &self.graph {
+            Graph::Roads(g) => &g.roads,
+            Graph::Lanelets(_) => &[],
+        }
+    }
+
+    /// What it routes on, for the log: "N roads (lanes.yaml)" or "N lanelets (Lanelet2)".
+    #[must_use]
+    pub fn describe(&self) -> String {
+        match &self.graph {
+            Graph::Roads(g) => format!("{} roads (lanes.yaml)", g.roads.len()),
+            Graph::Lanelets(m) => format!("{} lanelets (Lanelet2)", m.lanelets().count()),
+        }
     }
 
     /// The settings.
@@ -295,10 +350,158 @@ impl LaneRouter {
         self.settings
     }
 
+    /// The lane's centre from `start` to `goal` (before rounding), and the stop lines met
+    /// on it (Lanelet2 only); None off the lane map.
+    fn centre_line(&self, start: &Pose, goal: &Pose) -> Option<WithStops<(f64, f64)>> {
+        match &self.graph {
+            Graph::Roads(g) => g
+                .centre_line(start, goal, self.settings.reach)
+                .map(|l| (l, Vec::new())),
+            Graph::Lanelets(m) => lanelet_line(m, start, goal, self.settings.reach),
+        }
+    }
+
+    /// m left of the lane's centre the car may go near `p` (see [`RoadGraph::room_left`]).
+    fn room_left(&self, p: &Pose, half_width: f64) -> f64 {
+        match &self.graph {
+            Graph::Roads(g) => g.room_left(p, half_width),
+            Graph::Lanelets(m) => lanelet_room_left(m, p, half_width),
+        }
+    }
+
+    /// The right lane's centre from `start` to `goal`, a pose every
+    /// [`LaneSettings::spacing`] m, its corners rounded at `radius` m; None off the lane map.
+    #[must_use]
+    pub fn lane_line(&self, start: &Pose, goal: &Pose, radius: f64) -> Option<Vec<Pose>> {
+        self.line_and_stops(start, goal, radius)
+            .map(|(line, _)| line)
+    }
+
+    /// [`LaneRouter::lane_line`], and the stop lines met on the way (Lanelet2 only).
+    fn line_and_stops(&self, start: &Pose, goal: &Pose, radius: f64) -> Option<WithStops<Pose>> {
+        let (points, stops) = self.centre_line(start, goal)?;
+        if points.len() < 2 {
+            return None;
+        }
+        let rounded = round_corners(&points, radius, self.settings.spacing);
+        Some((resample(&rounded, self.settings.spacing), stops))
+    }
+}
+
+/// On a Lanelet2 map, where a pose meets the lanes: the lanes within `reach`, nearest
+/// first. On a lane (within its half width and half a metre): the lanes there running the
+/// way the pose faces (at a junction, the lanes through it overlap; the route picks).
+/// Off every lane: every lane near (up to 12), either way; the route picks, counting the
+/// join (`JOIN_WEIGHT`).
+fn lanelet_places(m: &LaneletMap, pose: &Pose, reach: f64) -> Vec<Place> {
+    let near = m.places_near(pose.x, pose.y, reach);
+    let facing = |p: &Place| wrap(pose.yaw - p.heading).abs() <= std::f64::consts::FRAC_PI_2;
+    let on: Vec<Place> = near
+        .iter()
+        .filter(|p| {
+            let (left, right) = m.half_widths(p.lanelet, p.along).unwrap_or((1.75, 1.75));
+            p.off <= left.max(right) + ON_ROAD_MARGIN
+        })
+        .copied()
+        .collect();
+    if !on.is_empty() {
+        // On the road: the lanes running the way the pose faces.
+        return on.into_iter().filter(facing).take(6).collect();
+    }
+    // Off every lane: each lane near, either way; the route picks, its join counted too.
+    near.into_iter().take(12).collect()
+}
+
+/// The lanes' centre from `start` to `goal` on a Lanelet2 map, and the stop lines met;
+/// None off the map or with no way by lanes.
+fn lanelet_line(
+    m: &LaneletMap,
+    start: &Pose,
+    goal: &Pose,
+    reach: f64,
+) -> Option<WithStops<(f64, f64)>> {
+    let froms = lanelet_places(m, start, reach);
+    let tos = lanelet_places(m, goal, reach);
+    // A join off the lane costs twice its length: the lattice's way there is no straight
+    // line. A lane passing 10 m from an off-road goal beats a loop to one 6 m from it.
+    let key = |(r, t): &(lanelet_map::Route, Place)| {
+        r.cost
+            + JOIN_WEIGHT
+                * (t.off
+                    + froms
+                        .iter()
+                        .find(|f| f.lanelet == r.lanelets[0])
+                        .map_or(0.0, |f| f.off))
+    };
+    let (route, to) = froms
+        .iter()
+        .flat_map(|f| {
+            tos.iter()
+                .filter_map(move |t| Some((m.route_between(f, t)?, *t)))
+        })
+        .min_by(|a, b| key(a).total_cmp(&key(b)))?;
+    let line = m
+        .route_line(&route, &to)
+        .iter()
+        .map(|p| (p.x, p.y))
+        .collect();
+    let stops = m
+        .stops_between(&route, &to)
+        .iter()
+        .map(|(_, _, p)| (p.x, p.y))
+        .collect();
+    Some((line, stops))
+}
+
+/// m left of the lane's centre the car may go near `p` on a Lanelet2 map: across its own
+/// lane and every lane beside on its left (either way, side by side), to the last one's
+/// far edge, less `half_width` and [`KERB_MARGIN`]. 0 off every lane.
+fn lanelet_room_left(m: &LaneletMap, p: &Pose, half_width: f64) -> f64 {
+    let Some(here) = m.places_near(p.x, p.y, ONE_LANE).into_iter().next() else {
+        return 0.0;
+    };
+    let (left, _) = m
+        .half_widths(here.lanelet, here.along)
+        .unwrap_or((0.0, 0.0));
+    // Step left a lane at a time: a lane there, side by side with this one, widens the road.
+    let (nx, ny) = (-here.heading.sin(), here.heading.cos());
+    let mut edge = left;
+    for _ in 0..4 {
+        let (x, y) = (
+            here.foot.x + nx * (edge + 0.5),
+            here.foot.y + ny * (edge + 0.5),
+        );
+        let beside = m.places_near(x, y, ONE_LANE).into_iter().find(|q| {
+            let (a, b) = m.half_widths(q.lanelet, q.along).unwrap_or((0.0, 0.0));
+            q.lanelet != here.lanelet
+                && q.off <= a.max(b) + 0.1
+                && wrap(q.heading - here.heading)
+                    .abs()
+                    .min(std::f64::consts::PI - wrap(q.heading - here.heading).abs())
+                    < 0.35
+        });
+        let Some(q) = beside else { break };
+        let (a, b) = m.half_widths(q.lanelet, q.along).unwrap_or((0.0, 0.0));
+        let centre = (q.foot.x - here.foot.x) * nx + (q.foot.y - here.foot.y) * ny;
+        let further = centre
+            + if wrap(q.heading - here.heading).abs() < 1.0 {
+                a
+            } else {
+                b
+            };
+        if further <= edge + 0.1 {
+            break;
+        }
+        edge = further;
+    }
+    (edge - half_width - KERB_MARGIN).max(0.0)
+}
+
+impl RoadGraph {
     /// Where `pose` meets the lane map: on a road, the way it faces (none if that's
     /// against a one-way road); off every road but within `reach`, both ways (a two-way
     /// road) or the road's way.
-    fn anchors(&self, pose: &Pose) -> Vec<Anchor> {
+    fn anchors(&self, pose: &Pose, reach: f64) -> Vec<Anchor> {
         let p = (pose.x, pose.y);
         let mut best: Option<Nearest> = None;
         for (ri, road) in self.roads.iter().enumerate() {
@@ -328,7 +531,7 @@ impl LaneRouter {
                 return Vec::new();
             }
             vec![anchor(along)]
-        } else if d <= self.settings.reach {
+        } else if d <= reach {
             if r.oneway {
                 vec![anchor(true)]
             } else {
@@ -464,12 +667,11 @@ impl LaneRouter {
         })
     }
 
-    /// The right lane's centre from `start` to `goal`, a pose every
-    /// [`LaneSettings::spacing`] m, its corners rounded at `radius` m; None off the lane map.
-    #[must_use]
-    pub fn lane_line(&self, start: &Pose, goal: &Pose, radius: f64) -> Option<Vec<Pose>> {
-        let froms = self.anchors(start);
-        let tos = self.anchors(goal);
+    /// The right lane's centre from `start` to `goal`, corners not yet rounded; None off
+    /// the lane map.
+    fn centre_line(&self, start: &Pose, goal: &Pose, reach: f64) -> Option<Vec<(f64, f64)>> {
+        let froms = self.anchors(start, reach);
+        let tos = self.anchors(goal, reach);
         let best = froms
             .iter()
             .flat_map(|f| tos.iter().filter_map(move |t| self.route_between(f, t)))
@@ -483,11 +685,11 @@ impl LaneRouter {
             .map(|(_, road)| self.roads[*road].lane().0)
             .collect();
         let points: Vec<(f64, f64)> = centre.iter().map(|(p, _)| *p).collect();
-        let moved = offset(&points, &offsets);
-        let rounded = round_corners(&moved, radius, self.settings.spacing);
-        Some(resample(&rounded, self.settings.spacing))
+        Some(offset(&points, &offsets))
     }
+}
 
+impl LaneRouter {
     /// A path from `start` to `goal`: the lane's centre joined by `planner` at both ends, or
     /// `planner`'s alone (and why). `cancelled` as [`Planner::plan`].
     ///
@@ -508,14 +710,18 @@ impl LaneRouter {
                 how: How::Lattice(why),
                 cut,
                 route,
+                stops: Vec::new(),
             })
         };
         let radius = planner.turning_radius();
-        let Some(mut line) = self.lane_line(start, goal, radius) else {
+        let Some((mut line, stops)) = self.line_and_stops(start, goal, radius) else {
             return lattice(Fallback::OffMap, vec![*start, *goal]);
         };
         let route = line.clone();
-        let (times, plus) = self.settings.detour;
+        let (times, plus) = match self.graph {
+            Graph::Roads(_) => self.settings.detour,
+            Graph::Lanelets(_) => self.settings.detour_lanelets,
+        };
         let straight = (goal.x - start.x).hypot(goal.y - start.y);
         if arc_lengths(&line).last().copied().unwrap_or(0.0) > times * straight + plus {
             return lattice(Fallback::Detour, vec![*start, *goal]);
@@ -528,7 +734,12 @@ impl LaneRouter {
                 cut = true;
             }
         }
-        let lattice = |why| lattice(why, route.clone());
+        let lattice = |why| {
+            lattice(why, route.clone()).map(|p| LanePlan {
+                stops: stops.clone(),
+                ..p
+            })
+        };
         // Something parked on the line: pass it, the rest the lane's centre.
         let mut passing = 0.0;
         if let Some(settings) = &self.settings.pass {
@@ -629,6 +840,7 @@ impl LaneRouter {
             },
             cut,
             route,
+            stops,
         })
     }
 
@@ -663,6 +875,7 @@ impl LaneRouter {
         let mut from = *start;
         let mut cut = false;
         let mut route = Vec::new();
+        let mut stops = Vec::new();
         for (leg, goal) in goals.iter().enumerate() {
             let p = self
                 .plan(planner, grid, &from, goal, cancelled)
@@ -684,6 +897,7 @@ impl LaneRouter {
             whole.search_time += p.plan.search_time;
             whole.total_time += p.plan.total_time;
             route.extend(p.route.iter().skip(usize::from(!route.is_empty())));
+            stops.extend(p.stops);
             from = *goal;
             if p.cut {
                 cut = true;
@@ -700,6 +914,7 @@ impl LaneRouter {
             how,
             cut,
             route,
+            stops,
         })
     }
 }
@@ -1011,7 +1226,9 @@ mod tests {
 
     #[test]
     fn shared_points_join_roads() {
-        let r = ell();
+        let Graph::Roads(r) = ell().graph else {
+            panic!("a lanes.yaml graph");
+        };
         assert_eq!(r.nodes.len(), 4, "the corner is one node");
         assert_eq!(r.edges.len(), 6);
     }

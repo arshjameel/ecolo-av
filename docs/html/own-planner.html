@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-planner.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own planner</h1>
-<div class="meta">32 min read · 12 sections</div></header>
+<div class="meta">35 min read · 13 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -119,7 +119,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#hand-made-maps-no-ros">Hand-made maps (no ROS)</a><a href="#in-our-simulator-8-nov">In our simulator (8 Nov)</a><a href="#hybrid-a-a-second-search-14-nov">Hybrid-A*: a second search (14 Nov)</a><a href="#the-staircase-and-the-strong-smoother-15-nov">The staircase and the strong smoother (15 Nov)</a><a href="#re-timed-in-the-sim-16-nov-todo-152">Re-timed in the sim (16 Nov, TODO 152)</a><a href="#the-lane-centre-planner-pathlane-16-nov">The lane-centre planner (path:=lane, 16 Nov)</a><a href="#passing-something-parked-16-nov">Passing something parked (16 Nov)</a><a href="#far-goals-in-steps-16-nov-todo-175">Far goals in steps (16 Nov, TODO 175)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#hand-made-maps-no-ros">Hand-made maps (no ROS)</a><a href="#in-our-simulator-8-nov">In our simulator (8 Nov)</a><a href="#hybrid-a-a-second-search-14-nov">Hybrid-A*: a second search (14 Nov)</a><a href="#the-staircase-and-the-strong-smoother-15-nov">The staircase and the strong smoother (15 Nov)</a><a href="#re-timed-in-the-sim-16-nov-todo-152">Re-timed in the sim (16 Nov, TODO 152)</a><a href="#the-lane-centre-planner-pathlane-16-nov">The lane-centre planner (path:=lane, 16 Nov)</a><a href="#passing-something-parked-16-nov">Passing something parked (16 Nov)</a><a href="#far-goals-in-steps-16-nov-todo-175">Far goals in steps (16 Nov, TODO 175)</a><a href="#routing-on-lanelet2-lane_graphlanelet2-16-nov-todo-175">Routing on Lanelet2 (lane_graph:=lanelet2, 16 Nov, TODO 175)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
 <div class="lead"><p>Ben, 8 Nov: move off Nav2 <strong>one piece at a time</strong>, each beside Nav2 until it wins. The
 order: the costmap (<a href="own-costmap.html">done</a>), then <strong>the path planner</strong> (this page), then
 the navigator. Since 14 Nov ours is the simulator's default (<code>stack:=ours</code>; Nav2's
@@ -1278,6 +1278,109 @@ tour's first goal (off the road, at 45° to it) a replan gave a 430 m route of l
 car drove it. A lane route longer than 2 x the straight distance + 40 m is now the
 lattice's (<code>Fallback::Detour</code>, <code>detour</code> in the status). It could happen on the whole map
 too: there the leg ended first.</p>
+</section>
+<section class="card"><h2 id="routing-on-lanelet2-lane_graphlanelet2-16-nov-todo-175">Routing on Lanelet2 (<code>lane_graph:=lanelet2</code>, 16 Nov, TODO 175)</h2>
+<p>The route level of the <a href="../designs/2026-11-15_three-levels.md">three levels</a>, step 6. The
+lane-centre planner can route on the campus's <strong>Lanelet2</strong> map instead of <code>lanes.yaml</code>.
+The output is the same (<code>/plan</code>, <code>/drivers/nav/planner/route</code>): a drop-in.</p>
+<pre class="highlight"><code class="language-text"> lanes.yaml:  road centre lines ──Dijkstra──▶ moved right onto the lane ──▶ the line
+ Lanelet2:    lanes (lanelets) ──Dijkstra───────────────────────────────▶ each lane's own centre
+              + who follows whom, who sits beside (dashed line), one way, stop lines</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The map</td>
+<td><code>maps/campus/campus.osm</code> (<code>pixi run campus</code>, <code>tools/campus_lanelet.py</code>): the street router's 517 roads, 998 lanes, 1,903 joins, and 98 stop lines from OpenStreetMap's stop signs</td>
+</tr>
+<tr>
+<td>Where a pose meets it</td>
+<td>the lanes within 20 m. On a lane: those running the way it faces. Off every lane: any of the 12 nearest, the way to it counted twice (so no loop round a block to reach the lane facing its way)</td>
+</tr>
+<tr>
+<td>The route</td>
+<td><code>lanelet-map</code> <code>route_between</code>: Dijkstra over lanelets, never backwards; a change of lane where the car is, 10 m extra</td>
+</tr>
+<tr>
+<td>The line</td>
+<td>the lanes' centres joined; a lane change eased over 20 m; corners rounded as before (circle arcs: TODO 211 makes them clothoids)</td>
+</tr>
+<tr>
+<td>The stop lines</td>
+<td>those on the route, on <code>/drivers/nav/planner/route_stops</code> (PoseArray, map) and <code>stops</code> in the status. Nothing reads them yet: next, the road ahead</td>
+</tr>
+<tr>
+<td>Off the map</td>
+<td>as before: the lattice, and why</td>
+</tr>
+<tr>
+<td>Pick it</td>
+<td><code>lane_graph:=lanelet2</code> (<code>path:=lane_lanelet2</code> in <code>stacks.yaml</code>); a world with no <code>.osm</code> beside its <code>lanes.yaml</code> keeps the roads</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Against <code>lanes.yaml</code></strong> (<code>cargo test -p lattice-planner --test lanelet2</code>, the campus's
+6 legs, no ROS):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Legs</th>
+<th>Lanelet2</th>
+<th>lanes.yaml</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>on University Drive (2)</td>
+<td>134.4 m, 151.5 m</td>
+<td>134.4 m, 151.7 m; never more than 0.3 m apart</td>
+</tr>
+<tr>
+<td>out of lot P4 (2)</td>
+<td>none: off the map, the lattice</td>
+<td>the same</td>
+</tr>
+<tr>
+<td>the campus's 2 inner legs</td>
+<td>313 m, 245 m: service roads lanes.yaml hasn't got. Both over the detour limit, so the lattice, as with lanes.yaml</td>
+<td>none: the lattice</td>
+</tr>
+</tbody>
+</table></div>
+<p>Lanelet2 has more roads (all 517 the router drives; <code>lanes.yaml</code> has the 129 painted
+ones), so it finds lane routes where <code>lanes.yaml</code> finds none.</p>
+<p><strong>Driving</strong> (16 Nov, our simulator, <code>measure controllers --stacks own_calm_chunks
+own_calm_chunks_ll2 --reversing --runs 2</code>, <code>/tmp/maps/b2b</code>, <code>b2c</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tour</th>
+<th>lanes.yaml (the default)</th>
+<th>Lanelet2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>campus</td>
+<td>6/6 legs, 533-562 s, sway 0.088</td>
+<td>6/6 legs, <strong>717 s</strong>, sway 0.092</td>
+</tr>
+<tr>
+<td>University Drive</td>
+<td>6/6 legs, 343 s, sway 0.056</td>
+<td>6/6 legs, 389 s, sway 0.062</td>
+</tr>
+</tbody>
+</table></div>
+<p>So <strong>Lanelet2 stays a challenger</strong>: every leg reached, but slower. On the campus its
+replans take the service roads round blocks (fixed in part: an off-lane start takes any
+lane near, a loop limit of 1.5 x + 20 m). Next: stop lines into the road ahead (TODO 220),
+clothoid corners for both graphs (TODO 211).</p>
 </section>
 <section class="card"><h2 id="whats-missing">What's missing</h2>
 <ul>

@@ -148,17 +148,15 @@ impl Costmap {
     /// Build the static map from map chunks, not a whole map (TODO 175): only the chunks
     /// round the car and along the route ahead are held, as the car goes
     /// ([`Costmap::follow_chunks`]). A map given later ([`Costmap::set_map`]) is ignored.
+    /// A rolling costmap (the local one) holds the chunks round the car as its static map
+    /// and stamps its window from them, at its own cells, as it would from a whole map.
     ///
     /// # Errors
     ///
-    /// [`ChunkError::Rolling`] for a rolling costmap; [`ChunkError::Resolution`] if the
-    /// costmap's cells aren't the fine chunks'.
+    /// [`ChunkError::Resolution`] if a fixed costmap's cells aren't the fine chunks'.
     pub fn set_chunks(&mut self, source: ChunkSource) -> Result<(), ChunkError> {
-        if self.settings.rolling {
-            return Err(ChunkError::Rolling);
-        }
         let fine = Detail::Fine.cell();
-        if (self.settings.resolution - fine).abs() > 1e-9 {
+        if !self.settings.rolling && (self.settings.resolution - fine).abs() > 1e-9 {
             return Err(ChunkError::Resolution {
                 costmap: self.settings.resolution,
                 chunks: fine,
@@ -224,6 +222,16 @@ impl Costmap {
             if let Some((_, cells)) = c.store.get(key) {
                 stitch(&mut map, &window, key, side, cells);
             }
+        }
+        if self.settings.rolling {
+            // The window rolls on its own: the chunks are only the map it stamps from.
+            self.map = Some(StaticMap { grid: map });
+            c.window = Some(window);
+            return Ok(Some(Moved {
+                changes,
+                window,
+                redo: 0,
+            }));
         }
         // A lanes layer's costs follow the newest route: redo every chunk then.
         let fresh = self.whole || self.lanes.is_some();
@@ -700,6 +708,74 @@ mod tests {
             one.compose_whole(None);
             assert_eq!(c.grid(), one.grid(), "step {k}");
         }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_rolling_window_from_the_chunks_round_the_car_is_the_one_from_the_whole_map() {
+        // The same 320 m map, whole and in 64 m chunks; a 20 m local window at 0.1 m cells,
+        // in odom, odom turned and moved off map. The car drives across chunk edges.
+        let (n, res) = (1280usize, 0.25);
+        let values: Vec<i8> = (0..n * n)
+            .map(|i| {
+                let (x, y) = (i % n, i / n);
+                if x % 90 == 0 && y % 5 != 0 || (x * 7 + y * 3) % 401 == 0 {
+                    100
+                } else if (x / 40 + y / 40) % 9 == 0 {
+                    -1
+                } else {
+                    0
+                }
+            })
+            .collect();
+        let dir = std::env::temp_dir().join(format!("costmap-local-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let grid = map_chunks::Grid::new(map_chunks::Point::new(-160.0, -160.0), 64.0).unwrap();
+        let whole = map_chunks::WholeMap {
+            origin: map_chunks::Point::new(-160.0, -160.0),
+            resolution: res,
+            width: n,
+            height: n,
+            data: &values,
+        };
+        map_chunks::files::write_chunks(&grid, &whole, &dir).unwrap();
+        let settings = Settings {
+            rolling: true,
+            width: 20.0,
+            height: 20.0,
+            resolution: 0.1,
+            track_unknown: true,
+            footprint: footprint::padded(
+                &[(1.8, 0.5), (1.8, -0.5), (-0.2, -0.5), (-0.2, 0.5)],
+                0.05,
+            ),
+            inflation: Some((1.0, 3.0)),
+            static_layer: true,
+        };
+        let mut from_map = Costmap::new(settings.clone(), Vec::new());
+        from_map.set_map(
+            StaticMap::from_occupancy((-160.0, -160.0), res, n, n, &values, true).unwrap(),
+        );
+        let mut from_chunks = Costmap::new(settings, Vec::new());
+        from_chunks
+            .set_chunks(ChunkSource::open(&dir, 0.0, 0).unwrap())
+            .unwrap();
+        let map_from_odom = Pose2::new(3.0, -2.0, 0.3);
+        let mut moves = 0;
+        for k in 0..40 {
+            let robot = Pose2::new(-140.0 + 7.0 * f64::from(k), 5.0, 0.2);
+            let car = map_from_odom.apply((robot.x, robot.y));
+            if from_chunks.follow_chunks(car).unwrap().is_some() {
+                moves += 1;
+            }
+            from_map.update(&robot, Some(&map_from_odom), &[]);
+            from_chunks.update(&robot, Some(&map_from_odom), &[]);
+            assert_eq!(from_chunks.grid(), from_map.grid(), "step {k}");
+        }
+        assert!(moves >= 4, "{moves}: the chunks held follow the car");
+        // 3 x 3 chunks held, never the whole map.
+        let (window, held) = from_chunks.chunk_window().unwrap();
+        assert_eq!((window.across(), window.up(), held), (3, 3, 9));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

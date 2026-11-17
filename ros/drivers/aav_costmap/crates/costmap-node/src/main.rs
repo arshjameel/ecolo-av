@@ -1,7 +1,8 @@
 //! costmap: our own local and global costmaps, beside Nav2's (a trial).
 //!
 //! Subscribes  /map                        nav_msgs/OccupancyGrid, transient local: the
-//!                                         static layer
+//!                                         static layer (not when every costmap is made
+//!                                         of chunks)
 //!             localization/odom/local     nav_msgs/Odometry (odom_topic): the car in odom,
 //!                                         kept 2 s to place each scan at its own stamp.
 //!                                         Older than transform_tolerance (or map -> odom,
@@ -42,6 +43,9 @@
 //!             A global block with "chunks" ({dir, ahead, margin}; navigation.launch.py
 //!             costmap_chunks:=) builds it from the map's 64 m chunks round the car and
 //!             along the route ahead, not from /map (costmap::chunked, TODO 175).
+//!             A local block with "chunks" (navigation.launch.py local_chunks:=true): its
+//!             static layer from the 3 x 3 chunks round the car, not /map. Every costmap
+//!             made of chunks: no /map subscription at all.
 //!             odom_topic, map_topic, base_frame, and the topic names above.
 //!
 //! navigation.launch.py costmap:=own starts it. Nav2's own costmaps keep running. The
@@ -484,7 +488,12 @@ impl Spec {
 
     fn describe(&self) -> String {
         let s = self.costmap.settings();
-        let size = if s.rolling {
+        let size = if s.rolling && self.costmap.chunked() {
+            format!(
+                "a {} m x {} m window of {} m cells, its map from the 64 m chunks round the car",
+                s.width, s.height, s.resolution
+            )
+        } else if s.rolling {
             format!(
                 "a {} m x {} m window of {} m cells",
                 s.width, s.height, s.resolution
@@ -709,13 +718,18 @@ impl One {
 
     /// One update, and its publish when due.
     fn update(&mut self, inputs: Inputs) {
-        if self.spec.costmap.chunked() {
+        // The car in the map frame: the local costmap's robot is in odom.
+        let car = if self.spec.costmap.settings().rolling {
+            inputs
+                .map_from_frame
+                .as_ref()
+                .map(|t| t.apply((inputs.robot.x, inputs.robot.y)))
+        } else {
+            Some((inputs.robot.x, inputs.robot.y))
+        };
+        if let Some(car) = car.filter(|_| self.spec.costmap.chunked()) {
             let started = Instant::now();
-            match self
-                .spec
-                .costmap
-                .follow_chunks((inputs.robot.x, inputs.robot.y))
-            {
+            match self.spec.costmap.follow_chunks(car) {
                 Ok(None) => {}
                 Ok(Some(moved)) => {
                     let w = moved.window;

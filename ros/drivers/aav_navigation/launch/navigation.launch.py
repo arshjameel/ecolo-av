@@ -177,6 +177,14 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
                           whole path to the lattice, as before 16 Nov. true (the default):
                           only the blocked stretch moves left, the least that clears it,
                           then back (aav_planner pass.rs)
+  lane_graph:=lanelet2   with lane_route: route on the Lanelet2 map beside the lanes.yaml
+                          (pixi run campus: maps/campus/campus.osm; lanelet-map in Rust):
+                          lanes, their neighbours, one way each, the stop lines on the way
+                          (/drivers/nav/planner/route_stops). lanes_yaml (the default): the
+                          lanes.yaml's roads (TODO 175, step 6)
+  local_chunks:=true      with costmap_chunks: the local costmap's static layer from the 3 x 3
+                          chunks round the car too, not /map (TODO 175). false (the
+                          default): /map
   things:=true            (with lidar:=true) aav_things' things node: voxels' cubes grouped
                           into things, each followed by a Kalman filter and remembered a few
                           seconds unseen, on /world/things (and /world/things/markers); the
@@ -629,6 +637,9 @@ def nodes(context):
             blocks['global']['lanes'] = lane_map.costmap_block(lane_map.load(lane_costs))
         if costmap_chunks:
             blocks['global']['chunks'] = vehicle.costmap_chunks_block(costmap_chunks)
+            if LaunchConfiguration('local_chunks').perform(context).strip().lower() == 'true':
+                # The local costmap's static layer: the 3 x 3 chunks round the car only.
+                blocks['local']['chunks'] = vehicle.costmap_chunks_block(costmap_chunks, 0.0, 0)
         actions.append(Node(
             package='aav_costmap', executable='costmap', name='costmap', output='screen',
             respawn=True, respawn_delay=RESPAWN_DELAY,
@@ -644,7 +655,8 @@ def nodes(context):
         with open(f'{share}/config/nav2.yaml') as f:
             settings = vehicle.planner_params(tuned, v, costmap, search, yaml.safe_load(f))
         if lane_route:
-            settings['lanes'] = lane_map.costmap_block(lane_map.load(lane_route))
+            settings['lanes'] = lane_map.planner_block(
+                lane_route, LaunchConfiguration('lane_graph').perform(context))
             settings['lanes']['pass'] = LaunchConfiguration('lane_pass').perform(
                 context).strip().lower() != 'false'
         topic, updates, latched = vehicle.GLOBAL_COSTMAP_TOPICS[costmap]
@@ -984,6 +996,13 @@ def generate_launch_description():
                               description='with lane_route: true, a parked obstacle on the '
                                           'lane is passed by moving only its stretch left; '
                                           "false: the whole path is the lattice's"),
+        DeclareLaunchArgument('lane_graph', default_value=lane_map.DEFAULT_LANE_GRAPH,
+                              description='with lane_route: lanes_yaml (its roads) or '
+                                          'lanelet2 (the Lanelet2 map beside it; TODO 175)'),
+        DeclareLaunchArgument('local_chunks', default_value='false',
+                              description='with costmap_chunks: true, the local costmap'
+                                          "'s static layer from the chunks round the car "
+                                          'too, not /map (TODO 175)'),
         DeclareLaunchArgument('things', default_value='false',
                               description='true (with lidar:=true): aav_things, the cubes as '
                                           'tracked things on /world/things (voxels runs too)'),

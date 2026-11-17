@@ -3,7 +3,7 @@
 import os
 import re
 
-from aav_description import stacks, vehicle
+from aav_description import lane_map, stacks, vehicle
 import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -19,7 +19,8 @@ DEFAULTS = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.DEFAULT
             'planner_search': vehicle.PLANNER_SEARCHES[0],
             'plan_smoothing': 'nav2', 'map_correction': 'newest', 'mppi_lag_steer_gamma': '',
             'lane_costs': 'false', 'lane_route': 'false', 'costmap_chunks': 'off',
-            'kerbs': 'false'}
+            'kerbs': 'false',
+            'lane_graph': lane_map.DEFAULT_LANE_GRAPH, 'local_chunks': 'false'}
 # What the launch passes when no switch is given: each declared empty, "the stack's choice".
 NOT_GIVEN = {name: stacks.CHOSEN for name in DEFAULTS}
 VALID = {'controller': vehicle.CONTROLLERS, 'tracker': vehicle.TRACKERS,
@@ -31,7 +32,9 @@ VALID = {'controller': vehicle.CONTROLLERS, 'tracker': vehicle.TRACKERS,
          'plan_smoothing': tuple(vehicle.PLAN_SMOOTHINGS), 'map_correction': ('newest', 'slow'),
          'mppi_lag_steer_gamma': ('', '0.05'),
          'lane_costs': ('true', 'false'), 'lane_route': ('true', 'false'),
-         'costmap_chunks': ('auto', 'off'), 'kerbs': ('true', 'false')}
+         'costmap_chunks': ('auto', 'off'), 'kerbs': ('true', 'false'),
+         'lane_graph': lane_map.LANE_GRAPHS,
+         'local_chunks': ('true', 'false')}
 
 
 def test_the_four_stacks_are_there():
@@ -93,10 +96,14 @@ def test_the_lanes_layer_is_a_challenger_off_in_every_stack():
 def test_ours_global_costmap_is_made_of_chunks():
     # TODO 175 (16 Nov): no worse on the lot, campus and University Drive tours, a third of
     # the memory: ours holds only the chunks it needs; the others the whole map.
-    assert stacks.choices(LEAGUE, 'ours')['costmap'] == 'ours_chunks'
+    # And its local one too (16 Nov): the campus and the box tour, 2 runs each, every leg,
+    # the same times, half the node's memory; no costmap of ours then reads /map.
+    assert stacks.choices(LEAGUE, 'ours')['costmap'] == 'ours_all_chunks'
     for stack in stacks.names(LEAGUE):
         want = 'auto' if stack == 'ours' else 'off'
         assert stacks.switches(LEAGUE, stack).get('costmap_chunks', 'off') == want, stack
+        want = 'true' if stack == 'ours' else 'false'
+        assert stacks.switches(LEAGUE, stack).get('local_chunks', 'false') == want, stack
 
 
 def test_the_lane_centre_planner_is_ours_only():
