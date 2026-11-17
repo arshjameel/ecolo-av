@@ -111,8 +111,10 @@ levels:
     champion: 'off'
     options:
       'off': {kerbs: 'false'}
-      # A challenger (TODO 119, 16 Nov): sudden steps in the ground, 0.10-0.5 m over 0.3 m,
-      # marked in the local costmap and kept (docs/kerbs.md).
+      # Sudden steps in the ground, 0.10-0.5 m over 0.3 m, kept 10 s, in the local
+      # costmap and the stop zone (TODO 119, docs/kerbs.md). Ours' pick since 16 Nov:
+      # sim-check --kerb stopped 0.80-0.82 m before a 0.3 m kerb (it drove into it
+      # before), and no worse on the lot and University Drive (2 runs each, no new stops).
       'on': {kerbs: 'true'}
     score: ''
 
@@ -132,7 +134,7 @@ stacks:
     smoother: nav2
     behaviour: 'off'
   ours:
-    what: every level ours that has one, as `measure controllers --stacks own`, plus the road ahead
+    what: every level ours that has one, as `measure controllers --stacks own`, plus the road ahead and the kerbs
     pose: ekf
     costmap: ours_chunks
     navigator: ours
@@ -140,3 +142,4 @@ stacks:
     steer: mppi_lag_calm
     smoother: nav2
     behaviour: 'on'
+    kerbs: 'on'

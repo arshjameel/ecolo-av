@@ -20,6 +20,7 @@ waiting to beat it.
   │ smoother   │ nav2      │ ours                         │
   │ lanes      │ off       │ ramp (lane costs, ours only) │
   │ behaviour  │ off       │ on (the road ahead)          │
+  │ kerbs      │ off       │ on (the step finder)         │
   └────────────┴───────────┴──────────────────────────────┘
           │
           ▼
@@ -41,7 +42,7 @@ The champions above stay as they are: they are what the car runs.
 
 | `stack:=` | What it runs |
 |---|---|
-| `ours` (the default) | every level we built: our costmap (`ours_chunks` since 16 Nov: only the map's 64 m chunks round the car and along the route, [why](own-costmap.md#from-map-chunks-on-every-core-16-nov-todo-175-195)), navigator, planner (`lane` since 16 Nov: the right lane's centre on the lane map, `lattice_rs_strong` off it, [why](own-planner.md#the-swap-16-nov-3-clean-runs-each)), `mppi_lag_calm` (`mppi_lag` with `map_correction:=slow` and `mppi_lag_steer_gamma:=0.05`), and the road ahead (`behaviour:=true`). The two calm picks since 15 Nov: they took ours' sway to Nav2's ([why](mppi-lag.md#the-sway-that-was-left)) |
+| `ours` (the default) | every level we built: our costmap (`ours_chunks` since 16 Nov: only the map's 64 m chunks round the car and along the route, [why](own-costmap.md#from-map-chunks-on-every-core-16-nov-todo-175-195)), navigator, planner (`lane` since 16 Nov: the right lane's centre on the lane map, `lattice_rs_strong` off it, [why](own-planner.md#the-swap-16-nov-3-clean-runs-each)), `mppi_lag_calm` (`mppi_lag` with `map_correction:=slow` and `mppi_lag_steer_gamma:=0.05`), the road ahead (`behaviour:=true`), and the kerbs (`kerbs:=true` since 16 Nov: the lidar's step finder, [why](kerbs.md#in-the-simulator)). The two calm picks since 15 Nov: they took ours' sway to Nav2's ([why](mppi-lag.md#the-sway-that-was-left)) |
 | `stock` | every level stock: Nav2 and robot_localization |
 | `best` | every level's champion |
 | `car` | the champions approved for the car (`car.launch.py` runs these today) |

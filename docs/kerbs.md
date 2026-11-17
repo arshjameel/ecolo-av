@@ -12,7 +12,7 @@ TODO 119.
 | Does it see a 0.15 m kerb? | **Yes**, but only from about 4.7 m past the bumper (cast clouds) |
 | A 0.10 m kerb? | **No**: a step must rise more than 0.10 m |
 | Does the car stop before it? | **Yes** in sim: the stop zone stopped it 0.80-0.82 m before a 0.3 m kerb |
-| Is it on by default? | DEFAULT_RESULT |
+| Is it on by default? | **Yes**, in `stack:=ours` (the simulator's) since 16 Nov. Not on the car yet |
 | On the real car? | **Not tried yet** |
 
 ## In the simulator
@@ -42,6 +42,23 @@ kerbs). Results: `/tmp/kerb/` on Ben's Mac.
 ```
 
 The 0.3 m floor is there so a pitched car doesn't see far road as a wall.
+
+## No worse on the tours
+
+`pixi run measure controllers --stacks own_calm_chunks own_calm_chunks_kerbs --tours lot
+university --runs 2 --reversing` (16 Nov), our stack without and with the kerbs:
+
+| Tour | Without | With the kerbs |
+|---|---|---|
+| University Drive: legs reached | 6/6 | 6/6 |
+| University Drive: time, mean speed | 357 s, 2.07 m/s | 352 s, 2.10 m/s |
+| University Drive: stop-zone stops | 0 | 0 |
+| the lot: legs reached | 6/8 | 6/8 |
+| the lot: stop-zone stops | 3 | 1 |
+| the voxels node's time a cloud | - | 3.3-3.9 ms (University), 4.8-5.2 ms (the lot) |
+
+Every leg missed, both ways, was the computer being too busy (the local costmap or the
+odometry late), not a kerb. The campus's kerbs line every road there: no phantom stop.
 
 ## The step finder
 

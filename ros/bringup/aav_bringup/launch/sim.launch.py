@@ -132,8 +132,8 @@ bench's argument names:
                       (/world/road_ahead), and ego holds Nav2 to it (ego road_ahead:=true)
   kerbs:=true         the kerbs (TODO 119), where the lidar runs: the Rust voxels node finds
                       steps in the ground (aav_voxels_rs steps:=true) and the local
-                      costmap's kerb_layer marks them. Empty: the stack's choice
-                      (stacks.yaml's kerbs level)
+                      costmap's kerb_layer and the stop zone read them. Empty: the
+                      stack's choice (on in ours since 16 Nov; stacks.yaml's kerbs level)
   lane_map:=world    with behaviour:=true: the road ahead's line is the lane's centre, from
                       the world's lane map (road: aav_gazebo worlds/road.lanes.yaml; campus:
                       maps/campus/lanes.yaml), with its edges; or a lanes.yaml's path.
@@ -967,7 +967,7 @@ def generate_launch_description():
                               description='true: the kerbs, where the lidar runs (the Rust '
                                           "voxels node's step finder, the local costmap's "
                                           'kerb_layer; TODO 119); false: none. Empty: the '
-                                          "stack's choice"),
+                                          "stack's choice (on in ours)"),
         DeclareLaunchArgument('lane_costs', default_value=stacks.CHOSEN,
                               description='true: the lanes layer in our global costmap, '
 
