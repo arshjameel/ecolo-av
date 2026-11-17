@@ -63,7 +63,7 @@ Ravensim, `things:=true`, `/clock` at 100 Hz, standing; 60 s of `ps` after 75 s
 | World | Load at start | Python | Rust |
 |---|---|---|---|
 | road | 19.4 / 10.9 | 4.8 % of a core, 152 MB | **2.0 %**, 46 MB |
-| campus | 19.2 / 13.7 | 4.9 %, 154 MB | **2.0 %**, 43 MB |
+| campus | 19.4 / 19.2 | 5.1 %, 162 MB | **1.9 %**, 53 MB |
 
 ## Invariants
 

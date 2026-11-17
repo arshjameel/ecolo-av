@@ -71,7 +71,7 @@ Ravensim, `things:=true`, `/clock` at 100 Hz, standing; 60 s of `ps` after 75 s
 | World | Load at start | Python | Rust |
 |---|---|---|---|
 | road | 19.4 / 10.9 | 7.6 % of a core, 78 MB | **1.5 %**, 31 MB |
-| campus (the 6400 x 6400 `/map` as background) | 19.2 / 13.7 | 7.4 %, 353 MB | **1.5 %**, 230 MB |
+| campus (the 6400 x 6400 `/map` as background) | 19.4 / 19.2 | 7.4 %, 353 MB | **1.2 %**, 188 MB |
 
 ### In the simulator
 

@@ -428,14 +428,14 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="../../ros/perception/aav_lidar_rs/README.md">The flat scan in Rust</a> (<code>aav_lidar_rs</code> <code>lidar_scan</code>, <code>lidar_impl:=</code>), the default</td>
-<td>Ben, 17 Nov: "lets port the 4 expensive things to rust ... so we get our performance under control" (TODO 185). The same ranges as the Python, all 6,600 (7 made-up and 3 Ravensim clouds); the same node, topics and QoS. Ravensim, <code>/clock</code> 100 Hz: 2.0 % of a core and 45 MB against 4.8 % and 152 MB, road and campus. Since 17 Nov the default in the simulator and on the car; <code>lidar_impl:=python</code> falls back</td>
+<td>Ben, 17 Nov: "lets port the 4 expensive things to rust ... so we get our performance under control" (TODO 185). The same ranges as the Python, all 6,600 (7 made-up and 3 Ravensim clouds); the same node, topics and QoS. Ravensim, <code>/clock</code> 100 Hz: 2.0 % of a core and 46-53 MB against 4.8-5.1 % and 152-162 MB, road and campus. Since 17 Nov the default in the simulator and on the car; <code>lidar_impl:=python</code> falls back</td>
 <td>Ben</td>
 <td>2026-11-17</td>
 <td>sim</td>
 </tr>
 <tr>
 <td><a href="../../ros/perception/aav_things_rs/README.md">The things in Rust</a> (<code>aav_things_rs</code> <code>things</code>, <code>things_impl:=</code>), the default</td>
-<td>Ben, 17 Nov (TODO 185, as above). Clustering, the Kalman tracker with its gates, the radar's speed, the memory, the saved map's background (or its chunks) and the names, ported; the same things as the Python on 298 clouds (2,237 things: ids, kinds, positions and speeds within 5e-15). Ravensim, <code>/clock</code> 100 Hz: 1.5 % of a core against 7.5 %; road 31 MB against 78, campus 230 against 353. <code>sim-check --movers</code> 3 of 3 (the Python 2 of 3 in the same pair), <code>--lidar-obstacle</code> passes with both; the lot and University Drive tours, 2 runs each: no false holds (the Python 1), every leg (one University Drive run never started: the output mux latched STOP at start-up, <code>sim_gps</code> not yet announced on <code>/system/source</code>, a race seen in both languages' logs; 2 of 2 run again). Since 17 Nov the default in the simulator and on the car; <code>things_impl:=python</code> falls back</td>
+<td>Ben, 17 Nov (TODO 185, as above). Clustering, the Kalman tracker with its gates, the radar's speed, the memory, the saved map's background (or its chunks) and the names, ported; the same things as the Python on 298 clouds (2,237 things: ids, kinds, positions and speeds within 5e-15). Ravensim, <code>/clock</code> 100 Hz: 1.5 % of a core against 7.5 %; road 31 MB against 78, campus 188 against 353. <code>sim-check --movers</code> 3 of 3 (the Python 2 of 3 in the same pair), <code>--lidar-obstacle</code> passes with both; the lot and University Drive tours, 2 runs each: no false holds (the Python 1), every leg (one University Drive run never started: the output mux latched STOP at start-up, <code>sim_gps</code> not yet announced on <code>/system/source</code>, a race seen in both languages' logs; 2 of 2 run again). Since 17 Nov the default in the simulator and on the car; <code>things_impl:=python</code> falls back</td>
 <td>Ben</td>
 <td>2026-11-17</td>
 <td>sim</td>
