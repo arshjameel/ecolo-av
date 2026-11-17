@@ -988,12 +988,12 @@ def generate_launch_description():
                                           'planner:=own (TODO 148); false: none. Empty: '
                                           "the stack's choice (on in ours)"),
         DeclareLaunchArgument('lane_graph', default_value=stacks.CHOSEN,
-                              description='with lane_route: lanes_yaml (the lane map\'s '
+                              description="with lane_route: lanes_yaml (the lane map's "
                                           'roads) or lanelet2 (the Lanelet2 map beside it, '
                                           'maps/campus/campus.osm; TODO 175). Empty: the '
                                           "stack's choice"),
         DeclareLaunchArgument('local_chunks', default_value=stacks.CHOSEN,
-                              description='true, with costmap_chunks: the local costmap\'s '
+                              description="true, with costmap_chunks: the local costmap's "
                                           'static layer from the chunks round the car too, '
                                           "not /map (TODO 175). Empty: the stack's choice"),
         DeclareLaunchArgument('lane_pass', default_value='true',
