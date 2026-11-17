@@ -20,6 +20,14 @@ things:
     keep_tentative: 0.3     # s, a thing seen fewer than confirm times
     start_speed_sigma: 3.0  # m/s
     still_speed: 0.5        # m/s: slower, an unseen thing is taken as parked
+    # TODO 222: no hopping between thin posts. A group must fit the thing's own
+    # uncertainty, its shape, and (a small thing) a walker's top speed.
+    gate_chi2: 9.21         # Mahalanobis distance², over: another thing (99 %, 2 dof)
+    shape_ratio: 2.5        # a footprint this many times larger or smaller ...
+    shape_slack: 0.6        # m: ... and this much apart: another thing
+    small_size: 0.8         # m: a thing no wider is small (a post, a person) ...
+    small_speed: 3.5        # m/s: ... and never faster than this
+    small_slack: 0.3        # m: a small thing's middle may wander this much a look
     # The saved map as background (background.py, TODO 175 step 5): cubes under 0.7 m on
     # /map's walls, grown by the slack for pose error, are not things. Its switches,
     # `background` and `background_below`, are the launch's things_background:= (true) and
