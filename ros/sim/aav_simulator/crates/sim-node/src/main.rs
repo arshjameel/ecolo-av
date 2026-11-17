@@ -275,6 +275,13 @@ fn main() -> Result<()> {
             params.camera_timeout.get(),
         )))
     });
+    if gate.is_some() {
+        log_info!(
+            node.logger(),
+            "camera lockstep on: the clock waits for each picture (at most {:.0} s)",
+            params.camera_timeout.get()
+        );
+    }
     let _free_until = match &gate {
         Some(gate) => {
             let gate = Arc::clone(gate);
@@ -331,6 +338,7 @@ fn run(
     let mut origin_ns = 0u64;
     let mut report = Instant::now();
     let mut report_ns = 0u64;
+    let mut held = (0u32, Duration::ZERO); // lockstep: waits, and their wall time
     while !stop.load(Ordering::Relaxed) {
         let (now_command, changes) = {
             let mut s = shared
@@ -357,11 +365,13 @@ fn run(
         out.publish(&sim, outputs)?;
         if let (Some(gate), true) = (&gate, pose_out) {
             // The cameras draw from the truth: hold the clock until they're past it.
-            if gate.wait_past(sim.time_ns()) == Waited::TimedOut {
-                log_warn!(
+            match gate.wait_past(sim.time_ns()) {
+                Waited::Free => {}
+                Waited::Answered(wait) => held = (held.0 + 1, held.1 + wait),
+                Waited::TimedOut => log_warn!(
                     &logger,
                     "camera lockstep: no word from the cameras; running free until they speak"
-                );
+                ),
             }
         }
         if rtf > 0.0 {
@@ -379,12 +389,22 @@ fn run(
         }
         if report.elapsed() >= Duration::from_secs(30) {
             let simulated = (sim.time_ns() - report_ns) as f64 * 1e-9;
+            let lockstep = if gate.is_some() {
+                format!(
+                    "; camera lockstep held the clock {} times, {:.1} s",
+                    held.0,
+                    held.1.as_secs_f64()
+                )
+            } else {
+                String::new()
+            };
             log_info!(
                 &logger,
-                "real-time factor {:.2} over the last {:.0} s",
+                "real-time factor {:.2} over the last {:.0} s{lockstep}",
                 simulated / report.elapsed().as_secs_f64(),
                 report.elapsed().as_secs_f64()
             );
+            held = (0, Duration::ZERO);
             report = Instant::now();
             report_ns = sim.time_ns();
         }
