@@ -6,7 +6,8 @@ use std::time::Instant;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiTextureHandle};
 use debug_core::{
-    cubes::CubeScan,
+    cubes::{Band, CubeScan, Metres},
+    flat::{ground_the_flat, FlatRule},
     ndt::{MapCells, NdtStatus},
     orbit::Orbit,
     swap::Tracker,
@@ -21,12 +22,13 @@ use hud_core::{
 use map_core::{
     geom::{Point, Pose},
     grid::{Grid, Palette},
-    view::{PixelsPerMetre, ScreenPoint, View, Viewport as MapViewport},
+    view::{Mode as MapMode, ScreenPoint, Viewport as MapViewport},
 };
 
 use crate::{
     chunks,
     feed::{self, Heard, Level, Update},
+    map_nav::{Gesture, MapNav},
     set_viewport, CubesCamera, PictureImage, Source,
 };
 
@@ -43,14 +45,11 @@ const MAP_SHARE: f32 = 0.44;
 const LOOK_DOWN: [f32; 2] = [0.0, -0.18];
 /// The view from the car, top to bottom, radians: wide, as Ben preferred. The wheel zooms.
 pub const DRIVER_FOV: f32 = 1.15;
-/// A map wider than this, metres, shows the car's surroundings, not all of itself.
 /// Cubes lower than this are the ground's waves, kerbs and grass: not compared with NDT's map.
 pub const WAVES_TOP: f32 = 0.45;
 /// NDT's picture on the flat map: metres per pixel, and the most pixels a side.
 const FOOTPRINT_CELL: f32 = 0.5;
 const MAX_FOOTPRINT: usize = 4096;
-const BIG_MAP: f64 = 300.0;
-const BIG_MAP_VIEW: f64 = 160.0;
 /// Log lines kept for the console.
 const CONSOLE_LINES: usize = 500;
 /// The most cubes drawn on the map. A real scan has about 2,000; beyond that it's a blur.
@@ -113,7 +112,11 @@ pub enum LaneLook {
 /// What's drawn. The defaults are the quiet view Ben asked for.
 #[derive(Clone, Copy, Debug)]
 pub struct Layers {
-    pub road: bool,
+    /// The ground's cubes: the road and the lidar's rings on flat raised ground (key G;
+    /// off: Ben, 17 Nov, "lets get rid of the waves the lidar made").
+    pub ground: bool,
+    /// The lane map's lines on the map (`--lanes`; key L).
+    pub lanes: bool,
     pub nav2_cubes: bool,
     pub ndt_cubes: bool,
     pub costmap: bool,
@@ -131,7 +134,8 @@ pub struct Layers {
 impl Default for Layers {
     fn default() -> Self {
         Self {
-            road: true,
+            ground: false,
+            lanes: true,
             nav2_cubes: false,
             ndt_cubes: false,
             costmap: true,
@@ -327,14 +331,33 @@ impl WorldNews {
         self.map_match = index.match_cubes(&cubes, WAVES_TOP);
     }
 
+    /// The voxels node's cubes on flat raised ground (the lidar's rings on the campus's
+    /// grass, a kerb up from the road) become ground, against the newest road
+    /// (`debug_core::flat`). Each cube's band starts again from its height, so a newer
+    /// road can give one back.
+    fn ground_the_waves(&mut self) {
+        for c in &mut self.cubes.cubes {
+            c.band = Band::of(Metres(f64::from(c.centre[2])), Metres(0.0));
+        }
+        ground_the_flat(&mut self.cubes.cubes, &self.road.cubes, FlatRule::default());
+    }
+
     /// One piece of news. The picture isn't here: it goes straight into its image.
     pub fn apply(&mut self, update: Update, now: Instant) {
         match update {
             Update::Cubes(scan) => {
                 self.cubes = scan;
+                self.ground_the_waves();
                 self.match_cubes();
             }
-            Update::Road(scan) => self.road = scan,
+            Update::Road(mut scan) => {
+                // The voxels node's road is ground, however high it sits.
+                for c in &mut scan.cubes {
+                    c.band = Band::Ground;
+                }
+                self.road = scan;
+                self.ground_the_waves();
+            }
             Update::CarInOdom(pose) => self.car_odom = pose,
             Update::CarInMap(pose) => self.car_map = pose,
             Update::Picture(_) => {}
@@ -467,9 +490,10 @@ pub struct UiState {
     /// Where the lidar sits on the car, in base_link: the driver's eyes.
     pub eyes: [f32; 3],
     pub world: WorldNews,
-    view: View,
-    /// The size the map was last fitted to; `None` once a person has moved or zoomed it.
-    fitted_to: Option<egui::Vec2>,
+    /// The map panel's view: following the car, the whole map, or free (`map_nav`).
+    pub map: MapNav,
+    /// F was pressed: the map panel follows the car, or shows the whole map, next frame.
+    map_follow_key: bool,
     goal: Goal,
     tab: Tab,
     console_floor: Level,
@@ -487,8 +511,8 @@ impl Default for UiState {
             driver_fov: DRIVER_FOV,
             eyes: [0.0, 0.0, 1.5],
             world: WorldNews::default(),
-            view: View::default(),
-            fitted_to: Some(egui::Vec2::ZERO),
+            map: MapNav::default(),
+            map_follow_key: false,
             goal: Goal::default(),
             tab: Tab::default(),
             console_floor: Level::Info,
@@ -640,7 +664,8 @@ fn read_keys(ctx: &egui::Context, state: &mut UiState) {
     ctx.input(|input| {
         let layers = &mut state.layers;
         for (key, layer) in [
-            (egui::Key::G, &mut layers.road),
+            (egui::Key::G, &mut layers.ground),
+            (egui::Key::L, &mut layers.lanes),
             (egui::Key::V, &mut layers.nav2_cubes),
             (egui::Key::N, &mut layers.ndt_cubes),
             (egui::Key::O, &mut layers.costmap),
@@ -660,6 +685,9 @@ fn read_keys(ctx: &egui::Context, state: &mut UiState) {
                 Eyes::Driver => Eyes::Orbit,
                 Eyes::Orbit => Eyes::Driver,
             };
+        }
+        if input.key_pressed(egui::Key::F) {
+            state.map_follow_key = true;
         }
         if input.key_pressed(egui::Key::R) {
             state.orbit.reset();
@@ -1056,8 +1084,16 @@ fn screen(p: ScreenPoint) -> egui::Pos2 {
 }
 
 fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) {
+    let (mut follow_clicked, mut whole_clicked) = (false, false);
     ui.horizontal(|ui| {
         title(ui, "THE MAP: click to pick a goal");
+        let mode = state.map.view.mode;
+        follow_clicked = ui
+            .selectable_label(mode == MapMode::FollowCar, "Follow car (F)")
+            .clicked();
+        whole_clicked = ui
+            .selectable_label(mode == MapMode::WholeMap, "Whole map")
+            .clicked();
         let layers = &mut state.layers;
         ui.toggle_value(&mut layers.costmap, "Costmap");
         ui.toggle_value(&mut layers.ndt_map, "NDT");
@@ -1074,45 +1110,27 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
         width: f64::from(rect.width()),
         height: f64::from(rect.height()),
     };
-    // The window's size can change in its first frames, and when dragged: fit again, until
-    // a person has chosen a view of their own.
     let car = state.world.car_map.position;
-    // With chunks, fit to those loaded (the car's 3 x 3 and the route's): the three levels.
-    let chunk_bounds = state
+    // With chunks, the view starts sized to those loaded (the car's 3 x 3 and the
+    // route's): the three levels. The whole map is the static map's box.
+    let near = state
         .world
         .chunks
         .as_ref()
         .filter(|_| state.layers.chunks)
         .and_then(|grid| chunks::bounds(&chunks::loaded(grid, car, state.world.chunk_route())));
-    let fit_to =
-        chunk_bounds.or_else(|| state.world.map.grid.as_ref().map(|grid| grid.info.bounds()));
-    if let (Some(bounds), true) = (fit_to, state.fitted_to.is_some()) {
-        let (width, height) = bounds.size();
-        // A whole campus would make the car a dot: follow the car, until a person moves.
-        if width.max(height) > BIG_MAP {
-            state.view.centre = car;
-            state.view.set_scale(PixelsPerMetre(
-                viewport.width.min(viewport.height) / BIG_MAP_VIEW,
-            ));
-            state.fitted_to = Some(rect.size());
-        }
-    }
-    if let (Some(bounds), true) = (
-        fit_to,
-        state.fitted_to.is_some_and(|size| size != rect.size()),
-    ) {
-        let (width, height) = bounds.size();
-        state.view.centre = bounds.centre();
-        state.view.set_scale(PixelsPerMetre(
-            (viewport.width / width.max(1.0)).min(viewport.height / height.max(1.0)) * 0.97,
-        ));
-        state.fitted_to = Some(rect.size());
-    }
+    let whole = state
+        .world
+        .map
+        .grid
+        .as_ref()
+        .map(|grid| grid.info.bounds())
+        .or(near);
 
     let response = ui.allocate_rect(rect, egui::Sense::click_and_drag());
     if response.clicked() {
         if let Some(at) = response.interact_pointer_pos() {
-            let on_map = state.view.to_map(
+            let on_map = state.map.view.to_map(
                 ScreenPoint::new(f64::from(at.x), f64::from(at.y)),
                 &viewport,
             );
@@ -1124,26 +1142,45 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
             }
         }
     }
-    if response.dragged_by(egui::PointerButton::Secondary) {
+    let mut gestures = Vec::new();
+    // Any button's drag pans: a Mac's trackpad has no easy right-drag.
+    if response.dragged() {
         let drag = response.drag_delta();
-        let k = state.view.scale.0;
-        state.fitted_to = None;
-        state.view.centre = Point::new(
-            state.view.centre.x - f64::from(drag.x) / k,
-            state.view.centre.y + f64::from(drag.y) / k,
-        );
+        gestures.push(Gesture::Drag {
+            dx: f64::from(drag.x),
+            dy: f64::from(drag.y),
+        });
     }
     if response.hovered() {
-        let scroll = ui.input(|input| input.smooth_scroll_delta.y);
-        if scroll != 0.0 {
-            let k = state.view.scale.0 * f64::from(1.0 + scroll * 0.002);
-            state.fitted_to = None;
-            state.view.set_scale(PixelsPerMetre(k));
-        }
+        let at = response
+            .hover_pos()
+            .map(|p| ScreenPoint::new(f64::from(p.x), f64::from(p.y)));
+        let (scroll, pinch) = ui.input(|input| (input.smooth_scroll_delta.y, input.zoom_delta()));
+        gestures.push(Gesture::Wheel {
+            by: f64::from(scroll),
+            at,
+        });
+        gestures.push(Gesture::Pinch {
+            factor: f64::from(pinch),
+            at,
+        });
     }
+    if std::mem::take(&mut state.map_follow_key) {
+        gestures.push(Gesture::ToggleFollow);
+    }
+    if follow_clicked {
+        gestures.push(Gesture::FollowCar);
+    }
+    if whole_clicked {
+        gestures.push(Gesture::WholeMap);
+    }
+    for gesture in gestures {
+        state.map.apply(gesture, &viewport);
+    }
+    state.map.frame(car, whole, near, &viewport);
 
     let painter = ui.painter_at(rect);
-    let view = state.view;
+    let view = state.map.view;
     let to = |p: Point| screen(view.to_screen(p, &viewport));
     let k = view.scale.0 as f32;
     let layers = state.layers;
@@ -1188,7 +1225,7 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
     if let (true, Some(grid)) = (layers.chunks, world.chunks) {
         paint_chunks(ui, world, &grid, &painter, to);
     }
-    if layers.road {
+    if layers.lanes {
         for lane in &world.lanes {
             let (width, colour) = match lane.look {
                 LaneLook::Solid => (1.5, egui::Color32::from_rgb(230, 230, 230)),
@@ -1419,7 +1456,11 @@ fn keys_tab(ui: &mut egui::Ui, state: &UiState) {
     let on = |value: bool| if value { "on" } else { "off" };
     let layers = state.layers;
     let rows = [
-        ("G", "road cubes", on(layers.road)),
+        (
+            "G",
+            "the ground: road, and the lidar's rings on raised grass",
+            on(layers.ground),
+        ),
         ("V", "outline every live cube", on(layers.nav2_cubes)),
         (
             "N",
@@ -1427,6 +1468,7 @@ fn keys_tab(ui: &mut egui::Ui, state: &UiState) {
             on(layers.ndt_cubes),
         ),
         ("O", "costmap", on(layers.costmap)),
+        ("L", "lane map's lines on the map", on(layers.lanes)),
         ("M", "NDT's map", on(layers.ndt_map)),
         ("S", "cubes on the map", on(layers.scan)),
         ("P", "plan", on(layers.plan)),
@@ -1440,6 +1482,17 @@ fn keys_tab(ui: &mut egui::Ui, state: &UiState) {
             "squiggly line: trace, plan ahead, stop",
             on(layers.ahead),
         ),
+        (
+            "F",
+            "map: follow the car, or the whole map",
+            state.map.view.mode.label(),
+        ),
+        (
+            "drag",
+            "map: move it (either button); click picks a goal",
+            "",
+        ),
+        ("wheel", "map: zoom at the pointer (or pinch)", ""),
         ("C", "camera", state.camera.label()),
         ("R", "reset the camera", ""),
     ];
@@ -1655,6 +1708,37 @@ fn road_colour(limit: f64, top: f64) -> egui::Color32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_road_and_the_rings_on_raised_grass_are_ground_the_kerb_stands() {
+        use debug_core::cubes::Cube;
+        let now = Instant::now();
+        let cube = |x: f32, y: f32, z: f32| Cube {
+            centre: [x, y, z],
+            band: Band::of(Metres(f64::from(z)), Metres(0.0)),
+        };
+        let scan = |cubes| CubeScan {
+            cubes,
+            ..CubeScan::default()
+        };
+        let mut world = WorldNews::default();
+        // The voxels node's road, a little above base_link: still ground.
+        world.apply(Update::Road(scan(vec![cube(4.8, 1.0, 0.01)])), now);
+        assert_eq!(world.road.cubes[0].band, Band::Ground);
+        // The kerb beside the road, grass behind it, a wall.
+        let cubes = vec![
+            cube(5.2, 1.0, 0.31),
+            cube(9.0, 1.0, 0.31),
+            cube(9.0, 4.0, 1.0),
+        ];
+        world.apply(Update::Cubes(scan(cubes)), now);
+        let bands: Vec<Band> = world.cubes.cubes.iter().map(|c| c.band).collect();
+        assert_eq!(bands, [Band::Knee, Band::Ground, Band::Waist]);
+        // A newer road away from the kerb: the kerb's cube is flat ground too.
+        world.apply(Update::Road(scan(vec![cube(-4.0, 1.0, 0.0)])), now);
+        assert_eq!(world.cubes.cubes[0].band, Band::Ground);
+        assert!(!Layers::default().ground, "the ground starts hidden");
+    }
 
     #[test]
     fn a_fresh_plan_shows_a_goal_sent_elsewhere() {

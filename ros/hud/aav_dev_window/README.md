@@ -27,6 +27,7 @@ simulator; the other choices are made at launch. The plan:
 | `src/panels.rs` | the layout and every panel, in egui |
 | `src/feed.rs` | what the window is told, and the gates on commands: no Bevy, no ROS, tested |
 | `src/pretend.rs` | pretend data, as a `Feed`: no Bevy, no ROS, tested |
+| `src/map_nav.rs` | how the map panel moves: follow the car, the whole map, or free; drag, wheel, pinch, F: no Bevy, no egui, tested |
 | `src/chunks.rs` | the chunks loaded (`map_chunks::wanted`), their outlines, labels and saved maps: no Bevy, no egui, tested |
 | `src/lanes.rs` | the lane map's lines and their looks (`lanelet-map`) |
 | `src/ros.rs` | the node `dev_window`, as a `Feed` (the `ros` feature). Its docstring lists its topics |
@@ -43,6 +44,7 @@ pixi run demo screen_cubes:=true                   # then, beside it:
 pixi run dev-window --live                         # live: may send goals and the e-stop, SIM only
 pixi run dev-window --watch                        # listens to the network it's on; no publishers
 pixi run dev-window --all-layers --seconds 12      # the speed test: prints the frame rate
+pixi run dev-window --live --map-whole             # the map panel starts on the whole map
 pixi run dev-window --cubes 60000 --seconds 8 --screenshot /tmp/window.png
 pixi run dev-window --live --lanes maps/campus/campus.osm   # the lane map's lines (pixi run campus)
 pixi run dev-window --live --chunks maps/campus/chunks     # the chunks loaded, their saved map
@@ -50,12 +52,13 @@ pixi run dev-window --live --chunks maps/campus/chunks     # the chunks loaded, 
 
 | Key | Does | Key | Does |
 |---|---|---|---|
-| G | road cubes: the lidar's waves | M | NDT's map |
+| G | the ground: road, and the lidar's rings on raised grass (off) | M | NDT's map |
 | V | outline every live cube | S | live scan |
 | N | NDT's cells, dark to light purple (off, the default: cubes by height) | P | plan |
 | O | costmap | C, R | from behind it (the default) or the car; reset |
 | T | the squiggly line (on) | K | the things, with their names (on) |
-| H | the chunks loaded, their saved map, and the route (on) | | |
+| H | the chunks loaded, their saved map, and the route (on) | L | the lane map's lines (on) |
+| F | the map: follow the car, or the whole map (also its buttons) | | |
 
 ### The squiggly line (Ben, 7 Nov)
 
@@ -117,8 +120,40 @@ locked): the same `chunks.rs` and the campus files drawn into a picture.
 coming on `/plan` (within 5 s), the map marks the plan's end in gold and says "driving
 to a goal sent elsewhere". Nav2's navigator and ours both replan while they drive.
 
-Mouse on the cubes: drag turns the head and the wheel zooms. From behind, right-drag also moves. On the map: click picks a goal,
-right-drag moves, wheel zooms.
+Mouse on the cubes: drag turns the head and the wheel zooms. From behind, right-drag also moves.
+
+On the map (Ben, 17 Nov: "The map can't be scrolled"; `src/map_nav.rs`, map-core's view):
+
+| Do | To |
+|---|---|
+| click (no drag) | pick a goal |
+| drag, either button | move the map: it stops following the car |
+| wheel, or pinch | zoom at the pointer |
+| F, or **Follow car** | back to the car (F again: the whole map) |
+| **Whole map** | the whole campus; `--map-whole` starts so |
+
+It starts on the car, sized to the chunks loaded (the three levels), or 160 m on a big map
+with no chunks; a small map is shown whole. Untested on screen yet (the screen was locked
+on 17 Nov): its tests drive it.
+
+### The ground, hidden (17 Nov)
+
+Ben, 17 Nov: "lets get rid of the waves the lidar made ... those circles don't help
+anymore". Each lidar ring that hits flat ground makes a circle of cubes. Two causes:
+
+| Rings | Why they showed | Now |
+|---|---|---|
+| on the road (`/perception/voxels/ground`) | banded from 0 m above base_link: road a centimetre up was "< 0.75 m" | always ground |
+| on the campus's grass and pavements, a 0.30 m kerb up (`tools/campus_world.py`) | the voxels node rightly calls them obstacles (`/perception/voxels/cubes`, 0.28-0.33 m) | flat raised ground: ground |
+
+`debug_core::flat` decides: a cube under 0.45 m is ground unless the road or a taller
+cube is within 0.5 m of it (seen from above), so the kerb's edge and a person's feet stay.
+Key G shows the ground again, grey. The cubes on the map (key S) are as they were. The debug HUD does the same.
+
+![Before and after, a campus scan](../../../docs/img/dev-window-ground-hidden.png)
+
+Drawn off screen from a real campus scan (Ravensim, 17 Nov), through `debug_core::flat`,
+from behind the car. The live window [before](../../../docs/img/dev-window-rings-before.png).
 
 ## Invariants
 

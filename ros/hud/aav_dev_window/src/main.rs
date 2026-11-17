@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! dev_window [--live] [--developer] [--ndt-map FILE] [--click-goal X,Y] [--cubes N] [--all-layers]
-//!            [--seconds S] [--screenshot FILE]
+//!            [--map-whole] [--seconds S] [--screenshot FILE]
 //! ```
 //!
 //! Without `--live`: pretend data, with no ROS. `--live` (the `ros` feature) is the node
@@ -11,13 +11,15 @@
 //! e-stop, in the simulator only: `tools/dev_window.sh` is what gives it.
 //!
 //! `--seconds` is the speed test: no vsync, the frame rate printed, then it exits.
-//! `--all-layers` starts with every layer on. `--screenshot` saves one picture halfway
+//! `--all-layers` starts with every layer on (the ground too). `--map-whole` starts the
+//! map panel on the whole map (the button; F follows the car). `--screenshot` saves one picture halfway
 //! through `--seconds`. `--click-goal X,Y` is what a click and the two presses do, after
 //! `CLICK_AFTER` seconds, through the same gates: macOS blocks scripted clicks.
 
 mod chunks;
 mod feed;
 mod lanes;
+mod map_nav;
 mod panels;
 mod pretend;
 #[cfg(feature = "ros")]
@@ -45,7 +47,7 @@ use crate::feed::{Feed, Update};
 
 const USAGE: &str = "usage: dev_window [--live] [--developer] [--ndt-map FILE] \
                      [--click-goal X,Y] [--cubes N] \
-                     [--all-layers] [--seconds S] [--screenshot FILE]";
+                     [--all-layers] [--map-whole] [--seconds S] [--screenshot FILE]";
 /// One NDT map cube's edge on screen, metres: at 1 m a kerb looked as big as a building.
 const NDT_CELL: f64 = 0.5;
 /// The most outlines drawn in red. Drawing lines costs more than drawing cubes.
@@ -75,6 +77,8 @@ struct Options {
     click_goal: Option<[f64; 2]>,
     cubes: u32,
     all_layers: bool,
+    /// The map panel starts with the whole map, not following the car.
+    map_whole: bool,
     seconds: Option<f32>,
     screenshot: Option<PathBuf>,
 }
@@ -90,6 +94,7 @@ impl Options {
             click_goal: None,
             cubes: 20_000,
             all_layers: false,
+            map_whole: false,
             seconds: None,
             screenshot: None,
         };
@@ -118,6 +123,7 @@ impl Options {
                         Some(value()?.parse().map_err(|e| format!("--seconds: {e}"))?);
                 }
                 "--all-layers" => options.all_layers = true,
+                "--map-whole" => options.map_whole = true,
                 "--screenshot" => options.screenshot = Some(value()?.into()),
                 other => return Err(format!("unknown option {other}")),
             }
@@ -238,6 +244,10 @@ fn main() -> AppExit {
         Err(why) => ui_state.world.note(format!("the car's eyes: {why}")),
     }
     ui_state.layers.nav2_cubes = options.all_layers;
+    ui_state.layers.ground |= options.all_layers;
+    if options.map_whole {
+        ui_state.map.show_whole();
+    }
     ui_state.world.ndt = if options.live {
         options.ndt_map.as_deref().map(|path| {
             let file = MapFile::read(path, NDT_CELL);
@@ -507,7 +517,10 @@ impl NearCells {
 /// cells, dark or lit, and only the cubes the map doesn't explain. Otherwise the raw cubes.
 fn cubes_to_show(state: &panels::UiState, near: &[usize]) -> Vec<(Vec3, f32, Look)> {
     let world = &state.world;
-    let road = state.layers.road.then_some(world.road.cubes.as_slice());
+    let ground = state.layers.ground;
+    let road = ground.then_some(world.road.cubes.as_slice());
+    // The ground (key G) and the lidar's rings on raised grass are hidden unless asked for.
+    let shown_cube = |c: &&debug_core::cubes::Cube| ground || c.band != Band::Ground;
     let raw = |c: &debug_core::cubes::Cube| (Vec3::from_array(c.centre), 1.0, Look::Band(c.band));
     let mut shown: Vec<(Vec3, f32, Look)> = Vec::new();
     match (&world.ndt, state.layers.ndt_cubes) {
@@ -534,13 +547,14 @@ fn cubes_to_show(state: &panels::UiState, near: &[usize]) -> Vec<(Vec3, f32, Loo
                     .filter_map(|&i| world.cubes.cubes.get(i))
                     .map(|c| (Vec3::from_array(c.centre), 1.0, Look::NotOnMap)),
             );
-            // Kerbs and raised grass: the lidar's waves, in their own colours.
+            // Kerbs, in their own colours; the raised grass's rings only with G.
             shown.extend(
                 world
                     .cubes
                     .cubes
                     .iter()
                     .filter(|c| c.centre[2] < panels::WAVES_TOP)
+                    .filter(shown_cube)
                     .map(raw),
             );
             shown.extend(
@@ -549,7 +563,7 @@ fn cubes_to_show(state: &panels::UiState, near: &[usize]) -> Vec<(Vec3, f32, Loo
                     .filter_map(|number| cell(number, Look::MapDark)),
             );
         }
-        _ => shown.extend(world.cubes.cubes.iter().map(raw)),
+        _ => shown.extend(world.cubes.cubes.iter().filter(shown_cube).map(raw)),
     }
     if let Some(road) = road {
         shown.extend(road.iter().map(raw));
