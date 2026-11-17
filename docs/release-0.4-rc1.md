@@ -20,6 +20,12 @@ The whole stack on one page: [What we built](what-we-built.md). In short:
 
 The release in one page, one command per job: [0.4-rc1: start here](release-0.4.md).
 
+## See it first, in Ravensim
+
+| To see | Run |
+|---|---|
+| Ravensim and the developer window (scene, console, lidar, map, keys) | `pixi run ravensim` (`world:=campus` for Carleton) |
+
 ## Install it on the car, step by step
 
 Don't copy the steps from here: follow these pages in order.

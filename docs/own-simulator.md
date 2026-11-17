@@ -12,6 +12,19 @@ pixi run sim-check                                     # the road world's checks
 tools/software_gl.sh pixi run sim-check                # no GPU: the cameras in lockstep
 ```
 
+## Watch it
+
+One command starts Ravensim and the developer window on it (scene and console on the left;
+lidar, map with RavenTiles, keys and algorithms on the right):
+
+```sh
+pixi run ravensim                    # pixi run sim's world
+pixi run ravensim world:=campus      # Carleton, with its RavenTiles and lanes
+```
+
+Any `sim.launch.py` switch (`name:=value`) goes to the sim. It runs on this computer only.
+Ctrl-C, or closing the window, stops both. RViz stays off (`rviz:=false`).
+
 | Part | Package | Language |
 |---|---|---|
 | the world, the car, the rays, the IMU, GPS, wheels, clock | `aav_simulator` (`sim-core`, `sim-node`) | Rust |
