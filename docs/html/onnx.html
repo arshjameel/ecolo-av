@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ONNX models from Rust · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/onnx.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>ONNX models from Rust</h1>
+<div class="meta">7 min read · 8 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<span class="sep">Learn:</span>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<span class="sep">Reference:</span>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a class="here" href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#why">Why</a><a href="#how">How</a><a href="#same-boxes">Same boxes?</a><a href="#how-fast">How fast?</a><a href="#in-the-simulator">In the simulator</a><a href="#untested-the-orin">Untested: the Orin</a><a href="#licences">Licences</a><a href="#next">Next</a></nav>
+<div class="lead"><p>Train in PyTorch; run the model as <strong>ONNX</strong>, from Rust, with ONNX Runtime (Ben, 16 Nov,
+TODO 243). First on a Mac through Core ML; on the Orin later through TensorRT.</p>
+<p>The first model done end to end: the <strong>RF-DETR Nano detector</strong> (the stop signs). The
+Rust node is <code>aav_detector_rs</code>, a challenger beside the Python one.</p>
+<pre class="highlight"><code>PyTorch (.pth) ──export──► ONNX (.onnx) ──► ONNX Runtime ──► Core ML    (a Mac: GPU)
+   training                 one file          (ort crate)  ├► CPU        (anywhere)
+                                                           └► TensorRT  (the Orin: untested)</code></pre></div>
+<section class="card"><h2 id="why">Why</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Today (Python)</th>
+<th>With ONNX from Rust</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>one export per runtime: <code>.mlpackage</code> (Mac), <code>.engine</code> (Orin)</td>
+<td>one <code>.onnx</code>; the runtime picks the hardware</td>
+</tr>
+<tr>
+<td>PyTorch and rfdetr in the <code>ml</code> environment, 2 GB</td>
+<td>one Rust binary; ONNX Runtime linked in</td>
+</tr>
+<tr>
+<td>a Python node</td>
+<td>a Rust node, as the rest of our hot paths (<code>aav_voxels_rs</code>, <code>aav_ego_rs</code>)</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="how">How</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. the model</td>
+<td><code>pixi run get models</code> (gets <code>models/rf-detr-nano.pth</code>)</td>
+</tr>
+<tr>
+<td>2. export</td>
+<td><code>pixi run -e ml python3 tools/export_model.py --format onnx</code></td>
+</tr>
+<tr>
+<td>3. check it</td>
+<td><code>pixi run -e ml python3 tools/onnx_check.py --time 30</code></td>
+</tr>
+<tr>
+<td>4. run it</td>
+<td><code>pixi run -e ml sim world:=road perception:=true detector_impl:=rust</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>The ONNX file:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>file</td>
+<td><code>models/rf-detr-nano.onnx</code>, 108 MB, <strong>not in git</strong> (<code>models/</code> is ignored)</td>
+</tr>
+<tr>
+<td>made by</td>
+<td>rfdetr 1.11's <code>model.export()</code>, PyTorch 2.13, in 5 s</td>
+</tr>
+<tr>
+<td>opset</td>
+<td>17 (ai.onnx), IR 8; 1,424 nodes (808 after ONNX Runtime's clean-up)</td>
+</tr>
+<tr>
+<td>input</td>
+<td><code>input</code>: float32 (1, 3, 384, 384): RGB, 0-1, ImageNet mean and spread</td>
+</tr>
+<tr>
+<td>outputs</td>
+<td><code>dets</code> (1, 300, 4): centre x, centre y, width, height, 0-1; <code>labels</code> (1, 300, 91): logits, COCO's numbers</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="same-boxes">Same boxes?</h2>
+<p>Seven saved pictures: Ravensim's front camera at 5, 10, 14 and 18 m from the stop sign
+(simple and pretty graphics), and a photo. Every box has a twin of the same label.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Against PyTorch</th>
+<th>Worst IoU</th>
+<th>Worst score gap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python, ONNX Runtime, CPU</td>
+<td>1.0000</td>
+<td>0.0000</td>
+</tr>
+<tr>
+<td>Python, ONNX Runtime, Core ML</td>
+<td>1.0000</td>
+<td>0.0000</td>
+</tr>
+<tr>
+<td>Python, Core ML (<code>.mlpackage</code>, today's Mac path)</td>
+<td>1.0000</td>
+<td>0.0000</td>
+</tr>
+<tr>
+<td><strong>Rust</strong>, ONNX Runtime, CPU (against the Python's)</td>
+<td>0.9999</td>
+<td>0.0000</td>
+</tr>
+<tr>
+<td><strong>Rust</strong>, ONNX Runtime, Core ML (against the Python's)</td>
+<td>0.9999</td>
+<td>0.0000</td>
+</tr>
+</tbody>
+</table></div>
+<p>The test asks for IoU ≥ 0.95 and scores within 0.02 (<code>cargo test --features ort,coreml</code>).</p>
+<div class="admonition warning">
+<p class="admonition-title">ort's default adds Core ML</p>
+<p><code>ort</code> 2.0.0-rc.15, on any Mac, quietly adds Core ML in its older, half-precision
+format, even to a "CPU" session: boxes then moved by up to 2 % (IoU 0.978). We switch
+that off (<code>AutoDevicePolicy::PreferCPU</code>): only the provider asked for runs.</p>
+</div>
+</section>
+<section class="card"><h2 id="how-fast">How fast?</h2>
+<p>Ben's MacBook (M4 Max), 17 Nov; 640 x 360 pictures; each time includes the resize and
+the decode; median of 150, after 5 warm-up runs. Other work was running (load 3-5).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Runs</th>
+<th>ms per picture</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python, PyTorch on the GPU (<code>mps</code>): today's default</td>
+<td>14.7</td>
+</tr>
+<tr>
+<td>Python, Core ML <code>.mlpackage</code> (coremltools)</td>
+<td>11.0</td>
+</tr>
+<tr>
+<td>Python, ONNX Runtime, Core ML</td>
+<td>12.8</td>
+</tr>
+<tr>
+<td>Python, ONNX Runtime, CPU</td>
+<td>30.9</td>
+</tr>
+<tr>
+<td><strong>Rust, ONNX Runtime, Core ML</strong></td>
+<td><strong>8.0</strong> (90 % under 8.4)</td>
+</tr>
+<tr>
+<td>Rust, ONNX Runtime, CPU</td>
+<td>31.3</td>
+</tr>
+</tbody>
+</table></div>
+<p>Starting up, Rust: the CPU 0.1 s; Core ML 29 s the first time (it compiles the model), then
+5.6 s (its compiled model kept in <code>models/rf-detr-nano.cache/</code>).</p>
+<h3 id="where-core-ml-runs-it">Where Core ML runs it</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Core ML's units</th>
+<th>ms per picture</th>
+<th>So</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>all (what we ask)</td>
+<td>8.0</td>
+<td></td>
+</tr>
+<tr>
+<td>CPU and GPU</td>
+<td>9.2</td>
+<td>≈ all: <strong>the GPU does the work</strong></td>
+</tr>
+<tr>
+<td>CPU and Neural Engine</td>
+<td>28.1</td>
+<td>≈ the CPU alone: the Neural Engine takes none of it</td>
+</tr>
+<tr>
+<td>CPU only</td>
+<td>28.0</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>ONNX Runtime's log: Core ML takes <strong>802 of the 808 nodes</strong>, in 2 pieces; the CPU runs the
+other 6 (shape steps). The Neural Engine works in half precision; this model is full
+precision, so Core ML keeps it on the GPU. A half-precision export might reach the Neural
+Engine: <span class="badge b-later">later</span>.</p>
+</section>
+<section class="card"><h2 id="in-the-simulator">In the simulator</h2>
+<p><code>pixi run -e ml sim-check --perception</code>, Ravensim's road world, 17 Nov: all 10 checks pass
+with either detector. The node's own log (a whole picture: in, model, boxes, the picture
+with boxes out), while Ravensim draws its cameras on the same GPU:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Detector</th>
+<th>First saw the sign</th>
+<th>Locked (score)</th>
+<th>Stood still</th>
+<th>ms a picture in the sim</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python, PyTorch on the GPU (today)</td>
+<td>x = 5.8 m</td>
+<td>18.5 m (0.93)</td>
+<td>4.3 m before it</td>
+<td>24-29</td>
+</tr>
+<tr>
+<td>Rust, <code>detector_impl:=rust</code>, Core ML</td>
+<td>x = 6.1 m</td>
+<td>18.5 m (0.92)</td>
+<td>4.3 m before it</td>
+<td>18-19</td>
+</tr>
+</tbody>
+</table></div>
+<p>Its first start there took 34 s (Core ML compiling; a model at a new path compiles again).</p>
+</section>
+<section class="card"><h2 id="untested-the-orin">Untested: the Orin</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The Rust with <code>--features tensorrt</code> (and <code>cuda</code>)</td>
+<td><span class="badge b-untested">untested</span> compiles (<code>cargo clippy</code>) on the Mac; never linked or run</td>
+</tr>
+<tr>
+<td>An ONNX Runtime with TensorRT for the Orin</td>
+<td><span class="badge b-untested">untested</span> <code>ort</code> downloads pyke's ARM Linux build with CUDA 13 and TensorRT: it may fit JetPack 7 (CUDA 13, Q24), not JetPack 6 (CUDA 12)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Steps for a car day (the Orin):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>Expect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>copy <code>models/rf-detr-nano.onnx</code> to the Orin's <code>models/</code></td>
+<td>108 MB</td>
+</tr>
+<tr>
+<td>2</td>
+<td>JetPack 7: <code>colcon build --packages-select aav_detector_rs --cmake-args -DDETECTOR_FEATURES=tensorrt</code> (downloads pyke's CUDA 13 build). JetPack 6: first get an ONNX Runtime with TensorRT for it (Jetson Zoo, or build it), then the same with <code>ORT_LIB_LOCATION=&lt;its folder&gt;</code></td>
+<td>builds</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>ros2 launch aav_detector detector.launch.py detector_impl:=rust device:=tensorrt picture:=ros/perception/aav_detector/test/stop_sign.jpg</code></td>
+<td>a stop sign on <code>/perception/detections</code>; the first start builds the engine (minutes), kept in <code>models/rf-detr-nano.cache/tensorrt</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>write down the log's "frames in 10 s, ms each"</td>
+<td>against the Python's TensorRT (<a href="car-day.html">car day</a>)</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="licences">Licences</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Licence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ONNX Runtime (Microsoft)</td>
+<td>MIT</td>
+</tr>
+<tr>
+<td><code>ort</code> crate (pyke) 2.0.0-rc.15</td>
+<td>MIT or Apache-2.0</td>
+</tr>
+<tr>
+<td>ONNX, onnxscript</td>
+<td>Apache-2.0, MIT</td>
+</tr>
+<tr>
+<td>RF-DETR (Roboflow), the model and its weights</td>
+<td>Apache-2.0</td>
+</tr>
+</tbody>
+</table></div>
+<p>All in <a href="acknowledgements.html">acknowledgements</a>.</p>
+</section>
+<section class="card"><h2 id="next">Next</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Model</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the diffusion planner</td>
+<td>after the detector wins on the car</td>
+</tr>
+<tr>
+<td>the lane finder (once it is a model)</td>
+<td>later</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="model-comparison.html"><small>Previous</small>← Newer models</a>
+<a class="next" href="firmware.html"><small>Next</small>Firmware →</a></nav>
+</main>
+<footer>Source: <code>docs/onnx.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

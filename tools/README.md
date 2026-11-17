@@ -160,7 +160,8 @@ Each lands outside git, checksum pinned where the script says.
 | `atob_score.py` | scores A-to-B runs (bag or CSV): speed up, hold, stop on B; EKF vs truth or tape | `measure atob` |
 | `can_load.py` | the CAN bus load from `firmware/can/aav.dbc` | - |
 | `compare_detectors.py` | YOLO11, YOLO26 and RF-DETR on the same pictures | - |
-| `export_model.py` | a detector to Core ML (Mac) or ONNX (Orin) | - (`pixi run -e ml python3 tools/export_model.py --format coreml`) |
+| `export_model.py` | a detector to Core ML (Mac) or ONNX (Orin, and the Rust detector) | - (`pixi run -e ml python3 tools/export_model.py --format coreml`) |
+| `onnx_check.py` | the ONNX detector's boxes against PyTorch's, and each runtime's ms a picture (`--time`); `--write-fixtures` for `detector-core`'s tests ([ONNX](../docs/onnx.md)) | - (`pixi run -e ml python3 tools/onnx_check.py`) |
 | `vehicle_model.py` | the car's linear model: poles, steps, margins | - |
 | `state_space_demo.py` | the state-space teaching example | - |
 | `measure_map.py` | the measuring map: tape route, pictures, readings into `vehicle.yaml` (no ROS) | - |

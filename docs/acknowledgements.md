@@ -67,6 +67,10 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **DBSCAN**: M. Ester et al., KDD 1996 | paper | idea, ported | the radar's clusters (`aav_radar_clusters`) |
 | OpenCV | Apache-2.0 | runs | lane finding |
 | NVIDIA TensorRT; Apple Core ML Tools | NVIDIA licence; BSD-3 | runs | the detector on the Orin and on Macs |
+| **ONNX Runtime** (Microsoft) | MIT | runs | the Rust detector (`aav_detector_rs`), and `tools/onnx_check.py` ([ONNX](onnx.md)) |
+| **`ort`** crate (pyke), 2.0.0-rc.15, and its prebuilt ONNX Runtime | MIT or Apache-2.0 | runs | ONNX Runtime from Rust: `detector-core` |
+| ONNX; onnxscript | Apache-2.0; MIT | runs | exporting RF-DETR to ONNX (`tools/export_model.py --format onnx`) |
+| rfdetr's PostProcess and COCO class list | Apache-2.0 | ported | `detector-core`'s decode and labels, through our `detr.py` |
 
 ## Maps and routes
 

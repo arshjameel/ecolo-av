@@ -7,7 +7,7 @@ usage (Core ML in the ml environment, on a Mac; no pixi task):
         models/rf-detr-nano.pth by default: makes models/rf-detr-nano.mlpackage
     pixi run -e ml python3 tools/export_model.py --format coreml models/yolo11n.pt
         makes models/yolo11n.mlpackage
-    python3 tools/export_model.py --format onnx [models/rf-detr-nano.pth]
+    pixi run -e ml python3 tools/export_model.py --format onnx [models/rf-detr-nano.pth]
 
   .pth  RF-DETR, through Roboflow's rfdetr (Apache-2.0): its own model.export()
   .pt   YOLO, through Ultralytics (AGPL-3.0)
@@ -17,10 +17,11 @@ detector loads it with model:=models/rf-detr-nano.mlpackage; laptop.yaml says ho
 
   coreml  a Mac only (coremltools). RF-DETR Nano: about 4 s, 108 MB, full precision (half
           precision was no faster on an M4 Max)
-  onnx    needs the onnx package, which the ml environment doesn't have: pip install onnx
-          where you run it. ONNX runs anywhere; it is the step before the Orin's TensorRT
-          engine, which tools/build_engine.py makes on the Orin itself (from the .pth, or
-          from this .onnx copied over)
+  onnx    in the ml environment (onnx, onnxscript; 17 Nov): RF-DETR Nano in 5 s, 108 MB,
+          opset 17, input (1, 3, 384, 384). ONNX runs anywhere: the Rust detector
+          (aav_detector_rs, docs/onnx.md) reads it, and it is the step before the Orin's
+          TensorRT engine, which tools/build_engine.py makes on the Orin itself (from the
+          .pth, or from this .onnx copied over)
 """
 
 import argparse
@@ -75,8 +76,8 @@ def main(argv=None) -> int:
         how = ('on a Mac, in the ml environment: '
                'pixi run -e ml python3 tools/export_model.py --format coreml'
                if args.format == 'coreml' else
-               'pip install onnx, in a Python with rfdetr or ultralytics (not the one of '
-               "Pixi: it can't pip-install); or let tools/build_engine.py do it on the Orin")
+               'the ml environment: pixi run -e ml python3 tools/export_model.py '
+               '--format onnx; or let tools/build_engine.py do it on the Orin')
         print(f'--format {args.format} needs {NEEDS[args.format]}: {how}', file=sys.stderr)
         return 2
     if not model.exists():

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Does the ONNX detector find the same boxes as PyTorch's? And how fast is each, here?
+The ONNX detector's boxes against PyTorch's, and how fast each runtime is here.
 
 usage (in the ml environment: PyTorch, rfdetr, ONNX Runtime, coremltools on a Mac):
     pixi run -e ml python3 tools/onnx_check.py                       # boxes: torch vs ONNX
@@ -30,11 +30,10 @@ import sys
 import time
 
 import cv2
-import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'ros' / 'perception' / 'aav_detector'))
-from aav_detector.detectors import coco_names, RfdetrTorch, rgb_of  # noqa: E402
+from aav_detector.detectors import coco_names, RfdetrTorch, rgb_of  # noqa: E402, I100
 from aav_detector.detr import decode, input_size, preprocess, split_outputs  # noqa: E402
 
 CORE = ROOT / 'ros' / 'perception' / 'aav_detector_rs' / 'crates' / 'detector-core'

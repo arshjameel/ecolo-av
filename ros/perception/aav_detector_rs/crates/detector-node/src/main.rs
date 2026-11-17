@@ -83,7 +83,9 @@ fn main() -> Result<()> {
         } else {
             format!(", {}", extra.join(", "))
         },
-        labels.as_ref().map_or("every label".into(), |l| l.join(", "))
+        labels
+            .as_ref()
+            .map_or("every label".into(), |l| l.join(", "))
     );
 
     let state = State {

@@ -103,6 +103,7 @@
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
@@ -403,6 +404,30 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>NVIDIA licence; BSD-3</td>
 <td>runs</td>
 <td>the detector on the Orin and on Macs</td>
+</tr>
+<tr>
+<td><strong>ONNX Runtime</strong> (Microsoft)</td>
+<td>MIT</td>
+<td>runs</td>
+<td>the Rust detector (<code>aav_detector_rs</code>), and <code>tools/onnx_check.py</code> (<a href="onnx.html">ONNX</a>)</td>
+</tr>
+<tr>
+<td><strong><code>ort</code></strong> crate (pyke), 2.0.0-rc.15, and its prebuilt ONNX Runtime</td>
+<td>MIT or Apache-2.0</td>
+<td>runs</td>
+<td>ONNX Runtime from Rust: <code>detector-core</code></td>
+</tr>
+<tr>
+<td>ONNX; onnxscript</td>
+<td>Apache-2.0; MIT</td>
+<td>runs</td>
+<td>exporting RF-DETR to ONNX (<code>tools/export_model.py --format onnx</code>)</td>
+</tr>
+<tr>
+<td>rfdetr's PostProcess and COCO class list</td>
+<td>Apache-2.0</td>
+<td>ported</td>
+<td><code>detector-core</code>'s decode and labels, through our <code>detr.py</code></td>
 </tr>
 </tbody>
 </table></div>

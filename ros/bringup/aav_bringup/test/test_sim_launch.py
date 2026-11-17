@@ -383,7 +383,8 @@ def test_the_road_worlds_full_graph(hud_package):
     actions = started(SIM, world='road', perception='true', lane='true',
                       camera_obstacles='true', hud='true', obstacle='true', start_y='0.3')
     sent = included(actions)
-    assert sent['detector.launch.py'] == {'labels': 'stop sign', 'use_sim_time': 'true'}
+    assert sent['detector.launch.py'] == {'labels': 'stop sign', 'use_sim_time': 'true',
+                                          'detector_impl': 'python'}
     assert sent['lane_finder.launch.py'] == {}
     assert sent['lane_follower.launch.py'] == {'fake': 'false'}
     assert sent['hud.launch.py'] == {}   # aav_hud's window (15 Oct)
@@ -391,6 +392,14 @@ def test_the_road_worlds_full_graph(hud_package):
     assert (sent['ravensim.launch.py']['obstacle'], sent['ravensim.launch.py']['start_y']) == (
         'true', '0.3')
     assert {'stop_sign_watcher', 'camera_obstacles'} <= names(actions)
+
+
+def test_detector_impl_picks_the_rust_detector_or_says_what_to_pick():
+    # detector_impl:=rust: aav_detector_rs's detector in the Python one's place (TODO 243).
+    sent = included(started(SIM, world='road', perception='true', detector_impl='Rust'))
+    assert sent['detector.launch.py']['detector_impl'] == 'rust'
+    with pytest.raises(ValueError, match='detector_impl:=cpp: pick one of python, rust'):
+        started(SIM, world='road', perception='true', detector_impl='cpp')
 
 
 @pytest.mark.parametrize('part', CAMERA_PARTS)

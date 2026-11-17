@@ -44,6 +44,8 @@ if command -v cargo >/dev/null; then
   (cd ros/perception/aav_radar_clusters && cargo test -q --locked -p radar-clustering)
   echo "== ros/perception/aav_voxels_rs: the cubes in Rust, the Python's answers"
   (cd ros/perception/aav_voxels_rs && cargo test -q --locked -p voxels)
+  echo "== ros/perception/aav_detector_rs: the detector's maths in Rust (resize, decode, labels)"
+  (cd ros/perception/aav_detector_rs && cargo test -q --locked -p detector-core)
   echo "== ros/ego/aav_ego_rs: ego and look_ahead in Rust, the Python modules' answers"
   (cd ros/ego/aav_ego_rs && cargo test -q --locked -p ego-core)
   echo "== ros/drivers/aav_behaviour_rs: the behaviour planner in Rust, the Python modules' answers"

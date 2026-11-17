@@ -103,6 +103,7 @@
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
@@ -346,6 +347,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>RF-DETR saw a stop sign from 20 m (YOLO11n: 10 m), with no false finds and an Apache-2.0 licence</td>
 <td>Ben</td>
 <td>2026-10-20</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="onnx.html">ONNX models from Rust</a> (<code>aav_detector_rs</code> <code>detector</code>, <code>detector_impl:=rust</code>; <code>detector-core</code>)</td>
+<td>Ben, 16 Nov: train in PyTorch, run ONNX from Rust with ONNX Runtime, Core ML on the Mac, TensorRT on the Orin. The same boxes as PyTorch on 7 saved pictures (IoU 0.9999); 8.0 ms a picture on Core ML against PyTorch's 14.7; Ravensim's stop sign passes. A challenger: TensorRT untested</td>
+<td>Ben</td>
+<td>2026-11-17</td>
 <td>sim</td>
 </tr>
 <tr>

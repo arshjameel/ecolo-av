@@ -11,7 +11,8 @@ Finds objects in the camera pictures, and uses what it finds. Three nodes:
 | `camera_obstacles` | puts each box on the road as points, for Nav2's local costmap | no |
 
 It began as the 2024-25 team's `yolo_ros2` (see `PROVENANCE.md`). The model comparison
-is in `docs/model-comparison.md`.
+is in `docs/model-comparison.md`. Its Rust twin, a challenger, is `aav_detector_rs`
+(`detector_impl:=rust`: the ONNX through ONNX Runtime, [docs/onnx.md](../../../docs/onnx.md)).
 
 ## Interface
 

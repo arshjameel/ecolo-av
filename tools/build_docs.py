@@ -160,6 +160,8 @@ PAGES = [
     ('mcp.md', 'AI apps (MCP)', 'Claude and other AI apps: read the project and the graph'),
     ('plain-english.md', 'Plain English', 'Type what the car should do; a model plans it'),
     ('model-comparison.md', 'Newer models', 'YOLO26 and RF-DETR vs YOLO11; newer local LLMs'),
+    ('onnx.md', 'ONNX from Rust',
+     'The detector as ONNX, run from Rust: same boxes, its time, the Orin'),
     ('firmware.md', 'Firmware', 'ros vs firmware, the CAN contract, the spine'),
     ('can-plan.md', 'CAN plan', "Today's wiring (CAN for sensors), and the KEFC plan"),
     ('rust-firmware.md', 'Rust firmware', 'Rust on the chips: layers, frameworks, toolchains'),

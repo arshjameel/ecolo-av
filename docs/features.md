@@ -49,6 +49,7 @@ Add a row in the same commit as the feature (`CLAUDE.md`).
 | Feature | Why | Who | Date | Status |
 |---|---|---|---|---|
 | [Object detector](perception.md) (`aav_detector`): RF-DETR Nano, YOLO as an option | RF-DETR saw a stop sign from 20 m (YOLO11n: 10 m), with no false finds and an Apache-2.0 licence | Ben | 2026-10-20 | sim |
+| [ONNX models from Rust](onnx.md) (`aav_detector_rs` `detector`, `detector_impl:=rust`; `detector-core`) | Ben, 16 Nov: train in PyTorch, run ONNX from Rust with ONNX Runtime, Core ML on the Mac, TensorRT on the Orin. The same boxes as PyTorch on 7 saved pictures (IoU 0.9999); 8.0 ms a picture on Core ML against PyTorch's 14.7; Ravensim's stop sign passes. A challenger: TensorRT untested | Ben | 2026-11-17 | sim |
 | One detector per computer: Core ML on a Mac | A laptop adds a second opinion over WiFi, at 21 ms a picture on a MacBook | Ben | 2026-10-11 | sim |
 | Stop-sign watcher | Holds the drive commands so the car stops about 4.7 m before a stop sign | the 2024-25 team, rewritten by Ben | 2026-10-10 | sim |
 | Lane finder (`aav_lane_finder`) | Classic OpenCV finds the lane in 0.78 ms a picture, with no model to train | Ben | 2026-10-10 | sim |
