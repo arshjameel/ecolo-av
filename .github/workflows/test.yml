@@ -310,7 +310,9 @@ jobs:
         run: |
           ~/aav-jazzy/aav.sh ros2 pkg list > pkgs.txt
           echo "$(grep -c '^aav' pkgs.txt) of our packages installed"
-          for pkg in aav_bringup aav_hud aav_spine_bridge; do
+          # The Rust nodes the car runs by default (16 Nov) too, not only the screens.
+          for pkg in aav_bringup aav_hud aav_spine_bridge aav_ego_rs aav_behaviour_rs \
+                     aav_watchdog_rs aav_localization_health_rs; do
             if ! grep -qx "$pkg" pkgs.txt; then
               echo "::error title=car kit::$pkg isn't installed"
               exit 1

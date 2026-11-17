@@ -48,7 +48,7 @@ What it holds (made on Ben's Mac, 15 Oct):
 | `bin/pixi`, `bin/pixi-unpack` | the programs that unpack and run it, for 64-bit ARM, version-pinned and checksummed | 78 MB |
 | `aav.bundle` | the repo (git bundle) | 5 MB |
 | `aav-src.tar.gz` | the same code, for a computer with no git | 4 MB |
-| `rust-crates.tar.gz` | the 152 Rust crates our four Rust packages use, so `cargo` needs no internet | 43 MB |
+| `rust-crates.tar.gz` | every crate our Rust packages use (each `Cargo.lock` in `ros/`, among them the car's default ego, behaviour, sensor watchdog and localization_health since 16 Nov), so `cargo` needs no internet | 43 MB |
 | `models/` | the YOLO model files from `models/`, if you have them (`pixi run get models`) | 6 MB |
 | `car_install.sh`, `README.md`, `KIT.txt`, `SHA256SUMS` | the installer, a short how-to, the commit, the checksums | small |
 
