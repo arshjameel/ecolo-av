@@ -934,7 +934,7 @@ def context(cfg: Mapping) -> Context:
 SHAPING_PARAMS = {
     'legacy_uart_bridge': ('full_throttle_speed', 'stop_speed', 'hold_brake', 'frame_version',
                            'uplink', 'rate_hz', 'speed_loop.mode'),
-    'gazebo_adapter': ('speed_loop', 'spine', 'actuator_model', 'rate_hz'),
+    'sim_adapter': ('speed_loop', 'spine', 'actuator_model', 'rate_hz'),
     'spine_sim': ('speed_loop',),
     'spine_bridge': ('role', 'drive_rate_hz', 'cmd_timeout'),
 }
@@ -955,7 +955,7 @@ def shaping(announcers: Sequence[str], params: Mapping[str, Mapping[str, object]
     """
     names = set(announcers)
     legacy = params.get('legacy_uart_bridge') or {}
-    gazebo = params.get('gazebo_adapter') or {}
+    gazebo = params.get('sim_adapter') or {}
     sim = params.get('spine_sim') or {}
     lead = 0.0
     fts: object = 'n/a'
@@ -963,7 +963,7 @@ def shaping(announcers: Sequence[str], params: Mapping[str, Mapping[str, object]
         backend, firmware = 'legacy', 'the 2025-26 ESP32, over UART (legacy_uart_bridge)'
         loop = 'none: open loop, throttle = speed / full_throttle_speed'
         fts = legacy.get('full_throttle_speed', UNKNOWN)
-    elif 'gazebo_adapter' in names or gazebo:
+    elif 'sim_adapter' in names or gazebo:
         lead = 1.0 / float(gazebo.get('rate_hz') or 50.0)
         if gazebo.get('spine'):
             backend, firmware = 'gazebo-spine', "spine_sim (spine-core's Rust) in Gazebo"

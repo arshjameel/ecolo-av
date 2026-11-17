@@ -10,7 +10,7 @@ other part reads them from there, so a number only ever changes in one place.
 | `aav_spine` (spine.launch.py) | wheelbase, track |
 | `aav_legacy` (legacy.launch.py) | wheel diameter, encoder counts per revolution |
 | `aav_navigation` (navigation.launch.py) | footprint (both costmaps), minimum turning radius (SmacPlannerHybrid), reverse speed |
-| `aav_turtlesim`, `aav_gazebo` | wheelbase, and in Gazebo the whole model |
+| `aav_turtlesim`, `aav_sim_models` | wheelbase, and in Gazebo the whole model |
 | `aav_drive_to_point`, `carla_adapter` | `actuators.max_brake`; `actuators.max_accel` |
 | `firmware/spine` (`spine-core`) | **copies** of `max_steering_angle` and `max_reverse_speed` (it can't read the file). Change both together: `test_vehicle.py` checks they match |
 

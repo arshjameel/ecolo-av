@@ -2,8 +2,9 @@
 """
 Sim check: start the road world headless, then test the car's whole graph in it.
 
-Our simulator and our own stack by default (--simulator gazebo for Gazebo). Nav2 went on
-17 Nov (TODO 184): its last scores are in docs/league-results-2026-11-16.md.
+Ravensim, our own simulator, and our own stack. Gazebo went on 16 Nov (its last scores:
+docs/history/gazebo-as-it-was.md); Nav2 on 17 Nov (TODO 184; its last scores:
+docs/league-results-2026-11-16.md).
 
     pixi run sim-check                     (about 2 minutes, on this computer only)
     pixi run -e ml sim-check --perception  (adds the detector and the stop sign: 2 more minutes)
@@ -37,7 +38,7 @@ Our simulator and our own stack by default (--simulator gazebo for Gazebo). Nav2
                                            (only the extra runs named, not the road
                                             world's first run: the costmap's scoring)
     pixi run sim-check --no-lidar         (without the simulated roof lidar: lidar:=false)
-    pixi run sim-check --no-cameras       (no cameras drawn, cameras:=false: our simulator
+    pixi run sim-check --no-cameras       (no cameras drawn, cameras:=false: Ravensim
                                            on a computer with no GPU; the radar checked alone)
     pixi run sim-check --voxels            (every run with the lidar takes voxels:=true: we
                                             reads the lidar as cubes, aav_voxels, instead of
@@ -57,7 +58,7 @@ Our simulator and our own stack by default (--simulator gazebo for Gazebo). Nav2
                                             --goto and --goto-only, the old names, still work)
     pixi run sim-check --esp32 pi|open     (every run with today's car in the loop instead,
                                             esp32:=true: the car's legacy_uart_bridge, its
-                                            speed_loop.mode pi or open, and gazebo_esp32,
+                                            speed_loop.mode pi or open, and sim_esp32,
                                             the 2025-26 C++ firmware standing in)
     pixi run sim-check --speed-steps       (the speed loop's steps, TODO 27: reverse 0.5,
                                             then 1.0 and 2.0 m/s, in the empty world: one
@@ -102,13 +103,13 @@ Our simulator and our own stack by default (--simulator gazebo for Gazebo). Nav2
                                             the planner sees; the car must go round it,
                                             never APPROACH(obstacle). One more run;
                                             --behaviour-things-only skips the road world's)
-    pixi run sim-check --moving           (TODO 170, our simulator: a person crosses the
+    pixi run sim-check --moving           (TODO 170, Ravensim: a person crosses the
                                             lane ahead at 1 m/s while the car drives on;
                                             the behaviour must slow for it, the car keep
                                             clear and reach its goal. behaviour:=true
                                             things:=true; --moving-only skips the road
                                             world's run)
-    pixi run sim-check --movers           (17 Nov, our simulator: an oncoming car, a person
+    pixi run sim-check --movers           (17 Nov, Ravensim: an oncoming car, a person
                                             walking along the roadside, cross traffic; the
                                             behaviour must hold the car for each
                                             (WAIT(moving)), the car keep clear and reach
@@ -150,12 +151,12 @@ Our simulator and our own stack by default (--simulator gazebo for Gazebo). Nav2
                                             track, plans and commands as JSON)
 
 bench_check.py tests the car's software against pretend sensors that draw a flat world;
-this tests it against Gazebo's camera and radar stand-in, which see the road world
-(aav_gazebo worlds/road.sdf: the bench road and its stop sign, in 3D).
+this tests it against Ravensim's cameras and radar stand-in, which see the road world
+(aav_sim_models worlds/road.sdf: the bench road and its stop sign, in 3D).
 
-1. Starts sim.launch.py world:=road gui:=false rviz:=false on a private ROS domain and
-   Gazebo partition, on this computer only.
-2. Start-up: Gazebo's truth, the global EKF, the camera and the radar stand-in all run,
+1. Starts sim.launch.py world:=road gui:=false rviz:=false on a private ROS domain,
+   on this computer only.
+2. Start-up: the truth, the global EKF, the camera and the radar stand-in all run,
    and navigation is up (unless nav:=false).
 3. Checks the running graph against docs/interfaces.yaml (check_graph.py --profile road).
 4. The sensors: the camera's picture and lens are the bench camera's, in camera_left_link;
@@ -171,25 +172,25 @@ this tests it against Gazebo's camera and radar stand-in, which see the road wor
 6. With --perception: the car drives to 40 m east, past the stop sign at 25 m. The car must
    stop with its front bumper before the sign, wait, and go on to the goal. The camera's
    picture with the detector's boxes, as the lock went on, is saved to /tmp/aav-sim-stop-sign.png.
-7. With --obstacle: the bench's 1 m box appears in the lane 15 m ahead (Gazebo's create
-   service), and the car drives 30 m. the stop zone must stop the car before
+7. With --obstacle: the bench's 1 m box appears in the lane 15 m ahead (Ravensim's
+   spawn_entity), and the car drives 30 m. the stop zone must stop the car before
    the box; once the box is taken away, the car must go on to the goal.
-8. With --lidar-obstacle: Gazebo again, with the radar off (radar:=false), so only the roof
+8. With --lidar-obstacle: the road world again, with the radar off (radar:=false), so only the roof
    lidar guards the car. A person-sized post (0.5 x 0.5 x 1.8 m) in the lane 15 m ahead: the
    stop zone must stop the car before it from the lidar's scan, and the post must show in
    the local costmap; once the post is gone, the car must go on to the goal.
    With --rear-obstacle, the same backing up: the goal 15 m behind the car, the post 6 m
    behind the rear bumper, and the stop zone behind the car must stop it.
-9. With --ghost: Gazebo again, with ghost:=true (aav_ghost): nothing in Gazebo, only a
+9. With --ghost: the road world again, with ghost:=true (aav_ghost): nothing in the world, only a
    pretend person 15 m past the bumper in navigation's view (its own costmap layer and
    stop zone source), placed through ghost_obstacle's parameters as
    `pixi run ghost ahead 15` does. the car drives 30 m: the stop zone must stop the car
    0-2 m before the ghost (as the global EKF has the car), and the local costmap must mark
    it; once the ghost is switched off, the car must go on to the goal, through where it
    stood.
-10. With --faults: Gazebo again (faults:=true), and for each fault in FAULTS: the car drives,
-   the fault goes on (fault.<sensor>, on its node: faults.NODES), and the car must stop within
-   REACT seconds, stopped by the sensor watchdog's lock or the stop zone; then the
+10. With --faults: the road world again (faults:=true), and for each fault in FAULTS: the
+   car drives, the fault goes on (fault.<sensor>, on its node: faults.NODES), and the car
+   must stop within REACT seconds, stopped by the sensor watchdog's lock or the stop zone; then the
    fault goes off, and the lock must open again. Two faults are of the watchdog itself:
    `watchdog hang` stops its process (SIGSTOP, then SIGCONT to mend it) and `watchdog
    kill` kills it (the last fault: nothing mends it). Its silence must hold the navigator through
@@ -203,10 +204,10 @@ this tests it against Gazebo's camera and radar stand-in, which see the road wor
    frozen HUD does. Latched: beating again, it must still hold the navigator (hud LOST) 5 s later,
    until the check clears it (/safety/sensor_watchdog/clear), as a person would.
    With --no-watchdog it only reports, without the watchdog's own two.
-11. With --lane: Gazebo again, with lane keeping (lane:=true) and nothing else driving, the
+11. With --lane: the road world again, with lane keeping (lane:=true) and nothing else driving, the
    car 0.3 m left of the road's centre. lane_finder and control_interface must bring it
    back within 5 cm, and keep it there.
-11. With --spine: Gazebo again with the spine in the loop (spine:=true: ego -> spine_bridge
+11. With --spine: the road world again with the spine in the loop (spine:=true: ego -> spine_bridge
    -> CAN frames -> spine_sim, the spine's own firmware logic -> the actuator model). The
    normal checks first (the graph against the spine profile, the scripted drive, the EKF
    against the truth, a goal), then the spine's own stops, each while driving:
@@ -216,10 +217,10 @@ this tests it against Gazebo's camera and radar stand-in, which see the road wor
    after it is let go, until armed again) and `not armed` (disarmed, a drive must not
    move the car). The first run also measures `command stream lost` and `software
    e-stop` on the direct path, and a last table compares the two.
-12. With --drive-to-point: Gazebo's empty world, twice: sim_speed 1 and 3. The point driver
+12. With --drive-to-point: the empty world, twice: sim_speed 1 and 3. The point driver
    (aav_drive_to_point)
    drives to POINT_TARGETS (10, 30 and 60 m, ahead, to the side and behind), each from where
-   the last stopped. Each must stop within 2 m of B by Gazebo's truth, no more than
+   the last stopped. Each must stop within 2 m of B by the truth, no more than
    POINT_PAST past it by its own EKF, and slow down at about half max_brake (the hardest
    0.5 s of its final stop, by the truth; from 1 m/s, only never harder: POINT_DECEL_FROM).
    At 1 m/s also: a lat/lon B (through /toLL and /fromLL), a 250 m B refused, and a drive
@@ -233,25 +234,25 @@ this tests it against Gazebo's camera and radar stand-in, which see the road wor
    0.3 m/s. Then the box goes: the same id must still be listed 1.5 s later (the memory,
    coasting) and gone 5 s later (keep, 3 s, outside the blind zone).
 
-13. With --speed-steps: Gazebo's empty world, nothing else driving. A scripted drive
+13. With --speed-steps: the empty world, nothing else driving. A scripted drive
    (ramped at ego's 1 m/s^2) holds each of SPEED_STEPS for 20 s: reverse at 0.5, then 1.0
    and 2.0 m/s. Each must end within 5 % of its target; its overshoot and the time to stay
-   within 5 % are reported (Gazebo's truth). With --speed-loop smooth, the overshoot must
+   within 5 % are reported (the truth). With --speed-loop smooth, the overshoot must
    also stay under 3 % (the profile's promise, TODO 27). On a busy computer ego's commands
-   can reach gazebo_adapter late (over its 0.2 s cmd_timeout), and it brakes: a step with
+   can reach sim_adapter late (over its 0.2 s cmd_timeout), and it brakes: a step with
    such a brake below its target is driven again, up to 3 times, and only reported (no
    pass or fail) if every try was spoiled. The samples go to /tmp/aav-sim-speed-steps.csv.
 
-With --simulator own: every run on our own Rust simulator (aav_simulator,
-   docs/own-simulator.md) in gz sim's place, simulator:=own, with its cameras
-   (aav_sim_cameras). The obstacles go in through its /vehicle/sim/spawn_entity and
-   delete_entity services; the cameras don't draw them yet.
+Every run is on Ravensim (aav_simulator, docs/own-simulator.md), with its cameras
+(aav_sim_cameras; --no-cameras: none). The obstacles go in through its
+/vehicle/sim/spawn_entity and delete_entity services. Under tools/software_gl.sh (no GPU)
+its clock waits for each picture (camera_lockstep:=auto): slower than real time, every
+camera at its full rate. --simulator ravensim is the only choice (own: its old name).
 
-Times are Gazebo's, simulated; only the limits on waiting are wall-clock. Prints a table and
+Times are Ravensim's, simulated; only the limits on waiting are wall-clock. Prints a table and
 exits 1 if anything failed. The launch logs go to /tmp/aav-sim-check.log and, with --lane,
-/tmp/aav-sim-check-lane.log: AAV_SIM_LOG=/tmp/mine.log moves them. AAV_SIM_DOMAIN and
-AAV_SIM_PARTITION pick the ROS domain and the Gazebo partition (otherwise a domain nobody
-on this computer uses now).
+/tmp/aav-sim-check-lane.log: AAV_SIM_LOG=/tmp/mine.log moves them. AAV_SIM_DOMAIN picks the
+ROS domain (otherwise one nobody on this computer uses now).
 """
 
 import bisect
@@ -270,7 +271,7 @@ import threading
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# A private ROS domain and Gazebo partition, on this computer only, set before rclpy
+# A private ROS domain, on this computer only, set before rclpy
 # starts: the check can't disturb a car, another laptop or someone else's simulator. The
 # domain is one nobody on this computer uses now (aav_io_mux domains: on 24 Oct a guard
 # test's spine_bridge, on the same random domain, latched a check's output mux).
@@ -281,18 +282,15 @@ else:
     DOMAIN = str(free_domain())
 os.environ['ROS_DOMAIN_ID'] = DOMAIN
 os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
-os.environ['GZ_IP'] = '127.0.0.1'
-os.environ['GZ_PARTITION'] = os.environ.get('AAV_SIM_PARTITION', f'sim_check_{DOMAIN}')
 
 from aav_description import vehicle  # noqa: E402
-from aav_gazebo.faults import ACTUATOR_NODE, NODES as FAULT_NODES  # noqa: E402
 from aav_interfaces.action import DriveToPoint, ScriptedDrive  # noqa: E402
 from aav_interfaces.msg import ActuatorState, SpineOutputs, VehicleStatus  # noqa: E402
 from aav_lane_geometry.msg import LaneGeometry  # noqa: E402
+from aav_sim_models.faults import ACTUATOR_NODE, NODES as FAULT_NODES  # noqa: E402
 from ackermann_msgs.msg import AckermannDriveStamped  # noqa: E402
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus  # noqa: E402
 from geometry_msgs.msg import PoseStamped, TwistStamped  # noqa: E402
-import gz_crash  # noqa: E402
 from nav2_msgs.action import NavigateToPose  # noqa: E402
 from nav2_msgs.msg import CollisionMonitorState  # noqa: E402
 from nav_msgs.msg import OccupancyGrid, Odometry, Path  # noqa: E402
@@ -324,7 +322,7 @@ with open(os.path.join(ROOT, 'ros', 'sim', 'aav_bench', 'config', 'bench.yaml'))
 ROAD_Y = BENCH['road_y']                # m: the lane's centre line
 SIGN_X = BENCH['stop_signs'][0]         # m east: the stop sign
 SIGN_Y = BENCH['stop_signs'][1]         # m north: right of the road
-MODELS = os.path.join(ROOT, 'ros', 'sim', 'aav_gazebo', 'models')
+MODELS = os.path.join(ROOT, 'ros', 'sim', 'aav_sim_models', 'models')
 OBSTACLE = os.path.join(MODELS, 'obstacle', 'model.sdf')   # the bench's 1 m box
 POST = os.path.join(MODELS, 'post', 'model.sdf')           # 0.5 x 0.5 x 1.8 m: a person
 LOW_BOX = os.path.join(MODELS, 'low_box', 'model.sdf')     # 0.5 m: the lidar loses it close
@@ -356,7 +354,7 @@ FAULTS = [('gps', 'stop'), ('watchdog', 'hang'), ('hud', 'stop'), ('imu', 'stop'
           ('odom', 'stop'),
           ('odom', 'freeze'), ('camera', 'freeze'), ('radar', 'stop'), ('imu', 'freeze'),
           ('gps', 'jump'), ('gps', 'nan'), ('odom', 'nan'), ('imu', 'nan'), ('watchdog', 'kill')]
-REACT = 6.0             # s of Gazebo's time from the fault to standing still
+REACT = 6.0             # s of sim time from the fault to standing still
 STILL = 0.05            # m/s: standing still
 DRIVING = 0.5           # m/s: the car drives, so a fault can go on
 # `odom freeze` goes on sooner, while the car still speeds up. mppi_lag plans from the
@@ -365,7 +363,7 @@ DRIVING = 0.5           # m/s: the car drives, so a fault can go on
 # 0.2, it drives on at about 0.4, which the GPS part sees (24 Oct, docs/simulation.md).
 FROZEN_AT = 0.2         # m/s
 FROZEN_WAIT = 30.0      # s of sim time for frozen wheels to go wrong (the follower slows, turns)
-HELD = 10.0             # s of Gazebo's time the car must stay still with no watchdog at all
+HELD = 10.0             # s of sim time the car must stay still with no watchdog at all
 with open(os.path.join(ROOT, 'ros', 'command_mux', 'aav_command_mux', 'config',
                        'twist_mux.yaml')) as f:
     # s of silence from the watchdog before twist_mux's sensors lock holds the navigator itself
@@ -382,12 +380,12 @@ LAUNCH = {}             # the running launch: its process group and log (session
 
 # The spine in the loop (--spine). spine_bridge stops sending DRIVE_CMD cmd_timeout s after
 # ego's last command (spine.yaml), and the spine's watchdog brakes fully 0.1 s after its
-# last DRIVE_CMD (spine-core cmd_timeout_ms). On the direct path gazebo_adapter's own
+# last DRIVE_CMD (spine-core cmd_timeout_ms). On the direct path sim_adapter's own
 # cmd_timeout (0.2 s) does both. TICKS allows for each one's tick and the frames' trip.
 with open(os.path.join(ROOT, 'ros', 'can_bridge', 'aav_spine', 'config', 'spine.yaml')) as f:
     BRIDGE_TIMEOUT = yaml.safe_load(f)['spine_bridge']['ros__parameters']['cmd_timeout']
 SPINE_WATCHDOG = 0.1    # s: spine-core's cmd_timeout_ms
-DIRECT_TIMEOUT = 0.2    # s: gazebo_adapter's cmd_timeout
+DIRECT_TIMEOUT = 0.2    # s: sim_adapter's cmd_timeout
 TICKS = 0.08            # s
 SPINE_BRAKE = BRIDGE_TIMEOUT + SPINE_WATCHDOG + TICKS   # ego quiet -> full brake, spine
 DIRECT_BRAKE = DIRECT_TIMEOUT + TICKS                   # ego quiet -> brake, direct path
@@ -474,25 +472,8 @@ def rate(stamps):
     return (len(stamps) - 1) / span if span > 0 else 0.0
 
 
-def gz_service(service, reqtype, request):
-    """Call one of the world's Gazebo services; True if it says it worked."""
-    try:
-        done = subprocess.run(
-            ['gz', 'service', '-s', f'/world/aav/{service}', '--reqtype', reqtype,
-             '--reptype', 'gz.msgs.Boolean', '--timeout', '5000', '--req', request],
-            capture_output=True, text=True, timeout=30)
-    except subprocess.TimeoutExpired:
-        return False
-    return done.returncode == 0 and 'data: true' in done.stdout
-
-
 def place_model(model, x, y, yaw, name='obstacle'):
-    """Put a model in the world: Gazebo's create service, or our simulator's spawn_entity."""
-    if SIMULATOR == 'gazebo':
-        return gz_service('create', 'gz.msgs.EntityFactory',
-                          f'sdf_filename: "{model}", name: "{name}", '
-                          f'pose: {{position: {{x: {x}, y: {y}, z: 0}}, '
-                          f'orientation: {{z: {math.sin(yaw / 2.0)}, w: {math.cos(yaw / 2.0)}}}}}')
+    """Put a model in the world: Ravensim's spawn_entity."""
     return ros_service('/vehicle/sim/spawn_entity', 'simulation_interfaces/srv/SpawnEntity',
                        f'{{name: "{name}", uri: "{model}", initial_pose: {{pose: {{position: '
                        f'{{x: {x}, y: {y}, z: 0.0}}, orientation: {{z: {math.sin(yaw / 2.0)}, '
@@ -501,8 +482,6 @@ def place_model(model, x, y, yaw, name='obstacle'):
 
 def remove_model(name='obstacle'):
     """Take a placed model away again."""
-    if SIMULATOR == 'gazebo':
-        return gz_service('remove', 'gz.msgs.Entity', f'name: "{name}", type: MODEL')
     return ros_service('/vehicle/sim/delete_entity', 'simulation_interfaces/srv/DeleteEntity',
                        f'{{entity: "{name}"}}')
 
@@ -525,7 +504,7 @@ def ros_service(service, kind, request):
 class Probe(Node):
 
     def __init__(self):
-        # On Gazebo's clock, like every node in the sim.
+        # On the simulated clock, like every node in the sim.
         super().__init__('sim_check', parameter_overrides=[Parameter('use_sim_time',
                                                                      value=True)])
         self.truth = self.glob = self.image = self.info = self.cloud = None
@@ -578,7 +557,7 @@ class Probe(Node):
         self.signs = []
         self.create_subscription(Detection2DArray, '/perception/detections', self.on_boxes, 10)
         self.lock, self.state = None, ''     # the sensor watchdog's
-        self.lock_heard = None               # when its lock last arrived (Gazebo's time)
+        self.lock_heard = None               # when its lock last arrived (sim time)
         self.fail_safe = True                # twist_mux's sensors lock holds on silence
         self.create_subscription(Bool, '/safety/sensor_watchdog/lock', self.on_lock, 10)
         self.create_subscription(String, '/safety/sensor_watchdog/state', self.on_state, 10)
@@ -597,9 +576,9 @@ class Probe(Node):
         self.create_subscription(DiagnosticArray, '/diagnostics', self.on_diagnostics, 10)
         # The car's status (the spine's, with spine:=true), and the actuators' demands as
         # (stamp, throttle, brake): spine_sim's outputs with the spine in the loop, or
-        # gazebo_adapter's own speed loop's commands on the direct path. For the stops.
+        # sim_adapter's own speed loop's commands on the direct path. For the stops.
         self.status, self.demands, self.direct = None, [], {}
-        self.latches = []    # Gazebo's time each time the spine stopped being armed
+        self.latches = []    # sim time each time the spine stopped being armed
         self.create_subscription(VehicleStatus, '/vehicle/status', self.on_status, 10)
         self.create_subscription(SpineOutputs, '/vehicle/sim/spine_outputs',
                                  lambda m: self.on_demand(seconds(m.header.stamp), m.throttle,
@@ -655,7 +634,7 @@ class Probe(Node):
         self.demands = self.demands[-2999:] + [(stamp, throttle, brake)]
 
     def on_direct(self, kind, msg):
-        """gazebo_adapter's throttle and brake commands (NaN from spine_bridge: skipped)."""
+        """sim_adapter's throttle and brake commands (NaN from spine_bridge: skipped)."""
         if math.isnan(msg.command):
             return
         self.direct[kind] = msg.command
@@ -1046,7 +1025,7 @@ def check_kiss_ekf(probe):
     local_rate = rate([t for t, _ in local])
     result('kiss_ekf', kiss_rate > 5.0 and local_rate > 20.0,
            f'KISS-ICP {kiss_rate:.1f} Hz, ekf_local {local_rate:.1f} Hz (simulated time)')
-    # ekf_local's speed against Gazebo's, at each of its stamps.
+    # ekf_local's speed against the truth's, at each of its stamps.
     truth = [(t, v) for t, _, _, _, v in probe.track]
     times = [t for t, _ in truth]
     gaps = []
@@ -1249,7 +1228,7 @@ def check_lane_keeping(probe):
     Lane keeping alone: from LANE_START m left of the road's centre, the car must come back.
 
     control_interface drives from the moment it sees the lane, so this reads the track the
-    probe has kept since start-up: LANE_TIME seconds of Gazebo's time, from when the car
+    probe has kept since start-up: LANE_TIME seconds of sim time, from when the car
     started moving.
     """
     def moved():
@@ -1264,7 +1243,7 @@ def check_lane_keeping(probe):
     stamps = [s[0] for s in run]
 
     def at(t):
-        """Return the truth sample nearest to time t (s, Gazebo's)."""
+        """Return the truth sample nearest to time t (s, sim time)."""
         i = min(bisect.bisect_left(stamps, t), len(stamps) - 1)
         return run[i - 1 if i and t - stamps[i - 1] < stamps[i] - t else i]
 
@@ -1437,7 +1416,7 @@ def check_kerb(probe, sensors):
     The flat scan keeps only points 0.3 m or more above the road (GROUND_CLEARANCE), the
     kerb's own height; with kerbs:=true the voxels node's step finder sees it (TODO 119).
     The car must stop before the kerb as check_obstacle's box, and the local costmap must
-    mark it; our simulator stops a car that drives into a step over 0.1 m as at a wall.
+    mark it; Ravensim stops a car that drives into a step over 0.1 m as at a wall.
     The stop zone needn't fire: it reaches 1 m past the bumper, and the roof lidar loses
     the kerb about 4 m out, so the costmap's mark (kept) is what stops the car. sensors:
     the words for which ran (the lidar, the radar).
@@ -1578,7 +1557,7 @@ def check_things(probe, ahead=12.0, depth=1.0):
 
 def check_ghost(probe, ahead=15.0, goal=30.0):
     """
-    Put a ghost (aav_ghost) `ahead` m past the bumper: not in Gazebo, only in navigation's view.
+    Put a ghost (aav_ghost) `ahead` m past the bumper: not in the world, only in navigation's view.
 
     the stop zone must stop the car 0-2 m before it, and the local costmap must mark it; once the
     ghost is switched off, the car must go on to the goal, through where it stood. Either
@@ -1698,7 +1677,7 @@ def signal_watchdog(mode):
 def fault_client(probe, sensor):
     """Return a parameter client for the node that takes this sensor's fault."""
     clients = probe.__dict__.setdefault('fault_clients', {})
-    node = FAULT_NODES.get(sensor, ACTUATOR_NODE)     # an actuator's: gazebo_adapter
+    node = FAULT_NODES.get(sensor, ACTUATOR_NODE)     # an actuator's: sim_adapter
     if node not in clients:
         clients[node] = AsyncParameterClient(probe, node)
     return clients[node]
@@ -1739,7 +1718,7 @@ def drive_on(probe, speed=DRIVING):
 def check_faults(probe, watchdog=True):
     """Each fault in FAULTS while the car drives: the car must stop, and something say why."""
     if not fault_client(probe, 'odom').wait_for_services(timeout_sec=20.0):
-        result('faults', False, "no gazebo_adapter parameters: can't set a fault")
+        result('faults', False, "no sim_adapter parameters: can't set a fault")
         return
     clear = probe.create_client(Trigger, '/safety/sensor_watchdog/clear')
     probe.fail_safe = watchdog
@@ -1910,7 +1889,7 @@ def get_going(probe, spine):
 
 def measure_stop(probe, t0, press=None):
     """
-    Return (s to the brake, s to standing still) after t0 (Gazebo's time), None if never.
+    Return (s to the brake, s to standing still) after t0 (sim time), None if never.
 
     The brake: the first demand after t0 with no throttle and some brake. press: an e-stop
     publisher to keep pressing meanwhile.
@@ -1928,7 +1907,7 @@ def measure_stop(probe, t0, press=None):
 
 
 def held(probe, seconds_, press=None):
-    """Spin seconds_ of Gazebo's time; return the top speed meanwhile (m/s)."""
+    """Spin seconds_ of sim time; return the top speed meanwhile (m/s)."""
     top, end = 0.0, probe.now() + seconds_
     while probe.now() < end:
         if press is not None:
@@ -2051,7 +2030,7 @@ def actuator_stop(probe, fault):
         result(name, False, 'the car would not get going')
         return None
     if fault and not set_fault(probe, *fault):
-        result(name, False, f'gazebo_adapter refused {" ".join(fault)}')
+        result(name, False, f'sim_adapter refused {" ".join(fault)}')
         finish(probe, handle)
         return None
     probe.spin_for(0.5)
@@ -2147,7 +2126,7 @@ def check_actuator_faults(probe, react=40.0):
     which are), only when the fault could not be set or the car would not drive.
     """
     if not fault_client(probe, 'steer').wait_for_services(timeout_sec=20.0):
-        result('actuator faults', False, "no gazebo_adapter parameters: can't set a fault")
+        result('actuator faults', False, "no sim_adapter parameters: can't set a fault")
         return
     base = None
     for fault in (None, ('brake', 'weak'), ('brake', 'dead'), ('throttle', 'stuck')):
@@ -2273,7 +2252,7 @@ OLD_FLAGS = {'--goto': '--drive-to-point', '--goto-only': '--drive-to-point-only
 # as test_drive.py: metres away, and degrees to the left of the car's nose, each from
 # where the last stopped.
 POINT_TARGETS = [(10.0, 0.0), (30.0, 45.0), (60.0, -30.0), (30.0, 150.0)]
-POINT_SPEEDS = (1.0, 3.0)       # m/s: the car's ego cap, and Gazebo's sim_speed 3
+POINT_SPEEDS = (1.0, 3.0)       # m/s: the car's ego cap, and sim_speed 3
 SPEED_STEPS = (-0.5, 1.0, 2.0)  # m/s: TODO 27's steps (reversing is capped at 0.5)
 SPEED_HOLD = 20.0               # s at each step
 SPEED_BAND = 0.05               # the band a step must end, and settle, in (of its target)
@@ -2282,7 +2261,7 @@ SPEED_TRIES = 3                 # drives of a step, while late commands spoil th
 SPEED_LOG = os.environ.get('AAV_SIM_SPEED_LOG', '/tmp/aav-sim-speed-steps.csv')
 # Each drive to point's truth, as a CSV for measure atob: AAV_SIM_POINT_LOG moves the folder.
 POINT_LOG = os.environ.get('AAV_SIM_POINT_LOG', '/tmp/aav-sim-points')
-POINT_TOLERANCE = 2.0           # m from B, by Gazebo's truth: docs/tests.md 5.2 without RTK
+POINT_TOLERANCE = 2.0           # m from B, by the truth: docs/tests.md 5.2 without RTK
 POINT_PAST = 0.5                # m past B, along the car's heading, by its own EKF: GPS noise
 POINT_DECEL = (0.6, 1.25)       # x the planned deceleration (half max_brake): the band
 # m/s: the band's floor counts from this top speed. Slower, the stop lasts under a second
@@ -2308,7 +2287,7 @@ def slowing(track, t0, window=0.5):
     """
     Return (top speed, the hardest deceleration over `window` s, m/s^2) after t0.
 
-    From Gazebo's truth, over the final stop only: from the last moment at 90 % of the top
+    From the truth, over the final stop only: from the last moment at 90 % of the top
     speed. As test_drive.py's: a window smooths the truth's speed, which is a difference.
     """
     run = [s for s in track if s[0] >= t0]
@@ -2359,7 +2338,7 @@ def send_point_goal(probe, goal, wait=300.0):
 
 
 def point_drive(probe, speed, distance, degrees, lat_lon=False):
-    """Drive to one point; check the stop against Gazebo's truth, the braking and overshoot."""
+    """Drive to one point; check the stop against the truth, the braking and overshoot."""
     name = f'drive to point {distance:g} m at {degrees:+g} deg, {speed:g} m/s' + (
         ' (lat/lon)' if lat_lon else '')
     bx, by = ahead_of(probe.glob, distance, degrees)
@@ -2483,7 +2462,7 @@ def check_point_refusals(probe):
 
 
 def check_drive_to_point(probe, speed, stops=True):
-    """Drive POINT_TARGETS at this speed (Gazebo's sim_speed); at 1 m/s, its stops too."""
+    """Drive POINT_TARGETS at this speed (sim_speed); at 1 m/s, its stops too."""
     for distance, degrees in POINT_TARGETS:
         point_drive(probe, speed, distance, degrees)
     if stops and speed == POINT_SPEEDS[0]:
@@ -2526,7 +2505,7 @@ def dropouts(demands, samples, target, start, end):
     Return how many brake demands came while the car was below its target.
 
     Below the target (and its coast band) the speed loop never brakes: only a command
-    that arrived too late does (gazebo_adapter's cmd_timeout, 0.2 s: the target drops
+    that arrived too late does (sim_adapter's cmd_timeout, 0.2 s: the target drops
     to 0). That is the computer's load, not the loop: such a step is driven again.
     """
     count = 0
@@ -2541,7 +2520,7 @@ def dropouts(demands, samples, target, start, end):
 def speed_step(probe, target):
     """Drive one held step; return (its samples, from its start; brake dropouts)."""
     probe.spin_for(30.0, lambda: abs(probe.speed()) < 0.02)      # from a standstill
-    # Times on Gazebo's truth's stamps, the samples' own clock: the scripted driver's
+    # Times on the truth's stamps, the samples' own clock: the scripted driver's
     # phases as the latest truth sample when each was heard.
     start = probe.track[-1][0]
     slowing = []
@@ -2585,7 +2564,7 @@ def check_speed_steps(probe, profile):
                            for t, v in samples)
         overshoot, settle, end = step_numbers(samples, target)
         if end is None:
-            result(name, False, "the car never moved (Gazebo's truth)")
+            result(name, False, 'the car never moved (the truth)')
             continue
         tries = f' ({attempt} tries: late commands braked the others)' if attempt > 1 else ''
         peak = max(abs(v) for _, v in samples)
@@ -2611,16 +2590,15 @@ CAMERA_TOPICS = tuple(f'/sensors/camera/{c}/{t}' for c in ('front_left', 'front_
     '/perception/camera/front_left/preview/compressed', '/perception/camera/front_left/preview',
     '/perception/camera/front_right/preview/compressed',
     '/vehicle/sim/chase_camera/image_raw', '/vehicle/sim/chase_camera/compressed')
-CAMERAS = True        # --no-cameras: none drawn (our simulator on a computer with no GPU)
+CAMERAS = True        # --no-cameras: none drawn (Ravensim on a computer with no GPU)
 
 
 EVERY_RUN = []   # launch arguments every session adds: --speed-loop's, --simulator's
-SIMULATOR = None      # --simulator gazebo or own; else sim.launch.py's default (main)
+SIMULATOR = None      # --simulator ravensim (the only one); sim.launch.py's default (main)
 # What runs: sim.launch.py's default stack (ours, stacks.DEFAULT), or --stack's, with any
 # --navigator, --costmap, --planner or --tracker on top (main works it out again).
 COSTMAP = 'own'       # the only one since Nav2's went (17 Nov)
 LOCAL_COSTMAP = {'own': '/drivers/nav/costmap/local'}
-SIMULATOR_NAMES = {'gazebo': 'Gazebo', 'own': 'our simulator'}
 VOXELS = False   # --voxels: every session with the lidar takes voxels:=true
 KISS_EKF = False  # --kiss-ekf: every session with the lidar takes kiss_ekf:=true
 
@@ -2654,7 +2632,7 @@ def check_stop_point(probe):
     With the spine in the loop an e-stop is a full brake, what /ego/stop_point predicts
     (aav_ego stop_ahead.py: the shared car model, full brake now). The prediction is the
     first stop point ego stamped at or after the press; it is moved into the map frame by
-    /tf at its stamp. Truth: Gazebo's, along the heading at that stamp. Localization: the
+    /tf at its stamp. Truth: Ravensim's, along the heading at that stamp. Localization: the
     global EKF's stop against the predicted point. Then the e-stop is let go and the spine
     armed again for the next drive.
     """
@@ -2686,7 +2664,7 @@ def check_stop_point(probe):
             result(name, False, 'the scripted drive was refused')
             continue
         handle = sent.result()
-        # Steady at the speed for 1.5 s (Gazebo's time), then the e-stop.
+        # Steady at the speed for 1.5 s (sim time), then the e-stop.
         steady = []
         probe.spin_for(60.0, lambda: (steady.append(probe.now())
                                       if abs(probe.speed() - speed) < 0.05 else steady.clear())
@@ -2758,7 +2736,7 @@ def check_loaded_stop(probe):
     """
     Stop from LOADED_SPEED, empty and loaded, the adaptive brake off and on.
 
-    Each stop is scored against the empty car model. gazebo_adapter's payload and
+    Each stop is scored against the empty car model. sim_adapter's payload and
     adaptive_brake are set live for each case. The stop is the scripted drive's own
     slowing (1 m/s^2), through the adapter's speed loop, the adaptive brake (when on) and
     the modelled actuators. The prediction is
@@ -2769,9 +2747,9 @@ def check_loaded_stop(probe):
     """
     from aav_description.car_model import ActuatorConfig
     from aav_description.stop_law import stop_following
-    client = AsyncParameterClient(probe, '/gazebo_adapter')
+    client = AsyncParameterClient(probe, '/sim_adapter')
     if not client.wait_for_services(timeout_sec=20.0):
-        result('loaded stop', False, 'no gazebo_adapter parameters')
+        result('loaded stop', False, 'no sim_adapter parameters')
         return
     if not probe.drive.wait_for_server(timeout_sec=20.0):
         result('loaded stop', False, 'no scripted driver')
@@ -2788,7 +2766,7 @@ def check_loaded_stop(probe):
         name = (f'loaded stop {payload:g} kg, adaptive brake {"on" if adaptive else "off"}'
                 + (', the next stop' if again else ''))
         if not set_ghost(probe, client, payload=payload, adaptive_brake=adaptive):
-            result(name, False, 'gazebo_adapter refused payload or adaptive_brake')
+            result(name, False, 'sim_adapter refused payload or adaptive_brake')
             continue
         probe.spin_for(30.0, lambda: abs(probe.speed()) < STILL)
         begin = probe.now()
@@ -2874,12 +2852,9 @@ def check_movers(probe, movers=MOVERS, goal=26.0):
 
     WAIT(moving) seen, the car keeps clear of it while it moves (0.3 m ahead of the
     bumper), and reaches a goal `goal` m on once it has gone. Each starts moving when the
-    goal is sent. Our simulator only: Gazebo's models don't walk. One a session: the road
+    goal is sent. One a session: the road
     world's fence is near past 60 m.
     """
-    if SIMULATOR == 'gazebo':
-        result('movers', None, "skipped: Gazebo's placed models don't walk")
-        return
     body = vehicle.load()['vehicle']['body']
     front = body['length'] - body['rear_overhang']
     for i, (name, model, ahead, side, along_v, side_v) in enumerate(movers):
@@ -2933,7 +2908,7 @@ def check_movers(probe, movers=MOVERS, goal=26.0):
 
 
 def walk_model(name, x, y, yaw, vx, vy):
-    """Put a placed model at (x, y, yaw), then walking at (vx, vy) m/s: our simulator."""
+    """Put a placed model at (x, y, yaw), then walking at (vx, vy) m/s (Ravensim)."""
     return ros_service(
         '/vehicle/sim/set_entity_state', 'simulation_interfaces/srv/SetEntityState',
         f'{{entity: "{name}", state: {{header: {{frame_id: "map"}}, pose: {{position: '
@@ -2950,12 +2925,8 @@ def check_moving_thing(probe, ahead=20.0, side=4.0, walk=0.8, goal=35.0, near=15
     whatever its speed. The car drives to a goal `goal` m on. The behaviour must slow for
     them (APPROACH(obstacle) or STOP(obstacle): a moving thing in the lane, TODO 170), the
     car keep at least 0.3 m from them ahead of its bumper while it moves (the walker walks
-    on through a car standing for it), and reach the goal once they are by. Our simulator
-    only: Gazebo's models don't walk.
+    on through a car standing for it), and reach the goal once they are by.
     """
-    if SIMULATOR == 'gazebo':
-        result('moving thing', None, "skipped: Gazebo's placed models don't walk")
-        return
     body = vehicle.load()['vehicle']['body']
     front = body['length'] - body['rear_overhang']
     x0, y0 = probe.xy(probe.truth)
@@ -3150,11 +3121,9 @@ def check_behaviour(probe, sign=False):
 
 
 def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spine=False,
-            world='road', retry=True):
+            world='road'):
     """
     Start sim.launch.py's world with these arguments, run the checks, and stop it.
-
-    retry: if Gazebo itself crashes while starting (gz_crash), start once more.
 
     spine: the spine is in the loop (spine:=true): its status must come, and it must arm.
     world: road (the camera and radar must run, the road profile) or empty (only the truth
@@ -3176,9 +3145,8 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
               + (WATCHDOG_TOPICS if 'watchdog:=false' in launch_args else ())
               + (() if CAMERAS else CAMERA_TOPICS))
     env = dict(os.environ)
-    print(f"Starting {SIMULATOR_NAMES[SIMULATOR]}'s {world} world{tag} on ROS domain "
-          f"{env['ROS_DOMAIN_ID']}, Gazebo partition {env['GZ_PARTITION']} (this computer "
-          'only)...', flush=True)
+    print(f"Starting Ravensim's {world} world{tag} on ROS domain "
+          f"{env['ROS_DOMAIN_ID']} (this computer only)...", flush=True)
     log = open(log_path, 'w')
     launch = subprocess.Popen(['ros2', 'launch', 'aav_bringup', 'sim.launch.py', f'world:={world}',
                                'gui:=false', 'rviz:=false', *launch_args, *EVERY_RUN],
@@ -3187,7 +3155,6 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
     LAUNCH.update(pgid=launch.pid, log=log_path)
     rclpy.init()
     probe = Probe()
-    again = False
     try:
         def missing():
             return [n for n, m in (('truth', probe.truth), ('global EKF', probe.glob),
@@ -3204,21 +3171,12 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
         nav = 'nav:=false' not in launch_args
         nav_up = up and (not nav or probe.spin_for(120.0, probe.nav.server_is_ready))
         if not up:
-            log.flush()
-            with open(log_path) as text:
-                crash = gz_crash.gazebo_crashed(text.read())
-            if crash and retry:
-                result(f'start-up{tag}', None, f'Gazebo crashed while starting ({crash}): '
-                       f'once more (log: {log_path})')
-                again = True
-                return
-            detail = f'nothing from: {", ".join(missing())}, in 120 s' + (
-                f' (Gazebo: {crash}, twice)' if crash else '')
+            detail = f'nothing from: {", ".join(missing())}, in 120 s'
         elif not nav_up:
             detail = ('the sensors run, but the navigator never came up in 120 s '
                       f'(see {log_path})')
         else:
-            detail = (f"{SIMULATOR_NAMES[SIMULATOR]}'s truth, the global EKF" +
+            detail = ("Ravensim's truth, the global EKF" +
                       (', the camera' if cameras else '') +
                       (' and the radar stand-in are' if radar else ' are (no radar)') +
                       ' running' + (', and navigation is up' if nav else ''))
@@ -3246,11 +3204,6 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
         except subprocess.TimeoutExpired:
             os.killpg(launch.pid, signal.SIGKILL)
         log.close()
-        if again:
-            # Its own log: the crashed one stays for a look.
-            stem, ext = os.path.splitext(log_path)
-            session(launch_args, checks, f'{stem}-retry{ext}', label, ignore, radar, spine,
-                    world, retry=False)
 
 
 def main():
@@ -3314,15 +3267,18 @@ def main():
             return 2
         EVERY_RUN.extend(['esp32:=true', f'esp32_loop:={args[at + 1]}'])
     global SIMULATOR
+    from aav_sim_models import worlds
+    SIMULATOR = worlds.DEFAULT_SIMULATOR
     if '--simulator' in args:
         at = args.index('--simulator')
-        if at + 1 >= len(args) or args[at + 1] not in ('gazebo', 'own'):
-            print('--simulator takes gazebo or own', file=sys.stderr)
+        given = args[at + 1] if at + 1 < len(args) else ''
+        try:
+            SIMULATOR = worlds.check_simulator(given)
+        except ValueError as e:
+            print(f'--simulator: {e}', file=sys.stderr)
             return 2
-        SIMULATOR = args[at + 1]
-    else:
-        from aav_gazebo.worlds import DEFAULT_SIMULATOR
-        SIMULATOR = DEFAULT_SIMULATOR
+        if worlds.simulator_warning(given):
+            print(worlds.simulator_warning(given), file=sys.stderr)
     # Always said: the checks place models and read logs the way this simulator wants.
     EVERY_RUN.append(f'simulator:={SIMULATOR}')
     global COSTMAP
@@ -3364,17 +3320,17 @@ def main():
     for level in ('costmap', 'tracker', 'navigator', 'planner'):
         chosen.setdefault(level, picked.get(level))
     COSTMAP = chosen['costmap'] or COSTMAP
-    if SIMULATOR == 'own' and CAMERAS:
+    if CAMERAS:
         # The launch starts the cameras with cargo run, which builds them first if they
         # changed: minutes for Bevy, longer than start-up's 120 s. Build them here instead.
-        from aav_gazebo.worlds import SIM_CAMERAS, sim_cameras_features
-        print("Building our simulator's cameras (aav_sim_cameras), if they changed...",
+        from aav_sim_models.worlds import SIM_CAMERAS, sim_cameras_features
+        print("Building Ravensim's cameras (aav_sim_cameras), if they changed...",
               flush=True)
         built = subprocess.run(['cargo', 'build', '--release', '-q', '--features',
                                 sim_cameras_features(os.environ),
                                 '--manifest-path', os.path.join(ROOT, SIM_CAMERAS)])
         if built.returncode != 0:
-            print("our simulator's cameras did not build: see above, or try --no-cameras",
+            print("Ravensim's cameras did not build: see above, or try --no-cameras",
                   file=sys.stderr)
             return 1
     log = os.environ.get('AAV_SIM_LOG', '/tmp/aav-sim-check.log')
@@ -3427,14 +3383,14 @@ def main():
                     ignore=() if radar_on else RADAR_TOPICS, radar=radar_on)
     if {'--actuator-faults', '--actuator-faults-only'} & set(args):
         # Its own run, the empty world (room to roll and to circle): the actuators' faults
-        # on purpose (TODO 159), gazebo_adapter's. No lidar or radar: a lighter run.
+        # on purpose (TODO 159), sim_adapter's. No lidar or radar: a lighter run.
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-actuator-faults{ext}')
         session(['lidar:=false', 'radar:=false'], [check_actuator_faults], logs[-1],
                 'actuator faults', world='empty')
     if '--faults' in args:
         # Its own run: a fault spoils the car's software for a while, and the camera's
-        # picture goes through gazebo_adapter (faults:=true). No lidar: a lighter run.
+        # picture goes through sim_adapter (faults:=true). No lidar: a lighter run.
         watchdog = '--no-watchdog' not in args
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-faults{ext}')
@@ -3489,7 +3445,7 @@ def main():
                 world='empty')
     if '--loaded-stop' in args or '--loaded-stop-only' in args:
         # Its own run: the empty world, nothing else driving, no spine (the adaptive brake
-        # sits after gazebo_adapter's own speed loop), ego's cap at the drive's speed.
+        # sits after sim_adapter's own speed loop), ego's cap at the drive's speed.
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-loaded-stop{ext}')
         session(['nav:=false', 'lidar:=false', 'radar:=false',

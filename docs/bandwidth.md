@@ -173,7 +173,7 @@ the car's), and its lidar is a 16-beam stand-in.
 | `/global_costmap/costmap` (and 7 more layers) | 0.5 | 640 kB | 0.32 each | 2.6 each |
 | `/joint_states` | 877 | 364 B | 0.32 | 2.6 |
 | `/local_costmap/costmap` (and 5 more layers) | 1.5 | 40 kB | 0.06 each | 0.5 each |
-| `/gazebo/radar/points` (Gazebo's own) | 9.2 | 6.0 kB | 0.06 | 0.5 |
+| `/vehicle/sim/radar/points` (Gazebo's own) | 9.2 | 6.0 kB | 0.06 | 0.5 |
 | `/vehicle/wheels` | 869 | 48 B | 0.04 | 0.3 |
 | `/vehicle/odom` | 46 | 724 B | 0.03 | 0.3 |
 | `/sensors/lidar/scan` | 9.2 | 2.9 kB | 0.03 | 0.2 |

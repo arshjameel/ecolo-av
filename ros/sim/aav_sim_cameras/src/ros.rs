@@ -1,4 +1,4 @@
-//! The node `sim_cameras`: the pictures out on Gazebo's camera topics, the car's pose in.
+//! The node `sim_cameras`: Ravensim's pictures out on the car's camera topics, its pose in.
 //!
 //! Subscribes: `/vehicle/sim/truth` (nav_msgs/Odometry, map frame: where the simulated car
 //! is; only with `--pose truth`); `/vehicle/sim/entities` (visualization_msgs/MarkerArray,

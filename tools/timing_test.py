@@ -23,7 +23,7 @@ For each phase it prints:
 the messaging. The numbers: tools/stalls.py (no ROS; tests in tools/tests/test_stalls.py).
 
 The report, every topic's table and each late gap go to log/timing-test/<time>-<rmw>/; the
-launch log beside them. A ROS domain and Gazebo partition of its own (AAV_SIM_DOMAIN picks
+launch log beside them. A ROS domain of its own (AAV_SIM_DOMAIN picks
 the domain), on this computer only; stopped by its process group; Fast DDS's shared memory
 is cleared after a Fast DDS run.
 """
@@ -47,8 +47,6 @@ DOMAIN = os.environ.get('AAV_SIM_DOMAIN', str(random.randint(150, 230)))
 os.environ['ROS_DOMAIN_ID'] = DOMAIN
 os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
 os.environ.pop('ROS_STATIC_PEERS', None)
-os.environ['GZ_IP'] = '127.0.0.1'
-os.environ['GZ_PARTITION'] = f'timing_test_{DOMAIN}'
 
 from action_msgs.msg import GoalStatus  # noqa: E402
 import bandwidth  # noqa: E402
@@ -355,8 +353,7 @@ def main():
     out_dir = os.path.join(ROOT, 'log', 'timing-test', f'{started:%Y%m%d-%H%M%S}-{rmw}')
     os.makedirs(out_dir, exist_ok=True)
     log_path = os.path.join(out_dir, 'sim.log')
-    print(f'{rmw}: the test lot on ROS domain {DOMAIN}, Gazebo partition '
-          f'{os.environ["GZ_PARTITION"]} (this computer only); load average '
+    print(f'{rmw}: the test lot on ROS domain {DOMAIN} (this computer only); load average '
           f'{os.getloadavg()[0]:.1f}; results in {out_dir}', flush=True)
     load = Load()
     load.start()

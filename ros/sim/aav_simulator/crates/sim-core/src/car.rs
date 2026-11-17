@@ -8,7 +8,7 @@
 //!
 //! | Model | Takes | Is |
 //! |---|---|---|
-//! | [`TwistFollower`] | a speed and a turn rate (`/gazebo/cmd_vel`, from `gazebo_adapter`) | Gazebo's AckermannSteering system: the car follows within ±10 m/s², the wheels steer at once (P gain 100). `gazebo_adapter`'s actuator model sits in front, as with Gazebo |
+//! | [`TwistFollower`] | a speed and a turn rate (`/vehicle/sim/cmd_vel`, from `sim_adapter`) | Gazebo's AckermannSteering system: the car follows within ±10 m/s², the wheels steer at once (P gain 100). `sim_adapter`'s actuator model sits in front, as with Gazebo |
 //! | [`ActuatorCar`] | throttle, brake, gear and a steering target ([`Drive`]) | the actuator model itself: lags, rates, deadbands and dead time, from `vehicle.yaml`'s `actuators:` |
 //!
 //! Both end in the same kinematic bicycle on flat ground: x' = v cos yaw, y' = v sin yaw,
@@ -122,7 +122,7 @@ fn clamp(x: f64, limit: f64) -> f64 {
     x.clamp(-limit, limit)
 }
 
-/// Gazebo's AckermannSteering system, as `aav.gazebo.xacro` sets it.
+/// Gazebo's AckermannSteering system, as Gazebo's URDF set it until 16 Nov.
 #[derive(Debug, Clone)]
 pub struct TwistFollower {
     wheelbase: f64,

@@ -1,14 +1,14 @@
 """
 The geofence: stops every program before the car's stopping distance reaches the fence.
 
-  ros2 launch aav_safety geofence.launch.py backend:=spine|uart|gazebo|gazebo_esp32
+  ros2 launch aav_safety geofence.launch.py backend:=spine|uart|sim|sim_esp32
       [radius:=30.0] [centre_x:=0.0] [centre_y:=0.0] [site:=] [max_speed:=]
       [gps:=true] [stands:=false] [use_sim_time:=false]
 
 backend: who drives the car, for its command timeout and whether it brakes to a stop
-(geofence.py motion_from): spine (spine_bridge, the bench, Gazebo spine:=true), uart
-(the 2025-26 ESP32: in speed_loop open it coasts, so every program stays held), gazebo,
-gazebo_esp32. No default: a wrong guess would be a wrong stopping distance.
+(geofence.py motion_from): spine (spine_bridge, the bench, the sim spine:=true), uart
+(the 2025-26 ESP32: in speed_loop open it coasts, so every program stays held), sim
+(Ravensim's sim_adapter), sim_esp32. No default: a wrong guess would be a wrong stopping distance.
 radius, centre_x, centre_y: a circle round the car's marked start spot (the map frame:
 car.launch.py's start_x, start_y). site: a polygon in config/geofence.yaml's sites
 instead, checked against navsat.yaml's datum. max_speed: a lower cap than ego.yaml's (m/s,
@@ -91,7 +91,7 @@ def geofence(context):
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('backend',
-                              description='spine, uart, gazebo or gazebo_esp32: its timeout '
+                              description='spine, uart, sim or sim_esp32: its timeout '
                                           'and whether it brakes to a stop'),
         DeclareLaunchArgument('radius', default_value='30.0',
                               description="m: a circle round the car's start spot"),

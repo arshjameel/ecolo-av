@@ -315,7 +315,7 @@ Like the steering's ends. **Placeholders** until car day A7, rows 6-8
 |---|---|
 | `pixi run sim payload:=150` | a heavier car, the adaptive brake off |
 | `pixi run sim payload:=150 adaptive_brake:=true` | the same, with it on |
-| `ros2 param set /gazebo_adapter payload 90` | change the load while it runs |
+| `ros2 param set /sim_adapter payload 90` | change the load while it runs |
 | `pixi run sim-check --loaded-stop-only` | the check below |
 
 Not with `spine:=true` or `esp32:=true`: there the firmware decides the brake.

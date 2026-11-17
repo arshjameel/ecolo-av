@@ -1,27 +1,28 @@
-//! simulator: our own simulator, a drop-in for `gz sim` and its `ros_gz_bridge`s.
+//! simulator: Ravensim, our own simulator. It took the place of `gz sim` and its
+//! `ros_gz_bridge`s (Gazebo went on 16 Nov).
 //!
 //! It publishes what Gazebo's bridges publish, with the same names, types, frames, rates
-//! and QoS, so `gazebo_adapter`, `gazebo_imu`, `gazebo_gps`, `gazebo_radar` and the whole
+//! and QoS, so `sim_adapter`, `sim_imu`, `sim_gps`, `sim_radar` and the whole
 //! stack above them run unchanged (docs/own-simulator.md):
 //!
-//! Subscribes  gazebo/cmd_vel          geometry_msgs/Twist: the speed and turn rate
-//!                                     gazebo_adapter's actuator model gives (Gazebo's
+//! Subscribes  vehicle/sim/cmd_vel          geometry_msgs/Twist: the speed and turn rate
+//!                                     sim_adapter's actuator model gives (Gazebo's
 //!                                     AckermannSteering system's input), kept until the next
 //! Publishes   /clock                  rosgraph_msgs/Clock, clock_hz (1000, as Gazebo), the simulated time
-//!             gazebo/odom             nav_msgs/Odometry, 50 Hz, odom -> base_link: the
+//!             vehicle/sim/odom             nav_msgs/Odometry, 50 Hz, odom -> base_link: the
 //!                                     wheels' odometry from where the car started
 //!             vehicle/sim/truth       nav_msgs/Odometry, 50 Hz, map -> base_link: where the
 //!                                     car really is (for checks only)
-//!             gazebo/imu              sensor_msgs/Imu, 50 Hz, imu_link: orientation, turn
+//!             vehicle/sim/imu              sensor_msgs/Imu, 50 Hz, imu_link: orientation, turn
 //!                                     rate and specific force (gravity +9.8 up), with
-//!                                     aav.gazebo.xacro's noise
-//!             gazebo/navsat           sensor_msgs/NavSatFix, 5 Hz, gps_link: the antenna on
+//!                                     Gazebo's old noise
+//!             vehicle/sim/navsat           sensor_msgs/NavSatFix, 5 Hz, gps_link: the antenna on
 //!                                     the world's datum, with its noise
 //!             joint_states            sensor_msgs/JointState, 100 Hz: the four wheels' spin
 //!                                     and the two steering joints (robot_state_publisher's TF)
 //!             sensors/lidar/points    sensor_msgs/PointCloud2, 10 Hz, lidar_link, reliable:
 //!                                     1800 x 16 rays, organised, packed as Gazebo's (lidar)
-//!             gazebo/radar/points     sensor_msgs/PointCloud2, 10 Hz, radar_link, best
+//!             vehicle/sim/radar/points     sensor_msgs/PointCloud2, 10 Hz, radar_link, best
 //!                                     effort: the radar stand-in's 61 x 3 rays (radar).
 //!                                     Both clouds add `speed` (float32, at 20): what each
 //!                                     ray hit moves along it, for the radar's Doppler
@@ -198,10 +199,10 @@ fn main() -> Result<()> {
 
     let out = Outputs {
         clock: node.create_publisher("/clock")?,
-        odom: node.create_publisher("gazebo/odom")?,
+        odom: node.create_publisher("vehicle/sim/odom")?,
         truth: node.create_publisher("vehicle/sim/truth")?,
-        imu: node.create_publisher("gazebo/imu")?,
-        navsat: node.create_publisher("gazebo/navsat")?,
+        imu: node.create_publisher("vehicle/sim/imu")?,
+        navsat: node.create_publisher("vehicle/sim/navsat")?,
         joints: node.create_publisher("joint_states")?,
         // Only the sensors this run has: a publisher with nothing behind it still shows in
         // the graph, and the sensor mux would doubt a lidar nobody announces.
@@ -211,7 +212,7 @@ fn main() -> Result<()> {
             None
         },
         radar: if params.radar.get() {
-            Some(node.create_publisher("gazebo/radar/points".best_effort().keep_last(5))?)
+            Some(node.create_publisher("vehicle/sim/radar/points".best_effort().keep_last(5))?)
         } else {
             None
         },
@@ -242,7 +243,7 @@ fn main() -> Result<()> {
         s.announce();
     }
     let latest = Arc::clone(&shared);
-    let _cmd = node.create_subscription("gazebo/cmd_vel", move |msg: Twist| {
+    let _cmd = node.create_subscription("vehicle/sim/cmd_vel", move |msg: Twist| {
         if let Ok(mut s) = latest.lock() {
             s.command = Command::Twist {
                 speed: msg.linear.x,

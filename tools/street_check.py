@@ -50,7 +50,7 @@ def clearance(track, x0, y0, heading, half_street, body):
     return least
 
 
-WALL_THICK = 0.3    # m: aav_gazebo's wall model (10 x 0.3 x 2 m)
+WALL_THICK = 0.3    # m: aav_sim_models's wall model (10 x 0.3 x 2 m)
 
 
 def walls(x0, y0, heading, half_street, alongs):

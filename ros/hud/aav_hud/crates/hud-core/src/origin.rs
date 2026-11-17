@@ -180,7 +180,7 @@ mod tests {
     fn gazebo_says_simulated() {
         let mut o = Origins::default();
         o.apply(says(
-            "gazebo_adapter",
+            "sim_adapter",
             &[
                 ("imu", "/sensors/imu/data_raw", 1),
                 ("gps", "/sensors/gps/fix", 1),

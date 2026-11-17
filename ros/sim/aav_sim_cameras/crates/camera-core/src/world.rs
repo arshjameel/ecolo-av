@@ -150,7 +150,7 @@ pub struct SimWorld {
     pub car: Vec<Shape>,
 }
 
-/// The road world's colours (`aav_gazebo/worlds/road.sdf`) and `docs/campus.md`'s looks.
+/// The road world's colours (`aav_sim_models/worlds/road.sdf`) and `docs/campus.md`'s looks.
 pub mod looks {
     use super::Rgb;
 
@@ -192,7 +192,7 @@ fn plain(c: Rgb) -> Look {
     }
 }
 
-/// A stop sign as `aav_gazebo/models/stop_sign`: a 0.75 m plate with its centre 2 m up,
+/// A stop sign as `aav_sim_models/models/stop_sign`: a 0.75 m plate with its centre 2 m up,
 /// on a grey post. `foot` is the post's foot; `yaw` turns the face (0 = facing +x).
 #[must_use]
 pub fn stop_sign(name: &str, foot: [f64; 2], yaw: f64, texture: Option<PathBuf>) -> Vec<Shape> {

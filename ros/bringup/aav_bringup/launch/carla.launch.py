@@ -9,7 +9,7 @@ The whole stack with CARLA as the car: the same nodes and configs as sim.launch.
   pixi run carla-car host:=127.0.0.1 osm:=maps/carla/carleton.osm   Carleton's roads
 
 Only the backend differs from Gazebo: aav_carla's carla_adapter in place of
-gazebo_adapter, so mux, ego, the EKFs, navsat_transform, navigation, radar_clusters and the
+sim_adapter, so mux, ego, the EKFs, navsat_transform, navigation, radar_clusters and the
 sensor watchdog run with the car's own configs. Every node runs on CARLA's clock.
 
 Where things run (docs/carla.md): the CARLA server on an NVIDIA computer; this launch on

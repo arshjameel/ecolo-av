@@ -34,7 +34,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | [bringup, localization](#description-and-localization) | `aav_description`, `aav_localization`, `aav_gps_heading`; `aav_localization_health`, `aav_ndt`, `aav_kiss_icp`, `aav_run_info` ([one line](#more-packages-see-their-readmes)) |
 | [drivers](#drivers) | `aav_teleop`, `aav_actuator_tests`, `aav_scripted`, `aav_drive_to_point`, `aav_language`, `aav_navigation`; `aav_rc`, `aav_routes`, `aav_track`, `aav_mppi_lag`, `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother`, `aav_diffusion_planner`, `aav_behaviour` ([one line](#more-packages-see-their-readmes)) |
 | [command_mux, io_mux, ego](#mux-and-ego) | `aav_command_mux`, `aav_io_mux`, `aav_ego` |
-| [can_bridge, sim](#backends) | `aav_spine`, `aav_legacy`, `aav_turtlesim`, `aav_gazebo`, `aav_carla`; `aav_spine_bridge`, `aav_simulator`, `aav_sim_cameras` ([one line](#more-packages-see-their-readmes)) |
+| [can_bridge, sim](#backends) | `aav_spine`, `aav_legacy`, `aav_turtlesim`, `aav_sim_models`, `aav_carla`; `aav_spine_bridge`, `aav_simulator`, `aav_sim_cameras` ([one line](#more-packages-see-their-readmes)) |
 | [perception](#perception) | `aav_detector`, `aav_radar_clusters`, `aav_lane_finder`, `aav_lane_geometry`; `aav_lidar`, `aav_voxels`, `aav_voxels_rs` ([one line](#more-packages-see-their-readmes)) |
 | [hud](#hud) | `aav_hud`; `aav_dev_window` ([one line](#more-packages-see-their-readmes)) |
 | [sim: bench mode](#bench) | `aav_spine_sim`, `aav_bench` |
@@ -324,19 +324,19 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 | **Test** | `pixi run check turtle` |
 | **Read first** | `aav_turtlesim/turtlesim_adapter.py` |
 
-### aav_gazebo
+### aav_sim_models
 
 | | |
 |---|---|
 | **Does** | puts Gazebo's simulated car behind the real car's topics, with an IMU and GPS; in the road world, a camera, a radar stand-in and (with `lidar:=true`) a roof lidar |
 | **Why** | Nav2 and the EKFs can be tested with the same settings as on the car |
 | **Runs on** | any laptop (headless on oirp-spss) |
-| **In → out** | `/control/sim/actuator_cmd`, `/gazebo/odom`, `/gazebo/imu`, `/gazebo/navsat`, `/gazebo/radar/points` → `/gazebo/cmd_vel`, `/vehicle/odom`, `/vehicle/status`, `/sensors/imu/data_raw`, `/sensors/gps/fix`, `/sensors/radar/points`. The road world's bridges add `/sensors/camera/front_left/*`, `/sensors/lidar/points` and `/vehicle/sim/truth` |
+| **In → out** | `/control/sim/actuator_cmd`, `/vehicle/sim/odom`, `/vehicle/sim/imu`, `/vehicle/sim/navsat`, `/vehicle/sim/radar/points` → `/vehicle/sim/cmd_vel`, `/vehicle/odom`, `/vehicle/status`, `/sensors/imu/data_raw`, `/sensors/gps/fix`, `/sensors/radar/points`. The road world's bridges add `/sensors/camera/front_left/*`, `/sensors/lidar/points` and `/vehicle/sim/truth` |
 | **Origin** | ours, on stock Gazebo Harmonic and `ros_gz` |
 | **Status** | [[works]] headless on Linux and a Mac; its window on a Mac |
 | **Run alone** | `pixi run sim` (`gui:=false` on a Mac) |
 | **Test** | `test/test_turn_rate.py`, `test_radar.py`, `test_worlds.py` (`colcon test` only); `pixi run check sim`, `pixi run sim-check` |
-| **Read first** | `aav_gazebo/gazebo_adapter.py` |
+| **Read first** | `aav_sim_models/sim_adapter.py` |
 
 ### aav_carla
 

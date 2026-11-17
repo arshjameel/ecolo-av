@@ -500,7 +500,7 @@ drift over 10 m was 0.06 m; the full-lock circle was 6.8 m across, not 5.75 (6.0
 
 !!! note "Gazebo's IMU"
     Gazebo's own IMU never felt the car speed up or brake (0.00 m/s² while speeding up at
-    0.6). `gazebo_imu` now gives it the car's acceleration ([Simulation](simulation.md)).
+    0.6). `sim_imu` now gives it the car's acceleration ([Simulation](simulation.md)).
 
 ### Checked in Gazebo and against a pretend real car (15 Oct)
 

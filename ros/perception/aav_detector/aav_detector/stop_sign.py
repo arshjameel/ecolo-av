@@ -29,7 +29,7 @@ from aav_detector.boxes import normal_label
 CLEAR, STOPPING, PASSING = 'clear', 'stopping', 'passing'
 
 # A stop sign's height, flat to flat: Ontario's and the US's standard road sign (750 mm),
-# and Gazebo's (aav_gazebo models/stop_sign).
+# and Gazebo's (aav_sim_models models/stop_sign).
 SIGN_HEIGHT_M = 0.75
 # Gazebo's front camera and the bench camera: 640x360, focal length 343 px (one lens,
 # aav.sensors.gazebo.xacro). For a camera with no CameraInfo yet.

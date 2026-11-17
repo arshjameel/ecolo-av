@@ -4,7 +4,7 @@ import math
 
 from aav_actuator_tests import procedures as pr
 from aav_actuator_tests import reports
-from aav_gazebo.actuator_model import ActuatorConfig
+from aav_sim_models.actuator_model import ActuatorConfig
 import fake_car
 import pytest
 import synthetic as sy
@@ -83,7 +83,7 @@ def test_shaping_on_the_legacy_car():
 
 
 def test_shaping_in_gazebo_and_on_the_spine():
-    gz = reports.shaping(['gazebo_adapter'], {'gazebo_adapter': {
+    gz = reports.shaping(['sim_adapter'], {'sim_adapter': {
         'speed_loop': 'smooth', 'spine': False, 'actuator_model': True, 'rate_hz': 50.0}}, {})
     assert (gz['backend'], gz['speed_loop'], gz['command_lead']) == ('gazebo', 'smooth', 0.02)
     assert gz['ego'].startswith('unknown')
@@ -97,7 +97,7 @@ def test_an_old_meta_without_shaping():
     meta = {'wheelbase': 1.57, 'max_steering': 0.5, 'vehicle_yaml': {'actuators.drag': 0.1}}
     ctx = reports.context_from_meta(meta)
     assert ctx.backend == 'unknown' and ctx.command_lead == 0.0
-    meta['shaping'] = reports.shaping(['gazebo_adapter'], {}, {})
+    meta['shaping'] = reports.shaping(['sim_adapter'], {}, {})
     assert reports.context_from_meta(meta).command_lead == pytest.approx(0.02)
 
 

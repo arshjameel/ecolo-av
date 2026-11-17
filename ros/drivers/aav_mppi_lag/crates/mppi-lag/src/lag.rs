@@ -20,7 +20,7 @@
 //! setpoint, the new speed and angle with the mid-step heading. At its merge, its model
 //! implements [`CarModel`] in this one's place.
 //!
-//! Speed commands: the spine's speed loop is modelled as aav_gazebo's `SpeedLoop` does,
+//! Speed commands: the spine's speed loop is modelled as aav_sim_models's `SpeedLoop` does,
 //! with any of spine-core's PI profiles (`speed_loop.rs`: a PI with a setpoint weight on
 //! the throttle, the brake for overspeed past a coast band, a hold brake at a stop; the
 //! `default` one unless told, the node's `speed_loop` parameter, TODO 163), both ways as
@@ -88,7 +88,7 @@ impl Default for Actuators {
 }
 
 /// The spine's speed loop, its PI law: by default spine-core's `default` profile
-/// (aav_gazebo `SpeedLoopConfig()`); `SpeedLoop::from_profile` (feature `shared`) gives
+/// (aav_sim_models `SpeedLoopConfig()`); `SpeedLoop::from_profile` (feature `shared`) gives
 /// any of its PI profiles.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SpeedLoop {

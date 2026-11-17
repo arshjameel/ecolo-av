@@ -21,9 +21,10 @@ if [[ $# -ne 2 ]]; then
   sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 fi
-# Each sensor's own node takes its fault (aav_gazebo faults.py, NODES).
+# Each sensor's own node takes its fault (aav_sim_models faults.py, NODES).
 case "$1" in
-  odom|steer|throttle|brake) node=gazebo_adapter ;;
-  *) node="gazebo_$1" ;;
+  odom|steer|throttle|brake) node=sim_adapter ;;
+  camera) node=sim_camera_relay ;;
+  *) node="sim_$1" ;;
 esac
 exec ros2 param set "/$node" "fault.$1" "$2"

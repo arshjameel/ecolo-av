@@ -44,7 +44,7 @@ pub struct LidarSpec {
 }
 
 impl LidarSpec {
-    /// The simulated roof lidar (aav.sensors.gazebo.xacro): 1800 x 16, ±15°, 0.5-100 m,
+    /// The simulated roof lidar (as Gazebo's URDF had it until 16 Nov): 1800 x 16, ±15°, 0.5-100 m,
     /// 3 cm, 10 Hz, like a VLP-16.
     pub const ROOF: LidarSpec = LidarSpec {
         h_samples: 1800,

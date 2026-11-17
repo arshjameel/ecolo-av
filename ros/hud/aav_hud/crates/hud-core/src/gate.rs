@@ -266,13 +266,13 @@ mod tests {
             Gate::Open("all SIM".into())
         );
         let stop = "STOP - target car needs REAL - camera_front_left is SIM \
-                    (gazebo_adapter) - latched: /safety/output_mux/clear";
+                    (sim_adapter) - latched: /safety/output_mux/clear";
         assert_eq!(
             Gate::parse(stop),
             Gate::Stop("CAMERA FRONT LEFT is SIM".into())
         );
-        let two = "STOP - target car needs REAL - gps is SIM (gazebo_adapter); imu is SIM \
-                   (gazebo_imu) - latched: /safety/output_mux/clear";
+        let two = "STOP - target car needs REAL - gps is SIM (sim_adapter); imu is SIM \
+                   (sim_imu) - latched: /safety/output_mux/clear";
         assert_eq!(Gate::parse(two), Gate::Stop("GPS is SIM".into()));
         let wrong = "STOP - target car needs REAL - the sensor mux checks for SIM, target \
                      car needs REAL - latched: /safety/output_mux/clear";
@@ -353,7 +353,7 @@ mod tests {
 
     #[test]
     fn a_latched_gate_comes_before_the_watchdog() {
-        let stop = "STOP - target car needs REAL - gps is SIM (gazebo_adapter) - latched: x";
+        let stop = "STOP - target car needs REAL - gps is SIM (sim_adapter) - latched: x";
         let v = verdict(false, (OK, Some(stop)), (OK, Some("STOP: imu STALE (x)")));
         assert_eq!((v.light, v.headline), (Light::Stop, "STOP"));
         assert_eq!(v.reason, "GPS is SIM");

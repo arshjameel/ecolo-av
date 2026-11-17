@@ -28,7 +28,7 @@ The two EKFs never read each other's topic. They meet only in TF.
 |---|---|---|
 | `gps` | true | false (bench, indoors): only `ekf_local`, and a static identity `map → odom` |
 | `gps_heading` | true | false leaves out `gps_heading` |
-| `global_ekf` | true | false: no `ekf_global`; a test, sim only (`sim.launch.py truth_pose:=true`: `aav_gazebo`'s `truth_localizer` gives `map → odom` from the simulator's truth) |
+| `global_ekf` | true | false: no `ekf_global`; a test, sim only (`sim.launch.py truth_pose:=true`: `aav_sim_models`'s `truth_localizer` gives `map → odom` from the simulator's truth) |
 | `kiss_ekf` | false | a trial: `ekf_local` also takes KISS-ICP's twist (`/localization/kiss_icp/odom`: vx, vyaw; never its pose), with `config/ekf_local_kiss.yaml` on top. `sim.launch.py kiss_ekf:=true` starts KISS-ICP too |
 | `ndt_ekf` | false | a trial: `ekf_global` also takes NDT's pose (`/localization/ndt/pose`: x, y, yaw), with `config/ekf_global_ndt.yaml` on top. `sim.launch.py ndt_ekf:=true` starts NDT too |
 | `lane_pose`, `lane_map` | false, empty | a trial (TODO 155): `lane_pose` ([aav_lane_pose](../aav_lane_pose/README.md)) runs on `lane_map` (a lanes.yaml), and `ekf_global` takes its x and y, with `config/ekf_global_lane.yaml` on top (`pose1` after NDT's). `sim.launch.py lane_pose:=true` starts the lane finder too |

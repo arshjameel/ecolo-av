@@ -410,7 +410,7 @@ What it showed:
 |---|---|---|
 | A higher gain alone made it worse | the URDF's steering joints had a 1.0 rad/s speed limit, which Gazebo enforces: its wheels then turned at only 0.63 rad/s, slower than the model's 0.8 | the limit 1.0 → 5.0 rad/s (`aav.urdf.xacro`), far over `steer_rate`, so the model limits, not Gazebo |
 | The lag is 1/gain + 11-12 ms | the adapter sends the model's angle 50 times a second: holding each for 20 ms delays it by 10 ms on average, plus the messaging | `steer_p_gain` 10 → **100** (`aav.gazebo.xacro`) |
-| A busy computer adds more | gazebo_adapter's ticks stall (up to 0.2 s of Gazebo's time) when other simulators run | none needed: run it twice |
+| A busy computer adds more | sim_adapter's ticks stall (up to 0.2 s of Gazebo's time) when other simulators run | none needed: run it twice |
 
 **Why gain 100, not the other proposal** (take 0.1 s off the adapter's `steer_lag` and let
 Gazebo's gain-10 lag be the linkage):
@@ -567,7 +567,7 @@ Three runs of each profile on Ben's Mac, beside two other helpers' simulators:
 | forward 2.0 m/s | 2.202 (10.1 %) | 13.3 s | 1.999 (0 %) | 5.3 s |
 
 - Runs 2 and 3 of today's gains gave the same numbers; so did all three of `smooth`. Run 1 of today's was spoiled by the Mac's load (late commands made
-  gazebo_adapter brake: sim-check reports that, and drives the step again, up to 3 times).
+  sim_adapter brake: sim-check reports that, and drives the step again, up to 3 times).
 - At 2 m/s today's loop passes the coast band (2.2), brakes, and the brake resets the
   integral: the car then sags to 1.76 m/s and takes 10 s to come back. `smooth` never
   gets there.

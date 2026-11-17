@@ -7,14 +7,14 @@
 #   turtle = aav_bringup turtle.launch.py, sim = sim.launch.py, car = car.launch.py,
 #   replay = replay.launch.py with a bag playing (the bag supplies the raw inputs),
 #   bench = bench.launch.py: the car's graph, with stand-ins for the hardware,
-#   road = sim.launch.py world:=road: Gazebo's road world, which adds the car's camera and
+#   road = sim.launch.py world:=road: Ravensim's road world, which adds the car's camera and
 #   radar stand-in. Whatever is live in sim must be live there too (check_graph.py)
 #   spine = sim.launch.py world:=road spine:=true: the road world with the spine in the
-#   loop (spine_bridge, the CAN topics, spine_sim on Gazebo's car). Whatever is live in
+#   loop (spine_bridge, the CAN topics, spine_sim on Ravensim's car). Whatever is live in
 #   sim and road must be live there too
 # drop_in: what a stream must be, beyond name and type, so anything can replace what makes it:
-#   Gazebo, our simulator, the real sensor (Ben, 5 Nov). The floors are Gazebo's rates
-#   measured 5 Nov, less a margin; the ceilings are the car's (docs/bandwidth.md) plus a margin.
+#   Ravensim, the real sensor (Ben, 5 Nov). The floors are Gazebo's rates (Ravensim's
+#   model, until it went on 16 Nov) measured 5 Nov, less a margin; the ceilings are the car's (docs/bandwidth.md) plus a margin.
 #   tools/drop_in_check.py measures them; pixi run drop-in.
 # All topic names are absolute. QoS is the ROS default (reliable, volatile, depth 10)
 # unless noted.
@@ -103,7 +103,7 @@ topics:
     pub: [sensor_watchdog]
     sub: [twist_mux, point_driver, behaviour]
     live: [sim]
-    note: true while a sensor Nav2 or the AI slot needs is stale, NaN, frozen, jumped, or (the wheels) disagrees with the IMU, or the steering is STUCK off its command, or the car runs over ego's speed (OVERSPEED - 0.2 m/s over for 2 s while not slowing, sim only so far, TODO 207); false otherwise (aav_safety sensor_watchdog, 10 Hz) - a heartbeat. A twist_mux lock at priority 30, as the stop sign - it holds Nav2 and the AI slot, never a person or a test. Fail-safe - the lock's 1 s timeout holds them too when the watchdog dies or hangs (aav_command_mux mux.launch.py sensor_lock, true wherever a watchdog runs - Gazebo with watchdog:=true, the bench, and the car next to the mux; false on the turtle). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python).
+    note: true while a sensor Nav2 or the AI slot needs is stale, NaN, frozen, jumped, or (the wheels) disagrees with the IMU, or the steering is STUCK off its command, or the car runs over ego's speed (OVERSPEED - 0.2 m/s over for 2 s while not slowing, sim only so far, TODO 207); false otherwise (aav_safety sensor_watchdog, 10 Hz) - a heartbeat. A twist_mux lock at priority 30, as the stop sign - it holds Nav2 and the AI slot, never a person or a test. Fail-safe - the lock's 1 s timeout holds them too when the watchdog dies or hangs (aav_command_mux mux.launch.py sensor_lock, true wherever a watchdog runs - Ravensim with watchdog:=true, the bench, and the car next to the mux; false on the turtle). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python).
   /safety/legacy_uart_bridge/lock:
     type: std_msgs/msg/Bool
     pub: [legacy_uart_bridge]
@@ -163,7 +163,7 @@ topics:
     pub: [geofence]
     sub: [twist_mux, language_drive, hw_panel, behaviour]
     live: [sim, car, bench]
-    note: true while a stopping path of the car - forward and back, straight and at full lock, each its RSS stopping distance long (reaction time and braking worked out from ego.yaml, vehicle.yaml and the backend's timeout, aav_safety geofence.py motion_from) - brings a corner within 1 m plus the global pose's spread of the fence's edge (NEAR; at a standstill a person drives it back in); while the car is outside the fence (OUTSIDE) or the global pose jumped (JUMP), both latched until a person calls /safety/geofence/clear; while the global pose is stale over 1 s, over 3 m unsure or NaN, or no GPS position has reached the EKF for 2 s (LOST); before 3 s of good poses (STARTING); and on a backend that coasts (COASTING - legacy_uart_bridge, in either speed_loop mode, until test 4.3 measures that mode's stop). false otherwise, and in stands mode (STANDS - car.launch.py stands:=true, said loudly); a heartbeat at 10 Hz (aav_safety geofence). The fence - a circle of radius m round the marked start spot (start_x, start_y - car 30, Gazebo 200, bench 100), or a site's polygon in the map frame drawn for navsat.yaml's datum (geofence.yaml sites; the machine file's geofence site). A twist_mux lock (geofence) at priority 51 - it holds every program (scripted 50, replay 40, point 25, nav 20, ai 10), never a person (joy, rc, keyboard) or the actuator tests (60, which stop themselves on its state). Fail-safe - the lock's 1 s timeout holds them when the geofence dies or hangs (mux.launch.py geofence_lock, a required argument - true wherever a geofence runs, the car next to the mux, the bench, Gazebo with geofence:=true; false on the turtle and CARLA). Independent of Nav2 (the 26 Oct review's F6). docs/geofence.md.
+    note: true while a stopping path of the car - forward and back, straight and at full lock, each its RSS stopping distance long (reaction time and braking worked out from ego.yaml, vehicle.yaml and the backend's timeout, aav_safety geofence.py motion_from) - brings a corner within 1 m plus the global pose's spread of the fence's edge (NEAR; at a standstill a person drives it back in); while the car is outside the fence (OUTSIDE) or the global pose jumped (JUMP), both latched until a person calls /safety/geofence/clear; while the global pose is stale over 1 s, over 3 m unsure or NaN, or no GPS position has reached the EKF for 2 s (LOST); before 3 s of good poses (STARTING); and on a backend that coasts (COASTING - legacy_uart_bridge, in either speed_loop mode, until test 4.3 measures that mode's stop). false otherwise, and in stands mode (STANDS - car.launch.py stands:=true, said loudly); a heartbeat at 10 Hz (aav_safety geofence). The fence - a circle of radius m round the marked start spot (start_x, start_y - car 30, Ravensim 200, bench 100), or a site's polygon in the map frame drawn for navsat.yaml's datum (geofence.yaml sites; the machine file's geofence site). A twist_mux lock (geofence) at priority 51 - it holds every program (scripted 50, replay 40, point 25, nav 20, ai 10), never a person (joy, rc, keyboard) or the actuator tests (60, which stop themselves on its state). Fail-safe - the lock's 1 s timeout holds them when the geofence dies or hangs (mux.launch.py geofence_lock, a required argument - true wherever a geofence runs, the car next to the mux, the bench, Ravensim with geofence:=true; false on the turtle and CARLA). Independent of Nav2 (the 26 Oct review's F6). docs/geofence.md.
   /safety/geofence/state:
     type: std_msgs/msg/String
     pub: [geofence]
@@ -274,15 +274,15 @@ topics:
   /control/sim/actuator_cmd:
     type: ackermann_msgs/msg/AckermannDriveStamped
     pub: [output_mux]
-    sub: [gazebo_adapter, spine_bridge, legacy_uart_bridge]
+    sub: [sim_adapter, spine_bridge, legacy_uart_bridge]
     live: [sim]
-    note: Gazebo's commands, from output_mux target:=sim, while every source is SIM. Exactly one backend reads it - gazebo_adapter, or in the spine profile (spine:=true) spine_bridge with source sim, or with today's car in the loop (esp32:=true) legacy_uart_bridge, remapped from /control/car/actuator_cmd, with source sim.
+    note: Ravensim's commands, from output_mux target:=sim, while every source is SIM. Exactly one backend reads it - sim_adapter, or in the spine profile (spine:=true) spine_bridge with source sim, or with today's car in the loop (esp32:=true) legacy_uart_bridge, remapped from /control/car/actuator_cmd, with source sim.
   /control/sim/heartbeat:
     type: aav_interfaces/msg/Heartbeat
     pub: [output_mux]
     sub: []
     live: [sim]
-    note: The output mux's heartbeat for Gazebo, as /control/car/heartbeat - one for each command passed on. Nothing reads it here; only the real car's Motor Pi relays it.
+    note: The output mux's heartbeat for Ravensim, as /control/car/heartbeat - one for each command passed on. Nothing reads it here; only the real car's Motor Pi relays it.
   /control/bench/actuator_cmd:
     type: ackermann_msgs/msg/AckermannDriveStamped
     pub: [output_mux]
@@ -322,15 +322,15 @@ topics:
     pub: [output_mux]
     sub: [hud, spine_bridge, dev_window]
     live: [turtle, sim, car, bench]
-    note: One line for people, 2 Hz and on each change - OPEN (passing ego's commands on), WAIT (closed, not latched - the sensor mux not heard yet or quiet for 3 s, its doubts, a node on /system/source whose announcement hasn't arrived yet, or settling for 2 s after all clear) or STOP (latched, and why, such as "STOP - target car needs REAL - camera_front_left is SIM (gazebo_adapter)"). The target first, such as "OPEN - car". spine_bridge (role spine) reads it as the safety gate - /spine/arm is refused unless it said OPEN for the bridge's own target within gate_timeout (1.5 s); Ben, 24 Oct. The HUD's GO / STOP panel shows it, with the first reason.
+    note: One line for people, 2 Hz and on each change - OPEN (passing ego's commands on), WAIT (closed, not latched - the sensor mux not heard yet or quiet for 3 s, its doubts, a node on /system/source whose announcement hasn't arrived yet, or settling for 2 s after all clear) or STOP (latched, and why, such as "STOP - target car needs REAL - camera_front_left is SIM (sim_adapter)"). The target first, such as "OPEN - car". spine_bridge (role spine) reads it as the safety gate - /spine/arm is refused unless it said OPEN for the bridge's own target within gate_timeout (1.5 s); Ben, 24 Oct. The HUD's GO / STOP panel shows it, with the first reason.
 
   # --- the system: what kind of run this is ---
   /system/source:
     type: aav_interfaces/msg/DataSource
-    pub: [gazebo_adapter, turtlesim_adapter, spine_bridge, legacy_uart_bridge, mock_imu, mock_gps, mock_battery, mock_camera, mock_radar, mock_lidar, replay_source, carla_adapter, camera_stream_front_left, camera_stream_front_right]
+    pub: [sim_adapter, turtlesim_adapter, spine_bridge, legacy_uart_bridge, mock_imu, mock_gps, mock_battery, mock_camera, mock_radar, mock_lidar, replay_source, carla_adapter, camera_stream_front_left, camera_stream_front_right]
     sub: [hud, map, actuator_test, point_driver, point_cli, sensor_mux, output_mux, debug_hud, hw_panel, dev_window]
     live: [turtle, sim, car, replay, bench]
-    note: Latched (reliable, transient local, depth 1). Where the data comes from - REAL, SIM, BENCH or REPLAY - per sensor, one list per announcer. Gazebo and turtlesim announce SIM; spine_bridge REAL on the car, BENCH on the bench and SIM in Gazebo's spine profile (its source parameter; gazebo_adapter then announces only the sensors), with each bench stand-in - with role:=sensors (today's wiring, the Orin's CAN bus with only the wheel sensors) only odometry and wheels, never an actuator; legacy_uart_bridge REAL; replay.launch.py REPLAY; each camera_stream_<camera> its camera (camera_front_left...) as its source parameter says, REAL on the car. The HUD shows a banner when anything isn't REAL. The sensor mux and the output mux count an announcement only while its announcer still publishes here, and refuse a run where any announcement differs from the source the run asked for.
+    note: Latched (reliable, transient local, depth 1). Where the data comes from - REAL, SIM, BENCH or REPLAY - per sensor, one list per announcer. Ravensim and turtlesim announce SIM; spine_bridge REAL on the car, BENCH on the bench and SIM in Ravensim's spine profile (its source parameter; sim_adapter then announces only the sensors), with each bench stand-in - with role:=sensors (today's wiring, the Orin's CAN bus with only the wheel sensors) only odometry and wheels, never an actuator; legacy_uart_bridge REAL; replay.launch.py REPLAY; each camera_stream_<camera> its camera (camera_front_left...) as its source parameter says, REAL on the car. The HUD shows a banner when anything isn't REAL. The sensor mux and the output mux count an announcement only while its announcer still publishes here, and refuse a run where any announcement differs from the source the run asked for.
   /system/algorithms:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [run_info]
@@ -348,23 +348,23 @@ topics:
   /vehicle/odom:
     type: nav_msgs/msg/Odometry
     drop_in: {min_hz: 45, frame: odom}
-    pub: [spine_bridge, encoder_udp, turtlesim_adapter, gazebo_adapter, carla_adapter]
+    pub: [spine_bridge, encoder_udp, turtlesim_adapter, sim_adapter, carla_adapter]
     sub: [ekf_local, ekf_global, actuator_test, sensor_watchdog, gps_heading, legacy_uart_bridge, debug_hud, localization_health, ego]
     live: [turtle, sim, car, replay, bench]
-    note: Twist only (vx, vy = 0, vyaw) in base_link, with covariances; pose covariance 1e3 (not measured). On the car, vx comes from the front wheel nodes when fresh, else from the spine's VEHICLE_FEEDBACK. With today's wiring (car.launch.py actuators:=uart, spine_bridge role:=sensors on the Orin) only from the two wheels while both are fresh, with no yaw rate (covariance 1e3 - the steering angle isn't on the bus). In Gazebo's spine profile spine_bridge publishes it from spine_sim's frames, as on the car; /vehicle/status, steering, throttle, brake and wheels likewise. legacy_uart_bridge reads it only with speed_loop.mode pi, to close its speed loop on vx.
+    note: Twist only (vx, vy = 0, vyaw) in base_link, with covariances; pose covariance 1e3 (not measured). On the car, vx comes from the front wheel nodes when fresh, else from the spine's VEHICLE_FEEDBACK. With today's wiring (car.launch.py actuators:=uart, spine_bridge role:=sensors on the Orin) only from the two wheels while both are fresh, with no yaw rate (covariance 1e3 - the steering angle isn't on the bus). In Ravensim's spine profile spine_bridge publishes it from spine_sim's frames, as on the car; /vehicle/status, steering, throttle, brake and wheels likewise. legacy_uart_bridge reads it only with speed_loop.mode pi, to close its speed loop on vx.
   /vehicle/status:
     type: aav_interfaces/msg/VehicleStatus
     drop_in: {min_hz: 10}
-    pub: [spine_bridge, gazebo_adapter, turtlesim_adapter, carla_adapter, legacy_uart_bridge]
+    pub: [spine_bridge, sim_adapter, turtlesim_adapter, carla_adapter, legacy_uart_bridge]
     sub: [hud, language_drive, debug_hud, hw_panel, dev_window]
     live: [turtle, sim, bench]
     note: Mode, armed, e-stop, measured speed and steering, actuator levels, fault bits. For the HUD and Foxglove. legacy_uart_bridge publishes it, 10 Hz, only with uplink true (the ESP32's uplink frame on TX1, TODO 50 - off until its wire is confirmed) - speed NaN (that ESP32 has no wheel speed), steering_angle the steering Jrk's position or NaN; mode COMPUTER also while the transmitter's switch is on RC via ROS (/vehicle/rc has the switch).
   /vehicle/steering:
     type: aav_interfaces/msg/ActuatorState
-    pub: [spine_bridge, gazebo_adapter, turtlesim_adapter, carla_adapter, legacy_uart_bridge]
+    pub: [spine_bridge, sim_adapter, turtlesim_adapter, carla_adapter, legacy_uart_bridge]
     sub: [actuator_test, hw_panel, sensor_watchdog]
     live: [turtle, sim, bench]
-    note: The steering, the virtual centre wheel (rad, + left) - command (from /ego/actuator_cmd) and measured. In Gazebo, measured is the actuator model's angle (its speed, lag, offset and deadband). For plots and the actuator tests; /vehicle/status keeps it too. legacy_uart_bridge (uplink true, 50 Hz) - command ego's steering_angle while fresh (else NaN), measured the steering Jrk's scaled feedback in rad (NaN when the Jrk has no feedback set up).
+    note: The steering, the virtual centre wheel (rad, + left) - command (from /ego/actuator_cmd) and measured. In Ravensim, measured is the actuator model's angle (its speed, lag, offset and deadband). For plots and the actuator tests; /vehicle/status keeps it too. legacy_uart_bridge (uplink true, 50 Hz) - command ego's steering_angle while fresh (else NaN), measured the steering Jrk's scaled feedback in rad (NaN when the Jrk has no feedback set up).
   /vehicle/steering_actuator/raw:
     type: aav_interfaces/msg/ActuatorRaw
     pub: [legacy_uart_bridge]
@@ -387,13 +387,13 @@ topics:
     note: How the ESP32's uplink frames arrive - fresh, frames, lost and bad, 1 Hz, only with uplink true.
   /vehicle/throttle:
     type: aav_interfaces/msg/ActuatorState
-    pub: [spine_bridge, gazebo_adapter, carla_adapter, legacy_uart_bridge]
+    pub: [spine_bridge, sim_adapter, carla_adapter, legacy_uart_bridge]
     sub: [actuator_test, hw_panel]
     live: [sim, bench]
-    note: The throttle, 0..1. From the spine (car, bench) only measured; command is NaN, as the spine's speed loop decides it. In Gazebo, command is the speed loop's, measured the actuator model's. From legacy_uart_bridge (uplink true) command is the value the firmware asks for before its ramp, and measured is NaN - no sensor reads the throttle.
+    note: The throttle, 0..1. From the spine (car, bench) only measured; command is NaN, as the spine's speed loop decides it. In Ravensim, command is the speed loop's, measured the actuator model's. From legacy_uart_bridge (uplink true) command is the value the firmware asks for before its ramp, and measured is NaN - no sensor reads the throttle.
   /vehicle/brake:
     type: aav_interfaces/msg/ActuatorState
-    pub: [spine_bridge, gazebo_adapter, carla_adapter, legacy_uart_bridge]
+    pub: [spine_bridge, sim_adapter, carla_adapter, legacy_uart_bridge]
     sub: [actuator_test, hw_panel]
     live: [sim, bench]
     note: The brake, 0..1. As /vehicle/throttle. legacy_uart_bridge (uplink true, 50 Hz) - command what the ESP32 drives the brake Jrk with, measured the brake Jrk's position (NaN when unknown).
@@ -404,10 +404,10 @@ topics:
     note: The RC transmitter as the car's ESP32 reads it (TODO 48), from its uplink frame, 50 Hz, only with uplink true - the mode switch (none, computer, RC via ROS, RC direct; the proposed three positions of CH6), the throttle stick signed by the gear switch, the steering stick (both -1..1, + forward, + left), the gear switch on brake. The channels and their calibration stay in the firmware (ibus RcMap).
   /vehicle/wheels:
     type: aav_interfaces/msg/WheelSpeeds
-    pub: [gazebo_adapter, spine_bridge, carla_adapter]
+    pub: [sim_adapter, spine_bridge, carla_adapter]
     sub: [actuator_test, debug_hud, hw_panel, localization_health]
     live: [sim, bench]
-    note: Each wheel's ground speed (m/s, signed), NaN where not measured or stale. Gazebo gives all four (its wheel joints). spine_bridge gives the front two, from the CAN wheel nodes (0x200, 0x201) at about 100 Hz; their mean, when fresh, is the speed in /vehicle/odom. With today's wiring the front two come from the wheel sensors' Arduino on the Orin's CAN bus (spine_bridge role:=sensors). The 2025-26 car's UDP encoder (aav_legacy encoder_udp, off since 23 Oct) is read only as /vehicle/odom.
+    note: Each wheel's ground speed (m/s, signed), NaN where not measured or stale. Ravensim gives all four (its wheel joints). spine_bridge gives the front two, from the CAN wheel nodes (0x200, 0x201) at about 100 Hz; their mean, when fresh, is the speed in /vehicle/odom. With today's wiring the front two come from the wheel sensors' Arduino on the Orin's CAN bus (spine_bridge role:=sensors). The 2025-26 car's UDP encoder (aav_legacy encoder_udp, off since 23 Oct) is read only as /vehicle/odom.
   /vehicle/joint_states:
     type: sensor_msgs/msg/JointState
     pub: [spine_bridge]
@@ -416,7 +416,7 @@ topics:
     note: Measured front steering joint angles, merged into /joint_states.
   /joint_states:
     type: sensor_msgs/msg/JointState
-    pub: [joint_state_publisher, gz_bridge, simulator]
+    pub: [joint_state_publisher, simulator]
     sub: [robot_state_publisher]
     live: [turtle, sim, car, replay, bench]
   /can/tx:
@@ -430,15 +430,15 @@ topics:
     pub: [socket_can_receiver, spine_sim]
     sub: [spine_bridge]
     live: [bench, spine]
-    note: VEHICLE_FEEDBACK 0x180 at 50 Hz, VEHICLE_STATUS 0x181 at 10 Hz, WHEEL_SPEED_L 0x200 and WHEEL_SPEED_R 0x201 at 100 Hz. On the bench and in Gazebo's spine profile, spine_sim sends them all. With today's wiring the bus has only the wheel sensors (an Arduino) and others not yet known; spine_bridge role:=sensors reads only 0x200 and 0x201.
+    note: VEHICLE_FEEDBACK 0x180 at 50 Hz, VEHICLE_STATUS 0x181 at 10 Hz, WHEEL_SPEED_L 0x200 and WHEEL_SPEED_R 0x201 at 100 Hz. On the bench and in Ravensim's spine profile, spine_sim sends them all. With today's wiring the bus has only the wheel sensors (an Arduino) and others not yet known; spine_bridge role:=sensors reads only 0x200 and 0x201.
 
   # --- sensors ---
   /sensors/imu/data_raw:
     type: sensor_msgs/msg/Imu
-    pub: [imu_node, gazebo_imu, mock_imu, carla_adapter]
+    pub: [imu_node, sim_imu, mock_imu, carla_adapter]
     sub: [imu_filter_madgwick, actuator_test]
     live: [sim, car, replay, bench]
-    note: Gyro and accelerometer in imu_link, with covariances; no orientation. In Gazebo, gazebo_imu adds the car's own acceleration, worked out from Gazebo's odometry.
+    note: Gyro and accelerometer in imu_link, with covariances; no orientation. In Ravensim, sim_imu adds the car's own acceleration, worked out from Ravensim's odometry.
   /sensors/imu/mag:
     type: sensor_msgs/msg/MagneticField
     pub: [imu_node, mock_imu]
@@ -455,16 +455,16 @@ topics:
   /sensors/gps/fix:
     type: sensor_msgs/msg/NavSatFix
     drop_in: {min_hz: 4.5, max_hz: 12, frame: gps_link}
-    pub: [ublox_gps, gps_nmea, ublox_nav_sat_fix_hp, gazebo_gps, mock_gps, carla_adapter]
+    pub: [ublox_gps, gps_nmea, ublox_nav_sat_fix_hp, sim_gps, mock_gps, carla_adapter]
     sub: [navsat_transform, hud, language_drive, actuator_test, sensor_watchdog, point_driver, debug_hud, hw_panel, localization_health]
     live: [sim, car, replay, bench]
     note: Lat/lon of the antenna (gps_link). On the car, from the driver gps_driver:= picks - ublox_gps (ublox, the default; Tentative, Q18), gps_nmea (nmea) or ublox_nav_sat_fix_hp (ublox_dgnss). ublox_gps publishes it reliable (depth 1), ublox_dgnss best-effort (SensorDataQoS), so subscribe best effort.
   /sensors/gps/fix_velocity:
     type: geometry_msgs/msg/TwistWithCovarianceStamped
-    pub: [ublox_gps, gazebo_gps]
+    pub: [ublox_gps, sim_gps]
     sub: [gps_heading, actuator_test]
     live: [sim]
-    note: The receiver's velocity, east, north and up (m/s), from the satellites' Doppler (good to about 0.05 m/s), with its variance. gps_heading turns it into a heading. In Gazebo, gazebo_gps works it out from the car's true motion with that noise on top (the bridge drops the NavSat sensor's own). ublox_gps only - gps_driver:=nmea sends /sensors/gps/vel instead, which nothing reads.
+    note: The receiver's velocity, east, north and up (m/s), from the satellites' Doppler (good to about 0.05 m/s), with its variance. gps_heading turns it into a heading. In Ravensim, sim_gps works it out from the car's true motion with that noise on top (the bridge drops the NavSat sensor's own). ublox_gps only - gps_driver:=nmea sends /sensors/gps/vel instead, which nothing reads.
   /sensors/gps/vel:
     type: geometry_msgs/msg/TwistStamped
     pub: [gps_nmea]
@@ -478,10 +478,10 @@ topics:
   /sensors/radar/points:
     type: sensor_msgs/msg/PointCloud2
     drop_in: {min_hz: 9, frame: radar_link}
-    pub: [radar, mock_radar, gazebo_radar, carla_adapter]
+    pub: [radar, mock_radar, sim_radar, carla_adapter]
     sub: [radar_clusters, costmap, stop_zone, sensor_watchdog, actuator_test, hw_panel]
     live: [bench, road]
-    note: The TI radar's points, in radar_link, 10 Hz, an empty cloud when it sees nothing. Best effort - subscribe best effort, or nothing matches. Clustered by radar_clusters (aav_radar_clusters, Rust); read by the local costmap's obstacle layer and the stop zone where it runs (navigation.launch.py radar:=true). In Gazebo's road world, gazebo_radar makes them from a lidar shaped like the radar - the rays that hit something, with the TI driver's fields.
+    note: The TI radar's points, in radar_link, 10 Hz, an empty cloud when it sees nothing. Best effort - subscribe best effort, or nothing matches. Clustered by radar_clusters (aav_radar_clusters, Rust); read by the local costmap's obstacle layer and the stop zone where it runs (navigation.launch.py radar:=true). In Ravensim's road world, sim_radar makes them from a lidar shaped like the radar - the rays that hit something, with the TI driver's fields.
   /vehicle/battery:
     type: sensor_msgs/msg/BatteryState
     pub: [battery_state_publisher, mock_battery]
@@ -496,10 +496,10 @@ topics:
   /sensors/camera/front_left/image_raw:
     type: sensor_msgs/msg/Image
     drop_in: {min_hz: 9, max_hz: 18, frame: camera_left_link}
-    pub: [camera_left, mock_camera, test_camera, gz_road_bridge, gazebo_camera, carla_adapter, camera_stream_front_left, sim_cameras]
+    pub: [camera_left, mock_camera, test_camera, sim_camera_relay, carla_adapter, camera_stream_front_left, sim_cameras]
     sub: [object_detector, object_detector_orin, object_detector_laptop, object_detector_all, lane_finder, hud, sensor_watchdog, actuator_test, hw_panel]
     live: [bench, road]
-    note: The front camera (camera_left_link). Big messages - subscribe reliably, as best effort loses them over UDP. camera_left is usb_cam (car.launch.py's camera part, Linux only); mock_camera draws the bench world; test_camera publishes a file; gz_road_bridge brings Gazebo's camera, in the road world (the bench camera's picture and lens). sim_cameras (aav_sim_cameras, Bevy offscreen) draws the same picture, lens, rate and frame for our own simulator (docs/own-simulator-cameras.md); the front right, rear and chase cameras too. With faults:=true, Gazebo's picture goes to gazebo_camera first (Gazebo's own /gazebo/camera/front_left/image_raw), which passes it on through its fault (freeze, stop). On the car with the camera stream (aav_camera_stream), camera_stream_front_left publishes it only with publish_image:=true - every undistorted picture, for another node on the same computer; the pictures otherwise stay inside it.
+    note: The front camera (camera_left_link). Big messages - subscribe reliably, as best effort loses them over UDP. camera_left is usb_cam (car.launch.py's camera part, Linux only); mock_camera draws the bench world; test_camera publishes a file; sim_cameras draws Ravensim's, in the road world (the bench camera's picture and lens). sim_cameras (aav_sim_cameras, Bevy offscreen) draws the same picture, lens, rate and frame for our own simulator (docs/own-simulator-cameras.md); the front right, rear and chase cameras too. With faults:=true, Ravensim's picture goes to sim_camera_relay first (Ravensim's own /vehicle/sim/camera/front_left/image_raw), which passes it on through its fault (freeze, stop). On the car with the camera stream (aav_camera_stream), camera_stream_front_left publishes it only with publish_image:=true - every undistorted picture, for another node on the same computer; the pictures otherwise stay inside it.
   /sensors/camera/front_left/image_raw/compressed:
     type: sensor_msgs/msg/CompressedImage
     pub: [camera_left, test_camera, mock_camera]
@@ -507,35 +507,35 @@ topics:
     note: The same pictures as JPEG, from image_transport's compressed plugin (usb_cam and image_publisher publish it by themselves; mock_camera only while something reads it). A detector on a laptop over WiFi reads this one (detector.launch.py compressed:=true; the laptop's machine file). On the bench, pixi run -e ml laptop-bench.
   /sensors/camera/front_left/camera_info:
     type: sensor_msgs/msg/CameraInfo
-    pub: [camera_left, mock_camera, test_camera, gz_road_bridge, carla_adapter, camera_stream_front_left, sim_cameras]
+    pub: [camera_left, mock_camera, test_camera, carla_adapter, camera_stream_front_left, sim_cameras]
     sub: [lane_finder, camera_obstacles, stop_sign_watcher]
     live: [bench, road]
     note: The lens. usb_cam reads aav_sensors/config/cameras/left.ini (the 2024-25 calibration). lane_finder takes its focal length and centre from here; camera_obstacles keeps each camera's by its frame_id; stop_sign_watcher its focal length (fy), to turn a stop sign's box height into a distance. camera_stream_front_left publishes the undistorted picture's lens (no distortion) with each picture's detections, once the camera has a calibration (aav_camera_stream config/cameras.yaml).
   /sensors/camera/front_right/image_raw:
     type: sensor_msgs/msg/Image
     drop_in: {min_hz: 9, max_hz: 18, frame: camera_right_link}
-    pub: [gz_road_bridge, carla_adapter, camera_stream_front_right, sim_cameras]
+    pub: [carla_adapter, camera_stream_front_right, sim_cameras]
     sub: []
     live: [road]
     note: The front right camera, beside the left one (camera_right_link). On the car its stream goes to camera_stream_front_right (aav_camera_stream), which publishes it only with publish_image:=true. Subscribe reliably, as for the front left one.
   /sensors/camera/front_right/camera_info:
     type: sensor_msgs/msg/CameraInfo
-    pub: [gz_road_bridge, carla_adapter, camera_stream_front_right, sim_cameras]
+    pub: [carla_adapter, camera_stream_front_right, sim_cameras]
     sub: [stop_sign_watcher]
     live: [road]
-    note: Its lens. In Gazebo, the same as the front left camera's. stop_sign_watcher takes its focal length, as the front left one's. camera_stream_front_right publishes the undistorted picture's, as for the front left one.
+    note: Its lens. In Ravensim, the same as the front left camera's. stop_sign_watcher takes its focal length, as the front left one's. camera_stream_front_right publishes the undistorted picture's, as for the front left one.
   /sensors/camera/rear/image_raw:
     type: sensor_msgs/msg/Image
-    pub: [gz_road_bridge, carla_adapter, sim_cameras]
+    pub: [carla_adapter, sim_cameras]
     sub: []
     live: [road]
-    note: The rear camera, looking back (the orange housing on the tailgate) (camera_rear_link). Gazebo's only, in the road world, for now - the car's drivers come with camera_ros (audit N4). Subscribe reliably, as for the front left one.
+    note: The rear camera, looking back (the orange housing on the tailgate) (camera_rear_link). Ravensim's only, in the road world, for now - the car's drivers come with camera_ros (audit N4). Subscribe reliably, as for the front left one.
   /sensors/camera/rear/camera_info:
     type: sensor_msgs/msg/CameraInfo
-    pub: [gz_road_bridge, carla_adapter, sim_cameras]
+    pub: [carla_adapter, sim_cameras]
     sub: [stop_sign_watcher, camera_obstacles]
     live: [road]
-    note: Its lens. In Gazebo, the same as the front left camera's. stop_sign_watcher takes its focal length, as the front left one's; camera_obstacles (off until Q22) uses it to put the rear camera's boxes on the road.
+    note: Its lens. In Ravensim, the same as the front left camera's. stop_sign_watcher takes its focal length, as the front left one's; camera_obstacles (off until Q22) uses it to put the rear camera's boxes on the road.
   /sensors/lidar/packets:
     type: velodyne_msgs/msg/VelodyneScan
     pub: [lidar_driver]
@@ -545,10 +545,10 @@ topics:
   /sensors/lidar/points:
     type: sensor_msgs/msg/PointCloud2
     drop_in: {min_hz: 9, max_hz: 12, frame: lidar_link, reliable: true}
-    pub: [lidar_cloud, gz_lidar_bridge, carla_adapter, simulator]
+    pub: [lidar_cloud, carla_adapter, simulator]
     sub: [lidar_scan, voxels, debug_hud, ndt, kiss_icp, actuator_test, hw_panel]
     live: [road, car]
-    note: On the car, the roof Velodyne VLP-16 through the stock velodyne_pointcloud (lidar_cloud, its factory calibration VLP16db.yaml), in lidar_link, 10 Hz, 0.9-100 m, unorganised - rays that hit nothing are left out; fields x, y, z, intensity, ring, time. car.launch.py runs it where the machine file has the lidar part (orin, all); lidar:=false turns it off everywhere. In Gazebo, a generic 16-beam roof lidar (like a VLP-16) in lidar_link, 10 Hz, 1800 x 16 points, 0.5-100 m, inf where a ray hit nothing. Reliable (about 0.9 MB a cloud). On by default in the road and test_lot worlds (lidar:=false turns it off). Its one reader for Nav2 is lidar_scan (navigation.launch.py lidar:=true), which flattens it into /sensors/lidar/scan; or, in the voxels trial (voxels:=true), voxels, which cuts it into cubes (/perception/voxels/cubes).
+    note: On the car, the roof Velodyne VLP-16 through the stock velodyne_pointcloud (lidar_cloud, its factory calibration VLP16db.yaml), in lidar_link, 10 Hz, 0.9-100 m, unorganised - rays that hit nothing are left out; fields x, y, z, intensity, ring, time. car.launch.py runs it where the machine file has the lidar part (orin, all); lidar:=false turns it off everywhere. In Ravensim, a generic 16-beam roof lidar (like a VLP-16) in lidar_link, 10 Hz, 1800 x 16 points, 0.5-100 m, inf where a ray hit nothing. Reliable (about 0.9 MB a cloud). On by default in the road and test_lot worlds (lidar:=false turns it off). Its one reader for Nav2 is lidar_scan (navigation.launch.py lidar:=true), which flattens it into /sensors/lidar/scan; or, in the voxels trial (voxels:=true), voxels, which cuts it into cubes (/perception/voxels/cubes).
   /sensors/lidar/scan:
     type: sensor_msgs/msg/LaserScan
     pub: [lidar_scan]
@@ -670,62 +670,104 @@ topics:
     type: std_msgs/msg/Bool
     pub: []
     sub: [spine_sim]
-    note: true = press the hardware e-stop, on the bench and in Gazebo's spine profile; false = release it. The spine brakes, and needs arming again.
+    note: true = press the hardware e-stop, on the bench and in Ravensim's spine profile; false = release it. The spine brakes, and needs arming again.
   /vehicle/bench/driver_faults:
     type: std_msgs/msg/UInt16
     pub: []
     sub: [spine_sim]
-    note: Pretend a driver failed, on the bench and in Gazebo's spine profile. Fault bits as in VehicleStatus (8 = steering, 16 = brake, 32 = throttle DAC, 64 = encoder).
+    note: Pretend a driver failed, on the bench and in Ravensim's spine profile. Fault bits as in VehicleStatus (8 = steering, 16 = brake, 32 = throttle DAC, 64 = encoder).
 
-  # --- Gazebo's road world: the simulator's own ---
+  # --- Ravensim: the simulator's own ---
   /vehicle/sim/truth:
     type: nav_msgs/msg/Odometry
-    pub: [gz_bridge, simulator]
-    sub: [gazebo_gps, debug_hud, sim_cameras]
+    pub: [simulator]
+    sub: [sim_gps, debug_hud, sim_cameras]
     live: [sim]
-    note: Where the Gazebo car really is (map frame - the world's origin is the datum - 50 Hz), like the bench's /vehicle/bench/truth. Only the stand-ins read it - gazebo_gps, for the receiver's velocity (/sensors/gps/fix_velocity), never for a position; tools/sim_check.py compares it with /localization/odom/global. Gazebo's other topics (/gazebo/odom, imu, navsat, cmd_vel, radar/points) only link the bridges, gazebo_adapter and the sensor nodes (gazebo_imu, gazebo_gps, gazebo_radar, gazebo_camera - one process per sensor, as on the car). With simulator:=own, our own Rust simulator (aav_simulator's node simulator) publishes every one of those Gazebo topics itself, in place of gz sim and its bridges, and the same nodes read them.
+    note: Where Ravensim's car really is (map frame - the world's origin is the datum - 50 Hz), like the bench's /vehicle/bench/truth. Only the stand-ins read it - sim_gps, for the receiver's velocity (/sensors/gps/fix_velocity), never for a position; tools/sim_check.py compares it with /localization/odom/global. Ravensim's other topics (/vehicle/sim/odom, imu, navsat, cmd_vel, radar/points) only link the simulator (aav_simulator's node simulator), sim_adapter and the sensor nodes (sim_imu, sim_gps, sim_radar, sim_camera_relay - one process per sensor, as on the car); they were /gazebo/* until Gazebo went on 16 Nov, and the same nodes read them.
+  /vehicle/sim/cmd_vel:
+    type: geometry_msgs/msg/Twist
+    pub: [sim_adapter]
+    sub: [simulator]
+    live: [sim]
+    note: The actuator model's speed and turn rate (sim_adapter, 50 Hz), for Ravensim's car, kept until the next. Was /gazebo/cmd_vel until Gazebo went (16 Nov).
+  /vehicle/sim/odom:
+    type: nav_msgs/msg/Odometry
+    pub: [simulator]
+    sub: [sim_adapter, sim_imu, sim_radar]
+    live: [sim]
+    note: Ravensim's wheel odometry, odom -> base_link, 50 Hz, from where the car started. sim_adapter makes /vehicle/odom of it, as the car's spine does. Was /gazebo/odom.
+  /vehicle/sim/imu:
+    type: sensor_msgs/msg/Imu
+    pub: [simulator]
+    sub: [sim_imu]
+    live: [sim]
+    note: Ravensim's raw IMU, imu_link, 50 Hz - orientation, turn rate, gravity (+9.8 up), noise; sim_imu adds the car's own acceleration and publishes /sensors/imu/data_raw. Was /gazebo/imu.
+  /vehicle/sim/navsat:
+    type: sensor_msgs/msg/NavSatFix
+    pub: [simulator]
+    sub: [sim_gps]
+    live: [sim]
+    note: Ravensim's raw GPS fix, gps_link, 5 Hz, on the world's datum; sim_gps publishes /sensors/gps/fix and its velocity. Was /gazebo/navsat.
+  /vehicle/sim/radar/points:
+    type: sensor_msgs/msg/PointCloud2
+    pub: [simulator]
+    sub: [sim_radar]
+    live: [road]
+    note: Ravensim's radar stand-in (a lidar shaped like the TI radar), radar_link, 10 Hz, best effort, with a speed field (what each ray hit moves along it); sim_radar makes the TI driver's cloud of it. Was /gazebo/radar/points.
+  /vehicle/sim/camera/front_left/image_raw:
+    type: sensor_msgs/msg/Image
+    pub: [sim_cameras]
+    sub: [sim_camera_relay]
+    live: []
+    note: With faults:=true only - the front left picture before its fault; sim_camera_relay passes it on to /sensors/camera/front_left/image_raw through fault.camera. Was /gazebo/camera/front_left/image_raw.
+  /vehicle/sim/cameras/free_until:
+    type: rosgraph_msgs/msg/Clock
+    pub: [sim_cameras]
+    sub: [simulator]
+    live: []
+    note: Camera lockstep (camera_lockstep:=true, or auto under tools/software_gl.sh, 16 Nov) - after each pose, the sim time of the cameras' next picture. At a truth stamped that late the simulator holds /clock until a later one comes (10 s at most, then it runs free), so pictures drawn in software come at their full rate in sim time.
   /vehicle/sim/chase_camera/image_raw:
     type: sensor_msgs/msg/Image
-    pub: [gz_chase_bridge, sim_cameras]
+    pub: [sim_cameras]
     sub: [chase_jpeg, dev_window]
     live: [road]
-    note: Gazebo's chase camera (aav_description aav.sensors.gazebo.xacro, chase_camera:=true, the default in sim.launch.py) - 7 m behind the rear axle and 3.5 m up, fixed to the car, 640 x 360 RGB, 10 Hz, frame base_link. Only where the world renders sensors (road, test_lot); never on the car. Big (6.9 MB/s), so the bridge's WiFi list leaves it out (image_raw); chase_jpeg makes the JPEG Lichtblick shows.
+    note: Ravensim's chase camera (aav_sim_cameras config/cameras.yaml, chase_camera:=true, the default in sim.launch.py) - 7 m behind the rear axle and 3.5 m up, fixed to the car, 640 x 360 RGB, 10 Hz, frame base_link. Only where the world renders sensors (road, test_lot); never on the car. Big (6.9 MB/s), so the bridge's WiFi list leaves it out (image_raw); chase_jpeg makes the JPEG Lichtblick shows.
   /vehicle/sim/chase_camera/compressed:
     type: sensor_msgs/msg/CompressedImage
     pub: [chase_jpeg]
     sub: [foxglove_bridge]
     live: [road]
-    note: The chase camera as JPEG, every picture (10 Hz, about 30 kB each) - image_transport republish (chase_jpeg, aav_gazebo gazebo.launch.py). For Lichtblick's cockpit layout (tools/foxglove/cockpit.json), so it shows Gazebo's picture without Gazebo's window. Sim only - the car has no such topic.
+    note: The chase camera as JPEG, every picture (10 Hz, about 30 kB each) - image_transport republish (chase_jpeg, aav_sim_models ravensim.launch.py). For Lichtblick's cockpit layout (tools/foxglove/cockpit.json), so it shows Ravensim's picture (Ravensim has no window). Sim only - the car has no such topic.
   /vehicle/sim/spine_outputs:
     type: aav_interfaces/msg/SpineOutputs
     pub: [spine_sim]
-    sub: [gazebo_adapter]
+    sub: [sim_adapter]
     live: [spine]
-    note: Gazebo's spine profile only (sim.launch.py spine:=true). What the spine's logic (spine-core, in spine_sim) writes to its actuator drivers each tick, 100 Hz on Gazebo's clock - throttle and brake (0..1), reverse, the steering target (rad). On the car these never reach ROS. gazebo_adapter's actuator model turns them into what Gazebo's car does; silent for 0.2 s, it brakes fully.
+    note: Ravensim's spine profile only (sim.launch.py spine:=true). What the spine's logic (spine-core, in spine_sim) writes to its actuator drivers each tick, 100 Hz on the simulated clock - throttle and brake (0..1), reverse, the steering target (rad). On the car these never reach ROS. sim_adapter's actuator model turns them into what Ravensim's car does; silent for 0.2 s, it brakes fully.
   /vehicle/sim/entities:
     type: visualization_msgs/msg/MarkerArray
     pub: [simulator]
     sub: [sim_cameras]
     live: []
-    note: Our simulator only (simulator:=own). Every model placed while it runs (obstacle:=true, /vehicle/sim/spawn_entity), latched (transient local), sent again whole after each change - a DELETEALL, then one MESH_RESOURCE marker each - ns the model's name, mesh_resource its SDF file (file://), pose in the map frame. sim_cameras reads each SDF file and draws the model, so the cameras see what the rays hit. Gazebo has no such topic - its cameras see its own world.
+    note: Ravensim's. Every model placed while it runs (obstacle:=true, /vehicle/sim/spawn_entity), latched (transient local), sent again whole after each change - a DELETEALL, then one MESH_RESOURCE marker each - ns the model's name, mesh_resource its SDF file (file://), pose in the map frame. sim_cameras reads each SDF file and draws the model, so the cameras see what the rays hit. Gazebo had no such topic - its cameras saw its own world.
   /vehicle/sim/esp32_outputs:
     type: aav_interfaces/msg/SpineOutputs
-    pub: [gazebo_esp32]
-    sub: [gazebo_adapter]
+    pub: [sim_esp32]
+    sub: [sim_adapter]
     live: []
-    note: Gazebo with today's car in the loop only (sim.launch.py esp32:=true). What gazebo_esp32 - the 2025-26 C++ ESP32 firmware's logic, standing in behind the real legacy_uart_bridge - drives, 50 Hz - throttle (its DAC over 700, ramped 6 up and 12 down per frame), brake (the Jrk's travel past 400), reverse, the steering target (rad). gazebo_adapter's actuator model turns them into what Gazebo's car does, and still publishes /vehicle/odom itself, as the wheel sensors on today's car. Like the C++, no command timeout - the outputs stay when frames stop.
+    note: Ravensim with today's car in the loop only (sim.launch.py esp32:=true). What sim_esp32 - the 2025-26 C++ ESP32 firmware's logic, standing in behind the real legacy_uart_bridge - drives, 50 Hz - throttle (its DAC over 700, ramped 6 up and 12 down per frame), brake (the Jrk's travel past 400), reverse, the steering target (rad). sim_adapter's actuator model turns them into what Ravensim's car does, and still publishes /vehicle/odom itself, as the wheel sensors on today's car. Like the C++, no command timeout - the outputs stay when frames stop.
   /vehicle/sim/wheels:
     type: aav_interfaces/msg/WheelSpeeds
-    pub: [gazebo_adapter]
+    pub: [sim_adapter]
     sub: [spine_sim]
     live: [spine]
-    note: Gazebo's spine profile only. Gazebo's four wheels, as /vehicle/wheels in the direct profile, for spine_sim - the front two for its wheel nodes' frames, the rear two's mean as the spine's measured speed (its motor encoder).
+    note: Ravensim's spine profile only. Ravensim's four wheels, as /vehicle/wheels in the direct profile, for spine_sim - the front two for its wheel nodes' frames, the rear two's mean as the spine's measured speed (its motor encoder).
   /vehicle/sim/steering:
     type: aav_interfaces/msg/ActuatorState
-    pub: [gazebo_adapter]
+    pub: [sim_adapter]
     sub: [spine_sim]
     live: [spine]
-    note: Gazebo's spine profile only. command = the spine's steering target, measured = the actuator model's angle, which spine_sim sends back in VEHICLE_FEEDBACK.
+    note: Ravensim's spine profile only. command = the spine's steering target, measured = the actuator model's angle, which spine_sim sends back in VEHICLE_FEEDBACK.
 
   # --- CARLA: the simulator's own ---
   /vehicle/carla/truth:
@@ -763,7 +805,7 @@ topics:
     type: geometry_msgs/msg/PoseWithCovarianceStamped
     pub: [amcl]
     sub: [controller_compare, debug_hud]
-    note: A trial (docs/trials.md) - stock nav2_amcl's particle filter on the 2D map and the lidar scan, map frame (its amcl_pose, renamed). Only with amcl:=true (sim.launch.py world:=test_lot nav:=true lidar:=true). Its tf_broadcast is false - ekf_global keeps map -> odom - so nothing drives by it; measure controllers --amcl scores it against Gazebo's truth. Published only once the car has moved (update_min_d, update_min_a).
+    note: A trial (docs/trials.md) - stock nav2_amcl's particle filter on the 2D map and the lidar scan, map frame (its amcl_pose, renamed). Only with amcl:=true (sim.launch.py world:=test_lot nav:=true lidar:=true). Its tf_broadcast is false - ekf_global keeps map -> odom - so nothing drives by it; measure controllers --amcl scores it against the sim's truth. Published only once the car has moved (update_min_d, update_min_a).
   /localization/amcl/particles:
     type: nav2_msgs/msg/ParticleCloud
     pub: [amcl]
@@ -798,17 +840,17 @@ topics:
     type: geometry_msgs/msg/PoseWithCovarianceStamped
     pub: []
     sub: [ndt]
-    note: Starts NDT again from a pose in the map frame (RViz "2D Pose Estimate" set to this topic). ndt:=true in Gazebo starts it from the sim's start pose without it (its start_x, start_y, start_yaw); on the car it would take ekf_global's (start_from_global).
+    note: Starts NDT again from a pose in the map frame (RViz "2D Pose Estimate" set to this topic). ndt:=true in Ravensim starts it from the sim's start pose without it (its start_x, start_y, start_yaw); on the car it would take ekf_global's (start_from_global).
   /localization/kiss_icp/odom:
     type: nav_msgs/msg/Odometry
     pub: [kiss_icp]
     sub: [ekf_local]
-    note: A trial (docs/designs/2026-10-30_kiss-icp.md) - lidar odometry by KISS-ICP (MIT, PRBonn; aav_kiss_icp, its PyPI wheel in the kiss Pixi environment, run as a child program). How far base_link moved, from the lidar alone - frame kiss_odom (its own, where the car was at the first scan; drifts), child base_link, stamped with the cloud's stamp. Twist in base_link from the last step over the time between clouds. KISS-ICP gives no covariance - the pose's is a fixed 1, the twist's the node's twist_linear_sd and twist_angular_sd (0.15 m/s, 0.01 rad/s, measured against Gazebo's truth 1 Nov). Only with kiss_icp:=true or kiss_ekf:=true (sim.launch.py, a world with the lidar). Never TF. With kiss_ekf:=true (a trial, off by default) ekf_local fuses its twist - vx and vyaw only, never its pose (it drifts, in its own frame) - beside the wheels and the IMU (odom1, refused past 5 sigma; aav_localization config/ekf_local_kiss.yaml); otherwise nothing reads it to drive. measure controllers --kiss-icp scores it against Gazebo's truth and ekf_local; --kiss-ekf scores ekf_local with it.
+    note: A trial (docs/designs/2026-10-30_kiss-icp.md) - lidar odometry by KISS-ICP (MIT, PRBonn; aav_kiss_icp, its PyPI wheel in the kiss Pixi environment, run as a child program). How far base_link moved, from the lidar alone - frame kiss_odom (its own, where the car was at the first scan; drifts), child base_link, stamped with the cloud's stamp. Twist in base_link from the last step over the time between clouds. KISS-ICP gives no covariance - the pose's is a fixed 1, the twist's the node's twist_linear_sd and twist_angular_sd (0.15 m/s, 0.01 rad/s, measured against Gazebo's truth 1 Nov). Only with kiss_icp:=true or kiss_ekf:=true (sim.launch.py, a world with the lidar). Never TF. With kiss_ekf:=true (a trial, off by default) ekf_local fuses its twist - vx and vyaw only, never its pose (it drifts, in its own frame) - beside the wheels and the IMU (odom1, refused past 5 sigma; aav_localization config/ekf_local_kiss.yaml); otherwise nothing reads it to drive. measure controllers --kiss-icp scores it against the sim's truth and ekf_local; --kiss-ekf scores ekf_local with it.
   /localization/kiss_icp/status:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [kiss_icp]
     sub: []
-    note: KISS-ICP's state after every cloud - name kiss_icp, level OK (TRACKING) or ERROR (no kiss environment, a cloud without x, y, z, or the worker failed); values match_ms (wall clock, KISS-ICP alone), points (after the body, ground - below min_height, 0.3 m - and range cuts), deskew (true only where the cloud has a per-point time - the VLP-16, not Gazebo), clouds, clouds_dropped, restarts (of the worker).
+    note: KISS-ICP's state after every cloud - name kiss_icp, level OK (TRACKING) or ERROR (no kiss environment, a cloud without x, y, z, or the worker failed); values match_ms (wall clock, KISS-ICP alone), points (after the body, ground - below min_height, 0.3 m - and range cuts), deskew (true only where the cloud has a per-point time - the VLP-16, not the sim), clouds, clouds_dropped, restarts (of the worker).
   /localization/gps/fix:
     type: sensor_msgs/msg/NavSatFix
     pub: [navsat_transform]
@@ -999,10 +1041,10 @@ topics:
     live: [turtle, sim, car, replay, bench]
   /clock:
     type: rosgraph_msgs/msg/Clock
-    pub: [gz_bridge, carla_adapter, simulator]
+    pub: [carla_adapter, simulator]
     sub: []
     live: [sim, replay]
-    note: Simulation time; every node runs with use_sim_time:=true in sim and replay. Gazebo publishes it every physics step (1 kHz, unthrottled); our own simulator (aav_simulator, simulator:=own) does the same.
+    note: Simulation time; every node runs with use_sim_time:=true in sim and replay. Ravensim (aav_simulator) publishes it every physics step (1 kHz, unthrottled); with camera_lockstep it holds at each camera's due time until the picture is out does the same.
   /diagnostics:
     type: diagnostic_msgs/msg/DiagnosticArray
     pub: [twist_mux, ekf_local, ekf_global, sensor_watchdog, camera_stream_front_left, camera_stream_front_right, localization_health]
@@ -1021,7 +1063,7 @@ services:
   /spine/arm:
     type: std_srvs/srv/SetBool
     server: spine_bridge
-    note: The spine ignores drive commands until armed. Refused while /safety/estop is true, and while the safety gate is shut - /safety/output_mux/state not OPEN for the bridge's target (car, bench or gazebo by its source), or not heard for gate_timeout (1.5 s) - with the reason, starting "the safety gate is shut" (Ben, 24 Oct). Disarming always works. The bench and Gazebo's spine profile arm through arm_when_open (aav_spine), which asks each second until the gate opens. On the car with the CAN spine (actuators:=can), the bench and Gazebo's spine profile; not with role:=sensors.
+    note: The spine ignores drive commands until armed. Refused while /safety/estop is true, and while the safety gate is shut - /safety/output_mux/state not OPEN for the bridge's target (car, bench or gazebo by its source), or not heard for gate_timeout (1.5 s) - with the reason, starting "the safety gate is shut" (Ben, 24 Oct). Disarming always works. The bench and Ravensim's spine profile arm through arm_when_open (aav_spine), which asks each second until the gate opens. On the car with the CAN spine (actuators:=can), the bench and Ravensim's spine profile; not with role:=sensors.
   /fromLL:
     type: robot_localization/srv/FromLL
     server: navsat_transform
@@ -1048,7 +1090,7 @@ services:
   /safety/sensor_watchdog/clear:
     type: std_srvs/srv/Trigger
     server: sensor_watchdog
-    note: A person says all is right again after a fault the watchdog latches - a GPS jump, wheels that disagreed with the IMU and GPS, a HUD that dropped out (LOST). pixi run clear watchdog (pixi run sim-fault clear in Gazebo). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs serves it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python).
+    note: A person says all is right again after a fault the watchdog latches - a GPS jump, wheels that disagreed with the IMU and GPS, a HUD that dropped out (LOST). pixi run clear watchdog (pixi run sim-fault clear in Ravensim). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs serves it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python).
   /safety/geofence/clear:
     type: std_srvs/srv/Trigger
     server: geofence
@@ -1060,7 +1102,7 @@ services:
   /vehicle/sim/spawn_entity:
     type: simulation_interfaces/srv/SpawnEntity
     server: simulator
-    note: Our own simulator (aav_simulator, simulator:=own) - put a model in the world while it runs, as Gazebo's create service does - uri an SDF model file or model://name, initial_pose in the map frame (x, y and yaw). The ROS standard simulation interface (simulation_interfaces). Its lidar and radar see the model from the next step, and the car stops at it. tools/sim_check.py places its box and post with it. Sim only.
+    note: Ravensim (aav_simulator) - put a model in the world while it runs, as Gazebo's create service does - uri an SDF model file or model://name, initial_pose in the map frame (x, y and yaw). The ROS standard simulation interface (simulation_interfaces). Its lidar and radar see the model from the next step, and the car stops at it. tools/sim_check.py places its box and post with it. Sim only.
   /vehicle/sim/delete_entity:
     type: simulation_interfaces/srv/DeleteEntity
     server: simulator
@@ -1068,7 +1110,7 @@ services:
   /vehicle/sim/set_entity_state:
     type: simulation_interfaces/srv/SetEntityState
     server: simulator
-    note: Our own simulator - put the car (entity aav) at state.pose in the map frame (x, y and yaw), standing still, as Gazebo's set_pose service does; a non-zero twist is refused. The truth and wheel odometry jump with it. tools/sim_frames.py --simulator own uses it. Sim only.
+    note: Ravensim - put the car (entity aav) at state.pose in the map frame (x, y and yaw), standing still, as Gazebo's set_pose service does; a non-zero twist is refused. The truth and wheel odometry jump with it. tools/sim_frames.py --simulator own uses it. Sim only.
   /track/set_parameters:
     type: rcl_interfaces/srv/SetParameters
     server: track

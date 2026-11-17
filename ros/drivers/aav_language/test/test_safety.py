@@ -53,7 +53,7 @@ def test_turn_limits():
 def test_where_stand_ins_are_allowed():
     assert allowed_here(Where('LOCALHOST', '', False, ('ego',)), car=False) is None
     assert allowed_here(Where('localhost', '', False, ()), car=False) is None
-    assert allowed_here(Where('', '', True, ('gazebo_adapter',)), car=False) is None
+    assert allowed_here(Where('', '', True, ('sim_adapter',)), car=False) is None
     bench = ('spine_bridge', 'spine_sim', 'ego')
     assert allowed_here(Where('LOCALHOST', '', False, bench), car=False) is None
 

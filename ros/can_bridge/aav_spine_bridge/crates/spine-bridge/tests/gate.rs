@@ -23,7 +23,7 @@ const SETTINGS: Settings = Settings {
 
 const OPEN: &str = "OPEN - car: every source REAL";
 const WAIT: &str = "WAIT - car: all REAL, settling for 2 s";
-const STOP: &str = "STOP - target car needs REAL - camera_front_left is SIM (gazebo_adapter) \
+const STOP: &str = "STOP - target car needs REAL - camera_front_left is SIM (sim_adapter) \
                     - latched: /safety/output_mux/clear";
 
 fn secs(s: f64) -> Duration {

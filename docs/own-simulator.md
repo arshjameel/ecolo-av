@@ -22,10 +22,10 @@ ours. Tried on a Mac only; on Linux [[untested]]. See [No GPU](#no-gpu-15-nov) b
 ## In one picture
 
 ```text
- ego ─> output mux ─> gazebo_adapter ──/gazebo/cmd_vel──> simulator (Rust)
+ ego ─> output mux ─> sim_adapter ──/vehicle/sim/cmd_vel──> simulator (Rust)
                       (actuator model)                      │ world: Gazebo's .sdf files
                                                             │ car, rays, IMU, GPS, clock
- gazebo_imu, gazebo_gps, gazebo_radar, gazebo_adapter <─────┘ Gazebo's topics, rates, QoS
+ sim_imu, sim_gps, sim_radar, sim_adapter <─────┘ Gazebo's topics, rates, QoS
    └─> /sensors/*, /vehicle/*  ─> localization, Nav2, safety: unchanged
 ```
 
@@ -36,19 +36,19 @@ It replaces `gz sim` **and** its bridges. Every node above them is the same one 
 | Topic | Rate | Same as Gazebo? |
 |---|---|---|
 | `/clock` | 1 kHz | yes: one per step |
-| `/gazebo/odom`, `/vehicle/sim/truth` | 50 Hz | yes; the wheels' odometry can also drift: `wheel_noise:=0.05` (m/s on each reading) and `wheel_slip:=0.02` (2 % too far), seeded by `noise_seed:=`, off by default (TODO 179) |
-| `/gazebo/imu` | 50 Hz, noise 0.02 rad/s, 0.2 m/s² | yes (the xacro's) |
-| `/gazebo/navsat` | 5 Hz, noise 4.5e-6° (0.5 m) | yes; exact WGS84 from the world's datum |
+| `/vehicle/sim/odom`, `/vehicle/sim/truth` | 50 Hz | yes; the wheels' odometry can also drift: `wheel_noise:=0.05` (m/s on each reading) and `wheel_slip:=0.02` (2 % too far), seeded by `noise_seed:=`, off by default (TODO 179) |
+| `/vehicle/sim/imu` | 50 Hz, noise 0.02 rad/s, 0.2 m/s² | yes (the xacro's) |
+| `/vehicle/sim/navsat` | 5 Hz, noise 4.5e-6° (0.5 m) | yes; exact WGS84 from the world's datum |
 | `/joint_states` | 100 Hz | Gazebo sends 1 kHz; the car's wheels 100 Hz |
 | `/sensors/lidar/points` | 10 Hz, 1800 x 16, 0.5-100 m, 3 cm | yes: packed as Gazebo's, organised, `inf` misses |
-| `/gazebo/radar/points` | 10 Hz, 61 x 3, 0.3-8.4 m, 5 cm | yes; and better: a person walking gets their own Doppler speed (a `speed` field Gazebo's cloud lacks; `gazebo_radar` adds it). Gazebo's radar says everything stands still (TODO 194) |
+| `/vehicle/sim/radar/points` | 10 Hz, 61 x 3, 0.3-8.4 m, 5 cm | yes; and better: a person walking gets their own Doppler speed (a `speed` field Gazebo's cloud lacks; `sim_radar` adds it). Gazebo's radar says everything stands still (TODO 194) |
 | the three car cameras, the chase camera | 10 Hz, 640 x 360 | yes: `aav_sim_cameras` draws the same world file |
 
 ## The worlds
 
 | World | Read | Triangles |
 |---|---|---|
-| `empty`, `road`, `test_lot` | `aav_gazebo/worlds/*.sdf`, with `model://stop_sign` | 2 to 118 |
+| `empty`, `road`, `test_lot` | `aav_sim_models/worlds/*.sdf`, with `model://stop_sign` | 2 to 118 |
 | `campus` | `maps/campus/campus.sdf` and its OBJ meshes (`pixi run campus`) | 595,845, read in 1.2 s |
 
 The rays see what Gazebo's lidar sees: the **visuals**. One roof-lidar scan takes 1.7 ms in the
@@ -58,7 +58,7 @@ test lot and 15 ms on the campus (Ben's Mac, 4 threads).
 
 | Part | How |
 |---|---|
-| Today | `gazebo_adapter`'s actuator model, then Gazebo's AckermannSteering (±10 m/s², the wheels steer at once), then the bicycle |
+| Today | `sim_adapter`'s actuator model, then Gazebo's AckermannSteering (±10 m/s², the wheels steer at once), then the bicycle |
 | Hitting things | the outline (`vehicle.yaml` `body:`) stops at what it meets, at 0.35, 0.8 and 1.3 m up, as Gazebo's physics does. The log says "the car hit something" |
 | The ground (8 Nov) | each wheel finds the ground below it (a ray straight down). The car rides up a slope and tilts on it; a step up to 0.1 m (`ground_step`) it rolls up; a higher one (a 0.3 m kerb) stops it, as a wall does. The truth carries the height and tilt, so the cameras follow |
 | The trait | `sim-core` `CarModel`: `step`, `state`, `reset`, `hold`. The shared `car-model` crate goes in behind it at the merge |
@@ -73,8 +73,8 @@ test lot and 15 ms on the campus (Ben's Mac, 4 threads).
 | The cameras' world | `World::shapes` | every shape as SDF draws it: box, cylinder, plane, mesh file; pose; colour |
 | Placing things | `/vehicle/sim/spawn_entity`, `delete_entity` | `simulation_interfaces`: an SDF model, a pose |
 
-With `simulator:=own`, `gazebo.launch.py` starts the cameras (`sim_cameras --ros --pose truth
---world <the world>`) and sets `gazebo_adapter`'s `cameras` to true, so `/system/source`
+With `simulator:=own`, `ravensim.launch.py` starts the cameras (`sim_cameras --ros --pose truth
+--world <the world>`) and sets `sim_adapter`'s `cameras` to true, so `/system/source`
 announces them, as with Gazebo.
 
 ## Head to head, with the cameras (8 Nov, Ben's Mac, quiet: load 4-15)

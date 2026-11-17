@@ -3,7 +3,7 @@
 //! The spine only needs a car's speed and steering each tick, and to tell it what to do.
 //! The wheel nodes need how far each front tyre has rolled, and the spine's feedback frame
 //! the motor encoder's count. [`Plant`] works all of that out itself; [`MeasuredCar`] is
-//! told it, by a simulator that moves the car (Gazebo, through gazebo_adapter).
+//! told it, by a simulator that moves the car (Ravensim, through sim_adapter).
 
 use spine_core::Outputs;
 
@@ -41,7 +41,7 @@ impl Car for Plant {
     }
 }
 
-/// A car that something else moves, such as Gazebo's: it only keeps the last measurements
+/// A car that something else moves, such as Ravensim's: it only keeps the last measurements
 /// it was given, and counts the encoder and the tyres' distance from them.
 ///
 /// The spine's outputs go back to whatever moves the car (`Bench::outputs`): here they

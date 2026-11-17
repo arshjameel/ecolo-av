@@ -453,25 +453,10 @@ def test_m5s_two_angles_give_the_centre_angle_back():
         vehicle.centre_angle(CAR, 0.5, 0.0)
 
 
-def gazebo_centre_angle(v, steering_limit):
-    """Gazebo's AckermannSteering at full lock (gz-sim 8, UpdateVelocity): the centre angle."""
-    smallest_radius = v['wheelbase'] / math.sin(steering_limit)
-    return math.atan(v['wheelbase'] / smallest_radius)
-
-
-def test_gazebos_steering_limit_gives_the_centre_angle_at_full_lock():
-    # Given max_steering_angle as it is, Gazebo stops 10% short: the 0.433 found by circles.
-    assert gazebo_centre_angle(CAR, 0.5) < 0.45
-    limit = vehicle.gazebo_steering_limit(CAR)
-    assert limit > 0.5
-    assert math.isclose(gazebo_centre_angle(CAR, limit), 0.5)
-    # Its smallest radius is the bicycle model's: Nav2's minimum turning radius.
-    assert math.isclose(CAR['wheelbase'] / math.sin(limit), vehicle.min_turning_radius(CAR))
+def test_the_inner_wheels_joint_limit_leaves_room():
     # The inner wheel's joint limit in aav.urdf.xacro (1.3 x max) leaves it room.
     v = vehicle.load(CONFIG)['vehicle']
     assert vehicle.wheel_angles(v, v['max_steering_angle'])[0] < 1.3 * v['max_steering_angle']
-    with pytest.raises(ValueError):
-        vehicle.gazebo_steering_limit({'max_steering_angle': math.radians(50)})
 
 
 def find_share():
@@ -484,17 +469,10 @@ def find_share():
 
 @pytest.mark.skipif(shutil.which('xacro') is None or find_share() is None,
                     reason='needs xacro and the built package')
-def test_gazebos_urdf_gets_the_derived_limit_and_refuses_none():
+def test_the_urdf_has_no_gazebo_left():
     urdf = Path(find_share()) / 'urdf' / 'aav.urdf.xacro'
-    v = vehicle.load(CONFIG)['vehicle']
-    limit = f'{vehicle.gazebo_steering_limit(v):.6f}'
-    out = subprocess.run(['xacro', str(urdf), 'sim:=true', f'gz_steering_limit:={limit}'],
-                         capture_output=True, text=True, check=True).stdout
-    assert f'<steering_limit>{limit}</steering_limit>' in out
-    missing = subprocess.run(['xacro', str(urdf), 'sim:=true'], capture_output=True)
-    assert missing.returncode != 0
     car = subprocess.run(['xacro', str(urdf)], capture_output=True, text=True, check=True)
-    assert 'steering_limit' not in car.stdout
+    assert 'gazebo' not in car.stdout and 'steering_limit' not in car.stdout
 
 
 EGO_YAML = ROOT / 'ros/ego/aav_ego/config/ego.yaml'

@@ -86,7 +86,7 @@ No launch file of its own: `aav_sensors`' `sensors.launch.py radar:=true` starts
   costmap.
 - The cloud is best effort: subscribers must match it.
 - The radar's fields (x, y, z, intensity, velocity) are what `aav_bench`'s `mock_radar`,
-  `aav_gazebo`'s `gazebo_radar` and `aav_carla` copy.
+  `aav_sim_models`'s `sim_radar` and `aav_carla` copy.
 
 ## Side Effects
 

@@ -66,7 +66,7 @@ CELL = 0.25            # m: one cell of Nav2's map, the same as the test lot's
 KERB_HEIGHT = 0.30     # m: "foot tall" (Ben, 5 Nov)
 KERB_TOP = 0.30        # m wide on top: it also hides the grass's 0.25 m steps along its edge
 NDT_SPACING = 0.33     # m between the guessed map's points: 9 to a square metre of wall
-NDT_FLOOR = 0.45       # m: above the grass (aav_gazebo worlds.CAMPUS_NDT_FLOOR)
+NDT_FLOOR = 0.45       # m: above the grass (aav_sim_models worlds.CAMPUS_NDT_FLOOR)
 NDT_CEILING = 16.0     # m: the lidar's top beam (15 degrees) reaches about this at its 45 m
 START_LOT = 'P4'       # the car's first home: a lot beside the datum
 SIMPLIFY_OVER = 400    # corners: rings longer than this are simplified to SIMPLIFY_TO metres
@@ -981,14 +981,8 @@ def world_sdf(names, datum):
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
     </physics>
-    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
-    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
-    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
-    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
-    <plugin filename="gz-sim-navsat-system" name="gz::sim::systems::NavSat"/>
-    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
-      <render_engine>ogre2</render_engine>
-    </plugin>
+    <!-- Ravensim draws the cameras and casts the lidar and radar here (worlds.has_sensors). -->
+    <plugin filename="ravensim" name="ravensim::sensors"/>
 
     <scene>
       <ambient>0.55 0.55 0.58 1</ambient>

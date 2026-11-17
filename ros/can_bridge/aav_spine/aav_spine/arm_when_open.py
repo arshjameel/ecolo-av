@@ -7,7 +7,7 @@ spine_bridge refuses to arm while the output mux isn't OPEN (Ben, 24 Oct), so th
 again each `retry` s while spine_bridge isn't up yet or the gate alone refuses, then
 exits: 0 once armed, 1 on any other refusal (an e-stop: a person pressed it) or after
 `give_up` s. It never arms a second time. Only the stand-ins start it (bench.launch.py,
-gazebo.launch.py spine:=true); on the car a person arms.
+ravensim.launch.py spine:=true); on the car a person arms.
 
 Parameters  retry (1.0 s), give_up (120.0 s)
 """

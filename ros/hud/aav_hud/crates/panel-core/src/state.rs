@@ -704,7 +704,7 @@ mod tests {
         let t = Instant::now();
         let mut s = state();
         assert_eq!(s.kind(), Kind::Unknown);
-        s.apply(announce("gazebo_adapter", Origin::Sim), t);
+        s.apply(announce("sim_adapter", Origin::Sim), t);
         assert_eq!(s.kind(), Kind::Sim);
         s.apply(announce("legacy_uart_bridge", Origin::Real), t);
         assert_eq!(s.kind(), Kind::Real);

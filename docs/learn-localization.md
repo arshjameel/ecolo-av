@@ -342,6 +342,6 @@ That's the GPS soaking up the drift.
 | The heading from the GPS velocity | `ros/localization/aav_gps_heading` (`course.py`: the sums, no ROS) |
 | Measure the heading in Gazebo | `pixi run tools/ros.sh --local python3 tools/heading_check.py` (`tools/heading_check.py`) |
 | Sensor positions on the car | `ros/bringup/aav_description/config/vehicle.yaml` |
-| Wheel speed into `/vehicle/odom` | `aav_spine/spine_bridge.py`, `aav_legacy` `encoder_udp.py`, `aav_gazebo/gazebo_adapter.py` |
+| Wheel speed into `/vehicle/odom` | `aav_spine/spine_bridge.py`, `aav_legacy` `encoder_udp.py`, `aav_sim_models/sim_adapter.py` |
 | Why the EKFs meet in TF, not on a topic | [Topic areas](naming.md) |
 | Frames in the contract | `docs/interfaces.yaml`, `frames:` |

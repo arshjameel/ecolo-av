@@ -47,7 +47,7 @@ each one's README has its topics.
 | `aav_spine_bridge` | can_bridge | the same `spine_bridge` in Rust, on the firmware's own CAN code (`spine-core`); the default since 23 Oct (`bridge:=python` for the other) | [[works]] on the bench, against `spine_sim`; no spine board yet | new: a port of `aav_spine`'s node (T1.8) |
 | `aav_legacy` | can_bridge | today's car: the 2025-26 ESP32 over UART, through the Motor Pi | [[untested]] on the car | new, for the 2025-26 protocols |
 | `aav_turtlesim` | sim | turtlesim, steered like the car | [[works]] | new |
-| `aav_gazebo` | sim | Gazebo's car behind the real car's topics; its adapters run with our simulator too | [[works]] headless | new |
+| `aav_sim_models` | sim | Gazebo's car behind the real car's topics; its adapters run with our simulator too | [[works]] headless | new |
 | `aav_simulator` | sim | our own simulator in Rust, in `gz sim`'s place: the default since 8 Nov (`simulator:=gazebo` for Gazebo) | passed every `sim-check` leg Gazebo passes, 8 Nov ([its page](own-simulator.md)) | new |
 | `aav_sim_cameras` | sim | our simulator's cameras (Bevy, offscreen; needs a GPU). A cargo program, not a colcon package | built 7-8 Nov ([its page](own-simulator-cameras.md)) | new |
 | `aav_carla` | sim | a CARLA adapter (CARLA's Python client) | [[untested]] never run against a server | new |
@@ -131,7 +131,7 @@ Only one runs at a time.
 | `aav_spine` (`aav_spine_bridge`: the node, in Rust) | CAN frames on `/can/tx` (through ros2_socketcan, Linux only) | `/vehicle/status`; the service `/spine/arm`; stops sending drive frames when ego goes quiet for 0.1 s |
 | `aav_legacy` | UART frames to today's ESP32 (`/dev/ttyAMA0`): 13 bytes today, or version 2 (17 bytes) with the output mux's heartbeat | `encoder_udp`: the 2025-26 wheel encoder's UDP packets into `/vehicle/odom` (off on the car since 23 Oct: the wheels are on CAN) |
 | `aav_turtlesim` | `/turtle1/cmd_vel` | |
-| `aav_gazebo` | `/gazebo/cmd_vel` | turns Gazebo's IMU and GPS into `/sensors/imu/data_raw` and `/sensors/gps/fix` |
+| `aav_sim_models` | `/vehicle/sim/cmd_vel` | turns Gazebo's IMU and GPS into `/sensors/imu/data_raw` and `/sensors/gps/fix` |
 | `aav_carla` | CARLA's Python client (TCP to the server) | the same sensor topics as Gazebo; untested ([CARLA](carla.md)) |
 
 ## Bench mode

@@ -112,7 +112,10 @@ pytest = ">=9.1.1,<10"
 pyyaml = ">=6.0.3,<7"
 pyserial = ">=3.5,<4"
 ros-jazzy-joy-teleop = ">=2.0.0,<3"
-ros-jazzy-ros-gz = ">=1.0.24,<2"
+# Ravensim's services (spawn_entity, set_entity_state); came with ros_gz until Gazebo went (16 Nov).
+ros-jazzy-simulation-interfaces = ">=1.5.1,<2"
+# image_transport's plugins (compressed: the chase camera's JPEG, the recorder); also came with ros_gz.
+ros-jazzy-image-transport-plugins = ">=4.0.7,<5"
 ros-jazzy-can-msgs = ">=2.0.0,<3"
 ros-jazzy-foxglove-bridge = ">=3.6.0,<4"
 ros-jazzy-rosbridge-server = ">=2.7.1,<3"

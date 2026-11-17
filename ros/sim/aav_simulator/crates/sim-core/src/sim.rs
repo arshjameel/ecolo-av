@@ -104,7 +104,7 @@ pub struct Mounts {
     pub radar: Pose,
 }
 
-/// How often each stream speaks, Hz. The defaults are Gazebo's (aav.gazebo.xacro).
+/// How often each stream speaks, Hz. The defaults are Gazebo's (its URDF, until 16 Nov).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rates {
     /// `/clock`: one per physics step, 1 kHz, as Gazebo (its clock is not
@@ -136,7 +136,7 @@ impl Default for Rates {
     }
 }
 
-/// The IMU's, GPS's and wheels' noise (aav.gazebo.xacro's, standard deviations). The
+/// The IMU's, GPS's and wheels' noise (Gazebo's URDF's until 16 Nov, standard deviations). The
 /// wheels' is ours (Gazebo's odometry has none), off by default (Ben, 14 Nov).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SensorNoise {
@@ -269,7 +269,7 @@ pub struct Odometry {
 pub enum Output {
     /// The clock has moved on a step (`/clock`).
     Clock,
-    /// The wheels' odometry, from where the car started (`/gazebo/odom`, odom frame).
+    /// The wheels' odometry, from where the car started (`/vehicle/sim/odom`, odom frame).
     Odom(Odometry),
     /// Where the car really is, in the map (`/vehicle/sim/truth`).
     Truth(Odometry),

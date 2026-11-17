@@ -63,7 +63,7 @@ The main ones. Every package: [Packages](packages.md).
 | `aav_legacy` | today's car: the 2025-26 ESP32 over UART, through the Motor Pi | can_bridge |
 | `aav_safety`, `aav_ghost` | the sensor watchdog, the geofence, the stop hold and the joystick-alive check (twist_mux locks); a pretend person only Nav2 sees | safety |
 | `aav_simulator`, `aav_sim_cameras` | our own simulator in Rust, the default since 8 Nov, and its cameras (Bevy) | sim |
-| `aav_turtlesim`, `aav_gazebo`, `aav_carla` | the turtle, Gazebo's car (`simulator:=gazebo`), a CARLA car (untested) | sim |
+| `aav_turtlesim`, `aav_sim_models`, `aav_carla` | the turtle, Gazebo's car (`simulator:=gazebo`), a CARLA car (untested) | sim |
 | `aav_bringup`, `aav_run_info` | the profiles, the machine files (each picks its parts, perception too), the RViz layout; which algorithms a run uses (`/system/algorithms`) | bringup |
 | `aav_hud`, `aav_dev_window` | the HUD, the map window, the debug screen and the hardware panel (Rust, raylib); the developer window (Bevy) | hud |
 | `aav_spine_sim`, `aav_bench` | bench mode: the spine on a laptop, and pretend sensors | sim |

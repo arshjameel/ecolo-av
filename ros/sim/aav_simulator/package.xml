@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_simulator</name>
   <version>0.1.0</version>
-  <description>Our own simulator, in Rust (rclrs): a drop-in for gz sim and its ros_gz_bridges. It reads Gazebo's own world files, moves the car, casts the roof lidar's and the radar stand-in's rays, and publishes the IMU, GPS, wheels, truth and /clock on the topics the bridges use, so aav_gazebo's nodes and the whole stack run unchanged (sim.launch.py simulator:=own). The cameras are drawn by aav_sim_cameras (Bevy), started with it.</description>
+  <description>Ravensim, our own simulator, in Rust (rclrs): it took the place of gz sim and its ros_gz_bridges (Gazebo went on 16 Nov). It reads the SDF world files (aav_sim_models), moves the car, casts the roof lidar's and the radar stand-in's rays, and publishes the IMU, GPS, wheels, truth and /clock for aav_sim_models's nodes and the whole stack (sim.launch.py, the default simulator). The cameras are drawn by aav_sim_cameras (Bevy), started with it; with camera_lockstep its clock waits for their pictures.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 
@@ -19,8 +19,8 @@
   <depend>rosgraph_msgs</depend>
   <depend>simulation_interfaces</depend>
   <depend>visualization_msgs</depend>
-  <!-- aav_gazebo's worlds and models come in as paths (its gazebo.launch.py passes them),
-       so there's no dependency loop: aav_gazebo exec_depends on this package. -->
+  <!-- aav_sim_models's worlds and models come in as paths (its ravensim.launch.py passes them),
+       so there's no dependency loop: aav_sim_models exec_depends on this package. -->
 
   <export>
     <build_type>ament_cmake</build_type>

@@ -627,7 +627,7 @@ mod tests {
         // The output mux says it latched: the screen gets its line.
         let gate_pub: Publisher<StringMsg> =
             listener.create_publisher(gate.as_str().reliable().keep_last(10))?;
-        let line = "STOP - target car needs REAL - gps is SIM (gazebo_adapter) - latched: x";
+        let line = "STOP - target car needs REAL - gps is SIM (sim_adapter) - latched: x";
         let mut heard = Vec::new();
         let deadline = Instant::now() + Duration::from_secs(5);
         while heard.is_empty() && Instant::now() < deadline {

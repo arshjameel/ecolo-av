@@ -7,8 +7,9 @@ import xml.dom.minidom
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FILES = sorted(glob.glob(os.path.join(ROOT, 'ros', 'sim', 'aav_gazebo', 'models', '*', '*.sdf'))
-               + glob.glob(os.path.join(ROOT, 'ros', 'sim', 'aav_gazebo', 'worlds', '*.sdf')))
+FILES = sorted(glob.glob(os.path.join(ROOT, 'ros', 'sim', 'aav_sim_models', 'models', '*',
+                                      '*.sdf'))
+               + glob.glob(os.path.join(ROOT, 'ros', 'sim', 'aav_sim_models', 'worlds', '*.sdf')))
 
 
 def test_there_are_models():

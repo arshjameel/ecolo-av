@@ -6,9 +6,9 @@
 //! sim_cameras --save /tmp/pics        # and keep each camera's first picture
 //! sim_cameras --from 18 --speed 0     # the car parked 18 m on (7 m from the stop sign)
 //! sim_cameras --bench 300             # draw as fast as it can: the most pictures a second
-//! sim_cameras --ros                   # publish Gazebo's camera topics (feature `ros`)
+//! sim_cameras --ros                   # publish the car's camera topics (feature `ros`)
 //! sim_cameras --ros --pose truth      # draw where /vehicle/sim/truth says, stamped with its time
-//! sim_cameras --world road.sdf        # a Gazebo world (the core's reader), not the test copy
+//! sim_cameras --world road.sdf        # an SDF world (the core's reader), not the test copy
 //! sim_cameras --at 49,-71,0          # parked there (m, m, rad), in the map frame
 //! sim_cameras --image-topic front_left=/x/image_raw  # its picture elsewhere (faults)
 //! sim_cameras --software              # a software renderer only (lavapipe), even beside a GPU
@@ -33,10 +33,10 @@ const VEHICLE: &str = include_str!("../../../bringup/aav_description/config/vehi
 /// Gazebo's stop sign picture, so the detector sees the same sign.
 const STOP_SIGN: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../aav_gazebo/models/stop_sign/materials/textures/stop_sign.png"
+    "/../aav_sim_models/models/stop_sign/materials/textures/stop_sign.png"
 );
-/// aav_gazebo's models, for `model://` in a world file.
-const MODELS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../aav_gazebo/models");
+/// aav_sim_models's models, for `model://` in a world file.
+const MODELS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../aav_sim_models/models");
 /// The scripted drive turns back after this far, m.
 const LAP: f64 = 60.0;
 
@@ -213,7 +213,7 @@ fn run(o: &Options) -> Result<(), String> {
     run_in(o, rig, &world, &model_dirs(&o.models))
 }
 
-/// Where `model://` may be: `models`, then aav_gazebo's models, then GZ_SIM_RESOURCE_PATH.
+/// Where `model://` may be: `models`, then aav_sim_models's models, then GZ_SIM_RESOURCE_PATH.
 fn model_dirs(models: &[PathBuf]) -> Vec<PathBuf> {
     let mut dirs = models.to_vec();
     dirs.push(PathBuf::from(MODELS));
@@ -239,8 +239,8 @@ fn with_placed(base: &SimWorld, placed: &[ros::Placed], dirs: &[PathBuf]) -> Sim
     world
 }
 
-/// A Gazebo world, read as the core simulator reads it: `model://` from `models`, then
-/// aav_gazebo's models, then GZ_SIM_RESOURCE_PATH.
+/// An SDF world, read as the core simulator reads it: `model://` from `models`, then
+/// aav_sim_models's models, then GZ_SIM_RESOURCE_PATH.
 fn sdf_world(path: &Path, models: &[PathBuf]) -> Result<SimWorld, String> {
     let dirs = model_dirs(models);
     let start = Instant::now();

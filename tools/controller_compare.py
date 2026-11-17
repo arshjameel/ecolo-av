@@ -87,8 +87,8 @@ The trials (docs/trials.md):
 For each tour and controller it:
 1. starts sim.launch.py world:=test_lot gui:=false rviz:=false stack:=best (the
    champions, then the piece under test on top) tracker:=<name> [planner:=<name>]
-   reversing:=false (forward only, unless --reversing), on a ROS domain and Gazebo
-   partition of its own, on this computer only;
+   reversing:=false (forward only, unless --reversing), on a ROS domain of its
+   own, on this computer only;
 2. waits for the simulator's truth, the global EKF and the navigator;
 3. sends each leg's goal in turn, each from where the last one ended, and records where the
    car really was (/vehicle/sim/truth), the planner's paths (/plan), the controller's
@@ -100,7 +100,7 @@ For each tour and controller it:
    (docs/path-followers.md).
 
 Tours (map frame: the car starts at 0, 0 facing east; the walls, building and parked cars
-are aav_gazebo worlds/test_lot.sdf):
+are aav_sim_models worlds/test_lot.sdf):
   lot       a left turn; round the building to the lane north of it; a turn back in that
             14 m wide lane; home
   obstacle  30 m east with the bench's 1 m box in the lane at 15.5 m (obstacle:=true).
@@ -127,13 +127,12 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 # On this computer only: the comparison can't disturb a car, another laptop or someone
-# else's simulator. Each run also gets its own ROS domain and Gazebo partition (private()),
+# else's simulator. Each run also gets its own ROS domain (private()),
 # so one still shutting down can't meet the next (21 Oct: the second run never came up).
 os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
-os.environ['GZ_IP'] = '127.0.0.1'
 
 from aav_description import vehicle  # noqa: E402
-from aav_gazebo import worlds  # noqa: E402
+from aav_sim_models import worlds  # noqa: E402
 from ackermann_msgs.msg import AckermannDriveStamped  # noqa: E402
 from action_msgs.msg import GoalStatus  # noqa: E402
 from diagnostic_msgs.msg import DiagnosticStatus  # noqa: E402
@@ -277,7 +276,7 @@ STACK_LABELS = {'own': 'all-ours', 'own32': 'all-ours-32',
                 'own_calm_chunks_ll2': 'all-ours-calm-chunks-ll2',
                 'own_calm_chunks_maps': 'all-ours-calm-chunks-maps',
                 'own_calm_chunks_local': 'all-ours-calm-chunks-local'}
-BOX = 1.0               # m: the bench's obstacle, a cube (aav_gazebo models/obstacle)
+BOX = 1.0               # m: the bench's obstacle, a cube (aav_sim_models models/obstacle)
 UP_TIME = 150.0         # s for the simulator, the EKF, then navigation, to come up
 SETTLE = 5.0            # s after that, before the first goal
 READY_TIME = 30.0       # s for the sensor watchdog to let the car drive, before each leg
@@ -856,8 +855,8 @@ def ndt_calibration(results):
 
 
 def gps_off(rec):
-    """Stop the GPS (aav_gazebo faults: gazebo_gps fault.gps stop); return a note."""
-    out = subprocess.run(['ros2', 'param', 'set', '/gazebo_gps', 'fault.gps', 'stop'],
+    """Stop the GPS (aav_sim_models faults: sim_gps fault.gps stop); return a note."""
+    out = subprocess.run(['ros2', 'param', 'set', '/sim_gps', 'fault.gps', 'stop'],
                          capture_output=True, text=True, timeout=60)
     rec.spin_for(2.0)
     return ('the GPS stopped' if out.returncode == 0 and 'successful' in out.stdout.lower()
@@ -866,11 +865,10 @@ def gps_off(rec):
 
 def private(used):
     """
-    Pick an unused ROS domain and Gazebo partition, and set them, before rclpy.init.
+    Pick an unused ROS domain, and set it, before rclpy.init.
 
     The domain: AAV_SIM_DOMAIN's for the first run, the next ones up from it for the
-    later runs (never above 232: Fast DDS breaks there), else one from 150-230. The
-    partition: AAV_SIM_PARTITION (default controller_compare), then the domain.
+    later runs (never above 232: Fast DDS breaks there), else one from 150-230.
     """
     first = os.environ.get('AAV_SIM_DOMAIN')
     above = [str(d) for d in range(int(first), 233) if str(d) not in used] if first else []
@@ -880,8 +878,6 @@ def private(used):
         domain = str(random.choice([d for d in range(150, 231) if str(d) not in used]))
     used.add(domain)
     os.environ['ROS_DOMAIN_ID'] = domain
-    prefix = os.environ.get('AAV_SIM_PARTITION', 'controller_compare')
-    os.environ['GZ_PARTITION'] = f'{prefix}_{domain}'
     return domain
 
 
@@ -926,7 +922,7 @@ def campus_route(start, end):
 
 def place_box(name, x, y):
     """Put the bench's 1 m box at (x, y) by our simulator's spawn_entity: what it said."""
-    model = os.path.join(ROOT, 'ros', 'sim', 'aav_gazebo', 'models', 'obstacle', 'model.sdf')
+    model = os.path.join(ROOT, 'ros', 'sim', 'aav_sim_models', 'models', 'obstacle', 'model.sdf')
     try:
         done = subprocess.run(
             ['ros2', 'service', 'call', '/vehicle/sim/spawn_entity',
@@ -1077,7 +1073,7 @@ def session(tour, follower, args, out_dir, body, used, run=1):
         command.append(f'sim_speed:={args.speed:g}')
     if args.lag_scale != 1.0:
         # Only Gazebo's adapter scales the car's lags (sim.launch.py refuses it otherwise).
-        command += [f'lag_scale:={args.lag_scale:g}', 'simulator:=gazebo']
+        command += [f'lag_scale:={args.lag_scale:g}']
     domain = private(used)
     print(f'\n== {tour}, {label}' + (f' (run {run} of {args.runs})' if args.runs > 1
                                      else '') +

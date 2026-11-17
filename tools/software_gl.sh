@@ -2,19 +2,22 @@
 # Run a command with Mesa's software renderers, so a computer with no GPU draws pictures:
 # GitHub's runners, oirp-spss.
 #
-#   tools/software_gl.sh pixi run sim-check                   # ours: its cameras on lavapipe
-#   tools/software_gl.sh pixi run sim-check --simulator gazebo --obstacle
-#   tools/software_gl.sh --force pixi run sim-cameras --bench 100   # CI's way, beside a GPU
+#   tools/software_gl.sh pixi run sim-check --obstacle        # Ravensim's cameras on lavapipe
+#   tools/software_gl.sh --force pixi run sim-check --obstacle  # CI's way, beside a GPU
+#   tools/software_gl.sh --force pixi run sim-cameras --bench 100
 #
 # | For | Mesa's | Through |
 # |---|---|---|
-# | Gazebo's cameras and lidar | llvmpipe | OpenGL (EGL) |
-# | our simulator's cameras (Bevy, wgpu) | lavapipe (llvmpipe inside) | Vulkan |
+# | Ravensim's cameras (Bevy, wgpu) | lavapipe (llvmpipe inside) | Vulkan |
+# | anything on OpenGL (EGL), on Linux | llvmpipe | OpenGL (EGL) |
 #
 # Why: our environment's EGL (libglvnd) and Vulkan loader have no driver of their own; they
-# use the computer's. With none (no Mesa, no NVIDIA), Gazebo crashes as the world loads
-# ("Unable to load Ogre Plugin[.../RenderSystem_GL3Plus]", then a segfault; 23 Oct), and
-# our cameras find no adapter ("no GPU to draw with"; 15 Nov).
+# use the computer's. With none (no Mesa, no NVIDIA), the cameras find no adapter ("no GPU
+# to draw with"; 15 Nov).
+#
+# Drawn in software, the cameras can't keep up with real time, so this sets AAV_SOFTWARE_GL=1
+# and Ravensim's clock waits for each picture (camera_lockstep:=auto): the world runs
+# slower than real time, and every camera gets its full rate in sim time.
 #
 # Mesa comes from conda-forge through `pixi exec`, into pixi's cache, not into pixi.lock:
 # Mesa in the default environment would also replace a Linux laptop's own GPU driver.
@@ -43,7 +46,7 @@ fi
 if [[ "$system" == Linux ]]; then
   specs=(--spec "$MESA_GL" --spec "$MESA_VK" --spec "$LOADER")
 else
-  specs=(--spec "$MESA_VK" --spec "$LOADER")   # no EGL on a Mac: Gazebo there uses Metal
+  specs=(--spec "$MESA_VK" --spec "$LOADER")   # no EGL on a Mac: only Vulkan
 fi
 prefix=$(pixi exec "${specs[@]}" -- sh -c 'echo "$CONDA_PREFIX"')
 icd=$(ls "$prefix"/share/vulkan/icd.d/lvp_icd.*.json 2>/dev/null | head -n 1 || true)
@@ -79,11 +82,14 @@ EOF
 else
   # macOS takes DYLD_LIBRARY_PATH out of every program started through /usr/bin/env, so
   # the folder goes under its own name: tools/sim_cameras.sh and the launch put it back
-  # (aav_gazebo worlds.sim_cameras_env).
+  # (aav_sim_models worlds.sim_cameras_env).
   export AAV_VULKAN_LIB_DIR="$here/lib"
   export AAV_SIM_CAMERAS_FEATURES=vulkan-on-mac
   echo "software_gl.sh: Vulkan draws with Mesa lavapipe ($prefix)" >&2
 fi
+# Ravensim's clock then waits for each camera's picture (camera_lockstep:=auto): drawn
+# in software, the cameras can't keep up with real time.
+export AAV_SOFTWARE_GL=1
 if [[ "$force" == true ]]; then
   export WGPU_FORCE_FALLBACK_ADAPTER=1
   echo "software_gl.sh: --force: a software adapter only, even beside a GPU" >&2

@@ -2,7 +2,7 @@
 carla.launch.py (aav_bringup) and aav_carla's carla.launch.py: what they would start.
 
 Nothing starts: no ROS, no CARLA. The whole stack's part must match sim.launch.py's, with
-carla_adapter for gazebo_adapter; aav_carla's part must hand carla_adapter the right
+carla_adapter for sim_adapter; aav_carla's part must hand carla_adapter the right
 parameters, and refuse bad ones before anything starts.
 """
 

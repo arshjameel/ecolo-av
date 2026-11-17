@@ -25,7 +25,7 @@ car told to stop is predicted to stop (TODO 207; before, ekf_local kept its last
 ran on 15 m while the car stood). The wheels, when they speak, still decide.
 
 global_ekf:=false (a test, sim only: sim.launch.py truth_pose:=true): no ekf_global;
-aav_gazebo's truth_localizer publishes /localization/odom/global and map -> odom from the
+aav_sim_models's truth_localizer publishes /localization/odom/global and map -> odom from the
 simulator's truth instead.
 
 ndt_ekf:=true (a trial, docs/trials.md): ekf_global also takes NDT's pose,

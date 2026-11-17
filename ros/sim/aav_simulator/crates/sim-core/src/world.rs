@@ -189,7 +189,7 @@ impl World {
         }
     }
 
-    /// Read a world file. `models`: where `model://name` may be (aav_gazebo's
+    /// Read a world file. `models`: where `model://name` may be (aav_sim_models's
     /// `models/`, then GZ_SIM_RESOURCE_PATH's folders).
     ///
     /// # Errors

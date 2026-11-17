@@ -1,4 +1,4 @@
-//! The worlds Gazebo reads, read by us: aav_gazebo's test lot and road, and the campus if
+//! The worlds Gazebo reads, read by us: aav_sim_models's test lot and road, and the campus if
 //! `pixi run campus` has made it.
 
 use std::path::{Path, PathBuf};
@@ -15,7 +15,7 @@ fn repo() -> PathBuf {
 }
 
 fn gazebo() -> PathBuf {
-    repo().join("ros/sim/aav_gazebo")
+    repo().join("ros/sim/aav_sim_models")
 }
 
 fn load(name: &str) -> World {

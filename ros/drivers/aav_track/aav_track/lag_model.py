@@ -10,7 +10,7 @@ tick. test_lag_model.py checks the two give the same states, step for step:
 
 | Part | Model (one step dt) |
 |---|---|
-| speed loop | the spine's PI (spine-core speed_loop.rs; aav_gazebo SpeedLoop) |
+| speed loop | the spine's PI (spine-core speed_loop.rs; aav_sim_models SpeedLoop) |
 | throttle, brake | first-order lags, exact: x += (command - x)(1 - exp(-dt / lag)) |
 | speed | a = max_accel throttle (past its deadband) - max_brake brake - drag v |
 | | the brake and drag never reverse v |

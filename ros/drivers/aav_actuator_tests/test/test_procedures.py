@@ -11,7 +11,7 @@ import math
 from aav_actuator_tests import procedures as pr
 from aav_actuator_tests import reports
 from aav_ego.ackermann import Limits
-from aav_gazebo.actuator_model import ActuatorConfig
+from aav_sim_models.actuator_model import ActuatorConfig
 import fake_car
 import pytest
 

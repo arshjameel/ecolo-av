@@ -112,7 +112,7 @@ files hand them to every part that needs them.
 | ego | the wheelbase and steering limit, for the bicycle model |
 | URDF (`robot_state_publisher`) | where each sensor sits |
 | Navigation (costmaps, planner, mppi_lag, stop zone) | the footprint, and the tightest turn: wheelbase ÷ tan(max steer) = 2.86 m |
-| `turtlesim_adapter`, `gazebo_adapter` | the wheelbase, so the turtle and the simulated car turn like the car |
+| `turtlesim_adapter`, `sim_adapter` | the wheelbase, so the turtle and the simulated car turn like the car |
 | `aav_spine`, `aav_legacy` | the wheelbase, track and wheel size |
 | The car model (`car_model.py`, and its Rust twin) | the actuators' lags and dead times, the mass: shared by ego, the simulators and the lag-aware followers |
 
@@ -128,7 +128,7 @@ margins with the delays): [The car as a linear model](vehicle-model.md).
 | The CAN spine, later (`actuators:=can`) | `aav_spine_bridge` | `spine_bridge` on the Orin: CAN frames for the spine firmware |
 | turtlesim | `aav_turtlesim` | the stock turtlesim, steered with the bicycle model |
 | Our own simulator (`pixi run sim`, the default since 8 Nov) | `aav_simulator`, `aav_sim_cameras` | Rust: the worlds, the car, lidar, radar, IMU, GPS, wheels and cameras, on the real car's topics ([page](own-simulator.md)) |
-| Gazebo (`simulator:=gazebo`) | `aav_gazebo` | the same car and sensors; for computers with no GPU |
+| Gazebo (`simulator:=gazebo`) | `aav_sim_models` | the same car and sensors; for computers with no GPU |
 | CARLA | `aav_carla` | adapter ready, untested: needs the NVIDIA computer ([CARLA](carla.md)) |
 
 Each backend reports the car's speed back on `/vehicle/odom`. That closes the loop into
@@ -207,7 +207,7 @@ car) change.
 |---|---|---|
 | `pixi run turtle` | 9, 23 | the whole command path on one line: `scripted_driver` → `twist_mux` → `ego` → `turtlesim_adapter`, and `/vehicle/odom` back into `ekf_local` |
 | `pixi run bench` | 27, 50 | the stand-ins on the left (`mock_*`, `spine_sim`); `/vehicle/bench/truth` feeding every mock; `spine_bridge` and `spine_sim` talking over `/can/tx`, `/can/rx` |
-| `pixi run sim simulator:=gazebo` (empty world) | 19, 38 | no mocks: `gz_bridge` brings in `/gazebo/imu` and `/gazebo/navsat`, and `gazebo_imu` and `gazebo_gps` turn them into `/sensors/...` |
+| `pixi run sim simulator:=gazebo` (empty world) | 19, 38 | no mocks: `gz_bridge` brings in `/vehicle/sim/imu` and `/vehicle/sim/navsat`, and `sim_imu` and `sim_gps` turn them into `/sensors/...` |
 
 ### The turtle
 

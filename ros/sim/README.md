@@ -11,7 +11,7 @@ topics as the real car, so everything upstream runs unchanged.
 | Package | Target | What it is |
 |---|---|---|
 | [aav_turtlesim](./aav_turtlesim/README.md) | turtle | turtlesim driven like a car: the quickest whole-loop test |
-| [aav_gazebo](./aav_gazebo/README.md) | gazebo | Gazebo Harmonic: worlds, models, an actuator model and one node per sensor, with faults to set on purpose |
+| [aav_sim_models](./aav_sim_models/README.md) | gazebo | Gazebo Harmonic: worlds, models, an actuator model and one node per sensor, with faults to set on purpose |
 | [aav_simulator](./aav_simulator/README.md) | gazebo (`simulator:=own`, the default) | our own simulator in Rust, in `gz sim`'s place: Gazebo's worlds, the car, the lidar, radar, IMU, GPS and clock on the bridges' topics; the cameras through `aav_sim_cameras` |
 | [aav_spine_sim](./aav_spine_sim/README.md) | bench | the real `spine-core` logic (Rust) on the CAN frames, driving a car model or Gazebo's car |
 | [aav_bench](./aav_bench/README.md) | bench | pretend sensors that match the real drivers' topics, types, frames and QoS |

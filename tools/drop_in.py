@@ -5,17 +5,18 @@ Ben, 5 Nov: "just swap out and test". No ROS here; tools/drop_in_check.py measur
 tools/tests/test_drop_in.py tests this.
 
 A topic's `drop_in:` in docs/interfaces.yaml holds what its stream must be, beyond the name
-and type: `min_hz`, `max_hz`, `frame` and `reliable`. Gazebo, our simulator and the real
-sensor must all pass it. Passing is necessary, not enough: it says nothing of a stream's values.
+and type: `min_hz`, `max_hz`, `frame` and `reliable`. Ravensim and the real sensor must
+both pass it. Passing is necessary, not enough: it says nothing of a stream's values.
 """
 
 # The nodes that may read a simulator's own topics. Anything else on those topics would stop
 # the simulator being a drop-in, or let a test's truth reach the code that drives.
 SIM_ONLY_PREFIXES = ('/vehicle/sim/', '/control/sim/')
-# sim_cameras is part of our simulator: it draws the cameras where the truth puts the car.
-SIM_READERS = {'gazebo_adapter', 'gazebo_gps', 'spine_sim', 'chase_jpeg', 'debug_hud',
+# Ravensim's own parts: the simulator, its cameras (sim_cameras: drawn where the truth puts
+# the car) and the nodes that turn its raw streams into the car's (sim_*).
+SIM_READERS = {'sim_adapter', 'sim_gps', 'spine_sim', 'chase_jpeg', 'debug_hud',
                'dev_window', 'hw_panel', 'spine_bridge', 'legacy_uart_bridge', 'foxglove_bridge',
-               'sim_cameras'}
+               'sim_cameras', 'simulator', 'sim_imu', 'sim_radar', 'sim_camera_relay'}
 
 
 def rules(spec):

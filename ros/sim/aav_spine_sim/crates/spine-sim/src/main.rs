@@ -1,19 +1,19 @@
-//! spine_sim: the spine, on a laptop (bench mode), or in Gazebo (the spine profile).
+//! spine_sim: the spine, on a laptop (bench mode), or in Ravensim (the spine profile).
 //!
 //! The firmware's real logic (spine-core) runs here on the CAN frames spine_bridge sends,
 //! and drives a car instead of motors. It answers with the frames the real spine sends, so
 //! nothing above it can tell the difference. Which car is the `car` parameter:
 //!
 //!   model   (the bench) a model of the car, in bench-car, on this computer's clock
-//!   gazebo  (sim.launch.py spine:=true) Gazebo's car: the spine's outputs go to
-//!           gazebo_adapter's actuator model, which moves Gazebo's car and sends back what
-//!           it measured. The spine runs on Gazebo's clock (use_sim_time), 10 ms a tick.
+//!   ravensim(sim.launch.py spine:=true) Ravensim's car: the spine's outputs go to
+//!           sim_adapter's actuator model, which moves Ravensim's car and sends back what
+//!           it measured. The spine runs on Ravensim's clock (use_sim_time), 10 ms a tick.
 //!
 //! Subscribes  /can/tx                       can_msgs/Frame    what spine_bridge puts on the bus
 //!             /vehicle/bench/hw_estop       std_msgs/Bool     true = the hardware e-stop is pressed
 //!             /vehicle/bench/driver_faults  std_msgs/UInt16   pretend a driver failed (fault bits)
-//!             car:=gazebo only:
-//!             /vehicle/sim/wheels        aav_interfaces/WheelSpeeds   Gazebo's wheels: the
+//!             car:=ravensim only:
+//!             /vehicle/sim/wheels        aav_interfaces/WheelSpeeds   Ravensim's wheels: the
 //!                                           front two for the wheel nodes, the rear two's mean
 //!                                           for the spine's measured speed (its encoder)
 //!             /vehicle/sim/steering      aav_interfaces/ActuatorState the model's angle
@@ -23,7 +23,7 @@
 //!             car:=model only:
 //!             /vehicle/bench/truth          nav_msgs/Odometry where the model car really is (map
 //!                                                             frame, 50 Hz), for the pretend sensors
-//!             car:=gazebo only:
+//!             car:=ravensim only:
 //!             /vehicle/sim/spine_outputs aav_interfaces/SpineOutputs  throttle, brake, reverse
 //!                                           and steering target, every tick (100 Hz)
 //! Parameters  car (model), wheelbase, track, wheel_radius (m), max_steering (rad), start_x,
@@ -54,22 +54,24 @@ use ros_env::std_msgs::msg::{Bool, UInt16};
 
 /// The spine's tick, as on the board (ms).
 const TICK_MS: u32 = 10;
-/// Gazebo's clock: more than this many ticks behind is a stall or a reset, not catch-up.
+/// Ravensim's clock: more than this many ticks behind is a stall or a reset, not catch-up.
 const MAX_CATCH_UP: i64 = 10;
 
 /// Which car the spine drives.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CarKind {
     Model,
-    Gazebo,
+    Ravensim,
 }
 
 impl CarKind {
     fn parse(name: &str) -> Result<Self> {
         match name {
             "model" => Ok(CarKind::Model),
-            "gazebo" => Ok(CarKind::Gazebo),
-            other => bail!("car:={other}: use model (the bench) or gazebo"),
+            "ravensim" => Ok(CarKind::Ravensim),
+            // car:=gazebo, the name before Gazebo was removed (16 Nov): for one release.
+            "gazebo" => Ok(CarKind::Ravensim),
+            other => bail!("car:={other}: use model (the bench) or ravensim"),
         }
     }
 }
@@ -160,13 +162,13 @@ fn main() -> Result<()> {
             })?;
             (handle, keep)
         }
-        CarKind::Gazebo => {
+        CarKind::Ravensim => {
             let car = MeasuredCar::new(plant.ticks_per_metre);
             let bench = Bench::with_car(spine, car, wheels).map_err(bad_wheels)?;
             log_info!(
                 node.logger(),
-                "The spine's firmware logic, driving Gazebo's car through the actuator model, \
-                 on Gazebo's clock. Arm it with /spine/arm, as on the real car."
+                "The spine's firmware logic, driving Ravensim's car through the actuator model, \
+                 on Ravensim's clock. Arm it with /spine/arm, as on the real car."
             );
             let bench = Arc::new(Mutex::new(bench));
             let mut keep = switches(&node, &bench)?;
@@ -238,7 +240,7 @@ fn switches<C: Car + Send + 'static>(node: &Node, bench: &Arc<Mutex<Bench<C>>>) 
     Ok(vec![Box::new(frames_in), Box::new(estop), Box::new(faults)])
 }
 
-/// What Gazebo's car measured, from gazebo_adapter.
+/// What Ravensim's car measured, from sim_adapter.
 fn measurements(node: &Node, bench: &Arc<Mutex<Bench<MeasuredCar>>>) -> Result<Keep> {
     let wheels = {
         let bench = Arc::clone(bench);
@@ -271,7 +273,7 @@ fn measurements(node: &Node, bench: &Arc<Mutex<Bench<MeasuredCar>>>) -> Result<K
 enum Pacing {
     /// This computer's clock: a steady 100 Hz; a late tick doesn't catch up.
     Wall,
-    /// The node's clock (Gazebo's, with use_sim_time): one tick per 10 ms of it, catching
+    /// The node's clock (Ravensim's, with use_sim_time): one tick per 10 ms of it, catching
     /// up as it runs; nothing while it stands still.
     NodeClock,
 }

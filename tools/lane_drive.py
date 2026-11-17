@@ -23,8 +23,8 @@ lane_pose:=true (TODO 155): the lane finder into ekf_global as a sideways correc
 
     pixi run tools/ros.sh --local python3 tools/lane_drive.py --lane-pose   # against without
 
-On its own ROS domain (AAV_SIM_DOMAIN, else a free one) and Gazebo partition, this computer
-only. The launch log goes to /tmp/aav-lane-drive.log (AAV_SIM_LOG moves it).
+On its own ROS domain (AAV_SIM_DOMAIN, else a free one), this computer only. The launch
+log goes to /tmp/aav-lane-drive.log (AAV_SIM_LOG moves it).
 Subscribes: /vehicle/sim/truth, /perception/lane/geometry, /localization/odom/global.
 Publishes nothing.
 """
@@ -46,11 +46,9 @@ else:
     DOMAIN = str(free_domain())
 os.environ['ROS_DOMAIN_ID'] = DOMAIN
 os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
-os.environ['GZ_IP'] = '127.0.0.1'
-os.environ['GZ_PARTITION'] = os.environ.get('AAV_SIM_PARTITION', f'lane_drive_{DOMAIN}')
 
-from aav_gazebo.worlds import DEFAULT_SIMULATOR  # noqa: E402
 from aav_lane_geometry.msg import LaneGeometry  # noqa: E402
+from aav_sim_models.worlds import DEFAULT_SIMULATOR  # noqa: E402
 import lane_score  # noqa: E402
 from nav_msgs.msg import Odometry  # noqa: E402
 import rclpy  # noqa: E402

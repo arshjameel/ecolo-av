@@ -38,7 +38,7 @@ pub const BENCH_WHEELS: WheelConfig = WheelConfig {
 pub type Frame = (u16, [u8; 8]);
 
 /// The spine and the car it drives: the bench's model car ([`Plant`], the default) or
-/// one measured elsewhere, such as Gazebo's ([`crate::MeasuredCar`]).
+/// one measured elsewhere, such as Ravensim's ([`crate::MeasuredCar`]).
 pub struct Bench<C: Car = Plant> {
     spine: Spine,
     plant: C,
@@ -499,7 +499,7 @@ mod tests {
         }
     }
 
-    /// The spine driving a car that something else moves (Gazebo): the same logic.
+    /// The spine driving a car that something else moves (Ravensim): the same logic.
     #[test]
     fn a_measured_car_gets_the_same_spine_and_its_watchdog() {
         use crate::MeasuredCar;
@@ -535,7 +535,7 @@ mod tests {
         );
         assert!(out.steering_target > 0.0, "steering toward 0.2: {out:?}");
 
-        // The car moves (as Gazebo says): the wheel nodes count it.
+        // The car moves (as Ravensim says): the wheel nodes count it.
         bench.car_mut().measure_speed(1.0);
         bench.car_mut().measure_front_wheels([1.0, 1.0]);
         let mut frames = Vec::new();

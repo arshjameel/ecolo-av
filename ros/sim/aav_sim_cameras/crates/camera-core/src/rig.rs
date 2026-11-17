@@ -68,7 +68,7 @@ pub struct CameraSpec {
     /// Sees the car's own body (only the chase camera).
     pub sees_car: bool,
     /// The picture on this topic instead of `<topic>/image_raw` (camera_info stays): the
-    /// faults relay, as Gazebo's bridge does it (`aav_gazebo` `faults.relayed`).
+    /// faults relay (`sim_camera_relay`, `aav_sim_models` `faults.CAMERA_RELAYED`).
     pub image_override: Option<String>,
 }
 

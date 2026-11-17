@@ -80,10 +80,10 @@ class Run:
                                       lambda m: self.heartbeats.append(m.counter), 100)
         self.test.create_subscription(String, '/safety/output_mux/state', self.on_state, 10)
         if gazebo:
-            self.gazebo = rclpy.create_node('gazebo_adapter')
+            self.gazebo = rclpy.create_node('sim_adapter')
             self.nodes.append(self.gazebo)
             pub = self.gazebo.create_publisher(DataSource, '/system/source', LATCHED)
-            pub.publish(DataSource(announcer='gazebo_adapter', sensors=[SensorSource(
+            pub.publish(DataSource(announcer='sim_adapter', sensors=[SensorSource(
                 name='camera_front_left', topic='/sensors/camera/front_left/image_raw',
                 source=SensorSource.SIM)]))
         for n in self.nodes:

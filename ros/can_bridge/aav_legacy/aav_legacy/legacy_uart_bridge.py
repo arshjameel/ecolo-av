@@ -58,7 +58,7 @@ Writes      frames at rate_hz on the serial port (uart_relay, legacy_protocol):
                               today: no counter, and that firmware has no timeout
 
 port is a device (/dev/ttyAMA0) or any pyserial URL: in Gazebo, socket://127.0.0.1:<n> to
-gazebo_esp32, the C++ firmware's stand-in (sim.launch.py esp32:=true). If it won't open,
+sim_esp32, the C++ firmware's stand-in (sim.launch.py esp32:=true). If it won't open,
 the bridge says so and tries again every second, rather than dying: no frames go out
 until it opens, and the ESP32 keeps (or, from boot, holds) its brake. source (real, the
 default; sim in Gazebo) is what it announces on system/source.

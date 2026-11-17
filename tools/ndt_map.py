@@ -26,7 +26,7 @@ dropped; all of it is thinned to one point per 10 cm cube. A box flush with the 
 the lidar's noise through: the roof's corners and the front cameras drew a ghost double
 line 1.5 m up along the whole route (found 30 Oct).
 
-The truth is used only here, offline: aav_ndt's node never reads it (aav_gazebo's rule).
+The truth is used only here, offline: aav_ndt's node never reads it (aav_sim_models's rule).
 The mapping route is not one of the tours of pixi run measure controllers, and has no obstacle.
 Gazebo's lidar noise isn't seeded by us, so two drives give maps a few millimetres apart.
 

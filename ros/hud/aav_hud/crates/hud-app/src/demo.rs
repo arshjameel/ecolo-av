@@ -260,7 +260,7 @@ fn output_mux(t: f32) -> &'static str {
     match t % 60.0 {
         p if p < 2.0 => "WAIT - car: all REAL, settling for 2 s",
         p if (46.0..54.0).contains(&p) => {
-            "STOP - target car needs REAL - camera_front_left is SIM (gazebo_adapter) - \
+            "STOP - target car needs REAL - camera_front_left is SIM (sim_adapter) - \
              latched: /safety/output_mux/clear"
         }
         p if (54.0..56.0).contains(&p) => "WAIT - car: all REAL, settling for 2 s",

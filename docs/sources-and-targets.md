@@ -27,7 +27,7 @@ everything is real. Package `aav_io_mux`, built 23 Oct.
  Gazebo        ├─► /sensors/... ──► sensor_mux         │                        legacy_uart_bridge
  bench mocks   │   /vehicle/...      │ /system/sensor_mux/state
  a bag (replay)┘   /system/source ───┤ (ok? which source?)
-                                     ▼                 ├─► /control/sim/.. ──► gazebo_adapter
+                                     ▼                 ├─► /control/sim/.. ──► sim_adapter
  drivers ─► twist_mux ─► ego ─► output_mux ────────────┤   /control/bench/... ──► spine_bridge (bench)
                     /ego/actuator_cmd  (target:=car)   └─► /control/turtle/.. ──► turtlesim_adapter
 ```

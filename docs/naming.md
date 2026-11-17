@@ -108,7 +108,7 @@ Changed from the proposal, once the code showed it:
 |---|---|
 | `/fromLL`, `/toLL`, `/datum` (navsat_transform's services) | Nav2's `waypoint_follower` calls `/fromLL` by its absolute name. Moving them needs a remap on two nodes, one of them inside Nav2: not a clean remap |
 | `/spine/arm`, `/scripted_drive`, `/ekf_*/set_pose` | services and actions, not topics: the rule is for topics |
-| `/gazebo/cmd_vel`, `/gazebo/odom`, `/gazebo/imu`, `/gazebo/navsat` | Gazebo's own side of `gazebo_adapter` and its sensor nodes, like `/turtle1/...` for turtlesim; not in the contract |
+| `/vehicle/sim/cmd_vel`, `/vehicle/sim/odom`, `/vehicle/sim/imu`, `/vehicle/sim/navsat` | Gazebo's own side of `sim_adapter` and its sensor nodes, like `/turtle1/...` for turtlesim; not in the contract |
 | `/map`, `/plan`, `/goal_pose`, `/cmd_vel_nav`, the costmaps | Nav2's own, for now |
 | Bags recorded before 15 Oct | they hold the old names: play them with `--remap` (for example `/cmd_vel:=/control/cmd_vel`) |
 

@@ -149,7 +149,7 @@ From the design doc's next steps, in order.
 | The static map → odom used with `gps:=false` isn't in the contract's `/tf_static` | fixed: `map_to_odom_no_gps` |
 | `/sensors/radar/points` is best-effort; the contract doesn't say | fixed |
 | `firmware/spine/Cargo.toml` points to a README that doesn't exist | fixed: the comment changed, and `firmware/spine/README.md` exists |
-| `aav_gazebo`'s test skips at module level, which `CLAUDE.md` says not to do | fixed |
+| `aav_sim_models`'s test skips at module level, which `CLAUDE.md` says not to do | fixed |
 | The HUD's camera address differs: 192.168.1.101 in the old back end, .118 in the app | fixed: the app gets the picture from its back end (`/camera/latest.png`) |
 | `car gps:=false` still starts the GPS driver when the machine file says `gps: true` | fixed, with a test for it and the other arguments (`aav_bringup/test/test_car_launch.py`) |
 | Ctrl-C makes our Python nodes print an error while they shut down (Ctrl-C arrives twice) | fixed: 0 tracebacks from a full bench; the radar clustering's C++ can still crash inside Fast DDS |

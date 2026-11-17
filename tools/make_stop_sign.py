@@ -2,7 +2,7 @@
 """
 Make the Gazebo road world's stop sign: an octagon mesh, and the picture painted on it.
 
-Writes, in ros/sim/aav_gazebo/models/stop_sign/:
+Writes, in ros/sim/aav_sim_models/models/stop_sign/:
   meshes/stop_sign.obj                the plate: a flat octagon, its face looking along +x
   materials/textures/stop_sign.png    the face: red, a white rim, STOP in white
 
@@ -22,7 +22,7 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-MODEL = ROOT / 'ros' / 'sim' / 'aav_gazebo' / 'models' / 'stop_sign'
+MODEL = ROOT / 'ros' / 'sim' / 'aav_sim_models' / 'models' / 'stop_sign'
 
 ACROSS = 0.75         # m between opposite flats: the common Ontario size (Ra-1, 750 mm)
 THICKNESS = 0.004     # m: the plate, front face to back

@@ -1,7 +1,7 @@
 """
 A pretend car for the tests: ego's model, then Gazebo's actuator model, then a flat plane.
 
-The same chain as `pixi run sim` (ego -> gazebo_adapter's actuator model -> the car), with
+The same chain as `pixi run sim` (ego -> sim_adapter's actuator model -> the car), with
 no ROS or Gazebo, so a drive to B can be checked end to end in a second.
 """
 
@@ -12,7 +12,7 @@ from typing import List, Tuple
 from aav_drive_to_point.approach import STOPPING
 from aav_drive_to_point.line import Pose
 from aav_ego.ackermann import EgoModel, Limits
-from aav_gazebo.actuator_model import ActuatorConfig, Actuators
+from aav_sim_models.actuator_model import ActuatorConfig, Actuators
 
 
 @dataclass

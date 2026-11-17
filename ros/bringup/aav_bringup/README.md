@@ -14,7 +14,7 @@ files, foxglove_bridge's settings and RViz layouts: no nodes of its own.
 | Profile | Launch file | Command | Who plays the car | Source | Clock |
 |---|---|---|---|---|---|
 | turtle | `turtle.launch.py` | `pixi run turtle` | turtlesim (`aav_turtlesim`) | SIM | wall |
-| sim | `sim.launch.py` | `pixi run sim world:=road` | our simulator (`aav_simulator`, the default since 8 Nov) or Gazebo (`simulator:=gazebo`), both through `aav_gazebo`; with `spine:=true`, `spine_bridge` + `spine_sim` in the loop | SIM | simulated |
+| sim | `sim.launch.py` | `pixi run sim world:=road` | our simulator (`aav_simulator`, the default since 8 Nov) or Gazebo (`simulator:=gazebo`), both through `aav_sim_models`; with `spine:=true`, `spine_bridge` + `spine_sim` in the loop | SIM | simulated |
 | bench | `bench.launch.py` | `pixi run bench` | `spine_sim` and mock sensors (`aav_bench`, `aav_spine_sim`) | BENCH | wall |
 | car | `car.launch.py machine:=<m>` | `pixi run car orin` | the real car: `legacy_uart_bridge` (`actuators:=uart`, today) or `spine_bridge` (`actuators:=can`) | REAL | wall |
 | carla | `carla.launch.py host:=<ip>` | `pixi run carla-car host:=...` | CARLA (`aav_carla`'s `carla_adapter`) | SIM | CARLA's |

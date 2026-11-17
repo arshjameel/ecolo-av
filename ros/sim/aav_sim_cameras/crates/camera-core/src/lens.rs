@@ -66,7 +66,7 @@ pub struct Lens {
 }
 
 impl Lens {
-    /// From the focal length in pixels (`aav.sensors.gazebo.xacro`'s `camera_focal`).
+    /// From the focal length in pixels (`camera_focal`, as Gazebo's URDF had it until 16 Nov).
     ///
     /// # Errors
     ///

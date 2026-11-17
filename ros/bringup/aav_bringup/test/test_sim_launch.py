@@ -1,8 +1,8 @@
 """
-sim.launch.py and aav_gazebo's gazebo.launch.py: what each world and argument starts.
+sim.launch.py and aav_sim_models's ravensim.launch.py: what each world and argument starts.
 
 Each test runs a launch file's own setup with some arguments, and looks at what it would
-start. Nothing starts: no ROS, no Gazebo. The defaults must start what `pixi run sim`
+start. Nothing starts: no ROS, no simulator. The defaults must start what `pixi run sim`
 always has; the road and test_lot worlds add the car's sensors and the parts that read
 them (test_lot renders them since 15 Oct). The lidar is on by default (15 Oct).
 """
@@ -32,7 +32,7 @@ def load(package, name):
 
 
 SIM = load('aav_bringup', 'sim.launch.py')
-GAZEBO = load('aav_gazebo', 'gazebo.launch.py')
+RAVENSIM = load('aav_sim_models', 'ravensim.launch.py')
 # What the parts that read the camera are called: they need a world that renders it.
 CAMERA_PARTS = [{'perception': 'true'}, {'camera_obstacles': 'true'}, {'lane': 'true'}]
 
@@ -208,7 +208,7 @@ def test_the_simulated_cars_speed_loop_reaches_ego_and_the_car():
     # TODO 163: the car model runs it, and ego's trace assumes the same one.
     sent = included(started(SIM, speed_loop='firm'))
     assert sent['ego.launch.py']['speed_loop'] == 'firm'
-    assert sent['gazebo.launch.py']['speed_loop'] == 'firm'
+    assert sent['ravensim.launch.py']['speed_loop'] == 'firm'
     assert included(started(SIM))['ego.launch.py']['speed_loop'] == 'default'
     with pytest.raises(ValueError, match='speed_loop:=fast'):
         started(SIM, speed_loop='fast')
@@ -229,12 +229,12 @@ def test_the_stacks_switches_are_declared_empty_so_a_hand_set_one_is_seen():
 def test_the_defaults_start_what_pixi_run_sim_always_has():
     actions = started(SIM)
     sent = included(actions)
-    assert set(sent) == {'gazebo.launch.py', 'mux.launch.py', 'ego.launch.py',
+    assert set(sent) == {'ravensim.launch.py', 'mux.launch.py', 'ego.launch.py',
                          'io_mux.launch.py', 'scripted.launch.py', 'drive_to_point.launch.py',
                          'localization.launch.py', 'navigation.launch.py',
                          'watchdog.launch.py', 'geofence.launch.py'}
-    assert sent['gazebo.launch.py']['world'] == 'empty'
-    # ego's commands reach Gazebo through the output mux, only while everything is SIM.
+    assert sent['ravensim.launch.py']['world'] == 'empty'
+    # ego's commands reach Ravensim through the output mux, only while everything is SIM.
     assert sent['io_mux.launch.py'] == {'target': 'sim', 'source': 'sim'}
     nav = sent['navigation.launch.py']
     assert (nav['radar'], nav['lidar'], nav['stop_zone'], nav['camera_obstacles']) == (
@@ -297,13 +297,13 @@ def test_the_lidar_alone_guards_the_car_with_the_radar_off():
     nav = sent['navigation.launch.py']
     assert (nav['radar'], nav['lidar'], nav['stop_zone']) == ('false', 'true', 'true')
     assert 'radar_clusters.launch.py' not in sent
-    assert sent['gazebo.launch.py']['radar'] == 'false'
+    assert sent['ravensim.launch.py']['radar'] == 'false'
     assert 'radar' not in sent['watchdog.launch.py']['inputs']
 
 
 def test_faults_route_the_camera_and_the_watchdog_can_be_left_out():
     sent = included(started(SIM, world='road', faults='true'))
-    assert sent['gazebo.launch.py']['faults'] == 'true'
+    assert sent['ravensim.launch.py']['faults'] == 'true'
     assert 'camera' in sent['watchdog.launch.py']['inputs'].split(',')
     assert 'watchdog.launch.py' not in included(started(SIM, world='road', watchdog='false'))
 
@@ -343,12 +343,12 @@ def mux_files(**args):
 
 def test_the_geofence_runs_with_its_lock_and_a_sim_sized_circle():
     sent = included(started(SIM))
-    assert sent['geofence.launch.py'] == {'backend': 'gazebo', 'radius': '200.0',
+    assert sent['geofence.launch.py'] == {'backend': 'sim', 'radius': '200.0',
                                           'centre_x': '0.0', 'centre_y': '0.0',
                                           'max_speed': '', 'use_sim_time': 'true'}
     assert included(started(SIM, spine='true'))['geofence.launch.py']['backend'] == 'spine'
     assert included(started(SIM, esp32='true'))['geofence.launch.py']['backend'] == \
-        'gazebo_esp32'
+        'sim_esp32'
     # Its circle round where the car starts, and ego's own cap.
     sent = included(started(SIM, start_y='0.3', sim_speed='3'))
     assert (sent['geofence.launch.py']['centre_y'], sent['geofence.launch.py']['max_speed']) \
@@ -388,7 +388,7 @@ def test_the_road_worlds_full_graph(hud_package):
     assert sent['lane_follower.launch.py'] == {'fake': 'false'}
     assert sent['hud.launch.py'] == {}   # aav_hud's window (15 Oct)
     assert sent['navigation.launch.py']['camera_obstacles'] == 'true'
-    assert (sent['gazebo.launch.py']['obstacle'], sent['gazebo.launch.py']['start_y']) == (
+    assert (sent['ravensim.launch.py']['obstacle'], sent['ravensim.launch.py']['start_y']) == (
         'true', '0.3')
     assert {'stop_sign_watcher', 'camera_obstacles'} <= names(actions)
 
@@ -420,94 +420,112 @@ def test_bad_values_stop_the_launch():
         started(SIM, controller='dwb')
 
 
-# Gazebo's own parts (gz sim, its bridges): said outright, since ours is the default.
-GZ = 'gazebo'
+def cameras_command(actions):
+    """Return the cameras' command line (sim_cameras), or None if they don't run."""
+    for a in actions:
+        if isinstance(a, ExecuteProcess) and \
+                perform_substitutions(LaunchContext(), a.name) == 'sim_cameras':
+            return [perform_substitutions(LaunchContext(), c) for c in a.cmd]
+    return None
 
 
-def test_gazebo_bridges_the_sensors_only_where_the_world_renders_them():
-    actions = started(GAZEBO, simulator=GZ, world='empty', gui='false')
-    assert 'gz_road_bridge' not in names(actions)
-    assert parameters(node(actions, 'gazebo_adapter'))['radar'] is False
+def test_ravensim_runs_the_sensors_only_where_the_world_renders_them():
+    actions = started(RAVENSIM, world='empty')
+    assert parameters(node(actions, 'sim_adapter'))['radar'] is False
+    assert parameters(node(actions, 'simulator'))['lidar'] is False
     # One node per sensor, as on the car; the radar's only where the world renders it.
-    assert {'gazebo_imu', 'gazebo_gps'} <= names(actions)
-    assert not {'gazebo_radar', 'gazebo_camera'} & names(actions)
+    assert {'simulator', 'sim_imu', 'sim_gps'} <= names(actions)
+    assert not {'sim_radar', 'sim_camera_relay', 'sim_cameras'} & names(actions)
     for world in ('road', 'test_lot'):
-        actions = started(GAZEBO, simulator=GZ, world=world, gui='false')
-        assert 'gz_road_bridge' in names(actions), world
-        assert parameters(node(actions, 'gazebo_adapter'))['radar'] is True, world
-        assert 'gazebo_radar' in names(actions), world
-        assert parameters(node(actions, 'gz_road_bridge'))['config_file'].endswith(
-            'bridge_road.yaml'), world
+        actions = started(RAVENSIM, world=world)
+        assert parameters(node(actions, 'sim_adapter'))['radar'] is True, world
+        assert 'sim_radar' in names(actions), world
+        assert parameters(node(actions, 'simulator'))['world'].endswith(f'{world}.sdf')
+        assert cameras_command(actions) is not None, world
+    # No Gazebo left: no gz sim, no bridges, no spawning.
+    road = names(started(RAVENSIM, world='road'))
+    assert not any(n.startswith(('gz_', 'spawn_')) for n in road)
 
 
-def test_gazebo_obstacle_and_start_pose():
-    actions = started(GAZEBO, simulator=GZ, world='road', gui='false', obstacle='true',
-                      start_y='0.3', start_yaw='0.1')
-    spawn = arguments(node(actions, 'spawn_aav'))
-    assert spawn[spawn.index('-y') + 1] == '0.3' and spawn[spawn.index('-Y') + 1] == '0.1'
-    box = arguments(node(actions, 'spawn_obstacle'))
-    assert box[box.index('-file') + 1].endswith(os.path.join('obstacle', 'model.sdf'))
-    assert (box[box.index('-x') + 1], box[box.index('-y') + 1]) == ('15.5', '0.0')
-    assert 'spawn_obstacle' not in names(started(GAZEBO, simulator=GZ, world='road', gui='false'))
+def test_ravensim_obstacle_and_start_pose():
+    actions = started(RAVENSIM, world='road', obstacle='true', start_y='0.3', start_yaw='0.1')
+    sim = parameters(node(actions, 'simulator'))
+    assert (sim['start_y'], sim['start_yaw']) == (0.3, 0.1)
+    assert sim['obstacle'] is True
+    assert sim['obstacle_model'].endswith(os.path.join('obstacle', 'model.sdf'))
+    assert (sim['obstacle_x'], sim['obstacle_y']) == (15.5, 0.0)
+    assert parameters(node(started(RAVENSIM, world='road'), 'simulator'))['obstacle'] is False
 
 
-def test_gazebo_runs_the_simulator_headless_without_a_window():
-    empty = started(GAZEBO, simulator=GZ, world='empty', gui='false')
-    gz = included(empty)['gz_sim.launch.py']['gz_args']
-    assert gz.startswith('-r -s ') and gz.endswith('empty.sdf')
-    # Only Linux renders through EGL; a Mac's ogre2 renders headless on Metal as it is.
-    road = started(GAZEBO, simulator=GZ, world='road', gui='false')
-    road = included(road)['gz_sim.launch.py']['gz_args']
-    assert ('--headless-rendering' in road) == (not GAZEBO.MAC)
-    assert '--headless-rendering' not in gz
+def test_the_cameras_lockstep_under_software_rendering(monkeypatch):
+    monkeypatch.delenv('AAV_SOFTWARE_GL', raising=False)
+    assert parameters(node(started(RAVENSIM, world='road'), 'simulator'))[
+        'camera_lockstep'] is False
+    monkeypatch.setenv('AAV_SOFTWARE_GL', '1')     # tools/software_gl.sh
+    assert parameters(node(started(RAVENSIM, world='road'), 'simulator'))[
+        'camera_lockstep'] is True
+    # Said outright, either way; and never with no cameras to wait for.
+    assert parameters(node(started(RAVENSIM, world='road', camera_lockstep='false'),
+                           'simulator'))['camera_lockstep'] is False
+    assert parameters(node(started(RAVENSIM, world='road', cameras='false'),
+                           'simulator'))['camera_lockstep'] is False
+    monkeypatch.delenv('AAV_SOFTWARE_GL')
+    assert parameters(node(started(RAVENSIM, world='road', camera_lockstep='true'),
+                           'simulator'))['camera_lockstep'] is True
+    sent = included(started(SIM, world='road', camera_lockstep='true'))['ravensim.launch.py']
+    assert sent['camera_lockstep'] == 'true'
+
+
+def test_the_old_simulator_name_still_works_for_a_release():
+    assert 'ravensim.launch.py' in included(started(SIM, simulator='own'))
+    with pytest.raises(ValueError, match='Gazebo was removed'):
+        started(SIM, simulator='gazebo')
 
 
 def test_the_lidar_only_where_the_world_renders_it():
-    road = started(GAZEBO, simulator=GZ, world='road', gui='false', lidar='true')
+    road = started(RAVENSIM, world='road', lidar='true')
     assert included(road)['description.launch.py']['lidar'] == 'true'
-    assert parameters(node(road, 'gz_lidar_bridge'))['config_file'].endswith(
-        'bridge_lidar.yaml')
-    lot = started(GAZEBO, simulator=GZ, world='test_lot', gui='false', lidar='true')
+    assert parameters(node(road, 'simulator'))['lidar'] is True
+    lot = started(RAVENSIM, world='test_lot', lidar='true')
     assert included(lot)['description.launch.py']['lidar'] == 'true'
-    actions = started(GAZEBO, simulator=GZ, world='empty', gui='false', lidar='true')
+    actions = started(RAVENSIM, world='empty', lidar='true')
     assert included(actions)['description.launch.py']['lidar'] == 'false'
-    assert 'gz_lidar_bridge' not in names(actions)
+    assert parameters(node(actions, 'simulator'))['lidar'] is False
 
 
 def test_the_lidar_is_on_by_default():
-    road = started(GAZEBO, simulator=GZ, world='road', gui='false')
+    road = started(RAVENSIM, world='road')
     assert included(road)['description.launch.py']['lidar'] == 'true'
-    assert 'gz_lidar_bridge' in names(road)
-    assert included(started(SIM, world='road'))['gazebo.launch.py']['lidar'] == 'true'
-    off = started(GAZEBO, simulator=GZ, world='road', gui='false', lidar='false')
+    assert included(started(SIM, world='road'))['ravensim.launch.py']['lidar'] == 'true'
+    off = started(RAVENSIM, world='road', lidar='false')
     assert included(off)['description.launch.py']['lidar'] == 'false'
-    assert 'gz_lidar_bridge' not in names(off)
+    assert parameters(node(off, 'simulator'))['lidar'] is False
 
 
 def test_the_chase_camera_only_where_the_world_renders_it():
-    road = started(GAZEBO, simulator=GZ, world='road', gui='false')
+    road = started(RAVENSIM, world='road')
     assert included(road)['description.launch.py']['chase_camera'] == 'true'
-    assert parameters(node(road, 'gz_chase_bridge'))['config_file'].endswith(
-        'bridge_chase.yaml')
+    assert '--cameras' not in cameras_command(road)     # all four, the chase camera too
     jpeg = node(road, 'chase_jpeg')
     assert (jpeg.node_package, jpeg.node_executable) == ('image_transport', 'republish')
-    assert included(started(SIM, world='road'))['gazebo.launch.py']['chase_camera'] == 'true'
-    for actions in (started(GAZEBO, simulator=GZ, world='empty', gui='false'),
-                    started(GAZEBO, simulator=GZ, world='road', gui='false',
-                            chase_camera='false')):
+    assert included(started(SIM, world='road'))['ravensim.launch.py']['chase_camera'] == 'true'
+    for actions in (started(RAVENSIM, world='empty'),
+                    started(RAVENSIM, world='road', chase_camera='false')):
         assert included(actions)['description.launch.py']['chase_camera'] == 'false'
-        assert not {'gz_chase_bridge', 'chase_jpeg'} & names(actions)
+        assert 'chase_jpeg' not in names(actions)
+    cmd = cameras_command(started(RAVENSIM, world='road', chase_camera='false'))
+    assert cmd[cmd.index('--cameras') + 1] == 'front_left,front_right,rear'
 
 
 def test_the_spine_in_the_loop_runs_the_rust_bridge_unless_asked():
     def bridge(**args):
-        actions = started(GAZEBO, world='empty', gui='false', spine='true', **args)
+        actions = started(RAVENSIM, world='empty', spine='true', **args)
         a = node(actions, 'spine_bridge')
         return a.node_package, a.node_executable
 
     assert bridge() == ('aav_spine_bridge', 'spine_bridge')
     assert bridge(bridge='python') == ('aav_spine', 'spine_bridge')
-    sent = included(started(SIM, spine='true', bridge='python'))['gazebo.launch.py']
+    sent = included(started(SIM, spine='true', bridge='python'))['ravensim.launch.py']
     assert sent['bridge'] == 'python'
     with pytest.raises(ValueError, match='bridge:=cpp'):
         bridge(bridge='cpp')
@@ -535,7 +553,7 @@ def campus_files(folder):
     made = folder / 'maps' / 'campus'
     made.mkdir(parents=True)
     (made / 'campus.sdf').write_text(
-        '<sdf><world><plugin name="gz::sim::systems::Sensors"/></world></sdf>')
+        '<sdf><world><plugin name="ravensim::sensors"/></world></sdf>')
     (made / 'place.yaml').write_text('start: {x: 49.25, y: -70.75, yaw: 0.5}\n')
     (folder / 'maps' / 'ndt').mkdir()
     (folder / 'maps' / 'ndt' / 'campus.pcd').write_bytes(b'')
@@ -545,8 +563,8 @@ def test_the_campus_starts_the_car_in_its_lot_with_its_own_maps(tmp_path, monkey
     monkeypatch.chdir(tmp_path)
     campus_files(tmp_path)
     sent = included(started(SIM, world='campus', ndt='true'))
-    gazebo = sent['gazebo.launch.py']
-    assert (gazebo['start_x'], gazebo['start_y'], gazebo['start_yaw']) == (
+    ravensim = sent['ravensim.launch.py']
+    assert (ravensim['start_x'], ravensim['start_y'], ravensim['start_yaw']) == (
         '49.25', '-70.75', '0.5')
     ndt = sent['ndt.launch.py']
     assert (ndt['ndt_x'], ndt['ndt_y']) == ('49.25', '-70.75')
@@ -576,9 +594,9 @@ def test_ndt_on_the_campus_takes_its_chunks_when_they_are_made(tmp_path, monkeyp
 def test_the_campus_start_can_be_moved(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     campus_files(tmp_path)
-    gazebo = included(started(SIM, world='campus', start_x='124', start_y='-98'))[
-        'gazebo.launch.py']
-    assert (gazebo['start_x'], gazebo['start_y']) == ('124', '-98')
+    ravensim = included(started(SIM, world='campus', start_x='124', start_y='-98'))[
+        'ravensim.launch.py']
+    assert (ravensim['start_x'], ravensim['start_y']) == ('124', '-98')
 
 
 def test_ndt_ekf_starts_ndt_and_feeds_its_pose_to_the_global_ekf(tmp_path):

@@ -78,7 +78,7 @@ one's block in `nav2.yaml`).
 ### `aav_description.car_model` (no ROS): one car model
 
 How the car answers a command, for ego (its lead and its trace), Gazebo's adapter and the
-drivers' tests (moved here from `aav_gazebo`'s `actuator_model.py`, 7 Nov; that module
+drivers' tests (moved here from `aav_sim_models`'s `actuator_model.py`, 7 Nov; that module
 still re-exports every name). Its Rust twin is [`car-model/`](./car-model/README.md);
 `car-model/vectors.json` checks both. The page: `docs/vehicle-model.md`, "One car model".
 
@@ -138,7 +138,7 @@ Which lane the car drives in, so the road ahead's line is the lane's centre (W3,
 
 | Lane map | Where | Covers |
 |---|---|---|
-| the road world | `aav_gazebo` `worlds/road.lanes.yaml` (in git) | one lane, 3.5 m between the lines, either way |
+| the road world | `aav_sim_models` `worlds/road.lanes.yaml` (in git) | one lane, 3.5 m between the lines, either way |
 | the campus | `maps/campus/lanes.yaml` (made by `pixi run campus`, not in git) | 129 painted roads; a right lane each way on two-way roads |
 
 Lanelet2 was tried first (14 Nov): its Python modules don't import on a Mac, so this format

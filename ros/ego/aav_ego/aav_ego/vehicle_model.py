@@ -14,7 +14,7 @@ Three parts, each linear about one operating point:
   | lateral      | steering command (rad) | path errors    | 3 / 4 | bicycle, about driving       |
   |              |                        |                |       | straight at speed v          |
 
-Speed, from the actuator model (aav_gazebo actuator_model.py) with the deadband left out:
+Speed, from the actuator model (aav_sim_models actuator_model.py) with the deadband left out:
 
     tau_t * du_a/dt + u_a = u           the throttle's lag (vehicle.yaml throttle_lag)
     dv/dt = a_max * u_a - d * v         full throttle gives a_max; drag d (1/s)

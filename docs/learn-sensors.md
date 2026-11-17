@@ -53,7 +53,7 @@ Every frame's position on the car is in `ros/bringup/aav_description/config/vehi
 | **Good at** | smooth, fast, never jumps |
 | **Bad at** | wheel slip; a wrong wheel size (ours, 0.30 m, is a guess) adds up |
 | **Driver** | `spine_bridge role:=sensors` on the Orin (CAN); `encoder_udp` for the 2025-26 encoder |
-| **Gazebo** | yes: `gazebo_adapter` reads the car model's motion |
+| **Gazebo** | yes: `sim_adapter` reads the car model's motion |
 
 ## 4. Steering angle
 
@@ -103,7 +103,7 @@ All about it: [Learn: GPS](learn-gps.md).
 | **Bad at** | few points; poor height; clutter close up. Publishes best effort: subscribe best effort |
 | **Driver** | `aav_radar_ti` (from the 2025-26 `Nav_Radar`), then `radar_clusters` (`aav_radar_clusters`, Rust) groups the points |
 | **Used by** | the local costmap's obstacle layer, and `collision_monitor` |
-| **Gazebo** | yes, in the road world: a lidar shaped like the radar (`/gazebo/radar/points`, turned into ours by `gazebo_radar`) |
+| **Gazebo** | yes, in the road world: a lidar shaped like the radar (`/vehicle/sim/radar/points`, turned into ours by `sim_radar`) |
 | **Bench** | `mock_radar` draws points on the bench's boxes |
 
 ## 8. Cameras: one Pi 5 at the windscreen
@@ -159,6 +159,6 @@ All about it: [Learn: GPS](learn-gps.md).
 | The front cameras | `ros/sources/aav_camera_stream` |
 | The lidar's scan for Nav2 | `ros/perception/aav_lidar` |
 | Sensor positions | `ros/bringup/aav_description/config/vehicle.yaml` |
-| Gazebo's sensors | `ros/bringup/aav_description/urdf/aav.gazebo.xacro`, `ros/sim/aav_gazebo` |
+| Gazebo's sensors | `ros/bringup/aav_description/urdf/aav.gazebo.xacro`, `ros/sim/aav_sim_models` |
 | The bench's pretend sensors | `ros/sim/aav_bench/aav_bench/sensors.py` |
 | Every topic | `docs/interfaces.yaml`, shown as [Topics](interfaces.md) |

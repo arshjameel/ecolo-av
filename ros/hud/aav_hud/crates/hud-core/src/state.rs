@@ -420,7 +420,7 @@ mod tests {
         let mut s = HudState::new(HudConfig::default());
         assert_eq!(s.origins.banner(), None);
         let a = Announcement {
-            announcer: "gazebo_adapter".into(),
+            announcer: "sim_adapter".into(),
             entries: vec![Entry {
                 name: "vehicle".into(),
                 topic: "/vehicle/status".into(),

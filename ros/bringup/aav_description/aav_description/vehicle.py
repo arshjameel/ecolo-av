@@ -23,7 +23,6 @@ The launch files use this so the car's measurements live in one file:
     vehicle.centre_of_mass(v, front, rear, front_lifted, lift)   # from the scales (M7, M7b)
     vehicle.wheel_angles(v, centre)  # each front wheel's angle for a centre (bicycle) angle
     vehicle.centre_angle(v, inner, outer)       # the reverse: from M5's two measured angles
-    vehicle.gazebo_steering_limit(v) # Gazebo's AckermannSteering steering_limit
 """
 
 import copy
@@ -73,23 +72,6 @@ def centre_angle(v, inner, outer):
     if inner <= 0.0 or outer <= 0.0:
         raise ValueError('measure both wheels turned the same way, each > 0')
     return math.atan(2.0 / (1.0 / math.tan(inner) + 1.0 / math.tan(outer)))
-
-
-def gazebo_steering_limit(v):
-    """
-    Return the steering_limit for Gazebo's AckermannSteering system (rad).
-
-    It is not the centre angle, nor the inner wheel's (gz-sim 8, AckermannSteering.cc,
-    UpdateVelocity): Gazebo turns it into a smallest radius, wheelbase / sin(limit), then
-    sets the centre angle to atan(wheelbase / radius). Given max_steering_angle itself,
-    the car stops at atan(sin(0.5)) = 0.447 rad, not 0.5. So pass the limit whose sine
-    is tan(max_steering_angle): the smallest radius is then wheelbase / tan(max), the
-    bicycle model's, and the centre wheel reaches max_steering_angle.
-    """
-    t = math.tan(v['max_steering_angle'])
-    if not 0.0 < t < 1.0:
-        raise ValueError("Gazebo's AckermannSteering can't steer 45 degrees or more")
-    return math.asin(t)
 
 
 def footprint_points(v):

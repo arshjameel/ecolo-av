@@ -15,9 +15,9 @@ export PYTHONDONTWRITEBYTECODE=1
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 
 # Each package's tests import the package, so pytest runs from inside it.
-# (aav_gazebo's adapter test imports ROS messages, so only `colcon test` runs that one.)
+# (aav_sim_models's adapter test imports ROS messages, so only `colcon test` runs that one.)
 for pkg in ros/ego/aav_ego ros/io_mux/aav_io_mux ros/can_bridge/aav_spine ros/can_bridge/aav_legacy \
-           ros/sim/aav_gazebo ros/sim/aav_carla \
+           ros/sim/aav_sim_models ros/sim/aav_carla \
            ros/drivers/aav_scripted ros/drivers/aav_language ros/drivers/aav_navigation \
            ros/drivers/aav_actuator_tests ros/drivers/aav_drive_to_point ros/drivers/aav_routes ros/drivers/aav_rc \
            ros/drivers/aav_track ros/drivers/aav_diffusion_planner ros/drivers/aav_behaviour \
@@ -64,7 +64,7 @@ if command -v cargo >/dev/null; then
   (cd ros/safety/aav_stop_zone && cargo test -q --locked -p stop-zone)
   echo "== ros/localization/aav_ndt: NDT's maths, the filters, LOST; the design's checks"
   (cd ros/localization/aav_ndt && cargo test -q --locked -p ndt-core)
-  echo "== ros/sim/aav_simulator: our own simulator's core: the car, the rays, Gazebo's worlds"
+  echo "== ros/sim/aav_simulator: Ravensim's core: the car, the rays, the worlds, the camera lockstep"
   (cd ros/sim/aav_simulator && cargo test -q --locked -p sim-core --features shared)
   echo "== ros/sim/aav_spine_sim: bench mode's car: the spine's real logic on a model car"
   (cd ros/sim/aav_spine_sim && cargo test -q --locked -p bench-car)
@@ -169,7 +169,7 @@ tasks = dict(re.findall(r'^([\w-]+) = \{ cmd = "([^"]*)"', open('pixi.toml').rea
 bad = [t for t in ('turtle', 'sim', 'bench', 'bench-check', 'view', 'sim-check', 'sim-fault',
                    'demo', 'ndt-map', 'carla-car', 'laptop-bench')
        if not tasks.get(t, '').startswith('tools/ros.sh --local ')]
-# The families that start Gazebo or drive it: each choice's line in its script.
+# The families that start Ravensim or drive it: each choice's line in its script.
 for script, choices in (('tools/screen.sh', ('hw-panel',)), ('tools/sim_cameras.sh', ('--ros',)),
                         ('tools/measure.sh', ('controllers', 'timing', 'stream', 'atob'))):
     text = open(script).read()

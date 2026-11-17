@@ -24,7 +24,7 @@
   <exec_depend>aav_spine</exec_depend>
   <exec_depend>aav_legacy</exec_depend>
   <exec_depend>aav_turtlesim</exec_depend>
-  <exec_depend>aav_gazebo</exec_depend>
+  <exec_depend>aav_sim_models</exec_depend>
   <exec_depend>aav_carla</exec_depend>
   <exec_depend>aav_bench</exec_depend>
   <exec_depend>aav_spine_sim</exec_depend>

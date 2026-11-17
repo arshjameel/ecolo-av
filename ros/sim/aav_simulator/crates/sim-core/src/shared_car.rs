@@ -4,7 +4,7 @@
 //!
 //! It takes the actuators' demands ([`Command::Drive`]), as [`ActuatorCar`] does, and
 //! gives the same states: `tests` drives both side by side. The node doesn't use it yet:
-//! it runs [`TwistFollower`] behind `gazebo_adapter`'s actuator model, as Gazebo does.
+//! it runs [`TwistFollower`] behind `sim_adapter`'s actuator model, as Gazebo does.
 //!
 //! [`ActuatorCar`]: crate::car::ActuatorCar
 //! [`TwistFollower`]: crate::car::TwistFollower

@@ -6,5 +6,5 @@
 # merges them. Anything not REAL means the HUD shows a SIMULATED / BENCH / REPLAY banner.
 
 std_msgs/Header header
-string announcer          # the node that says so, e.g. gazebo_adapter
+string announcer          # the node that says so, e.g. sim_adapter
 SensorSource[] sensors    # what it publishes, and where that comes from

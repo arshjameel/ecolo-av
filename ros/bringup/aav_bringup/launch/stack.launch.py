@@ -1,12 +1,12 @@
 """
 One launch for every target: target:= picks who plays the car, and so the profile.
 
-  ros2 launch aav_bringup stack.launch.py target:=turtle|gazebo|bench|car|carla
+  ros2 launch aav_bringup stack.launch.py target:=turtle|ravensim|bench|car|carla
       [source:=]  [any argument of that target's own file, such as world:=road, machine:=orin]
 
   target   starts             source (where the sensor data comes from)
   turtle   turtle.launch.py   sim
-  gazebo   sim.launch.py      sim
+  ravensim sim.launch.py      sim
   bench    bench.launch.py    bench
   car      car.launch.py      real
   carla    carla.launch.py    sim
@@ -14,7 +14,9 @@ One launch for every target: target:= picks who plays the car, and so the profil
 source:= may only say the target's own: the real car only ever runs on real data, and a
 simulator never drives on real sensors. The sensor mux and the output mux (aav_io_mux)
 check the same while it runs, so a wrong mix that slips past here still can't move the
-car. The `pixi run` tasks (turtle, sim, bench, car) start the same files directly.
+car. target:=gazebo, the name before Gazebo was removed (16 Nov), still means
+ravensim for one release. The `pixi run` tasks (turtle, sim, bench, car) start the same
+files directly.
 """
 
 import os
@@ -26,14 +28,20 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, Opaq
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 
-PROFILES = {'turtle': 'turtle.launch.py', 'gazebo': 'sim.launch.py',
+PROFILES = {'turtle': 'turtle.launch.py', 'ravensim': 'sim.launch.py',
             'bench': 'bench.launch.py', 'car': 'car.launch.py', 'carla': 'carla.launch.py'}
 # target:= here names the program; the output mux only knows the job: any simulator is `sim`.
-MUX_TARGET = {'gazebo': 'sim'}
+MUX_TARGET = {'ravensim': 'sim'}
+# The old name, for one release.
+OLD_TARGETS = {'gazebo': 'ravensim'}
 
 
 def launch_setup(context):
     target = LaunchConfiguration('target').perform(context).strip()
+    if target in OLD_TARGETS:
+        print(f'[stack.launch.py] target:={target} is now target:={OLD_TARGETS[target]}',
+              flush=True)
+        target = OLD_TARGETS[target]
     if target not in PROFILES:
         raise ValueError(f'target:={target}: use one of {", ".join(PROFILES)}')
     choose(MUX_TARGET.get(target, target),
@@ -46,7 +54,7 @@ def launch_setup(context):
 
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument('target', description='turtle, gazebo, bench, car or carla'),
+        DeclareLaunchArgument('target', description='turtle, ravensim, bench, car or carla'),
         DeclareLaunchArgument('source', default_value='',
                               description="real, sim, bench: only the target's own (empty: "
                                           'that one)'),

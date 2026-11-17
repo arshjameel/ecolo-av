@@ -32,9 +32,9 @@ LATCHED = (OUTSIDE, JUMP)
 # spine-core's own command watchdog (firmware/spine, cmd_timeout_ms): it brakes this long
 # after the last DRIVE_CMD, on top of spine_bridge's cmd_timeout (spine.yaml).
 SPINE_WATCHDOG = 0.1    # s
-# gazebo_adapter's cmd_timeout default (aav_gazebo gazebo_adapter.py): Gazebo's stand-in.
-GAZEBO_TIMEOUT = 0.2    # s
-BACKENDS = ('spine', 'uart', 'gazebo', 'gazebo_esp32')
+# sim_adapter's cmd_timeout default (aav_sim_models sim_adapter.py): Ravensim's car.
+SIM_TIMEOUT = 0.2    # s
+BACKENDS = ('spine', 'uart', 'sim', 'sim_esp32')
 # vehicle.yaml's actuators key for how each legacy speed_loop.mode was measured to stop.
 MEASURED_STOP = {'open': 'open_loop_decel', 'pi': 'pi_loop_decel'}
 SAMPLE = 0.5            # m between the points checked along each stopping path
@@ -177,10 +177,10 @@ def backend_stale(backend: str, spine: Optional[Mapping] = None,
     """Return how long the backend drives on a command before it stops by itself (s)."""
     if backend == 'spine':
         return float(spine['cmd_timeout']) + SPINE_WATCHDOG
-    if backend in ('uart', 'gazebo_esp32'):
+    if backend in ('uart', 'sim_esp32'):
         return float(legacy['cmd_timeout'])
-    if backend == 'gazebo':
-        return GAZEBO_TIMEOUT
+    if backend == 'sim':
+        return SIM_TIMEOUT
     raise ValueError(f'backend {backend}: pick one of {", ".join(BACKENDS)}')
 
 
@@ -199,7 +199,7 @@ def coasts(backend: str, legacy: Optional[Mapping], actuators: Mapping) -> bool:
     car answers. So whatever the mode, until test 4.3 measures how it really stops (vehicle.yaml
     actuators `open_loop_decel`, `pi_loop_decel`), the geofence keeps every program held:
     changing the mode alone never releases them. A mode we don't know stays held.
-    Gazebo's ESP32 stand-in is a simulator: never counted as coasting.
+    Ravensim's ESP32 stand-in is a simulator: never counted as coasting.
     """
     return backend == 'uart' and not measured_stop(legacy, actuators)
 

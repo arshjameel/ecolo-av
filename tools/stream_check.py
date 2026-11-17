@@ -1,7 +1,7 @@
 """
 stream_check: the camera stream end to end on one computer, without the car.
 
-  Gazebo's front camera ──ROS──> this check: scaled to 1280x720, time code drawn on
+  Ravensim's front camera ──ROS──> this check: scaled to 1280x720, time code drawn on
       ──raw──> ffmpeg (H.264, the Pi's settings) ──RTSP──> a local MediaMTX
       ──RTSP──> camera_stream_front_left (decode, undistort, RF-DETR) ──> detections
       ──> the sensor watchdog (aav_safety), watching the camera as on the car
@@ -34,7 +34,7 @@ Options:
   --drive V          roll the car towards it at V m/s while measuring (0.3), so the
                      picture changes as on the road and the sign comes into range
 
-It runs on this computer only: a private ROS domain and Gazebo partition, MediaMTX and
+It runs on this computer only: a private ROS domain, MediaMTX and
 RTSP on 127.0.0.1 with ports picked free, every program in its own process group
 (stopped by group, never by name). Needs vendor/mediamtx: pixi run get mediamtx.
 What it can't measure: the camera's own capture and the Pi 5's encoder (its CPU is not
@@ -59,8 +59,6 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOMAIN = os.environ.get('AAV_STREAM_DOMAIN', str(random.randint(150, 230)))
 os.environ['ROS_DOMAIN_ID'] = DOMAIN
 os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
-os.environ['GZ_IP'] = '127.0.0.1'
-os.environ['GZ_PARTITION'] = os.environ.get('AAV_STREAM_PARTITION', f'stream_check_{DOMAIN}')
 
 from aav_camera_stream import timecode  # noqa: E402
 from ackermann_msgs.msg import AckermannDriveStamped  # noqa: E402
@@ -82,7 +80,7 @@ PI_CONFIG = os.path.join(ROOT, 'ros', 'sources', 'aav_camera_stream', 'pi', 'med
 PHOTO = os.path.join(ROOT, 'ros', 'perception', 'aav_detector', 'test', 'stop_sign.jpg')
 WIDTH, HEIGHT, FPS = 1280, 720, 15              # the Pi's stream (pi/mediamtx.yml)
 BITRATE = 2_000_000                             # bit/s
-GZ_FOCAL = 343.0                                # Gazebo's camera at 640x360 (sensors xacro)
+SIM_FOCAL = 343.0                               # the sim's camera at 640x360 (cameras.yaml)
 CAMERA = 'front_left'
 LATEST = QoSProfile(depth=1, history=HistoryPolicy.KEEP_LAST,
                     reliability=ReliabilityPolicy.RELIABLE)
@@ -299,13 +297,22 @@ def api_bytes(api_port):
 
 
 def move_sign(ahead):
-    """Put the road world's stop sign `ahead` m in front of the car, just right of it."""
-    req = (f'name: "stop_sign", position: {{x: {ahead}, y: -1.5, z: 0}}, '
-           'orientation: {x: 0, y: 0, z: 1, w: 0}')
-    done = subprocess.run(['gz', 'service', '-s', '/world/aav/set_pose', '--reqtype',
-                           'gz.msgs.Pose', '--reptype', 'gz.msgs.Boolean', '--timeout', '5000',
-                           '--req', req], capture_output=True, text=True, timeout=30)
-    return done.returncode == 0 and 'data: true' in done.stdout
+    """
+    Put a stop sign `ahead` m in front of the car, just right of it, facing it.
+
+    Ravensim places models it was given while running (spawn_entity), not the world's own:
+    so a second sign, moved by taking it away and placing it again.
+    """
+    def call(service, kind, request):
+        done = subprocess.run(['ros2', 'service', 'call', f'/vehicle/sim/{service}', kind,
+                               request], capture_output=True, text=True, timeout=60)
+        return done.returncode == 0 and 'result=1' in done.stdout.replace(' ', '')
+
+    call('delete_entity', 'simulation_interfaces/srv/DeleteEntity', '{entity: "moved_sign"}')
+    return call('spawn_entity', 'simulation_interfaces/srv/SpawnEntity',
+                '{name: "moved_sign", uri: "model://stop_sign", initial_pose: {pose: '
+                f'{{position: {{x: {ahead}, y: -1.5, z: 0.0}}, orientation: {{z: 1.0, '
+                'w: 0.0}}}}')
 
 
 def gst_environment():
@@ -369,11 +376,11 @@ def main():
     with open(calibration, 'w') as f:
         yaml.safe_dump({'image_width': 640, 'image_height': 360,
                         'camera_matrix': {'rows': 3, 'cols': 3,
-                                          'data': [GZ_FOCAL, 0, 319.5, 0, GZ_FOCAL, 179.5,
+                                          'data': [SIM_FOCAL, 0, 319.5, 0, SIM_FOCAL, 179.5,
                                                    0, 0, 1]},
                         'distortion_model': 'plumb_bob',
                         'distortion_coefficients': {'rows': 1, 'cols': 5, 'data': [0] * 5}}, f)
-    print(f'ROS domain {DOMAIN}, Gazebo partition {os.environ["GZ_PARTITION"]}, RTSP {url}; '
+    print(f'ROS domain {DOMAIN}, RTSP {url}; '
           f'this computer only. Load average: {load_average()}', flush=True)
     load_before = os.getloadavg()
 
@@ -383,9 +390,9 @@ def main():
     try:
         programs.start('mediamtx', [MEDIAMTX, conf], log=True)
         if not pattern:
-            programs.start('gazebo', ['ros2', 'launch', 'aav_gazebo', 'gazebo.launch.py',
-                                      'world:=road', 'simulator:=gazebo', 'gui:=false',
-                                      'lidar:=false', 'radar:=false'], log=True)
+            programs.start('ravensim', ['ros2', 'launch', 'aav_sim_models',
+                                        'ravensim.launch.py', 'world:=road', 'lidar:=false',
+                                        'radar:=false'], log=True)
         time.sleep(1.0)
         enc = programs.start(
             'encoder', ['ffmpeg', '-hide_banner', '-loglevel', 'warning', '-f', 'rawvideo',
@@ -522,7 +529,7 @@ def main():
         cpu = [f'{name} {100 * (cpu1[pid] - cpu0[pid]) / span:.0f}%'
                for name, pid in groups.items()]
         result('CPU', None, ', '.join(cpu) + ' (each with its children: camera_stream with '
-               'its decoder, gazebo with gz sim; 100% = one core of this computer); load '
+               'its decoder, ravensim with its cameras; 100% = one core of this computer); load '
                f'average {", ".join(f"{x:.1f}" for x in load_before)} before, '
                f'{load_average()} at the end')
     finally:

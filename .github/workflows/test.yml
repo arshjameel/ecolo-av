@@ -320,9 +320,10 @@ jobs:
           done
           file -bL ~/aav-jazzy/aav/install/aav_hud/lib/aav_hud/hud
 
-  # Gazebo and ours, headless: the car's whole graph, a drive, and a stop for a box (PLAN T2.6).
-  # New 22 Oct and not yet seen to pass on GitHub's computers (no GPU: the cameras render
-  # in software, tools/software_gl.sh), so a failure here doesn't turn the night red yet. Remove
+  # Ravensim, headless: the car's whole graph, a drive, and a stop for a box (PLAN T2.6).
+  # No GPU here: the cameras draw in software (tools/software_gl.sh), with Ravensim's clock
+  # waiting for each picture (camera_lockstep:=auto, 16 Nov). New with Gazebo's removal and
+  # not yet seen to pass here, so a failure doesn't turn the night red yet. Remove
   # continue-on-error once it has passed a few nights.
   sim:
     if: (github.event_name == 'schedule' && github.repository == 'AAV-2025-2026/ecolo-av') || github.event_name == 'workflow_dispatch'
@@ -347,39 +348,26 @@ jobs:
           restore-keys: pixi-pkgs-${{ runner.os }}-
       - name: pixi run build
         run: pixi run --locked build
-      # No GPU here, and our environment's EGL has no driver of its own: without
-      # tools/software_gl.sh (Mesa's llvmpipe) Gazebo crashed as the world loaded, and
-      # sim-check found nothing in 120 s (23 Oct, reproduced on oirp-spss).
-      # Gazebo, said outright, until 0.4-rc1 is scored (TODO 183: then it goes).
-      - name: pixi run sim-check --simulator gazebo --obstacle
+      # Ravensim with its cameras, drawn in software: Mesa's lavapipe through
+      # tools/software_gl.sh, which also turns camera lockstep on (the clock waits for each
+      # picture, so they get their full rate in sim time: 1.6 Hz free-running on 15 Nov).
+      # The first run builds Bevy (minutes).
+      - name: tools/software_gl.sh pixi run sim-check --obstacle
         env:
-          QT_QPA_PLATFORM: offscreen
           AAV_SIM_LOG: ${{ github.workspace }}/sim-logs/aav-sim-check.log
           ROS_LOG_DIR: ${{ github.workspace }}/sim-logs/ros
         run: |
           mkdir -p sim-logs
-          tools/software_gl.sh pixi run --locked sim-check --simulator gazebo --obstacle 2>&1 | tee sim-logs/sim.log
-      # Ours, with no cameras (cameras:=false: no GPU here): the whole graph but the
-      # pictures, a drive and the box (the audit's M2, 14 Nov). Its own logs.
-      - name: pixi run sim-check --simulator own --no-cameras --obstacle
+          tools/software_gl.sh pixi run --locked sim-check --obstacle 2>&1 | tee sim-logs/sim.log
+      # With no cameras at all (cameras:=false): the whole graph but the pictures, real time.
+      - name: pixi run sim-check --no-cameras --obstacle
         if: always()
         env:
-          AAV_SIM_LOG: ${{ github.workspace }}/sim-logs/aav-sim-check-own.log
-          ROS_LOG_DIR: ${{ github.workspace }}/sim-logs/ros-own
+          AAV_SIM_LOG: ${{ github.workspace }}/sim-logs/aav-sim-check-no-cameras.log
+          ROS_LOG_DIR: ${{ github.workspace }}/sim-logs/ros-no-cameras
         run: |
           mkdir -p sim-logs
-          pixi run --locked sim-check --simulator own --no-cameras --obstacle 2>&1 | tee sim-logs/sim-own.log
-      # Ours with its cameras, drawn in software: Mesa's lavapipe through tools/software_gl.sh
-      # (TODO 183, 15 Nov). Tried on a Mac only (software_gl.sh --force); new here, and the
-      # first run builds Bevy (minutes). Its own logs.
-      - name: tools/software_gl.sh pixi run sim-check --simulator own --obstacle
-        if: always()
-        env:
-          AAV_SIM_LOG: ${{ github.workspace }}/sim-logs/aav-sim-check-own-cameras.log
-          ROS_LOG_DIR: ${{ github.workspace }}/sim-logs/ros-own-cameras
-        run: |
-          mkdir -p sim-logs
-          tools/software_gl.sh pixi run --locked sim-check --simulator own --obstacle 2>&1 | tee sim-logs/sim-own-cameras.log
+          pixi run --locked sim-check --no-cameras --obstacle 2>&1 | tee sim-logs/sim-no-cameras.log
       # The cameras' picture tests (tests/render.rs: colours and edges where the lens says),
       # on lavapipe too. They pass on a Mac's lavapipe (15 Nov); new here.
       - name: The cameras' picture tests, in software

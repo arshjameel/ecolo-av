@@ -4,7 +4,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
   ros2 launch aav_bringup sim.launch.py [stack:=ours|best|car|]
       [pose:=] [path:=] [steer:=] [lanes:=]
       [world:=empty|test_lot|road|campus] [nav:=true]
-      [teleop:=false] [gui:=true] [rviz:=true]
+      [teleop:=false] [rviz:=true]
       [perception:=false] [lane:=false|true|fake] [camera_obstacles:=false] [hud:=false]
       [map:=false] [foxglove:=false] [chase_camera:=true] [cameras:=true]
       [obstacle:=false] [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true] [radar:=true]
@@ -21,7 +21,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [watch_hud:=false] [faults:=false] [spine:=false] [arm:=true]
       [esp32:=false] [esp32_loop:=pi]
       [bridge:=rust|python]
-      [ghost:=false] [simulator:=gazebo|own]
+      [ghost:=false] [simulator:=ravensim] [camera_lockstep:=auto]
   pixi run sim world:=road                         the road: the car's camera and radar
   pixi run sim world:=campus                       Carleton, every level ours
   pixi run sim stack:=best                         every level's champion (as the car)
@@ -37,18 +37,18 @@ the stack's pick; a single switch given by hand (planner:=) still wins over both
 stack:= (empty): no stack, each switch as given, else the champions'. The real
 car (car.launch.py) keeps its own choices until ours wins there too.
   pixi run -e ml sim world:=road perception:=true  adds the detector and the stop-sign watcher
-  pixi run sim world:=test_lot sim_speed:=3 hud:=true   Gazebo, RViz, navigation and the HUD window
+  pixi run sim world:=test_lot sim_speed:=3 hud:=true   Ravensim, RViz, navigation, the HUD
   pixi run sim world:=test_lot map:=true           ... and the big screen's map window
 
 world:=empty pairs with the empty map (phase 2); world:=test_lot with
-maps/example_lot.yaml (phase 3); world:=road, the bench's road in Gazebo, with the empty
+maps/example_lot.yaml (phase 3); world:=road, the bench's road in 3D, with the empty
 map: chosen automatically. The car starts at the world origin facing east, which is also
 the map origin (the datum); start_x, start_y and start_yaw move it, as on the bench.
 world:=campus is Carleton (pixi run campus makes it): its map, its NDT guess and a start in lot
 P4 come with it, because the datum itself is on a station shelter there.
 
 The road and test_lot worlds render the car's three cameras, its radar stand-in and the
-roof lidar (aav_gazebo worlds.has_sensors), so the car's whole graph runs there, with the
+roof lidar (aav_sim_models worlds.has_sensors), so the car's whole graph runs there, with the
 bench's argument names:
 
   the radar           where the world renders it (radar:=false drops it, to test the
@@ -67,14 +67,14 @@ bench's argument names:
                       (foxglove.launch.py: the car's topic list, and the front camera's
                       preview where the world renders it; docs/foxglove.md)
   chase_camera:=false no chase camera: by default a camera behind and above the car
-                      (aav_gazebo), for Lichtblick's cockpit layout (tools/foxglove/
+                      (aav_sim_models), for Lichtblick's cockpit layout (tools/foxglove/
                       cockpit.json): /vehicle/sim/chase_camera/compressed
-  cameras:=false      no cameras at all (no picture, no chase camera): our simulator then
+  cameras:=false      no cameras at all (no picture, no chase camera): Ravensim then
                       runs on a computer with no GPU, as CI's runners; perception, lane
                       and camera_obstacles are refused
   run_info            always: which algorithms the run uses, from these arguments, on
                       /system/algorithms (aav_run_info), for the cockpit's Algorithms table
-  obstacle:=true      the bench's 1 m box in the lane, 15 m ahead (aav_gazebo)
+  obstacle:=true      the bench's 1 m box in the lane, 15 m ahead (aav_sim_models)
   lidar:=false        no roof lidar. It's on by default (15 Oct): a simulated 16-beam
                       lidar on /sensors/lidar/points, which the costmap reads as a 2D scan
                       (navigation.launch.py lidar:=true: its local costmap and
@@ -119,7 +119,7 @@ bench's argument names:
                       costmap's kerb_layer and the stop zone read them. Empty: the
                       stack's choice (on in ours since 16 Nov; stacks.yaml's kerbs level)
   lane_map:=world    with behaviour:=true: the road ahead's line is the lane's centre, from
-                      the world's lane map (road: aav_gazebo worlds/road.lanes.yaml; campus:
+                      the world's lane map (road: aav_sim_models worlds/road.lanes.yaml; campus:
                       maps/campus/lanes.yaml), with its edges; or a lanes.yaml's path.
                       Empty (the default): the line is /plan's
   lane_costs:=true    the lanes layer, a challenger (TODO 148, D2): our global costmap
@@ -209,7 +209,7 @@ bench's argument names:
                       stack's choice (on in ours since 17 Nov, where there is a camera
                       and a lane map; stacks.yaml's pose level, ekf_lane)
   truth_pose:=true    a test (the wiggle, TODO 149): the simulator's truth is the car's pose.
-                      No ekf_global; aav_gazebo's truth_localizer publishes
+                      No ekf_global; aav_sim_models's truth_localizer publishes
                       /localization/odom/global and map -> odom so that map -> base_link
                       is the truth. ekf_local still gives odom -> base_link. Never the car
   replan_hz:=1.0      how often the navigator plans a to-pose goal again (navigation.launch.py;
@@ -234,40 +234,40 @@ bench's argument names:
                       can't be trusted
   watch_hud:=true     the watchdog watches /hud/heartbeat without the HUD window: something
                       else beats (sim-check --faults stands in for the screen)
-  faults:=true        the front left picture through gazebo_adapter, so its fault.camera
+  faults:=true        the front left picture through sim_camera_relay, so its fault.camera
                       works (pixi run sim-fault camera freeze); the other faults always do
   spine:=true         the spine in the loop: ego -> spine_bridge -> CAN frames -> spine_sim
                       (the spine's own firmware logic: arming, its 100 ms command
                       watchdog, both e-stops, faults, its speed loop) -> the actuator
-                      model -> Gazebo; Gazebo's measurements back as CAN frames ->
+                      model -> Ravensim; its measurements back as CAN frames ->
                       spine_bridge -> /vehicle/*. arm:=true arms it after 12 s;
                       bridge:=python runs aav_spine's Python spine_bridge, not the Rust one
   esp32:=true         today's car in the loop: ego -> legacy_uart_bridge (the car's own)
-                      -> 13-byte frames over local TCP -> gazebo_esp32 (the 2025-26 C++
+                      -> 13-byte frames over local TCP -> sim_esp32 (the 2025-26 C++
                       firmware's logic: its throttle ramp, brake, no timeout) -> the
-                      actuator model -> Gazebo. esp32_loop:= is the bridge's
+                      actuator model -> Ravensim. esp32_loop:= is the bridge's
                       speed_loop.mode: pi (the default here) or open (the 2025-26 mapping)
   ghost:=true        a pretend person only navigation sees (aav_ghost), for stopping tests
-                      with nothing in Gazebo: pixi run ghost ahead 10, pixi run ghost off.
+                      with nothing in the world: pixi run ghost ahead 10, pixi run ghost off.
                       Its own costmap layer and stop zone source: it only adds
                       (docs/ghost-obstacles.md)
-  actuator_model:=false  the old instant car instead of the actuator model (gazebo_adapter;
+  actuator_model:=false  the old instant car instead of the actuator model (sim_adapter;
                       vehicle.yaml's actuators:), to compare the two
   lag_scale:=2        the actuator model's throttle, brake and steering lags twice
                       vehicle.yaml's, while every driver still reads vehicle.yaml: how a
-                      follower copes with a car slower than it was told (1.0: as written).
-                      Gazebo's adapter only (simulator:=gazebo)
+                      follower copes with a car slower than it was told (1.0: as written)
   speed_loop:=firm    the spine's speed loop profile the modelled car runs (default,
                       smooth, lqi, firm), and the one every model of the car assumes: the
                       path follower's (mppi_lag, aav_track's mpc_lag, mpc_lag_rs; those
                       two refuse lqi), ego's trace and the behaviour planner's stopping
                       law (TODO 163). The real car's spine runs default
-  simulator:=own     the default (8 Nov): our own Rust simulator (aav_simulator,
-                      docs/own-simulator.md) in gz sim's place: the same worlds, topics
-                      and rates, the lidar and radar by ray casting, the cameras by Bevy
-                      (aav_sim_cameras; needs a GPU), no window.
-                      simulator:=gazebo: Gazebo, as before (on a computer with no GPU, with
-                      tools/software_gl.sh in front)
+  simulator:=ravensim  Ravensim, our own simulator in Rust (aav_simulator,
+                      docs/own-simulator.md), the only one since Gazebo was removed (16 Nov):
+                      the worlds, the lidar and radar by ray casting, the cameras by Bevy
+                      (aav_sim_cameras), no window. simulator:=own, its old name, still works
+                      for one release, with a warning
+  camera_lockstep:=auto  Ravensim's clock waits for each camera's picture: auto when
+                      tools/software_gl.sh draws them (no GPU), true or false
 
 The empty and test_lot worlds render nothing, so they run headless anywhere, and the
 camera's parts need world:=road. Every node runs on simulated time.
@@ -277,7 +277,7 @@ import os
 
 from aav_description import stacks, vehicle
 from aav_description.lane_map import check_lane_graph, DEFAULT_LANE_GRAPH
-from aav_gazebo import worlds
+from aav_sim_models import worlds
 from aav_spine import bridges
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
@@ -428,26 +428,24 @@ def launch_setup(context):
     # kiss_ekf: ekf_local takes KISS-ICP's twist, so KISS-ICP runs too.
     kiss_ekf = arg('kiss_ekf').lower() == 'true'
     kiss_icp = arg('kiss_icp').lower() == 'true' or kiss_ekf
-    gazebo_share = FindPackageShare('aav_gazebo').perform(context)
+    models_share = FindPackageShare('aav_sim_models').perform(context)
+    if worlds.simulator_warning(arg('simulator')):
+        print(f'[sim.launch.py] {worlds.simulator_warning(arg("simulator"))}', flush=True)
     simulator = worlds.check_simulator(arg('simulator'))
-    if float(arg('lag_scale')) != 1.0 and simulator != 'gazebo':
-        # Only Gazebo's adapter scales the lags; our simulator would silently ignore it.
-        raise ValueError('lag_scale:= needs simulator:=gazebo (our simulator has no '
-                         'lag_scale yet)')
-    world_path = worlds.world_file(gazebo_share, world)
-    lane_map = worlds.lane_map_file(gazebo_share, world, arg('lane_map').strip())
+    world_path = worlds.world_file(models_share, world)
+    lane_map = worlds.lane_map_file(models_share, world, arg('lane_map').strip())
     # lane_costs: the lane map lane_map:= names, else the world's own, if it has one.
     lane_costs = ''
     if arg('lane_costs').lower() == 'true':
         try:
-            lane_costs = lane_map or worlds.lane_map_file(gazebo_share, world, 'world')
+            lane_costs = lane_map or worlds.lane_map_file(models_share, world, 'world')
         except ValueError as e:
             print(f'[sim.launch.py] lane_costs:=true, but no lane map here: {e}', flush=True)
     # lane_route (path:=lane): the lane map lane_map:= names, else the world's own.
     lane_route = ''
     if arg('lane_route').lower() == 'true':
         try:
-            lane_route = lane_map or worlds.lane_map_file(gazebo_share, world, 'world')
+            lane_route = lane_map or worlds.lane_map_file(models_share, world, 'world')
         except ValueError as e:
             print(f'[sim.launch.py] lane_route:=true, but no lane map here ({e}): '
                   'the lattice alone', flush=True)
@@ -458,7 +456,7 @@ def launch_setup(context):
     pose_map = ''
     if lane_pose:
         try:
-            pose_map = lane_map or worlds.lane_map_file(gazebo_share, world, 'world')
+            pose_map = lane_map or worlds.lane_map_file(models_share, world, 'world')
         except ValueError:
             if not lane_pose_stack:
                 raise
@@ -466,7 +464,7 @@ def launch_setup(context):
             print("[sim.launch.py] the stack's lane_pose: off here (no camera or no lane "
                   'map)', flush=True)
             lane_pose, pose_map = False, ''
-    # Each only where the world renders it, as gazebo.launch.py decides.
+    # Each only where the world renders it, as ravensim.launch.py decides.
     radar = sensors and arg('radar').lower() == 'true'
     lidar = sensors and arg('lidar').lower() == 'true'
     wanted = ([n for n in CAMERA_PARTS if flag[n]] + (['lane'] if lane == 'true' else [])
@@ -502,7 +500,7 @@ def launch_setup(context):
     actions = [
         # Every node on simulated time, those in the included files too.
         SetParameter(name='use_sim_time', value=True),
-        include(context, 'aav_gazebo', 'gazebo.launch.py', world=world, gui=arg('gui'),
+        include(context, 'aav_sim_models', 'ravensim.launch.py', world=world,
                 obstacle=arg('obstacle'), start_x=start_x, start_y=start_y, start_yaw=start_yaw,
                 lidar=arg('lidar'), radar=arg('radar'), chase_camera=arg('chase_camera'),
                 cameras=str(cameras).lower(),
@@ -511,7 +509,8 @@ def launch_setup(context):
                 lag_scale=arg('lag_scale'),
                 faults=flag['faults'],
                 spine=arg('spine'), arm=arg('arm'), bridge=arg('bridge'),
-                esp32=arg('esp32'), esp32_loop=arg('esp32_loop'), simulator=simulator),
+                esp32=arg('esp32'), esp32_loop=arg('esp32_loop'),
+                camera_lockstep=arg('camera_lockstep')),
         include(context, 'aav_command_mux', 'mux.launch.py', use_sim_time='true',
                 sensor_lock=flag['watchdog'], geofence_lock=flag['geofence']),
         # behaviour:=true: the road ahead's writer runs, so ego holds navigation to it. Its writer
@@ -523,14 +522,14 @@ def launch_setup(context):
                 ego_impl=vehicle.check_ego_impl(arg('ego_impl')),
                 # The car's speed loop, so ego's trace predicts the car it drives (TODO 163).
                 speed_loop=speed_loop),
-        # ego's commands go to Gazebo (gazebo_adapter, or spine_bridge with spine:=true)
+        # ego's commands go to Ravensim (sim_adapter, or spine_bridge with spine:=true)
         # only while every source is SIM (aav_io_mux).
         include(context, 'aav_io_mux', 'io_mux.launch.py', target='sim', source='sim',
                 **({'screens': arg('watch_screens')} if arg('watch_screens') else {})),
         include(context, 'aav_scripted', 'scripted.launch.py', use_sim_time='true'),
         include(context, 'aav_drive_to_point', 'drive_to_point.launch.py', use_sim_time='true',
                 watchdog=arg('watchdog')),
-        # Only the IMU filter: Gazebo stands in for the drivers.
+        # Only the IMU filter: Ravensim stands in for the drivers.
         Node(package='imu_filter_madgwick', executable='imu_filter_madgwick_node',
              name='imu_filter_madgwick',
              parameters=[os.path.join(FindPackageShare('aav_sensors').perform(context),
@@ -546,11 +545,10 @@ def launch_setup(context):
     ]
     if truth_pose:
         # The wiggle's first test: the truth as the pose, in ekf_global's place.
-        actions.append(Node(package='aav_gazebo', executable='truth_localizer',
+        actions.append(Node(package='aav_sim_models', executable='truth_localizer',
                             name='truth_localizer', parameters=[{'use_sim_time': True}]))
     # What this run uses, in words, for the cockpit's Algorithms table (aav_run_info).
-    profile = f'sim world:={world}' + (
-        f' simulator:={simulator}' if simulator != worlds.DEFAULT_SIMULATOR else '')
+    profile = f'sim world:={world}'
     actions.append(Node(package='aav_run_info', executable='run_info', name='run_info',
                         parameters=[{'use_sim_time': True, 'profile': profile,
                                      'nav': flag['nav'], 'planner': planner,
@@ -604,7 +602,7 @@ def launch_setup(context):
                                diffusion_record=arg('diffusion_record'),
                                diffusion_smoothing=arg('diffusion_smoothing'),
                                # A trial tracker may be swapped live here (the debug
-                               # HUD's panel shows which): Gazebo only, never the car.
+                               # HUD's panel shows which): the sim only, never the car.
                                live_swap='true',
                                amcl=amcl, amcl_x=start_x, amcl_y=start_y,
                                amcl_yaw=start_yaw,
@@ -672,8 +670,8 @@ def launch_setup(context):
     if flag['geofence']:
         actions.append(include(context, 'aav_safety', 'geofence.launch.py',
                                backend=('spine' if arg('spine').lower() == 'true' else
-                                        'gazebo_esp32' if arg('esp32').lower() == 'true'
-                                        else 'gazebo'),
+                                        'sim_esp32' if arg('esp32').lower() == 'true'
+                                        else 'sim'),
                                radius=fence_radius(arg('geofence_radius'), world),
                                centre_x=start_x,
                                centre_y=start_y, max_speed=sim_speed,
@@ -773,7 +771,10 @@ def generate_launch_description():
         DeclareLaunchArgument('nav', default_value='true'),
         DeclareLaunchArgument('teleop', default_value='false',
                               description='true if a joystick is plugged into this computer'),
-        DeclareLaunchArgument('gui', default_value='true', description='Gazebo window'),
+        # Gazebo's window, gone with Gazebo (16 Nov): Ravensim has none. Still taken, and
+        # ignored, so the old commands (gui:=false) run for one release.
+        DeclareLaunchArgument('gui', default_value='false',
+                              description='ignored: Ravensim has no window'),
         DeclareLaunchArgument('rviz', default_value='true'),
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher (the ml '
@@ -806,7 +807,7 @@ def generate_launch_description():
                                           "Lichtblick's cockpit layout (world:=road or "
                                           'test_lot)'),
         DeclareLaunchArgument('cameras', default_value='true',
-                              description='false: no cameras, so our simulator runs on a '
+                              description='false: no cameras, so Ravensim runs on a '
                               'computer with no GPU (the parts that read them are refused)'),
         DeclareLaunchArgument('lidar', default_value='true',
                               description='a simulated 16-beam roof lidar, on '
@@ -817,7 +818,7 @@ def generate_launch_description():
                                           'false: the lidar alone guards the car'),
         DeclareLaunchArgument('actuator_model', default_value='true',
                               description="the actuators as vehicle.yaml's actuators: say; "
-                                          "false: Gazebo's old instant car"),
+                                          'false: the old instant car'),
         DeclareLaunchArgument('lag_scale', default_value='1.0',
                               description="the actuator model's lags times this (a "
                                           'robustness test; the drivers keep vehicle.yaml)'),
@@ -840,7 +841,7 @@ def generate_launch_description():
                               description='with spine:=true: arm the spine after 12 s'),
         DeclareLaunchArgument('esp32', default_value='false',
                               description="today's car in the loop: legacy_uart_bridge and "
-                                          'gazebo_esp32, the C++ firmware standing in'),
+                                          'sim_esp32, the C++ firmware standing in'),
         DeclareLaunchArgument('esp32_loop', default_value='pi',
                               description="with esp32:=true: the bridge's speed_loop.mode, "
                                           'pi or open'),
@@ -862,7 +863,7 @@ def generate_launch_description():
                                           'with no HUD window (hud:=true watches it anyway)'),
         DeclareLaunchArgument('faults', default_value='false',
                               description='route the front left picture through '
-                                          'gazebo_adapter, for fault.camera'),
+                                          'sim_adapter, for fault.camera'),
         DeclareLaunchArgument('watch_screens', default_value='',
                               description='screens whose heartbeat commands need, such as '
                                           'dev_window,hw_panel: lose one and, with '
@@ -1064,7 +1065,7 @@ def generate_launch_description():
                                           'and a lane map are)'),
         DeclareLaunchArgument('truth_pose', default_value='false',
                               description="a test: the simulator's truth as the pose, in "
-                                          "ekf_global's place (aav_gazebo truth_localizer)"),
+                                          "ekf_global's place (aav_sim_models truth_localizer)"),
         DeclareLaunchArgument('map_correction', default_value=stacks.CHOSEN,
                               description='with a trial tracker: newest, or slow (the held '
                                           "map -> odom, TODO 186). Empty: the stack's "
@@ -1073,7 +1074,12 @@ def generate_launch_description():
                               description='how often the navigator plans a to-pose goal '
                                           'again; 0: once per goal (a test)'),
         DeclareLaunchArgument('simulator', default_value=worlds.DEFAULT_SIMULATOR,
-                              description="gazebo, or own: our Rust simulator in gz sim's "
-                                          'place (aav_simulator, aav_sim_cameras)'),
+                              description='ravensim: our own simulator (aav_simulator, '
+                                          'aav_sim_cameras), the only one; own: its old '
+                                          'name, for one release'),
+        DeclareLaunchArgument('camera_lockstep', default_value='auto',
+                              description="Ravensim's clock waits for each picture: auto "
+                                          '(when tools/software_gl.sh draws them), true or '
+                                          'false'),
         OpaqueFunction(function=launch_setup),
     ])

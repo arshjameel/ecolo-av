@@ -130,7 +130,7 @@ mod tests {
     use super::*;
 
     fn gazebo() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../aav_gazebo")
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../aav_sim_models")
     }
 
     fn road() -> SimWorld {

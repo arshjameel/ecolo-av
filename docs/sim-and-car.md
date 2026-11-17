@@ -67,7 +67,7 @@ Most of the software doesn't know whether it's driving a real car or a pretend o
 Gazebo sensor → ros_gz_bridge → /gazebo/... → one node per sensor → the real drivers' topic names
 ```
 
-`gazebo_adapter` (the car), `gazebo_imu`, `gazebo_gps` and `gazebo_radar` rename everything to the **same names the real drivers use** (`/sensors/gps/fix`, `/sensors/imu/data_raw`, `/vehicle/odom`). The software above can't tell the difference. One process each, as each sensor on the car has its own driver.
+`sim_adapter` (the car), `sim_imu`, `sim_gps` and `sim_radar` rename everything to the **same names the real drivers use** (`/sensors/gps/fix`, `/sensors/imu/data_raw`, `/vehicle/odom`). The software above can't tell the difference. One process each, as each sensor on the car has its own driver.
 
 ![The simulated car in Gazebo](img/gazebo-car.png)
 
@@ -79,7 +79,7 @@ Merged from the branch `wt/sim-full` on 15 Oct. Rates measured on Ben's Mac, on 
 |---|---|---|---|
 | A road: lane lines, a stop sign, a box in the road (`obstacle:=true`) | | | ✅ |
 | Three cameras: two on top looking forward, one at the back looking back | `/sensors/camera/front_left/image_raw`, `front_right/...`, `rear/...` | 10 Hz | ✅ (15 Oct) |
-| A radar on the grill (a lidar shaped like it) | `/sensors/radar/points` (via `/gazebo/radar/points`) | 10 Hz | ✅ |
+| A radar on the grill (a lidar shaped like it) | `/sensors/radar/points` (via `/vehicle/sim/radar/points`) | 10 Hz | ✅ |
 | A 16-beam lidar on the roof | `/sensors/lidar/points` | 10 Hz | ✅ on by default (15 Oct): all sensors together pass on a quiet Mac. Earlier failures came from other programs competing |
 
 ![What the three simulated cameras see](img/sim-cameras.png)

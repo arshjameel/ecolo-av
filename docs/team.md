@@ -111,5 +111,5 @@ Phase 0 on the hardware we have now, before the spine exists.
 | Read first | [Simulation](simulation.md) |
 | Run first | `pixi run sim`, `pixi run check sim`, and the replay of a recorded drive |
 | First tasks | 1. Gazebo's window and RViz on a Mac: confirm what they show. 2. The test lot world against the real site, once Q21 is answered. 3. Recordings from the car, for replay. 4. CARLA on the NVIDIA computer: the adapter, `aav_carla`, is ready ([CARLA](carla.md), Q31) |
-| Files | `ros/sim/aav_gazebo/`, `ros/bringup/aav_bringup/launch/sim.launch.py` and `replay.launch.py`, `tools/check_graph.py` |
+| Files | `ros/sim/aav_sim_models/`, `ros/bringup/aav_bringup/launch/sim.launch.py` and `replay.launch.py`, `tools/check_graph.py` |
 | Open questions | Q31, Q32 |

@@ -55,7 +55,7 @@ def gazebo_steer_gain(path=GAZEBO_XACRO):
     return float(found.group(1)) if found else 1.0      # gz-sim's own default
 
 
-# s: gazebo_adapter sends the model's angle 50 times a second (rate_hz); holding each for
+# s: sim_adapter sends the model's angle 50 times a second (rate_hz); holding each for
 # 20 ms delays it by half that, on average. Measured: 1/gain + 11-12 ms
 # (tools/gazebo_steering.py, TODO 52c).
 ADAPTER_HOLD = 0.5 / 50.0

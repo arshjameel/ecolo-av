@@ -70,7 +70,7 @@ pub struct World {
 }
 
 impl World {
-    /// Gazebo's test lot (aav_gazebo worlds/test_lot.sdf): the walls, the building and the
+    /// Gazebo's test lot (aav_sim_models worlds/test_lot.sdf): the walls, the building and the
     /// parked cars, and a few posts and parked cars more, so it isn't all long walls.
     pub fn test_lot() -> Self {
         let mut blocks = vec![

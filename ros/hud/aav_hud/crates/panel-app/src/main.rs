@@ -989,7 +989,7 @@ mod tests {
 
     fn announce(origin: hud_core::origin::Origin) -> Update {
         Update::Source(hud_core::origin::Announcement {
-            announcer: "gazebo_adapter".into(),
+            announcer: "sim_adapter".into(),
             entries: vec![hud_core::origin::Entry {
                 name: "imu".into(),
                 topic: "/sensors/imu/data".into(),

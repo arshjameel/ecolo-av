@@ -13,7 +13,7 @@ import pytest
 Stop = namedtuple('Stop', 'reason left')
 CURVE = from_car_model()
 
-# The road world (ros/sim/aav_gazebo/worlds/road.lanes.yaml): one lane, 3.5 m between the
+# The road world (ros/sim/aav_sim_models/worlds/road.lanes.yaml): one lane, 3.5 m between the
 # lines, 0.5 m of tarmac outside each, east along y = 0.
 ROAD_WORLD = {'roads': [{'name': 'road', 'width': 4.5, 'lanes': 1, 'oneway': False,
                          'points': [[-20.0, 0.0], [100.0, 0.0]]}]}

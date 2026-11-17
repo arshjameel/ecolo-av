@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn the_stop_signs_plate() {
-        let text = include_str!("../../../../aav_gazebo/models/stop_sign/meshes/stop_sign.obj");
+        let text = include_str!("../../../../aav_sim_models/models/stop_sign/meshes/stop_sign.obj");
         let m = TriMesh::from_obj(text).unwrap();
         // Two faces of eight triangles each, at least.
         assert!(m.triangles() >= 16, "{}", m.triangles());

@@ -51,16 +51,17 @@ def binary():
 
 
 def lane_map():
-    # aav_gazebo's road world: one lane along y = 0. Its source copy, if not installed.
+    # aav_sim_models's road world: one lane along y = 0. Its source copy, if not installed.
     try:
-        share = get_package_share_directory('aav_gazebo')
+        share = get_package_share_directory('aav_sim_models')
         path = os.path.join(share, 'worlds', 'road.lanes.yaml')
         if os.path.exists(path):
             return path
     except Exception:  # noqa: BLE001 - not built: fall back to the source tree
         pass
     here = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(here, '..', '..', '..', 'sim', 'aav_gazebo', 'worlds', 'road.lanes.yaml')
+    return os.path.join(here, '..', '..', '..', 'sim', 'aav_sim_models', 'worlds',
+                        'road.lanes.yaml')
 
 
 def stop(node):

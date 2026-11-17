@@ -4,8 +4,8 @@ The car model: how the car answers a command.
 Shared by ego (its lead and its trace), the simulators (Gazebo's adapter) and the drivers'
 tests. No ROS here.
 
-Moved here from aav_gazebo's actuator_model.py on 7 Nov (release 0.3), so ego and the
-simulators use one model; `aav_gazebo.actuator_model` still re-exports every name. Its Rust
+Moved here from aav_sim_models's actuator_model.py on 7 Nov (release 0.3), so ego and the
+simulators use one model; `aav_sim_models.actuator_model` still re-exports every name. Its Rust
 twin is the car-model crate beside this package (car-model/, the same maths, checked by
 the shared vectors car-model/vectors.json: gen_vectors.py writes them from this file).
 
@@ -14,7 +14,7 @@ Two ways in:
   - step(cfg, state, command, dt) -> CarState, and predict(cfg, state, commands, dt,
     horizon) -> [CarState]: the pure model, with dead times and the kinematic bicycle on
     top (x, y, yaw). ego's trace is predict's list.
-  - Actuators(cfg, loop): the same step held in an object, as gazebo_adapter steps it at
+  - Actuators(cfg, loop): the same step held in an object, as sim_adapter steps it at
     50 Hz (Gazebo's time) and sends Gazebo the speed and steering it gives
     (docs/full-simulation.md, option A):
 
@@ -472,7 +472,7 @@ class Actuators:
         """
         Step ego's speed and angle: the speed loop (ours, in Python), then the actuators.
 
-        fault: an actuator fault on purpose (aav_gazebo faults.ActuatorFaults.apply), a
+        fault: an actuator fault on purpose (aav_sim_models faults.ActuatorFaults.apply), a
         function (Demand, steer) -> (Demand, steer) between the loop and the actuators. The
         State's commands stay what was asked, its levels and angle what the car did.
         """

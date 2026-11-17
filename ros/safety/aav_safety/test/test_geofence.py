@@ -120,7 +120,7 @@ def test_rho_and_b_from_their_parts():
     assert braking(2.0, 1.0) == 0.5
     assert backend_stale('spine', spine={'cmd_timeout': 0.1}) == pytest.approx(0.2)
     assert backend_stale('uart', legacy={'cmd_timeout': 0.3}) == 0.3
-    assert backend_stale('gazebo') == 0.2
+    assert backend_stale('sim') == 0.2
     with pytest.raises(ValueError):
         backend_stale('teleport')
 
@@ -129,7 +129,7 @@ def test_the_open_speed_loop_coasts_until_measured():
     assert coasts('uart', {'speed_loop.mode': 'open'}, {})
     assert not coasts('uart', {'speed_loop.mode': 'open'}, {'open_loop_decel': 0.8})
     assert not coasts('spine', None, {})
-    assert not coasts('gazebo_esp32', {'speed_loop.mode': 'open'}, {})
+    assert not coasts('sim_esp32', {'speed_loop.mode': 'open'}, {})
 
 
 def test_changing_the_speed_loop_mode_alone_never_releases_the_programs():
@@ -196,7 +196,7 @@ def test_the_lock_counts_on_more_room_than_the_car_model_needs():
     speeds = [0.1 * i for i in range(1, int(ego['max_speed'] / 0.1 + 0.5) + 1)]
     model = {v: stop_point(cfg, v, ego['max_deceleration'], settle=4.0, dt=0.02)[0]
              for v in speeds}
-    for backend in ('spine', 'uart', 'gazebo', 'gazebo_esp32'):
+    for backend in ('spine', 'uart', 'sim', 'sim_esp32'):
         motion, _ = motion_from(ego, car, backend, 10.0, 0.1, spine=spine, legacy=legacy)
         for v in speeds:
             lock = stopping_distance(v, motion.reaction_time, motion.max_accel, motion.braking,
