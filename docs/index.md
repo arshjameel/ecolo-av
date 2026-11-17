@@ -23,6 +23,7 @@ moves the car.**
 
 | You are | Start with |
 |---|---|
+| after what we built, on one page to share | [What we built](what-we-built.md) |
 | after the release we are working toward | [0.4-rc1: start here](release-0.4.md) |
 | after everything on one page | [Overview](overview.md) |
 | after what this version does, at a glance | [Release notes](release-notes.md) |

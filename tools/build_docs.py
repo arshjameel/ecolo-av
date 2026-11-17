@@ -33,13 +33,15 @@ DOCS = ROOT / 'docs'
 OUT = DOCS / 'html'
 STYLE = DOCS / 'style.css'
 WPM = 150          # an unhurried reading speed, so the times are a promise
-READ_FIRST = 24    # PAGES[:24] are the reading list
-LEARN_END = 39     # PAGES[24:39] are the learn pages; the rest are reference
+READ_FIRST = 25    # PAGES[:25] are the reading list
+LEARN_END = 40     # PAGES[25:40] are the learn pages; the rest are reference
 
 # (file in docs/, menu title, what it's for). A name in ROOT_PAGES is a page kept at the
 # repository's root instead, built the same way (none since 25 Oct: every page is in docs/).
 PAGES = [
     ('index.md', 'Start here', 'The picture, and where to go next'),
+    ('what-we-built.md', 'What we built',
+     'The whole stack on one page, to share: each area, its numbers, what is next'),
     ('overview.md', 'Overview', 'Everything in ecolo-av: ours, stock, inherited, missing'),
     ('release-0.4.md', '0.4-rc1',
      'The release candidate: what it means, one command per job, ours against Nav2'),
@@ -187,7 +189,8 @@ RELEASE_PDF = 'aav-release-notes.pdf'
 # Pages also printed on their own, with a cover, to share: page -> (PDF, footer words).
 SHARED = {RELEASE: (RELEASE_PDF, 'release notes'),
           'release-0.2.md': ('aav-0.2.pdf', 'the 0.2 guide'),
-          'whats-new.md': ('aav-whats-new.pdf', "what's new")}
+          'whats-new.md': ('aav-whats-new.pdf', "what's new"),
+          'what-we-built.md': ('aav-what-we-built.pdf', 'what we built')}
 # A shared page's own PDF: a running footer, and the cover on a page of its own.
 RELEASE_STYLE = """
 @page {
