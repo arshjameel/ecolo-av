@@ -55,6 +55,7 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 | 10 | A GPS jump, bad localization | watchdog; geofence LOST, JUMP | stops within 6 s | sim | ❌ |
 | 11 | A stop sign missed | RF-DETR + the stop-sign lock | missed 1 in 8 runs | sim | ❌ |
 | 12 | The screen freezes | the HUD's heartbeat | STALE in 1 s | a Mac | ❌ |
+| 13 | A kerb | the step finder (`kerbs:=true`), kept 10 s; the costmap; the stop zone | a 0.3 m kerb seen 8.4 m out, stopped 0.80-0.82 m before it | sim | ❌ |
 
 ## 1. A person or obstacle ahead
 
@@ -75,12 +76,14 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 | the cubes trial: **1 of 3 drove 1.30 m into the post** | sim (Gazebo), 3 Nov | Ben |
 | the cubes trial again: 0.20 and 0.19 m before the post, 2 of 2 | sim (ours), 15 Nov, TODO 93 | Ben |
 | a 0.3 m kerb across the road (`--kerb`): **not seen**, the car drove into it, lidar alone and with the radar | sim (ours), 15 Nov, TODO 119 | Ben |
+| the same kerb with the step finder (`kerbs:=true`): stopped 0.80-0.82 m before it ([13](#13-a-kerb)) | sim (ours), 16 Nov, TODO 119 | Ben |
 | the car | not measured | |
 
 **Gaps:** the stop zone and the stop hold hold only Nav2 and the AI slot. The point driver
 (25), scripts and replay are not stopped by an obstacle. The roof lidar can't see a 1 m
-box inside the stop zone: the radar's job ([perception](perception.md)). Nothing sees a
-kerb 0.3 m high or lower: the lidar keeps only points above 0.3 m (TODO 119). The ghost test on
+box inside the stop zone: the radar's job ([perception](perception.md)). The flat scan
+sees no kerb 0.3 m high or lower; the step finder does, with `kerbs:=true` ([13](#13-a-kerb)).
+The ghost test on
 the car is written down but not run ([ghost obstacles](ghost-obstacles.md#on-the-real-car)).
 
 ## 2. An obstacle behind, while reversing
@@ -288,6 +291,30 @@ measurement.
 |---|---|---|
 | beat at 9.3 Hz; frozen or closed: `hud STALE` in 1 s | a Mac, 23 Oct | Ben |
 | on a Pi or the car's screen | not measured | |
+
+
+## 13. A kerb
+
+Ben, 15 Nov: "we don't want to hit a curb" (TODO 119; [kerbs](kerbs.md)).
+
+| Layer | What | Where |
+|---|---|---|
+| The map | every road edge on the campus is a lethal kerb line | `campus.pgm` and its chunks |
+| Step finder | a point 0.10-0.5 m above another within 0.3 m, kept 10 s in odom (the lidar loses a kerb 3-4 m before the bumper) | `aav_voxels_rs`, `kerbs:=true` |
+| Costmap | the local costmap's `kerb_layer` marks it, and nothing clears it | Nav2's, or `aav_costmap` |
+| Stop zone | `collision_monitor`'s `steps` source | `aav_navigation` |
+
+| Number | Where, when | Who |
+|---|---|---|
+| a 0.3 m kerb across the road, the flat scan only: **drove into it** | sim (ours), 15 Nov | Ben |
+| the step finder, no memory: 0.12 m before it (the controller); with the radar **0.24 m into it** | sim (ours), 16 Nov | Ben |
+| the step finder with its memory: seen 8.4 m past the bumper; the stop zone stopped the car 0.82 m (lidar) and 0.80 m (lidar and radar) before it, 1 run each | sim (ours), 16 Nov | Ben |
+| cast clouds: a 0.3 m kerb found from 8.6 m, a 0.15 m one from 4.7 m, a 0.10 m one never; no steps on slopes or ramps to 10°, camber, a 7.5 cm bump, grass | tests | Ben |
+| the car | not measured | |
+
+**Gaps:** a 0.15 m kerb is found only in the last 4.7 m: enough at 1 m/s, not at 3 m/s.
+A 0.10 m kerb is never found. The memory forgets after 10 s: a car stood longer before a
+kerb it saw only from far forgets it. Not tried on the real VLP-16.
 
 ## The biggest gaps
 

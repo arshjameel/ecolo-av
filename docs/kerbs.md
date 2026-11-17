@@ -11,9 +11,26 @@ TODO 119.
 | Does the step finder see a 0.3 m kerb? | **Yes**, from about 8.5 m past the bumper (sim) |
 | Does it see a 0.15 m kerb? | **Yes**, but only from about 4.7 m past the bumper (cast clouds) |
 | A 0.10 m kerb? | **No**: a step must rise more than 0.10 m |
-| Does the car stop before it? | SIM_RESULT |
+| Does the car stop before it? | **Yes** in sim: the stop zone stopped it 0.80-0.82 m before a 0.3 m kerb |
 | Is it on by default? | DEFAULT_RESULT |
 | On the real car? | **Not tried yet** |
+
+## In the simulator
+
+`pixi run sim-check --kerb-only --with kerbs:=true` (our simulator, the road world, a
+10 m x 0.3 m x 0.3 m kerb across the road, the planner blind to it):
+
+| Run | Seen from (past the bumper) | Stopped | By |
+|---|---|---|---|
+| 15 Nov, no step finder, lidar | never | **drove into it** | nothing |
+| 16 Nov, step finder, no memory, lidar | 8.6 m | 0.12 m before it | the controller |
+| 16 Nov, step finder, no memory, lidar + radar | 8.5 m | **0.24 m into it** | nothing in time |
+| 16 Nov, with the memory, lidar | 8.4 m | **0.82 m before it** | the stop zone |
+| 16 Nov, with the memory, lidar + radar | 8.4 m | **0.80 m before it** | the stop zone |
+
+Two more runs never started driving: the computer was loaded by other runs and the
+simulator's odometry went stale, so the goal was aborted before the car moved (not the
+kerbs). Results: `/tmp/kerb/` on Ben's Mac.
 
 ## Why the flat scan misses it
 
