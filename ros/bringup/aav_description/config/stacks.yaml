@@ -93,7 +93,7 @@ levels:
       mpc_lag_rs: {controller: mppi, tracker: mpc_lag_rs}
     score: ''
   smoother:
-    what: the velocity smoother after the follower (aav_smoother: knows it drives a car)
+    what: the velocity smoother after the follower (aav_smoother, which knows it drives a car)
     champion: ours
     options:
       ours: {smoother: own}

@@ -38,7 +38,8 @@ VALID = {'controller': vehicle.CONTROLLERS, 'tracker': vehicle.TRACKERS,
 
 
 def test_the_four_stacks_are_there():
-    assert set(stacks.names(LEAGUE)) == {'best', 'car', 'stock', 'ours'}
+    # stock (every level Nav2's) went with Nav2 (17 Nov, TODO 184).
+    assert set(stacks.names(LEAGUE)) == {'best', 'car', 'ours'}
 
 
 def test_every_option_sets_real_switches_to_real_values():
@@ -73,11 +74,18 @@ def test_ours_is_the_default_stack():
         'own', 'own', 'own', 'mppi_lag')
 
 
-def test_stock_is_every_level_nav2s():
-    out = stacks.resolve(LEAGUE, 'stock', NOT_GIVEN, DEFAULTS)
-    assert (out['costmap'], out['navigator'], out['planner'], out['tracker'],
-            out['controller'], out['smoother'], out['behaviour']) == (
-        'nav2', 'nav2', 'lattice', 'none', 'mppi', 'nav2', 'false')
+def test_no_level_has_a_nav2_option_left():
+    # Nav2 deleted (17 Nov, TODO 184): every champion is its port.
+    for name, level in LEAGUE['levels'].items():
+        for option in level['options'].values():
+            assert option.get('costmap', 'own') == 'own', name
+            assert option.get('navigator', 'own') == 'own', name
+            assert option.get('smoother', 'own') == 'own', name
+            assert option.get('tracker', 'mppi_lag') != 'none', name
+            assert option.get('planner', 'own') in ('own', 'diffusion'), name
+    best = stacks.resolve(LEAGUE, 'best', NOT_GIVEN, DEFAULTS)
+    assert (best['costmap'], best['navigator'], best['planner'], best['tracker'],
+            best['smoother']) == ('own', 'own', 'own', 'mppi_lag', 'own')
 
 
 def test_ours_sets_every_level_we_built():
@@ -131,11 +139,11 @@ def test_a_switch_set_by_hand_wins():
 
 
 def test_a_switch_set_by_hand_to_its_fallback_still_wins():
-    # costmap:=nav2 is the fallback's value: still told apart from "not given".
-    out = stacks.resolve(LEAGUE, 'ours', dict(NOT_GIVEN, costmap='nav2'), DEFAULTS)
-    assert (out['costmap'], out['navigator'], out['tracker']) == ('nav2', 'own', 'mppi_lag')
-    out = stacks.resolve(LEAGUE, 'stock', dict(NOT_GIVEN, costmap='own'), DEFAULTS)
-    assert (out['costmap'], out['navigator']) == ('own', 'nav2')
+    # tracker:=mppi_lag is the fallback's value: still told apart from "not given".
+    out = stacks.resolve(LEAGUE, 'ours', dict(NOT_GIVEN, tracker='mppi_lag'), DEFAULTS)
+    assert (out['tracker'], out['mppi_lag_steer_gamma']) == ('mppi_lag', '0.05')
+    out = stacks.resolve(LEAGUE, 'ours', dict(NOT_GIVEN, tracker='lqr'), DEFAULTS)
+    assert (out['costmap'], out['tracker']) == ('own', 'lqr')
 
 
 def test_no_stack_takes_each_switch_as_given_else_its_fallback():
@@ -171,11 +179,11 @@ def test_a_level_switch_picks_its_option_over_the_stacks():
     assert (out['planner'], out['planner_search']) == ('own', 'hybrid')
     assert out['plan_smoothing'] == 'nav2'
     assert out['tracker'] == 'mppi_lag'  # the other levels stay the stack's
-    out = stacks.resolve(LEAGUE, 'ours', NOT_GIVEN, DEFAULTS, {'steer': 'mppi'})
-    assert (out['controller'], out['tracker']) == ('mppi', 'none')
+    out = stacks.resolve(LEAGUE, 'ours', NOT_GIVEN, DEFAULTS, {'steer': 'mppi_lag'})
+    assert (out['controller'], out['tracker']) == ('mppi', 'mppi_lag')
     assert (out['map_correction'], out['mppi_lag_steer_gamma']) == ('newest', '')
-    out = stacks.resolve(LEAGUE, 'stock', NOT_GIVEN, DEFAULTS, {'pose': 'ndt_ekf'})
-    assert (out['ndt_ekf'], out['kiss_ekf'], out['costmap']) == ('true', 'false', 'nav2')
+    out = stacks.resolve(LEAGUE, 'best', NOT_GIVEN, DEFAULTS, {'pose': 'ndt_ekf'})
+    assert (out['ndt_ekf'], out['kiss_ekf'], out['costmap']) == ('true', 'false', 'own')
 
 
 def test_a_switch_by_hand_still_beats_a_level_switch():
