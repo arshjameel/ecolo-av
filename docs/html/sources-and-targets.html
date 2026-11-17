@@ -229,8 +229,8 @@ replay), so it can't pass for real.</p>
 </tr>
 <tr>
 <td>In a simulator, a sensor nobody announces</td>
-<td>doubt; evidence once it lasts 5 s</td>
-<td>a node can publish before its announcement arrives</td>
+<td>doubt; evidence once it lasts 5 s <strong>and</strong> the start-up grace (30 s) has passed</td>
+<td>a node can publish before its announcement arrives: on a busy computer, 10 s before (TODO 234)</td>
 </tr>
 <tr>
 <td>The sensor mux quiet for 3 s</td>
@@ -239,7 +239,7 @@ replay), so it can't pass for real.</p>
 </tr>
 <tr>
 <td>A node on <code>/system/source</code> whose announcement hasn't arrived</td>
-<td>doubt; evidence once it lasts 5 s</td>
+<td>doubt; evidence once it lasts 5 s and the start-up grace has passed</td>
 <td>the graph can show it before its message (up to 30 ms across processes, measured 24 Oct); the message may say SIM</td>
 </tr>
 <tr>
