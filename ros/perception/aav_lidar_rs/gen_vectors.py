@@ -11,10 +11,11 @@ The clouds:
   - aav_voxels' made-up lidar turns (test/lot.py): a post, a wall, parked cars, a lean,
     noise; a turned lidar; a scan of only part of the circle;
   - with --recorded FILE (tools: capture_cloud.py writes it): clouds recorded in our
-    simulator, one per line, every 3rd point kept.
+    simulator, every 12th point kept.
 
-Points are float32 in the lidar's frame, as a lidar sends them. Infinity and NaN are
-written as the strings 'inf', '-inf' and 'nan'.
+Points are float32 in the lidar's frame, as a lidar sends them, written as the shortest
+number that reads back as that float32 (read it as a float32). Infinity and NaN are written
+as the strings 'inf', '-inf' and 'nan'.
 
   pixi run python ros/perception/aav_lidar_rs/gen_vectors.py [--recorded /tmp/clouds.json]
 """
@@ -59,7 +60,7 @@ def case(name, lidar_points, xyz, rpy, shape):
             'shape': [shape.min_height, shape.max_height, shape.angle_min, shape.angle_max,
                       shape.angle_increment, shape.range_min, shape.range_max,
                       *shape.body],
-            'points': [float(v) for v in pts.ravel()],
+            'points': [float(str(v)) for v in pts.ravel()],
             'ranges': [float(r) for r in ranges]}
 
 
@@ -100,7 +101,7 @@ def recorded(path):
     with open(path) as f:
         clouds = json.load(f)
     shape = ScanShape(body=tuple(clouds['body']))
-    return [case(f'recorded {i}', numpy.asarray(c, dtype=numpy.float32).reshape(-1, 3)[::3],
+    return [case(f'recorded {i}', numpy.asarray(c, dtype=numpy.float32).reshape(-1, 3)[::12],
                  clouds['xyz'], clouds['rpy'], shape)
             for i, c in enumerate(clouds['clouds'])]
 

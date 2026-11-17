@@ -53,7 +53,11 @@ fn the_same_ranges_as_the_python() {
             },
         };
         let mount = Mount::new(three(&case["xyz"]), three(&case["rpy"]));
+        // float32 values, as the lidar sends them.
         let points: Vec<Point> = numbers(&case["points"])
+            .into_iter()
+            .map(|v| f64::from(v as f32))
+            .collect::<Vec<_>>()
             .as_chunks::<3>()
             .0
             .iter()
