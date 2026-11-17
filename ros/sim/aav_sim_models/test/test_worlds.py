@@ -117,6 +117,16 @@ def test_our_cameras_run_from_the_repository_on_the_world_file():
     relay = 'front_left=/vehicle/sim/camera/front_left/image_raw'
     assert tail[tail.index('--image-topic') + 1] == relay
     assert '--cameras' not in worlds.sim_cameras_command(root, 'w', [])
+    assert tail[-2:] == ['--graphics', 'auto']
+    looks = worlds.sim_cameras_command(root, 'w', [], looks='Simple')
+    assert looks[-2:] == ['--graphics', 'simple']
+
+
+def test_graphics_words():
+    assert [worlds.graphics(w) for w in ('auto', 'pretty', 'SIMPLE')] == [
+        'auto', 'pretty', 'simple']
+    with pytest.raises(ValueError, match='auto, simple or pretty'):
+        worlds.graphics('fancy')
 
 
 def test_software_rendering_reaches_the_cameras():

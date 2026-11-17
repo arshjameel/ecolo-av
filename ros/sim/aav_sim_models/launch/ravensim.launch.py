@@ -176,11 +176,12 @@ def model_paths(share):
         p for p in os.environ.get('GZ_SIM_RESOURCE_PATH', '').split(os.pathsep) if p]
 
 
-def cameras_process(share, world, chase, relay):
+def cameras_process(share, world, chase, relay, looks):
     """Ravensim's cameras (aav_sim_cameras): the world file, drawn where the car is."""
     cmd = worlds.sim_cameras_command(worlds.repo_root(__file__), world, model_paths(share),
                                      chase=chase,
-                                     relay=faults.CAMERA_RELAYED if relay else '')
+                                     relay=faults.CAMERA_RELAYED if relay else '',
+                                     looks=looks)
     env = worlds.sim_cameras_env(os.environ, platform.system())
     return ExecuteProcess(cmd=cmd, name='sim_cameras', output='screen',
                           additional_env=env or None)
@@ -236,6 +237,7 @@ def launch_setup(context):
     cameras = sensors and flag(context, 'cameras')
     lockstep = cameras and worlds.camera_lockstep(
         LaunchConfiguration('camera_lockstep').perform(context), os.environ)
+    looks = worlds.graphics(LaunchConfiguration('graphics').perform(context))
     # The lidar only where the world renders it: elsewhere it would publish nothing.
     lidar = sensors and flag(context, 'lidar')
     chase = cameras and flag(context, 'chase_camera')
@@ -294,7 +296,7 @@ def launch_setup(context):
     if cameras:
         # The pictures straight onto the camera topics (the radar's rays are the
         # simulator's own).
-        actions.append(cameras_process(share, world, chase, relay))
+        actions.append(cameras_process(share, world, chase, relay, looks))
     if chase:
         # The cameras publish the chase picture: only its JPEG for Lichtblick here.
         actions += chase_jpeg(sim_time)
@@ -325,6 +327,10 @@ def generate_launch_description():
                               description='hold the clock at each picture until it is out: '
                                           'auto (when tools/software_gl.sh draws them, no '
                                           'GPU), true or false'),
+        DeclareLaunchArgument('graphics', default_value='auto',
+                              description='how much the cameras draw: pretty (grain, sky, '
+                                          'haze), simple (plain colours, as Gazebo), or '
+                                          'auto (pretty on a GPU, simple in software)'),
         DeclareLaunchArgument('chase_camera', default_value='true',
                               description='a camera behind and above the car, for '
                                           "Lichtblick's cockpit layout, as "

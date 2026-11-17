@@ -476,6 +476,12 @@ def test_the_cameras_lockstep_under_software_rendering(monkeypatch):
     assert sent['camera_lockstep'] == 'true'
 
 
+def test_the_cameras_graphics_pass_through():
+    sent = included(started(SIM, world='road', graphics='simple'))['ravensim.launch.py']
+    assert sent['graphics'] == 'simple'
+    assert included(started(SIM, world='road'))['ravensim.launch.py']['graphics'] == 'auto'
+
+
 def test_the_old_simulator_name_still_works_for_a_release():
     assert 'ravensim.launch.py' in included(started(SIM, simulator='own'))
     with pytest.raises(ValueError, match='Gazebo was removed'):

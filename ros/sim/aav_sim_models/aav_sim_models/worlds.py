@@ -146,6 +146,24 @@ def camera_lockstep(value: str, environ) -> bool:
     raise ValueError(f'camera_lockstep:={value}: auto, true or false')
 
 
+GRAPHICS = ('auto', 'simple', 'pretty')
+
+
+def graphics(value: str) -> str:
+    """
+    Return how much Ravensim's cameras draw (graphics:=): auto, simple or pretty.
+
+    pretty: grain on the ground, a sky with haze, longer shadows (TODO 244); simple: plain
+    colours and a flat sky, as Gazebo drew. auto: pretty on a GPU, simple drawn in software
+    (tools/software_gl.sh, CI), where every extra costs real time. The sensors' numbers
+    don't change: only the pictures' looks.
+    """
+    value = value.lower()
+    if value not in GRAPHICS:
+        raise ValueError(f'graphics:={value}: auto, simple or pretty')
+    return value
+
+
 # Ravensim's cameras: their own Cargo workspace, not a colcon package (Bevy).
 SIM_CAMERAS = os.path.join('ros', 'sim', 'aav_sim_cameras', 'Cargo.toml')
 
@@ -197,7 +215,7 @@ def sim_cameras_env(environ, system: str) -> dict:
 
 
 def sim_cameras_command(root: str, world: str, models, chase: bool = True,
-                        relay: str = '') -> list:
+                        relay: str = '', looks: str = 'auto') -> list:
     """
     Return the command that runs Ravensim's cameras beside it.
 
@@ -205,6 +223,7 @@ def sim_cameras_command(root: str, world: str, models, chase: bool = True,
     car, on the car's camera topics. cargo builds them first if they changed (Bevy: minutes
     the first time). chase=False leaves out the chase camera. relay: the front left
     picture's topic instead of its own (its camera_info stays), for sim_camera_relay's faults.
+    looks: graphics:= (auto, simple or pretty).
     """
     cmd = ['cargo', 'run', '--release', '-q', '--features', sim_cameras_features(os.environ),
            '--manifest-path', os.path.join(root, SIM_CAMERAS), '--',
@@ -213,7 +232,7 @@ def sim_cameras_command(root: str, world: str, models, chase: bool = True,
         cmd += ['--cameras', 'front_left,front_right,rear']
     if relay:
         cmd += ['--image-topic', 'front_left=' + relay]
-    return cmd
+    return cmd + ['--graphics', graphics(looks)]
 
 
 def has_sensors(path: str) -> bool:

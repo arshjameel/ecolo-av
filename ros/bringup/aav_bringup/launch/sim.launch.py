@@ -21,7 +21,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [watch_hud:=false] [faults:=false] [spine:=false] [arm:=true]
       [esp32:=false] [esp32_loop:=pi]
       [bridge:=rust|python]
-      [ghost:=false] [simulator:=ravensim] [camera_lockstep:=auto]
+      [ghost:=false] [simulator:=ravensim] [camera_lockstep:=auto] [graphics:=auto]
   pixi run sim world:=road                         the road: the car's camera and radar
   pixi run sim world:=campus                       Carleton, every level ours
   pixi run sim stack:=best                         every level's champion (as the car)
@@ -271,6 +271,8 @@ bench's argument names:
                       for one release, with a warning
   camera_lockstep:=auto  Ravensim's clock waits for each camera's picture: auto when
                       tools/software_gl.sh draws them (no GPU), true or false
+  graphics:=auto      how much the cameras draw: pretty (grain, a sky, haze), simple (plain
+                      colours, as Gazebo drew); auto: pretty on a GPU, simple in software
 
 The empty and test_lot worlds render nothing, so they run headless anywhere, and the
 camera's parts need world:=road. Every node runs on simulated time.
@@ -513,7 +515,7 @@ def launch_setup(context):
                 faults=flag['faults'],
                 spine=arg('spine'), arm=arg('arm'), bridge=arg('bridge'),
                 esp32=arg('esp32'), esp32_loop=arg('esp32_loop'),
-                camera_lockstep=arg('camera_lockstep')),
+                camera_lockstep=arg('camera_lockstep'), graphics=arg('graphics')),
         include(context, 'aav_command_mux', 'mux.launch.py', use_sim_time='true',
                 sensor_lock=flag['watchdog'], geofence_lock=flag['geofence']),
         # behaviour:=true: the road ahead's writer runs, so ego holds navigation to it. Its writer
@@ -1089,5 +1091,8 @@ def generate_launch_description():
                               description="Ravensim's clock waits for each picture: auto "
                                           '(when tools/software_gl.sh draws them), true or '
                                           'false'),
+        DeclareLaunchArgument('graphics', default_value='auto',
+                              description='how much the cameras draw: pretty, simple, or '
+                                          'auto (pretty on a GPU, simple in software)'),
         OpaqueFunction(function=launch_setup),
     ])
