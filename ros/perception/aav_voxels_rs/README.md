@@ -10,6 +10,7 @@ default, until this one has run on the car.
 ```
 /sensors/lidar/points ──► voxels (Rust) ──► /perception/voxels/cubes
                              ├────────────► /perception/voxels/ground
+                             ├────────────► /perception/voxels/steps   (steps:=true: kerbs)
                              └────────────► /perception/voxels/status
 ```
 
@@ -46,15 +47,17 @@ binary is installed as `lib/aav_voxels_rs/voxels`.
 | in | `/sensors/lidar/points` | `sensor_msgs/PointCloud2`, reliable, keep last 1 |
 | out | `/perception/voxels/cubes` | `PointCloud2`, `base_link`, x y z float32, reliable, depth 1: each cube's point nearest `base_link` |
 | out | `/perception/voxels/ground` | `PointCloud2`, `base_link`, the same: each flat square of road seen |
-| out | `/perception/voxels/status` | `diagnostic_msgs/DiagnosticStatus`: `ms`, `cubes`, `ground_cubes`, `points`, `fitted`, `roll_deg`, `pitch_deg`, `clouds_dropped` |
+| out | `/perception/voxels/steps` | only with `steps:=true`: `PointCloud2`, `base_link`, the same QoS: the high side of every kerb (step in the ground), one point per 0.1 m square |
+| out | `/perception/voxels/status` | `diagnostic_msgs/DiagnosticStatus`: `ms`, `cubes`, `ground_cubes`, `points`, `fitted`, `roll_deg`, `pitch_deg`, `clouds_dropped`; and `steps` with `steps:=true` |
 
 | Parameter | From | Means |
 |---|---|---|
 | `size`, `min_height`, `max_height`, `range_max` (m) | `nav2.yaml`'s `voxels:` block, as the Python | the cube's edge; the band above the road; how far |
 | `lidar_xyz` (m), `lidar_rpy` (rad) | `vehicle.yaml`'s `lidar_link`, by `navigation.launch.py` | where the lidar sits |
 | `body` (m: x from, x to, half width) | `aav_lidar` `scan.body_box`, by `navigation.launch.py` | the car's own outline: its points never count |
+| `steps` (false), `step_min` (0.10 m), `step_radius` (0.3 m), `step_range` (12 m) | `navigation.launch.py kerbs:=true` | the kerbs' step finder (TODO 119, [kerbs](../../../docs/kerbs.md)) |
 
-The last three have no default: without them the node stops and says which is missing.
+The three mount ones have no default: without them the node stops and says which is missing.
 The Python reads `vehicle.yaml` itself; the Rust gets the same numbers from the launch file.
 
 ### `voxels` crate
@@ -67,6 +70,35 @@ The Python reads `vehicle.yaml` itself; the Rust gets the same numbers from the 
 | `cubes`, `cubes_on(road)` → `Cubes` | obstacles, ground squares, the road, the points that counted |
 | `lowest_per_cell`, `nearest_per_cube`, `cube_centres`, `square_centres`, `percentile`, `fit_plane` | the steps, each tested |
 | `cloud::read_xyz`, `cloud::write_xyz32` | `PointCloud2`'s bytes in and out |
+| `steps(points, StepShape)` (`StepShape::checked()`, `StepError`) | the kerbs: points 0.10-0.5 m above a point within 0.3 m of them, flat; 2 or more to a 0.1 m square |
+
+### The step finder (`steps.rs`, TODO 119)
+
+The cubes start 0.3 m above the road, so a kerb is never a cube. The step finder looks
+for a sudden rise instead:
+
+```text
+   ring k+1 ─────────╮
+   ring k   ──────╮  │       ● within 0.3 m of ○, flat,
+                  │  ●       and more than 0.10 m higher: a step
+   road ──────────○──┘
+```
+
+One ring alone can't show a step: all its points lie on one cone, so a kerb looks like
+a ramp as steep as the beam. Two rings can, when one lands on the road just before the
+kerb and the next on its face or top.
+
+| Cloud (cast as the VLP-16 casts it, 3 cm noise) | Steps |
+|---|---|
+| a 0.3 m kerb across the road | found up to 8.6 m past the bumper |
+| a 0.15 m kerb across the road | found up to 4.7 m past the bumper |
+| a 0.15 m kerb beside the road | found where the two lowest rings cross it (about 5 m ahead and behind) |
+| a 0.10 m kerb | never (the rise must be **more** than 0.10 m) |
+| flat road; slopes and ramps of 3°, 6°, 10°; a 2.5 % camber; a 7.5 cm speed bump; rough grass; a sign overhead | none |
+| the nine recorded clouds: the ramp, the crowned road | none |
+
+`cargo test -p voxels --release -- --ignored --nocapture steps_range` prints the table of
+distances. On the recorded clouds it takes 0.14-0.66 ms, 2 to 7 times the cubes' time (`examples/timing.rs`).
 
 ## Invariants
 
@@ -105,11 +137,12 @@ and the Python's answers.
 | one whole turn (`--bench`, 28,800 points) | the same |
 
 `test/test_voxels_node.py` (in `colcon test`) runs the node: a whole lidar turn in, the
-Python's cubes, ground and status out, and a clean exit on Ctrl-C.
+Python's cubes, ground and status out, and a clean exit on Ctrl-C; and with `steps:=true`, a
+0.15 m kerb out on `/perception/voxels/steps`.
 
 ## Side Effects
 
-- Publishes the three topics above. Stops cleanly on SIGINT, SIGTERM or SIGHUP (`ctrlc`).
+- Publishes the three topics above (four with `steps:=true`). Stops cleanly on SIGINT, SIGTERM or SIGHUP (`ctrlc`).
 - colcon builds into its own `target/` folder in the build directory.
 
 ## Verification
