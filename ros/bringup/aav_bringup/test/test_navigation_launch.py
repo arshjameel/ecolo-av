@@ -274,6 +274,9 @@ def test_diffusion_takes_compute_path_to_pose_with_our_planner_behind_it():
         nodes['diffusion_planner'])
     assert given(nodes['navigator'])['planner_action'] == '/compute_path_to_pose'
     assert given(nav_nodes()['navigator'])['planner_action'] == vehicle.OWN_PLANNER_ACTION
+    # Ours plans on its own topic then: /plan is the model's.
+    assert remaps(nodes['planner']) == [('/plan', '/drivers/nav/diffusion/lattice_plan')]
+    assert remaps(nav_nodes()['planner']) == []
     p = given(nodes['diffusion_planner'])
     v = vehicle.load()['vehicle']
     assert p['reversing'] is True

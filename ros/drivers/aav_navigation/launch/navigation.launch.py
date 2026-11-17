@@ -205,6 +205,8 @@ def lattice_for(share, v, map_yaml, headings=vehicle.LATTICE_HEADINGS[0],
 # Nav2's servers did with use_respawn. While it is down the car stops: the costmap's and
 # odometry's age checks, twist_mux's timeout on /drivers/nav/cmd_vel.
 RESPAWN_DELAY = 1.0
+# With planner:=diffusion, our planner's own /plan (the fallback's path) goes here.
+DIFFUSION_LATTICE_PLAN = '/drivers/nav/diffusion/lattice_plan'
 
 
 def diffusion_params(nav2, v, reversing):
@@ -436,7 +438,9 @@ def nodes(context):
                      'costmap_latched': str(latched).lower(),
                      # IsPathValid, as planner_server served it.
                      'is_path_valid_service': '/is_path_valid',
-                     'use_sim_time': use_sim_time}]))
+                     'use_sim_time': use_sim_time}],
+        # With the diffusion planner, /plan is the model's: ours, its fallback, on its own.
+        remappings=([('/plan', DIFFUSION_LATTICE_PLAN)] if planner == 'diffusion' else [])))
     # aav_navigator (Rust): the behaviour trees' logic and waypoint_follower's, under their
     # action names, calling our planner (or the diffusion planner), follower and costmaps.
     navsat = (FindPackageShare('aav_localization').perform(context) +

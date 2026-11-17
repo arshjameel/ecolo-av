@@ -42,7 +42,7 @@ def test_followers_match_vehicle_py():
                 assert f"'{value}'" in controllers
             if name == 'tracker':
                 assert f"'{value}'" in trackers
-    # Every tracker but 'none' is offered.
+    # Every tracker is offered.
     offered = {a.split(':=')[1] for _, _, args in pick.FOLLOWERS for a in args
                if a.startswith('tracker:=')}
     assert offered == set(re.findall(r"'(\w+)'", trackers))
@@ -96,13 +96,13 @@ def test_demo_defaults_to_the_ekfs_only():
 
 
 def test_sim_with_a_localizer_moves_to_the_test_lot():
-    # sim, empty, hybrid (not the default), mpc, both, cubes, lqi (ours come first)
-    answers = iter(['3', '3', '3', '7', '4', '2', '2'])
+    # sim, empty, own_hybrid (not the default), mpc, both, cubes, lqi (ours come first)
+    answers = iter(['3', '3', '2', '5', '4', '2', '2'])
     said = []
     cmd = pick.questions(read=lambda _: next(answers), say=said.append)
     assert cmd[2] == 'sim'
     assert 'world:=test_lot' in cmd and 'tracker:=mpc' in cmd and 'speed_loop:=lqi' in cmd
-    assert 'planner:=hybrid' in cmd and 'voxels:=true' in cmd
+    assert 'planner_search:=hybrid' in cmd and 'voxels:=true' in cmd
     assert any('switching the world' in s for s in said)
 
 

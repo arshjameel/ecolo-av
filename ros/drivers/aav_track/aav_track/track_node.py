@@ -1,7 +1,7 @@
 """
-track: a trial path follower in controller_server's place (docs/trials.md).
+track: a trial path follower in mppi_lag's place (docs/trials.md).
 
-Action      follow_path                 nav2_msgs/action/FollowPath: bt_navigator's, a new
+Action      follow_path                 nav2_msgs/action/FollowPath: the navigator's, a new
                                         goal each time the planner replans (the newest
                                         replaces the last without stopping)
 Subscribes  localization/odom/local     nav_msgs/Odometry (odom_topic): where the car is in
@@ -22,7 +22,7 @@ Subscribes  localization/odom/local     nav_msgs/Odometry (odom_topic): where th
                                         169) while it is 0.5 s fresh
 Publishes   cmd_vel_nav                 geometry_msgs/TwistStamped (Twist with stamped:=
                                         false), at rate_hz while a path runs: (v, v tan(steer)
-                                        / L), to Nav2's velocity smoother, collision_monitor,
+                                        / L), to our velocity smoother, the stop zone,
                                         then /drivers/nav/cmd_vel. v from the shared
                                         speed policy (speed.py), or mpc_full's own plan
             drivers/nav/track/status    diagnostic_msgs/DiagnosticStatus, every tick: the
@@ -38,10 +38,9 @@ Parameters  tracker can be changed while it runs, only with live_swap:=true (sim
             is built between ticks (one thread), takes the path and its place on it,
             starts its steering from the last command, and the loop statistics reset.
 
-navigation.launch.py tracker:=pure_pursuit|stanley|lqr|mpc|mpc_full|mpc_lag starts it; renames
-controller_server's own action follow_path_unused, so bt_navigator's FollowPath comes here.
-Everything after cmd_vel_nav (the smoother, collision_monitor, twist_mux's slot 20, the
-locks) is unchanged. The checks are Nav2's own (checks.py, with nav2.yaml's numbers):
+navigation.launch.py tracker:=pure_pursuit|stanley|lqr|mpc|mpc_full|mpc_lag starts it in
+mppi_lag's place, so the navigator's FollowPath comes here. Everything after cmd_vel_nav
+(the smoother, the stop zone, twist_mux's slot 20, the locks) is unchanged. The checks are Nav2's own (checks.py, with nav2.yaml's numbers):
 
 | Result | When |
 |---|---|
