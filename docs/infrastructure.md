@@ -11,7 +11,7 @@ tests, and how a change goes from an idea to the car.
 |---|---|---|
 | The car's software | ROS 2 Jazzy packages, one folder per area | `ros/` |
 | The car's firmware | the CAN contract, the Rust spine logic and its board programs (the ESP32, the Pico 2s), the 2025-26 boards' code | `firmware/` |
-| The environment | ROS, Gazebo, compilers, Python and Rust, all from Pixi | `pixi.toml`, `pixi.lock` |
+| The environment | ROS, compilers, Python and Rust, all from Pixi | `pixi.toml`, `pixi.lock` |
 | The tools | tests, the graph check, the network doctor, recording, docs, the mailer, the MCP server | `tools/` |
 | The docs | short markdown pages, built into web pages and one PDF | `docs/` |
 | The rules | names, units, secrets, git, testing | `CLAUDE.md` |
@@ -39,7 +39,7 @@ ecolo-av/
     io_mux/             the sensor mux and the output mux: real or simulated, never mixed
     ego/                the virtual car: one command into speed and steering
     can_bridge/         the real car: the spine bridge (CAN) and today's ESP32 link
-    sim/                whatever plays the car instead: our simulator, Gazebo, turtlesim, CARLA,
+    sim/                whatever plays the car instead: Ravensim, turtlesim, CARLA,
                         bench mode
     safety/             the sensor watchdog and the ghost obstacles
     hud/                the in-car screens: the raylib HUD and the map window; the developer
@@ -89,7 +89,7 @@ because `pixi.lock` pins them all.
 
 | Environment | Holds | Who uses it |
 |---|---|---|
-| `default` | ROS 2 Jazzy, Gazebo, Nav2, Rust, the compilers | everyone |
+| `default` | ROS 2 Jazzy, Rust, the compilers | everyone |
 | `ml` | the default, plus PyTorch, RF-DETR, Ultralytics (YOLO) and, on Macs, Core ML tools | whoever runs the detector: `pixi run detect`, `pixi run -e ml bench perception:=true`. Linux PCs and Macs only |
 | `docs` | Markdown and WeasyPrint | `pixi run docs` |
 | `mcp` | the default, plus the MCP Python SDK | an AI app, through `.mcp.json`: [AI apps (MCP)](mcp.md) |
@@ -151,7 +151,7 @@ changes.
 | Profile | Start it with | The car is | Runs |
 |---|---|---|---|
 | `turtle` | `pixi run turtle` | the turtlesim turtle | mux, ego, scripted driver, the car's model, `ekf_local` |
-| `sim` | `pixi run sim` | our own simulator (the default since 8 Nov; it needs a GPU), or Gazebo with `simulator:=gazebo` | the whole stack: both EKFs, `navsat_transform`, Nav2 |
+| `sim` | `pixi run sim` | Ravensim, our own simulator (with no GPU: `tools/software_gl.sh` in front, the cameras in lockstep) | the whole stack: both EKFs, `navsat_transform`, Nav2 |
 | `car` | `pixi run car <machine>` | the real car | the parts its machine file switches on |
 | `carla` | `pixi run carla-car host:=<the CARLA computer>` | a CARLA car (untested against a server) | the same as `sim` ([CARLA](carla.md)) |
 | `replay` | `ros2 launch aav_bringup replay.launch.py`, with a bag playing | a recorded drive | localization (and Nav2) on real sensor data |
@@ -219,22 +219,23 @@ request. The nightly `mac` and `sim` runs stay in the team's repo.
 | `mac` | macOS 15, Apple Silicon | every night (team's repo) | `pixi run test`, the MCP server |
 | `car-kit` | Ubuntu 24.04, 64-bit ARM | the same as `linux` | `pixi run car-kit`, then `car_install.sh --all` with **no network** (its own network namespace), as on the car ([car install](car-install.md)): 6 min |
 | `car-kit-22.04` | Ubuntu **22.04**, 64-bit ARM: the car's own OS (JetPack 6) | the same | the same kit, installed offline on the car's Ubuntu. New 26 Oct: still allowed to fail (`continue-on-error`) |
-| `sim` | Ubuntu 24.04, x86_64 | every night (team's repo) | `sim-check --obstacle` on Gazebo, on ours with no cameras, and on ours with its cameras in software, below |
+| `sim` | Ubuntu 24.04, x86_64 | every night (team's repo) | `sim-check --obstacle` on Ravensim, its cameras in software and in lockstep, and with no cameras, below |
 
 Every job also runs from the Actions tab (Run workflow).
 
-Every night the job `sim` runs `sim-check --obstacle` (headless) on Linux, three ways.
+Every night the job `sim` runs `sim-check --obstacle` (headless) on Linux, on Ravensim.
 GitHub's computers have no GPU, so the pictures are drawn in software, through
-`tools/software_gl.sh`. A failure there doesn't fail the night yet (`continue-on-error`).
+`tools/software_gl.sh`, with the clock waiting for each one (camera lockstep, 16 Nov). A
+failure there doesn't fail the night yet (`continue-on-error`).
 
-| Step | Simulator | Pictures drawn by | Since |
-|---|---|---|---|
-| 1 | Gazebo | Mesa's llvmpipe (OpenGL) | 22 Oct |
-| 2 | ours, `--no-cameras` | none | 14 Nov |
-| 3 | ours, with its cameras | Mesa's lavapipe (Vulkan): [no GPU](own-simulator-cameras.md) | 15 Nov, [[untested]] on GitHub yet |
-| 4 | the cameras' picture tests (`tests/render.rs`) | lavapipe | 15 Nov, [[untested]] on GitHub yet |
+| Step | Pictures drawn by | Since |
+|---|---|---|
+| 1. `sim-check --obstacle`, with the cameras | Mesa's lavapipe (Vulkan), in lockstep | 16 Nov, [[untested]] on GitHub yet |
+| 2. `sim-check --no-cameras --obstacle` | none | 14 Nov |
+| 3. the cameras' picture tests (`tests/render.rs`) | lavapipe | 15 Nov, [[untested]] on GitHub yet |
 
-Once step 3 passes a few nights, Gazebo's step goes (TODO 183, after 0.4-rc1).
+Gazebo's step went with Gazebo (16 Nov): its last nights in [Gazebo, as it
+was](history/gazebo-as-it-was.md).
 
 ### Reading a CI failure without signing in
 

@@ -1,7 +1,8 @@
 # The campus
 
-Carleton in the simulator (ours, the default since 8 Nov, or Gazebo), on one Nav2 costmap, with a guessed NDT map. It's for practice while the
-hardware catches up (Ben, 5 Nov). Nothing here has met the real campus yet.
+Carleton in Ravensim (Gazebo too, until 16 Nov), on one Nav2 costmap, with a guessed NDT map. It's for practice while the
+hardware catches up (Ben, 5 Nov). Nothing here has met the real campus yet. Its map, cut
+into 64 m chunks (`maps/campus/chunks/`), is **RavenTiles** ([Own costmap](own-costmap.md)).
 
 ```sh
 pixi run campus                                       # builds maps/campus/ (about 10 s)
@@ -89,7 +90,7 @@ campus: NDT is watched, and doesn't steer the estimate.
 | A lot's middle is far from anything | the lidar sees little there: NDT may lose the fit |
 | Lidar cubes reach 30 m, NDT's points 45 m | so the top view can look empty in open space |
 
-Newer runs here (8 Nov, our simulator, 2.5 m/s): [our planner](own-planner.md#the-campus-3-legs-25-ms),
+Newer runs here (8 Nov, Ravensim, 2.5 m/s): [our planner](own-planner.md#the-campus-3-legs-25-ms),
 [our navigator](own-navigator.md#the-campus-25-ms-2-runs), [directions](routes.md#on-the-campus).
 
 ## Next: the real lidar drive

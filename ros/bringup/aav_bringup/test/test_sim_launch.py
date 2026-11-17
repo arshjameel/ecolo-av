@@ -423,7 +423,7 @@ def test_bad_values_stop_the_launch():
 def cameras_command(actions):
     """Return the cameras' command line (sim_cameras), or None if they don't run."""
     for a in actions:
-        if isinstance(a, ExecuteProcess) and \
+        if isinstance(a, ExecuteProcess) and a.name and \
                 perform_substitutions(LaunchContext(), a.name) == 'sim_cameras':
             return [perform_substitutions(LaunchContext(), c) for c in a.cmd]
     return None

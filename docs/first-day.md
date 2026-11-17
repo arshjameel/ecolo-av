@@ -85,26 +85,20 @@ pixi run check turtle
 **You should see** `0 failed` at the end. The contract is `docs/interfaces.yaml`: every
 topic, its type, and who publishes and reads it.
 
-## 4. Gazebo: the simulated car (15 minutes)
+## 4. Ravensim: the simulated car (15 minutes)
 
 Stop the turtle first (Ctrl-C in each terminal).
 
 ```bash
-pixi run sim simulator:=gazebo      # the same on Linux and on a Mac
+pixi run sim                        # the same on Linux and on a Mac
+tools/software_gl.sh pixi run sim   # a computer with no GPU (slower than real time)
 ```
 
 **You should see:**
-- **Gazebo:** the car, red and white, on a grey ground plane. The camera follows it.
 - **RViz:** the car model, the map, and the costmaps around the car.
 
-Plain `pixi run sim` runs our own simulator instead (the default since 8 Nov,
-[its page](own-simulator.md)). It has no window of its own: you get RViz only, and the
-rest of this page works the same.
-
-![The car in Gazebo, driving a left curve](img/gazebo-car.png)
-
-On a Mac, Gazebo's window runs as a separate program, and `simulator:=gazebo` starts it for you.
-If you close it, `pixi run tools/ros.sh tools/gz_window.sh` opens it again.
+Ravensim is Ravensim ([its page](own-simulator.md)). It has no window of its
+own: watch in RViz (or Lichtblick, [Foxglove](foxglove.md)).
 
 Drive it with `pixi run keyboard --sim` in another terminal. Then run
 `pixi run check sim`: it should say `0 failed`.
@@ -122,8 +116,8 @@ The costmaps are the grids that Nav2 plans through:
 - **local**: 20 m × 20 m around the car;
 - **global**: the whole map.
 
-For walls to plan around, start Gazebo with the test lot instead:
-`pixi run sim world:=test_lot` (add `simulator:=gazebo` for Gazebo's window). [Costmaps](costmaps.md) explains how to draw your own.
+For walls to plan around, start Ravensim with the test lot instead:
+`pixi run sim world:=test_lot`. [Costmaps](costmaps.md) explains how to draw your own.
 
 !!! note "The same goal from a terminal"
   `pixi run tools/ros.sh ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose "{pose: {header: {frame_id: map}, pose: {position: {x: 8.0, y: 0.0}, orientation: {w: 1.0}}}}"`
@@ -159,6 +153,5 @@ For walls to plan around, start Gazebo with the test lot instead:
 | "Not built yet" | `pixi run build` |
 | A test fails | run `pixi run test` again. If it still fails, paste the last 20 lines into the team chat or into Claude |
 | The turtle doesn't move | click into the keyboard terminal and hold the key; see [when nothing moves](simulation.md#when-nothing-moves) |
-| The Gazebo window stays empty, or the car never appears | `export GZ_IP=127.0.0.1` in every terminal, then start again |
 | macOS asks whether `python3` or `rviz2` may accept connections | click Allow |
 | Two laptops see each other's robots | give each its own `ROS_DOMAIN_ID`, 0–101 (safe on Linux; Fast DDS breaks above 232) |

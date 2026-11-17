@@ -3,7 +3,7 @@
 ## Overview
 
 Starts the whole stack. One launch file per **profile**: who plays the car (turtlesim,
-Gazebo, the bench's stand-ins, CARLA or the real car). Above the backend, every profile
+Ravensim, the bench's stand-ins, CARLA or the real car). Above the backend, every profile
 runs the car's own nodes and configs. This package holds only launch files, machine
 files, foxglove_bridge's settings and RViz layouts: no nodes of its own.
 
@@ -14,7 +14,7 @@ files, foxglove_bridge's settings and RViz layouts: no nodes of its own.
 | Profile | Launch file | Command | Who plays the car | Source | Clock |
 |---|---|---|---|---|---|
 | turtle | `turtle.launch.py` | `pixi run turtle` | turtlesim (`aav_turtlesim`) | SIM | wall |
-| sim | `sim.launch.py` | `pixi run sim world:=road` | our simulator (`aav_simulator`, the default since 8 Nov) or Gazebo (`simulator:=gazebo`), both through `aav_sim_models`; with `spine:=true`, `spine_bridge` + `spine_sim` in the loop | SIM | simulated |
+| sim | `sim.launch.py` | `pixi run sim world:=road` | Ravensim (`aav_simulator`, `aav_sim_cameras` and `aav_sim_models`; `simulator:=ravensim`, the only one since Gazebo went, 16 Nov); with `spine:=true`, `spine_bridge` + `spine_sim` in the loop | SIM | simulated |
 | bench | `bench.launch.py` | `pixi run bench` | `spine_sim` and mock sensors (`aav_bench`, `aav_spine_sim`) | BENCH | wall |
 | car | `car.launch.py machine:=<m>` | `pixi run car orin` | the real car: `legacy_uart_bridge` (`actuators:=uart`, today) or `spine_bridge` (`actuators:=can`) | REAL | wall |
 | carla | `carla.launch.py host:=<ip>` | `pixi run carla-car host:=...` | CARLA (`aav_carla`'s `carla_adapter`) | SIM | CARLA's |
@@ -24,7 +24,7 @@ Two helpers:
 
 | File | Does |
 |---|---|
-| `stack.launch.py target:=turtle\|gazebo\|bench\|car\|carla [source:=]` | one launch for every target; refuses a `source:=` that isn't the target's own |
+| `stack.launch.py target:=turtle\|ravensim\|bench\|car\|carla [source:=]` (`gazebo` still means ravensim) | one launch for every target; refuses a `source:=` that isn't the target's own |
 | `foxglove.launch.py` | foxglove_bridge for Foxglove or Lichtblick: `foxglove_address`, `foxglove_port` (8765), `foxglove_control`, `foxglove_topics` (`wifi` or `all`), `foxglove_preview` |
 
 Each launch file's docstring lists all its arguments. The common ones:

@@ -10,7 +10,7 @@ stages"). It is about refining what we have, not adding more.
 | **Our own stack** drives by default (`stack:=ours`) | ✅ since 14 Nov: our costmap, planner, navigator, follower, behaviour, all in Rust where it is heavy |
 | **Reverse** everywhere the plan says | ✅ on the lot and the campus; a three-point turn in a 6.5 m street works, with 4-6 changes of direction where 3 are planned (TODO 174) |
 | **No oscillation** (no swaying) | 🔧 ours now sways about 2 times more than Nav2 (was 3-5 times); on mapped road, `path:=lane` sways least of all (TODO 167, 168) |
-| Nav2 and Gazebo only as yardsticks | ✅ `stack:=stock`, `simulator:=gazebo`; deleted after 0.4-rc1 is scored (TODO 184) |
+| Nav2 and Gazebo only as yardsticks | ✅ both deleted early: Nav2 17 Nov, Gazebo 16 Nov ([as it was](history/gazebo-as-it-was.md); TODO 184) |
 
 ## One command per job
 

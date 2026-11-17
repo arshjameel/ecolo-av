@@ -30,7 +30,7 @@ Folders: [foxglove/](./foxglove/README.md) (the Foxglove/Lichtblick layouts),
 
 The `Task` column is `pixi run <task>`. "-" means no task: run the script itself, as
 `pixi run python3 tools/<script>.py` or `pixi run bash tools/<script>.sh`. "- (ros.sh)" needs
-ROS: `pixi run tools/ros.sh python3 tools/<script>.py`; "- (ros.sh --local)" starts Gazebo,
+ROS: `pixi run tools/ros.sh python3 tools/<script>.py`; "- (ros.sh --local)" starts Ravensim,
 so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 
 ### Tests and checks
@@ -41,9 +41,8 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `lint.sh` | ament_flake8 and ament_pep257 on our Python | `lint` |
 | `check_graph.py` | the running graph against `docs/interfaces.yaml`; then `/localization/health`'s line (warn only) | `check <profile>` |
 | `bench_check.py` | starts bench mode, tests the whole graph: contract, drive, e-stops | `bench-check` |
-| `sim_check.py` | Gazebo's road world headless, the whole graph, a drive (`--voxels`: Nav2 on the lidar's cubes) | `sim-check` |
+| `sim_check.py` | Ravensim's road world headless, the whole graph, a drive (`--voxels`: Nav2 on the lidar's cubes) | `sim-check` |
 | `drop_in_check.py`, `drop_in.py` | is what's running a true drop-in: each stream's rate and frame against the contract's `drop_in` rules (`drop_in.py`: the logic, no ROS) | `drop-in` |
-| `gz_crash.py` | did Gazebo itself crash at start-up? (sim-check retries once) | - |
 | `layout_check.py` | is every topic in `foxglove/` served by a bridge? | - |
 | `ci_annotate.py` | a failed test log into GitHub annotations | (CI) |
 
@@ -89,21 +88,19 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `dev_window.sh` | the developer window (Bevy): pretend data, `--live` beside a sim here, or `--watch` | `dev-window` |
 | `sim_cameras.sh` | our simulator's cameras (Bevy, offscreen): the timing check, `--bench`, `--save`; `--ros` publishes the camera topics, here only | `sim-cameras` |
 | `screen.sh` | one of the four raylib screens, live or with pretend data (`--demo`) | `hud`, `map`, `debug-hud`, `hw-panel` |
-| `demo_all.sh` | Gazebo, RViz, the HUD and the map window in one go (`--debug`: the debug HUD too) | `demo` |
+| `demo_all.sh` | Ravensim, RViz, the HUD and the map window in one go (`--debug`: the debug HUD too) | `demo` |
 | `pick.py` | a plain-words menu of the sim's switches (route, follower, where-am-I, speed loop): prints, saves and runs the command (`docs/switches.md`) | `pick` |
-| `sim_fault.sh` | make a Gazebo sensor fail on purpose, or mend it | `sim-fault` |
-| `gz_window.sh` | Gazebo's window again, following the car | - (ros.sh) |
-| `software_gl.sh` | Mesa's software renderers with no GPU: OpenGL for Gazebo, Vulkan (lavapipe) for our cameras; `--force` even beside a GPU, a Mac too | - (put in front) |
+| `sim_fault.sh` | make a simulated sensor fail on purpose, or mend it | `sim-fault` |
+| `software_gl.sh` | Mesa's software renderer with no GPU: Vulkan (lavapipe) for Ravensim's cameras, which then run in lockstep (it exports `AAV_SOFTWARE_GL=1`); `--force` even beside a GPU, a Mac too | - (put in front) |
 | `fake_vlp16.py` | pretends to be the VLP-16 lidar: its UDP packets | - |
 | `controller_compare.py` | Regulated Pure Pursuit against MPPI, and the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt`, `--ndt-ekf`, `--gps-off`, `--voxels`, `--kiss-icp`), same routes | `measure controllers` |
 | `diffusion.sh` | the diffusion planner trial's family: `data`, `train`, `score` (`models/diffusion/`) | `diffusion <data, train, score>` |
-| `diffusion_data.py` | the teachers' paths (the lattice, Hybrid-A*) on random maps: map_server and planner_server only, no Gazebo | `diffusion data` |
+| `diffusion_data.py` | the teachers' paths (the lattice, Hybrid-A*) on random maps: map_server and planner_server only, no simulator | `diffusion data` |
 | `lattice_primitives.py` | the State Lattice planner's primitives for our car, by Nav2's generator (`--check`: still right for `vehicle.yaml`?) | - (needs `pixi run get vendor`) |
 | `lattice_smooth.py` | the lattice's smooth moves (`lattice_moves:=smooth`, `smooth_fast`): curvature no faster than the steering turns; our own generator, no ROS (`--check`) | - |
-| `heading_check.py` | the global EKF's heading against Gazebo's truth | - (ros.sh --local) |
-| `campus_world.py` | Carleton from OpenStreetMap: a Gazebo world, one Nav2 map of the whole campus, and NDT's guessed map (tested without ROS) | `campus` |
+| `heading_check.py` | the global EKF's heading against Ravensim's truth | - (ros.sh --local) |
+| `campus_world.py` | Carleton from OpenStreetMap: a Ravensim world (SDF), its RavenTiles, one Nav2 map of the whole campus, and NDT's guessed map (tested without ROS) | `campus` |
 | `ndt_map.py` | NDT's map of the test lot: drive the mapping route, or build from a bag (its maths without ROS) | `ndt-map` |
-| `gazebo_steering.py` | how much later Gazebo's wheels turn than the actuator model's (run with `tools/ros.sh --local`) | - |
 | `timing_test.py` | every topic's gaps and late messages, parked and driving | `measure timing` |
 | `stream_check.py` | the camera stream end to end, without the car | `measure stream` |
 | `sim_frames.py` | camera pictures of the sim's stop sign, for the detectors | - |
@@ -158,7 +155,7 @@ Each lands outside git, checksum pinned where the script says.
 | `drive_metrics.py` | the numbers behind `measure controllers` (no ROS) | - |
 | `lane_score.py` | the numbers behind `measure lane` (no ROS); run alone on `measure controllers`' `results.json`: did each run keep right, by the lane map (off centre, in the lane, over the left line and how often, past the kerb) | - |
 | `scorecard.py` | the numbers behind `score_drive.py` (no ROS) | - |
-| `measure.sh` | picks one of the five measurements below and runs it (Gazebo ones `--local`) | `measure <controllers, timing, stream, atob, bandwidth>` |
+| `measure.sh` | picks one of the five measurements below and runs it (the simulator ones `--local`) | `measure <controllers, timing, stream, atob, bandwidth>` |
 | `link_check.py` | did the Motor Pi's frames reach the ESP32? A bag (or the live topics) against the ESP32's status lines: PASS, FAIL, NOT TESTED (its maths without ROS) | `link-check` |
 | `atob_score.py` | scores A-to-B runs (bag or CSV): speed up, hold, stop on B; EKF vs truth or tape | `measure atob` |
 | `can_load.py` | the CAN bus load from `firmware/can/aav.dbc` | - |
@@ -184,7 +181,7 @@ Each lands outside git, checksum pinned where the script says.
 ## Invariants
 
 - **Stand-ins stay local.** turtle, sim, bench, view, demo and their checks run through
-  `tools/ros.sh --local`; so do `hw-panel`, `sim-cameras --ros` and the Gazebo measurements, inside `screen.sh`
+  `tools/ros.sh --local`; so do `hw-panel`, `sim-cameras --ros` and the simulator measurements, inside `screen.sh`
   and `measure.sh`. `test.sh` checks the list; give any new stand-in task the same.
 - **A family's script lists its choices** when run with no word or a wrong one, and
   exits 2 (`clear.sh`, `diffusion.sh`, `get.sh`, `measure.sh`, `pico.sh`, `screen.sh`, `esp32.sh`).
@@ -211,7 +208,7 @@ Each lands outside git, checksum pinned where the script says.
 
 | Scripts | Touch |
 |---|---|
-| checks, sim, stand-ins | start ROS and Gazebo processes on this computer |
+| checks, sim, stand-ins | start ROS and Ravensim processes on this computer |
 | `actuator_test.sh`, `drive_to_point.sh` without `--sim`; `keyboard.sh` without `--sim` or `--local` | **move the real car** |
 | `replay_commands.sh` (always: it has no `--sim`) | **moves whatever shares the ROS domain**: on the car's network, the car |
 | `get.sh`, `get_*.sh`, `vendor.py`, `car_kit.sh` | download into `vendor/` (`car_kit.sh` caches in `vendor/car-kit-cache`), `models/`, `maps/`, `car-kit/` |

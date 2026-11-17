@@ -53,17 +53,17 @@ These are the conventions decided so far. They apply to people and to Claude ses
   `/safety/estop`. Only ROS's own global names (`/tf`, `/clock`...) and Nav2's stay
   outside. `tools/tests/test_topic_areas.py` checks `docs/interfaces.yaml`.
 - **We run our own stack** (Ben, 14 Nov: "remove nav2 and gazeboo ... We want to run
-  everythign ourselves in rust and/or python"). Ours (`stack:=ours`, our simulator) is the
-  default. Nav2 and Gazebo stay installed only as yardsticks until 0.4-rc1 is scored, then
-  are deleted. Stock packages are a reference to learn from (read `vendor/`), not the
+  everythign ourselves in rust and/or python"). Ours (`stack:=ours`, on Ravensim, our
+  simulator) is the default. Nav2 went on 17 Nov, Gazebo on 16 Nov
+  (`docs/history/gazebo-as-it-was.md`); CARLA stays. Stock packages are a reference to learn from (read `vendor/`), not the
   default. Kept for now, as small and proven: robot_localization, twist_mux,
   teleop_twist_* (replace one only when it hits a real limit). Still look for better open
   source to learn from, and check its licence (Ben, 15 Oct).
 - **Our own algorithms** (Ben, 5 Nov): for each area we build a new best hybrid from papers,
   known algorithms and current implementations. A new one runs beside the current default
   as the challenger until it wins on the same routes and bags. Every algorithm stays.
-- **Everything is a drop-in replacement** (Ben, 5 Nov: "just swap out and test"). Gazebo, our
-  simulator and the real sensors all produce the same topics; so does every algorithm for its
+- **Everything is a drop-in replacement** (Ben, 5 Nov: "just swap out and test"). Ravensim,
+  CARLA and the real sensors all produce the same topics; so does every algorithm for its
   job. `docs/interfaces.yaml` is what they must match. Nothing downstream may care which one
   is running, and tests score them the same way. The safety locks are never swapped out.
 - **Languages:**
@@ -85,8 +85,8 @@ These are the conventions decided so far. They apply to people and to Claude ses
     went to Ben's Rust twin (11 Oct), the radar clustering to a Rust ROS node (15 Oct).
     Stock ROS packages stay as they are;
   - **Screens** (Ben, 5 Nov): the in-car HUD and street map stay raylib, on the Pi. Screens on
-    a laptop or desktop can be Bevy. The Orin runs no graphics and no simulator: Gazebo, and
-    later our own simulator, run on a Mac or Linux desktop, for testing only
+    a laptop or desktop can be Bevy. The Orin runs no graphics and no simulator: Ravensim runs
+    on a Mac or Linux desktop, for testing only
     (`docs/designs/2026-11-05_own-simulator.md`);
   - Rust ROS nodes use rclrs from crates.io (such as `aav_imu_yahboom`, `aav_spine_bridge`,
     `aav_ego_rs`); the HUD is Rust with raylib (Ben, 11 Oct).
@@ -150,13 +150,11 @@ EGM artifact directory: docs/designs
   `tools/test.sh` checks it; give any new stand-in task the same.
 - The MCP server (`tools/mcp_server.py`, `docs/mcp.md`) only reads. Never give it a call
   that writes to ROS, or a file outside git to read: `tools/tests/test_mcp_parts.py` checks.
-- Gazebo on oirp-spss also needs `GZ_IP=127.0.0.1` (multicast doesn't loop back there)
-  and its own `GZ_PARTITION`; without them the car never spawns.
-  The road world's cameras need `tools/software_gl.sh` in front there (no GPU, as on
-  GitHub's runners): `tools/software_gl.sh pixi run sim-check --simulator gazebo`.
-- Our own simulator (`simulator:=own`, the default since 8 Nov) draws its cameras on the
-  GPU; on a computer without one, put `tools/software_gl.sh` in front (Mesa's lavapipe;
-  tried on a Mac, untested on Linux yet), or use `--no-cameras` or `simulator:=gazebo`.
+- Ravensim (`simulator:=ravensim`, the only simulator since Gazebo went on 16 Nov; its
+  maps are RavenTiles) draws its cameras on the GPU. On a computer without one (oirp-spss,
+  GitHub's runners) put `tools/software_gl.sh` in front (Mesa's lavapipe): its clock then
+  waits for each picture (`camera_lockstep:=auto`), so the world runs slower than real
+  time and the cameras keep their rate. Or use `--no-cameras`.
 
 ## Git
 
@@ -190,8 +188,8 @@ EGM artifact directory: docs/designs
 
 - **`vendor/`** (inside this repo, but not in git): other people's source, to look things
   up. `vendor/ros2-src/` is ROS 2 Jazzy and the stock packages; `vendor/ros2-rust/` is
-  rclrs; `vendor/gazebo/` is Gazebo Harmonic at the releases we run (its README says which
-  library does what); PlatformIO keeps its downloads in `vendor/platformio/`. `pixi run get vendor` downloads
+  rclrs; `vendor/gazebo/` is Gazebo Harmonic at the releases we ran until 16 Nov (kept to
+  read; its README says which library does what); PlatformIO keeps its downloads in `vendor/platformio/`. `pixi run get vendor` downloads
   the source at the commits in `vendor/*.repos`. Never edit
   or build them. Search them with `grep -r` or `rg -u`: most search tools skip folders
   that git ignores.

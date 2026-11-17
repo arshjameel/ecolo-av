@@ -7,7 +7,7 @@ Four raylib programs in one package, `ros/hud/aav_hud`, each also its own ROS no
 | [The HUD](#the-hud-in-rust-raylib) | `hud` | the small ~7" touchscreen | speed, GO / STOP, the e-stop button, the camera, the topics |
 | [The map window](#the-map-window-big-screen) | `map` | the big ~15" monitor | Nav2's map over Ottawa's streets, the plan, place search |
 | [The debug HUD](#the-debug-hud) (the seeing screen) | `debug_hud` | a laptop | the lidar's cubes in 3D, NDT's map and match from above, where each localizer puts the car; key L: every sensor |
-| [The hardware panel](#the-hardware-panel) | `hw_panel` | a wired laptop | every sensor's number, and simple buttons for the actuators (Gazebo and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path |
+| [The hardware panel](#the-hardware-panel) | `hw_panel` | a wired laptop | every sensor's number, and simple buttons for the actuators (Ravensim and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path |
 
 **Where each runs (Ben, 5 Nov):** the HUD and the map stay raylib, on the dash Pi. The
 Orin runs no graphics, so the other two run on a laptop. Laptop screens can be Bevy: the
@@ -83,13 +83,13 @@ While braking for the goal, the bold line shrinks to the bar and goes green:
 
 ![AHEAD braking for the goal: the line short, on the plan](img/hud-squiggly-braking.png)
 
-**Live, 8 Nov** (our own simulator, `simulator:=own world:=test_lot`, a Nav2 goal at
+**Live, 8 Nov** (Ravensim, `simulator:=own world:=test_lot`, a Nav2 goal at
 (14, 3), which succeeded): the faint line is Nav2's MPPI's own future
 (`/drivers/nav/local_plan`). `/ego/ahead` said ON PLAN 0.01-0.18 m and "13.4 m short of
 the goal" while it drove; here the trace runs 0.31 m off MPPI's future (amber): MPPI plans
 without the lag, ego's model has it.
 
-![AHEAD live in our own simulator, driving to a Nav2 goal](img/hud-squiggly-live.png)
+![AHEAD live in Ravensim, driving to a Nav2 goal](img/hud-squiggly-live.png)
 
 **One answer for every screen.** The maths lives in ROS, once; the screens only draw:
 
@@ -235,7 +235,7 @@ in `aav_safety` `watchdog.py`, with tests. The HUD shows it: **AUTO STOP, HUD LO
 | Profile | Watched? |
 |---|---|
 | Car | yes: `car.launch.py watch_hud:=true`, the default. `watch_hud:=false` for a session with no HUD screen |
-| Gazebo | with `hud:=true` (the window), or `watch_hud:=true` (something else beats) |
+| Ravensim | with `hud:=true` (the window), or `watch_hud:=true` (something else beats) |
 | Bench, turtle, CARLA | no: no HUD window there |
 
 - People, the joystick and the e-stop are never held by it: only Nav2 and the AI slot.
@@ -269,9 +269,9 @@ in `aav_safety` `watchdog.py`, with tests. The HUD shows it: **AUTO STOP, HUD LO
 
 The HUD reads topics, so it works next to anything that publishes them. Start the backend,
 then `pixi run hud` in another terminal (the same `ROS_DOMAIN_ID`).
-With Gazebo, one command does both: `pixi run sim world:=test_lot hud:=true`.
+In Ravensim, one command does both: `pixi run sim world:=test_lot hud:=true`.
 
-| HUD panel | Turtle (`pixi run turtle`) | Gazebo (`pixi run sim world:=road`) | Bench (`pixi run bench`) | Car |
+| HUD panel | Turtle (`pixi run turtle`) | Sim (`pixi run sim world:=road`; Gazebo until 16 Nov) | Bench (`pixi run bench`) | Car |
 |---|---|---|---|---|
 | Speed, steering, mode, armed | ✅ from the turtle's motion (15 Oct) | ✅ 50 Hz, from Gazebo's wheels | ✅ | the backend's `/vehicle/status` |
 | GPS panel | NEVER: no GPS | ✅ 3D fix, about 5 Hz | ✅ | the ZED-F9R, once it runs |

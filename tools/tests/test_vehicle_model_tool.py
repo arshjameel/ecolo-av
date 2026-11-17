@@ -22,23 +22,23 @@ def test_the_tables_print(capsys):
     out = capsys.readouterr().out
     assert 'with throttle_lag=0.25' in out
     for title in ('Speed loop margins', 'Steering: second order', 'Lateral margins',
-                  'Discrete time', "Gazebo's car"):
+                  'Discrete time', "Ravensim's car"):
         assert title in out
 
 
-def test_gazebo_s_steering_gain():
-    # The xacro's steer_p_gain: Gazebo turns each steering joint at gain x error (1/s).
-    assert tool.gazebo_steer_gain() == 100.0
-    gain, rows = tool.gazebo_rows(tool.vm.VehicleModel())
+def test_ravensims_steering_gain():
+    # TwistFollower's steer_lag (sim-core car.rs), Gazebo's steer_p_gain before it: 100/s.
+    assert tool.sim_steer_gain() == 100.0
+    gain, rows = tool.sim_rows(tool.vm.VehicleModel())
     assert len(rows) == 1 + len(tool.vm.lateral_speeds())
 
 
-def test_gazebo_steers_as_vehicle_yaml_says():
-    # TODO 52c: Gazebo's own steering lag (1/steer_p_gain, and the adapter's 50 Hz hold)
-    # comes after the actuator model's steer_lag. It was 0.11 s (gain 10), more than
-    # steer_lag itself. Keep it a small part of steer_lag, so Gazebo's car is the model's.
+def test_ravensim_steers_as_vehicle_yaml_says():
+    # TODO 52c: the simulator's own steering lag (1/gain, and the adapter's 50 Hz hold)
+    # comes after the actuator model's steer_lag. In Gazebo it was 0.11 s (gain 10), more
+    # than steer_lag itself. Keep it a small part of steer_lag, so the sim's car is the model's.
     actuators = yaml.safe_load(tool.VEHICLE_YAML.read_text())['actuators']
-    assert tool.gazebo_extra_lag() <= 0.25 * actuators['steer_lag']
+    assert tool.sim_extra_lag() <= 0.25 * actuators['steer_lag']
 
 
 def test_gazebo_s_joints_can_turn_as_fast_as_the_model():

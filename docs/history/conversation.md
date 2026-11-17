@@ -1681,6 +1681,21 @@ line 18 m past it. Now only the blocked stretch moves left, the least that clear
 then back; a person or moving thing is still waited for (the behaviour planner). Scores:
 [own-planner.md](../own-planner.md#passing-something-parked-16-nov); TODO 208.
 
+## 16 November: Ravensim, and Gazebo goes
+
+**Q: What do we call our simulator, and does Gazebo stay?** Ben: Ravensim, and its chunked
+maps RavenTiles. Remove Gazebo (CARLA stays).
+
+**A (16-17 Nov):**
+
+| Done | How |
+|---|---|
+| The name | `simulator:=ravensim`, the default; `own` works for one release, with a warning. ROS packages keep their names |
+| Gazebo's last job | the cameras with no GPU: under `tools/software_gl.sh` the clock waits for each picture (**camera lockstep**), so they keep 10 Hz in sim time |
+| Gazebo's shared parts | moved to `aav_sim_models` (was `aav_gazebo`): `sim_adapter`, `sim_imu`, `sim_gps`, `sim_radar`, `sim_camera_relay`, `sim_esp32`; topics `/gazebo/*` → `/vehicle/sim/*` |
+| Deleted | the Gazebo launch, nodes, xacro files, world plugins, `ros_gz` in `pixi.toml`, CI's Gazebo step |
+| Kept | its last scores: [Gazebo, as it was](gazebo-as-it-was.md); `vendor/gazebo/`, to read |
+
 ## Open threads
 
 Checked 13 Nov against the code, `TODO.md`, the audits and the pull requests. **Closed**, **Folded** and **Dead** threads keep their old text, with what ended them.
@@ -1692,7 +1707,7 @@ Checked 13 Nov against the code, `TODO.md`, the audits and the pull requests. **
 - **Pull requests #28 and #29 (13 Nov):** **Closed 15 Nov** in our code: both merged into the fork's `main` (and on to the team's with the next pull request); Ben closes them on the team repo. Was: both open. #28 (the install fix found on the localization Pi) has changes requested; #29 (the mux tests) has green CI, and GitHub still shows changes requested.
 - **Off Nav2 (8 Nov):** our costmap, planner, navigator and smoother are built and scored in our simulator; none is the default. Open: the campus at 2.5 m/s, `mppi_lag`'s overshoot and CPU, `map_server` and `collision_monitor` not written, nothing timed on the Orin (TODO 143-146, 152).
 - **The adaptive brake (8 Nov):** built, simulator only. Open: the brake's real limits (car day A7), then the car (TODO 145).
-- **Our own simulator (7-8 Nov):** the default since 8 Nov. Open: one stop-sign miss in 8. Without a GPU: software cameras (lavapipe) work on a Mac, 15 Nov; Linux untested (TODO 183).
+- **Ravensim, our own simulator (7-8 Nov):** the default since 8 Nov, the only simulator since 16 Nov (Gazebo removed). Open: one stop-sign miss in 8. Without a GPU: software cameras in lockstep work on a Mac, 16 Nov; Linux and CI untested (TODO 183, 240).
 - **Diffusion on the car (7-8 Nov):** 88 % of plans from the model in the simulator. Open: the Orin's timing, the car trial A12 (TODO 133).
 - **Directions on the campus (7 Nov):** P4 to the Fieldhouse reached 1 of 2 with our navigator, 0 of 2 with Nav2's. Open: bends, real drop-off points, a screen to pick a place (TODO 140).
 - **The record itself:** `TODO.md` quotes Ben on 27 and 30 Oct and 8 Nov, and eight more requests on 7 Nov, with no `messages-*.md` holding the words. `status.md` and `decisions.md` were last changed on 1 Nov.

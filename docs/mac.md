@@ -171,29 +171,19 @@ default) or MISSING.
 | `pixi run sim world:=road foxglove:=true` | 23 of 26 served; 3 off: the ghost marker (`ghost:=true`), the street route (needs a route). All three layouts at once: 1.4 Mbit/s |
 | the car | not yet |
 
-## Gazebo on a Mac
+## Ravensim on a Mac
 
-Since 8 Nov `pixi run sim` starts our own simulator ([Our simulator](own-simulator.md));
-Gazebo needs `simulator:=gazebo`. On macOS, Gazebo's window has to run as a separate
-program from the simulator. `pixi run sim simulator:=gazebo` starts both, and points the
-window's camera at the car:
+`pixi run sim` starts Ravensim, our own simulator ([Ravensim](own-simulator.md)). It has
+no window: watch in RViz, Lichtblick or the developer window. Its cameras draw on the
+Mac's GPU (Metal), at their full rates.
 
 ```bash
-pixi run sim simulator:=gazebo               # the simulator, its window, and RViz
-pixi run tools/ros.sh tools/gz_window.sh         # opens the window again, if you closed it
-pixi run sim simulator:=gazebo follow:=false # a free camera instead of one that follows the car
+pixi run sim world:=road                          # the simulator and RViz
+tools/software_gl.sh --force pixi run sim-check   # CI's way: the cameras in software, in lockstep
 ```
 
-Cameras and lidars inside Gazebo can crash it on some Macs. Ours don't: in the road world
-(`pixi run sim simulator:=gazebo world:=road`), the cameras, the radar stand-in and the roof
-lidar render with no window, on Metal, at their full rates (Ben's Mac, 15 Oct). The lidar
-was off by default for a while: with YOLO too it failed, but those runs shared the Mac with a stray simulator. On a quiet Mac (15 Oct afternoon) everything together passed twice, so it's on by default
-([Simulation](simulation.md#the-lidar-gazebo-only)). If Gazebo crashes, use the empty
-world, which renders nothing.
-
-If the window stays empty, or the car never appears, run `export GZ_IP=127.0.0.1` in both
-terminals and start again: Gazebo's two programs then find each other on the Mac itself.
-On Ben's Mac the simulator ran without it (10 Oct); it fixed the same symptom on Linux.
+Gazebo ran here until 16 Nov, its window as a second program: [Gazebo, as it
+was](history/gazebo-as-it-was.md).
 
 ### Why we use Cyclone DDS
 
@@ -292,8 +282,8 @@ Paste these into Claude (or a team chat), and it can usually say what to fix:
 | The laptop's own detector against the bench (`laptop-bench`) | [[works]] 11 Oct: Core ML on the compressed pictures, 21 ms each; it saw the stop sign from 20 m |
 | `pixi run test` on a Mac | [[works]] all green, after the `coreutils` fix above |
 | The turtle, driving it the keyboard's way, the scripted drive, the e-stop | [[works]] on Linux and the Mac. The real keyboard keys are [[untested]] on a Mac |
-| Gazebo without its window, and a Nav2 goal | [[works]] on the Mac, without `GZ_IP` |
-| Gazebo's window on a Mac | [[works]] 10 Oct: `pixi run sim` opened it (now `simulator:=gazebo`); the car drives in it (pictures in [Your first day](first-day.md)) |
+| Gazebo without its window, and a Nav2 goal (until 16 Nov) | [[works]] on the Mac, without `GZ_IP` |
+| Gazebo's window on a Mac (until 16 Nov) | [[works]] 10 Oct: `pixi run sim` opened it; the car drives in it (pictures in [Your first day](first-day.md)) |
 | Gazebo's cameras and lidar on a Mac | [[works]] 15 Oct: headless, about 10 Hz each; with YOLO too, `-e ml sim-check --perception` passed 2 of 2 on a quiet Mac, so the lidar is on by default |
 | RViz and rqt_graph on a Mac | [[untested]] they open without errors (RViz logs one shader warning); nobody has looked at them yet |
 | Recording a drive (`tools/record.sh`) | [[works]] on the Mac, after the `tools/ros.sh` fix above |

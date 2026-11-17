@@ -126,7 +126,7 @@ car refuses a swap (`live_swap` is on only in `sim.launch.py`).
 ### The chase camera
 
 A camera fixed 7 m behind the car and 3.5 m up, looking down at the road ahead. Simulators
-only (Gazebo's, and `aav_sim_cameras` for our own simulator), in the worlds that render
+only (Gazebo's, and `aav_sim_cameras` for Ravensim), in the worlds that render
 sensors (road, test_lot, campus): `chase_camera:=false` drops it. The numbers below are Gazebo's.
 
 | | Without | With |

@@ -1,7 +1,7 @@
-# Simulation: Gazebo, replay, and when nothing moves
+# Simulation: Ravensim, replay, and when nothing moves
 
 Every backend takes the same ego command (through the output mux), so the drivers, mux, ego and
-localization run unchanged whether the "car" is a turtle, Gazebo, or the real thing. Climb
+localization run unchanged whether the "car" is a turtle, Ravensim, or the real thing. Climb
 the ladder one rung at a time.
 
 **This page:** how to run the simulated car, its arguments, the road world, `sim-check`,
@@ -11,7 +11,7 @@ sensor failures on purpose, replay. The other simulation pages:
 |---|---|
 | [Sim and the car](sim-and-car.md) | what is simulated, what is real, which nodes swap |
 | [Full simulation](full-simulation.md) | the 15 Oct plan (options A-C) and what was built from it |
-| [Our own simulator](own-simulator.md), [its cameras](own-simulator-cameras.md) | the default since 8 Nov, in Rust and Bevy |
+| [Ravensim](own-simulator.md), [its cameras](own-simulator-cameras.md) | Ravensim, in Rust and Bevy: the only one since 16 Nov |
 | [Bench mode](bench.md), [CARLA](carla.md) | the car's own graph on stand-ins; photo-real towns |
 
 `pixi run sim` and `pixi run turtle` stay on this computer: other terminals here see them,
@@ -24,7 +24,7 @@ purpose: `AAV_DISCOVERY=SUBNET pixi run sim`.
 |---|---|---|
 | 1. Unit tests: `tools/test.sh` (`pixi run test` adds the ROS tests) | the maths and protocols, without ROS | ego's maths, the CAN frames, the spine logic |
 | 2. turtlesim: `pixi run turtle` | mux, ego, scripted driver, `ekf_local` | the command path, end to end |
-| 3. Gazebo: `pixi run sim` | the whole stack, on a simulated car with an IMU and GPS; in the road world, its camera and radar too | localization and Nav2; in the road world, the car's whole graph: `pixi run sim-check` |
+| 3. Ravensim: `pixi run sim` | the whole stack, on a simulated car with an IMU and GPS; in the road world, its camera and radar too | localization and Nav2; in the road world, the car's whole graph: `pixi run sim-check` |
 | 4. Replay | localization (and Nav2) on a recorded drive | config changes, against real sensor data |
 | 4b. The bench: `pixi run bench` | the car's own graph: the spine bridge and CAN frames, the spine's firmware logic on a model car, pretend sensors | the car's software path, end to end, before the car: [Bench mode](bench.md) |
 | 5. Car on stands | the real backend, wheels off the ground | the firmware link, signs and limits |
@@ -47,48 +47,54 @@ The keyboard or joystick overrides the script at once. Let go, and the script ca
 **E-stop:** `ros2 topic pub --once /safety/estop std_msgs/msg/Bool "{data: true}"` blocks every
 driver. Publish `false` to clear it.
 
-## Gazebo
+## Ravensim
 
 ```bash
-pixi run sim                     # the empty world, with Nav2
+pixi run sim                     # the empty world
 pixi run sim world:=test_lot     # the walled test lot, with its map
 pixi run sim world:=road         # the bench's road, for the car's camera and radar
-pixi run sim simulator:=gazebo   # Gazebo itself, not our simulator
+tools/software_gl.sh pixi run sim world:=road   # no GPU: the cameras in software, in lockstep
 ```
 
-**Since 8 Nov the default is [our own simulator](own-simulator.md)** (`simulator:=own`): it
-plays `gz sim` and its bridges, on the same worlds and topics, so everything else runs
-unchanged. It passed every `sim-check` leg Gazebo passes, three times each. Gazebo stays as
-`simulator:=gazebo`, to compare. On a computer with no GPU both draw their cameras in
-software: put `tools/software_gl.sh` in front (ours since 15 Nov, [[untested]] on Linux).
-The rest of this page says Gazebo: both play the same part.
+**[Ravensim](own-simulator.md) is Ravensim** (`simulator:=ravensim`, the default
+since 8 Nov and the only one since 16 Nov). Gazebo played the car until then:
+[Gazebo, as it was](history/gazebo-as-it-was.md). Ravensim passed every `sim-check` leg
+Gazebo passed. Its maps cut into chunks are **RavenTiles** ([Campus](campus.md)).
+`simulator:=own`, its old name, still works for one release.
+
+| Name | What |
+|---|---|
+| Ravensim | the simulator: `aav_simulator` (the world, the car, the rays, the clock), `aav_sim_cameras` (the pictures), `aav_sim_models` (the worlds, the car's nodes) |
+| RavenTiles | a big map cut into 64 m chunks: only those round the car are loaded |
+| camera lockstep | with no GPU, the clock waits for each picture: slower than real time, every camera at 10 Hz in sim time |
+
+Rows below dated before 16 Nov were measured in Gazebo; Ravensim copies its numbers.
 
 | Argument | Default | Means |
 |---|---|---|
 | `world` | `empty` | `empty`, `test_lot`, `road` ([the road world](#the-road-world-the-cars-whole-graph)) or `campus` (Carleton: `pixi run campus` makes it first) |
 | `nav` | `true` | start Nav2 |
 | `teleop` | `false` | `true` with a joystick plugged in |
-| `gui` | `true` | show the Gazebo window (on a Mac, as a second program). `simulator:=gazebo` only: our simulator has no window |
-| `follow` | `true` | point the window's camera at the car (`simulator:=gazebo` only) |
+| `camera_lockstep` | `auto` | hold the clock until each picture is out: `auto` under `tools/software_gl.sh` (no GPU), `true`, `false` |
 | `rviz` | `true` | open RViz |
-| `lidar` | `true` | the simulated roof lidar, in the road and test_lot worlds, read by Nav2 ([below](#the-lidar-gazebo-only)); `false` drops it |
+| `lidar` | `true` | the simulated roof lidar, in the road and test_lot worlds, read by Nav2 ([below](#the-lidar-the-sim-only)); `false` drops it |
 | `radar` | `true` | the radar stand-in, in the road and test_lot worlds; `false`: the lidar alone guards Nav2 |
 | `watchdog` | `true` | the sensor watchdog: stops Nav2 and the AI slot when a sensor fails ([below](#sensor-failures-on-purpose)) |
 | `faults` | `false` | `true`: the front left picture goes through `sim_camera_relay` too, so it can freeze on purpose |
 | `actuator_model` | `true` | the car answers like `vehicle.yaml`'s `actuators:` say ([below](#the-actuator-model)); `false`: the old instant car, to compare |
 
-**Debugging Gazebo itself:** its source is in `vendor/gazebo/` (`pixi run get vendor`), at the
-releases we run. `vendor/README.md` says which library does each job: the steering, the
-sensors, the physics, the ROS bridge.
+**Gazebo's source** is still in `vendor/gazebo/` (`pixi run get vendor`), to read: Ravensim
+copies its steering, sensors and clock. `vendor/README.md` says which library does each job.
 
-### What Gazebo simulates
+### What Ravensim simulates
 
 Rates measured on Ben's Mac, 15 Oct, on simulated time (`ros2 topic hz -s`), with the
 real-time factor at 0.98-0.99. "road" in the last column was written on 15 Oct: the
 cameras, radar and truth are now in every world that renders sensors (road, test_lot,
-campus), in either simulator.
+campus). The middle column is Gazebo's own name, kept for the record; Ravensim publishes
+the ROS topics itself.
 
-| Sensor | Gazebo topic | ROS topic | Rate | Noise | Worlds |
+| Sensor | Gazebo's topic (until 16 Nov) | ROS topic | Rate | Noise | Worlds |
 |---|---|---|---|---|---|
 | IMU | `/aav/imu` | `/sensors/imu/data_raw` (then the filter: `/sensors/imu/data`) | 50 Hz | gyro 0.02 rad/s, accel 0.2 m/s² | all |
 | GPS | `/aav/navsat` | `/sensors/gps/fix` | 5 Hz | 0.5 m across, 1 m up | all |
@@ -99,7 +105,7 @@ campus), in either simulator.
 | Rear camera, looking back | `/aav/camera_rear/image` | `/sensors/camera/rear/image_raw`, `.../camera_info` | 10 Hz | none | road |
 | Radar | `/aav/radar/points` (a lidar shaped like the radar) | `/sensors/radar/points` | 10 Hz | 5 cm | road |
 | Lidar (roof) | `/aav/lidar/points` | `/sensors/lidar/points` | 10 Hz | 3 cm | road and test_lot; on by default, `lidar:=false` drops it |
-| Chase camera (Gazebo's view, not a sensor) | `/aav/chase_camera/image` | `/vehicle/sim/chase_camera/image_raw`, and its JPEG `.../compressed`, for Lichtblick's [cockpit](foxglove.md#cockpit) | 10 Hz | none | road and test_lot; on by default, `chase_camera:=false` drops it |
+| Chase camera (the sim's view, not a sensor) | `/aav/chase_camera/image` | `/vehicle/sim/chase_camera/image_raw`, and its JPEG `.../compressed`, for Lichtblick's [cockpit](foxglove.md#cockpit) | 10 Hz | none | road and test_lot; on by default, `chase_camera:=false` drops it |
 | Where the car really is | `/model/aav/truth` | `/vehicle/sim/truth`, for checks only | 50 Hz | none | road |
 | Steering, throttle, brake | (the actuator model) | `/vehicle/steering`, `/vehicle/throttle`, `/vehicle/brake`: command and measured | 50 Hz | none | all |
 | Each wheel's speed | `/world/aav/model/aav/joint_state` | `/vehicle/wheels` (m/s, all four) | 50 Hz | none | all |
@@ -118,8 +124,8 @@ circle against the bicycle model's (wheelbase ÷ tan(steer)):
 All within the 5% asked. It turns 2-3% wide: tyre slip in Gazebo, or the measured point not quite on the rear axle.
 
 Each one carries the same name, type and frame as the real device's, so the software above
-can't tell. `/gazebo/*` topics are Gazebo's own side of `sim_adapter` and the sensor
-nodes, not in the contract.
+can't tell. `/vehicle/sim/odom`, `imu`, `navsat`, `cmd_vel` and `radar/points` are
+Ravensim's own side of `sim_adapter` and the sensor nodes (`/gazebo/*` until 16 Nov).
 
 ![What the three simulated cameras see, at the start of the road world](img/sim-cameras.png)
 
@@ -166,11 +172,9 @@ ego's angle ──────────────────────�
     Chosen to match Gazebo's old limits and the bench's `spine_sim`. Swap in the measured
     ones once the tests are done: no code changes.
 
-- Gazebo's own limits (`aav.gazebo.xacro`) are now ±10 m/s², so the model limits, not Gazebo.
-- Gazebo's `steering_limit` is **not** `max_steering_angle`. Gazebo turns it into a smallest
-  circle, wheelbase ÷ sin(limit), so 0.5 stopped the car at 0.447 rad. The launch file
-  passes `vehicle.gazebo_steering_limit` (0.578) instead: the middle wheel then reaches
-  0.5. Measured: 0.484 rad at full lock, the last 3% tyre slip ([Actuator tests](actuator-tests.md)).
+- The simulator's own limits are ±10 m/s², so the model limits, not the simulator.
+- Ravensim steers to `max_steering_angle` itself. (Gazebo needed `steering_limit` 0.578 to
+  reach 0.5: [Gazebo, as it was](history/gazebo-as-it-was.md).)
 - `actuator_model:=false` keeps the old behaviour (in the adapter), to compare the two.
 - No command for 0.2 s: the model brakes to a stop, like the spine's watchdog.
   For the spine's real watchdog, e-stops and arming: [`spine:=true`](#the-spine-in-the-loop-spinetrue).
@@ -187,7 +191,7 @@ ego's angle ──────────────────────�
   else changes.
 
 How the simulated car connects:
-- Gazebo plays the car, with Ackermann steering, an IMU and a GPS.
+- Ravensim plays the car, with Ackermann steering, an IMU and a GPS.
 - Nodes of ours turn those into the real drivers' topics, one per part, as on the car:
 
   | Node | Gives | On the car, instead |
@@ -211,23 +215,18 @@ To drive it:
   human input overrides Nav2.
 
 !!! tip "No GPU, or in a virtual machine?"
-  Start it with `gui:=false`, and watch in RViz or Foxglove instead. The empty world
-  renders nothing, so it runs anywhere. The road, test_lot and campus worlds render the
-  cameras: on Linux with no GPU, start it through `tools/software_gl.sh` (Mesa's software
-  renderers).
+  Ravensim has no window: watch in RViz or Foxglove. The empty world draws nothing, so it
+  runs anywhere. The road, test_lot and campus worlds draw the cameras: with no GPU, start
+  it through `tools/software_gl.sh` (Mesa's lavapipe). Its clock then waits for each
+  picture (camera lockstep): the world runs slower than real time, and every camera keeps
+  its 10 Hz in sim time.
 
-  | Simulator | Command | Without it |
-  |---|---|---|
-  | ours | `tools/software_gl.sh pixi run sim gui:=false` | `sim_cameras: no GPU to draw with`; [[untested]] on Linux (a Mac, forced: works, 15 Nov) |
-  | Gazebo | `tools/software_gl.sh pixi run sim simulator:=gazebo gui:=false` | Gazebo crashes as the world loads (`Unable to load Ogre Plugin`); [[works]] on oirp-spss, 23 Oct |
+  | Command | Without it |
+  |---|---|
+  | `tools/software_gl.sh pixi run sim world:=road` | `sim_cameras: no GPU to draw with` |
+  | `pixi run sim world:=road cameras:=false` | no pictures: the lidar and radar stay |
 
   The campus world is too big to draw in software (1.3 s a picture): it needs a GPU.
-
-!!! tip "The car never appears?"
-  If the log keeps saying `Requesting list of world names`, Gazebo's programs can't find
-  each other: they use multicast, and some networks and firewalls block it. Run
-  `export GZ_IP=127.0.0.1` in every terminal, then start again. On a shared computer, also
-  set your own `GZ_PARTITION=<any name>`, so your simulator doesn't meet someone else's.
 
 ### The spine in the loop: `spine:=true`
 
@@ -236,8 +235,8 @@ bench's `spine_sim` (the spine's firmware logic, `spine-core`) go between ego an
 actuator model:
 
 ```text
-ego ──> spine_bridge ──CAN frames──> spine_sim ──throttle, brake, gear, steering──> actuator model ──> Gazebo
-/vehicle/* <── spine_bridge <──CAN frames── spine_sim <──Gazebo's wheels and steering──┘
+ego ──> spine_bridge ──CAN frames──> spine_sim ──throttle, brake, gear, steering──> actuator model ──> Ravensim
+/vehicle/* <── spine_bridge <──CAN frames── spine_sim <──Ravensim's wheels and steering─┘
 ```
 
 ```bash
@@ -281,10 +280,10 @@ It uses the same stop as a lost computer, with no change to the firmware or the 
 needs a person to re-arm, because `arm_when_open` arms only once. The real car refuses this rule:
 a laptop dropping off isn't a reason to brake on the road.
 
-### Faster in Gazebo: `sim_speed:=`
+### Faster in the sim: `sim_speed:=`
 
 The car's top speed is 1 m/s (walking pace, `ego.yaml` and `nav2.yaml`), for its first
-real drives. In Gazebo, raise it for ego and Nav2 together:
+real drives. In Ravensim, raise it for ego and the follower together:
 
 ```bash
 pixi run sim world:=test_lot sim_speed:=3     # m/s, up to 5
@@ -302,7 +301,7 @@ pixi run sim world:=test_lot sim_speed:=3     # m/s, up to 5
 pixi run sim world:=test_lot sim_speed:=3 hud:=true
 ```
 
-Gazebo, RViz, Nav2 and the HUD window together. Give goals with RViz's 2D Goal Pose.
+Ravensim, RViz, navigation and the HUD window together. Give goals with RViz's 2D Goal Pose.
 
 | Argument | Opens |
 |---|---|
@@ -310,11 +309,10 @@ Gazebo, RViz, Nav2 and the HUD window together. Give goals with RViz's 2D Goal P
 | `foxglove:=true` | the Foxglove bridge on 127.0.0.1:8765: open Lichtblick, then `ws://localhost:8765` and a layout from `tools/foxglove/` ([Watch from a laptop](foxglove.md)) |
 | Tried, 15 Oct | the parking lot, sim speed 3, the HUD on: a 36 m Nav2 goal reached |
 
-If you reopen Gazebo's window (`pixi run tools/ros.sh tools/gz_window.sh`), its camera follows the car again.
 
 ## The road world: the car's whole graph
 
-At home there is no car, so Gazebo runs everything the car runs. The road world is the
+At home there is no car, so Ravensim runs everything the car runs. The road world is the
 bench's road, built in 3D, so the car's own camera and radar can see it.
 
 ![The car's camera in Gazebo, with YOLO's box, as the car stops for the sign](img/sim-road-stop-sign.png)
@@ -334,18 +332,18 @@ bench's road, built in 3D, so the car's own camera and radar can see it.
 
 ### The car's sensors there
 
-| Sensor | In Gazebo | On ROS |
+| Sensor | In the sim | On ROS |
 |---|---|---|
 | Front camera | 640 x 360, 86 degrees across, 10 Hz: the bench camera's picture and lens (the 2024-25 calibration at a third of its size) | `/sensors/camera/front_left/image_raw`, `/sensors/camera/front_left/camera_info`, in `camera_left_link` |
 | Radar | a lidar shaped like the TI radar: 8.4 m, 120 degrees, 61 x 3 rays, 10 Hz. `sim_radar` keeps the rays that hit something, with the TI driver's fields | `/sensors/radar/points`, best effort, in `radar_link` |
-| Where the car really is | Gazebo's own pose, like the bench's `/vehicle/bench/truth` | `/vehicle/sim/truth`, for checks only |
+| Where the car really is | the simulator's own pose, like the bench's `/vehicle/bench/truth` | `/vehicle/sim/truth`, for checks only |
 
 | Lidar (on by default) | a generic 16-beam spinning lidar: 360 degrees in 1800 steps, 15 degrees down to 15 up, 0.5-100 m, 3 cm of noise, 10 Hz | `/sensors/lidar/points`, reliable, in `lidar_link` |
 
 The radar stand-in isn't a radar: it sees every surface (the sign's post too), and each
 point's speed is the car's own, along the line of sight.
 
-### The lidar: Gazebo only
+### The lidar: the sim only
 
 The car has a Velodyne VLP-16 on its roof, read by the stock `velodyne` driver (on by
 default on the car; untested with the real lidar). Gazebo has a generic 16-beam one in
@@ -408,7 +406,7 @@ pixi run sim world:=road obstacle:=true                      # the radar stops N
 pixi run sim world:=road lane:=true nav:=false start_y:=0.3  # lane keeping alone
 ```
 
-- Every node runs on Gazebo's clock.
+- Every node runs on Ravensim's clock.
 - The camera's parts need a world that renders cameras (road, test_lot or campus): in
   the empty world, the launch stops and says so.
 - The empty world renders nothing, and starts what it always has.
@@ -417,8 +415,7 @@ pixi run sim world:=road lane:=true nav:=false start_y:=0.3  # lane keeping alon
 
 | Window | Shows |
 |---|---|
-| Gazebo | the car on the road; the window's camera follows it |
-| RViz (`rviz/road.rviz`) | the map and both costmaps, the plan, the car, the radar's points (magenta) and clusters, the stop zone (red), Gazebo's truth (grey arrows), the camera's picture, and the detector's boxes with `perception:=true` |
+| RViz (`rviz/road.rviz`) | the map and both costmaps, the plan, the car, the radar's points (magenta) and clusters, the stop zone (red), the sim's truth (grey arrows), the camera's picture, and the detector's boxes with `perception:=true` |
 | rqt_graph: `pixi run graph` | every node and topic, as on the bench |
 
 ### On a Mac
@@ -433,9 +430,6 @@ Ben's Mac (Apple silicon, macOS), 15 Oct, `pixi run sim world:=road gui:=false r
 | `ros2 topic hz` on the camera | shows **nothing**: Jazzy's `hz` always subscribes best effort, and a 690 kB image is lost over UDP. Count it reliably instead: `ros2 topic echo --qos-reliability reliable --field header.stamp /sensors/camera/front_left/image_raw` (90 frames in 10 s) |
 | `pixi run check sim`, `pixi run check road` | 0 failed |
 | Gazebo's window too (`gui:=true`) | the 11 Oct runs used it; not run again on 15 Oct |
-
-The warning `gz_frame_id ... not defined in SDF` is harmless: Gazebo copies it over, and
-the frames come out right (`sim-check` tests them).
 
 ### sim-check
 
@@ -452,17 +446,17 @@ pixi run sim-check --no-lidar                     # without the simulated roof l
 pixi run sim-check --spine                        # and the spine in the loop: its stops (above)
 ```
 
-It starts the road world without a window, on a private ROS domain and Gazebo partition,
+It starts the road world without a window, on a private ROS domain,
 on this computer only. The launch log goes to `/tmp/aav-sim-check.log`.
 
-Ran on Ben's Mac, 15 Oct, after the topic renaming:
+Ran on Ben's Mac, 15 Oct (in Gazebo), after the topic renaming:
 
 | Run | Result |
 |---|---|
 | `pixi run sim-check` | all pass: start-up, the contract (0 failures), sensors, a scripted drive of 6.3-6.5 m (plan 6.5 m), the global EKF within 0.1-0.3 m of the truth |
 | `pixi run sim-check --obstacle` (the lidar on) | all pass: the lidar at 10.0 Hz with 12654 hits; the car stood still 0.79 m before the box; with the box gone, Nav2 reached its goal 29.6 m on |
 | `pixi run -e ml sim-check --perception` | all pass: YOLO saw the sign from 11.2 m, the lock went on at 18.2 m, the car stood with its bumper 4.8 m before the sign, then reached its goal at 39.9 m |
-| The same, with the lidar on | failed 3 times out of 3 that morning (why: [the lidar](#the-lidar-gazebo-only)), so the lidar went off by default |
+| The same, with the lidar on | failed 3 times out of 3 that morning (why: [the lidar](#the-lidar-the-sim-only)), so the lidar went off by default |
 | The same, afternoon, a quiet Mac (an orphaned Gazebo and five leftover ROS daemons stopped) | **passed 2 out of 2** with the lidar, three cameras, the radar and YOLO: the sign seen from 9.6 m, the car stood 3.6 m before it, then reached its goal. So the lidar is on by default again |
 | The test_lot world with its new sensors | front cameras 6.9 and 9.7 Hz, rear 7.7 Hz, lidar 9.7 Hz with 2891 hits a sweep on the walls, building and cars |
 | `pixi run sim-check --lane` | ✅ 15 Oct, after the cameras moved: back to the lane's centre within 5 cm in 5 s |
@@ -542,7 +536,7 @@ the camera), on the map window (a banner across the map), in the log and on
 | hud | `/hud/heartbeat` (the [HUD's](hud.md#the-heartbeat) screen is alive) | quiet 1 s; the count stuck for 1 s; after its first 5 s, **latched** as `hud LOST` until cleared (24 Oct) | stop (only where a HUD is expected: the car, `hud:=true`, `watch_hud:=true`) |
 | our nodes (`node_*`) | our own nodes in the ROS graph: costmap, planner, navigator, mppi_lag, smoother, behaviour, voxels, things, ego, look_ahead (TODO 180) | gone 3 s (each respawns after 1 s, so this is one that keeps dying or hangs) | warn only (Ben, 14 Nov): the costmap's age checks and twist_mux's timeout already stop the car. The sim watches the ones it starts |
 
-It runs in Gazebo (`watchdog:=true`), on the bench (always), and on the car next to the
+It runs in Ravensim (`watchdog:=true`), on the bench (always), and on the car next to the
 mux (odom, IMU, GPS, the EKFs, the HUD, and the camera streams it starts). The checks are `aav_safety/watchdog.py` and
 `wheel_check.py`, with no ROS, and their tests.
 
@@ -560,8 +554,8 @@ source: `LockTopicHandle::isLocked`), so 1 s of silence holds Nav2 too.
 
 | Profile | Watchdog | Lock |
 |---|---|---|
-| Gazebo, `watchdog:=true` (the default) | runs | fail-safe |
-| Gazebo, `watchdog:=false` | none | timeout 0 (`aav_command_mux` `no_sensor_lock.yaml`) |
+| Ravensim, `watchdog:=true` (the default) | runs | fail-safe |
+| Ravensim, `watchdog:=false` | none | timeout 0 (`aav_command_mux` `no_sensor_lock.yaml`) |
 | Bench | always runs | fail-safe |
 | Car | next to the mux, wherever Nav2 runs | fail-safe |
 | Turtle | none | timeout 0 |
@@ -694,7 +688,7 @@ ros2 launch aav_bringup replay.launch.py
 ros2 bag play bags/<the bag> --clock --topics /vehicle/odom /sensors/imu/data_raw /sensors/gps/fix /tf_static
 ```
 
-A bag from Gazebo carries simulated time. Play its own `/clock` instead of `--clock`:
+A bag from Ravensim carries simulated time. Play its own `/clock` instead of `--clock`:
 `ros2 bag play bags/<the bag> --topics /clock /vehicle/odom /sensors/imu/data_raw /sensors/gps/fix /tf_static`.
 `pixi run tools/ros.sh python3 tools/check_graph.py --profile replay` checks the result.
 
@@ -727,6 +721,6 @@ Work down the chain:
 | 2 | Did the mux pick it? | `ros2 topic echo /control/cmd_vel`. If it's silent, look for a latched e-stop: `ros2 topic echo /safety/estop` |
 | 3 | Is ego converting it? | `ros2 topic echo /ego/actuator_cmd`: it's always 50 Hz, so look at the speed |
 | 4 | Is the output mux open, and a backend listening? | `ros2 topic echo /safety/output_mux/state` says OPEN; `ros2 topic info /control/sim/actuator_cmd -v` |
-| 5 | In Gazebo or replay: is everything on sim time? | a node on wall-clock time ignores sim-time messages |
+| 5 | In Ravensim or replay: is everything on sim time? | a node on wall-clock time ignores sim-time messages |
 | 6 | Does the graph match the contract? | `pixi run check sim` (or `road`, `replay`) |
 | 7 | Is the sensor watchdog holding Nav2? | `ros2 topic echo /safety/sensor_watchdog/state`: anything but OK says which sensor and why |

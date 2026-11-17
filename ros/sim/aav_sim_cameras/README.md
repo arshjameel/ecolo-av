@@ -3,7 +3,7 @@
 ## Overview
 
 **Our simulator's cameras.** Bevy draws the world from each camera on the car, offscreen,
-and reads each picture back. The pictures go out on Gazebo's camera topics, with Gazebo's
+and reads each picture back. The pictures go out on the car's camera topics, with Gazebo's old
 picture size, lens, rate, encoding and frame, so nothing downstream can tell the two apart.
 The plan: [our own simulator](../../../docs/designs/2026-11-05_own-simulator.md); how to
 use it: [docs/own-simulator-cameras.md](../../../docs/own-simulator-cameras.md).
@@ -46,7 +46,7 @@ pixi run sim-cameras --bench 300             # as fast as it can
 pixi run sim-cameras --ros                   # publish, a scripted drive, wall-clock stamps
 pixi run sim-cameras --ros --pose truth      # draw where /vehicle/sim/truth says, its stamps
 pixi run sim-cameras --world maps/campus/campus.sdf --at 49,-71,0 --save /tmp/pics
-                                             # a Gazebo world, parked there (x, y, yaw)
+                                             # an SDF world, parked there (x, y, yaw)
 ```
 
 `pixi run sim` (ours is the default) starts it with `--ros --pose truth --world <the world>`
@@ -72,7 +72,9 @@ let frames = cameras.tick(&car_in_map, sim_time)?;  // only the cameras due now
   Bevy. Runs on a Mac or a Linux desktop (with no GPU: in software), never on the Orin.
 - The camera mounts come from `vehicle.yaml`: the only place car measurements live.
 - Pictures are stamped with the car pose's time, and drawn on the whole tenths of sim
-  time, as Gazebo's 10 Hz sensors.
+  time, as Gazebo's 10 Hz sensors were. With `--pose truth` they also publish
+  `/vehicle/sim/cameras/free_until`, the next picture's sim time: with camera lockstep
+  Ravensim's clock waits there, so software drawing keeps 10 Hz in sim time.
 - The car cameras never see the car's body; only the chase camera does.
 - Logic goes in `camera-core`, with its own tests.
 
@@ -81,7 +83,7 @@ let frames = cameras.tick(&car_in_map, sim_time)?;  // only the cameras due now
 - Uses the GPU, or with none a software renderer (lavapipe, on the CPU). With `--ros`: publishes the camera topics above, through
   `tools/ros.sh --local`, so it never meets a real car.
 - It doesn't announce on `/system/source`: the simulator that starts it does, as
-  `sim_adapter` does for Gazebo's cameras (`aav_sim_models/sources.py`).
+  `sim_adapter` does for the cameras (`aav_sim_models/sources.py`).
 
 ## Verification
 

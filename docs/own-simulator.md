@@ -1,39 +1,47 @@
-# Our own simulator
+# Ravensim
 
-Ben, 7 Nov: "merge in everything from gazebo so its standalone in rust". This page is the
-simulator's **core**: the world, the car, the lidar, the radar, the IMU, the GPS, the wheels
+**Ravensim** is our own simulator, in Rust (Ben named it, 16 Nov). Ben, 7 Nov: "merge in
+everything from gazebo so its standalone in rust". This page is the simulator's **core**: the world, the car, the lidar, the radar, the IMU, the GPS, the wheels
 and the clock. The cameras are their own program ([its page](own-simulator-cameras.md)),
 started beside it. The plan: [the design](designs/2026-11-05_own-simulator.md).
 Every argument, the worlds and `sim-check`: [Simulation](simulation.md).
 
 ```sh
-pixi run sim world:=test_lot gui:=false rviz:=false     # ours: the default since 8 Nov
-pixi run sim-check                                     # the road world's checks, on ours
-pixi run sim simulator:=gazebo world:=test_lot         # Gazebo, as before
+pixi run sim world:=test_lot rviz:=false               # Ravensim (simulator:=ravensim)
+pixi run sim-check                                     # the road world's checks
+tools/software_gl.sh pixi run sim-check                # no GPU: the cameras in lockstep
 ```
 
-**Ours is the default since 8 Nov**: it passed every `sim-check` leg Gazebo passes (below).
-Gazebo stays, as `simulator:=gazebo`, to compare, until 0.4-rc1 is scored.
+| Part | Package | Language |
+|---|---|---|
+| the world, the car, the rays, the IMU, GPS, wheels, clock | `aav_simulator` (`sim-core`, `sim-node`) | Rust |
+| the cameras | `aav_sim_cameras` (Bevy, offscreen) | Rust |
+| the worlds, models, `ravensim.launch.py`, the car's nodes (`sim_adapter`, `sim_imu`...) and the shared sim models | `aav_sim_models` | Python |
+| big maps in 64 m chunks: **RavenTiles** | `maps/<place>/chunks/` (`pixi run campus`) | data |
 
-**No GPU (15 Nov, TODO 183):** our cameras draw in software too, on Mesa's lavapipe:
-`tools/software_gl.sh pixi run sim-check`. Gazebo's last job (CI, oirp-spss) can move to
-ours. Tried on a Mac only; on Linux [[untested]]. See [No GPU](#no-gpu-15-nov) below.
+**The default since 8 Nov, the only simulator since 16 Nov**: it passed every `sim-check`
+leg Gazebo passed (below); Gazebo was removed then ([Gazebo, as it
+was](history/gazebo-as-it-was.md)). `simulator:=own`, its old name, works for one release.
+
+**No GPU:** the cameras draw in software, on Mesa's lavapipe, and the clock waits for each
+picture (**camera lockstep**, 16 Nov): `tools/software_gl.sh pixi run sim-check`. See
+[No GPU](#no-gpu-15-nov) below.
 
 ## In one picture
 
 ```text
  ego ─> output mux ─> sim_adapter ──/vehicle/sim/cmd_vel──> simulator (Rust)
-                      (actuator model)                      │ world: Gazebo's .sdf files
+                      (actuator model)                      │ world: SDF files      
                                                             │ car, rays, IMU, GPS, clock
- sim_imu, sim_gps, sim_radar, sim_adapter <─────┘ Gazebo's topics, rates, QoS
+ sim_imu, sim_gps, sim_radar, sim_adapter <─────┘ /vehicle/sim/*: Gazebo's rates, QoS
    └─> /sensors/*, /vehicle/*  ─> localization, Nav2, safety: unchanged
 ```
 
-It replaces `gz sim` **and** its bridges. Every node above them is the same one Gazebo uses.
+It replaced `gz sim` **and** its bridges. Every node above them is the one Gazebo used.
 
 ## What it gives
 
-| Topic | Rate | Same as Gazebo? |
+| Topic | Rate | Same as Gazebo was? |
 |---|---|---|
 | `/clock` | 1 kHz | yes: one per step |
 | `/vehicle/sim/odom`, `/vehicle/sim/truth` | 50 Hz | yes; the wheels' odometry can also drift: `wheel_noise:=0.05` (m/s on each reading) and `wheel_slip:=0.02` (2 % too far), seeded by `noise_seed:=`, off by default (TODO 179) |
@@ -73,9 +81,22 @@ test lot and 15 ms on the campus (Ben's Mac, 4 threads).
 | The cameras' world | `World::shapes` | every shape as SDF draws it: box, cylinder, plane, mesh file; pose; colour |
 | Placing things | `/vehicle/sim/spawn_entity`, `delete_entity` | `simulation_interfaces`: an SDF model, a pose |
 
-With `simulator:=own`, `ravensim.launch.py` starts the cameras (`sim_cameras --ros --pose truth
---world <the world>`) and sets `sim_adapter`'s `cameras` to true, so `/system/source`
-announces them, as with Gazebo.
+`ravensim.launch.py` starts the cameras (`sim_cameras --ros --pose truth --world <the
+world>`) and sets `sim_adapter`'s `cameras` to true, so `/system/source` announces them.
+
+### Camera lockstep (16 Nov)
+
+With `camera_lockstep:=true` (or `auto` under `tools/software_gl.sh`) the clock waits for
+the pictures, as Gazebo's sensors did:
+
+```text
+ sim_cameras ──/vehicle/sim/cameras/free_until (the next picture's sim time)──> simulator
+ simulator: at each truth (50 Hz) stamped that late, hold /clock until a later one comes
+            (10 s with no word: run free until the cameras speak again)
+```
+
+The logic is `sim-core` `lockstep.rs` (`CameraGate`), tested without ROS. Measured: [the
+cameras' page](own-simulator-cameras.md#camera-lockstep-16-nov).
 
 ## Head to head, with the cameras (8 Nov, Ben's Mac, quiet: load 4-15)
 
@@ -137,7 +158,7 @@ time (`simulator:=`).
 
 ## No GPU (15 Nov)
 
-The cameras are the only part that draws; the rest of our simulator never needed a GPU.
+The cameras are the only part that draws; the rest of Ravensim never needed a GPU.
 Their own page has the details: [the cameras, with no GPU](own-simulator-cameras.md).
 
 | What | Works? |
@@ -145,7 +166,7 @@ Their own page has the details: [the cameras, with no GPU](own-simulator-cameras
 | The cameras on Mesa's lavapipe (software Vulkan), a Mac, forced (`software_gl.sh --force`) | yes: 4 cameras at 10 Hz in the road world, pictures as the GPU's |
 | `sim-check` (road world), the cameras in software, a Mac (`software_gl.sh --force`) | **pass**, every leg: all 3 cameras at 10.0 Hz, EKF vs truth 0.10 m |
 | `sim-check --obstacle`, the same way | **pass**: the stop zone stopped the car 0.92 m from the box; the goal reached after |
-| The same on Linux, no GPU (CI, oirp-spss) | [[untested]]: CI's nightly `sim` job now runs it, beside Gazebo's |
+| The same on Linux, no GPU (CI, oirp-spss) | [[untested]]: CI's nightly `sim` job runs it, in lockstep since 16 Nov |
 | The campus world in software | no: 1.3 s a picture round. Campus needs a GPU |
 
 | Command | Where |

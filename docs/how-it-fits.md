@@ -127,8 +127,7 @@ margins with the delays): [The car as a linear model](vehicle-model.md).
 | The car, today (`actuators:=uart`) | `aav_legacy` | `legacy_uart_bridge` on the Motor Pi: UART frames for the ESP32 |
 | The CAN spine, later (`actuators:=can`) | `aav_spine_bridge` | `spine_bridge` on the Orin: CAN frames for the spine firmware |
 | turtlesim | `aav_turtlesim` | the stock turtlesim, steered with the bicycle model |
-| Our own simulator (`pixi run sim`, the default since 8 Nov) | `aav_simulator`, `aav_sim_cameras` | Rust: the worlds, the car, lidar, radar, IMU, GPS, wheels and cameras, on the real car's topics ([page](own-simulator.md)) |
-| Gazebo (`simulator:=gazebo`) | `aav_sim_models` | the same car and sensors; for computers with no GPU |
+| Ravensim (`pixi run sim`, the default since 8 Nov) | `aav_simulator`, `aav_sim_cameras` | Rust: the worlds, the car, lidar, radar, IMU, GPS, wheels and cameras, on the real car's topics ([page](own-simulator.md)) |
 | CARLA | `aav_carla` | adapter ready, untested: needs the NVIDIA computer ([CARLA](carla.md)) |
 
 Each backend reports the car's speed back on `/vehicle/odom`. That closes the loop into
@@ -199,7 +198,7 @@ still drive ([Geofence](geofence.md)).
 ## 8. The real graph, three ways
 
 The same layers, as they really run: `pixi run tools/ros.sh python3 tools/graph_picture.py` saved each one from a live
-profile on Ben's Mac (saved 20 Oct: before the output mux, the trials and our own simulator, so today's graphs have more nodes). Read them left to right. The middle stays the same in all
+profile on Ben's Mac (saved 20 Oct: before the output mux, the trials and Ravensim, so today's graphs have more nodes). Read them left to right. The middle stays the same in all
 three; only the left edge (where the data comes from) and the right edge (who plays the
 car) change.
 
@@ -207,7 +206,7 @@ car) change.
 |---|---|---|
 | `pixi run turtle` | 9, 23 | the whole command path on one line: `scripted_driver` → `twist_mux` → `ego` → `turtlesim_adapter`, and `/vehicle/odom` back into `ekf_local` |
 | `pixi run bench` | 27, 50 | the stand-ins on the left (`mock_*`, `spine_sim`); `/vehicle/bench/truth` feeding every mock; `spine_bridge` and `spine_sim` talking over `/can/tx`, `/can/rx` |
-| `pixi run sim simulator:=gazebo` (empty world) | 19, 38 | no mocks: `gz_bridge` brings in `/vehicle/sim/imu` and `/vehicle/sim/navsat`, and `sim_imu` and `sim_gps` turn them into `/sensors/...` |
+| `pixi run sim` (empty world) | 19, 38 | no mocks: Ravensim publishes `/vehicle/sim/imu` and `/vehicle/sim/navsat`, and `sim_imu` and `sim_gps` turn them into `/sensors/...` |
 
 ### The turtle
 

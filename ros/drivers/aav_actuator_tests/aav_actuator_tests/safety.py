@@ -73,7 +73,7 @@ def decide(kind: Kind, sim: bool, stands: bool, stage: int,
     """
     Decide whether this test (stage 3 or 4 of docs/tests.md) may run, and its speed cap.
 
-    sim: the user said --sim (Gazebo, simulated time). stands: --stands (wheels off the
+    sim: the user said --sim (Ravensim, simulated time). stands: --stands (wheels off the
     ground). requested_cap: --max-speed, or None for the default. bench: --bench (bench
     mode, this computer only); None leaves BENCH alone, as before --bench existed.
     """
@@ -90,9 +90,9 @@ def decide(kind: Kind, sim: bool, stands: bool, stage: int,
                                'nothing to drive')
     if sim and kind is not Kind.SIM:
         return Decision(False, f'--sim, but /system/source says {kind.value}. '
-                               'Start Gazebo first (pixi run sim ...), on this ROS domain')
+                               'Start Ravensim first (pixi run sim ...), on this ROS domain')
     if not sim and kind is Kind.SIM:
-        return Decision(False, 'Gazebo announces SIM on /system/source: add --sim '
+        return Decision(False, 'Ravensim announces SIM on /system/source: add --sim '
                                '(simulated time, this computer only)')
 
     if kind in (Kind.REAL, Kind.UNKNOWN):
@@ -123,9 +123,9 @@ def decide(kind: Kind, sim: bool, stands: bool, stage: int,
     # Gazebo
     cap = SIM_DEFAULT_CAP if requested_cap is None else requested_cap
     if cap > SIM_MAX_CAP:
-        return Decision(False, f'Gazebo tops out at {SIM_MAX_CAP} m/s (ego sim_max_speed); '
+        return Decision(False, f'Ravensim tops out at {SIM_MAX_CAP} m/s (ego sim_max_speed); '
                                f'asked {cap}')
-    return Decision(True, 'Gazebo', min(cap, STANDS_CAP) if stands else cap)
+    return Decision(True, 'Ravensim', min(cap, STANDS_CAP) if stands else cap)
 
 
 def confirmed(typed: Optional[str], test: str) -> bool:

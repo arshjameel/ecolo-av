@@ -70,7 +70,10 @@ Can't find a word? Search this page (Ctrl+F or ⌘F). Missing one? Add a row, in
 | Foxglove | a web app to watch ROS topics, like RViz | `foxglove_bridge` |
 | frame (CAN) | one CAN message: an ID and up to 8 bytes | 0x100 `DRIVE_CMD` |
 | frame (TF) | a coordinate system, like `map` or `base_link` | TF |
-| Gazebo | a 3D physics simulator. Ours until 8 Nov; since then `pixi run sim` starts our own simulator, and Gazebo is `simulator:=gazebo` | `pixi run sim simulator:=gazebo` |
+| Gazebo | a 3D physics simulator. Ours until 8 Nov, removed 16 Nov: [Gazebo, as it was](history/gazebo-as-it-was.md) | - |
+| Ravensim | Ravensim, in Rust: the world, the car, its sensors and cameras | `pixi run sim` |
+| RavenTiles | a big map cut into 64 m chunks, so only those round the car are loaded | `pixi run campus` |
+| camera lockstep | with no GPU, Ravensim's clock waits for each camera's picture | `tools/software_gl.sh pixi run sim` |
 | GNSS | Global Navigation Satellite System: GPS and its cousins | the roof antenna |
 | GPS | satellite position: latitude and longitude | `/sensors/gps/fix` |
 | Hall sensor | a sensor that notices metal or a magnet passing | the front brake rotors (KEFC) |
@@ -121,7 +124,7 @@ Can't find a word? Search this page (Ctrl+F or ⌘F). Missing one? Add a row, in
 | `odom` | the frame where the car started today: smooth, drifts | TF |
 | odometry | how far and how fast the car moved, from its own sensors | `/vehicle/odom` |
 | open loop | sending a command with no measurement back | today's throttle |
-| our simulator | our own simulator in Rust, in Gazebo's place: the same worlds and topics; the default since 8 Nov. Its cameras need a GPU | `ros/sim/aav_simulator`, [its page](own-simulator.md) |
+| Ravensim | Ravensim in Rust, in Gazebo's place: the same worlds and topics; the default since 8 Nov. Its cameras need a GPU | `ros/sim/aav_simulator`, [its page](own-simulator.md) |
 | OSM | OpenStreetMap: a free map of the world | the map window, street routes, CARLA's campus |
 | OSRM | a road router that uses OSM | the 2025-26 HUD's route (archived 25 Oct); `street_router` can ask one too |
 | Pico 2 | a Raspberry Pi microcontroller board (RP2350) | the wheel encoder; a spine program |

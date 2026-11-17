@@ -122,7 +122,7 @@ A part that can't run there (no device, no model file, no PyTorch) is **skipped 
 | 1. Unit tests | `tools/test.sh` (`pixi run test` adds the ROS tests) | no ROS | maths, CAN frames, firmware logic |
 | 2. Turtle | `pixi run turtle` | a 2D turtle as the car | drivers, mux, ego, scripted drive |
 | 3. Bench | `pixi run bench`, `pixi run bench-check` | pretend sensors, the real CAN frames, the spine's own logic | the car's software path, e-stops, Nav2, stop sign |
-| 4. Simulator | `pixi run sim world:=road` (or `world:=test_lot`), every sensor on: our own simulator since 8 Nov, `simulator:=gazebo` for Gazebo | a 3D world, every sensor | localization, Nav2, perception, A to B |
+| 4. Simulator | `pixi run sim world:=road` (or `world:=test_lot`), every sensor on: Ravensim, our own simulator | a 3D world, every sensor | localization, Nav2, perception, A to B |
 | 5. Replay | `ros2 bag play` | a recorded drive | tuning the EKFs against real data |
 | 6. CARLA | adapter ready, untested | photoreal towns, Carleton's streets | needs the NVIDIA computer (Q31; docs/carla.md) |
 | 7. Car on stands | `pixi run car orin` + `motor_pi` | the real boards, wheels in the air | signs, limits, the drive path |

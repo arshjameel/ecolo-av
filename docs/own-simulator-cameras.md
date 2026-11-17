@@ -1,9 +1,11 @@
-# Our simulator's cameras
+# Ravensim's cameras
 
 Ben, 7 Nov: replace Gazebo with our own Rust simulator, every sensor. This page is the
 **cameras** part: `ros/sim/aav_sim_cameras`. The rest of the simulator (world, car, lidar,
-IMU, GPS, wheels, clock) is [its own page](own-simulator.md); together they are the
-default `simulator:=own` since 8 Nov ([Simulation](simulation.md)). They draw on the GPU;
+IMU, GPS, wheels, clock) is [its own page](own-simulator.md); together they are
+Ravensim, our own simulator (the default since 8 Nov, the only one since 16 Nov:
+[Simulation](simulation.md)). With no GPU the clock waits for each picture
+([camera lockstep](#camera-lockstep-16-nov)). They draw on the GPU;
 with none, Mesa's software renderer draws them ([below](#with-no-gpu-15-nov)). The plan:
 [our own simulator](designs/2026-11-05_own-simulator.md).
 
@@ -44,7 +46,7 @@ Bevy draws the world from each camera on the car, with no window, and the pictur
 | `pixi run sim-cameras --ros` | publishes the topics, a scripted drive, wall-clock stamps |
 | `pixi run sim-cameras --ros --pose truth` | draws where `/vehicle/sim/truth` says, with its stamps |
 | `pixi run sim-cameras --world maps/campus/campus.sdf --at 49,-71,0` | a Gazebo world (the core's reader), parked at x, y, yaw |
-| `pixi run sim simulator:=own world:=road` | the whole simulator: the launch starts the cameras on the world it runs |
+| `pixi run sim world:=road` | the whole simulator: the launch starts the cameras on the world it runs |
 | `pixi run sim-cameras --software` | a software renderer only, even beside a GPU |
 | `tools/software_gl.sh pixi run sim-check` | the road world on a computer with no GPU: the cameras on Mesa's lavapipe |
 | `tools/software_gl.sh --force pixi run sim-cameras --bench 100` | CI's way on a computer with a GPU, a Mac too |
@@ -88,7 +90,7 @@ The shared types live in `camera-core`, which has no Bevy and no ROS:
 | Those shapes become a `SimWorld`: boxes, cylinders and planes one to one; OBJ meshes with their picture coordinates | `camera-core` `core_world.rs`, `obj.rs` |
 | Bevy draws them; pictures repeat (the campus's tarmac and grass), with smaller copies far off | `src/scene.rs` |
 | SDF's light is scaled by 0.6 to look like Gazebo's | `core_world::LIGHT` |
-| `simulator:=own` starts `sim_cameras --ros --pose truth --world <the world>`; `sim_adapter` announces the cameras | `aav_sim_models` `ravensim.launch.py` |
+| `ravensim.launch.py` starts `sim_cameras --ros --pose truth --world <the world>`; `sim_adapter` announces the cameras | `aav_sim_models` `ravensim.launch.py` |
 | Models placed while running (`obstacle:=true`, `spawn_entity`): the simulator lists them on `/vehicle/sim/entities`; the cameras read each SDF file and draw the world again | `sim-node`, `src/ros.rs`, `core_world::placed` |
 
 ## Tests

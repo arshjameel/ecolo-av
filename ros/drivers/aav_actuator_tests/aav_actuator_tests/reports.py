@@ -94,7 +94,7 @@ class Context:
     max_steering: float = 0.5
     gps_x: float = 0.0                         # m: the antenna ahead of base_link
     current: Mapping[str, float] = field(default_factory=dict)  # vehicle.yaml's values now
-    backend: str = UNKNOWN                     # shaping()'s backend: legacy, spine, gazebo...
+    backend: str = UNKNOWN                     # shaping()'s backend: legacy, spine, ravensim...
     full_throttle_speed: Optional[float] = None   # m/s: the ESP32's open loop (legacy only)
     # s: how long before its message's stamp a *_cmd value began to act. Gazebo's adapter
     # sends the demand it just applied for one tick (1/rate_hz) with the result of it.
@@ -955,7 +955,7 @@ def shaping(announcers: Sequence[str], params: Mapping[str, Mapping[str, object]
     """
     names = set(announcers)
     legacy = params.get('legacy_uart_bridge') or {}
-    gazebo = params.get('sim_adapter') or {}
+    adapter = params.get('sim_adapter') or {}
     sim = params.get('spine_sim') or {}
     lead = 0.0
     fts: object = 'n/a'
@@ -963,17 +963,17 @@ def shaping(announcers: Sequence[str], params: Mapping[str, Mapping[str, object]
         backend, firmware = 'legacy', 'the 2025-26 ESP32, over UART (legacy_uart_bridge)'
         loop = 'none: open loop, throttle = speed / full_throttle_speed'
         fts = legacy.get('full_throttle_speed', UNKNOWN)
-    elif 'sim_adapter' in names or gazebo:
-        lead = 1.0 / float(gazebo.get('rate_hz') or 50.0)
-        if gazebo.get('spine'):
-            backend, firmware = 'gazebo-spine', "spine_sim (spine-core's Rust) in Gazebo"
-            loop = sim.get('speed_loop', gazebo.get('speed_loop', UNKNOWN))
-        elif gazebo.get('actuator_model') is False:
-            backend, firmware = 'gazebo-ideal', 'Gazebo, no actuator model'
-            loop = 'none: Gazebo follows the speed within its limits'
+    elif 'sim_adapter' in names or adapter:
+        lead = 1.0 / float(adapter.get('rate_hz') or 50.0)
+        if adapter.get('spine'):
+            backend, firmware = 'ravensim-spine', "spine_sim (spine-core's Rust) in Ravensim"
+            loop = sim.get('speed_loop', adapter.get('speed_loop', UNKNOWN))
+        elif adapter.get('actuator_model') is False:
+            backend, firmware = 'ravensim-ideal', 'Ravensim, no actuator model'
+            loop = 'none: Ravensim follows the speed within its limits'
         else:
-            backend, firmware = 'gazebo', "Gazebo's actuator model (actuator_model.py)"
-            loop = gazebo.get('speed_loop', UNKNOWN)
+            backend, firmware = 'ravensim', "Ravensim's actuator model (actuator_model.py)"
+            loop = adapter.get('speed_loop', UNKNOWN)
     elif 'spine_sim' in names or sim:
         backend, firmware = 'bench', "spine_sim (spine-core's Rust), bench mode"
         loop = sim.get('speed_loop', UNKNOWN)

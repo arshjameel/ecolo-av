@@ -1,8 +1,12 @@
 # aav_sim_models
 
-Gazebo Harmonic as the car, behind the same topics as the real one. It holds the
-worlds and their models, the `ros_gz_bridge` configs, `sim_adapter` (the car
-itself) and one node per sensor, as on the car.
+Ravensim's Python half: the car behind the same topics as the real one. It holds the
+worlds and their models, `ravensim.launch.py`, `sim_adapter` (the car itself) and one
+node per sensor, as on the car. Ravensim's Rust half is `aav_simulator` (the world, the
+rays, the clock) and `aav_sim_cameras` (the cameras).
+
+Until 16 Nov this package was `aav_gazebo`, and its nodes were `gazebo_*`: Gazebo was
+removed then ([Gazebo, as it was](../../../docs/history/gazebo-as-it-was.md)).
 
 `aav_bringup`'s `sim.launch.py` starts it, with everything else as on the car and
 `use_sim_time:=true`. `pixi run sim` runs that.
@@ -10,10 +14,10 @@ itself) and one node per sensor, as on the car.
 ## Overview
 
 ```
-/control/sim/actuator_cmd ─> sim_adapter ─> /vehicle/sim/cmd_vel ─bridge─> Ackermann system
+/control/sim/actuator_cmd ─> sim_adapter ─> /vehicle/sim/cmd_vel ─> simulator (Rust)
                                (the actuator model)
-Gazebo IMU, NavSat, radar ─bridge─> sim_imu, sim_gps, sim_radar ─> /sensors/...
-Gazebo odometry, joints ─bridge─> sim_adapter ─> /vehicle/odom, wheels, status...
+simulator: /vehicle/sim/imu, navsat, radar ─> sim_imu, sim_gps, sim_radar ─> /sensors/...
+simulator: /vehicle/sim/odom, /joint_states ─> sim_adapter ─> /vehicle/odom, wheels, status...
 ```
 
 | World (`worlds/`) | Gives |
@@ -23,12 +27,14 @@ Gazebo odometry, joints ─bridge─> sim_adapter ─> /vehicle/odom, wheels, st
 | `road.sdf` | a road with a stop sign; renders the cameras, the radar stand-in and the roof lidar. Its lane map: `road.lanes.yaml` (`sim.launch.py lane_map:=world`) |
 | `campus` | Carleton, from OpenStreetMap; made by `pixi run campus` into `maps/campus/`, not kept in git (`docs/campus.md`) |
 
-A world renders sensors only if it loads Gazebo's Sensors system (`worlds.has_sensors`).
+A world renders sensors only if it carries the marker `<plugin filename="ravensim"
+name="ravensim::sensors"/>` (`worlds.has_sensors`; Gazebo's old Sensors system counts too).
 `test_lot.sdf` and `road.sdf` both do. In such a world the lidar and the radar run by
 default (`lidar:=true`, `radar:=true`); set either to false to leave it out.
 So does a chase camera behind and above the car (`chase_camera:=true`), for Lichtblick's
-cockpit layout: `/vehicle/sim/chase_camera/compressed` (`config/bridge_chase.yaml`).
-That needs a GPU, ogre2 on a Mac, or `tools/software_gl.sh`. Every world is named
+cockpit layout: `/vehicle/sim/chase_camera/compressed`.
+The cameras need a GPU, or `tools/software_gl.sh` (then the clock waits for each picture:
+camera lockstep, `docs/own-simulator.md`). Every world is named
 `aav`, and its origin must sit on the datum in `navsat.yaml`.
 
 With `spine:=true` the spine is in the loop: `spine_bridge` takes ego's commands, and
@@ -44,10 +50,12 @@ no command timeout). `esp32_loop:=pi|open` is the bridge's `speed_loop.mode`.
 
 ### Launch: `launch/ravensim.launch.py`
 
-Arguments: `world` (empty, test_lot, road), `gui`, `follow`, `obstacle`, `start_y` (m),
-`start_yaw` (rad), `lidar`, `radar`, `actuator_model`, `speed_loop`, `faults`, `spine`,
-`arm`, `bridge` (rust or python), `esp32`, `esp32_loop` (pi or open), `payload` (kg
-aboard), `adaptive_brake`.
+Arguments: `world` (empty, test_lot, road, or a path), `obstacle`, `start_x`, `start_y` (m),
+`start_yaw` (rad), `lidar`, `cameras`, `camera_lockstep` (auto, true, false; auto = on
+under `tools/software_gl.sh`), `chase_camera`, `radar`, `actuator_model`, `speed_loop`,
+`payload` (kg aboard), `adaptive_brake`, `lag_scale`, `faults`, `spine`, `arm`, `bridge`
+(rust or python), `esp32`, `esp32_loop` (pi or open), `noise_seed`, `wheel_noise`,
+`wheel_slip`, `clock_hz`.
 
 ### Nodes
 
@@ -60,7 +68,8 @@ aboard), `adaptive_brake`.
 | `sim_esp32` | TCP 127.0.0.1:47000 + the ROS domain: `legacy_uart_bridge`'s frames; only with `esp32:=true` | `/vehicle/sim/esp32_outputs` (SpineOutputs, 50 Hz) |
 | `sim_camera_relay` | `/vehicle/sim/camera/front_left/image_raw` | `/sensors/camera/front_left/image_raw`; only with `faults:=true` in a world that renders sensors |
 | `truth_localizer` | `/vehicle/sim/truth`, TF `odom → base_link`; only with `sim.launch.py truth_pose:=true` (a test: the wiggle, TODO 149) | `/localization/odom/global` (the truth), TF `map → odom` so that `map → base_link` is the truth; `ekf_global` doesn't run |
-| `gz_bridge`, `gz_road_bridge`, `gz_lidar_bridge` | (stock `ros_gz_bridge`, `config/bridge*.yaml`) | `/clock`, `/joint_states`, `/vehicle/sim/truth`, the cameras, `/sensors/lidar/points` |
+| `simulator` (`aav_simulator`, Rust) | `/vehicle/sim/cmd_vel`, `/vehicle/sim/cameras/free_until` | `/clock`, `/joint_states`, `/vehicle/sim/truth`, `odom`, `imu`, `navsat`, `radar/points`, `/sensors/lidar/points` |
+| `sim_cameras` (`aav_sim_cameras`, Rust, a process) | `/vehicle/sim/truth` | the cameras, `/vehicle/sim/cameras/free_until` |
 
 ### Parameters
 
@@ -88,15 +97,15 @@ and `brake` still carry what was asked as `command`, and what the car did as `me
 | `actuator_model.py` | re-exports `aav_description.car_model` (moved there 7 Nov: one car model for ego and the sims): `SpeedLoop` (spine-core's gains), `Actuators`, `Ideal`, `ActuatorConfig`, `speed_loop_profile` | no |
 | `esp32_firmware.py` | `Esp32Firmware`: the 2025-26 C++ ESP32's frame handling, throttle ramp and brake | no |
 | `faults.py` | the sensors' fault modes, `Fault`; the actuators', `ActuatorFaults` | no |
-| `imu.py` | the car's own acceleration, which Gazebo's IMU misses | no |
+| `imu.py` | the car's own acceleration, which the simulator's IMU leaves out | no |
 | `gps.py` | the receiver's velocity from the truth | no |
-| `radar.py` | Gazebo's lidar cloud as the TI radar's; with our simulator's `speed` field, a moving thing's own Doppler speed (TODO 194) | no |
+| `radar.py` | the simulator's radar cloud as the TI radar's; with its `speed` field, a moving thing's own Doppler speed (TODO 194) | no |
 | `wheels.py` | each wheel's speed from joint states | no |
 | `sources.py` | what `/system/source` announces | no |
-| `worlds.py` | which world renders which sensors (`has_sensors`); each world's lane map (`lane_map_file`) | no |
+| `worlds.py` | which world renders which sensors (`has_sensors`); each world's lane map (`lane_map_file`); the simulator's name (`check_simulator`: `own` still works for a release) and `camera_lockstep` | no |
 | `pose_frames.py` | `map_to_odom`: the `map → odom` that puts the car on the truth (`truth_localizer`) | no |
 | `relay.py` | what the sensor nodes share: fault parameter, clean start and stop | yes |
-| `gazebo_*.py` | the six nodes | yes |
+| `sim_*.py` | the six nodes (`sim_adapter`, `sim_imu`, `sim_gps`, `sim_radar`, `sim_camera_relay`, `sim_esp32`) | yes |
 
 Models (`models/`): `obstacle` (the bench's 1 m box), `post` (person-sized, for the
 lidar's obstacle check in `tools/sim_check.py`), `kerb` (0.3 m high, `sim-check --kerb`), `stop_sign`.
@@ -109,21 +118,19 @@ lidar's obstacle check in `tools/sim_check.py`), `kerb` (0.3 m high, `sim-check 
 - No command for `cmd_timeout` (0.2 s): target speed 0. This copies the spine's
   watchdog, though the spine's own is shorter (0.1 s). With the spine, `spine_sim`
   quiet for `cmd_timeout`: full brake.
-- The actuator model, not Gazebo, sets the limits. Its numbers are `vehicle.yaml`'s
+- The actuator model, not the simulator, sets the limits. Its numbers are `vehicle.yaml`'s
   `actuators:` section.
 - Each sensor node is its own process, so a slow one can't make another late.
-- Gazebo's truth (`/vehicle/sim/truth`) is for checks and the GPS's velocity only;
+- The simulator's truth (`/vehicle/sim/truth`) is for checks and the GPS's velocity only;
   it never reaches localization, except in one test that asks for it by name
   (`truth_pose:=true`: `truth_localizer` in `ekf_global`'s place).
 - Units: m, m/s, rad, s. Positive steering turns left. Throttle and brake are 0 to 1.
 
 ## Side Effects
 
-- Starts `gz sim` (and on a Mac a second `gz sim -g` window), spawns the car and, with
-  `obstacle:=true`, a box.
-- Writes a temporary `bridge_road_*.yaml`, deleted at exit.
+- Starts `simulator` (with `obstacle:=true`, the obstacle in the car's path) and, in a world
+  that renders them, the `sim_cameras` process (no window).
 - Publishes `/clock` and the topics above.
-- On oirp-spss, Gazebo needs `GZ_IP=127.0.0.1` and its own `GZ_PARTITION`.
 
 ## Verification
 
@@ -132,4 +139,4 @@ pixi run build && colcon test --packages-select aav_sim_models && colcon test-re
 ```
 
 `pixi run test` runs everything. The whole loop: `pixi run sim-check` (on a machine
-with no GPU: `tools/software_gl.sh pixi run sim-check --simulator gazebo`).
+with no GPU: `tools/software_gl.sh pixi run sim-check`).

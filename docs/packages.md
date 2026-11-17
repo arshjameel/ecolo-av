@@ -20,7 +20,7 @@ each one's README has its topics.
 | `aav_localization` | localization | the two EKFs and `navsat_transform`: configuration only | [[works]] turtle, Gazebo and the bench | new |
 | `aav_gps_heading` | localization | `gps_heading`: the heading from the GPS receiver's velocity, for `ekf_global` | [[works]] Gazebo | new |
 | `aav_localization_health` | localization | warn-only checks on what the EKFs read and say, on `/localization/health` and `/diagnostics` | built 1 Nov | new (Betsi) |
-| `aav_localization_health_rs` | localization | `localization_health` in Rust (`localization_health_impl:=rust`): the same topics and answers | [[works]] against the Python's answers; our simulator's road world | new: a port of `aav_localization_health` |
+| `aav_localization_health_rs` | localization | `localization_health` in Rust (`localization_health_impl:=rust`): the same topics and answers | [[works]] against the Python's answers; Ravensim's road world | new: a port of `aav_localization_health` |
 | `aav_ndt` | localization | NDT in Rust, a trial (`ndt:=true`): where the car is on a saved lidar map; never TF | built 29 Oct; a trial, off by default ([Trials](trials.md)) | new |
 | `aav_kiss_icp` | localization | KISS-ICP lidar odometry, a trial (`kiss_icp:=true`): how far the car moved, from the lidar alone | built 30 Oct; a trial, off by default ([Trials](trials.md)) | new, around stock KISS-ICP (MIT) |
 | `aav_teleop` | drivers | joystick → `/drivers/joy/cmd_vel`, plus an e-stop button | [[untested]] | new; the button map from 2025-26 `joy_teleop_ackerman` |
@@ -39,7 +39,7 @@ each one's README has its topics.
 | `aav_smoother` | drivers | our own velocity smoother in Rust (`smoother:=own`): the turn rate from where the wheels can be | built 8 Nov; a trial ([its page](own-smoother.md)) | new |
 | `aav_diffusion_planner` | drivers | a trial planner (`planner:=diffusion`): a model draws paths, a guard checks them, the lattice's path otherwise | built 2 Nov; a trial, off by default ([Trials](trials.md)) | new |
 | `aav_behaviour` | drivers | the behaviour planner, a trial (`behaviour:=true`): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK, and a speed cap on Nav2 | built 7 Nov; off by default ([How the car stops](stopping.md)) | new |
-| `aav_behaviour_rs` | drivers | `behaviour` in Rust, the default (Ben, 16 Nov) beside `aav_behaviour`'s (`behaviour_impl:=python`): the same topics and answers | [[works]] against the Python's answers, and in our simulator | new: a port of `aav_behaviour` |
+| `aav_behaviour_rs` | drivers | `behaviour` in Rust, the default (Ben, 16 Nov) beside `aav_behaviour`'s (`behaviour_impl:=python`): the same topics and answers | [[works]] against the Python's answers, and in Ravensim | new: a port of `aav_behaviour` |
 | `aav_command_mux` | command_mux | twist_mux: the priorities, the e-stop lock and the other locks | [[works]] | new |
 | `aav_io_mux` | io_mux | the sensor mux and the output mux: simulated data never drives the real car | [[works]] turtle, Gazebo and the bench; [[untested]] on the car | new |
 | `aav_ego` | ego | one command → speed and steering the car can do | [[works]] | new |
@@ -47,9 +47,9 @@ each one's README has its topics.
 | `aav_spine_bridge` | can_bridge | the same `spine_bridge` in Rust, on the firmware's own CAN code (`spine-core`); the default since 23 Oct (`bridge:=python` for the other) | [[works]] on the bench, against `spine_sim`; no spine board yet | new: a port of `aav_spine`'s node (T1.8) |
 | `aav_legacy` | can_bridge | today's car: the 2025-26 ESP32 over UART, through the Motor Pi | [[untested]] on the car | new, for the 2025-26 protocols |
 | `aav_turtlesim` | sim | turtlesim, steered like the car | [[works]] | new |
-| `aav_sim_models` | sim | Gazebo's car behind the real car's topics; its adapters run with our simulator too | [[works]] headless | new |
-| `aav_simulator` | sim | our own simulator in Rust, in `gz sim`'s place: the default since 8 Nov (`simulator:=gazebo` for Gazebo) | passed every `sim-check` leg Gazebo passes, 8 Nov ([its page](own-simulator.md)) | new |
-| `aav_sim_cameras` | sim | our simulator's cameras (Bevy, offscreen; needs a GPU). A cargo program, not a colcon package | built 7-8 Nov ([its page](own-simulator-cameras.md)) | new |
+| `aav_sim_models` | sim | Gazebo's car behind the real car's topics; its adapters run with Ravensim too | [[works]] headless | new |
+| `aav_simulator` | sim | Ravensim, our own simulator in Rust: the only one since Gazebo went (16 Nov) | passed every `sim-check` leg Gazebo passes, 8 Nov ([its page](own-simulator.md)) | new |
+| `aav_sim_cameras` | sim | Ravensim's cameras (Bevy, offscreen; needs a GPU). A cargo program, not a colcon package | built 7-8 Nov ([its page](own-simulator-cameras.md)) | new |
 | `aav_carla` | sim | a CARLA adapter (CARLA's Python client) | [[untested]] never run against a server | new |
 | `aav_spine_sim` | sim | the spine on a laptop: the firmware's logic on a model car (Rust) | [[works]] | new |
 | `aav_bench` | sim | pretend sensors: IMU, GPS, battery, camera, radar, lidar | [[works]] | new |

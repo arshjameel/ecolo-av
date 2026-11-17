@@ -56,8 +56,8 @@ refuses `diffusion` without `diffusion_trial`). More: [Controllers, Planners](co
 | `tracker:=lqr` | ours: a formula for the best steering each moment | 10 of 12 |
 | `tracker:=mpc` | ours: try the next 1.5 s of steering, keep the best | **12 of 12** |
 | `tracker:=mpc_full` | ours: MPC that plans the speed too | 10 of 12 |
-| `tracker:=mpc_lag` | ours: MPC that knows the car is late, and plans for it (7 Nov) | our simulator, 8 Nov: 6 of 12 (no U-turn by the building; [trials](trials.md#lag-aware-mpc-7-nov-mpc_lag)) |
-| `tracker:=mppi_lag` (default; Nav2's MPPI and RPP went on 17 Nov) | ours: Nav2's MPPI in Rust, knowing the steering and pedals lag ([page](mppi-lag.md)) | our simulator, 8 Nov, 3 runs: 11 of 12 (Nav2's MPPI 8; [trials](trials.md#results-our-simulator-8-nov-the-lot-tour-3-runs-each)). It passes a goal at 2.5 m/s and uses twice Nav2's MPPI's CPU ([our navigator](own-navigator.md#the-verdict)) |
+| `tracker:=mpc_lag` | ours: MPC that knows the car is late, and plans for it (7 Nov) | Ravensim, 8 Nov: 6 of 12 (no U-turn by the building; [trials](trials.md#lag-aware-mpc-7-nov-mpc_lag)) |
+| `tracker:=mppi_lag` (default; Nav2's MPPI and RPP went on 17 Nov) | ours: Nav2's MPPI in Rust, knowing the steering and pedals lag ([page](mppi-lag.md)) | Ravensim, 8 Nov, 3 runs: 11 of 12 (Nav2's MPPI 8; [trials](trials.md#results-our-simulator-8-nov-the-lot-tour-3-runs-each)). It passes a goal at 2.5 m/s and uses twice Nav2's MPPI's CPU ([our navigator](own-navigator.md#the-verdict)) |
 
 `aav_track`'s trackers drive forward only: give them `reversing:=false` (the menu does).
 `mppi_lag` reverses (14 Nov).
@@ -102,10 +102,10 @@ law. `tracker:=mpc_lag` and `mpc_lag_rs` don't model `lqi` yet: the launch refus
 | Switch | What |
 |---|---|
 | `world:=test_lot` / `road` / `empty` / `campus` | where the car is (`sim` only; the demos use the test lot; the default is `empty`). `campus` needs `pixi run campus` first ([page](campus.md)) |
-| `simulator:=gazebo` | Gazebo plays the world. The default is `simulator:=own`, our simulator, since 8 Nov ([page](own-simulator.md)); it needs a GPU for its cameras |
+| `camera_lockstep:=true` | Ravensim's clock waits for each picture (`auto`, the default: under `tools/software_gl.sh`, no GPU). `simulator:=ravensim` is the only simulator since Gazebo went (16 Nov); `own` still works for one release |
 | `reversing:=false` | navigation drives forward only |
 | `sim_speed:=3` | a top speed above the car's 1 m/s (up to 5), in the simulator only; `world:=campus` sets 2.5 |
-| `lag_scale:=2` | the car's throttle, brake and steering lags twice what `vehicle.yaml` says; every driver still reads `vehicle.yaml` (a robustness test; with `simulator:=gazebo` only) |
+| `lag_scale:=2` | the car's throttle, brake and steering lags twice what `vehicle.yaml` says; every driver still reads `vehicle.yaml` (a robustness test, in `sim_adapter`) |
 | `geofence:=false` | no geofence (it's on by default) |
 | `lidar:=false`, `radar:=false` | sensors off |
 | `voxels:=true` | the costmap sees the lidar as 0.25 m cubes, not a flat scan (a trial: [Trials](trials.md#voxels-30-oct-the-lidar-as-cubes)) |
@@ -163,7 +163,7 @@ Sim column below. On 17 Nov Nav2 went: the bench and the car run ours too.
 | How far it moved | `ekf_local`: wheels, IMU | the same | the same | | `kiss_icp:=true` (scored), `kiss_ekf:=true` (no clear win) |
 | Speed loop | `default` (PI) | `default` | `default` (no switch on the car) | today's PI loop; `sim-check` 9 of 9 with each of the three | `lqi`, `smooth` (sim and bench) |
 | Geofence, sensor watchdog | on | on | on | they hold navigation when the pose or a sensor goes bad | `geofence:=false` (sim only) |
-| Who plays the world | ours (`simulator:=own`, since 8 Nov) | - | - | every `sim-check` leg Gazebo passes, 3 times each; no GPU-less start-up crashes | `simulator:=gazebo` (and on a computer with no GPU) |
+| Who plays the world | Ravensim (`simulator:=ravensim`, since 8 Nov; `own` until the next release) | - | - | every `sim-check` leg Gazebo passed, 3 times each; no GPU-less start-up crashes | none: Gazebo removed 16 Nov ([as it was](history/gazebo-as-it-was.md)) |
 
 **Why the winners stay off:**
 

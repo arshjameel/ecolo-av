@@ -22,14 +22,14 @@ through the Python helper `aav_description.vehicle`.
 | `/robot_description` | std_msgs/String | `robot_state_publisher` publishes |
 | `/tf_static`, `/tf` | tf2_msgs/TFMessage | `robot_state_publisher` publishes |
 | `/vehicle/joint_states` | sensor_msgs/JointState | `joint_state_publisher` subscribes (from `spine_bridge`) |
-| `/joint_states` | sensor_msgs/JointState | `joint_state_publisher` publishes (off in Gazebo) |
+| `/joint_states` | sensor_msgs/JointState | `joint_state_publisher` publishes (off in Ravensim, which publishes its own) |
 
 ### `config/vehicle.yaml`
 
 | Section | Holds |
 |---|---|
 | `vehicle` | wheelbase, track, wheel size (m), `max_steering_angle` (rad), `max_reverse_speed` (m/s), body outline, mass (kg), centre of mass, tyre grip, encoder counts, `speed_wheels` (which wheels `/vehicle/odom` measures: front today, TODO 49b) |
-| `actuators` | the actuator model for Gazebo: accel, brake, lags, steering rate. Also read by ego (`max_accel`, `max_brake`, via `ego_params`), `aav_drive_to_point`'s launch (`max_brake`) and `carla_adapter` (`max_accel`). **Every value is a guess** |
+| `actuators` | the actuator model for Ravensim's `sim_adapter`: accel, brake, lags, steering rate. Also read by ego (`max_accel`, `max_brake`, via `ego_params`), `aav_drive_to_point`'s launch (`max_brake`) and `carla_adapter` (`max_accel`). **Every value is a guess** |
 | `brake` | the brake actuator's travel and limits, like the steering's ends: `released`, `touch`, `full`, `safe_max` (targets) and `max_hold_time` (s). **Placeholders** until car day A7 rows 6-8; `released` and `full` match the firmware's `calibration.rs` (`test_vehicle.py` checks). Read by the adaptive brake |
 | `sensors` | each sensor's mount (`xyz` m, `rpy` rad) from `base_link`: IMU, GPS, radar, three cameras, lidar |
 
@@ -43,7 +43,6 @@ Many values are still `TODO measure` (docs/car_measurements.md).
 | `load(path=None)` | the YAML file as a dict |
 | `min_turning_radius(v)` | `base_link`'s radius at full lock (m) |
 | `wheel_angles(v, centre)`, `centre_angle(v, inner, outer)` | Ackermann: each front wheel from the bicycle angle, and back |
-| `gazebo_steering_limit(v)` | the limit Gazebo's AckermannSteering needs to reach `max_steering_angle` |
 | `footprint(v)`, `stop_zone_points(v)`, `rear_stop_zone_points(v)` | the costmaps' footprint and the stop zone's boxes |
 | `self_box(cfg, margin=SELF_MARGIN)` | the car and every sensor on it from above, 15 cm wider: lidar points inside are the car itself (NDT's map and scan, the debug HUD's cubes) |
 | `footprint_points(v)`, `polygon(points)` | the body outline as corners; corners as Nav2's polygon string |
@@ -77,7 +76,7 @@ one's block in `nav2.yaml`).
 
 ### `aav_description.car_model` (no ROS): one car model
 
-How the car answers a command, for ego (its lead and its trace), Gazebo's adapter and the
+How the car answers a command, for ego (its lead and its trace), Ravensim's `sim_adapter` and the
 drivers' tests (moved here from `aav_sim_models`'s `actuator_model.py`, 7 Nov; that module
 still re-exports every name). Its Rust twin is [`car-model/`](./car-model/README.md);
 `car-model/vectors.json` checks both. The page: `docs/vehicle-model.md`, "One car model".
@@ -89,7 +88,7 @@ still re-exports every name). Its Rust twin is [`car-model/`](./car-model/README
 | `CarState` | `x, y, yaw, v, steer, throttle_level, brake_level`, the steering motor's insides, the delay lines |
 | `step(cfg, state, command, dt, loop=None)` | the next `CarState`: dead times, lags, speed, steering, the bicycle |
 | `predict(cfg, state, commands, dt, horizon, loop=None)` | the trace: a state every `dt` for `horizon` s (the loop copied) |
-| `Actuators`, `SpeedLoop`, `speed_loop_profile`, `Ideal`, `LQI_MODEL` | Gazebo's stateful car, the spine's speed loop (ported), the old instant car |
+| `Actuators`, `SpeedLoop`, `speed_loop_profile`, `Ideal`, `LQI_MODEL` | the simulated stateful car, the spine's speed loop (ported), the old instant car |
 
 ### `aav_description.stop_law` (no ROS): how the car stops
 
@@ -172,8 +171,9 @@ car model says (`docs/stopping.md`, "A heavier car").
 ### URDF (`urdf/`)
 
 `aav.urdf.xacro` builds `base_link`, `chassis`, four wheels with two steering joints,
-and one link per sensor in `vehicle.yaml`. `aav.gazebo.xacro` and
-`aav.sensors.gazebo.xacro` add Gazebo's plugins and sensors when `sim:=true`.
+and one link per sensor in `vehicle.yaml`. Gazebo's `aav.gazebo.xacro` and
+`aav.sensors.gazebo.xacro` were removed with Gazebo (16 Nov); the `sim`, `lidar` and
+`chase_camera` arguments are still accepted, and do nothing.
 
 ## Invariants
 

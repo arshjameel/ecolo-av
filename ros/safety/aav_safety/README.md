@@ -124,13 +124,13 @@ Started next to the mux on the car, in the sim and on the bench. Calls each acti
 | `COASTING` (the legacy speed loop's stop not measured, in either mode) | on | `vehicle.yaml` `open_loop_decel` or `pi_loop_decel`, for the running mode |
 | `STANDS` (`stands:=true`) | open, logged every 5 s | |
 
-`launch/geofence.launch.py backend:=spine|uart|gazebo|sim_esp32 [radius:=30]
+`launch/geofence.launch.py backend:=spine|uart|sim|sim_esp32 [radius:=30]
 [centre_x:=0] [centre_y:=0] [site:=] [max_speed:=] [gps:=true] [stands:=false]`: it works
 out the stopping numbers (`motion_from`) from `ego.yaml`, `vehicle.yaml` and the backend's
 config, and passes them. `config/geofence.yaml`: `margin` 1.0, `hysteresis` 0.5, `max_std`
 3.0, `max_age` 1.0, `gps_max_age` 2.0, `settle_time` 3.0, `jump_margin` 2.0, `pose_lag`
 0.1, `rate_hz` 10, and `sites.<name>.datum`, `.corners`. car.launch.py starts it wherever
-it starts the mux; the bench always; Gazebo with `geofence:=true` (the default).
+it starts the mux; the bench always; Ravensim with `geofence:=true` (the default).
 
 ### Inputs (`config/sensor_watchdog.yaml`)
 
@@ -217,5 +217,5 @@ cd ros/safety/aav_safety && python3 -m pytest -q        # the logic, no ROS
 pixi run build && colcon test --packages-select aav_safety && colcon test-result --verbose
 ```
 
-`tools/test.sh` runs the first; `pixi run test` runs everything. In Gazebo:
+`tools/test.sh` runs the first; `pixi run test` runs everything. In Ravensim:
 `pixi run sim-check --faults`, or break a sensor by hand with `pixi run sim-fault gps stop`.

@@ -391,15 +391,15 @@ More in [Bench mode](bench.md).
 
 | Command | Does |
 |---|---|
-| `pixi run sim-check --lane-only [--simulator own]` | the 30 s check: from 0.3 m left, back within 5 cm |
-| `pixi run measure lane [--simulator own]` | a longer drive on the road world, scored by the truth |
-| `pixi run measure lane --world campus --road "Library Road" [--simulator own]` | the same on a campus road (`pixi run campus` first) |
+| `pixi run sim-check --lane-only` | the 30 s check: from 0.3 m left, back within 5 cm |
+| `pixi run measure lane` | a longer drive on the road world, scored by the truth |
+| `pixi run measure lane --world campus --road "Library Road"` | the same on a campus road (`pixi run campus` first) |
 
 The score (`tools/lane_score.py`): the car's distance from its lane's centre by the
 simulator's truth, the time off the road, the share of pictures with no line found, and
 the speed. On a campus road the lane runs from the yellow centre line to the white edge line.
 
-| Run (Ben's Mac, quiet) | Our simulator | Gazebo |
+| Run (Ben's Mac, quiet) | Ravensim | Gazebo |
 |---|---|---|
 | `sim-check --lane-only` (road) | [[works]] back within 5 cm in 5.4 s, overshoot 3 cm; finder 1.0 cm from the truth; both lines in 299 of 299 | [[works]] 5.1 s, overshoot 5 cm; finder 1.1 cm; 301 of 301 |
 | `measure lane`, road, 60 s from 0.3 m off | 60 m at 0.99 m/s; error mean 3.0 cm, 95 % 19.5 cm (the start); lane never lost | 60 m at 0.99 m/s; mean 3.0 cm, 95 % 19.7 cm; never lost |

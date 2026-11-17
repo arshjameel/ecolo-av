@@ -16,7 +16,7 @@ only the backend and the data source change.
 | Profile | Command | Backend | Source |
 |---|---|---|---|
 | turtle | `pixi run turtle` | turtlesim | SIM |
-| sim | `pixi run sim` | our simulator (`aav_simulator`); `simulator:=gazebo`: Gazebo | SIM |
+| sim | `pixi run sim` | Ravensim, our simulator (`aav_simulator`) | SIM |
 | bench | `pixi run bench` | spine_sim + mocks | BENCH |
 | car | `pixi run car <machine>` | legacy UART bridge or spine_bridge | REAL |
 | carla | `pixi run carla-car` | CARLA | SIM |

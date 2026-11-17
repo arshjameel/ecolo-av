@@ -519,8 +519,8 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_smoother` | our own velocity smoother in Rust, a trial (`smoother:=own`) | `ros/drivers/aav_smoother/README.md`, then [Our smoother](own-smoother.md) |
 | `aav_diffusion_planner` | a trial planner (`planner:=diffusion`): a model draws paths, a guard checks them, the lattice's path otherwise | `ros/drivers/aav_diffusion_planner/README.md`, then [the design](designs/2026-11-02_diffusion-planner.md) |
 | `aav_behaviour` | the behaviour planner, a trial (`behaviour:=true`): six states and a speed cap on Nav2 | `ros/drivers/aav_behaviour/README.md`, then [How the car stops](stopping.md) |
-| `aav_simulator` | our own simulator in Rust, in `gz sim`'s place: the default since 8 Nov (`simulator:=gazebo` for Gazebo) | `ros/sim/aav_simulator/README.md`, then [Our simulator](own-simulator.md) |
-| `aav_sim_cameras` | our simulator's cameras (Bevy, offscreen; needs a GPU); a cargo program, not a colcon package | `ros/sim/aav_sim_cameras/README.md`, then [its page](own-simulator-cameras.md) |
+| `aav_simulator` | Ravensim, our own simulator in Rust: the only one since Gazebo went (16 Nov) | `ros/sim/aav_simulator/README.md`, then [Ravensim](own-simulator.md) |
+| `aav_sim_cameras` | Ravensim's cameras (Bevy, offscreen; needs a GPU); a cargo program, not a colcon package | `ros/sim/aav_sim_cameras/README.md`, then [its page](own-simulator-cameras.md) |
 | `aav_dev_window` | the developer window (Bevy), for a laptop: `pixi run dev-window`; a cargo program, not a colcon package | `ros/hud/aav_dev_window/README.md` |
 
 `aav_actuator_tests` has its card under [Drivers](#drivers).

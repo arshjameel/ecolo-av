@@ -7,7 +7,7 @@ Not ours, and not in git. Only this README and the lists are committed.
 |---|---|---|---|
 | `ros2-src.repos` | `vendor/ros2-src/` | ROS 2 Jazzy's own source (`core/`), and the stock packages we use (`ecosystem/`): Nav2, robot_localization, ros_gz, twist_mux and more | about 550 MB |
 | `ros2-rust.repos` | `vendor/ros2-rust/` | rclrs (ROS in Rust), its examples, and its build tools | about 13 MB |
-| `gazebo.repos` | `vendor/gazebo/` | Gazebo Harmonic, the simulator `pixi run sim` runs: 18 libraries at the releases `pixi.lock` installs, plus `ros_gz` and the DART physics engine | about 745 MB |
+| `gazebo.repos` | `vendor/gazebo/` | Gazebo Harmonic, the simulator `pixi run sim` ran until 16 Nov (Ravensim since), kept to read: 18 libraries at the releases `pixi.lock` installs, plus `ros_gz` and the DART physics engine | about 745 MB |
 
 PlatformIO keeps its downloads here too, in `vendor/platformio/` (about 1.5 GB): the
 compilers and framework for today's C++ boards. `pixi run -e firmware legacy-esp32`
@@ -46,8 +46,9 @@ run; the comment above it in `gazebo.repos` names the release tag.
 | messages and transport inside Gazebo | gz-msgs, gz-transport | `gz-msgs/`, `gz-transport/` |
 | the window, the menus | gz-gui | `gz-gui/` |
 
-Search it with `rg -u <word> vendor/gazebo/`. Our side of the simulator is
-`ros/sim/aav_gazebo/` and the URDF's `ros/bringup/aav_description/urdf/aav.gazebo.xacro`.
+Search it with `rg -u <word> vendor/gazebo/`. Gazebo was removed on 16 Nov; our side of it
+became `ros/sim/aav_sim_models/` (Ravensim's Python half), and the URDF's Gazebo files were
+deleted ([Gazebo, as it was](../docs/history/gazebo-as-it-was.md)).
 
 **Found a real Gazebo bug?** Gazebo's guide is https://gazebosim.org/docs/latest/contributing/.
 Report it on that library's GitHub issues, with its release tag and a small world that

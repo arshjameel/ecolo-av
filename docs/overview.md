@@ -9,7 +9,7 @@ package, one per row: [Packages](packages.md). What works: [Status](status.md).
 
 | What | How many |
 |---|---|
-| ROS packages | 51: 30 in Python, 21 in CMake (12 of them Rust nodes). Plus two Bevy crates outside colcon: the developer window and our simulator's cameras |
+| ROS packages | 51: 30 in Python, 21 in CMake (12 of them Rust nodes). Plus two Bevy crates outside colcon: the developer window and Ravensim's cameras |
 | Rust firmware crates | 15 (`spine-core`, `aav-inputs`, device drivers, glue, the status lines, the firmware update), and 4 board programs: the spine on today's ESP32 and on a Pico 2, the wheel encoder, the status display |
 | The 2025-26 team's firmware boards, in C++ | 3 |
 | Launch profiles | 6: `turtle`, `sim`, `car`, `replay`, `bench`, `carla` |
@@ -29,7 +29,7 @@ package, one per row: [Packages](packages.md). What works: [Status](status.md).
 | `models/` | the detector models, RF-DETR Nano (the default) and YOLO: `pixi run get models` downloads them (not in git) | [Perception](perception.md) |
 | `archive/` | the older teams' repos, as they were, and the 2025-26 Flutter HUD (archived 25 Oct). Reference only: never built | [Older code](older-code.md) |
 | `vendor/` | other people's source, to look things up: ROS 2 Jazzy and rclrs. Not ours, and not in git: `pixi run get vendor` downloads it | |
-| `pixi.toml`, `pixi.lock` | the whole environment: ROS 2 Jazzy, Gazebo, Nav2, Rust, compilers | [Infrastructure](infrastructure.md) |
+| `pixi.toml`, `pixi.lock` | the whole environment: ROS 2 Jazzy, Rust, compilers | [Infrastructure](infrastructure.md) |
 
 ## Our own code
 
@@ -62,8 +62,8 @@ The main ones. Every package: [Packages](packages.md).
 | `aav_spine`, `aav_spine_bridge` | the CAN spine: ego's commands as CAN frames (`spine_bridge`: Rust by default, Python with `bridge:=python`) | can_bridge |
 | `aav_legacy` | today's car: the 2025-26 ESP32 over UART, through the Motor Pi | can_bridge |
 | `aav_safety`, `aav_ghost` | the sensor watchdog, the geofence, the stop hold and the joystick-alive check (twist_mux locks); a pretend person only Nav2 sees | safety |
-| `aav_simulator`, `aav_sim_cameras` | our own simulator in Rust, the default since 8 Nov, and its cameras (Bevy) | sim |
-| `aav_turtlesim`, `aav_sim_models`, `aav_carla` | the turtle, Gazebo's car (`simulator:=gazebo`), a CARLA car (untested) | sim |
+| `aav_simulator`, `aav_sim_cameras` | Ravensim in Rust, the default since 8 Nov, and its cameras (Bevy) | sim |
+| `aav_turtlesim`, `aav_simulator`, `aav_sim_models`, `aav_carla` | the turtle, Ravensim's car, a CARLA car (untested) | sim |
 | `aav_bringup`, `aav_run_info` | the profiles, the machine files (each picks its parts, perception too), the RViz layout; which algorithms a run uses (`/system/algorithms`) | bringup |
 | `aav_hud`, `aav_dev_window` | the HUD, the map window, the debug screen and the hardware panel (Rust, raylib); the developer window (Bevy) | hud |
 | `aav_spine_sim`, `aav_bench` | bench mode: the spine on a laptop, and pretend sensors | sim |
@@ -112,13 +112,13 @@ Off unless a switch turns them on; in the simulator only, except where it says
 | Drivers | Nav2: 8 servers (map, planner, controller, behaviours, navigator, waypoints, velocity smoother, lifecycle) | plans and drives to a goal |
 | The mux | `twist_mux` | picks one command, by priority |
 | Backends | `ros2_socketcan` | the CAN bus (Linux only) |
-| Backends | `turtlesim`; `ros_gz` with Gazebo Harmonic | the turtle; the simulated car |
+| Backends | `turtlesim` | the turtle (the simulated car is ours: Ravensim; Gazebo until 16 Nov) |
 | Watching | `rviz2`, `rqt_graph`, `rqt_tf_tree` | the 3D view, the node graph, the frame tree |
 | Watching | `foxglove_bridge` | Foxglove or Lichtblick on a laptop, on the car |
 | Recording | `rosbag2`, with MCAP files | `tools/record.sh` and replay |
 | Ready, not used yet | `rosbridge_server` | a web page could read ROS through it; nothing uses it since the Flutter HUD was archived (25 Oct) |
 
-### The plugins inside Nav2 and Gazebo
+### The plugins inside Nav2 (until 17 Nov) and Gazebo (until 16 Nov)
 
 | Where | Plugin | Notes |
 |---|---|---|
@@ -169,5 +169,5 @@ avoidance, odometry and QNX layer. [The older code](older-code.md) has every rep
 | Navigation | the real test site's map (Q21); N7 (the EKF's GPS heading jumps); the radar's real mount. Reversing on the car: on by default again since 1 Nov, where the lidar sees behind; until the wheels tell direction (H5) the speed's sign is the last command's | [Costmaps](costmaps.md) |
 | Drivers | a first real joystick test; an e-stop message that can't get lost (N2) | [Starting points](team.md) |
 | The HUD | the build for the car's Pi; its tile server and OSRM route data. The map database downloads with `pixi run get places` | [HUD](hud.md) |
-| Simulation | CARLA: adapter ready, never run (needs the NVIDIA computer). Our simulator's cameras need a GPU. Bench mode works: [Bench mode](bench.md) | [CARLA](carla.md) |
+| Simulation | CARLA: adapter ready, never run (needs the NVIDIA computer). Ravensim's cameras need a GPU. Bench mode works: [Bench mode](bench.md) | [CARLA](carla.md) |
 | The team | owners (Q33), the leaked secrets changed (Q34), backups before any reflash | [Work](work.md) |

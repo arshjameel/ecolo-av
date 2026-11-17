@@ -216,6 +216,7 @@ Ben, 16 Nov: "why are map chunks and obstical avoidance not using rayon ... we s
 the closest ones or atleas the ones on the path. Lets turn on chunking for sure."
 
 **The idea.** The global costmap holds only the 64 m chunks it needs, not the whole map.
+The chunked maps are called **RavenTiles** (Ben, 16 Nov).
 
 ```text
  car + the route ahead ─▶ map_chunks::wanted: the 3 x 3 round the car + 100 m of route

@@ -2,10 +2,9 @@
 
 Written 15 October 2026, checked 25 October and 13 November. **This page:** what is
 simulated, what is real, and which layer swaps. How to run it: [Simulation](simulation.md);
-the plan behind it: [Full simulation](full-simulation.md); the default simulator since
-8 Nov: [Our own simulator](own-simulator.md). Where it says Gazebo, read either simulator:
-`pixi run sim` now starts ours, and `simulator:=gazebo` starts Gazebo. It answers three
-questions:
+the plan behind it: [Full simulation](full-simulation.md); the simulator: [Ravensim](own-simulator.md), our own (Gazebo until 16 Nov:
+[Gazebo, as it was](history/gazebo-as-it-was.md)). Where it says Gazebo, it was measured
+there before 16 Nov; Ravensim plays the same part. It answers three questions:
 
 1. How far did we get with Gazebo?
 2. Does it really produce sensor data?
@@ -43,7 +42,7 @@ Most of the software doesn't know whether it's driving a real car or a pretend o
 | | Gazebo | The bench | The real car |
 |---|---|---|---|
 | What it is | a 3D physics simulator | stand-in programs: no physics, no 3D | the car |
-| Command | `pixi run sim simulator:=gazebo` (`pixi run sim` alone: our own simulator, the same topics) | `pixi run bench` | `pixi run car <machine>`: [[untested]] as a whole |
+| Command | `pixi run sim` (Ravensim) | `pixi run bench` | `pixi run car <machine>`: [[untested]] as a whole |
 | Who plays the car | Gazebo's Ackermann car model | `aav_spine_sim`: the spine's own firmware logic, on a model car | the boards and motors |
 | Sensors come from | Gazebo's sensor models | small "mock" nodes that pretend | the real devices |
 | CAN frames | no | **yes**: the same frames the real spine will send | yes, after the KEFC work |
@@ -144,7 +143,7 @@ Merged from the branch `wt/sim-full` on 15 Oct. Rates measured on Ben's Mac, on 
 
 | You want to | Run |
 |---|---|
-| See the simulated car | `pixi run sim` (our simulator, no window: watch in RViz); Gazebo's window: `pixi run sim simulator:=gazebo` |
+| See the simulated car | `pixi run sim` (Ravensim, no window: watch in RViz or Lichtblick) |
 | See its sensor data | in another terminal: `pixi run tools/ros.sh ros2 topic hz /sensors/gps/fix` |
 | Look at one GPS message | `pixi run tools/ros.sh ros2 topic echo --once /sensors/gps/fix` |
 | Drive it | `pixi run keyboard --sim` |

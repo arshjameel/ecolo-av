@@ -219,8 +219,7 @@ Python and PyYAML, not ROS.
     ```
 
    It says `wrote example_lot.pgm/.yaml: 320 x 240 px, 80 x 60 m`.
-3. Start the simulator with the test lot: `pixi run sim world:=test_lot`. With
-   `simulator:=gazebo` on a Mac, add `gui:=false`, then run `pixi run tools/ros.sh tools/gz_window.sh` and `pixi run rviz` in two more terminals.
+3. Start the simulator with the test lot: `pixi run sim world:=test_lot`.
 4. In RViz, send a **2D Goal Pose** at about (30, 0): 30 m straight ahead, past the box.
 
 **You should see** the planned path bend around your box. In the test on 10 October it

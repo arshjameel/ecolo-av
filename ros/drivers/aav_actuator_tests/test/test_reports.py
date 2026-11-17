@@ -82,10 +82,10 @@ def test_shaping_on_the_legacy_car():
     assert (ctx.backend, ctx.full_throttle_speed, ctx.command_lead) == ('legacy', 3.0, 0.0)
 
 
-def test_shaping_in_gazebo_and_on_the_spine():
+def test_shaping_in_ravensim_and_on_the_spine():
     gz = reports.shaping(['sim_adapter'], {'sim_adapter': {
         'speed_loop': 'smooth', 'spine': False, 'actuator_model': True, 'rate_hz': 50.0}}, {})
-    assert (gz['backend'], gz['speed_loop'], gz['command_lead']) == ('gazebo', 'smooth', 0.02)
+    assert (gz['backend'], gz['speed_loop'], gz['command_lead']) == ('ravensim', 'smooth', 0.02)
     assert gz['ego'].startswith('unknown')
     spine = reports.shaping(['spine_bridge'], {}, {})
     assert spine['backend'] == 'spine' and spine['speed_loop'].startswith('unknown')

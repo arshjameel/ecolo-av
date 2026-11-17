@@ -370,7 +370,7 @@ def with_ego_limit(settings: Settings, ego_max_speed: Optional[float]) -> Tuple[
     if ego_max_speed and 0 < ego_max_speed < settings.cap:
         return (replace(settings, cap=ego_max_speed),
                 f"ego's max_speed is {ego_max_speed:g} m/s, below the cap: using it "
-                '(Gazebo: pixi run sim sim_speed:=3 for faster tests)')
+                '(Ravensim: pixi run sim sim_speed:=3 for faster tests)')
     return settings, ''
 
 
