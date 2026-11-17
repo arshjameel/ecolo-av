@@ -96,6 +96,42 @@ Before 15 Nov only "in the lane now" counted. A person crossing was seen about 1
 bumper: too late to slow, and only the stop zone stopped the car (`behaviour.py`
 `moving_ahead`, `Crossing`).
 
+### Anything moving near: stop and wait (17 Nov)
+
+Ben, 16 Nov: "if we see a car people or stuff moving around us we should likely just
+stop."
+
+```text
+ a thing moving 0.3 m/s or more  ──┬── within 10 m of the car ─────────────┐
+ (/world/things, aav_things)       └── on the road ahead within 3 s ───────┤
+                                                                           ▼
+                        WAIT (moving): the road ahead ends at the car, ego holds it at 0
+                                                                           │
+                        gone, or standing still, for 1 s (release_hold) ───► GO
+```
+
+| Rule | Number | Parameter |
+|---|---|---|
+| it moves | 0.3 m/s or more over the ground | `moving_speed` |
+| near | 10 m from the car (its centre, less half its narrow side) | `moving_radius` |
+| on the road ahead | within half the lane + half its narrow side of `/world/road_ahead`'s line, checked every 0.25 s for 3 s at its speed | `moving_within` |
+| go again | 1 s after the last one has gone or stood still | `release_hold` |
+| off | `moving_hold:=false` (the node's parameter) | `moving_hold` |
+
+- **Only a still thing is passed** (the planner's lane pass, `pass.rs`). Anything moving is
+  waited for: an oncoming car, a person on the pavement, cross traffic.
+- **How it stops the car:** a stop called `moving` at 0 m on the road ahead, so its end is
+  the car and ego allows 0 m/s. The cap goes to the floor at once, as in any WAIT.
+- **Never over the e-stop or ASK:** the e-stop's WAIT stays the e-stop's; ASK and a lock's
+  WAIT don't go to GO while something moves near.
+- It needs the things (`things:=true`). `stack:=ours` turns them on since 17 Nov, where
+  nav and the lidar run (`stacks.yaml`'s behaviour level).
+- **Known limit:** a person walking beside the car the same way, within 10 m, holds it
+  as long as they walk. That is the rule as asked.
+
+`behaviour.py` `moving_near`, `Nearby`; Rust `paths::moving_near`. Checked in our
+simulator by `pixi run sim-check --movers` (below).
+
 ### The cap
 
 | Rule | Why |

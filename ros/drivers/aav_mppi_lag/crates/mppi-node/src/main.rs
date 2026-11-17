@@ -22,7 +22,10 @@
 //!             /world/road_ahead            aav_interfaces/RoadAhead (road_ahead_topic; empty: off), map:
 //!                                         the lane's line and edges, moved into odom by the
 //!                                         held map -> odom, for LaneCritic while fresh
-//!                                         (road_ahead_timeout); NaN edges or stale: no lane
+//!                                         (road_ahead_timeout); NaN edges or stale: no lane.
+//!                                         State WAIT, reason moving (the behaviour holds
+//!                                         the car for something moving near): the
+//!                                         progress check waits
 //! Publishes   cmd_vel_nav                 geometry_msgs/TwistStamped, at rate_hz while a path
 //!                                         runs: (v, v tan(steer) / wheelbase), to Nav2's
 //!                                         velocity smoother, collision_monitor, then
@@ -129,6 +132,7 @@ fn main() -> Result<()> {
         costmap_heard: Arrival::new(),
         road_ahead: None,
         lane_known: false,
+        moving_hold: None,
         job: None,
         next_id: 0,
         last_tick: None,
@@ -277,6 +281,9 @@ impl AnyFollower {
     fn set_lane(&mut self, lane: Option<Lane>) {
         each!(self, f => f.set_lane(lane))
     }
+    fn held(&mut self) {
+        each!(self, f => f.held())
+    }
 }
 
 /// One FollowPath goal.
@@ -321,6 +328,9 @@ struct Core {
     road_ahead: Option<(Lane, String, f64)>,
     /// The last tick had a fresh lane (the status's `lane`).
     lane_known: bool,
+    /// When the road ahead last said the behaviour holds the car for something moving
+    /// (state WAIT, reason moving): the progress check waits meanwhile.
+    moving_hold: Option<f64>,
     job: Option<Job>,
     next_id: u64,
     last_tick: Option<f64>,
@@ -429,6 +439,9 @@ impl Core {
             });
         let frame = msg.header.frame_id.trim_start_matches('/').to_string();
         self.road_ahead = Lane::new(points).map(|lane| (lane, frame, self.now()));
+        if msg.state == "WAIT" && msg.reason == "moving" {
+            self.moving_hold = Some(self.now());
+        }
     }
 
     /// The road ahead's lane in odom, if it is fresh and map -> odom is known.
@@ -632,6 +645,12 @@ impl Core {
         let lane = self.lane_in_odom(now);
         self.lane_known = lane.is_some();
         self.follower.set_lane(lane);
+        if self
+            .moving_hold
+            .is_some_and(|heard| now - heard <= self.config.road_ahead_timeout)
+        {
+            self.follower.held();
+        }
         match self.follower.tick(now, costmap) {
             None => {}
             Some(Tick::Done(outcome)) => {

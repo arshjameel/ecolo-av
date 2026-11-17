@@ -2940,19 +2940,19 @@ MOVERS = (
 )
 
 
-def check_movers(probe, goal=26.0):
+def check_movers(probe, movers=MOVERS, goal=26.0):
     """
-    Check the car holds for each of MOVERS: WAIT(moving) seen, the car keeps clear of it
+    Check the car holds for each of `movers`: WAIT(moving) seen, the car keeps clear of it
     while it moves (0.3 m ahead of the bumper), and reaches a goal `goal` m on once it has
     gone. Each starts moving when the goal is sent. Our simulator only: Gazebo's models
-    don't walk.
+    don't walk. One a session: the road world's fence is near past 60 m.
     """
     if SIMULATOR == 'gazebo':
         result('movers', None, "skipped: Gazebo's placed models don't walk")
         return
     body = vehicle.load()['vehicle']['body']
     front = body['length'] - body['rear_overhang']
-    for i, (name, model, ahead, side, along_v, side_v) in enumerate(MOVERS):
+    for i, (name, model, ahead, side, along_v, side_v) in enumerate(movers):
         probe.spin_for(30.0, lambda: abs(probe.speed()) < STILL)
         x0, y0 = probe.xy(probe.truth)
         h = yaw_of(probe.truth)
@@ -3595,9 +3595,11 @@ def main():
         # Its own run: an oncoming car, a person along the roadside, cross traffic; the
         # behaviour must hold for each (Ben, 16 Nov).
         stem, ext = os.path.splitext(log)
-        logs.append(f'{stem}-movers{ext}')
-        session(['behaviour:=true', 'things:=true', 'lidar:=true'],
-                [check_movers], logs[-1], 'movers')
+        for i, mover in enumerate(MOVERS):
+            logs.append(f'{stem}-movers-{i}{ext}')
+            session(['behaviour:=true', 'things:=true', 'lidar:=true'],
+                    [lambda probe, m=mover: check_movers(probe, [m])], logs[-1],
+                    f'mover: {mover[0]}')
     if {'--thing-names', '--thing-names-only'} & set(args):
         # Its own run: the detector names the lidar's things (TODO 192; needs -e ml).
         stem, ext = os.path.splitext(log)
