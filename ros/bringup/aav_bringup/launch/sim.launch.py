@@ -83,7 +83,7 @@ bench's argument names:
   watch_screens:=dev_window,hw_panel  commands flow only while those screens beat (they
                       send it with --developer): close one and the output mux closes, and
                       with spine:=true the spine's own state machine latches
-  sim_speed:=3        a higher top speed (m/s, up to 5), for ego and the follower, in a simulator only:
+  sim_speed:=3        a higher top speed (m/s, up to 5), for ego and the follower, simulators only:
                       the car's 1.0 m/s cap (ego.yaml, nav2.yaml) is for its first drives.
                       ego refuses it outside a simulator
   planner:=diffusion  a model draws the path, a guard checks it, our planner's path when it
@@ -876,8 +876,8 @@ def generate_launch_description():
                               description="a pretend person only navigation sees (aav_ghost); "
                                           'place it with pixi run ghost ahead 10'),
         DeclareLaunchArgument('sim_speed', default_value='',
-                              description='m/s, up to 5: a higher top speed for ego and the follower '
-                                          "than the car's 1.0, in Gazebo only"),
+                              description='m/s, up to 5: a higher top speed for ego and the '
+                                          "follower than the car's 1.0, simulators only"),
         DeclareLaunchArgument('reversing', default_value='true',
                               description='the car may drive backwards, at up to '
                                           "vehicle.yaml's max_reverse_speed "
