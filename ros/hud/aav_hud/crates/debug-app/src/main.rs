@@ -430,6 +430,7 @@ fn key_of(action: Action) -> KeyboardKey {
         Action::Camera => KeyboardKey::KEY_C,
         Action::ResetCamera => KeyboardKey::KEY_R,
         Action::Cubes => KeyboardKey::KEY_K,
+        Action::Ground => KeyboardKey::KEY_G,
         Action::NdtMap => KeyboardKey::KEY_M,
         Action::Particles => KeyboardKey::KEY_A,
         Action::Nav2Cubes => KeyboardKey::KEY_V,

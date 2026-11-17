@@ -5,12 +5,14 @@
 //! EKF's pose at the cloud's stamp, [`crate::poses`]). A cube is there if any point fell
 //! in it: one `HashSet` of cube indices per scan. Heights are above base_link: the EKF
 //! is 2D (no roll or pitch), so a pitched car tilts the cubes. The VLP-16's 0.1 s sweep
-//! is ignored (Gazebo's lidar has none).
+//! is ignored (Gazebo's lidar has none). Flat ground a little higher than the road (the
+//! lidar's rings on raised grass) is ground too ([`crate::flat`]).
 
 use std::collections::HashSet;
 
 use map_core::geom::{Point, Pose};
 
+use crate::flat;
 use crate::frames::{Stamp, Transform3, Vec3};
 
 /// A length, in metres.
@@ -73,7 +75,8 @@ impl OwnBox {
 /// How high a cube is above base_link: its colour on the screen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Band {
-    /// Below `ground_height`: the ground, drawn darker.
+    /// Below `ground_height`, or flat raised ground ([`crate::flat`]): hidden unless
+    /// key G shows it.
     Ground,
     /// Up to 0.75 m: kerbs, cones, a box.
     Knee,
@@ -201,6 +204,7 @@ pub fn build(
         })
         .collect();
     let cut = keep_nearest(&mut cubes, car, settings.max_cubes);
+    flat::ground_the_flat(&mut cubes, &[], flat::FlatRule::default());
     CubeScan {
         stamp,
         car,

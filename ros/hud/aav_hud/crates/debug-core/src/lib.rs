@@ -31,6 +31,7 @@ pub mod cloud;
 pub mod config;
 pub mod cubes;
 pub mod easter_egg;
+pub mod flat;
 pub mod frames;
 pub mod keys;
 pub mod localization_health;

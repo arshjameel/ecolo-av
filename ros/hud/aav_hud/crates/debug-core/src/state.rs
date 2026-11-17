@@ -547,7 +547,9 @@ impl DebugState {
             .then(|| self.kept.cubes().iter().copied())
             .into_iter()
             .flatten();
+        let ground = self.layers.ground;
         scan.chain(kept)
+            .filter(move |c| ground || c.band != Band::Ground)
     }
 
     /// How many cubes [`DebugState::drawn_cubes`] gives, and how many were cut.
@@ -711,6 +713,26 @@ mod tests {
         s.layers.apply(crate::keys::Action::Cubes);
         assert_eq!(s.drawn_cubes().count(), 1);
         assert_eq!(s.drawn_count(), (1, 0));
+    }
+
+    #[test]
+    fn the_ground_shows_only_with_key_g() {
+        use crate::cubes::{Band, Cube};
+        let mut s = state();
+        let cube = |x: f32, band| Cube {
+            centre: [x, 0.1, 0.1],
+            band,
+        };
+        let scan = CubeScan {
+            cubes: vec![cube(1.1, Band::Ground), cube(2.1, Band::Knee)],
+            size: 0.2,
+            ..CubeScan::default()
+        };
+        s.set_scan(scan, Instant::now());
+        let bands = |s: &DebugState| s.drawn_cubes().map(|c| c.band).collect::<Vec<_>>();
+        assert_eq!(bands(&s), [Band::Knee]);
+        s.layers.apply(crate::keys::Action::Ground);
+        assert_eq!(bands(&s).len(), 2);
     }
 
     #[test]
