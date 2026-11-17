@@ -367,9 +367,9 @@ def main():
              # Reversing, as the car's reversing:=true (Ben, 22 Oct): forward only, the lot tour's
              # U-turn can end facing a wall, and the drive stops there (23 Oct).
              'rviz:=false', 'reversing:=true',
-             # Nav2's stack, as every timing run before 14 Nov (the sim's default is now
-             # ours): its /navigate_to_pose takes the goals, the numbers stay comparable.
-             'stack:=stock'],
+             # The champions' stack (best): until 17 Nov this was Nav2's (stack:=stock),
+             # as every timing run before 14 Nov; Nav2 went (TODO 184).
+             'stack:=best'],
             cwd=ROOT, env=dict(os.environ), stdout=log, stderr=subprocess.STDOUT,
             start_new_session=True)
         rclpy.init()

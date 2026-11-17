@@ -8,21 +8,18 @@ title. Unknown names are refused, so a screen never shows a planner that doesn't
 
 from dataclasses import dataclass
 
+# Nav2's planners and controllers went on 17 Nov (TODO 184): ours only.
 PLANNERS = {
-    'lattice': 'lattice (SmacPlannerLattice)',
-    'hybrid': 'Hybrid-A* (SmacPlannerHybrid)',
-    'smac2d': 'Smac 2D (trial: ignores the turning radius)',
-    'navfn': 'NavFn (trial: ignores the turning radius)',
-    'theta_star': 'Theta* (trial: ignores the turning radius)',
-    'diffusion': 'diffusion model, the lattice as fallback (trial)',
+    'diffusion': 'diffusion model, our lattice as fallback (trial)',
     'own': 'ours in Rust (aav_planner: the lattice, or Hybrid-A* with planner_search:=hybrid)',
 }
 CONTROLLERS = {
-    'mppi': 'MPPI (Nav2 controller_server)',
-    'rpp': 'Regulated Pure Pursuit (Nav2 controller_server)',
+    'mppi': "MPPI's block (nav2.yaml), read by mppi_lag",
 }
-TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag',
+TRACKERS = ('pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag',
             'mpc_lag_rs')
+# The champion: no "trial" beside its name.
+CHAMPION = 'mppi_lag'
 # The trackers with a package of their own (the rest are aav_track's).
 TRACKER_PACKAGES = {'mppi_lag': 'aav_mppi_lag', 'mpc_lag_rs': 'aav_mpc_lag'}
 # How a trial localizer is used: not at all, scored beside the EKFs, or fused into one.
@@ -35,9 +32,9 @@ class Choices:
 
     profile: str = 'sim'
     nav: bool = True
-    planner: str = 'lattice'
+    planner: str = 'own'
     controller: str = 'mppi'
-    tracker: str = 'none'
+    tracker: str = 'mppi_lag'
     lidar: bool = False
     radar: bool = False
     voxels: bool = False
@@ -67,10 +64,9 @@ def rows(c):
     if c.nav:
         planner = PLANNERS[c.planner]
         package = TRACKER_PACKAGES.get(c.tracker, 'aav_track')
-        follower = (CONTROLLERS[c.controller] if c.tracker == 'none'
-                    else f'{c.tracker} ({package}, trial)')
+        follower = f'{c.tracker} ({package}' + (')' if c.tracker == CHAMPION else ', trial)')
     else:
-        planner = follower = 'off (no Nav2: nav:=false)'
+        planner = follower = 'off (no navigation: nav:=false)'
     sensors = (['voxels: the lidar as 0.25 m cubes (trial)'] if c.voxels
                else ['lidar scan'] if c.lidar else [])
     sensors += ['radar'] if c.radar else []
@@ -94,9 +90,9 @@ def rows(c):
 def summary(c):
     """Return one short line: the planner, the follower and the trials that are on."""
     if c.nav:
-        parts = [c.planner, c.controller if c.tracker == 'none' else c.tracker]
+        parts = [c.planner, c.tracker]
     else:
-        parts = ['no Nav2']
+        parts = ['no navigation']
     parts += ['voxels'] if c.voxels else []
     parts += [f'{name} {how}' for name, how in (('NDT', c.ndt), ('KISS-ICP', c.kiss_icp))
               if how != 'off']

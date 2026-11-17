@@ -321,10 +321,9 @@ def drive(bag):
         sim = subprocess.Popen(['ros2', 'launch', 'aav_bringup', 'sim.launch.py',
                                 'world:=test_lot', 'gui:=false', 'rviz:=false',
                                 'lidar:=true', 'reversing:=false',
-                                # Nav2's stack, as the route was first driven (the sim's
-                                # default is ours since 14 Nov): cc.Recorder() sends the
-                                # goals to Nav2's /navigate_to_pose.
-                                'stack:=stock'],
+                                # The champions' stack (best; Nav2's until it went, 17
+                                # Nov): cc.Recorder() sends the goals to /navigate_to_pose.
+                                'stack:=best'],
                                cwd=ROOT, env=dict(os.environ), stdout=log,
                                stderr=subprocess.STDOUT, start_new_session=True)
         record = None

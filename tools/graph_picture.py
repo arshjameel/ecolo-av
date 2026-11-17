@@ -30,8 +30,8 @@ LAYERS = [
     ('Localization', '#E8F1FB', r'^(ekf_local|ekf_global|navsat_transform)$'),
     ('Drivers', '#EAF6EA',
      r'^(scripted_driver|joy_node|teleop_twist_joy_node|joy_teleop|teleop_twist_keyboard'
-     r'|bt_navigator|controller_server|planner_server|behavior_server|velocity_smoother'
-     r'|waypoint_follower|smoother_server|map_server|collision_monitor)$'),
+     r'|navigator|planner|costmap|mppi_lag|track|mpc_lag_rs|velocity_smoother'
+     r'|map_server|stop_zone|behaviour)$'),
     ('HUD', '#E8F1FB', r'^(hud|map)$'),
     ('Mux and ego', '#F6E8F6', r'^(twist_mux|ego)$'),
     ('Backend', '#FDECEE', r'^(spine_bridge|legacy_.*|encoder_udp|.*_adapter|socket_can_.*)$'),

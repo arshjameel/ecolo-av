@@ -19,14 +19,14 @@ sim.launch.py / car.launch.py ──(parameters)──▶ run_info ──▶ /sy
 | out | `/system/algorithms` | `diagnostic_msgs/DiagnosticStatus`, latched, again every 2 s |
 
 The message: `name` algorithms, `level` OK, `message` one short line
-(`lattice, mppi, voxels, NDT scored`), `hardware_id` the run (`sim world:=road`), and one
+(`own, mppi_lag, voxels, NDT scored`), `hardware_id` the run (`sim world:=road`), and one
 `values` row each:
 
 | Row | Example |
 |---|---|
 | run | `sim world:=test_lot` |
-| planner | `lattice (SmacPlannerLattice)` |
-| path follower | `MPPI (Nav2 controller_server)`, or `lqr (aav_track, trial)` |
+| planner | `ours in Rust (aav_planner: the lattice, ...)` |
+| path follower | `mppi_lag (aav_mppi_lag)`, or `lqr (aav_track, trial)` |
 | obstacles | `lidar scan + radar`, or `voxels: the lidar as 0.25 m cubes (trial)` |
 | local EKF, global EKF | their inputs: `wheels, IMU`, `+ KISS-ICP speed (trial)` |
 | NDT, KISS-ICP, AMCL | `off`, `on, scored only`, or `on, into the global EKF` |

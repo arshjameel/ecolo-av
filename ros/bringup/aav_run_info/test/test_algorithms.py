@@ -18,11 +18,11 @@ def test_the_default_sim_run():
     c = Choices(profile='sim world:=road', lidar=True, radar=True)
     t = table(c)
     assert t['run'] == 'sim world:=road'
-    assert t['planner'].startswith('lattice')
-    assert t['path follower'].startswith('MPPI')
+    assert t['planner'].startswith('ours')
+    assert t['path follower'] == 'mppi_lag (aav_mppi_lag)'
     assert t['obstacles'] == 'lidar scan + radar'
     assert t['NDT'] == t['KISS-ICP'] == t['AMCL'] == 'off'
-    assert summary(c) == 'lattice, mppi'
+    assert summary(c) == 'own, mppi_lag'
 
 
 def test_the_rows_come_in_reading_order():
@@ -34,7 +34,7 @@ def test_the_rows_come_in_reading_order():
 def test_a_trial_tracker_takes_the_followers_place():
     c = Choices(tracker='lqr')
     assert table(c)['path follower'] == 'lqr (aav_track, trial)'
-    assert summary(c) == 'lattice, lqr'
+    assert summary(c) == 'own, lqr'
 
 
 def test_voxels_replace_the_flat_scan():
@@ -55,7 +55,7 @@ def test_a_fused_localizer_shows_in_its_ekf():
     assert 'KISS-ICP' not in t['local EKF']
     assert t['NDT'] == 'on, into the global EKF'
     assert t['KISS-ICP'].startswith('on, scored only')
-    assert summary(c) == 'lattice, mppi, NDT fused, KISS-ICP scored'
+    assert summary(c) == 'own, mppi_lag, NDT fused, KISS-ICP scored'
 
 
 def test_fusing_implies_running():
@@ -64,11 +64,11 @@ def test_fusing_implies_running():
     assert use(False, False) == 'off'
 
 
-def test_without_nav2_there_is_no_planner():
+def test_without_navigation_there_is_no_planner():
     c = Choices(nav=False)
     assert table(c)['planner'].startswith('off')
     assert table(c)['path follower'].startswith('off')
-    assert summary(c) == 'no Nav2'
+    assert summary(c) == 'no navigation'
 
 
 @pytest.mark.parametrize('field, value', [('planner', 'astar'), ('controller', 'dwb'),

@@ -4,7 +4,7 @@ run_info: which algorithms this run uses, as the launch chose them, for the scre
 Subscribes  nothing
 Publishes   system/algorithms   diagnostic_msgs/DiagnosticStatus, reliable, transient local
                                 (latched), depth 1: name algorithms, level OK, message one
-                                short line (lattice, mppi, voxels...), hardware_id the run
+                                short line (own, mppi_lag, voxels...), hardware_id the run
                                 (sim world:=road, car), values one row each - run, planner,
                                 path follower, obstacles, local EKF, global EKF, NDT,
                                 KISS-ICP, AMCL. Again every period seconds, so a screen
@@ -44,9 +44,9 @@ class RunInfo(Node):
                            'kiss_ekf')}
         choices = Choices(
             profile=str(param('profile', 'sim')), nav=bool(param('nav', True)),
-            planner=str(param('planner', 'lattice')),
+            planner=str(param('planner', 'own')),
             controller=str(param('controller', 'mppi')),
-            tracker=str(param('tracker', 'none')),
+            tracker=str(param('tracker', 'mppi_lag')),
             lidar=flags['lidar'], radar=flags['radar'], voxels=flags['voxels'],
             amcl=flags['amcl'], ndt=use(flags['ndt'], flags['ndt_ekf']),
             kiss_icp=use(flags['kiss_icp'], flags['kiss_ekf']))
