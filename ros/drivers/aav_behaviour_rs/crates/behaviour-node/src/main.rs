@@ -62,7 +62,7 @@ use behaviour_core::machine::{
 };
 use behaviour_core::paths::{
     active_plan, along_until, lane_ahead, moving_ahead, moving_near, path_left, Car, Crossing,
-    Nearby, Point, Seen, Whose, MOVING, REACH,
+    MovingFor, Nearby, Point, Seen, Whose, MOVING, REACH,
 };
 use behaviour_core::road::{build, BuildOptions, Strip};
 use behaviour_core::tf::Buffer;
@@ -130,6 +130,8 @@ struct BehaviourNode {
     road_line: Vec<Point>,
     /// m to the nearest moving thing that holds the car (infinity: none).
     near_moving: f64,
+    /// The things that have moved long enough to count.
+    moving_for: MovingFor,
     /// The nearest scan point in the lane, x in base_link (m).
     ahead: f64,
     /// (x, y, yaw) in odom, from the local odometry.
@@ -231,6 +233,7 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
         moving: d.number("moving_speed", MOVING)?,
         ..Nearby::default()
     };
+    let moving_settle = d.number("moving_settle", 1.0)?;
     let p = Params {
         base_speed,
         stop_distance,
@@ -326,6 +329,7 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
         pose_yaw: 0.0,
         road_line: Vec::new(),
         near_moving: f64::INFINITY,
+        moving_for: MovingFor::new(moving_settle, nearby.moving),
         ahead: f64::INFINITY,
         odom_pose: None,
         moving: f64::INFINITY,
@@ -552,9 +556,17 @@ impl BehaviourNode {
             speed,
             Some(Crossing::default()),
         );
+        let now = self.now();
+        let tracked: Vec<(u32, bool, Seen)> = msg
+            .things
+            .iter()
+            .zip(&seen)
+            .map(|(t, s)| (t.id, t.coasting, *s))
+            .collect();
+        let sure = self.moving_for.update(now, &tracked);
         self.near_moving = if self.p.moving_hold {
             moving_near(
-                &seen,
+                &sure,
                 car,
                 self.p.front,
                 &self.road_here(),

@@ -229,15 +229,44 @@ def nears():
                           rng.uniform(0.3, 4.5), rng.uniform(0.3, 2.0))
                   for _ in range(rng.choice([0, 1, 3, 8]))]
         road = rng.choice([[], wiggly(rng, 80, 0.5), [(0.0, 0.0)]])
-        nearby = rng.choice([bh.Nearby(), bh.Nearby(radius=5.0, within=1.5, step=0.1,
-                                                     moving=0.5),
-                             bh.Nearby(radius=0.0, within=0.0)])
+        tight = bh.Nearby(radius=5.0, within=1.5, step=0.1, moving=0.5)
+        nearby = rng.choice([bh.Nearby(), tight, bh.Nearby(radius=0.0, within=0.0)])
         front, half = rng.choice([(2.0, 0.6), (1.8, 0.9)])
         out.append({'car': car, 'things': [[t.x, t.y, t.vx, t.vy, t.length, t.width]
                                            for t in things],
                     'road': road, 'front': front, 'half_width': half,
                     'nearby': [nearby.radius, nearby.within, nearby.step, nearby.moving],
                     'near': bh.moving_near(things, car, front, road, half, nearby)})
+    return out
+
+
+def settles():
+    """Return MovingFor's runs: things whose speed comes and goes, seen or coasting."""
+    rng = random.Random(17)
+    out = []
+    for _ in range(40):
+        settle = rng.choice([1.0, 0.5, 0.0])
+        sure = bh.MovingFor(settle=settle)
+        now, ticks = 0.0, []
+        speeds = {i: rng.choice([0.0, 0.8]) for i in range(1, 6)}
+        for _ in range(60):
+            now += rng.choice([0.1, 0.1, 0.05, 0.3])
+            things = []
+            for i in range(1, 6):
+                if rng.random() < 0.1:
+                    speeds[i] = rng.choice([0.0, 0.2, 0.31, 0.8, 1.5])
+                if rng.random() < 0.85:
+                    a = rng.uniform(-math.pi, math.pi)
+                    things.append((i, rng.random() < 0.25,
+                                   bh.Seen(rng.uniform(-5, 20), rng.uniform(-8, 8),
+                                           speeds[i] * math.cos(a), speeds[i] * math.sin(a),
+                                           0.5, 0.5)))
+            got = sure.update(now, things)
+            ticks.append({'now': now,
+                          'things': [[i, c, [t.x, t.y, t.vx, t.vy, t.length, t.width]]
+                                     for i, c, t in things],
+                          'sure': [[t.x, t.y] for t in got]})
+        out.append({'settle': settle, 'ticks': ticks})
     return out
 
 
@@ -321,7 +350,7 @@ def main():
                                 s.odom_stale, s.sign_lost, s.passed, s.release_hold]
                             for k, s in SETTINGS.items()},
                'runs': machine_runs(), 'caps': caps(), 'paths': paths(), 'scans': scans(),
-               'movers': movers(), 'nears': nears(), 'roads': roads()}
+               'movers': movers(), 'nears': nears(), 'settles': settles(), 'roads': roads()}
     OUT.write_text(json.dumps(enc(vectors), separators=(',', ':'), allow_nan=False) + '\n')
     print(f'wrote {OUT.relative_to(ROS.parent)} ({OUT.stat().st_size // 1024} kB)')
 

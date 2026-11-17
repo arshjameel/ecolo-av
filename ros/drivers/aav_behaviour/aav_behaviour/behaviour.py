@@ -472,6 +472,46 @@ class Nearby:
     moving: float = MOVING  # m/s over the ground: slower is still (passed, not waited for)
 
 
+class MovingFor:
+    """
+    Which things have moved long enough to hold the car: `settle` s at `moving` m/s or more.
+
+    The things' tracker gives a parked box a speed for a moment as the car passes and its
+    shape changes, and a new track a guessed one (17 Nov, the road world: bursts of 0.1-0.6 s,
+    tracks seen 3-7 times coasting off at 0.5-1.8 m/s). Something really moving moves on.
+    A run starts only on a thing seen this cloud (not coasting); a sure thing stays sure
+    while it coasts (it walked into the blind zone), until it is slow or gone.
+    """
+
+    def __init__(self, settle: float = 1.0, moving: float = MOVING):
+        self.settle, self.moving = settle, moving
+        self.since: Dict[int, float] = {}    # id -> when its run began
+        self.sure: set = set()               # ids that have moved `settle` s
+
+    def update(self, now: float, things: Sequence[Tuple[int, bool, Seen]]) -> List[Seen]:
+        """Return the things (id, coasting, seen) in order that count as moving at `now`."""
+        since: Dict[int, float] = {}
+        sure = set()
+        out = []
+        for ident, coasting, t in things:
+            start = self.since.get(ident)
+            was = ident in self.sure
+            if math.hypot(t.vx, t.vy) < self.moving:
+                start, was = None, False
+            elif not coasting:
+                start = now if start is None else start
+                was = was or now - start >= self.settle
+            elif not was:
+                start = None
+            if start is not None:
+                since[ident] = start
+            if was:
+                sure.add(ident)
+                out.append(t)
+        self.since, self.sure = since, sure
+        return out
+
+
 def moving_near(things: Sequence[Seen], car: Tuple[float, float, float], front: float,
                 road: Sequence[Tuple[float, float]], half_width: float,
                 nearby: Nearby = Nearby()) -> float:

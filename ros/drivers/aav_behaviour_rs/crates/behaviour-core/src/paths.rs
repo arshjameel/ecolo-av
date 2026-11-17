@@ -240,6 +240,66 @@ fn walks_in(y: f64, vy: f64, lane: f64, gap: f64, closing: f64, crossing: Crossi
     enters <= py_min(reaches + crossing.slack, crossing.horizon)
 }
 
+/// Which things have moved long enough to hold the car (`MovingFor`): `settle` s at
+/// `moving` m/s or more.
+///
+/// The things' tracker gives a parked box a speed for a moment as the car passes, and a new
+/// track a guessed one. A run starts only on a thing seen this cloud (not coasting); a sure
+/// thing stays sure while it coasts (it walked into the blind zone), until it is slow or
+/// gone.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MovingFor {
+    settle: f64,
+    moving: f64,
+    /// id -> when its run began.
+    since: std::collections::HashMap<u32, f64>,
+    /// The ids that have moved `settle` s.
+    sure: std::collections::HashSet<u32>,
+}
+
+impl MovingFor {
+    /// None moving yet.
+    #[must_use]
+    pub fn new(settle: f64, moving: f64) -> Self {
+        MovingFor {
+            settle,
+            moving,
+            since: std::collections::HashMap::new(),
+            sure: std::collections::HashSet::new(),
+        }
+    }
+
+    /// The things (id, coasting, seen), in order, that count as moving at `now` (s).
+    pub fn update(&mut self, now: f64, things: &[(u32, bool, Seen)]) -> Vec<Seen> {
+        let mut since = std::collections::HashMap::new();
+        let mut sure = std::collections::HashSet::new();
+        let mut out = Vec::new();
+        for &(id, coasting, t) in things {
+            let mut start = self.since.get(&id).copied();
+            let mut was = self.sure.contains(&id);
+            if hypot(t.vx, t.vy) < self.moving {
+                start = None;
+                was = false;
+            } else if !coasting {
+                let began = *start.get_or_insert(now);
+                was = was || now - began >= self.settle;
+            } else if !was {
+                start = None;
+            }
+            if let Some(began) = start {
+                since.insert(id, began);
+            }
+            if was {
+                sure.insert(id);
+                out.push(t);
+            }
+        }
+        self.since = since;
+        self.sure = sure;
+        out
+    }
+}
+
 /// When a moving thing holds the car (`Nearby`; Ben, 16 Nov: "we should likely just stop").
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Nearby {
@@ -406,6 +466,36 @@ mod tests {
         });
         assert_eq!(ahead(&[late], car, 2.0, slack), f64::INFINITY);
         assert!(close(ahead(&[walker], car, 0.0, c), 5.35));
+    }
+
+    #[test]
+    fn a_thing_holds_only_once_it_has_moved_settle_s() {
+        let mut sure = MovingFor::new(1.0, MOVING);
+        let walker = seen(5.0, -3.0, 0.0, 0.8, 0.5);
+        let boxed = seen(8.0, 0.0, 0.6, 0.0, 1.0);
+        assert!(sure
+            .update(0.0, &[(1, false, walker), (2, false, boxed)])
+            .is_empty());
+        let still = seen(8.0, 0.0, 0.05, 0.0, 1.0);
+        assert!(sure
+            .update(0.6, &[(1, false, walker), (2, false, still)])
+            .is_empty());
+        assert_eq!(
+            sure.update(1.0, &[(1, false, walker), (2, false, boxed)]),
+            [walker]
+        );
+        assert_eq!(
+            sure.update(1.1, &[(1, true, walker), (3, true, boxed)]),
+            [walker]
+        );
+        assert_eq!(
+            sure.update(2.5, &[(1, true, walker), (3, true, boxed)]),
+            [walker]
+        );
+        let halt = seen(5.0, -1.0, 0.0, 0.1, 0.5);
+        assert!(sure.update(2.6, &[(1, false, halt)]).is_empty());
+        assert!(sure.update(2.7, &[(1, false, walker)]).is_empty());
+        assert_eq!(sure.update(3.7, &[(1, false, walker)]), [walker]);
     }
 
     #[test]

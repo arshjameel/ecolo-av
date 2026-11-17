@@ -24,7 +24,8 @@ Subscribes  /perception/stop_sign/distance  geometry_msgs/PointStamped: a sign, 
                                      things_timeout s old (the stop zone still holds).
                                      And with moving_hold: a moving thing within
                                      moving_radius m, or on the road ahead within
-                                     moving_within s, holds the car (WAIT, reason
+                                     moving_within s, having moved moving_settle s
+                                     (MovingFor), holds the car (WAIT, reason
                                      moving; the road ahead ends at the car) until
                                      release_hold s after it has gone or stood still
             /navigate_to_pose/_action/status  action_msgs/GoalStatusArray: a goal running,
@@ -55,8 +56,9 @@ import math
 import signal
 
 from aav_behaviour.behaviour import (active_plan, along_until, Behaviour, diagnostic, lane_ahead,
-                                     MOVING, MOVING_REASON, moving_ahead, moving_near,
-                                     Nearby, path_left, Seen, Settings, Stop, World)
+                                     MOVING, moving_ahead, moving_near, MOVING_REASON,
+                                     MovingFor, Nearby, path_left, Seen, Settings, Stop,
+                                     World)
 from aav_description.car_model import ActuatorConfig, speed_loop_profile
 from aav_description.lane_map import lane_line, load as load_lanes, with_edges
 from aav_description.road_ahead import build
@@ -110,7 +112,7 @@ class BehaviourNode(Node):
             # With things: something moving near holds the car (Ben, 16 Nov: "if we see a
             # car people or stuff moving around us we should likely just stop"). m, s, m/s.
             ('moving_hold', True), ('moving_radius', 10.0), ('moving_within', 3.0),
-            ('moving_speed', MOVING),
+            ('moving_speed', MOVING), ('moving_settle', 1.0),
             # Each navigator action's status (navigation.launch.py; Nav2's and ours serve
             # the same names): a goal running on any of them.
             ('goal_status_topics', ['/navigate_to_pose/_action/status']))}
@@ -170,6 +172,7 @@ class BehaviourNode(Node):
         self.nearby = Nearby(radius=p['moving_radius'], within=p['moving_within'],
                              moving=p['moving_speed'])
         self.near_moving = math.inf    # m to the nearest moving thing that holds the car
+        self.moving_for = MovingFor(p['moving_settle'], p['moving_speed'])
         self.road_line = []            # the last road ahead's line, (x, y) in map
         if p['things']:
             self.create_subscription(Things, '/world/things', self.on_things, 10)
@@ -222,11 +225,13 @@ class BehaviourNode(Node):
         if self.odom_pose is None:
             return
         seen = [Seen(t.x, t.y, t.vx, t.vy, t.length, t.width) for t in msg.things]
+        sure = self.moving_for.update(self.now(), [(t.id, t.coasting, s)
+                                                   for t, s in zip(msg.things, seen)])
         # The car's speed: a person walking in counts if they are in the lane by the time
         # the car would reach them (TODO 194).
         self.moving = moving_ahead(seen, self.odom_pose, self.p['front'], self.p['half_width'],
                                    speed=max(0.0, self.speed or 0.0))
-        self.near_moving = (moving_near(seen, self.odom_pose, self.p['front'], self.road_here(),
+        self.near_moving = (moving_near(sure, self.odom_pose, self.p['front'], self.road_here(),
                                         self.p['half_width'], self.nearby)
                             if self.p['moving_hold'] else math.inf)
         self.things_time = self.now()

@@ -2942,10 +2942,12 @@ MOVERS = (
 
 def check_movers(probe, movers=MOVERS, goal=26.0):
     """
-    Check the car holds for each of `movers`: WAIT(moving) seen, the car keeps clear of it
-    while it moves (0.3 m ahead of the bumper), and reaches a goal `goal` m on once it has
-    gone. Each starts moving when the goal is sent. Our simulator only: Gazebo's models
-    don't walk. One a session: the road world's fence is near past 60 m.
+    Check the car holds for each of `movers`, and goes on once it has gone.
+
+    WAIT(moving) seen, the car keeps clear of it while it moves (0.3 m ahead of the
+    bumper), and reaches a goal `goal` m on once it has gone. Each starts moving when the
+    goal is sent. Our simulator only: Gazebo's models don't walk. One a session: the road
+    world's fence is near past 60 m.
     """
     if SIMULATOR == 'gazebo':
         result('movers', None, "skipped: Gazebo's placed models don't walk")

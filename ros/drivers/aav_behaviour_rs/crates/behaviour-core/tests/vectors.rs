@@ -14,8 +14,8 @@ use behaviour_core::machine::{
     diagnostic, nav2_cap, Behaviour, Lock, Settings, Stop, StopReason, World,
 };
 use behaviour_core::paths::{
-    along_until, lane_ahead, moving_ahead, moving_near, path_left, Crossing, Nearby, Point, Seen,
-    MOVING, REACH,
+    along_until, lane_ahead, moving_ahead, moving_near, path_left, Crossing, MovingFor, Nearby,
+    Point, Seen, MOVING, REACH,
 };
 use behaviour_core::road::{build, BuildOptions, Strip};
 use serde_json::Value;
@@ -280,6 +280,38 @@ fn seen_things(v: &Value) -> Vec<Seen> {
             }
         })
         .collect()
+}
+
+#[test]
+fn which_things_have_moved_long_enough_is_the_pythons() {
+    let v = vectors();
+    let mut worst = Worst::default();
+    let mut ticks = 0;
+    for (r, run) in v["settles"].as_array().expect("settles").iter().enumerate() {
+        let mut sure = MovingFor::new(f(&run["settle"]), MOVING);
+        for (i, t) in run["ticks"].as_array().expect("ticks").iter().enumerate() {
+            let things: Vec<(u32, bool, Seen)> = t["things"]
+                .as_array()
+                .expect("things")
+                .iter()
+                .map(|x| {
+                    let id = u32::try_from(x[0].as_u64().expect("id")).expect("id");
+                    let s = seen_things(&Value::Array(vec![x[2].clone()]))[0];
+                    (id, x[1].as_bool().expect("coasting"), s)
+                })
+                .collect();
+            let got = sure.update(f(&t["now"]), &things);
+            let want = points(&t["sure"]);
+            assert_eq!(got.len(), want.len(), "settles {r}, tick {i}");
+            for (g, w) in got.iter().zip(&want) {
+                worst.check(g.x, w.0, || format!("settles {r}, tick {i}"));
+                worst.check(g.y, w.1, || format!("settles {r}, tick {i}"));
+            }
+            ticks += 1;
+        }
+    }
+    assert!(ticks >= 2000);
+    worst.report("MovingFor");
 }
 
 #[test]

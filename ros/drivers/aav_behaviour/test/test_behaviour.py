@@ -3,8 +3,9 @@
 import math
 
 from aav_behaviour.behaviour import (along_until, APPROACH, ASK, Behaviour, diagnostic, DRIVE,
-                                     GO, lane_ahead, MOVING_REASON, moving_near, Nearby,
-                                     path_left, Seen, Settings, Stop, STOPPED, WAIT, World)
+                                     GO, lane_ahead, moving_near, MOVING_REASON, MovingFor,
+                                     Nearby, path_left, Seen, Settings, Stop, STOPPED, WAIT,
+                                     World)
 from aav_description.stop_law import FLOOR, from_car_model
 import pytest
 
@@ -377,3 +378,24 @@ def test_moving_near_holds_for_what_moves_near_or_onto_the_road_and_passes_still
     # Behind the car, measured from base_link; a smaller radius.
     assert near(Seen(-4.0, 0.0, 1.0, 0.0, 0.5, 0.5),
                 nearby=Nearby(radius=3.0, within=0.0)) == math.inf
+
+
+def test_a_thing_holds_only_once_it_has_moved_settle_s_and_a_coasting_one_never_starts():
+    sure = MovingFor(settle=1.0)
+    walker = Seen(5.0, -3.0, 0.0, 0.8, 0.5, 0.5)
+    box = Seen(8.0, 0.0, 0.6, 0.0, 1.0, 1.0)
+    # A box's burst of speed under 1 s: never; a walker moving on: after 1 s.
+    assert sure.update(0.0, [(1, False, walker), (2, False, box)]) == []
+    assert sure.update(0.5, [(1, False, walker), (2, False, box)]) == []
+    still = Seen(8.0, 0.0, 0.05, 0.0, 1.0, 1.0)
+    assert sure.update(0.6, [(1, False, walker), (2, False, still)]) == []
+    assert sure.update(1.0, [(1, False, walker), (2, False, box)]) == [walker]
+    # Sure, it walks into the blind zone (coasting): still sure. A new track coasting off
+    # at speed never starts a run.
+    assert sure.update(1.1, [(1, True, walker), (3, True, box)]) == [walker]
+    assert sure.update(2.5, [(1, True, walker), (3, True, box)]) == [walker]
+    # It stands: gone at once; walks again: 1 s more.
+    halt = Seen(5.0, -1.0, 0.0, 0.1, 0.5, 0.5)
+    assert sure.update(2.6, [(1, False, halt)]) == []
+    assert sure.update(2.7, [(1, False, walker)]) == []
+    assert sure.update(3.7, [(1, False, walker)]) == [walker]
