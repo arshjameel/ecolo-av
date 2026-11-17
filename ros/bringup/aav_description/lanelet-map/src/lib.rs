@@ -336,7 +336,10 @@ impl rstar::PointDistance for Segment {
 const CENTRE_STEP: f64 = 1.0;
 /// A lane change's cost, in metres of driving: a longer way round in the same lane wins
 /// over a change shorter than this.
-const LANE_CHANGE_COST: f64 = 10.0;
+pub const LANE_CHANGE_COST: f64 = 10.0;
+
+mod routing;
+pub use routing::{Place, Route, LANE_CHANGE_LENGTH};
 
 impl LaneletMap {
     /// Read a Lanelet2 `.osm` file's text.

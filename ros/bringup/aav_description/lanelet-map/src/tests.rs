@@ -206,3 +206,94 @@ fn a_screen_draws_each_painted_line_once_and_the_stop_line() {
     let ids: Vec<Id> = m.drawn_lines().iter().map(|l| l.id).collect();
     assert_eq!(ids, vec![21, 22, 23, 24, 25, 26, 30]);
 }
+
+#[test]
+fn a_point_is_placed_on_the_lanes_near_it_nearest_first() {
+    let m = map("dashed");
+    let near = m.places_near(25.0, 2.0, 3.0);
+    let ids: Vec<Id> = near.iter().map(|p| p.lanelet).collect();
+    assert_eq!(ids, vec![102, 202]);
+    let p = near[0];
+    assert!(
+        (p.along - 5.0).abs() < 1e-9 && (p.off - 0.5).abs() < 1e-9,
+        "{p:?}"
+    );
+    assert!(p.heading.abs() < 1e-9);
+    assert_eq!(p.foot, Point::new(25.0, 1.5));
+    assert_eq!(m.half_widths(102, 5.0), Some((1.5, 1.5)));
+    assert_eq!(m.point_at(101, 7.5), Some(Point::new(7.5, 1.5)));
+}
+
+fn place(m: &LaneletMap, id: Id, x: f64, y: f64) -> Place {
+    m.place_on(id, x, y).unwrap()
+}
+
+#[test]
+fn a_route_between_two_places_on_one_lane_is_the_stretch_between() {
+    let m = map("dashed");
+    let to = place(&m, 102, 35.0, 1.5);
+    let r = m.route_between(&place(&m, 101, 2.0, 1.5), &to).unwrap();
+    assert_eq!(r.lanelets, vec![101, 102]);
+    assert_eq!(r.entries, vec![2.0, 0.0]);
+    assert!((r.cost - 33.0).abs() < 1e-9, "{r:?}");
+    let line = m.route_line(&r, &to);
+    assert_eq!(line.first(), Some(&Point::new(2.0, 1.5)));
+    assert_eq!(line.last(), Some(&Point::new(35.0, 1.5)));
+    assert!(line.iter().all(|p| (p.y - 1.5).abs() < 1e-9));
+    let same = m
+        .route_between(&place(&m, 101, 2.0, 1.5), &place(&m, 101, 9.0, 1.5))
+        .unwrap();
+    assert_eq!((same.lanelets.clone(), same.cost), (vec![101], 7.0));
+}
+
+#[test]
+fn a_goal_behind_on_a_road_with_no_loop_has_no_route() {
+    let m = map("dashed");
+    let from = place(&m, 102, 30.0, 1.5);
+    assert!(m.route_between(&from, &place(&m, 102, 25.0, 1.5)).is_none());
+    assert!(m.route_between(&from, &place(&m, 101, 5.0, 1.5)).is_none());
+}
+
+#[test]
+fn a_route_between_places_changes_lane_where_the_car_is_and_eases_across() {
+    let m = map("dashed");
+    let from = place(&m, 201, 5.0, 4.5);
+    let to = place(&m, 102, 35.0, 1.5);
+    let r = m.route_between(&from, &to).unwrap();
+    // 30 m driven and one change.
+    assert!((r.cost - 40.0).abs() < 1e-9, "{r:?}");
+    assert_eq!(r.lanelets.first(), Some(&201));
+    assert_eq!(r.lanelets.last(), Some(&102));
+    let line = m.route_line(&r, &to);
+    assert_eq!(line.first(), Some(&Point::new(5.0, 4.5)));
+    assert_eq!(line.last(), Some(&Point::new(35.0, 1.5)));
+    // Eased: never a step sideways bigger than the step along, never backwards.
+    for w in line.windows(2) {
+        assert!(
+            (w[1].y - w[0].y).abs() <= (w[1].x - w[0].x).abs() + 1e-9,
+            "{w:?}"
+        );
+        assert!(w[1].x >= w[0].x, "{w:?}");
+    }
+    // Never over a solid line.
+    let solid = map("solid");
+    let from = place(&solid, 201, 5.0, 4.5);
+    assert!(solid
+        .route_between(&from, &place(&solid, 102, 35.0, 1.5))
+        .is_none());
+}
+
+#[test]
+fn the_stop_lines_between_two_places_are_those_ahead() {
+    let m = map("dashed");
+    let to_end = place(&m, 102, 40.0, 1.5);
+    let r = m.route_between(&place(&m, 101, 1.0, 1.5), &to_end).unwrap();
+    assert_eq!(
+        m.stops_between(&r, &to_end),
+        vec![(102, 300, Point::new(40.0, 1.5))]
+    );
+    // Stopping short of the line: not met.
+    let short = place(&m, 102, 30.0, 1.5);
+    let r = m.route_between(&place(&m, 101, 1.0, 1.5), &short).unwrap();
+    assert!(m.stops_between(&r, &short).is_empty());
+}
