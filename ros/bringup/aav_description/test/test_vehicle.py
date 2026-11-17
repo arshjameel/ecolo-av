@@ -1027,7 +1027,7 @@ def test_ekf_control_term_follows_the_command_within_the_cars_limits():
     for key in ('control_config', 'acceleration_limits', 'acceleration_gains',
                 'deceleration_limits', 'deceleration_gains'):
         assert len(p[key]) == 6, key
-    assert p['acceleration_limits'][0] == cfg['actuators']['max_accel']
+    assert p['acceleration_limits'][0] == 0.0    # it only ever slows the prediction
     assert p['deceleration_limits'][0] == cfg['actuators']['max_brake']
     assert 0.0 < p['control_timeout'] <= 1.0
 

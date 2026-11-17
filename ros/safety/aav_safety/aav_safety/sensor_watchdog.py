@@ -81,6 +81,11 @@ from std_srvs.srv import Trigger
 from vision_msgs.msg import Detection2DArray
 
 IMU_TOPIC = '/sensors/imu/data'     # what the odom input's cross check reads
+# s after the watchdog's own stall in which nothing latches (a STALE input still stops).
+# 3 s was too short on a busy computer: after a 10 s stop, DDS took 7 s to bring the
+# HUD's beats back, and the HUD latched LOST for a stop that was the watchdog's own
+# (sim-check --faults, watchdog hang, 17 Nov).
+SETTLE = 10.0
 TYPES = {'odom': Odometry, 'imu': Imu, 'gps': NavSatFix, 'image': Image, 'cloud': PointCloud2,
          'heartbeat': UInt64, 'detections': Detection2DArray, 'actuator': ActuatorState,
          'speed': AckermannDriveStamped}
@@ -141,8 +146,8 @@ class SensorWatchdog(Node):
                               float(param('over_persist', 2.0)),
                               float(param('over_slowing', 0.3))))
         # Five ticks' time without one, on a steady clock: the watchdog itself was stopped,
-        # so nothing latches for 3 s after.
-        self.dog = Watchdog(rules, stall=max(0.5, 5.0 / rate))
+        # so nothing latches for SETTLE s after.
+        self.dog = Watchdog(rules, stall=max(0.5, 5.0 / rate), settle=SETTLE)
         self.speed = None      # the wheels' newest speed, for the camera's frozen check
         self.speed_at = None   # when it arrived, for the speed input (a stale one: no check)
         self.node_rules = [r for r in rules if r.kind == 'node']

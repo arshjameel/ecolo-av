@@ -204,14 +204,17 @@ def obstacle_heights(v):
     return GROUND_CLEARANCE, float(v['body']['height']) + OVERHEAD_MARGIN
 
 
-# Both EKFs predict the car's speed from the command it was given (robot_localization's
-# control term, TODO 207): with the wheels silent (a fault, a lost frame) an EKF with no
-# speed measurement kept its last speed and acceleration, so ekf_local ran on 15 m while
+# Both EKFs let the car's command slow their speed (robot_localization's control term,
+# TODO 207). With the wheels silent (a fault, a lost frame) an EKF with no speed
+# measurement kept its last speed and its last acceleration: ekf_local ran on 15 m while
 # the car stood, and map -> odom jumped 10 m back when the wheels came back (the
-# follower's path then lay outside its costmap). With the command, a car told to stop is
-# predicted to stop. The command is twist_mux's output; silent EKF_CONTROL_TIMEOUT s it
-# counts as zero. EKF_CONTROL_GAIN (1/s): how fast the predicted speed follows it, within
-# the car's max_accel and max_brake.
+# follower's path then lay outside its costmap, and goals failed). Now a command below the
+# speed slows the prediction toward it (or to 0 once the command is silent
+# EKF_CONTROL_TIMEOUT s: twist_mux's locks send nothing), at EKF_CONTROL_GAIN (1/s) and at
+# most the car's max_brake. A command above the speed never speeds the prediction up
+# (acceleration limit 0): the car answers late (its actuators' lag), and a prediction
+# that ran ahead of wheels saying 0 dragged the position metres on (tried, 17 Nov). The
+# wheels, when they speak, still decide.
 EKF_CONTROL_TOPIC = '/control/cmd_vel'
 EKF_CONTROL_TIMEOUT = 0.5
 EKF_CONTROL_GAIN = 2.0
@@ -221,15 +224,15 @@ def ekf_control_params(cfg):
     """
     Return robot_localization's control term for both EKFs, from vehicle.yaml's actuators.
 
-    Only the forward speed (vx) follows the command; the turn is the IMU's. Six values
-    each (vx, vy, vz, vroll, vpitch, vyaw), as robot_localization wants.
+    Only the forward speed (vx) follows the command, and only down: acceleration limit 0,
+    deceleration up to max_brake. The turn is the IMU's. Six values each (vx, vy, vz,
+    vroll, vpitch, vyaw), as robot_localization wants.
     """
-    a = cfg['actuators']
-    accel, brake = float(a['max_accel']), float(a['max_brake'])
+    brake = float(cfg['actuators']['max_brake'])
     return {'use_control': True, 'stamped_control': True,
             'control_timeout': EKF_CONTROL_TIMEOUT,
             'control_config': [True, False, False, False, False, False],
-            'acceleration_limits': [accel] + [1.0] * 5,
+            'acceleration_limits': [0.0] + [1.0] * 5,
             'acceleration_gains': [EKF_CONTROL_GAIN] + [1.0] * 5,
             'deceleration_limits': [brake] + [1.0] * 5,
             'deceleration_gains': [EKF_CONTROL_GAIN] + [1.0] * 5}

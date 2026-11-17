@@ -151,8 +151,11 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
         })
         .collect();
     // Five ticks' time without one, on a steady clock: the watchdog itself was stopped,
-    // so nothing latches for 3 s after.
-    let dog = Watchdog::new(rules.clone(), (5.0 / rate).max(0.5), 3.0);
+    // so nothing latches for SETTLE s after (a STALE input still stops). 3 s was too
+    // short on a busy computer: DDS took 7 s to bring the HUD's beats back after a 10 s
+    // stop, and the HUD latched LOST for a stop that was the watchdog's own (17 Nov).
+    const SETTLE: f64 = 10.0;
+    let dog = Watchdog::new(rules.clone(), (5.0 / rate).max(0.5), SETTLE);
     let cross_checked = dog.cross_checked();
     let state = Dog {
         feed: Feed::new(dog),
