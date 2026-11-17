@@ -8,6 +8,8 @@ lines offset from the road's centre line (3.5 m lanes: a one-way road all one wa
 two-way road half each way); where road ends meet (within JOIN m), short lanelets with
 virtual lines join each lane coming in to each lane going out, except a U-turn or a turn
 sharper than MAX_TURN; at a dead end, a lane turns round onto its road's other way.
+A stop sign (OpenStreetMap's highway=stop on the road, within STOP_REACH m of a road
+end) gives each lane ending there a stop line across its end and a traffic_sign rule.
 Points carry local_x, local_y (lanelet-map reads them) and lat/lon
 (other Lanelet2 readers).
 
@@ -20,6 +22,7 @@ from dataclasses import dataclass, field
 import math
 from pathlib import Path
 import sys
+from xml.etree import ElementTree
 from xml.sax.saxutils import quoteattr
 
 
@@ -34,6 +37,7 @@ SITE = ROOT / 'ros' / 'drivers' / 'aav_routes' / 'config' / 'campus_site.yaml'
 LANE = 3.5                  # m: one lane's width
 JOIN = 0.5                  # m: road ends this close meet
 MAX_TURN = math.radians(150.0)   # rad: sharper is a U-turn, never joined
+STOP_REACH = 30.0           # m: a stop sign this near a road's end stops the lanes ending there
 
 
 @dataclass
@@ -132,12 +136,29 @@ def road_lanes(osm: Osm, index: int, road: dict) -> list[Lane]:
             # The edges (and a two-way road's middle) solid; between lanes, dashed.
             lines.append(osm.line(offset(line, right_edge + k * lane),
                                   subtype='solid' if k in (0, count) else 'dashed'))
+        # A stop sign where this direction's lanes end: OSM's road end, or its start.
+        stop = road.get('stop_at_end' if forward else 'stop_at_start', False)
         for k in range(count):
             (right, rn), (left, ln) = lines[k], lines[k + 1]
             rel = osm.lanelet(left, right, tags)
+            if stop:
+                add_stop(osm, rel, rn[-1], ln[-1], offset(line, right_edge - 1.0)[-1])
             lanes.append(Lane(index, forward, rel, (ln[0], rn[0]), (ln[-1], rn[-1]),
                               heading(line[0], line[1]), heading(line[-2], line[-1])))
     return lanes
+
+
+def add_stop(osm: Osm, lanelet: int, right_end: int, left_end: int, sign_at) -> int:
+    """Give a lanelet a stop line across its end and a stop sign's rule; return the rule."""
+    stop_line, _ = osm.line(None, 'stop_line', '', nodes=[right_end, left_end])
+    sign, _ = osm.line([sign_at, (sign_at[0], sign_at[1] + 0.75)], 'traffic_sign', 'stop')
+    rule = osm.new_id()
+    osm.relations.append((rule, [('way', 'refers', sign), ('way', 'ref_line', stop_line)],
+                          {'type': 'regulatory_element', 'subtype': 'traffic_sign'}))
+    for rel, members, _ in osm.relations:
+        if rel == lanelet:
+            members.append(('relation', 'regulatory_element', rule))
+    return rule
 
 
 def join(osm: Osm, roads: list, lanes: list[Lane]) -> int:
@@ -172,7 +193,8 @@ def build(roads: list) -> tuple[Osm, dict]:
     osm = Osm()
     lanes = [lane for i, road in enumerate(roads) for lane in road_lanes(osm, i, road)]
     joins = join(osm, roads, lanes)
-    return osm, {'roads': len(roads), 'lanes': len(lanes), 'joins': joins}
+    stops = sum(1 for _, _, tags in osm.relations if tags.get('subtype') == 'traffic_sign')
+    return osm, {'roads': len(roads), 'lanes': len(lanes), 'joins': joins, 'stops': stops}
 
 
 def to_xml(osm: Osm, datum) -> str:
@@ -197,13 +219,16 @@ def to_xml(osm: Osm, datum) -> str:
     return '\n'.join(out) + '\n'
 
 
-def roads_from_osm(osm, kinds, datum, oneway=True) -> list:
+def roads_from_osm(osm, kinds, datum, oneway=True, stops=frozenset()) -> list:
     """
     Return the roads the car may use (campus_graph.drivable: the router's own) as roads.
 
     Each way is cut at every node another drivable way shares (a junction, even mid-way),
     turned to run along its one-way direction, and put east and north of the datum. Its
     width: the `lanes` tag x LANE, else one lane each way (one lane, one way).
+    stops: the ids of the stop signs' nodes (highway=stop); one on a road within
+    STOP_REACH m of its end, and nearer it than the start, sets stop_at_end (and the
+    same for its start: stop_at_start).
     """
     lat0, lon0 = datum
     ways = [(tags, [r for r in refs if r in osm.nodes]) for tags, refs in osm.ways.values()
@@ -233,18 +258,49 @@ def roads_from_osm(osm, kinds, datum, oneway=True) -> list:
             piece.append(r)
             if uses.get(r, 0) > 1 and r != refs[-1] or r == refs[-1]:
                 if len(piece) > 1:
-                    roads.append({'points': [xy(p) for p in piece], 'width': width,
-                                  'oneway': direction != 0, 'name': tags.get('name', ''),
-                                  'kind': tags.get('highway', '')})
+                    points = [xy(p) for p in piece]
+                    road = {'points': points, 'width': width,
+                            'oneway': direction != 0, 'name': tags.get('name', ''),
+                            'kind': tags.get('highway', '')}
+                    road.update(stop_ends(points, [k for k, p in enumerate(piece) if p in stops]))
+                    roads.append(road)
                 piece = [r]
     return roads
+
+
+def stop_ends(points, at) -> dict:
+    """
+    Return which ends of a road a stop sign binds: {'stop_at_end': True} and so on.
+
+    points: the road's centre line; at: the indexes of its stop-sign points. A sign binds
+    the end it is nearer along the road, if within STOP_REACH m of it.
+    """
+    along = [0.0]
+    for a, b in zip(points, points[1:]):
+        along.append(along[-1] + math.dist(a, b))
+    out = {}
+    for k in at:
+        to_end, to_start = along[-1] - along[k], along[k]
+        if to_end <= to_start and to_end <= STOP_REACH:
+            out['stop_at_end'] = True
+        elif to_start < to_end and to_start <= STOP_REACH:
+            out['stop_at_start'] = True
+    return out
+
+
+def stop_nodes(path: Path) -> frozenset:
+    """Return the ids of the stop signs' nodes (highway=stop) in an .osm file."""
+    return frozenset(n.get('id') for n in ElementTree.parse(path).getroot().iter('node')
+                     if any(t.get('k') == 'highway' and t.get('v') == 'stop'
+                            for t in n.iter('tag')))
 
 
 def write(out: Path, datum, site: Path = SITE) -> dict:
     """Write the site's drivable roads as a Lanelet2 map at out; return the report."""
     info = campus_graph.read_site(site)
     osm_data = campus_graph.read_osm(ROOT / info.osm)
-    osm, report = build(roads_from_osm(osm_data, info.roads, datum, info.oneway))
+    osm, report = build(roads_from_osm(osm_data, info.roads, datum, info.oneway,
+                                       stop_nodes(ROOT / info.osm)))
     out.write_text(to_xml(osm, datum))
     return report
 

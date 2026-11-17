@@ -17,6 +17,8 @@ ctrlc = { version = "3", features = ["termination"] }
 # The one-shot channel from the planning thread back to the action's task.
 futures = "0.3"
 lattice-planner = { path = "../lattice-planner" }
+# The route level's Lanelet2 map (lane_graph:=lanelet2, TODO 175).
+lanelet-map = { path = "../../../../bringup/aav_description/lanelet-map" }
 costmap = { path = "../../../aav_costmap/crates/costmap" }
 rclrs = "0.8"
 # The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).

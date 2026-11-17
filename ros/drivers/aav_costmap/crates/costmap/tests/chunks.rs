@@ -177,7 +177,7 @@ fn the_route_ahead_widens_the_window() {
 }
 
 #[test]
-fn chunks_need_the_fine_cells_and_a_fixed_costmap() {
+fn a_fixed_costmap_needs_the_fine_cells_a_rolling_one_any() {
     let (_, dir) = both("checks");
     let source = ChunkSource::open(&dir, 100.0, 0).unwrap();
     let mut coarse = Costmap::new(
@@ -188,15 +188,17 @@ fn chunks_need_the_fine_cells_and_a_fixed_costmap() {
         Vec::new(),
     );
     assert!(coarse.set_chunks(source.clone()).is_err());
+    // The local costmap (TODO 175): its own cells, stamped from the chunks round the car.
     let mut rolling = Costmap::new(
         Settings {
             rolling: true,
             width: 20.0,
             height: 20.0,
+            resolution: 0.1,
             ..settings()
         },
         Vec::new(),
     );
-    assert!(rolling.set_chunks(source).is_err());
+    assert!(rolling.set_chunks(source).is_ok());
     assert!(ChunkSource::open(&dir.join("nowhere"), 100.0, 0).is_err());
 }

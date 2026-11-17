@@ -11,10 +11,15 @@ publish.workspace = true
 costmap = { path = "../../../aav_costmap/crates/costmap" }
 # The lattice primitives file is JSON.
 serde_json = "1"
+# Our own Lanelet2 reader and its routing graph (aav_description), for lane_graph:=lanelet2
+# (TODO 175).
+lanelet-map = { path = "../../../../bringup/aav_description/lanelet-map" }
 
 # TODO 203: benchmarks (benches/plan.rs), never in the node's build.
 [dev-dependencies]
 criterion = { version = "0.7", default-features = false, features = ["cargo_bench_support"] }
+# The campus's lanes.yaml, read in a test (tests/lanelet2.rs).
+serde_yaml_ng = "0.10"
 
 [[bench]]
 name = "plan"

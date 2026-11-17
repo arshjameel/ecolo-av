@@ -4,6 +4,7 @@ from collections import namedtuple
 import math
 
 from aav_description.lane_map import costmap_block, from_dict, lane_line, lane_offset
+from aav_description.lane_map import check_lane_graph, lanelet2_beside, planner_block
 from aav_description.lane_map import LaneMap, Road, with_edges
 from aav_description.road_ahead import build
 from aav_description.stop_law import from_car_model
@@ -166,3 +167,23 @@ def test_a_pass_keeps_the_routes_line_and_opens_the_left_soft_edge():
     assert opened.left_soft[0] == pytest.approx(3.5)     # to the left kerb (x -3.5)
     assert opened.left_hard[0] == pytest.approx(shut.left_hard[0])
     assert opened.right_soft[0] == pytest.approx(shut.right_soft[0])
+
+
+def test_the_route_level_reads_the_lanelet2_map_beside_the_lanes(tmp_path):
+    folder = tmp_path / 'campus'
+    folder.mkdir()
+    lanes = folder / 'lanes.yaml'
+    lanes.write_text('roads:\n- {name: r, width: 7.0, points: [[0, 0], [10, 0]]}\n')
+    assert check_lane_graph('') == 'lanes_yaml'
+    with pytest.raises(ValueError):
+        check_lane_graph('osm')
+    # No map beside it: lanes.yaml's roads.
+    assert lanelet2_beside(str(lanes)) is None
+    assert planner_block(str(lanes), 'lanelet2')['roads'][0]['name'] == 'r'
+    # The folder's own name first, else its only .osm.
+    (folder / 'other.osm').write_text('<osm/>')
+    assert lanelet2_beside(str(lanes)) == str(folder / 'other.osm')
+    (folder / 'campus.osm').write_text('<osm/>')
+    assert lanelet2_beside(str(lanes)) == str(folder / 'campus.osm')
+    assert planner_block(str(lanes), 'lanelet2') == {'lanelet2': str(folder / 'campus.osm')}
+    assert 'roads' in planner_block(str(lanes), 'lanes_yaml')

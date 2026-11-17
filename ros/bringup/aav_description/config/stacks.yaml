@@ -32,7 +32,10 @@ levels:
       # whole map elsewhere), each read and inflated on its own core (TODO 175, 195). Ours'
       # pick since 16 Nov: no worse on any tour (lot, campus, University Drive; 2 runs each),
       # a third of the memory and CPU (docs/own-costmap.md, "From map chunks").
-      ours_chunks: {costmap: own, costmap_chunks: auto}
+      ours_chunks: {costmap: own, costmap_chunks: auto, local_chunks: 'false'}
+      # And the local costmap's static layer from the 3 x 3 chunks round the car, not /map
+      # (TODO 175): no costmap then reads the campus's 41 million cells. A challenger.
+      ours_all_chunks: {costmap: own, costmap_chunks: auto, local_chunks: 'true'}
     score: ''
   navigator:
     what: plan, follow, replan, recover (bt_navigator, or aav_navigator)
@@ -64,7 +67,11 @@ levels:
       # goal to it; off it (the lot), the lattice alone (lattice_rs_strong). Ours' pick
       # since 16 Nov: no worse on any column, 3 runs each of the university tour
       # (docs/own-planner.md, "The lane-centre planner").
-      lane: {planner: own, plan_smoothing: strong, lane_route: 'true'}
+      lane: {planner: own, plan_smoothing: strong, lane_route: 'true', lane_graph: lanes_yaml}
+      # The lane-centre planner routed on the Lanelet2 map beside the lane map (lanelet-map,
+      # Rust: lanes, neighbours, one way, stop lines; TODO 175 step 6). A challenger (16 Nov).
+      lane_lanelet2: {planner: own, plan_smoothing: strong, lane_route: 'true',
+                      lane_graph: lanelet2}
       diffusion: {planner: diffusion}
     score: ''
   steer:
