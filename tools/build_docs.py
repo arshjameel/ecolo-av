@@ -115,6 +115,7 @@ PAGES = [
     ('routes.md', 'Street routes',
      'A destination to GPS waypoints along streets (Valhalla); directions on the campus'),
     ('perception.md', 'Perception', 'Cameras, RF-DETR, stop signs, lanes and radar'),
+    ('kerbs.md', 'Kerbs', 'Does the lidar see a kerb? The step finder, and the map'),
     ('perception-and-hud-map.md', 'Perception options',
      'Which model for which job, the lidar, a map on the HUD'),
     ('camera-pipeline.md', 'Camera pipeline',

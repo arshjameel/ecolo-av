@@ -966,7 +966,7 @@ def generate_launch_description():
         DeclareLaunchArgument('kerbs', default_value=stacks.CHOSEN,
                               description='true: the kerbs, where the lidar runs (the Rust '
                                           "voxels node's step finder, the local costmap's "
-                                          "kerb_layer; TODO 119); false: none. Empty: the "
+                                          'kerb_layer; TODO 119); false: none. Empty: the '
                                           "stack's choice"),
         DeclareLaunchArgument('lane_costs', default_value=stacks.CHOSEN,
                               description='true: the lanes layer in our global costmap, '

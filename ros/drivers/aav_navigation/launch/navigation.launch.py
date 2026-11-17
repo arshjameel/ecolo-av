@@ -885,7 +885,7 @@ def generate_launch_description():
                                           'read 0.25 m cubes instead of the flat scan'),
         DeclareLaunchArgument('kerbs', default_value='false',
                               description='true (with lidar:=true): the Rust voxels node '
-                                          "finds kerbs (steps in the ground) and the local "
+                                          'finds kerbs (steps in the ground) and the local '
                                           "costmap's kerb_layer marks them (TODO 119)"),
         DeclareLaunchArgument('behaviour_impl', default_value=vehicle.DEFAULT_BEHAVIOUR_IMPL,
                               description='python (aav_behaviour) or rust (aav_behaviour_rs, '
