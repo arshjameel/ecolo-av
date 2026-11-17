@@ -415,6 +415,35 @@ def check_voxels_impl(impl):
     return name
 
 
+# Which lidar_scan flattens the lidar (lidar:=true, lidar_impl:=): python (aav_lidar) or
+# rust (aav_lidar_rs, its port: the same node name, topics and ranges). Each one's package.
+LIDAR_IMPLS = {'python': 'aav_lidar', 'rust': 'aav_lidar_rs'}
+DEFAULT_LIDAR_IMPL = 'python'
+
+
+def check_lidar_impl(impl):
+    """Return lidar_scan's language (lower case), or raise ValueError saying what to pick."""
+    name = str(impl).strip().lower()
+    if name not in LIDAR_IMPLS:
+        raise ValueError(f'lidar_impl:={impl}: pick one of {", ".join(LIDAR_IMPLS)}')
+    return name
+
+
+# Which things node tracks the cubes (things:=true, things_impl:=): python (aav_things) or
+# rust (aav_things_rs, its port: the same node name, topics, parameters and things).
+# Each one's package.
+THINGS_IMPLS = {'python': 'aav_things', 'rust': 'aav_things_rs'}
+DEFAULT_THINGS_IMPL = 'python'
+
+
+def check_things_impl(impl):
+    """Return the things node's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in THINGS_IMPLS:
+        raise ValueError(f'things_impl:={impl}: pick one of {", ".join(THINGS_IMPLS)}')
+    return name
+
+
 # Which object detector runs (detector.launch.py, sim.launch.py detector_impl:=): python
 # (aav_detector: PyTorch, Core ML or TensorRT; the default) or rust (aav_detector_rs:
 # RF-DETR's ONNX through ONNX Runtime, a challenger, docs/onnx.md). The same node name and

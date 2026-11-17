@@ -675,6 +675,39 @@ def test_the_sim_and_the_car_pass_voxels_impl_on():
         sent_to_navigation(SIM, voxels_impl='go')
 
 
+def test_lidar_scan_and_things_in_either_language():
+    nodes = nav_nodes(lidar='true', things='true')
+    assert nodes['lidar_scan']._Node__package == vehicle.LIDAR_IMPLS[vehicle.DEFAULT_LIDAR_IMPL]
+    assert nodes['things']._Node__package == vehicle.THINGS_IMPLS[vehicle.DEFAULT_THINGS_IMPL]
+    rust = nav_nodes(lidar='true', things='true', lidar_impl='rust', things_impl='rust')
+    scan, things = rust['lidar_scan'], rust['things']
+    assert (scan._Node__package, scan._Node__node_executable) == ('aav_lidar_rs', 'lidar_scan')
+    assert (things._Node__package, things._Node__node_executable) == ('aav_things_rs', 'things')
+    # The Rust scan reads no vehicle.yaml: the lidar's mount and the outline come with it.
+    cfg = vehicle.load()
+    assert list(given(scan)['lidar_xyz']) == pytest.approx(cfg['sensors']['lidar_link']['xyz'])
+    assert len(given(scan)['body']) == 3
+    # The things: the same settings either way.
+    assert given(things)['background'] == given(nodes['things'])['background']
+    python = nav_nodes(lidar='true', lidar_impl='python')['lidar_scan']
+    assert python._Node__package == 'aav_lidar' and 'lidar_xyz' not in given(python)
+    with pytest.raises(ValueError, match='lidar_impl'):
+        nav_nodes(lidar='true', lidar_impl='c++')
+    with pytest.raises(ValueError, match='things_impl'):
+        nav_nodes(lidar='true', things='true', things_impl='go')
+
+
+def test_the_sim_and_the_car_pass_lidar_impl_and_things_impl_on():
+    for key, default in (('lidar_impl', vehicle.DEFAULT_LIDAR_IMPL),
+                         ('things_impl', vehicle.DEFAULT_THINGS_IMPL)):
+        assert sent_to_navigation(SIM)[key] == default
+        assert sent_to_navigation(SIM, world='road', **{key: 'Rust'})[key] == 'rust'
+        assert sent_to_navigation(CAR, machine='all')[key] == default
+        assert sent_to_navigation(CAR, machine='all', **{key: 'python'})[key] == 'python'
+        with pytest.raises(ValueError, match=key):
+            sent_to_navigation(SIM, **{key: 'go'})
+
+
 def test_kerbs_run_the_rust_voxels_node_with_its_step_finder():
     assert 'kerb_layer' not in local_costmap(lidar='true')['plugins']
     # No lidar: no kerbs, and no refusal (a world without one runs as before).

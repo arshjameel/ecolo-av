@@ -13,6 +13,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [reversing:=true] [controller:=] [planner:=] [tracker:=] [costmap:=] [navigator:=]
       [smoother:=] [behaviour:=]
       [amcl:=false] [voxels:=false] [voxels_impl:=python] [kerbs:=] [ego_impl:=rust]
+      [lidar_impl:=python] [things_impl:=python]
       [behaviour_impl:=rust] [watchdog_impl:=rust] [localization_health_impl:=rust]
       [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
       [kiss_ekf:=false] [lane_pose:=false]
@@ -169,6 +170,10 @@ bench's argument names:
   voxels:=true        our local costmap and the stop zone read the lidar as 0.25 m
                       cubes (aav_voxels, a trial: docs/designs/2026-10-30_voxels.md)
                       instead of the flat scan; only with the lidar
+  lidar_impl:=rust    the Rust lidar_scan (aav_lidar_rs) in the Python one's place: the
+                      same scan
+  things_impl:=rust   the Rust things node (aav_things_rs) in the Python one's place, with
+                      things: the same topics, settings and things
   voxels_impl:=rust   the Rust voxels node (aav_voxels_rs) in the Python one's place, for
                       voxels:=true or screen_cubes:=true: the same topics and answers
   detector_impl:=rust with perception:=true, the Rust detector (aav_detector_rs: RF-DETR's
@@ -579,6 +584,8 @@ def launch_setup(context):
                                voxels=flag['voxels'], kerbs=flag['kerbs'],
                                screen_cubes=flag['screen_cubes'],
                                voxels_impl=vehicle.check_voxels_impl(arg('voxels_impl')),
+                               lidar_impl=vehicle.check_lidar_impl(arg('lidar_impl')),
+                               things_impl=vehicle.check_things_impl(arg('things_impl')),
                                cube_floor=(worlds.CAMPUS_CUBE_FLOOR
                                            if world == worlds.CAMPUS and not flag['voxels']
                                            else ''),
@@ -889,6 +896,12 @@ def generate_launch_description():
         DeclareLaunchArgument('voxels', default_value='false',
                               description='true: the costmap reads the lidar as 0.25 m cubes '
                                           '(aav_voxels, a trial) instead of the flat scan'),
+        DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
+                              description='python or rust: which lidar_scan flattens the '
+                                          'lidar (aav_lidar, or aav_lidar_rs)'),
+        DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
+                              description='python or rust: which things node tracks the '
+                                          'cubes (aav_things, or aav_things_rs)'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
                                           'cubes (aav_voxels, or aav_voxels_rs)'),

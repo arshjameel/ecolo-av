@@ -25,6 +25,8 @@ The real car. One launch file for every machine; a machine file picks the parts.
       [voxels:=false]     (true: the costmap reads the lidar as 0.25 m cubes, aav_voxels, a trial
                            not yet tried on the car: docs/designs/2026-10-30_voxels.md)
       [voxels_impl:=python] (rust: the same cubes from aav_voxels_rs, the Rust port)
+      [lidar_impl:=python] [things_impl:=python] (rust: aav_lidar_rs, aav_things_rs, the
+                           Rust ports: the same scan and things)
       [ego_impl:=rust] [behaviour_impl:=rust] [watchdog_impl:=rust]
       [localization_health_impl:=rust]
                           (Rust on the car since Ben, 16 Nov: aav_ego_rs, aav_behaviour_rs,
@@ -596,6 +598,8 @@ def launch_setup(context):
                                lidar=on('lidar'), ghost=flag('ghost'),
                                voxels=bool(flag('voxels') and on('lidar')),
                                voxels_impl=vehicle.check_voxels_impl(arg('voxels_impl')),
+                               lidar_impl=vehicle.check_lidar_impl(arg('lidar_impl')),
+                               things_impl=vehicle.check_things_impl(arg('things_impl')),
                                behaviour_impl=impls['behaviour_impl'],
                                stop_zone=(on('radar') or on('lidar') or flag('ghost')
                                           or rear_camera),
@@ -686,6 +690,12 @@ def generate_launch_description():
         DeclareLaunchArgument('voxels', default_value='false',
                               description='true (with the lidar): the costmap reads the lidar as '
                                           '0.25 m cubes (aav_voxels) instead of the flat scan'),
+        DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
+                              description='python or rust: which lidar_scan flattens the '
+                                          'lidar (aav_lidar, or aav_lidar_rs)'),
+        DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
+                              description='python or rust: which things node tracks the '
+                                          'cubes (aav_things, or aav_things_rs)'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
                                           'cubes (aav_voxels, or aav_voxels_rs)'),
