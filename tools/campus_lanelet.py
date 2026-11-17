@@ -38,6 +38,7 @@ LANE = 3.5                  # m: one lane's width
 JOIN = 0.5                  # m: road ends this close meet
 MAX_TURN = math.radians(150.0)   # rad: sharper is a U-turn, never joined
 STOP_REACH = 30.0           # m: a stop sign this near a road's end stops the lanes ending there
+STOP_BAR = 0.4              # m: a painted stop line's depth, along the road
 
 
 @dataclass
@@ -286,6 +287,40 @@ def stop_ends(points, at) -> dict:
         elif to_start < to_end and to_start <= STOP_REACH:
             out['stop_at_start'] = True
     return out
+
+
+def stop_bars(roads) -> list:
+    """
+    Return each stop line as a white bar to paint (campus_world.py): four corners, m.
+
+    The bar lies across the lanes that stop (a two-way road's right half, a one-way road's
+    whole width), STOP_BAR m deep, its far edge on the Lanelet2 stop line: where the
+    behaviour planner stops the front bumper, so the pictures show the same place.
+    """
+    bars = []
+    for road in roads:
+        points = [tuple(p) for p in road['points']]
+        width = float(road['width'])
+        across = width if road['oneway'] else width / 2.0
+        for line, key in ((points, 'stop_at_end'), (points[::-1], 'stop_at_start')):
+            if not road.get(key) or len(line) < 2:
+                continue
+            right = offset(line, -width / 2.0)[-1]
+            left = offset(line, -width / 2.0 + across)[-1]
+            (ax, ay), (bx, by) = line[-2], line[-1]
+            length = math.dist(line[-2], line[-1]) or 1.0
+            dx, dy = (bx - ax) / length * STOP_BAR, (by - ay) / length * STOP_BAR
+            bars.append([(right[0] - dx, right[1] - dy), right, left,
+                         (left[0] - dx, left[1] - dy)])
+    return bars
+
+
+def site_stop_bars(datum, site: Path = SITE) -> list:
+    """Return stop_bars for the site's roads, as write() reads them."""
+    info = campus_graph.read_site(site)
+    osm_data = campus_graph.read_osm(ROOT / info.osm)
+    return stop_bars(roads_from_osm(osm_data, info.roads, datum, info.oneway,
+                                    stop_nodes(ROOT / info.osm)))
 
 
 def stop_nodes(path: Path) -> frozenset:

@@ -1064,6 +1064,12 @@ def main():
     campus = read_osm(args.osm, project)
     box = box_round()
     meshes, solids, grid, walls, trunks, report, lots, lanes = build(campus, box)
+    # The stop lines, white, where the Lanelet2 map's are (the car stops at them).
+    bars = [bar for bar in campus_lanelet.site_stop_bars((lat0, lon0))
+            if any(in_box(p, box) for p in bar)]
+    for bar in bars:
+        meshes['edge'].flat(bar, PAINT_Z)
+    report['stop_lines'] = len(bars)
     (args.out / 'meshes').mkdir(parents=True, exist_ok=True)
     names = [name for name, mesh in meshes.items() if mesh.vertices]
     triangles = 0

@@ -79,6 +79,21 @@ def test_a_stop_sign_binds_the_road_end_it_is_near():
     assert campus_lanelet.stop_ends(line, []) == {}
 
 
+def test_a_stop_line_is_painted_across_the_lanes_that_stop_up_to_the_line():
+    """The world's white bar (campus_world.py): its far edge on the Lanelet2 stop line."""
+    t = roads()
+    t[0]['stop_at_end'] = True      # one way, east: the whole road stops at x = 50
+    t[1]['stop_at_start'] = True    # two way: heading south, its right half stops at y = 0
+    east, south = campus_lanelet.stop_bars(t)
+    xs = sorted({round(x, 6) for x, _ in east})
+    ys = sorted({round(y, 6) for _, y in east})
+    assert xs == [50.0 - campus_lanelet.STOP_BAR, 50.0] and ys == [-3.5, 3.5]
+    # Heading south, the right is west: x from 46.5 to 50, y from 0 up the bar's depth.
+    assert sorted({round(x, 6) for x, _ in south}) == [46.5, 50.0]
+    assert sorted({round(y, 6) for _, y in south}) == [0.0, campus_lanelet.STOP_BAR]
+    assert campus_lanelet.stop_bars(roads()) == []
+
+
 def test_a_stop_sign_gives_each_lane_ending_there_a_stop_line_and_a_rule():
     """The T, a stop sign at the one-way road's end: both its lanes stop there."""
     t = roads()
