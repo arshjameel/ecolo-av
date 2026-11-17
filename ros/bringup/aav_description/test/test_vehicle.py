@@ -955,8 +955,9 @@ def test_the_stop_zone_shadow_reads_what_collision_monitor_reads():
 
 
 def test_ego_impl_is_python_or_rust():
-    assert vehicle.DEFAULT_EGO_IMPL == 'python'
-    assert vehicle.check_ego_impl(vehicle.SIM_DEFAULT_EGO_IMPL) == 'rust'
+    # Rust on the car and in the simulator (Ben, 16 Nov); the Python stays selectable.
+    assert vehicle.DEFAULT_EGO_IMPL == vehicle.SIM_DEFAULT_EGO_IMPL == 'rust'
+    assert vehicle.check_ego_impl('python') == 'python'
     assert vehicle.check_ego_impl(' Rust ') == 'rust'
     assert vehicle.EGO_IMPLS['rust'] == 'aav_ego_rs'
     with pytest.raises(ValueError, match='ego_impl:=c'):
@@ -964,8 +965,8 @@ def test_ego_impl_is_python_or_rust():
 
 
 def test_behaviour_impl_is_python_or_rust():
-    assert vehicle.DEFAULT_BEHAVIOUR_IMPL == 'python'
-    assert vehicle.check_behaviour_impl(vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL) == 'rust'
+    assert vehicle.DEFAULT_BEHAVIOUR_IMPL == vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL == 'rust'
+    assert vehicle.check_behaviour_impl('python') == 'python'
     assert vehicle.check_behaviour_impl(' Rust ') == 'rust'
     assert vehicle.BEHAVIOUR_IMPLS == {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
     with pytest.raises(ValueError, match='behaviour_impl:=c'):
@@ -973,7 +974,8 @@ def test_behaviour_impl_is_python_or_rust():
 
 
 def test_watchdog_impl_is_python_or_rust():
-    assert vehicle.DEFAULT_WATCHDOG_IMPL == 'python'
+    assert vehicle.DEFAULT_WATCHDOG_IMPL == 'rust'
+    assert vehicle.check_watchdog_impl('python') == 'python'
     assert vehicle.check_watchdog_impl(' Rust ') == 'rust'
     assert vehicle.WATCHDOG_IMPLS == {'python': 'aav_safety', 'rust': 'aav_watchdog_rs'}
     with pytest.raises(ValueError, match='watchdog_impl:=c'):
@@ -981,8 +983,9 @@ def test_watchdog_impl_is_python_or_rust():
 
 
 def test_localization_health_impl_is_python_or_rust():
-    assert vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL == 'python'
-    assert vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL in vehicle.LOCALIZATION_HEALTH_IMPLS
+    assert vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL == 'rust'
+    assert vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL == 'rust'
+    assert vehicle.check_localization_health_impl('python') == 'python'
     assert vehicle.check_localization_health_impl(' Rust ') == 'rust'
     assert vehicle.LOCALIZATION_HEALTH_IMPLS == {'python': 'aav_localization_health',
                                                  'rust': 'aav_localization_health_rs'}

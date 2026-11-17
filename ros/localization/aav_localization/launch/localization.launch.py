@@ -5,7 +5,7 @@ Neither EKF reads the other's topic. They meet only in TF: ekf_global publishes
 map -> odom, worked out on top of ekf_local's odom -> base_link.
 
   ros2 launch aav_localization localization.launch.py [gps:=true] [gps_heading:=true]
-      [health:=true] [localization_health_impl:=python] [ndt_ekf:=false] [kiss_ekf:=false]
+      [health:=true] [localization_health_impl:=rust] [ndt_ekf:=false] [kiss_ekf:=false]
       [lane_pose:=false] [lane_map:=]
       [start_x:=0.0] [start_y:=0.0]
       [start_yaw:=0.0] [use_sim_time:=false]
@@ -50,8 +50,9 @@ static map -> odom identity stands in, so map-frame tools still work.
       ──> /localization/health, /diagnostics: warn-only checks (gyro bias, IMU mounting,
       GPS quality, stamps, frames, TF, front wheels, runaway EKFs). Drives nothing and
       changes nothing above. health:=false leaves it out.
-      localization_health_impl:=rust runs aav_localization_health_rs instead: the same
-      node name, topics and answers, in Rust (TODO 185); python is the default
+      localization_health_impl: rust (aav_localization_health_rs), the default since
+      16 Nov (Ben); python runs aav_localization_health instead: the same node name,
+      topics and answers
 """
 
 import os

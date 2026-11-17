@@ -20,9 +20,19 @@ pytestmark = pytest.mark.skipif(not HAVE_ROS, reason='needs ROS and the built wo
 
 
 def nodes(**config):
+    """Python's two nodes unless ego_impl is given (the launch default is rust)."""
     context = LaunchContext()
-    context.launch_configurations.update({'use_sim_time': 'false', **config})
+    context.launch_configurations.update(
+        {'use_sim_time': 'false', 'ego_impl': 'python', **config})
     return ego_launch.ego_node(context)
+
+
+def test_rust_is_the_default():
+    # Ben, 16 Nov: the Rust ego on the car too; ego_impl:=python falls back.
+    context = LaunchContext()
+    context.launch_configurations.update({'use_sim_time': 'false'})
+    (process,) = ego_launch.ego_node(context)
+    assert process.node_package == 'aav_ego_rs'
 
 
 def test_no_caps_by_default():
