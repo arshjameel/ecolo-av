@@ -57,7 +57,7 @@ topic. None of them knows what kind of vehicle it's driving.
 | The hardware panel's buttons, while Space is held | `/drivers/buttons/cmd_vel` | 45 |
 | Replay of a recorded drive | `/drivers/replay/cmd_vel` | 40 |
 | Drive to point: drive to one GPS point and stop | `/drivers/point/cmd_vel` | 25 |
-| Nav2: drive to a point on the map | `/drivers/nav/cmd_vel` | 20 |
+| Navigation: drive to a point on the map | `/drivers/nav/cmd_vel` | 20 |
 | AI | `/drivers/ai/cmd_vel` | 10, later |
 
 `twist_mux` passes on the highest priority that has spoken in the last 0.5 s, as
@@ -68,28 +68,26 @@ Locks hold every driver below their priority: the e-stop (255), the no-timeout l
 the geofence (51), the stop sign and the sensor watchdog (30), the stop hold (21). See
 [section 7](#7-safety-layers).
 
-Teleop is just another driver. The keyboard's commands take the same path as Nav2's:
+Teleop is just another driver. The keyboard's commands take the same path as navigation's:
 mux, ego, then the turtle or the car.
 
-### Inside the Nav2 driver
+### Inside the navigation driver
 
-`/drivers/nav/cmd_vel` is the end of a chain. In the simulator **ours is the default** for
-each step we have built (`stack:=ours`, since 14 Nov); Nav2's is one switch away
-(`stack:=stock`), and still the only choice on the car ([The league](league.md),
-[Switches](switches.md)).
+`/drivers/nav/cmd_vel` is the end of a chain. Every step is ours, in the simulator and on
+the car: Nav2 went on 17 Nov ([Nav2, as it was](history/nav2-as-it-was.md)). Each step is a
+level of [the league](league.md), with challengers beside the champion
+([Switches](switches.md)).
 
-| Step | Sim default (ours) | The car, and `stack:=stock` | Other choices |
-|---|---|---|---|
-| Which roads | none: a goal on the map | the same | street routes (Valhalla) or the campus's road graph, `aav_routes` |
-| The rules: slow, stop, wait | the behaviour planner, `aav_behaviour` ([Stopping](stopping.md)) | none | `behaviour:=false` |
-| Plan, follow, replan, recover | `aav_navigator` | Nav2's bt_navigator | `navigator:=nav2` |
-| Where may I go | `aav_costmap` | Nav2's costmaps | `costmap:=nav2` |
-| The path | `aav_planner` (Nav2's lattice in Rust) | Nav2's State Lattice (since 1 Nov) | Hybrid-A* (forward only), the diffusion planner (`planner:=diffusion`) |
-| Steer along it | `aav_mppi_lag` | Nav2's MPPI | Pure Pursuit (`tracker:=none controller:=rpp`); `aav_track` (`tracker:=`) |
-| Smooth the command | Nav2's velocity smoother | the same | `aav_smoother` (`smoother:=own`) |
-
-A switch given by hand wins over the stack: `pixi run sim costmap:=nav2` is ours with Nav2's
-costmaps.
+| Step | Ours | Other choices |
+|---|---|---|
+| Which roads | none: a goal on the map | street routes (Valhalla) or the campus's road graph, `aav_routes` |
+| The rules: slow, stop, wait | the behaviour planner, `aav_behaviour` ([Stopping](stopping.md)), in `stack:=ours` | `behaviour:=false` |
+| Plan, follow, replan, recover | `aav_navigator` | |
+| Where may I go | `aav_costmap` | |
+| The path | `aav_planner` (Nav2's lattice in Rust) | Hybrid-A* (`path:=hybrid_rs`), the lane's centre (`path:=lane`), the diffusion planner (`planner:=diffusion`) |
+| Steer along it | `aav_mppi_lag` | `aav_track` (`tracker:=`), `mpc_lag_rs` |
+| Smooth the command | `aav_smoother` | |
+| Stop for what is ahead | `aav_stop_zone` | |
 
 ## 4. ego: the virtual car
 
@@ -113,7 +111,7 @@ files hand them to every part that needs them.
 |---|---|
 | ego | the wheelbase and steering limit, for the bicycle model |
 | URDF (`robot_state_publisher`) | where each sensor sits |
-| Nav2 | the footprint, and the tightest turn: wheelbase ÷ tan(max steer) = 2.86 m |
+| Navigation (costmaps, planner, mppi_lag, stop zone) | the footprint, and the tightest turn: wheelbase ÷ tan(max steer) = 2.86 m |
 | `turtlesim_adapter`, `gazebo_adapter` | the wheelbase, so the turtle and the simulated car turn like the car |
 | `aav_spine`, `aav_legacy` | the wheelbase, track and wheel size |
 | The car model (`car_model.py`, and its Rust twin) | the actuators' lags and dead times, the mass: shared by ego, the simulators and the lag-aware followers |
@@ -178,16 +176,16 @@ From the person outward. Each layer works even if everything after it fails.
 | 5 | The firmware's watchdog | no valid frame for 100 ms: throttle off, brake on. The Rust ESP32 firmware, on the UART link today, or the CAN spine |
 | 6 | RC override switch, hardware e-stop, driver faults | always: handled in the firmware |
 
-Two more, for the automatic drivers only (Nav2 and the AI slot; never a person or a test):
+Two more, for the automatic drivers only (navigation and the AI slot; never a person or a test):
 
-| Layer | Stops Nav2 when |
+| Layer | Stops navigation when |
 |---|---|
-| collision_monitor | radar or lidar points in the stop zone just ahead; or the radar or lidar goes quiet for 1 s |
+| The stop zone (`aav_stop_zone`) | radar or lidar points in the box just ahead (behind, reversing); or the radar or lidar goes quiet for 1 s |
 | The stop-sign lock (`aav_detector`'s watcher) | a stop sign is close: a 4 s stop, then time to drive past |
-| The stop hold (`aav_safety`) | collision_monitor stopped the car: held until the zone stays clear for 1 s |
+| The stop hold (`aav_safety`) | the stop zone stopped the car: held until the zone stays clear for 1 s |
 | The sensor watchdog (`aav_safety`) | the wheels, the IMU, the GPS or an EKF go quiet, send NaN or freeze; the GPS jumps; the wheels disagree with the IMU or the GPS; the HUD's screen freezes or dies (its [heartbeat](hud.md#the-heartbeat), on the car); a front camera's stream goes quiet (its detections, on the car); the watchdog itself goes quiet (fail-safe: twist_mux's lock times out). A twist_mux lock, shown on the HUD and the map window ([simulation](simulation.md#sensor-failures-on-purpose)) |
 
-The **geofence** (`aav_safety`, 29 Oct) holds every program, not only Nav2: before the
+The **geofence** (`aav_safety`, 29 Oct) holds every program, not only navigation: before the
 car's stopping distance reaches the fence, or when the position can't be trusted. People
 still drive ([Geofence](geofence.md)).
 
@@ -195,7 +193,7 @@ still drive ([Geofence](geofence.md)).
   The 2025-26 ESP32 firmware has no timeout. If the bridge dies, the last throttle stays
   on. Keep the wheels off the ground and the e-stop in hand: see [Firmware](firmware.md).
   So, with `frame_version: 1`, the bridge locks the programs out: twist_mux's no-timeout
-  lock (60) holds scripted, replay, point, Nav2 and AI. Only people and the actuator
+  lock (60) holds scripted, replay, point, navigation and AI. Only people and the actuator
   tests drive.
 
 ## 8. The real graph, three ways
