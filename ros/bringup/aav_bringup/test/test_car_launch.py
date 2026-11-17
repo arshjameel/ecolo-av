@@ -174,25 +174,25 @@ def test_the_map_and_the_start_pose_reach_their_launch_files():
     assert default.endswith(os.path.join('maps', 'empty.yaml'))
 
 
-def test_the_lidar_runs_where_its_packets_go_and_nav2_reads_it():
-    # The Jetson (orin) gets the VLP-16's packets: its driver runs there, and Nav2 there
-    # reads it, with collision_monitor watching it.
+def test_the_lidar_runs_where_its_packets_go_and_navigation_reads_it():
+    # The Jetson (orin) gets the VLP-16's packets: its driver runs there, and navigation
+    # there reads it, with the stop zone watching it.
     sent = included(started(CAR, machine='orin'))
     assert sent['sensors.launch.py']['lidar'] == 'true'
     nav = sent['navigation.launch.py']
-    assert (nav['lidar'], nav['collision_monitor']) == ('true', 'true')
+    assert (nav['lidar'], nav['stop_zone']) == ('true', 'true')
     # lidar:=false switches it off everywhere, whatever the machine file says. The lidar is
     # the Orin's only sensor now (imu/gps are on the localization Pi), so sensors.launch.py
     # drops out entirely.
     off = included(started(CAR, machine='orin', lidar='false'))
     assert 'sensors.launch.py' not in off
     assert (off['navigation.launch.py']['lidar'],
-            off['navigation.launch.py']['collision_monitor']) == ('false', 'false')
+            off['navigation.launch.py']['stop_zone']) == ('false', 'false')
     # A machine without the part starts no driver.
     assert 'sensors.launch.py' not in included(started(CAR, machine='laptop'))
 
 
-def test_nav2_reverses_only_when_asked_and_where_the_lidar_sees_behind():
+def test_the_car_reverses_only_when_asked_and_where_the_lidar_sees_behind():
     # On by default since 1 Nov (Ben: "reverse and uturn should be in"): the roof lidar
     # watches behind.
     default = included(started(CAR, machine='orin'))['navigation.launch.py']
@@ -213,7 +213,7 @@ def test_the_rear_camera_sees_behind_only_when_its_detector_reads_it_for_people(
     assert not CAR.watches_behind(None)
 
 
-def test_the_watchdog_guards_nav2():
+def test_the_watchdog_guards_navigation():
     sent = included(started(CAR, machine='all'))
     assert sent['watchdog.launch.py']['inputs'] == 'odom,imu,local,global,gps,hud'
     no_gps = included(started(CAR, machine='all', gps='false'))
@@ -259,8 +259,8 @@ def test_the_geofence_runs_wherever_the_mux_does():
 
 
 def test_the_sensor_watchdog_runs_wherever_the_mux_does():
-    # The mux's sensors lock needs the watchdog's heartbeat (fail-safe: silence holds Nav2),
-    # so the two always start together, whichever machine Nav2 is on.
+    # The mux's sensors lock needs the watchdog's heartbeat (fail-safe: silence holds the car),
+    # so the two always start together, whichever machine navigation is on.
     for machine in MACHINES:
         parts = CAR.load_machine(machine)['parts']
         sent = included(started(CAR, machine=machine))
@@ -592,11 +592,12 @@ def test_the_car_day_stack_is_the_defaults():
     # docs/tests.md, "The stack for every test on the ground": the best of the Gazebo
     # trials. Change a default here and the plan changes with it.
     nav = included(started(CAR, machine='orin'))['navigation.launch.py']
-    assert nav['planner'] == 'lattice'
+    assert nav['planner'] == 'own'               # ours since Nav2 went (17 Nov)
     assert nav['reversing'] == 'true'
     assert nav['voxels'] == 'false'
     assert nav.get('controller', 'mppi') == 'mppi'
-    assert nav.get('tracker', 'none') == 'none'
+    assert nav['tracker'] == 'mppi_lag'
+    assert (nav['navigator'], nav['costmap'], nav['smoother']) == ('own', 'own', 'own')
     assert nav.get('amcl', 'false') == 'false'
     loc = included(started(CAR, machine='orin'))['localization.launch.py']
     assert loc.get('ndt_ekf', 'false') == 'false' and loc.get('kiss_ekf', 'false') == 'false'

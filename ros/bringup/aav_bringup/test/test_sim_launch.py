@@ -117,7 +117,8 @@ def names(actions):
 
 
 # The league (docs/league.md): ours is the simulator's default (Ben, 14 Nov: "Ours default
-# now, then delete"); stack:=stock is Nav2's; a switch given by hand wins over either.
+# now, then delete"; Nav2's stock stack went on 17 Nov); stack:=best is every level's
+# champion; a switch given by hand wins over either.
 def stack_of(**args):
     """Return what navigation.launch.py and ego are given: the stack's switches, resolved."""
     sent = included(started(SIM, **args))
@@ -135,15 +136,15 @@ def stack_of(**args):
 
 
 OURS = {'planner': 'own', 'controller': 'mppi', 'tracker': 'mppi_lag', 'costmap': 'own',
-        'navigator': 'own', 'smoother': 'nav2', 'behaviour': 'true', 'road_ahead': 'true',
+        'navigator': 'own', 'smoother': 'own', 'behaviour': 'true', 'road_ahead': 'true',
         'ndt_ekf': 'false', 'kiss_ekf': 'false', 'lattice_moves': 'nav2',
         'planner_search': 'lattice', 'plan_smoothing': 'strong', 'map_correction': 'slow',
         'mppi_lag_steer_gamma': '0.05'}
-STOCK = {'planner': 'lattice', 'controller': 'mppi', 'tracker': 'none', 'costmap': 'nav2',
-         'navigator': 'nav2', 'smoother': 'nav2', 'behaviour': 'false', 'road_ahead': 'false',
-         'ndt_ekf': 'false', 'kiss_ekf': 'false', 'lattice_moves': 'nav2',
-         'planner_search': 'lattice', 'plan_smoothing': 'nav2', 'map_correction': 'newest',
-         'mppi_lag_steer_gamma': ''}
+BEST = {'planner': 'own', 'controller': 'mppi', 'tracker': 'mppi_lag', 'costmap': 'own',
+        'navigator': 'own', 'smoother': 'own', 'behaviour': 'false', 'road_ahead': 'false',
+        'ndt_ekf': 'false', 'kiss_ekf': 'false', 'lattice_moves': 'nav2',
+        'planner_search': 'lattice', 'plan_smoothing': 'nav2', 'map_correction': 'newest',
+        'mppi_lag_steer_gamma': ''}
 
 
 def test_the_default_stack_is_ours():
@@ -151,20 +152,22 @@ def test_the_default_stack_is_ours():
     assert stack_of(stack='ours') == OURS
 
 
-def test_stack_stock_is_every_level_nav2s():
-    assert stack_of(stack='stock') == STOCK
-    # No stack at all: each switch's fallback, the champions' (Nav2's today).
-    assert stack_of(stack='') == STOCK
+def test_stack_best_is_every_levels_champion():
+    assert stack_of(stack='best') == BEST
+    # No stack at all: each switch's fallback, the champions'.
+    assert stack_of(stack='') == BEST
+    # Nav2's stack went (17 Nov, TODO 184).
+    with pytest.raises(ValueError, match='stock'):
+        stack_of(stack='stock')
 
 
 def test_a_switch_given_by_hand_wins_over_the_stack():
-    # One piece Nav2's, the rest ours: costmap:=nav2 is told apart from "not given".
-    assert stack_of(costmap='nav2') == dict(OURS, costmap='nav2')
+    # One piece a challenger, the rest ours: tracker:=lqr is told apart from "not given".
+    assert stack_of(tracker='lqr') == dict(OURS, tracker='lqr')
     assert stack_of(behaviour='false') == dict(OURS, behaviour='false', road_ahead='false')
-    assert stack_of(tracker='none', controller='rpp') == dict(
-        OURS, tracker='none', controller='rpp')
-    # And one piece ours on Nav2's stack.
-    assert stack_of(stack='stock', planner='own') == dict(STOCK, planner='own')
+    # And one piece ours' on the champions' stack.
+    assert stack_of(stack='best', behaviour='true') == dict(BEST, behaviour='true',
+                                                            road_ahead='true')
 
 
 def test_ours_plans_the_lanes_centre_where_the_world_has_a_lane_map():
@@ -174,7 +177,7 @@ def test_ours_plans_the_lanes_centre_where_the_world_has_a_lane_map():
         return included(started(SIM, **args))['navigation.launch.py']['lane_route']
     assert lane_route(world='road').endswith('road.lanes.yaml')
     assert lane_route() == ''
-    assert lane_route(world='road', stack='stock') == ''
+    assert lane_route(world='road', stack='best') == ''
     assert lane_route(world='road', path='lattice_rs_strong') == ''
 
 
@@ -234,7 +237,7 @@ def test_the_defaults_start_what_pixi_run_sim_always_has():
     # ego's commands reach Gazebo through the output mux, only while everything is SIM.
     assert sent['io_mux.launch.py'] == {'target': 'sim', 'source': 'sim'}
     nav = sent['navigation.launch.py']
-    assert (nav['radar'], nav['lidar'], nav['collision_monitor'], nav['camera_obstacles']) == (
+    assert (nav['radar'], nav['lidar'], nav['stop_zone'], nav['camera_obstacles']) == (
         'false', 'false', 'false', 'false')
     # The empty world renders no camera, radar or lidar: the watchdog watches the rest.
     inputs = sent['watchdog.launch.py']['inputs'].split(',')
@@ -252,8 +255,8 @@ def test_run_info_says_which_algorithms_the_run_uses():
     info = parameters(node(started(SIM), 'run_info'))
     assert (info['profile'], info['planner'], info['controller'], info['tracker']) == (
         'sim world:=empty', 'own', 'mppi', 'mppi_lag')
-    info = parameters(node(started(SIM, stack='stock'), 'run_info'))
-    assert (info['planner'], info['controller'], info['tracker']) == ('lattice', 'mppi', 'none')
+    info = parameters(node(started(SIM, stack='best'), 'run_info'))
+    assert (info['planner'], info['controller'], info['tracker']) == ('own', 'mppi', 'mppi_lag')
     assert not any(info[k] for k in ('voxels', 'ndt', 'kiss_icp', 'amcl', 'lidar'))
     info = parameters(node(started(SIM, world='road', voxels='true', tracker='lqr',
                                    reversing='false', kiss_ekf='true'), 'run_info'))
@@ -270,13 +273,13 @@ def test_every_node_runs_on_simulated_time():
     assert first.value is True
 
 
-def test_the_road_world_adds_the_radar_to_nav2_and_its_clusters():
+def test_the_road_world_adds_the_radar_to_navigation_and_its_clusters():
     actions = started(SIM, world='road')
     assert arguments(node(actions, 'rviz2'))[1].endswith('road.rviz')
     sent = included(actions)
     assert sent['radar_clusters.launch.py'] == {'minimum_points': '5'}
     nav = sent['navigation.launch.py']
-    assert (nav['radar'], nav['lidar'], nav['collision_monitor']) == ('true', 'true', 'true')
+    assert (nav['radar'], nav['lidar'], nav['stop_zone']) == ('true', 'true', 'true')
     assert nav['map'].endswith(os.path.join('maps', 'empty.yaml'))
     # Nothing reads the camera by default, so the watchdog leaves it alone.
     inputs = sent['watchdog.launch.py']['inputs'].split(',')
@@ -286,10 +289,10 @@ def test_the_road_world_adds_the_radar_to_nav2_and_its_clusters():
     assert {'node_ego', 'node_planner', 'node_mppi_lag'} <= set(inputs)
 
 
-def test_the_lidar_alone_guards_nav2_with_the_radar_off():
+def test_the_lidar_alone_guards_the_car_with_the_radar_off():
     sent = included(started(SIM, world='road', radar='false'))
     nav = sent['navigation.launch.py']
-    assert (nav['radar'], nav['lidar'], nav['collision_monitor']) == ('false', 'true', 'true')
+    assert (nav['radar'], nav['lidar'], nav['stop_zone']) == ('false', 'true', 'true')
     assert 'radar_clusters.launch.py' not in sent
     assert sent['gazebo.launch.py']['radar'] == 'false'
     assert 'radar' not in sent['watchdog.launch.py']['inputs']
@@ -315,7 +318,7 @@ def test_the_watchdog_wants_the_hud_only_where_one_runs(hud_package):
 
 def test_the_mux_needs_the_watchdogs_heartbeat_only_where_it_runs():
     assert included(started(SIM))['mux.launch.py']['sensor_lock'] == 'true'
-    # Without the watchdog, nothing would ever open the fail-safe lock: Nav2 couldn't drive.
+    # Without the watchdog, nothing would ever open the fail-safe lock: the car couldn't drive.
     assert included(started(SIM, watchdog='false'))['mux.launch.py']['sensor_lock'] == 'false'
     # The point driver stops when the watchdog goes quiet, as the mux holds it: only if one runs.
     point = 'drive_to_point.launch.py'
@@ -679,10 +682,13 @@ def test_the_watchdog_watches_only_our_nodes_that_run():
                          things=False)
     assert 'node_planner' in ours and 'node_mppi_lag' in ours
     assert 'node_things' not in ours
-    stock = SIM.our_nodes(nav=True, costmap='nav2', planner='lattice', tracker='none',
-                          navigator='nav2', smoother='nav2', behaviour=False, cubes=False,
+    trial = SIM.our_nodes(nav=True, costmap='own', planner='diffusion', tracker='lqr',
+                          navigator='own', smoother='own', behaviour=False, cubes=False,
                           things=False)
-    assert stock == ['node_ego', 'node_look_ahead']
+    assert 'node_planner' not in trial and 'node_mppi_lag' not in trial
+    assert SIM.our_nodes(nav=False, costmap='own', planner='own', tracker='mppi_lag',
+                         navigator='own', smoother='own', behaviour=True, cubes=False,
+                         things=False) == ['node_ego', 'node_look_ahead']
     config = os.path.join(get_package_share_directory('aav_safety'), 'config',
                           'sensor_watchdog.yaml')
     with open(config) as f:

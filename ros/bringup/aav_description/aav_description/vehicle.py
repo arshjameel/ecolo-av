@@ -557,14 +557,6 @@ def navigator_action(action):
     return '/' + action
 
 
-def all_ours(navigator, planner, costmap, tracker):
-    """
-    Return True when every navigation piece is ours' default (since 17 Nov, always so
-    but for a trial planner or tracker): our navigator, planner, costmap and mppi_lag.
-    """
-    return (navigator, planner, costmap, tracker) == ('own', 'own', 'own', 'mppi_lag')
-
-
 def navigator_params(v, reversing, waypoints='pass_through', replan_hz=None):
     """
     Return aav_navigator's settings (navigator:=own) as a dict, for its JSON parameter.

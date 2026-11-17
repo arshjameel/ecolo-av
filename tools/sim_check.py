@@ -2,7 +2,8 @@
 """
 Sim check: start the road world headless, then test the car's whole graph in it.
 
-Our simulator and our own stack by default (--simulator gazebo, --stack stock: Nav2's).
+Our simulator and our own stack by default (--simulator gazebo for Gazebo). Nav2 went on
+17 Nov (TODO 184): its last scores are in docs/league-results-2026-11-16.md.
 
     pixi run sim-check                     (about 2 minutes, on this computer only)
     pixi run -e ml sim-check --perception  (adds the detector and the stop sign: 2 more minutes)
@@ -18,34 +19,27 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             second run, 3 more minutes)
     pixi run sim-check --rear-obstacle     (backing up, the lidar stops the car for a post
                                             behind it: a second run, 3 more minutes)
-    pixi run sim-check --ghost             (a pretend person only Nav2 sees, aav_ghost: a
+    pixi run sim-check --ghost             (a pretend person only navigation sees, aav_ghost: a
                                             second run, 3 more minutes)
-    pixi run sim-check --faults            (sensor failures on purpose, each while Nav2 drives:
+    pixi run sim-check --faults            (sensor failures on purpose, each while the car drives:
                                             the car must stop, and say why: 5 more minutes)
     pixi run sim-check --faults --no-watchdog   (the same without the sensor watchdog: a report
                                             of what the stack does on its own, no pass or fail)
     Every run checks the launch's default stack, ours (stack:=ours: our planner, mppi_lag,
     our costmaps and navigator, the behaviour planner), unless a flag below says otherwise.
-    pixi run sim-check --stack stock       (every run with a named stack from stacks.yaml,
-                                            stack:=, docs/league.md: stock (every level
-                                            Nav2's), ours, best, car; a flag below still
-                                            wins over it)
-    pixi run sim-check --costmap nav2      (every run with that costmap, costmap:=; with
-                                            Nav2's and ours both running, the obstacle legs
-                                            also report each costmap process's CPU, our
-                                            update time, and Nav2's local costmap against
-                                            ours while the car stands still)
-    pixi run sim-check --tracker none      (every run with that path follower, tracker:=;
-                                            none: Nav2's controller_server)
-    pixi run sim-check --navigator nav2    (every run with that navigator, navigator:=;
-                                            nav2: bt_navigator; also --planner)
+    pixi run sim-check --stack best        (every run with a named stack from stacks.yaml,
+                                            stack:=, docs/league.md: ours, best, car; a
+                                            flag below still wins over it)
+    pixi run sim-check --tracker lqr       (every run with that path follower, tracker:=;
+                                            also --planner, --costmap and --navigator, each
+                                            with only ours left since Nav2 went)
     pixi run sim-check --legs-only --lidar-obstacle --plan-around
                                            (only the extra runs named, not the road
                                             world's first run: the costmap's scoring)
     pixi run sim-check --no-lidar         (without the simulated roof lidar: lidar:=false)
     pixi run sim-check --no-cameras       (no cameras drawn, cameras:=false: our simulator
                                            on a computer with no GPU; the radar checked alone)
-    pixi run sim-check --voxels            (every run with the lidar takes voxels:=true: Nav2
+    pixi run sim-check --voxels            (every run with the lidar takes voxels:=true: we
                                             reads the lidar as cubes, aav_voxels, instead of
                                             the flat scan; with --lidar-obstacle, the trial's
                                             stop test. docs/designs/2026-10-30_voxels.md)
@@ -99,7 +93,7 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             run; --things-only skips the road world's run)
     pixi run sim-check --behaviour        (the behaviour trial, behaviour:=true: a wall
                                             across the road (nothing to go round) and a
-                                            Nav2 goal, each
+                                            goal, each
                                             slowed by the speed cap, and with -e ml
                                             --perception the stop sign too; one more run.
                                             --behaviour-only skips the road world's run)
@@ -120,12 +114,6 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             things; the thing at the stop sign must be
                                             named stop sign, nothing else so;
                                             --thing-names-only skips the road world's run)
-    pixi run sim-check --stop-zone-shadow (TODO 182: our stop zone in Rust in shadow beside
-                                            collision_monitor through the obstacle check:
-                                            both must stop, ours within 0.3 s of Nav2's,
-                                            and never clear while Nav2 stops more than
-                                            0.2 s; --stop-zone-shadow-only skips the road
-                                            world's run)
     pixi run sim-check --low-box          (TODO 188: a 0.5 m box the roof lidar loses near
                                             the bumper, the radar off; the car must go round
                                             it clear. Two runs: lidar_memory:=0, then 3 s;
@@ -162,50 +150,51 @@ this tests it against Gazebo's camera and radar stand-in, which see the road wor
 1. Starts sim.launch.py world:=road gui:=false rviz:=false on a private ROS domain and
    Gazebo partition, on this computer only.
 2. Start-up: Gazebo's truth, the global EKF, the camera and the radar stand-in all run,
-   and Nav2 is up (unless nav:=false).
+   and navigation is up (unless nav:=false).
 3. Checks the running graph against docs/interfaces.yaml (check_graph.py --profile road).
 4. The sensors: the camera's picture and lens are the bench camera's, in camera_left_link;
    the radar stand-in's cloud has the TI driver's fields, in radar_link, and nothing in it
    while nothing is within 8.4 m. Unless --no-lidar, the simulated roof lidar: 1800 x 16 rays
    in lidar_link, 10 Hz, some of them hitting the ground and the sign; and lidar_scan's 2D
-   scan of it for Nav2 (/sensors/lidar/scan: 720 ranges in base_link, 10 Hz, the sign in it).
+   scan of it for the costmap (/sensors/lidar/scan: 720 ranges in base_link, 10 Hz, the sign
+   in it).
 5. Drives a scripted profile, and compares where the car really is (/vehicle/sim/truth)
    with where the car's own software thinks it is (/localization/odom/global). After all
    the drives of this run, `wheels vs IMU and GPS`: the watchdog's wheel cross check never
    said DISAGREE, and the worst gaps it saw (its /diagnostics).
-6. With --perception: Nav2 drives to 40 m east, past the stop sign at 25 m. The car must
+6. With --perception: the car drives to 40 m east, past the stop sign at 25 m. The car must
    stop with its front bumper before the sign, wait, and go on to the goal. The camera's
    picture with the detector's boxes, as the lock went on, is saved to /tmp/aav-sim-stop-sign.png.
 7. With --obstacle: the bench's 1 m box appears in the lane 15 m ahead (Gazebo's create
-   service), and Nav2 drives 30 m. collision_monitor's stop zone must stop the car before
+   service), and the car drives 30 m. the stop zone must stop the car before
    the box; once the box is taken away, the car must go on to the goal.
 8. With --lidar-obstacle: Gazebo again, with the radar off (radar:=false), so only the roof
-   lidar guards Nav2. A person-sized post (0.5 x 0.5 x 1.8 m) in the lane 15 m ahead: the
+   lidar guards the car. A person-sized post (0.5 x 0.5 x 1.8 m) in the lane 15 m ahead: the
    stop zone must stop the car before it from the lidar's scan, and the post must show in
    the local costmap; once the post is gone, the car must go on to the goal.
    With --rear-obstacle, the same backing up: the goal 15 m behind the car, the post 6 m
    behind the rear bumper, and the stop zone behind the car must stop it.
 9. With --ghost: Gazebo again, with ghost:=true (aav_ghost): nothing in Gazebo, only a
-   pretend person 15 m past the bumper in Nav2's view (its own costmap layer and
+   pretend person 15 m past the bumper in navigation's view (its own costmap layer and
    collision_monitor source), placed through ghost_obstacle's parameters as
-   `pixi run ghost ahead 15` does. Nav2 drives 30 m: the stop zone must stop the car
+   `pixi run ghost ahead 15` does. the car drives 30 m: the stop zone must stop the car
    0-2 m before the ghost (as the global EKF has the car), and the local costmap must mark
    it; once the ghost is switched off, the car must go on to the goal, through where it
    stood.
-10. With --faults: Gazebo again (faults:=true), and for each fault in FAULTS: Nav2 drives,
+10. With --faults: Gazebo again (faults:=true), and for each fault in FAULTS: the car drives,
    the fault goes on (fault.<sensor>, on its node: faults.NODES), and the car must stop within
    REACT seconds, stopped by the sensor watchdog's lock or collision_monitor; then the
    fault goes off, and the lock must open again. Two faults are of the watchdog itself:
    `watchdog hang` stops its process (SIGSTOP, then SIGCONT to mend it) and `watchdog
-   kill` kills it (the last fault: nothing mends it). Its silence must hold Nav2 through
+   kill` kills it (the last fault: nothing mends it). Its silence must hold the navigator through
    twist_mux's lock timeout. `odom freeze` goes on at FROZEN_AT m/s, while the car still
    speeds up, and counts from when the frozen wheels go wrong by more than the cross
-   check's tolerances (the car's speed or turn changes: Nav2 speeds up, slows or steers),
+   check's tolerances (the car's speed or turn changes: the follower speeds up, slows or steers),
    as they're right till then, and has FROZEN_REACT s: a speed that stays wrong needs the
    GPS's 10 s window.
    `hud stop`: the watchdog also wants the HUD's heartbeat here (watch_hud:=true); with no
    screen, the check beats for it (/hud/heartbeat, 10 Hz, a rising count) and stops, as a
-   frozen HUD does. Latched: beating again, it must still hold Nav2 (hud LOST) 5 s later,
+   frozen HUD does. Latched: beating again, it must still hold the navigator (hud LOST) 5 s later,
    until the check clears it (/safety/sensor_watchdog/clear), as a person would.
    With --no-watchdog it only reports, without the watchdog's own two.
 11. With --lane: Gazebo again, with lane keeping (lane:=true) and nothing else driving, the
@@ -214,7 +203,7 @@ this tests it against Gazebo's camera and radar stand-in, which see the road wor
 11. With --spine: Gazebo again with the spine in the loop (spine:=true: ego -> spine_bridge
    -> CAN frames -> spine_sim, the spine's own firmware logic -> the actuator model). The
    normal checks first (the graph against the spine profile, the scripted drive, the EKF
-   against the truth, a Nav2 goal), then the spine's own stops, each while driving:
+   against the truth, a goal), then the spine's own stops, each while driving:
    `command stream lost` (ego's process stopped, SIGSTOP: the spine's watchdog must brake
    fully within SPINE_BRAKE s and latch, until armed again), `software e-stop`
    (/safety/estop), `hardware e-stop` (the bench's /vehicle/bench/hw_estop: still latched
@@ -295,12 +284,11 @@ from aav_interfaces.action import DriveToPoint, ScriptedDrive  # noqa: E402
 from aav_interfaces.msg import ActuatorState, SpineOutputs, VehicleStatus  # noqa: E402
 from aav_lane_geometry.msg import LaneGeometry  # noqa: E402
 from ackermann_msgs.msg import AckermannDriveStamped  # noqa: E402
-import costmap_diff  # noqa: E402
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus  # noqa: E402
 from geometry_msgs.msg import PoseStamped, TwistStamped  # noqa: E402
 import gz_crash  # noqa: E402
 from nav2_msgs.action import NavigateToPose  # noqa: E402
-from nav2_msgs.msg import CollisionMonitorState, Costmap  # noqa: E402
+from nav2_msgs.msg import CollisionMonitorState  # noqa: E402
 from nav_msgs.msg import OccupancyGrid, Odometry, Path  # noqa: E402
 import numpy  # noqa: E402
 import rclpy  # noqa: E402
@@ -315,7 +303,6 @@ from sensor_msgs_py import point_cloud2  # noqa: E402
 from std_msgs.msg import Bool, String, UInt64  # noqa: E402
 from std_srvs.srv import SetBool, Trigger  # noqa: E402
 import stop_points  # noqa: E402
-import stop_zone_compare  # noqa: E402
 import street_check  # noqa: E402
 from street_check import WALL_THICK  # noqa: E402
 import tf2_ros  # noqa: E402
@@ -340,10 +327,10 @@ KERB = os.path.join(MODELS, 'kerb', 'model.sdf')           # 10 x 0.3 x 0.3 m: a
 # What the radar adds to the road world's graph: absent with radar:=false.
 RADAR_TOPICS = ('/sensors/radar/points', '/perception/radar/clusters',
                 '/perception/radar/cluster_boxes')
-# What only runs with Nav2 (navigation.launch.py): the map, and stop_hold beside
-# collision_monitor. A nav:=false run checks the contract without them.
-NAV_TOPICS = ('/map', '/safety/stop_hold/lock', '/global_costmap/costmap',
-              '/local_costmap/costmap')
+# What only runs with navigation (navigation.launch.py): the map, the costmaps, and
+# stop_hold beside the stop zone. A nav:=false run checks the contract without them.
+NAV_TOPICS = ('/map', '/safety/stop_hold/lock', '/drivers/nav/costmap/global',
+              '/drivers/nav/costmap/local')
 RADAR_FIELDS = ['x', 'y', 'z', 'intensity', 'velocity']   # the TI driver's
 LIDAR_RAYS = (1800, 16)     # the simulated roof lidar: steps around, beams (sensors xacro)
 
@@ -354,7 +341,7 @@ LANE_BAND = 0.05        # m either side of the centre
 LANE_TIME = 30.0        # s of driving, from when the car starts moving
 LOOKAHEAD = 3.0         # m: where lane_finder measures the offset (its config, lookahead)
 
-# Sensor failures on purpose (--faults): each while Nav2 drives, in this order (the NaNs
+# Sensor failures on purpose (--faults): each while the car drives, in this order (the NaNs
 # last: a NaN that reaches an EKF could spoil the runs after it). The watchdog's limits
 # (aav_safety config/sensor_watchdog.yaml) and collision_monitor's source_timeout set how
 # soon each must stop the car: REACT gives each that, plus ego's stop.
@@ -366,16 +353,16 @@ FAULTS = [('gps', 'stop'), ('watchdog', 'hang'), ('hud', 'stop'), ('imu', 'stop'
 REACT = 6.0             # s of Gazebo's time from the fault to standing still
 STILL = 0.05            # m/s: standing still
 DRIVING = 0.5           # m/s: the car drives, so a fault can go on
-# `odom freeze` goes on sooner, while the car still speeds up. Nav2's MPPI plans from the
+# `odom freeze` goes on sooner, while the car still speeds up. mppi_lag plans from the
 # speed the wheels say, so frozen wheels keep the car only a little faster than them:
 # frozen at 0.5 m/s, it drove on at 0.6, under any tolerance the GPS's noise allows; at
 # 0.2, it drives on at about 0.4, which the GPS part sees (24 Oct, docs/simulation.md).
 FROZEN_AT = 0.2         # m/s
-FROZEN_WAIT = 30.0      # s of Gazebo's time for frozen wheels to go wrong (Nav2 slows, turns)
+FROZEN_WAIT = 30.0      # s of sim time for frozen wheels to go wrong (the follower slows, turns)
 HELD = 10.0             # s of Gazebo's time the car must stay still with no watchdog at all
 with open(os.path.join(ROOT, 'ros', 'command_mux', 'aav_command_mux', 'config',
                        'twist_mux.yaml')) as f:
-    # s of silence from the watchdog before twist_mux's sensors lock holds Nav2 itself
+    # s of silence from the watchdog before twist_mux's sensors lock holds the navigator itself
     LOCK_TIMEOUT = yaml.safe_load(f)['twist_mux']['ros__parameters']['locks']['sensors'][
         'timeout']
 with open(os.path.join(ROOT, 'ros', 'safety', 'aav_safety', 'config',
@@ -434,29 +421,18 @@ def process_cpu():
     return cpu
 
 
-# Which processes hold a costmap: Nav2's local one is in controller_server (with
-# tracker:=mppi_lag, the only thing it does), its global one in planner_server (with the
-# planner); ours both in aav_costmap's costmap.
-COSTMAP_PROGRAMS = ('controller_server', 'planner_server', 'aav_costmap/costmap')
+# Which processes hold a costmap: ours, both in aav_costmap's costmap.
+COSTMAP_PROGRAMS = ('aav_costmap/costmap',)
 
 
 class CostmapWatch:
-    """
-    Watch the costmaps while a leg runs.
-
-    Our costmap's update times, the costmap processes' CPU, and Nav2's local costmap
-    against ours (snapshot(), while the car stands still).
-    """
+    """Watch the costmaps while a leg runs: our update times and the costmap's CPU."""
 
     def __init__(self, probe):
-        self.probe, self.times, self.grids, self.diff = probe, [], {}, None
+        self.probe, self.times = probe, []
         self.subs = [
             probe.create_subscription(DiagnosticStatus, '/drivers/nav/costmap/status',
-                                      self.on_status, 10),
-            probe.create_subscription(Costmap, '/local_costmap/costmap_raw',
-                                      lambda m: self.grids.update(nav2=m), 2),
-            probe.create_subscription(Costmap, '/drivers/nav/costmap/local_raw',
-                                      lambda m: self.grids.update(own=m), 2)]
+                                      self.on_status, 10)]
         self.cpu, self.start = process_cpu(), time.monotonic()
 
     def on_status(self, msg):
@@ -464,19 +440,8 @@ class CostmapWatch:
         if values.get('costmap') == 'local':
             self.times.append(float(values['update_ms']))
 
-    def snapshot(self):
-        """Nav2's local costmap against ours, now (both must have come)."""
-        if 'nav2' in self.grids and 'own' in self.grids:
-            def plain(m):
-                return {'origin_x': m.metadata.origin.position.x,
-                        'origin_y': m.metadata.origin.position.y,
-                        'resolution': m.metadata.resolution, 'width': m.metadata.size_x,
-                        'height': m.metadata.size_y, 'data': bytes(m.data)}
-            self.diff = costmap_diff.compare(plain(self.grids['nav2']),
-                                             plain(self.grids['own']))
-
     def report(self):
-        """One line: CPU per costmap process, our update time, the comparison."""
+        """One line: the costmap's CPU and its update time."""
         wall = time.monotonic() - self.start
         now = process_cpu()
         used = {n: 100.0 * (now[n] - self.cpu.get(n, 0.0)) / wall for n in now}
@@ -489,8 +454,6 @@ class CostmapWatch:
             t = sorted(self.times)
             line += (f'; our local update {sum(t) / len(t):.2f} ms mean, '
                      f'{t[int(0.95 * (len(t) - 1))]:.2f} ms 95th')
-        if self.diff:
-            line += f'; Nav2 vs ours while stopped: {costmap_diff.summary(self.diff)}'
         return line
 
 
@@ -598,7 +561,7 @@ class Probe(Node):
         self.drive_to_point = ActionClient(self, DriveToPoint, '/drive_to_point')
         self.estop = self.create_publisher(Bool, '/safety/estop', 10)
         self.to_ll = self.create_client(ToLL, '/toLL')
-        # Whichever navigator runs (--navigator nav2 or own) serves Nav2's action names.
+        # Our navigator serves Nav2's action names (Nav2's own went, 17 Nov).
         self.nav = ActionClient(self, NavigateToPose,
                                 vehicle.navigator_action('navigate_to_pose'))
         self.stop, self.stop_picture, self.picture, self.stop_sign = False, None, None, None
@@ -764,7 +727,7 @@ class Probe(Node):
                                    or self.now() - self.lock_heard > LOCK_TIMEOUT)
 
     def locked(self):
-        """Return True while twist_mux's sensors lock holds Nav2: true, or silent."""
+        """Return True while twist_mux's sensors lock holds the navigator: true, or silent."""
         return self.lock is True or self.silent()
 
     def on_lane(self, msg):
@@ -806,7 +769,7 @@ class Probe(Node):
         return self.get_clock().now().nanoseconds * 1e-9
 
     def go_to(self, x, y, yaw):
-        """Send Nav2 a goal in the map frame; return the result's future, or None if refused."""
+        """Send the navigator a goal in the map frame; return its result's future, or None."""
         goal = NavigateToPose.Goal()
         goal.pose.header.frame_id = 'map'
         goal.pose.pose.position.x, goal.pose.pose.position.y = x, y
@@ -814,8 +777,8 @@ class Probe(Node):
         goal.pose.pose.orientation.w = math.cos(yaw / 2.0)
         if not self.nav.wait_for_server(timeout_sec=30.0):
             return None
-        # The action server exists from Nav2's configure, but it turns goals down until its
-        # lifecycle manager activates it: on a busy computer that can be seconds after.
+        # The action server can exist before the navigator takes goals (its planner and
+        # follower not yet there): on a busy computer that can be seconds after.
         end = time.monotonic() + 30.0
         while True:
             sent = self.nav.send_goal_async(goal)
@@ -835,7 +798,7 @@ def check_contract(probe, env, tag, ignore=(), profile='road'):
 
     profile: spine instead, with the spine in the loop.
 
-    ignore: topics this run leaves out on purpose, such as Nav2's /map with nav:=false.
+    ignore: topics this run leaves out on purpose, such as our /map with nav:=false.
     """
     # Up to three tries, 10 s apart, as in bench_check.py: a node's first start after a
     # build can be slow on a Mac. The probe spins meanwhile, so its track has no gaps.
@@ -943,7 +906,7 @@ def check_lidar(probe):
 
 
 def check_lidar_scan(probe):
-    """Check lidar_scan's 2D scan for Nav2: 720 ranges in base_link, 10 Hz, the sign in it."""
+    """Check lidar_scan's 2D scan for the costmap: 720 ranges in base_link, 10 Hz, the sign."""
     scans = []
     sub = probe.create_subscription(LaserScan, '/sensors/lidar/scan', scans.append,
                                     qos_profile_sensor_data)
@@ -1018,12 +981,12 @@ def check_wheels_vs_imu(probe):
 
 
 def check_stop_sign(probe):
-    """Nav2 drives to 40 m east, past the stop sign at 25 m: it must stop before it."""
+    """the car drives to 40 m east, past the stop sign at 25 m: it must stop before it."""
     body = vehicle.load()['vehicle']['body']
     front = body['length'] - body['rear_overhang']   # base_link to the front bumper
     done = probe.go_to(40.0, ROAD_Y, 0.0)
     if done is None:
-        result('stop sign', False, 'no Nav2, or it refused the goal')
+        result('stop sign', False, 'no navigator, or it refused the goal')
         return
     seen = len(probe.signs)
     probe.stop_sign = None
@@ -1050,7 +1013,7 @@ def check_stop_sign(probe):
              f'{SIGN_X - still_at - front:.1f} m before the sign'
              if still_at is not None else 'never stood still')
     result('stop sign', ok, f'{first}; {lock}; {still} (the sign is at {SIGN_X:.0f} m); '
-                            f'Nav2 goal {"reached" if reached else "not reached"} at {x:.1f} m')
+                            f'goal {"reached" if reached else "not reached"} at {x:.1f} m')
     if probe.stop_picture is not None:
         try:
             from cv_bridge import CvBridge
@@ -1207,7 +1170,7 @@ def check_obstacle(probe, ahead=15.0, goal=30.0, model=OBSTACLE, depth=1.0, name
     watch = CostmapWatch(probe)
     done = probe.go_to(x0 + goal * c, y0 + goal * s, h)    # facing as it started
     if done is None:
-        result(name, False, 'no Nav2, or it refused the goal')
+        result(name, False, 'no navigator, or it refused the goal')
         remove_model()
         watch.report()
         return
@@ -1219,7 +1182,6 @@ def check_obstacle(probe, ahead=15.0, goal=30.0, model=OBSTACLE, depth=1.0, name
     def take_away():
         nonlocal gap, peak
         gap = ahead - furthest              # the closest the bumper came
-        watch.snapshot()
         if 'grid' in newest:
             peak = costmap_peak(newest['grid'], bx, by, depth / 2.0 + 0.5)
         remove_model()
@@ -1269,7 +1231,7 @@ def check_obstacle(probe, ahead=15.0, goal=30.0, model=OBSTACLE, depth=1.0, name
                  else '; the step finder never saw it')
     result(name, ok, f'{where} (top speed {top:.2f} m/s), stop zone fired: {stop_zone}{mark}; '
                      f'first stopped by {stopped_by or "nothing"}; '
-                     f'taken away, Nav2 goal {"reached" if reached else "not reached"} '
+                     f'taken away, goal {"reached" if reached else "not reached"} '
                      f'{along():.1f} m on')
     result(f'{name}: costmaps ({COSTMAP})', None, watch.report())
     if gap is None:
@@ -1349,7 +1311,7 @@ def check_plan_around(probe, ahead=15.0, goal=30.0, depth=1.0, model=OBSTACLE,
     watch = CostmapWatch(probe)
     done = probe.go_to(x0 + goal * c, y0 + goal * s, h)
     if done is None:
-        result(name, False, 'no Nav2, or it refused the goal')
+        result(name, False, 'no navigator, or it refused the goal')
     else:
         probe.spin_for(240.0, done.done)
     remove_model()
@@ -1460,93 +1422,6 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
                        'street': (x0, y0, h, half), 'commands': probe.commands,
                        'actuator': probe.actuator_cmds, 'asked': asked,
                        'behaviour': probe.behaviour, 'monitor': probe.monitor}, f)
-
-
-def check_stop_zone_shadow(probe, delay_limit=0.3, missed_limit=0.2):
-    """
-    Our stop zone (stop_zone_shadow:=true) beside Nav2's through the obstacle check.
-
-    Both states are recorded as (time, stop) while check_obstacle drives at a box; then
-    stop_zone_compare scores them. Ours must stop too, within delay_limit s of Nav2's
-    first stop, and be clear while Nav2 stops no more than missed_limit s (TODO 182).
-    """
-    nav2, ours = [], []
-    probe.create_subscription(
-        CollisionMonitorState, '/safety/stop_zone/state',
-        lambda m: nav2.append((probe.now(), m.action_type == CollisionMonitorState.STOP)), 10)
-    probe.create_subscription(
-        DiagnosticStatus, '/safety/stop_zone/shadow/state',
-        lambda m: ours.append((probe.now(), m.level != DiagnosticStatus.OK)), 10)
-    start = probe.now()
-    check_obstacle(probe, name='obstacle (with the shadow)')
-    end = probe.now()
-    if not ours:
-        result('stop zone shadow', False, 'our stop zone said nothing (is aav_stop_zone built?)')
-        return
-    c = stop_zone_compare.compare(nav2, ours, start, end)
-    ok = (c.our_stops > 0 and c.nav2_stops > 0 and c.delay is not None
-          and abs(c.delay) <= delay_limit and c.missed <= missed_limit)
-    delay = 'never both stopped' if c.delay is None else f"ours {c.delay:+.2f} s from Nav2's"
-    result('stop zone shadow', ok,
-           f'agree {100 * c.agree:.1f} % of {end - start:.0f} s; first stop {delay}; '
-           f'clear while Nav2 stopped {c.missed:.2f} s, stopped alone {c.extra:.2f} s; '
-           f'stops: Nav2 {c.nav2_stops}, ours {c.our_stops}')
-
-
-# Our stop zone beside Nav2's on any run (--with stop_zone_shadow:=true, TODO 182): after
-# each check, every one of Nav2's stops must find ours stopped too, no later than SHADOW_LATE
-# s (one command tick, 20 Hz, and the probe hearing each a moment apart).
-SHADOW = False
-SHADOW_LATE = 0.1
-
-
-def listen_to_both_stop_zones(probe):
-    """Record both stop zones' states as (Gazebo's time, stop) on probe.shadow."""
-    probe.shadow = {'nav2': [], 'ours': []}
-    probe.create_subscription(
-        CollisionMonitorState, '/safety/stop_zone/state',
-        lambda m: probe.shadow['nav2'].append(
-            (probe.now(), m.action_type == CollisionMonitorState.STOP)), 10)
-    probe.create_subscription(
-        DiagnosticStatus, '/safety/stop_zone/shadow/state',
-        lambda m: probe.shadow['ours'].append((probe.now(), m.level != DiagnosticStatus.OK)),
-        10)
-
-
-def shadow_result(probe, name, start):
-    """After one check: did ours stop at each of Nav2's stops, how much later, how far on."""
-    end = probe.now()
-    nav2 = [e for e in probe.shadow['nav2'] if e[0] <= end]
-    ours = [e for e in probe.shadow['ours'] if e[0] <= end]
-    # The state each held as the check began, then what changed during it.
-    nav2 = [(start, stop_zone_compare.at(nav2, start))] + [e for e in nav2 if e[0] > start]
-    ours = [(start, stop_zone_compare.at(ours, start))] + [e for e in ours if e[0] > start]
-    stops = [(t, lag) for t, lag in stop_zone_compare.lags(nav2, ours) if t > start]
-    c = stop_zone_compare.compare(nav2, ours, start, end)
-    each = []
-    for t, lag in stops:
-        if lag is None:
-            each.append({'t': round(t, 2), 'lag': None, 'metres': None})
-        else:
-            each.append({'t': round(t, 2), 'lag': round(lag, 3), 'metres': round(
-                stop_zone_compare.travelled(probe.track, t, t + lag), 3)})
-    log = os.environ.get('AAV_SHADOW_LOG')
-    if log:
-        with open(log, 'a') as f:
-            f.write(json.dumps({'check': name, 'stops': each, 'agree': round(c.agree, 4),
-                                'missed': round(c.missed, 3), 'extra': round(c.extra, 3),
-                                'our_stops': c.our_stops}) + '\n')
-    if not stops:
-        result(f'stop zone shadow ({name})', None,
-               f"Nav2's never stopped; ours stopped {c.our_stops} times "
-               f'({c.extra:.2f} s alone)')
-        return
-    late = [e for e in each if e['lag'] is None or e['lag'] > SHADOW_LATE]
-    words = '; '.join('never' if e['lag'] is None else
-                      f"{e['lag']:+.2f} s, {100 * e['metres']:+.0f} cm" for e in each)
-    result(f'stop zone shadow ({name})', not late,
-           f"Nav2's {len(stops)} stops, ours each (+ later, - sooner): {words}; "
-           f'clear while Nav2 stopped {c.missed:.2f} s, stopped alone {c.extra:.2f} s')
 
 
 def check_kerb(probe, sensors):
@@ -1697,13 +1572,13 @@ def check_things(probe, ahead=12.0, depth=1.0):
 
 def check_ghost(probe, ahead=15.0, goal=30.0):
     """
-    Put a ghost (aav_ghost) `ahead` m past the bumper: not in Gazebo, only in Nav2's view.
+    Put a ghost (aav_ghost) `ahead` m past the bumper: not in Gazebo, only in navigation's view.
 
-    Nav2 must stop the car 0-2 m before it, and the local costmap must mark it; once the
+    the stop zone must stop the car 0-2 m before it, and the local costmap must mark it; once the
     ghost is switched off, the car must go on to the goal, through where it stood. Either
-    may stop it: collision_monitor's stop zone, or the controller's own collision check on
+    may stop it: the stop zone, or the controller's own collision check on
     the costmap (Regulated Pure Pursuit), which can stop it first. The gap is measured as
-    Nav2 sees it: from the ghost's own scan, the bumper to its nearest point ahead.
+    navigation sees it: from the ghost's own scan, the bumper to its nearest point ahead.
     """
     body = vehicle.load()['vehicle']['body']
     front = body['length'] - body['rear_overhang']   # base_link to the front bumper
@@ -1747,7 +1622,7 @@ def check_ghost(probe, ahead=15.0, goal=30.0):
         result('ghost', False, "ghost_obstacle didn't place the ghost")
     done = probe.go_to(x0 + goal * c, y0 + goal * s, h) if placed else None
     if placed and done is None:
-        result('ghost', False, 'no Nav2, or it refused the goal')
+        result('ghost', False, 'no navigator, or it refused the goal')
     seen, top, still, gap, peak, gone = len(probe.monitor), 0.0, None, None, None, False
     where = None        # the ghost's centre, in map
     end = time.monotonic() + 240.0
@@ -1782,7 +1657,7 @@ def check_ghost(probe, ahead=15.0, goal=30.0):
     stood = f'stood still {gap:.2f} m before it' if gap is not None else 'never stopped'
     mark = f'the local costmap {peak} of 100 there' if peak is not None else 'no local costmap'
     result('ghost', ok, f'{stood} (top speed {top:.2f} m/s), stop zone fired: {stop_zone} '
-                        f'(else the controller did); {mark}; switched off: {gone}, Nav2 goal '
+                        f'(else the controller did); {mark}; switched off: {gone}, goal '
                         f'{"reached" if reached else "not reached"} {along():.1f} m on')
     if gap is None:
         set_ghost(probe, client, enabled=False)
@@ -1840,9 +1715,9 @@ def set_fault(probe, sensor, mode):
 
 def drive_on(probe, speed=DRIVING):
     """
-    Send Nav2 15 m on, along the road; wait until the car drives at `speed` m/s.
+    Send the navigator 15 m on, along the road; wait until the car drives at `speed` m/s.
 
-    East until x = 60 m, then west back to x = 0 (the map ends at 100 m): Nav2 turns the
+    East until x = 60 m, then west back to x = 0 (the map ends at 100 m): the navigator turns the
     car round between the two, so the wait allows for a three-point turn.
     """
     x, y = probe.xy(probe.truth)
@@ -1856,7 +1731,7 @@ def drive_on(probe, speed=DRIVING):
 
 
 def check_faults(probe, watchdog=True):
-    """Each fault in FAULTS while Nav2 drives: the car must stop, and something say why."""
+    """Each fault in FAULTS while the car drives: the car must stop, and something say why."""
     if not fault_client(probe, 'odom').wait_for_services(timeout_sec=20.0):
         result('faults', False, "no gazebo_adapter parameters: can't set a fault")
         return
@@ -1876,7 +1751,7 @@ def check_faults(probe, watchdog=True):
         if done is not None and done.done():
             done = drive_on(probe, speed)   # it turned round and arrived: once more, ahead
         if done is None or probe.truth.twist.twist.linear.x <= speed:
-            result(name, False, 'Nav2 would not drive before the fault')
+            result(name, False, 'the car would not drive before the fault')
             if done is not None:
                 probe.goal.cancel_goal_async()
             continue
@@ -1889,7 +1764,7 @@ def check_faults(probe, watchdog=True):
         # Frozen wheels at a speed the car keeps are still right: they go wrong only once
         # the car's speed or turn changes (wheel_check.py), so the clock starts then: once
         # they're wrong by more than the cross check's tolerances, as it measures them (the
-        # speed against the GPS's; the turn rate as a mean over its window, so Nav2's small
+        # speed against the GPS's; the turn rate as a mean over its window, so the follower's small
         # weaving doesn't count).
         held_v, held_w = probe.truth.twist.twist.linear.x, probe.truth.twist.twist.angular.z
         turns = collections.deque()         # (t, the truth's turn rate) over the window
@@ -1939,7 +1814,7 @@ def check_faults(probe, watchdog=True):
         ok = (stopped_at is not None and wrong is not None and stopped_at - wrong <= react
               and bool(by))
         if mode == 'kill':
-            # Nothing mends it: Nav2's goal still stands, and the car must stay still.
+            # Nothing mends it: the goal still stands, and the car must stay still.
             top = 0.0
             end = probe.now() + HELD
             while probe.now() < end:
@@ -1947,7 +1822,7 @@ def check_faults(probe, watchdog=True):
                 top = max(top, abs(probe.truth.twist.twist.linear.x))
             held = top < STILL and probe.silent()
             ok = ok and held
-            detail += (f'; held {HELD:.0f} s more with no watchdog, Nav2 still asking '
+            detail += (f'; held {HELD:.0f} s more with no watchdog, the navigator still asking '
                        f'(top speed {top:.2f} m/s)')
             if not done.done():
                 probe.goal.cancel_goal_async()
@@ -1956,7 +1831,7 @@ def check_faults(probe, watchdog=True):
         # Mend it, and let the car's software settle before the next.
         set_fault(probe, sensor, 'ok')
         if sensor == 'hud':
-            # Latched (Ben, 24 Oct): a HUD that beats again still holds Nav2, as hud LOST,
+            # Latched (Ben, 24 Oct): a HUD that beats again still holds the navigator, as hud LOST,
             # until a person clears it (below).
             probe.spin_for(5.0)
             held = probe.locked() and 'hud LOST' in probe.state
@@ -1986,22 +1861,22 @@ def check_faults(probe, watchdog=True):
 
 
 def check_nav_goal(probe):
-    """Nav2 drives 15 m on, along the car's heading: it must get there."""
+    """the car drives 15 m on, along the car's heading: it must get there."""
     x0, y0 = probe.xy(probe.truth)
     h = yaw_of(probe.truth)
     gx, gy = x0 + 15.0 * math.cos(h), y0 + 15.0 * math.sin(h)
     done = probe.go_to(gx, gy, h)
     if done is None:
-        result('Nav2 goal', False, 'no Nav2, or it refused the goal')
+        result('navigation goal', False, 'no navigator, or it refused the goal')
         return
     probe.spin_for(180.0, done.done)
     reached = done.done() and done.result().status == 4
     if not done.done():
         probe.goal.cancel_goal_async()
     x1, y1 = probe.xy(probe.truth)
-    result('Nav2 goal', reached, f'{"reached" if reached else "not reached"}: '
-                                 f'{math.hypot(x1 - x0, y1 - y0):.1f} m on, '
-                                 f'{math.hypot(gx - x1, gy - y1):.2f} m from the goal')
+    result('navigation goal', reached, f'{"reached" if reached else "not reached"}: '
+                                       f'{math.hypot(x1 - x0, y1 - y0):.1f} m on, '
+                                       f'{math.hypot(gx - x1, gy - y1):.2f} m from the goal')
 
 
 def finish(probe, handle):
@@ -2260,7 +2135,7 @@ def check_actuator_faults(probe, react=40.0):
 
     The e-stop from about 1 m/s, healthy, then with a weak brake, a dead one and a stuck
     throttle: how far the car rolls and whether it stands within 30 s. Then the steering
-    stuck in a turn, Nav2 driving to a goal round the corner: does anything stop the car
+    stuck in a turn, the navigator driving to a goal round the corner: does anything stop the car
     in `react` s, and how far off the straight to the goal it gets. Each line is evidence
     for docs/safety-case.md; none fails because a layer is missing (the safety case says
     which are), only when the fault could not be set or the car would not drive.
@@ -2737,11 +2612,8 @@ EVERY_RUN = []   # launch arguments every session adds: --speed-loop's, --simula
 SIMULATOR = None      # --simulator gazebo or own; else sim.launch.py's default (main)
 # What runs: sim.launch.py's default stack (ours, stacks.DEFAULT), or --stack's, with any
 # --navigator, --costmap, --planner or --tracker on top (main works it out again).
-# All ours (navigator, planner and costmap own, tracker mppi_lag: the default): Nav2's
-# costmaps don't run at all, so they aren't missing from the graph.
-ALL_OURS = True
-COSTMAP = 'own'       # --costmap nav2: Nav2's costmaps instead of aav_costmap
-LOCAL_COSTMAP = {'nav2': '/local_costmap/costmap', 'own': '/drivers/nav/costmap/local'}
+COSTMAP = 'own'       # the only one since Nav2's went (17 Nov)
+LOCAL_COSTMAP = {'own': '/drivers/nav/costmap/local'}
 SIMULATOR_NAMES = {'gazebo': 'Gazebo', 'own': 'our simulator'}
 VOXELS = False   # --voxels: every session with the lidar takes voxels:=true
 KISS_EKF = False  # --kiss-ekf: every session with the lidar takes kiss_ekf:=true
@@ -3139,7 +3011,7 @@ def check_behaviour(probe, sign=False):
 
     With `sign`, the stop sign first (check_stop_sign's rules, plus the speed as the lock
     fired); then an obstacle in the lane (check_obstacle's rules, plus the speed as the
-    stop zone fired); then a Nav2 goal (reached, and how far off it stopped).
+    stop zone fired); then a goal (reached, and how far off it stopped).
     """
     if not probe.spin_for(30.0, lambda: bool(probe.behaviour)):
         result('behaviour', False, 'nothing on /drivers/nav/behaviour/state')
@@ -3212,8 +3084,6 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
         ignore = tuple(ignore) + ('/sensors/lidar/scan',)
     if KISS_EKF and 'lidar:=false' not in launch_args:
         launch_args = list(launch_args) + ['kiss_ekf:=true']
-    if ALL_OURS:
-        ignore = tuple(ignore) + ('/global_costmap/costmap', '/local_costmap/costmap')
     ignore = (tuple(ignore) + (LIDAR_TOPICS if 'lidar:=false' in launch_args else ())
               + (WATCHDOG_TOPICS if 'watchdog:=false' in launch_args else ())
               + (() if CAMERAS else CAMERA_TOPICS))
@@ -3241,8 +3111,8 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
                     if m is None]
 
         up = probe.spin_for(120.0, lambda: not missing())
-        # Nav2 comes up last: its lifecycle manager starts its servers one at a time. On a
-        # busy computer it can stall on a lost reply, and then Nav2 never comes up at all.
+        # Navigation comes up last: the navigator serves its goals once the planner,
+        # the follower and the costmaps answer.
         nav = 'nav:=false' not in launch_args
         nav_up = up and (not nav or probe.spin_for(120.0, probe.nav.server_is_ready))
         if not up:
@@ -3257,13 +3127,13 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
             detail = f'nothing from: {", ".join(missing())}, in 120 s' + (
                 f' (Gazebo: {crash}, twice)' if crash else '')
         elif not nav_up:
-            detail = ('the sensors run, but Nav2 never came up in 120 s (its lifecycle '
-                      f'manager stalled? See {log_path})')
+            detail = ('the sensors run, but the navigator never came up in 120 s '
+                      f'(see {log_path})')
         else:
             detail = (f"{SIMULATOR_NAMES[SIMULATOR]}'s truth, the global EKF" +
                       (', the camera' if cameras else '') +
                       (' and the radar stand-in are' if radar else ' are (no radar)') +
-                      ' running' + (', and Nav2 is up' if nav else ''))
+                      ' running' + (', and navigation is up' if nav else ''))
         if nav_up and spine:
             # The launch arms it after 12 s (arm:=true); a gap in commands may latch it.
             nav_up = probe.spin_for(30.0, lambda: probe.status is not None) and (
@@ -3277,14 +3147,8 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
             # --spine-steps run) only the sim profile's topics can be live.
             check_contract(probe, env, tag, ignore,
                            'spine' if spine and road else 'road' if road else 'sim')
-            shadow = SHADOW or 'stop_zone_shadow:=true' in launch_args
-            if shadow:
-                listen_to_both_stop_zones(probe)
             for check in checks:
-                start = probe.now()
                 check(probe)
-                if shadow:
-                    shadow_result(probe, getattr(check, '__name__', 'check'), start)
     finally:
         probe.destroy_node()
         rclpy.try_shutdown()
@@ -3373,7 +3237,7 @@ def main():
         SIMULATOR = DEFAULT_SIMULATOR
     # Always said: the checks place models and read logs the way this simulator wants.
     EVERY_RUN.append(f'simulator:={SIMULATOR}')
-    global COSTMAP, ALL_OURS
+    global COSTMAP
     chosen = {}
     # --with name:=value (repeatable): any sim.launch.py argument, on every session.
     for at, a in enumerate(args):
@@ -3382,8 +3246,6 @@ def main():
                 print('--with takes name:=value', file=sys.stderr)
                 return 2
             EVERY_RUN.append(args[at + 1])
-    global SHADOW
-    SHADOW = 'stop_zone_shadow:=true' in EVERY_RUN
     for flag_name, choices in (('--costmap', vehicle.COSTMAPS), ('--tracker', vehicle.TRACKERS),
                                ('--navigator', vehicle.NAVIGATORS),
                                ('--planner', vehicle.PLANNERS)):
@@ -3414,8 +3276,6 @@ def main():
     for level in ('costmap', 'tracker', 'navigator', 'planner'):
         chosen.setdefault(level, picked.get(level))
     COSTMAP = chosen['costmap'] or COSTMAP
-    ALL_OURS = vehicle.all_ours(chosen.get('navigator'), chosen.get('planner'),
-                                chosen.get('costmap'), chosen.get('tracker'))
     if SIMULATOR == 'own' and CAMERAS:
         # The launch starts the cameras with cargo run, which builds them first if they
         # changed: minutes for Bevy, longer than start-up's 120 s. Build them here instead.
@@ -3435,7 +3295,7 @@ def main():
             '--stop-point-only', '--loaded-stop-only', '--behaviour-only', '--lane-only',
             '--things-only', '--behaviour-things-only', '--legs-only',
             '--three-point-only', '--moving-only', '--low-box-only',
-            '--stop-zone-shadow-only', '--thing-names-only',
+            '--thing-names-only',
             '--actuator-faults-only', '--kerb-only'} & set(args):
         # With --obstacle the planner is blind to the box, so the stop zone must stop the car.
         session([f'perception:={str(perception).lower()}', f'lidar:={str(lidar).lower()}']
@@ -3498,7 +3358,7 @@ def main():
         shutil.rmtree(POINT_LOG, ignore_errors=True)
     if '--drive-to-point' in args or '--drive-to-point-only' in args:
         # Its own runs, one per speed (sim_speed is ego's cap, set at launch): the empty
-        # world, so any angle is open ground. No Nav2, lidar or radar: lighter runs.
+        # world, so any angle is open ground. No navigation, lidar or radar: lighter runs.
         stem, ext = os.path.splitext(log)
         for speed in POINT_SPEEDS:
             logs.append(f'{stem}-drive-to-point-{speed:g}{ext}')
@@ -3517,7 +3377,7 @@ def main():
                     logs[-1], f'drive to point, spine, {speed:g} m/s', ignore=NAV_TOPICS,
                     spine=True, world='empty')
     if '--speed-steps' in args or '--speed-steps-only' in args:
-        # Its own run: the empty world, nothing else driving (no Nav2), ego's cap at 2 m/s.
+        # Its own run: the empty world, nothing else driving (no navigation), ego's cap at 2 m/s.
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-speed{ext}')
         session(['nav:=false', 'lidar:=false', 'radar:=false', 'sim_speed:=2'],
@@ -3575,12 +3435,6 @@ def main():
         logs.append(f'{stem}-thing-names{ext}')
         session(['perception:=true', 'lidar:=true', 'things:=true', 'things_names:=true'],
                 [check_thing_names], logs[-1], 'thing names')
-    if {'--stop-zone-shadow', '--stop-zone-shadow-only'} & set(args):
-        # Its own run: our stop zone beside Nav2's, the planner blind to the box.
-        stem, ext = os.path.splitext(log)
-        logs.append(f'{stem}-stop-zone-shadow{ext}')
-        session(['stop_zone_shadow:=true', 'plan_around:=false'], [check_stop_zone_shadow],
-                logs[-1], 'stop zone shadow')
     if {'--low-box', '--low-box-only'} & set(args):
         # Two runs, the radar off: without the lidar's memory, then with 3 s of it.
         stem, ext = os.path.splitext(log)
@@ -3601,7 +3455,7 @@ def main():
         session(['things:=true', 'lidar:=true'], [check_things], logs[-1], 'things')
     if {'--lane', '--lane-only'} & set(args):
         # Its own run: control_interface drives whenever it sees the lane, so it would take
-        # the wheel between the other checks. Nothing else drives here: no Nav2.
+        # the wheel between the other checks. Nothing else drives here: no navigation.
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-lane{ext}')
         session(['lane:=true', 'nav:=false', 'lidar:=false', f'start_y:={ROAD_Y + LANE_START}'],

@@ -26,7 +26,7 @@ def test_the_defaults_start_the_same_stack_as_gazebo():
     assert sent['carla.launch.py']['host'] == '192.0.2.10'
     assert sent['io_mux.launch.py'] == {'target': 'carla', 'source': 'sim'}
     nav = sent['navigation.launch.py']
-    assert (nav['radar'], nav['lidar'], nav['collision_monitor']) == ('true', 'true', 'true')
+    assert (nav['radar'], nav['lidar'], nav['stop_zone']) == ('true', 'true', 'true')
     assert nav['map'].endswith(os.path.join('maps', 'empty.yaml'))
     assert sent['watchdog.launch.py']['inputs'] == 'odom,imu,gps,local,global,radar'
     # No geofence in CARLA yet, so its fail-safe lock must be off, or nothing could drive.
@@ -34,11 +34,11 @@ def test_the_defaults_start_the_same_stack_as_gazebo():
     assert names(actions) == {'imu_filter_madgwick'}     # no RViz: the CARLA box may be headless
 
 
-def test_without_radar_or_lidar_nav2_runs_unguarded():
+def test_without_radar_or_lidar_navigation_runs_unguarded():
     sent = included(started(BRINGUP, radar='false', lidar='false'))
     assert 'radar_clusters.launch.py' not in sent
     nav = sent['navigation.launch.py']
-    assert (nav['radar'], nav['lidar'], nav['collision_monitor']) == ('false', 'false', 'false')
+    assert (nav['radar'], nav['lidar'], nav['stop_zone']) == ('false', 'false', 'false')
 
 
 def adapter(**args):
