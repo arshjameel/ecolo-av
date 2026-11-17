@@ -264,7 +264,7 @@ def test_mppi_follows_the_path_under_the_name_the_trees_ask_for():
     assert 'PreferForwardCritic' in forward['FollowPath']['critics']
     # The MPPI block itself stays as the file has it, where nav2_rewrites expects it.
     assert mppi[servers]['ros__parameters']['MPPI'] == nav2[servers]['ros__parameters']['MPPI']
-    with pytest.raises(ValueError, match='pick one of rpp, mppi'):
+    with pytest.raises(ValueError, match='pick one of rpp, mppi'):  # TUNED_CONTROLLERS
         vehicle.nav2_tuned(nav2, v, controller='dwb')
 
 
@@ -500,12 +500,15 @@ def test_gazebos_urdf_gets_the_derived_limit_and_refuses_none():
 EGO_YAML = ROOT / 'ros/ego/aav_ego/config/ego.yaml'
 
 
-def test_trackers_sit_beside_the_controllers_and_none_is_the_default():
-    assert vehicle.DEFAULT_TRACKER == 'none' and 'none' in vehicle.TRACKERS
-    # Not in CONTROLLERS: nav2_tuned would take a tracker's name for RPP.
-    assert not set(vehicle.TRACKERS) & set(vehicle.CONTROLLERS)
+def test_trackers_sit_beside_the_controllers_and_mppi_lag_is_the_default():
+    # Nav2's controller_server (tracker:=none) went on 17 Nov: mppi_lag is the default.
+    assert vehicle.DEFAULT_TRACKER == 'mppi_lag' and 'none' not in vehicle.TRACKERS
+    # Not in CONTROLLERS: nav2_tuned would take a tracker's name for a block layout.
+    assert not set(vehicle.TRACKERS) & set(vehicle.TUNED_CONTROLLERS)
     assert vehicle.check_tracker(' LQR ') == 'lqr'
-    assert vehicle.check_tracker('none', reversing=True) == 'none'
+    assert vehicle.check_tracker('mppi_lag', reversing=True) == 'mppi_lag'
+    with pytest.raises(ValueError, match='pick one of'):
+        vehicle.check_tracker('none')
     with pytest.raises(ValueError, match='pick one of'):
         vehicle.check_tracker('mppi')
     with pytest.raises(ValueError, match='reversing:=false'):
@@ -700,23 +703,21 @@ LATTICE_JSON = ROOT / 'ros/drivers/aav_navigation/config/lattice_ackermann.json'
 SEARCH_MODEL = 'planner_server.ros__parameters.GridBased.motion_model_for_search'
 
 
-def test_planners_lattice_by_default_hybrid_forward_only_and_only_car_shaped_ones_on_the_car():
-    assert vehicle.DEFAULT_PLANNER == 'lattice'
-    assert vehicle.default_planner(reversing=True) == 'lattice'
-    assert vehicle.default_planner(reversing=False) == 'hybrid'
-    assert {vehicle.DEFAULT_PLANNER, vehicle.FORWARD_ONLY_PLANNER} <= set(vehicle.CAR_PLANNERS)
+def test_planners_ours_by_default_and_on_the_car():
+    # Nav2's planner_server and its planners went on 17 Nov: ours, forward or reversing.
+    assert vehicle.DEFAULT_PLANNER == 'own'
+    assert vehicle.default_planner(reversing=True) == 'own'
+    assert vehicle.default_planner(reversing=False) == 'own'
+    assert vehicle.CAR_PLANNERS == ('own',)
     assert set(vehicle.CAR_PLANNERS) < set(vehicle.PLANNERS)
-    assert set(vehicle.PLANNER_BLOCKS) == set(vehicle.PLANNERS)
-    assert vehicle.check_planner(' Lattice ') == 'lattice'
-    assert vehicle.check_planner('navfn') == 'navfn'
-    assert vehicle.check_planner('lattice', real=True) == 'lattice'
-    for name in ('smac2d', 'navfn', 'theta_star', 'own'):
-        with pytest.raises(ValueError, match='turning radius'):
-            vehicle.check_planner(name, real=True)
+    assert set(vehicle.PLANNERS) <= set(vehicle.PLANNER_BLOCKS)
+    assert vehicle.check_planner(' Own ') == 'own'
+    assert vehicle.check_planner('own', real=True) == 'own'
+    for gone in ('lattice', 'hybrid', 'smac2d', 'navfn', 'theta_star'):
+        with pytest.raises(ValueError, match='pick one of'):
+            vehicle.check_planner(gone)
     with pytest.raises(ValueError, match='a trial'):
         vehicle.check_planner('diffusion', real=True)
-    with pytest.raises(ValueError, match='pick one of'):
-        vehicle.check_planner('rrt')
 
 
 def test_every_planner_has_its_block_in_nav2_yaml():
@@ -742,14 +743,11 @@ def test_nav2_tuned_puts_the_planner_under_gridbased(planner):
 
 
 def test_the_diffusion_trial_stands_on_the_lattice():
-    # planner:=diffusion: planner_server runs the lattice, the fallback (aav_diffusion_planner).
+    # planner:=diffusion: our planner runs the lattice beside it, the fallback.
     assert vehicle.server_planner('diffusion') == 'lattice'
-    assert vehicle.server_planner('hybrid') == 'hybrid'
     assert 'diffusion' not in vehicle.CAR_PLANNERS
     nav2 = yaml.safe_load(NAV2_YAML.read_text())
     v = vehicle.load(CONFIG)['vehicle']
-    with pytest.raises(ValueError, match='lattice_file'):
-        vehicle.nav2_tuned(nav2, v, planner='diffusion')
     grid = vehicle.nav2_tuned(nav2, v, reversing=True, planner='diffusion',
                               lattice_file='/x/l.json')['planner_server'][
                                   'ros__parameters']['GridBased']
@@ -759,7 +757,7 @@ def test_the_diffusion_trial_stands_on_the_lattice():
 def test_our_planner_reads_the_lattice_block_the_car_and_the_inflation():
     # planner:=own: aav_planner gets Nav2's own Lattice block, so both plan alike.
     assert vehicle.server_planner('own') == 'lattice'
-    assert 'own' not in vehicle.CAR_PLANNERS
+    assert 'own' in vehicle.CAR_PLANNERS
     nav2 = yaml.safe_load(NAV2_YAML.read_text())
     v = vehicle.load(CONFIG)['vehicle']
     for reversing in (False, True):
@@ -813,13 +811,11 @@ def test_our_hybrid_a_star_reads_nav2s_hybrid_block_the_radius_and_the_cells():
         vehicle.check_planner_search('rrt')
 
 
-def test_lattice_needs_its_file_and_reverses_only_with_reversing():
+def test_lattice_takes_its_file_and_reverses_only_with_reversing():
     nav2 = yaml.safe_load(NAV2_YAML.read_text())
     v = vehicle.load(CONFIG)['vehicle']
-    with pytest.raises(ValueError, match='lattice_file'):
-        vehicle.nav2_tuned(nav2, v, planner='lattice')
     for reversing in (False, True):
-        grid = vehicle.nav2_tuned(nav2, v, reversing=reversing, planner='lattice',
+        grid = vehicle.nav2_tuned(nav2, v, reversing=reversing, planner='own',
                                   lattice_file='/x/l.json')['planner_server'][
                                       'ros__parameters']['GridBased']
         assert grid['lattice_filepath'] == '/x/l.json'
@@ -839,7 +835,7 @@ def test_smooth_moves_have_their_own_file_and_turn_the_smoother_off():
     v = vehicle.load(CONFIG)['vehicle']
 
     def grid(moves):
-        return vehicle.nav2_tuned(nav2, v, planner='lattice', lattice_file='/x/l.json',
+        return vehicle.nav2_tuned(nav2, v, planner='own', lattice_file='/x/l.json',
                                   lattice_moves=moves)['planner_server'][
                                       'ros__parameters']['GridBased']
     # Nav2's moves keep nav2.yaml's smoother; the smooth ones would get its Dubins ends back.
@@ -876,7 +872,7 @@ def test_the_diffusion_car_trial_needs_its_switch_and_a_low_speed():
         vehicle.check_planner('diffusion', real=True)
     assert vehicle.check_planner('diffusion', real=True, trial=True) == 'diffusion'
     with pytest.raises(ValueError, match='planner:=diffusion only'):
-        vehicle.check_planner('lattice', real=True, trial=True)
+        vehicle.check_planner('own', real=True, trial=True)
     assert vehicle.check_planner('diffusion') == 'diffusion'        # sim and bench, as before
     # The speed: walking pace, the reverse limit, below ego's own cap.
     v = vehicle.load(CONFIG)['vehicle']
@@ -1024,7 +1020,7 @@ def test_localization_health_impl_is_python_or_rust():
 
 
 def test_ekf_control_term_follows_the_command_within_the_cars_limits():
-    cfg = vehicle.load()
+    cfg = vehicle.load(CONFIG)
     p = vehicle.ekf_control_params(cfg)
     assert p['use_control'] and p['stamped_control']
     assert p['control_config'] == [True, False, False, False, False, False]
@@ -1034,3 +1030,23 @@ def test_ekf_control_term_follows_the_command_within_the_cars_limits():
     assert p['acceleration_limits'][0] == cfg['actuators']['max_accel']
     assert p['deceleration_limits'][0] == cfg['actuators']['max_brake']
     assert 0.0 < p['control_timeout'] <= 1.0
+
+
+def test_the_navigator_replans_at_replan_hz_and_once_at_zero():
+    v = vehicle.load(CONFIG)['vehicle']
+    assert vehicle.navigator_params(v, False)['replan_period'] == 1.0 / vehicle.REPLAN_HZ
+    assert vehicle.navigator_params(v, False, replan_hz=0.5)['replan_period'] == 2.0
+    once = vehicle.navigator_params(v, False, replan_hz=0)['replan_period']
+    assert once == 1.0 / vehicle.REPLAN_ONCE_HZ
+    with pytest.raises(ValueError, match='0 .plan once. or more'):
+        vehicle.navigator_params(v, False, replan_hz=-1)
+
+
+def test_rewrite_follows_rewrittenyamls_rules():
+    # Nav2's RewrittenYaml, ours (no ROS): a leaf name everywhere, a dotted path once.
+    cfg = {'a': {'footprint': 'x', 'b': {'footprint': 'y', 'n': 1}}, 'c': [{'footprint': 'z'}]}
+    out = vehicle.rewrite(cfg, {'footprint': '[[1, 2]]', 'a.b.n': '2.5', 'a.new.flag': 'true'})
+    assert out['a']['footprint'] == out['a']['b']['footprint'] == '[[1, 2]]'
+    assert out['c'][0]['footprint'] == '[[1, 2]]'
+    assert out['a']['b']['n'] == 2.5 and out['a']['new']['flag'] is True
+    assert cfg['a']['footprint'] == 'x'          # a copy

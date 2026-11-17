@@ -321,28 +321,11 @@ def final_approach(v):
     return s_bend_length(r, 2.0 * r)
 
 
-# How often the navigate-to-pose trees plan again (Hz): Nav2's own tree's 1 Hz. The wiggle's
-# second test (TODO 149) plans once per goal: REPLAN_ONCE_HZ, once in about three hours.
+# How often the navigator plans a to-pose goal again (Hz): Nav2's own tree's 1 Hz. The
+# wiggle's second test (TODO 149) plans once per goal: REPLAN_ONCE_HZ, once in about three
+# hours (navigator_params' replan_period).
 REPLAN_HZ = 1.0
 REPLAN_ONCE_HZ = 1e-4
-REPLAN_TAG = 'RateController hz="1.0"'
-
-
-def replan_tree(xml, hz):
-    """
-    Return a behaviour tree's text with its replanning rate set to hz (0: plan once).
-
-    The car's trees hold one RateController, at REPLAN_HZ, round the planning (the final
-    approach's Fallback inside it stays). A tree without exactly one is refused.
-    """
-    if xml.count(REPLAN_TAG) != 1:
-        raise ValueError(f'the tree needs exactly one {REPLAN_TAG}')
-    hz = float(hz)
-    if hz < 0.0:
-        raise ValueError(f'replan_hz:={hz:g}: 0 (plan once) or more')
-    if hz == REPLAN_HZ:
-        return xml
-    return xml.replace(REPLAN_TAG, f'RateController hz="{hz if hz > 0.0 else REPLAN_ONCE_HZ:g}"')
 
 
 # The follower's tuning block in nav2.yaml (controller_server's FollowPath): mppi, Nav2's
@@ -351,6 +334,10 @@ def replan_tree(xml, hz):
 # docs/league-results-2026-11-16.md and docs/history/nav2-as-it-was.md.
 CONTROLLERS = ('mppi',)
 DEFAULT_CONTROLLER = 'mppi'
+# nav2_tuned's layouts of FollowPath: mppi, the MPPI block copied there (what the launch
+# always picks); rpp, the file's own FollowPath kept (Regulated Pure Pursuit's numbers,
+# whose lookahead aav_track reads; and a part of nav2.yaml with no MPPI block, as tests give).
+TUNED_CONTROLLERS = ('rpp', 'mppi')
 
 
 # The path followers (tracker:=, docs/trials.md): each serves follow_path. mppi_lag, the
@@ -590,6 +577,8 @@ def navigator_params(v, reversing, waypoints='pass_through', replan_hz=None):
     follower's silence, Nav2's bond_timeout (4 s); recovery_timeout, a costmap clear.
     """
     hz = REPLAN_HZ if replan_hz is None else float(replan_hz)
+    if hz < 0.0:
+        raise ValueError(f'replan_hz:={hz:g}: 0 (plan once) or more')
     out = {'replan_period': 1.0 / (hz if hz > 0.0 else REPLAN_ONCE_HZ),
            'through_replan_period': 3.0,
            'final_approach': round(final_approach(v), 3), 'path_end_tolerance': 0.5,
@@ -988,7 +977,7 @@ OWN_HYBRID_KEYS = ('angle_quantization_bins', 'allow_primitive_interpolation',
                    'downsample_obstacle_heuristic')
 
 
-def planner_params(tuned, v, costmap='nav2', search='lattice', nav2=None):
+def planner_params(tuned, v, costmap='own', search='lattice', nav2=None):
     """
     Return aav_planner's settings (planner:=own) as a dict, from the tuned nav2.yaml.
 
@@ -1033,7 +1022,6 @@ def planner_params(tuned, v, costmap='nav2', search='lattice', nav2=None):
 # planner:=own: each global costmap's raw topic, its partial updates, and whether it is
 # latched (Nav2 sends the whole map once, then only the changed parts).
 GLOBAL_COSTMAP_TOPICS = {
-    'nav2': ('/global_costmap/costmap_raw', '/global_costmap/costmap_raw_updates', True),
     'own': ('/drivers/nav/costmap/global_raw', '', False),
 }
 
@@ -1429,11 +1417,9 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
       finder's kerbs, those of the last 10 s kept by the node (the roof lidar loses a kerb
       about 4 m before the bumper, before it reaches the stop zone).
     """
-    if controller not in CONTROLLERS:
-        raise ValueError(f'controller:={controller}: pick one of {", ".join(CONTROLLERS)}')
+    if controller not in TUNED_CONTROLLERS:
+        raise ValueError(f'controller:={controller}: pick one of {", ".join(TUNED_CONTROLLERS)}')
     planner = server_planner(check_planner(planner))
-    if planner == 'lattice' and not lattice_file:
-        raise ValueError('planner:=lattice needs its primitives file (lattice_file)')
     out = copy.deepcopy(nav2)
     # (A part of nav2.yaml with no planner_server, as some tests give, keeps none.)
     plans = out.get('planner_server', {}).get('ros__parameters')
@@ -1441,7 +1427,8 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
         chosen = copy.deepcopy(plans[PLANNER_BLOCKS[planner]])
         for block in PLANNER_BLOCKS.values():
             plans.pop(block, None)
-        if planner == 'lattice':
+        if planner == 'lattice' and lattice_file:
+            # The launch always gives it (navigation.launch.py lattice_for, checked).
             chosen['lattice_filepath'] = lattice_file
             chosen['allow_reverse_expansion'] = bool(reversing)
             if smooth_moves(lattice_moves):
