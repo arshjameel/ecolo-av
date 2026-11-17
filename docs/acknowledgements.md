@@ -65,6 +65,9 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **RF-DETR** (Roboflow) | Apache-2.0 | runs, data | the object and stop-sign detector |
 | **Ultralytics YOLO** | AGPL-3.0 | runs | the earlier detector, compared and kept as an option |
 | **DBSCAN**: M. Ester et al., KDD 1996 | paper | idea, ported | the radar's clusters (`aav_radar_clusters`) |
+| **AB3DMOT**: X. Weng, J. Wang, D. Held, K. Kitani, "3D Multi-Object Tracking: A Baseline and New Evaluation Metrics", IROS 2020 | paper | idea | the things' tracker: a constant-velocity Kalman filter per thing, greedy association (`aav_things`, and its Rust twin `aav_things_rs`) |
+| **NumPy**'s pairwise summation (`loops_utils.h.src`) | BSD-3 | ported (the algorithm) | `things-core`'s `pairwise_sum`, so a radar cluster's mean is numpy's to the last bit (`aav_things_rs`) |
+| **nalgebra** | Apache-2.0 | runs | the things' 4 × 4 Kalman matrices (`things-core`), NDT's (`ndt-core`) |
 | OpenCV | Apache-2.0 | runs | lane finding |
 | NVIDIA TensorRT; Apple Core ML Tools | NVIDIA licence; BSD-3 | runs | the detector on the Orin and on Macs |
 | **ONNX Runtime** (Microsoft) | MIT | runs | the Rust detector (`aav_detector_rs`), and `tools/onnx_check.py` ([ONNX](onnx.md)) |

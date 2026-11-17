@@ -18,6 +18,8 @@ commands the car itself, except through the stop-sign lock and the lane follower
 | [aav_voxels](./aav_voxels/README.md) | a trial (`voxels:=true`): the lidar's cloud as 0.25 m cubes over the fitted road, for Nav2 instead of the scan | `/perception/voxels/cubes`, `/perception/voxels/ground` |
 | [aav_things](./aav_things/README.md) | a trial (`things:=true`): the cubes grouped into things, each tracked by a Kalman filter (the radar's speed too) and remembered a few seconds unseen | `/world/things` |
 | [aav_voxels_rs](./aav_voxels_rs/README.md) | the same `voxels` node in Rust, a drop-in (`voxels_impl:=rust`): the same cubes, 8 times faster | the same as `aav_voxels` |
+| [aav_lidar_rs](./aav_lidar_rs/README.md) | the same `lidar_scan` in Rust, a drop-in (`lidar_impl:=rust`): the same ranges | the same as `aav_lidar` |
+| [aav_things_rs](./aav_things_rs/README.md) | the same `things` node in Rust, a drop-in (`things_impl:=rust`): the same things | the same as `aav_things` |
 | [aav_radar_clusters](./aav_radar_clusters/README.md) | Rust DBSCAN on the radar points | `/perception/radar/clusters` |
 
 ## Invariants
