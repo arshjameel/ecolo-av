@@ -4,6 +4,7 @@ Nav2 as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out to tw
   ros2 launch aav_navigation navigation.launch.py [map:=<path to map yaml>]
       [radar:=false] [lidar:=false] [collision_monitor:=<radar or lidar>]
       [camera_obstacles:=false] [ghost:=false] [voxels:=false] [voxels_impl:=python]
+      [kerbs:=false]
       [reversing:=false] [max_speed:=] [controller:=mppi] [planner:=lattice]
       [diffusion_model:=] [diffusion_provider:=CPUExecutionProvider] [diffusion_record:=]
       [diffusion_python:=] [diffusion_smoothing:=gear]
@@ -139,6 +140,11 @@ Trials (docs/trials.md), each beside the default and scored by pixi run measure 
   voxels_impl:=rust       (with voxels:=true or screen_cubes:=true) the Rust voxels node
                           (aav_voxels_rs) in the Python one's place: the same name, topics
                           and answers, about 8 times faster. python (aav_voxels): the default
+  kerbs:=true             (with lidar:=true; ignored without) the kerbs (TODO 119): the Rust
+                          voxels node (aav_voxels_rs, whatever voxels_impl says) runs with
+                          steps:=true, its step finder's kerbs on /perception/voxels/steps,
+                          and the local costmap's kerb_layer marks them (marks only, kept).
+                          Nav2's lidar_scan and its layer stay as they were
   behaviour:=true         aav_behaviour's behaviour node (a trial, docs/stopping.md): the
                           behaviour states, and a speed cap on Nav2 from the stopping law for
                           a stop sign, an obstacle in the lane, the fence and the goal.
@@ -273,12 +279,12 @@ def tuned_copy(source, v, reversing, max_speed, radar, lidar, ghost=False,
                controller=vehicle.DEFAULT_CONTROLLER, plan_around=True, camera=False,
                planner='hybrid', lattice_file=None, voxels=False,
                lattice_moves=vehicle.LATTICE_MOVES[0], lidar_memory=0.0, global_window=0.0,
-               plan_smoothing='nav2'):
+               plan_smoothing='nav2', kerbs=False):
     """Return a temporary copy of nav2.yaml, tuned by vehicle.nav2_tuned (no ROS there)."""
     with open(source) as f:
         cfg = vehicle.nav2_tuned(yaml.safe_load(f), v, reversing, max_speed, radar, lidar,
                                  ghost, controller, plan_around, camera, planner,
-                                 lattice_file, voxels, lattice_moves)
+                                 lattice_file, voxels, lattice_moves, kerbs=kerbs)
     vehicle.with_lidar_memory(cfg, lidar_memory)
     vehicle.with_global_window(cfg, global_window)
     vehicle.with_plan_smoothing(cfg, plan_smoothing)
@@ -370,6 +376,8 @@ def nodes(context):
     screen_cubes = flag(context, 'screen_cubes')
     voxels_impl = vehicle.check_voxels_impl(LaunchConfiguration('voxels_impl').perform(context))
     things = flag(context, 'things')
+    # The kerbs need the lidar; a world without one just runs without them.
+    kerbs = flag(context, 'kerbs') and lidar
     if (voxels or screen_cubes or things) and not lidar:
         raise ValueError('voxels:=true (and things:=true) needs lidar:=true: the cubes come '
                          'from the lidar')
@@ -427,7 +435,7 @@ def nodes(context):
                         flag(context, 'plan_around'), guard, planner, lattice_file, voxels,
                         moves, float(LaunchConfiguration('lidar_memory').perform(context)),
                         float(LaunchConfiguration('global_window').perform(context)),
-                        LaunchConfiguration('plan_smoothing').perform(context))
+                        LaunchConfiguration('plan_smoothing').perform(context), kerbs=kerbs)
     params = ParameterFile(
         RewrittenYaml(source_file=source, param_rewrites=rewrites, convert_types=True),
         allow_substs=True)
@@ -563,14 +571,18 @@ def nodes(context):
         actions.append(Node(package='aav_lidar', executable='lidar_scan', name='lidar_scan',
                             output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time}]))
-    if voxels or screen_cubes or things:
+    if voxels or screen_cubes or things or kerbs:
         # The cubes, for the costmap and collision_monitor (voxels:=true), or only for the
         # developer window (screen_cubes:=true) or the things (things:=true): Nav2 then
         # stays on the flat scan. Not a lifecycle node.
         # voxels_impl:=rust: the Rust port, the same name and topics; it reads no
         # vehicle.yaml, so the car's numbers come with it.
-        car = voxels_car(cfg) if voxels_impl == 'rust' else {}
-        actions.append(Node(package=vehicle.VOXELS_IMPLS[voxels_impl], executable='voxels',
+        # kerbs:=true: only the Rust node finds steps, so it runs whatever voxels_impl says.
+        impl = 'rust' if kerbs else voxels_impl
+        car = voxels_car(cfg) if impl == 'rust' else {}
+        if kerbs:
+            car['steps'] = True
+        actions.append(Node(package=vehicle.VOXELS_IMPLS[impl], executable='voxels',
                             name='voxels', output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time, **car}]))
     if things:
@@ -871,6 +883,10 @@ def generate_launch_description():
                               description='true (with lidar:=true): the trial, aav_voxels: '
                                           "the costmap's lidar_layer and collision_monitor "
                                           'read 0.25 m cubes instead of the flat scan'),
+        DeclareLaunchArgument('kerbs', default_value='false',
+                              description='true (with lidar:=true): the Rust voxels node '
+                                          'finds kerbs (steps in the ground) and the local '
+                                          "costmap's kerb_layer marks them (TODO 119)"),
         DeclareLaunchArgument('behaviour_impl', default_value=vehicle.DEFAULT_BEHAVIOUR_IMPL,
                               description='rust (aav_behaviour_rs) or python (aav_behaviour, '
                                           'the same node in Python): which behaviour node runs, '

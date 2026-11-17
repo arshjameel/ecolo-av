@@ -310,6 +310,36 @@ def test_voxels_needs_the_lidar_and_reaches_the_planner_too():
     assert local['observation_sources'] == 'lidar'
 
 
+def test_kerbs_add_a_marking_only_layer_with_the_lidar():
+    v = {'max_reverse_speed': 0.4, 'body': {'length': 2.0, 'width': 1.0, 'rear_overhang': 0.2}}
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+
+    def plugins(**args):
+        cfg = vehicle.nav2_tuned(nav2, v, radar=False, **args)
+        return cfg, cfg['local_costmap']['local_costmap']['ros__parameters']['plugins']
+
+    assert 'kerb_layer' not in plugins(lidar=True)[1]
+    assert 'kerb_layer' not in plugins(lidar=False, kerbs=True)[1]
+    cfg, on = plugins(lidar=True, kerbs=True)
+    assert on.index('kerb_layer') < on.index('inflation_layer')
+    layer = cfg['local_costmap']['local_costmap']['ros__parameters']['kerb_layer']
+    assert layer['observation_sources'] == 'steps'
+    assert layer['steps']['topic'] == '/perception/voxels/steps'
+    assert layer['steps']['marking'] and not layer['steps']['clearing']
+    # The stop zone's too (the node keeps them: the lidar loses a kerb before the zone
+    # reaches it); not the planner's.
+    assert cfg['collision_monitor']['ros__parameters']['observation_sources'] == [
+        'lidar', 'steps']
+    assert 'steps' not in plugins(lidar=True)[0]['collision_monitor']['ros__parameters'][
+        'observation_sources']
+    assert 'kerb_layer' not in cfg['global_costmap']['global_costmap']['ros__parameters'][
+        'plugins']
+    # Our costmap reads it too, from the same file.
+    ours = vehicle.costmap_params(cfg, vehicle.load(CONFIG)['vehicle'])['local']
+    kerb = [layer for layer in ours['layers'] if layer['name'] == 'kerb_layer']
+    assert len(kerb) == 1 and kerb[0]['sources'][0]['clearing'] is False
+
+
 def test_every_rewrite_lands_on_a_key_nav2_yaml_has():
     # RewrittenYaml drops a whole dotted path that isn't in the file, silently.
     nav2 = yaml.safe_load(NAV2_YAML.read_text())

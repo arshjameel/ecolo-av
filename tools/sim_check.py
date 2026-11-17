@@ -139,10 +139,14 @@ Our simulator and our own stack by default (--simulator gazebo, --stack stock: N
                                             Evidence for docs/safety-case.md; one more run,
                                             --actuator-faults-only skips the road world's)
     pixi run sim-check --kerb             (TODO 119: a 0.3 m kerb across the road, the
-                                            planner blind to it; the stop zone must stop
-                                            the car before it and the local costmap mark
+                                            planner blind to it; the car must stop before
+                                            it and the local costmap mark it (the stop
+                                            zone needn't: it can't see that low and near);
+                                            says from how far the kerbs' step finder saw
                                             it. Two runs: the lidar alone, then with the
-                                            radar; --kerb-only skips the road world's run)
+                                            radar; --kerb-only skips the road world's run;
+                                            the step finder is ours' (--with kerbs:=false
+                                            for the flat scan alone))
     pixi run sim-check --three-point      (reverse, TODO 174: a 6.5 m street of walls, a
                                             goal behind the car facing back; the car must
                                             turn in it, backing at least once, without
@@ -1154,7 +1158,8 @@ def costmap_peak(grid, x, y, radius):
 
 
 def check_obstacle(probe, ahead=15.0, goal=30.0, model=OBSTACLE, depth=1.0, name='obstacle',
-                   costmap=False, backwards=False, across=False):
+                   costmap=False, backwards=False, across=False, stop_zone_needed=True,
+                   steps=False):
     """
     Put a model `ahead` m in the lane: the stop zone must stop the car before it.
 
@@ -1162,7 +1167,10 @@ def check_obstacle(probe, ahead=15.0, goal=30.0, model=OBSTACLE, depth=1.0, name
     (0.5 m). With costmap, the local costmap must also mark it while the car stands there.
     backwards: the model and the goal are behind the car, which must back up to them, and
     the stop zone behind the rear bumper must stop it. across: the model turned a quarter
-    turn (a wall across the road: nothing to go round).
+    turn (a wall across the road: nothing to go round). stop_zone_needed: False when only
+    the costmap can see it (a kerb: the roof lidar loses it about 4 m out), so a stop by the
+    controller passes too. steps: also say from how far the kerbs' step finder
+    (/perception/voxels/steps, kerbs:=true) first saw it, from the bumper.
     """
     body = vehicle.load()['vehicle']['body']
     # base_link to the bumper the car drives towards: the front one, or the rear one.
@@ -1185,6 +1193,17 @@ def check_obstacle(probe, ahead=15.0, goal=30.0, model=OBSTACLE, depth=1.0, name
     if costmap:
         sub = probe.create_subscription(OccupancyGrid, LOCAL_COSTMAP[COSTMAP],
                                         lambda m: newest.update(grid=m), 2)
+    seen_steps = {}
+
+    def on_steps(msg):
+        # In base_link: the model's face, ahead of the bumper, across the car's way.
+        xyz = point_cloud2.read_points_numpy(msg, field_names=('x', 'y', 'z'))
+        xyz = numpy.asarray(xyz, dtype=float).reshape(-1, 3)
+        near = xyz[(numpy.abs(xyz[:, 1]) < 3.0) & (way * xyz[:, 0] > front)]
+        if len(near) >= 3 and 'first' not in seen_steps:
+            seen_steps['first'] = float(numpy.min(way * near[:, 0])) - front
+    step_sub = (probe.create_subscription(PointCloud2, '/perception/voxels/steps', on_steps,
+                                          qos_profile_sensor_data) if steps else None)
     watch = CostmapWatch(probe)
     done = probe.go_to(x0 + goal * c, y0 + goal * s, h)    # facing as it started
     if done is None:
@@ -1230,17 +1249,24 @@ def check_obstacle(probe, ahead=15.0, goal=30.0, model=OBSTACLE, depth=1.0, name
                 take_away()
     if costmap:
         probe.destroy_subscription(sub)
+    if step_sub is not None:
+        probe.destroy_subscription(step_sub)
     stop_zone = any(a == CollisionMonitorState.STOP and p == 'StopZone'
                     for a, p in probe.monitor[seen:])
     reached = done.done() and done.result().status == 4
     passed = along() > front + ahead + depth
     marked = not costmap or (peak is not None and peak >= 99)
-    ok = gap is not None and 0.0 < gap < 2.0 and stop_zone and reached and passed and marked
+    ok = (gap is not None and 0.0 < gap < 2.0 and (stop_zone or not stop_zone_needed)
+          and reached and passed and marked)
     where = f'came within {gap:.2f} m of it' if gap is not None else 'never stopped'
     mark = ''
     if costmap:
         mark = (f'; the local costmap {peak} of 100 there' if peak is not None
                 else '; no local costmap seen')
+    if steps:
+        mark += ('; the step finder first saw it '
+                 f"{seen_steps['first']:.1f} m past the bumper" if 'first' in seen_steps
+                 else '; the step finder never saw it')
     result(name, ok, f'{where} (top speed {top:.2f} m/s), stop zone fired: {stop_zone}{mark}; '
                      f'first stopped by {stopped_by or "nothing"}; '
                      f'taken away, Nav2 goal {"reached" if reached else "not reached"} '
@@ -1471,13 +1497,16 @@ def check_kerb(probe, sensors):
     """
     Lay a foot-tall kerb across the road (TODO 119), the planner blind to it: is it seen.
 
-    The lidar keeps only points 0.3 m or more above the road (GROUND_CLEARANCE), the
-    kerb's own height. It must stop the car before the kerb as check_obstacle's box, and
-    the local costmap must mark it; our simulator stops a car that drives into a step
-    over 0.1 m as at a wall. sensors: the words for which ran (the lidar, the radar).
+    The flat scan keeps only points 0.3 m or more above the road (GROUND_CLEARANCE), the
+    kerb's own height; with kerbs:=true the voxels node's step finder sees it (TODO 119).
+    The car must stop before the kerb as check_obstacle's box, and the local costmap must
+    mark it; our simulator stops a car that drives into a step over 0.1 m as at a wall.
+    The stop zone needn't fire: it reaches 1 m past the bumper, and the roof lidar loses
+    the kerb about 4 m out, so the costmap's mark (kept) is what stops the car. sensors:
+    the words for which ran (the lidar, the radar).
     """
     check_obstacle(probe, model=KERB, depth=0.3, across=True, costmap=True,
-                   name=f'kerb, 0.3 m ({sensors})')
+                   name=f'kerb, 0.3 m ({sensors})', stop_zone_needed=False, steps=True)
 
 
 def check_low_box(probe):

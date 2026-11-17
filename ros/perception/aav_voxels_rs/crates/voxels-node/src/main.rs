@@ -4,6 +4,8 @@
 //! Subscribes  /sensors/lidar/points       sensor_msgs/PointCloud2 (the lidar's driver; the
 //!                                         simulator's), reliable, keep last 1: a cloud that
 //!                                         comes while one is cut replaces the one waiting
+//!             /localization/odom/local    nav_msgs/Odometry, only with steps:=true: where
+//!                                         base_link is in odom, to keep the kerbs
 //! Publishes   /perception/voxels/cubes    sensor_msgs/PointCloud2, base_link, x y z
 //!                                         float32, reliable, depth 1: for every cube (size,
 //!                                         0.25 m) holding a point between min_height and
@@ -12,14 +14,23 @@
 //!             /perception/voxels/ground   sensor_msgs/PointCloud2, base_link, the same QoS:
 //!                                         the centre of every flat square where the lidar
 //!                                         saw the road (free space: the costmap clears with it)
+//!             /perception/voxels/steps    sensor_msgs/PointCloud2, base_link, the same QoS,
+//!                                         only with steps:=true: the high side of every
+//!                                         sudden step in the ground (a kerb), 0.1 m squares
+//!                                         (voxels::steps, TODO 119), and those of the last
+//!                                         step_keep s, kept in odom (voxels::StepMemory)
 //!             /perception/voxels/status   diagnostic_msgs/DiagnosticStatus, every cloud: ms,
 //!                                         cubes, ground_cubes, points, fitted, roll_deg,
-//!                                         pitch_deg, clouds_dropped
+//!                                         pitch_deg, clouds_dropped (and steps, with
+//!                                         steps:=true)
 //! Parameters  size (m), min_height, max_height (m above the road), range_max (m from
 //!             base_link): nav2.yaml's voxels: block, as the Python reads it. lidar_xyz (m),
 //!             lidar_rpy (rad): vehicle.yaml's lidar_link; body ([x from, x to, half the
 //!             width], m): aav_lidar scan.body_box. navigation.launch.py passes all three
 //!             (voxels_impl:=rust); they have no defaults, so a missing one stops the node.
+//!             steps (bool, false), step_min (m, 0.10), step_radius (m, 0.3), step_range
+//!             (m, 12), step_keep (s, 10): the kerbs' step finder and how long it keeps
+//!             each kerb (navigation.launch.py kerbs:=true).
 //!
 //! No serving, no calls, never TF. The maths is the `voxels` crate, with no ROS.
 
@@ -31,11 +42,12 @@ use std::{
 use anyhow::{bail, Context as _, Result};
 use rclrs::*;
 use ros_env::diagnostic_msgs::msg::{DiagnosticStatus, KeyValue};
+use ros_env::nav_msgs::msg::Odometry;
 use ros_env::sensor_msgs::msg::{PointCloud2, PointField};
 use ros_env::std_msgs::msg::Header;
 use voxels::{
     cloud::{self, CloudView, Field},
-    cubes, Body, CubeShape, Cubes, Mount, Point,
+    cubes, steps, usable, Body, CubeShape, Cubes, Mount, Point, Pose2, StepMemory, StepShape,
 };
 
 /// The lidar's period (10 Hz): to count the clouds that came while one was cut.
@@ -49,6 +61,8 @@ fn main() -> Result<()> {
     let node = executor.create_node("voxels")?;
     let params = Params::declare(&node)?;
     let (shape, mount, lidar_xyz) = params.read()?;
+    let step_shape = params.read_steps()?;
+    let step_keep = params.step_keep.get();
     log_info!(
         node.logger(),
         "voxels (Rust): {:.2} m cubes from {:.2} to {:.2} m above the fitted road, out to \
@@ -58,6 +72,16 @@ fn main() -> Result<()> {
         shape.max_height,
         shape.range_max
     );
+    if let Some(s) = &step_shape {
+        log_info!(
+            node.logger(),
+            "voxels (Rust): kerbs on: steps over {:.2} m within {:.2} m, out to {:.0} m, kept \
+             {step_keep:.0} s, on /perception/voxels/steps",
+            s.min_step,
+            s.radius,
+            s.range_max
+        );
+    }
 
     // Reliable, depth 1: best-effort readers (the costmap's, collision_monitor's) still
     // connect, and a Mac's UDP doesn't lose whole clouds.
@@ -70,12 +94,36 @@ fn main() -> Result<()> {
         cubes: node.create_publisher("/perception/voxels/cubes".keep_last(1).reliable())?,
         ground: node.create_publisher("/perception/voxels/ground".keep_last(1).reliable())?,
         status: node.create_publisher("/perception/voxels/status".keep_last(10).reliable())?,
+        kerbs: match step_shape {
+            Some(shape) => Some(Kerbs {
+                memory: StepMemory::new(step_keep, shape.range_max, shape.cell),
+                shape,
+                pose: None,
+                publisher: node
+                    .create_publisher("/perception/voxels/steps".keep_last(1).reliable())?,
+            }),
+            None => None,
+        },
     };
+    let kerbs = state.kerbs.is_some();
     let worker = node.create_worker(state);
     let _cloud = worker.create_subscription(
         "/sensors/lidar/points".keep_last(1).reliable(),
         |s: &mut State, msg: PointCloud2| s.on_cloud(&msg),
     )?;
+    // Where the car is in odom, to keep the kerbs where they are as it drives.
+    let _odom = if kerbs {
+        Some(worker.create_subscription(
+            "/localization/odom/local".keep_last(1),
+            |s: &mut State, msg: Odometry| {
+                if let Some(k) = s.kerbs.as_mut() {
+                    k.pose = Some(pose_of(&msg));
+                }
+            },
+        )?)
+    } else {
+        None
+    };
 
     // Ctrl-C, or launch stopping us: stop spinning, and exit cleanly.
     let commands = Arc::clone(executor.commands());
@@ -95,6 +143,29 @@ struct State {
     cubes: Publisher<PointCloud2>,
     ground: Publisher<PointCloud2>,
     status: Publisher<DiagnosticStatus>,
+    /// The kerbs' step finder, its memory and publisher, with steps:=true.
+    kerbs: Option<Kerbs>,
+}
+
+/// The kerbs: found in each cloud, kept in odom while the car drives up to them.
+struct Kerbs {
+    shape: StepShape,
+    memory: StepMemory,
+    /// The newest odometry: base_link in odom. None until it comes: then no memory.
+    pose: Option<Pose2>,
+    publisher: Publisher<PointCloud2>,
+}
+
+/// base_link in odom, flat, from an odometry message.
+fn pose_of(msg: &Odometry) -> Pose2 {
+    let p = &msg.pose.pose;
+    let q = &p.orientation;
+    let yaw = (2.0 * (q.w * q.z + q.x * q.y)).atan2(1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+    Pose2 {
+        x: p.position.x,
+        y: p.position.y,
+        yaw,
+    }
 }
 
 impl State {
@@ -132,8 +203,27 @@ impl State {
                 log_warn!(self.logger.throttle(WARN_EVERY), "{topic}: {e}");
             }
         }
+        let mut kerb_points = None;
+        if let Some(k) = self.kerbs.as_mut() {
+            let found_steps = steps(&usable(&base, &self.shape), &k.shape);
+            // Kept in odom, the ones still in reach sent back; no odometry yet: these only.
+            let held = match k.pose {
+                Some(pose) => k.memory.update(stamp, pose, &found_steps),
+                None => found_steps,
+            };
+            kerb_points = Some(held.len());
+            if let Err(e) = k.publisher.publish(xyz32(&header, &held)) {
+                log_warn!(
+                    self.logger.throttle(WARN_EVERY),
+                    "/perception/voxels/steps: {e}"
+                );
+            }
+        }
         let ms = start.elapsed().as_secs_f64() * 1e3;
-        if let Err(e) = self.status.publish(status(&found, ms, self.dropped)) {
+        if let Err(e) = self
+            .status
+            .publish(status(&found, ms, self.dropped, kerb_points))
+        {
             log_warn!(
                 self.logger.throttle(WARN_EVERY),
                 "/perception/voxels/status: {e}"
@@ -189,8 +279,8 @@ fn xyz32(header: &Header, points: &[Point]) -> PointCloud2 {
     }
 }
 
-/// The status after one cloud: the Python's keys and formats.
-fn status(found: &Cubes, ms: f64, dropped: u64) -> DiagnosticStatus {
+/// The status after one cloud: the Python's keys and formats; `steps` too, with steps:=true.
+fn status(found: &Cubes, ms: f64, dropped: u64, steps: Option<usize>) -> DiagnosticStatus {
     let road = &found.road;
     let (level, message) = if road.is_fitted() {
         (DiagnosticStatus::OK, "road fitted")
@@ -206,14 +296,15 @@ fn status(found: &Cubes, ms: f64, dropped: u64) -> DiagnosticStatus {
         ("roll_deg", format!("{:.2}", road.roll().to_degrees())),
         ("pitch_deg", format!("{:.2}", road.pitch().to_degrees())),
         ("clouds_dropped", dropped.to_string()),
-    ];
+    ]
+    .into_iter()
+    .chain(steps.map(|n| ("steps", n.to_string())));
     DiagnosticStatus {
         level,
         name: "voxels".into(),
         message: message.into(),
         hardware_id: String::new(),
         values: values
-            .into_iter()
             .map(|(key, value)| KeyValue {
                 key: key.into(),
                 value,
@@ -234,11 +325,17 @@ struct Params {
     lidar_xyz: MandatoryParameter<Arc<[f64]>>,
     lidar_rpy: MandatoryParameter<Arc<[f64]>>,
     body: MandatoryParameter<Arc<[f64]>>,
+    steps: ReadOnlyParameter<bool>,
+    step_min: ReadOnlyParameter<f64>,
+    step_radius: ReadOnlyParameter<f64>,
+    step_range: ReadOnlyParameter<f64>,
+    step_keep: ReadOnlyParameter<f64>,
 }
 
 impl Params {
     fn declare(node: &Node) -> Result<Self> {
         let d = CubeShape::default();
+        let s = StepShape::default();
         let number = |name: &str, default: f64| {
             node.declare_parameter(name)
                 .default(default)
@@ -260,6 +357,15 @@ impl Params {
             lidar_xyz: list("lidar_xyz")?,
             lidar_rpy: list("lidar_rpy")?,
             body: list("body")?,
+            steps: node
+                .declare_parameter("steps")
+                .default(false)
+                .read_only()
+                .context("parameter steps (true: find kerbs)")?,
+            step_min: number("step_min", s.min_step)?,
+            step_radius: number("step_radius", s.radius)?,
+            step_range: number("step_range", s.range_max)?,
+            step_keep: number("step_keep", 10.0)?,
         })
     }
 
@@ -282,6 +388,22 @@ impl Params {
         let xyz = three("lidar_xyz", self.lidar_xyz.get())?;
         let rpy = three("lidar_rpy", self.lidar_rpy.get())?;
         Ok((shape, Mount::new(xyz, rpy), xyz))
+    }
+
+    /// The step finder's shape, with steps:=true.
+    fn read_steps(&self) -> Result<Option<StepShape>> {
+        if !self.steps.get() {
+            return Ok(None);
+        }
+        Ok(Some(
+            StepShape {
+                min_step: self.step_min.get(),
+                radius: self.step_radius.get(),
+                range_max: self.step_range.get(),
+                ..StepShape::default()
+            }
+            .checked()?,
+        ))
     }
 }
 

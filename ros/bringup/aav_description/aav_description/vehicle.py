@@ -1321,7 +1321,8 @@ def nav2_rewrites(v, reversing=False, planner='hybrid'):
 
 def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False,
                ghost=False, controller=DEFAULT_CONTROLLER, plan_around=True, camera=False,
-               planner='hybrid', lattice_file=None, voxels=False, lattice_moves='nav2'):
+               planner='hybrid', lattice_file=None, voxels=False, lattice_moves='nav2',
+               kerbs=False):
     """
     Return a copy of nav2.yaml's settings (`nav2`, loaded) with what RewrittenYaml can't write.
 
@@ -1357,7 +1358,11 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
       smooth moves leave out (tools/lattice_smooth.py);
     - with `voxels` and `lidar` (aav_voxels, a trial): the lidar_layer reads the cubes and
       the road they saw (sources voxels, voxels_ground) instead of the scan, and
-      collision_monitor's voxels source takes the lidar's place.
+      collision_monitor's voxels source takes the lidar's place;
+    - with `kerbs` and `lidar` (TODO 119): the local costmap's kerb_layer (marks only) and
+      collision_monitor's steps source, both on /perception/voxels/steps: the step
+      finder's kerbs, those of the last 10 s kept by the node (the roof lidar loses a kerb
+      about 4 m before the bumper, before it reaches the stop zone).
     """
     if controller not in CONTROLLERS:
         raise ValueError(f'controller:={controller}: pick one of {", ".join(CONTROLLERS)}')
@@ -1396,10 +1401,12 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
     lidar_source = 'voxels' if cubes else 'lidar'
     monitor['observation_sources'] = [name for name, on in (('radar', radar),
                                                             (lidar_source, lidar),
+                                                            ('steps', kerbs and lidar),
                                                             ('camera', camera), ('ghost', ghost))
                                       if on]
     local = out['local_costmap']['local_costmap']['ros__parameters']
-    gone = {layer for layer, on in (('lidar_layer', lidar), ('ghost_layer', ghost)) if not on}
+    gone = {layer for layer, on in (('lidar_layer', lidar), ('ghost_layer', ghost),
+                                    ('kerb_layer', kerbs and lidar)) if not on}
     local['plugins'] = [p for p in local['plugins'] if p not in gone]
     if cubes:
         # The cubes stand up to the roof plus its margin: the layer, which bounds every

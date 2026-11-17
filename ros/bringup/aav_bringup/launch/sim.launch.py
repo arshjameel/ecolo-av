@@ -12,7 +12,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [payload:=0] [adaptive_brake:=false]
       [reversing:=true] [controller:=] [planner:=] [tracker:=] [costmap:=] [navigator:=]
       [smoother:=] [behaviour:=]
-      [amcl:=false] [voxels:=false] [voxels_impl:=python] [ego_impl:=rust]
+      [amcl:=false] [voxels:=false] [voxels_impl:=python] [kerbs:=] [ego_impl:=rust]
       [behaviour_impl:=rust] [watchdog_impl:=rust] [localization_health_impl:=rust]
       [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
       [kiss_ekf:=false] [lane_pose:=false]
@@ -130,6 +130,10 @@ bench's argument names:
                       the behaviour states and a speed cap on Nav2 from the stopping law
                       (aav_behaviour, a trial: docs/stopping.md); it also sends the road ahead
                       (/world/road_ahead), and ego holds Nav2 to it (ego road_ahead:=true)
+  kerbs:=true         the kerbs (TODO 119), where the lidar runs: the Rust voxels node finds
+                      steps in the ground (aav_voxels_rs steps:=true) and the local
+                      costmap's kerb_layer and the stop zone read them. Empty: the
+                      stack's choice (on in ours since 16 Nov; stacks.yaml's kerbs level)
   lane_map:=world    with behaviour:=true: the road ahead's line is the lane's centre, from
                       the world's lane map (road: aav_gazebo worlds/road.lanes.yaml; campus:
                       maps/campus/lanes.yaml), with its edges; or a lanes.yaml's path.
@@ -353,7 +357,7 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'planner_search': vehicle.PLANNER_SEARCHES[0],
                   'plan_smoothing': 'nav2', 'map_correction': 'newest',
                   'mppi_lag_steer_gamma': '', 'lane_costs': 'false', 'lane_route': 'false',
-                  'costmap_chunks': 'off'}
+                  'costmap_chunks': 'off', 'kerbs': 'false'}
 
 
 # Each level switch's options, for its help text (config/stacks.yaml).
@@ -396,7 +400,7 @@ def launch_setup(context):
             for n in ('nav', 'teleop', 'rviz', 'perception', 'camera_obstacles', 'hud',
                       'map', 'foxglove', 'reversing', 'watchdog', 'faults',
                       'ghost', 'plan_around', 'watch_hud', 'geofence', 'voxels',
-                      'screen_cubes', 'behaviour', 'things')}
+                      'screen_cubes', 'behaviour', 'things', 'kerbs')}
     lane = arg('lane').lower()
     if lane not in ('false', 'true', 'fake'):
         raise ValueError(f'lane:={lane}: use true (the lane finder), fake or false')
@@ -550,7 +554,7 @@ def launch_setup(context):
                                use_sim_time='true',
                                map=os.path.join(nav_share, 'maps', MAPS[world]),
                                radar=radar, lidar=lidar, ghost=flag['ghost'],
-                               voxels=flag['voxels'],
+                               voxels=flag['voxels'], kerbs=flag['kerbs'],
                                screen_cubes=flag['screen_cubes'],
                                voxels_impl=vehicle.check_voxels_impl(arg('voxels_impl')),
                                full_costmap=world != worlds.CAMPUS,
@@ -639,7 +643,7 @@ def launch_setup(context):
                               smoother=vehicle.check_smoother(arg('smoother')),
                               behaviour=flag['behaviour'],
                               cubes=(flag['voxels'] or flag['screen_cubes']
-                                     or flag['things']),
+                                     or flag['things'] or (flag['kerbs'] and lidar)),
                               things=flag['things']))
         actions.append(include(context, 'aav_safety', 'watchdog.launch.py',
                                inputs=','.join(inputs), use_sim_time='true',
@@ -959,6 +963,11 @@ def generate_launch_description():
                               description="with behaviour:=true: world (the world's lane "
                                           "map) or a lanes.yaml: the road ahead's line on "
                                           "the lane's centre; empty: /plan's line"),
+        DeclareLaunchArgument('kerbs', default_value=stacks.CHOSEN,
+                              description='true: the kerbs, where the lidar runs (the Rust '
+                                          "voxels node's step finder, the local costmap's "
+                                          'kerb_layer; TODO 119); false: none. Empty: the '
+                                          "stack's choice (on in ours)"),
         DeclareLaunchArgument('lane_costs', default_value=stacks.CHOSEN,
                               description='true: the lanes layer in our global costmap, '
 

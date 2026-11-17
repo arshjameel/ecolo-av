@@ -580,11 +580,17 @@ topics:
     pub: [voxels]
     sub: [local_costmap, dev_window]
     note: The voxels trial's road - in base_link, the centre of every flat 0.25 m square where the lidar saw the fitted road (within 0.15 m of it), z on that plane. Free space - the local costmap's lidar_layer clears with it (marking false), as the scan's inf rays did. Reliable, depth 1, with each cube cloud.
+  /perception/voxels/steps:
+    type: sensor_msgs/msg/PointCloud2
+    drop_in: {min_hz: 9, max_hz: 12, frame: base_link, reliable: true}
+    pub: [voxels]
+    sub: [local_costmap, costmap, collision_monitor]
+    note: The kerbs (TODO 119), only with navigation.launch.py kerbs:=true (sim.launch.py's kerbs level; needs the lidar) - the Rust voxels node (aav_voxels_rs, steps:=true; it runs for this whatever voxels_impl says) finds sudden steps in the ground, which the cubes' 0.3 m floor misses. In base_link, the cloud's stamp, 10 Hz, fields x, y, z (float32) - the high side of every step, a point 0.10 to 0.5 m above a point within 0.3 m of it flat (voxels::steps), out to 12 m; one point per 0.1 m square holding 2 or more; and every such point of the last 10 s (step_keep), kept in odom by /localization/odom/local and sent back in base_link while within 12 m (voxels::StepMemory) - the roof lidar loses a kerb about 4 m before the bumper. Not a slope or ramp to 10 degrees, the road's camber, a 7.5 cm speed bump or grass. The local costmap's kerb_layer (Nav2's and ours) marks with it, marks only and kept; collision_monitor's steps source stops for it. Reliable, depth 1, with each cube cloud.
   /perception/voxels/status:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [voxels]
     sub: [debug_hud]
-    note: The voxels trial after every cloud - name voxels, level OK (the road fitted) or WARN (no good fit - taken as flat, as lidar_scan does); values ms (wall clock, the cloud read to the cubes published), cubes, ground_cubes, points (finite, off the car, in range), fitted, roll_deg, pitch_deg (the body's lean on the fitted road, REP-103), clouds_dropped (from the stamps). sim-check --voxels and measure controllers --voxels read it; so does the debug HUD (its Nav2 cubes section and row).
+    note: The voxels trial after every cloud - name voxels, level OK (the road fitted) or WARN (no good fit - taken as flat, as lidar_scan does); values ms (wall clock, the cloud read to the cubes published), cubes, ground_cubes, points (finite, off the car, in range), fitted, roll_deg, pitch_deg (the body's lean on the fitted road, REP-103), clouds_dropped (from the stamps); with kerbs:=true also steps (the step points published). sim-check --voxels and measure controllers --voxels read it; so does the debug HUD (its Nav2 cubes section and row).
   /perception/radar/clusters:
     type: sensor_msgs/msg/PointCloud2
     pub: [radar_clusters]
@@ -744,7 +750,7 @@ topics:
   /localization/odom/local:
     type: nav_msgs/msg/Odometry
     pub: [ekf_local]
-    sub: [controller_server, bt_navigator, scripted_driver, language_drive, actuator_test, sensor_watchdog, debug_hud, ndt, localization_health, dev_window, behaviour, ego, things, hud]
+    sub: [controller_server, bt_navigator, scripted_driver, language_drive, actuator_test, sensor_watchdog, debug_hud, ndt, localization_health, dev_window, behaviour, ego, things, hud, voxels]
     live: [turtle, sim, car, replay, bench]
     note: odom frame. Smooth; drifts.
   /localization/odom/global:

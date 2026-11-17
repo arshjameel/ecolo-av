@@ -133,3 +133,56 @@ def test_a_missing_mount_stops_the_node():
                           capture_output=True, timeout=30, start_new_session=True)
     assert done.returncode != 0
     assert b'lidar_xyz' in done.stdout + done.stderr
+
+
+def test_steps_finds_a_kerb():
+    """steps:=true: a 0.15 m kerb 6 m ahead comes out on /perception/voxels/steps."""
+    xs, ys = np.meshgrid(np.arange(3.0, 9.0, 0.05), np.arange(-2.0, 2.0, 0.05))
+    zs = np.where(xs >= 6.0, 0.15, 0.0)
+    points = np.stack([xs.ravel(), ys.ravel(), zs.ravel()], axis=1).astype(np.float32)
+    env = dict(os.environ, ROS_DOMAIN_ID=str(150 + os.getpid() % 30),
+               ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
+    os.environ.update({k: env[k] for k in ('ROS_DOMAIN_ID', 'ROS_AUTOMATIC_DISCOVERY_RANGE')})
+    binary = os.path.join(get_package_prefix('aav_voxels_rs'), 'lib', 'aav_voxels_rs',
+                          'voxels')
+    node = subprocess.Popen(
+        [binary, '--ros-args', '-p', 'lidar_xyz:=[0.0, 0.0, 0.0]',
+         '-p', 'lidar_rpy:=[0.0, 0.0, 0.0]', '-p', f'body:={list(BODY)}', '-p', 'steps:=true'],
+        env=env, start_new_session=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    rclpy.init()
+    try:
+        me = rclpy.create_node('voxels_steps_test')
+        newest = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE)
+        got = {'steps': [], 'status': []}
+        me.create_subscription(PointCloud2, '/perception/voxels/steps',
+                               got['steps'].append, newest)
+        me.create_subscription(DiagnosticStatus, '/perception/voxels/status',
+                               got['status'].append, 10)
+        out = me.create_publisher(PointCloud2, '/sensors/lidar/points', newest)
+        msg = point_cloud2.create_cloud_xyz32(Header(frame_id='lidar_link'), points)
+        end = time.monotonic() + 60.0
+        while not all(got.values()) and time.monotonic() < end and node.poll() is None:
+            out.publish(msg)
+            for _ in range(10):
+                rclpy.spin_once(me, timeout_sec=0.05)
+        assert all(got.values()), ('nothing back: ' + (
+            node.stdout.read().decode() if node.poll() is not None
+            else str({k: len(v) for k, v in got.items()})))
+        steps = np.asarray(sorted(rows(got['steps'][-1])))
+        assert got['steps'][-1].header.frame_id == 'base_link'
+        assert len(steps) > 20
+        assert steps[:, 0].min() >= 5.95 and steps[:, 0].max() <= 6.35
+        status = got['status'][-1]
+        values = {kv.key: kv.value for kv in status.values}
+        assert [kv.key for kv in status.values] == KEYS + ['steps']
+        assert int(values['steps']) == len(steps)
+        me.destroy_node()
+    finally:
+        rclpy.try_shutdown()
+        if node.poll() is None:
+            os.killpg(node.pid, signal.SIGINT)
+            try:
+                node.wait(10)
+            except subprocess.TimeoutExpired:
+                os.killpg(node.pid, signal.SIGKILL)
+    assert node.returncode == 0, 'the node did not stop cleanly on Ctrl-C'

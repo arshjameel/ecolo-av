@@ -19,11 +19,15 @@
 #![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod cloud;
+pub mod memory;
 mod mount;
+pub mod steps;
 
 use std::{cmp::Ordering, error::Error, fmt};
 
+pub use memory::{Pose2, StepMemory};
 pub use mount::Mount;
+pub use steps::{steps, StepError, StepShape};
 
 /// A point in `base_link` (m), or in the lidar's frame before [`Mount::to_base`].
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

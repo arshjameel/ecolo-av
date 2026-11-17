@@ -7,7 +7,7 @@
 <!-- Generated from docs/safety-case.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The safety case</h1>
-<div class="meta">21 min read · 17 sections</div></header>
+<div class="meta">23 min read · 18 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -71,6 +71,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -118,7 +119,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-to-read-it">How to read it</a><a href="#the-layers-in-one-picture">The layers, in one picture</a><a href="#all-hazards-at-a-glance">All hazards at a glance</a><a href="#1-a-person-or-obstacle-ahead">1. A person or obstacle ahead</a><a href="#2-an-obstacle-behind-while-reversing">2. An obstacle behind, while reversing</a><a href="#3-runaway-speed-faster-than-asked">3. Runaway speed (faster than asked)</a><a href="#4-the-e-stop-software-and-hardware">4. The e-stop (software and hardware)</a><a href="#5-a-dead-or-frozen-node">5. A dead or frozen node</a><a href="#6-commands-to-the-spine-lost">6. Commands to the spine lost</a><a href="#7-steering-stuck-or-the-wrong-centre">7. Steering stuck, or the wrong centre</a><a href="#8-a-weak-brake">8. A weak brake</a><a href="#9-leaving-the-area">9. Leaving the area</a><a href="#10-a-gps-jump-or-bad-localization">10. A GPS jump, or bad localization</a><a href="#11-a-stop-sign-missed">11. A stop sign missed</a><a href="#12-the-screen-freezes">12. The screen freezes</a><a href="#the-biggest-gaps">The biggest gaps</a><a href="#add-a-number">Add a number</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-to-read-it">How to read it</a><a href="#the-layers-in-one-picture">The layers, in one picture</a><a href="#all-hazards-at-a-glance">All hazards at a glance</a><a href="#1-a-person-or-obstacle-ahead">1. A person or obstacle ahead</a><a href="#2-an-obstacle-behind-while-reversing">2. An obstacle behind, while reversing</a><a href="#3-runaway-speed-faster-than-asked">3. Runaway speed (faster than asked)</a><a href="#4-the-e-stop-software-and-hardware">4. The e-stop (software and hardware)</a><a href="#5-a-dead-or-frozen-node">5. A dead or frozen node</a><a href="#6-commands-to-the-spine-lost">6. Commands to the spine lost</a><a href="#7-steering-stuck-or-the-wrong-centre">7. Steering stuck, or the wrong centre</a><a href="#8-a-weak-brake">8. A weak brake</a><a href="#9-leaving-the-area">9. Leaving the area</a><a href="#10-a-gps-jump-or-bad-localization">10. A GPS jump, or bad localization</a><a href="#11-a-stop-sign-missed">11. A stop sign missed</a><a href="#12-the-screen-freezes">12. The screen freezes</a><a href="#13-a-kerb">13. A kerb</a><a href="#the-biggest-gaps">The biggest gaps</a><a href="#add-a-number">Add a number</a></nav>
 <div class="lead"><p>One section per hazard: <strong>what stops it</strong>, <strong>the number</strong> that shows it works, and <strong>who
 measured it</strong>. TODO 159, from <a href="../designs/2026-11-14_the-whole-car.md">the whole car</a>
 ("What is missing", row 8) and <a href="../designs/2026-11-04_weak-links.md">weak links</a> 4.7.</p>
@@ -287,6 +288,14 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
 <td>a Mac</td>
 <td>❌</td>
 </tr>
+<tr>
+<td>13</td>
+<td>A kerb</td>
+<td>the step finder (<code>kerbs:=true</code>), kept 10 s; the costmap; the stop zone</td>
+<td>a 0.3 m kerb seen 8.4 m out, stopped 0.80-0.82 m before it</td>
+<td>sim</td>
+<td>❌</td>
+</tr>
 </tbody>
 </table></div>
 </section>
@@ -372,6 +381,11 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
 <td>Ben</td>
 </tr>
 <tr>
+<td>the same kerb with the step finder (<code>kerbs:=true</code>): stopped 0.80-0.82 m before it (<a href="#13-a-kerb">13</a>)</td>
+<td>sim (ours), 16 Nov, TODO 119</td>
+<td>Ben</td>
+</tr>
+<tr>
 <td>the car</td>
 <td>not measured</td>
 <td></td>
@@ -380,8 +394,9 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
 </table></div>
 <p><strong>Gaps:</strong> the stop zone and the stop hold hold only Nav2 and the AI slot. The point driver
 (25), scripts and replay are not stopped by an obstacle. The roof lidar can't see a 1 m
-box inside the stop zone: the radar's job (<a href="perception.html">perception</a>). Nothing sees a
-kerb 0.3 m high or lower: the lidar keeps only points above 0.3 m (TODO 119). The ghost test on
+box inside the stop zone: the radar's job (<a href="perception.html">perception</a>). The flat scan
+sees no kerb 0.3 m high or lower; the step finder does, with <code>kerbs:=true</code> (<a href="#13-a-kerb">13</a>).
+The ghost test on
 the car is written down but not run (<a href="ghost-obstacles.html#on-the-real-car">ghost obstacles</a>).</p>
 </section>
 <section class="card"><h2 id="2-an-obstacle-behind-while-reversing">2. An obstacle behind, while reversing</h2>
@@ -1124,6 +1139,79 @@ measurement.</p>
 </tr>
 </tbody>
 </table></div>
+</section>
+<section class="card"><h2 id="13-a-kerb">13. A kerb</h2>
+<p>Ben, 15 Nov: "we don't want to hit a curb" (TODO 119; <a href="kerbs.html">kerbs</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The map</td>
+<td>every road edge on the campus is a lethal kerb line</td>
+<td><code>campus.pgm</code> and its chunks</td>
+</tr>
+<tr>
+<td>Step finder</td>
+<td>a point 0.10-0.5 m above another within 0.3 m, kept 10 s in odom (the lidar loses a kerb 3-4 m before the bumper)</td>
+<td><code>aav_voxels_rs</code>, <code>kerbs:=true</code></td>
+</tr>
+<tr>
+<td>Costmap</td>
+<td>the local costmap's <code>kerb_layer</code> marks it, and nothing clears it</td>
+<td>Nav2's, or <code>aav_costmap</code></td>
+</tr>
+<tr>
+<td>Stop zone</td>
+<td><code>collision_monitor</code>'s <code>steps</code> source</td>
+<td><code>aav_navigation</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a 0.3 m kerb across the road, the flat scan only: <strong>drove into it</strong></td>
+<td>sim (ours), 15 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the step finder, no memory: 0.12 m before it (the controller); with the radar <strong>0.24 m into it</strong></td>
+<td>sim (ours), 16 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the step finder with its memory: seen 8.4 m past the bumper; the stop zone stopped the car 0.82 m (lidar) and 0.80 m (lidar and radar) before it, 1 run each</td>
+<td>sim (ours), 16 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>cast clouds: a 0.3 m kerb found from 8.6 m, a 0.15 m one from 4.7 m, a 0.10 m one never; no steps on slopes or ramps to 10°, camber, a 7.5 cm bump, grass</td>
+<td>tests</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the car</td>
+<td>not measured</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gaps:</strong> a 0.15 m kerb is found only in the last 4.7 m: enough at 1 m/s, not at 3 m/s.
+A 0.10 m kerb is never found. The memory forgets after 10 s: a car stood longer before a
+kerb it saw only from far forgets it. Not tried on the real VLP-16.</p>
 </section>
 <section class="card"><h2 id="the-biggest-gaps">The biggest gaps</h2>
 <div class="table-wrap"><table>
