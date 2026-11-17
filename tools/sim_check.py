@@ -329,8 +329,8 @@ LOW_BOX = os.path.join(MODELS, 'low_box', 'model.sdf')     # 0.5 m: the lidar lo
 WALL = os.path.join(MODELS, 'wall', 'model.sdf')           # 10 x 0.3 x 2 m: a street's side
 KERB = os.path.join(MODELS, 'kerb', 'model.sdf')           # 10 x 0.3 x 0.3 m: a foot-tall kerb
 # What the radar adds to the road world's graph: absent with radar:=false.
-RADAR_TOPICS = ('/sensors/radar/points', '/perception/radar/clusters',
-                '/perception/radar/cluster_boxes')
+RADAR_TOPICS = ('/sensors/radar/points', '/vehicle/sim/radar/points',
+                '/perception/radar/clusters', '/perception/radar/cluster_boxes')
 # What only runs with navigation (navigation.launch.py): the map, the costmaps, and
 # stop_hold beside the stop zone. A nav:=false run checks the contract without them.
 NAV_TOPICS = ('/map', '/safety/stop_hold/lock', '/drivers/nav/costmap/global',
