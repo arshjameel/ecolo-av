@@ -326,8 +326,12 @@ def test_kerbs_add_a_marking_only_layer_with_the_lidar():
     assert layer['observation_sources'] == 'steps'
     assert layer['steps']['topic'] == '/perception/voxels/steps'
     assert layer['steps']['marking'] and not layer['steps']['clearing']
-    # Not the stop zone's, and not the planner's.
-    assert 'steps' not in cfg['collision_monitor']['ros__parameters']['observation_sources']
+    # The stop zone's too (the node keeps them: the lidar loses a kerb before the zone
+    # reaches it); not the planner's.
+    assert cfg['collision_monitor']['ros__parameters']['observation_sources'] == [
+        'lidar', 'steps']
+    assert 'steps' not in plugins(lidar=True)[0]['collision_monitor']['ros__parameters'][
+        'observation_sources']
     assert 'kerb_layer' not in cfg['global_costmap']['global_costmap']['ros__parameters'][
         'plugins']
     # Our costmap reads it too, from the same file.

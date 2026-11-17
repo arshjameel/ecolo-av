@@ -1358,9 +1358,10 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
     - with `voxels` and `lidar` (aav_voxels, a trial): the lidar_layer reads the cubes and
       the road they saw (sources voxels, voxels_ground) instead of the scan, and
       collision_monitor's voxels source takes the lidar's place;
-    - the local costmap's kerb_layer only with `kerbs` and `lidar` (TODO 119): the step
-      finder's kerbs (/perception/voxels/steps), marks only. Not in collision_monitor: its
-      zone reaches 1 m past the bumper, and the roof lidar loses a kerb about 4 m out.
+    - with `kerbs` and `lidar` (TODO 119): the local costmap's kerb_layer (marks only) and
+      collision_monitor's steps source, both on /perception/voxels/steps: the step
+      finder's kerbs, those of the last 10 s kept by the node (the roof lidar loses a kerb
+      about 4 m before the bumper, before it reaches the stop zone).
     """
     if controller not in CONTROLLERS:
         raise ValueError(f'controller:={controller}: pick one of {", ".join(CONTROLLERS)}')
@@ -1399,6 +1400,7 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
     lidar_source = 'voxels' if cubes else 'lidar'
     monitor['observation_sources'] = [name for name, on in (('radar', radar),
                                                             (lidar_source, lidar),
+                                                            ('steps', kerbs and lidar),
                                                             ('camera', camera), ('ghost', ghost))
                                       if on]
     local = out['local_costmap']['local_costmap']['ros__parameters']

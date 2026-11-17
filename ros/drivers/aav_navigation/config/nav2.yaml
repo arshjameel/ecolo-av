@@ -662,6 +662,15 @@ collision_monitor:
       min_height: -1.5          # m: everything the node sends (its defaults, 0.05 to 0.5,
       max_height: 4.0           # would drop every cube over half a metre)
       enabled: true
+    # kerbs:=true: the kerbs (aav_voxels_rs steps:=true), the ones seen in the last 10 s
+    # kept by the node in odom: the roof lidar loses a kerb about 4 m out, before it
+    # reaches this zone. The launch file adds it to the sources.
+    steps:
+      type: "pointcloud"
+      topic: /perception/voxels/steps
+      min_height: -1.5          # m, in base_link: everything the node sends
+      max_height: 4.0
+      enabled: true
     # The detectors' boxes on the road (aav_detector camera_obstacles), every camera's newest:
     # people and cars ahead, and behind with the rear camera. Only with camera_guard: where a
     # detector really feeds it, since a silent source stops the car.
