@@ -7,7 +7,7 @@
 <!-- Generated from docs/stopping.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>How the car stops</h1>
-<div class="meta">16 min read · 4 sections</div></header>
+<div class="meta">20 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -360,6 +360,174 @@ a lock or Nav2's goal check makes every final stop.</p>
 <p>Before 15 Nov only "in the lane now" counted. A person crossing was seen about 1 m from the
 bumper: too late to slow, and only the stop zone stopped the car (<code>behaviour.py</code>
 <code>moving_ahead</code>, <code>Crossing</code>).</p>
+<h3 id="anything-moving-near-stop-and-wait-17-nov">Anything moving near: stop and wait (17 Nov)</h3>
+<p>Ben, 16 Nov: "if we see a car people or stuff moving around us we should likely just
+stop."</p>
+<pre class="highlight"><code class="language-text"> a thing moving 0.3 m/s or more  ──┬── within 10 m of the car ─────────────┐
+ (/world/things, aav_things)       └── on the road ahead within 3 s ───────┤
+                                                                           ▼
+                        WAIT (moving): the road ahead ends at the car, ego holds it at 0
+                                                                           │
+                        gone, or standing still, for 1 s (release_hold) ───► GO</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Number</th>
+<th>Parameter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>it moves</td>
+<td>0.3 m/s or more over the ground</td>
+<td><code>moving_speed</code></td>
+</tr>
+<tr>
+<td>and keeps moving</td>
+<td>1.5 s, the run started on a thing seen (not coasting) and not growing (a building coming into view); once sure, it stays sure while it coasts in the blind zone</td>
+<td><code>moving_settle</code></td>
+</tr>
+<tr>
+<td>near</td>
+<td>10 m from the car (its centre, less half its narrow side)</td>
+<td><code>moving_radius</code></td>
+</tr>
+<tr>
+<td>on the road ahead</td>
+<td>within half the lane + half its narrow side of <code>/world/road_ahead</code>'s line, checked every 0.25 s for 3 s at its speed</td>
+<td><code>moving_within</code></td>
+</tr>
+<tr>
+<td>go again</td>
+<td>1 s after the last one has gone or stood still</td>
+<td><code>release_hold</code></td>
+</tr>
+<tr>
+<td>off</td>
+<td><code>moving_hold:=false</code> (the node's parameter)</td>
+<td><code>moving_hold</code></td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Only a still thing is passed</strong> (the planner's lane pass, <code>pass.rs</code>). Anything moving is
+  waited for: an oncoming car, a person on the pavement, cross traffic.</li>
+<li><strong>How it stops the car:</strong> a stop called <code>moving</code> at 0 m on the road ahead, so its end is
+  the car and ego allows 0 m/s. The cap goes to the floor at once, as in any WAIT.</li>
+<li><strong>Never over the e-stop or ASK:</strong> the e-stop's WAIT stays the e-stop's; ASK and a lock's
+  WAIT don't go to GO while something moves near.</li>
+<li>It needs the things (<code>things:=true</code>). <code>stack:=ours</code> turns them on since 17 Nov, where
+  nav and the lidar run (<code>stacks.yaml</code>'s behaviour level).</li>
+<li>
+<p><strong>Why 1.5 s, and not growing:</strong> the things' tracker gives still things a speed for a
+  while (<code>MovingFor</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Seen</th>
+<th>Its speed</th>
+<th>For</th>
+<th>Without the rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the parked box, as the car passes</td>
+<td>0.5-0.9 m/s</td>
+<td>0.1-0.6 s</td>
+<td>8 holds passing it</td>
+</tr>
+<tr>
+<td>new tracks, coasting off</td>
+<td>0.5-1.8 m/s</td>
+<td>seen 3-7 times</td>
+<td>(in those 8)</td>
+</tr>
+<tr>
+<td>buildings coming into view at 2 m/s, growing 1 → 9 m</td>
+<td>1-2 m/s</td>
+<td>2-3 s</td>
+<td>not growing: never</td>
+</tr>
+<tr>
+<td>the lot's thin posts, a low patch of grass</td>
+<td>1.5-11 m/s</td>
+<td>1-1.4 s</td>
+<td>3 holds in 7 runs at 1 s, none at 1.5 s</td>
+</tr>
+<tr>
+<td>a person, a car really moving</td>
+<td>0.8-3 m/s</td>
+<td>9-42 s</td>
+<td>held, every time</td>
+</tr>
+<tr>
+<td>- <strong>Known limit:</strong> a person walking beside the car the same way, within 10 m, holds it</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>as long as they walk. That is the rule as asked.</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+</ul>
+<p><code>behaviour.py</code> <code>moving_near</code>, <code>Nearby</code>, <code>MovingFor</code>; Rust <code>paths::moving_near</code>,
+<code>MovingFor</code>. <code>mppi_lag</code> waits too: while the road ahead says WAIT (moving) its progress
+check starts again, so a long hold is not "no progress" (it failed the path after 10 s).</p>
+<p><strong>In our simulator</strong> (17 Nov, the road world, 2 runs each, <code>pixi run sim-check --movers
+--moving --behaviour-things</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Held</th>
+<th>Clear of it ahead of the moving car</th>
+<th>Then</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>an oncoming car, 3 m to the left, 2 m/s</td>
+<td>11.6 s</td>
+<td>2.4, 3.5 m</td>
+<td>reached the goal 2/2</td>
+</tr>
+<tr>
+<td>a person on the roadside, 5 m right, walking towards the car</td>
+<td>20.3 s</td>
+<td>6.6, 6.8 m</td>
+<td>goal 1/2</td>
+</tr>
+<tr>
+<td>cross traffic, 22 m ahead, 3 m/s</td>
+<td>2.0 s</td>
+<td>19 m</td>
+<td>goal 1/2</td>
+</tr>
+<tr>
+<td>a person crossing ahead (<code>--moving</code>)</td>
+<td>APPROACH, then 17.7 s</td>
+<td>1.9 m</td>
+<td>goal 1/2</td>
+</tr>
+<tr>
+<td>the parked box (<code>--behaviour-things</code>)</td>
+<td>never</td>
+<td>passed 1.0 m clear</td>
+<td>goal 1/1</td>
+</tr>
+</tbody>
+</table></div>
+<p>Every miss was the computer, not the rule: two simulators at a load of 15-20, the
+odometry or the costmap late ("no costmap yet", the sensor watchdog's lock), the goal
+aborted. Each held every time.</p>
 <h3 id="the-cap">The cap</h3>
 <div class="table-wrap"><table>
 <thead>

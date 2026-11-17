@@ -7,7 +7,7 @@
 <!-- Generated from docs/trials.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Trials: new path followers and localizers beside the main ones</h1>
-<div class="meta">94 min read · 21 sections</div></header>
+<div class="meta">96 min read · 21 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -3596,7 +3596,93 @@ needs a long painted road with the car in its lane (our stack with <code>lane_ma
   more than the filter.</li>
 <li><strong>Not tested:</strong> the car (a real camera, real paint, its EKF heading off by ~2°, which
   the angle gate leans on); the wiggle with it steering; reversing; night.</li>
-<li>It stays a challenger, off by default.</li>
+<li>15 Nov: it stayed a challenger, off by default.</li>
+</ul>
+<h3 id="with-the-ekf-steering-ours-stack-17-nov-now-ours-default">With the EKF steering, ours' stack (17 Nov): now ours' default</h3>
+<p><code>pixi run measure controllers --stacks own_calm_chunks --tours &lt;tour&gt; --runs 1 --reversing
+--series --launch behaviour:=true lane_route:=true things:=true [lane_pose:=true]</code>, our
+simulator with its cameras. Here the EKF steers, so the sway and the lane are its doing.
+The sideways error from each run's 0.05 s series (<code>lane_score.pose_error</code>); off the lane's
+centre by <code>lane_score.lane_error</code> on the campus's <code>lanes.yaml</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tour</th>
+<th>lane_pose</th>
+<th>Runs</th>
+<th>EKF sideways, RMS</th>
+<th>Jitter</th>
+<th>Sway (m/s²)</th>
+<th>Off the lane's centre</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>University Drive, 367 m</td>
+<td>off</td>
+<td>4</td>
+<td>9.2-9.9 cm</td>
+<td>2.7-2.9 cm</td>
+<td>0.057-0.063</td>
+<td>0.10-0.11 m</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>on</strong></td>
+<td>2</td>
+<td><strong>6.9, 7.8 cm</strong></td>
+<td><strong>2.1 cm</strong></td>
+<td>0.056, 0.065</td>
+<td>0.08, 0.10 m</td>
+</tr>
+<tr>
+<td>University Drive, the box tour, 90 m</td>
+<td>off</td>
+<td>5</td>
+<td>7.1-8.2 cm</td>
+<td>2.7-3.1 cm</td>
+<td>0.054-0.078</td>
+<td>0.26-0.43 m (it passes the box)</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>on</strong></td>
+<td>2</td>
+<td><strong>2.1, 1.9 cm</strong></td>
+<td><strong>1.4, 1.2 cm</strong></td>
+<td>0.066, 0.060</td>
+<td>0.33, 0.29 m</td>
+</tr>
+<tr>
+<td>the campus tour, 534 m</td>
+<td>off</td>
+<td>1</td>
+<td>9.1 cm</td>
+<td>3.1 cm</td>
+<td>0.100</td>
+<td>1.53 m (mostly off painted lanes)</td>
+</tr>
+<tr>
+<td></td>
+<td>on</td>
+<td>1</td>
+<td>9.4 cm</td>
+<td>3.0 cm</td>
+<td>0.097</td>
+<td>1.34 m</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>On a painted road it cuts the sideways error by a fifth (University Drive) to three
+  quarters (the box tour's straight), and the jitter by a quarter to a half.</li>
+<li>The campus tour: no change (little paint on its way, the finder found no line most of
+  the time). Sway and the lane's centre: no worse, within one run to the next.</li>
+<li><strong>Ours' default since 17 Nov</strong> (<code>stacks.yaml</code>, pose level <code>ekf_lane</code>): on where the
+  world has a camera and a lane map, off elsewhere (the test lot, <code>cameras:=false</code>).
+  <code>pose:=ekf</code> turns it off; <code>stack:=stock</code> never has it.</li>
+<li>Under a load of 15-20 (two simulators) the lane finder saw no line and the runs were
+  lost to stalls (<code>sensor_watchdog</code>): those runs are left out.</li>
 </ul></section>
 <nav class="prevnext"><a class="prev" href="switches.html"><small>Previous</small>← Switches</a>
 <a class="next" href="league.html"><small>Next</small>The league →</a></nav>

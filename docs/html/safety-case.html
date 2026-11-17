@@ -7,7 +7,7 @@
 <!-- Generated from docs/safety-case.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The safety case</h1>
-<div class="meta">23 min read · 18 sections</div></header>
+<div class="meta">26 min read · 19 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -119,7 +119,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-to-read-it">How to read it</a><a href="#the-layers-in-one-picture">The layers, in one picture</a><a href="#all-hazards-at-a-glance">All hazards at a glance</a><a href="#1-a-person-or-obstacle-ahead">1. A person or obstacle ahead</a><a href="#2-an-obstacle-behind-while-reversing">2. An obstacle behind, while reversing</a><a href="#3-runaway-speed-faster-than-asked">3. Runaway speed (faster than asked)</a><a href="#4-the-e-stop-software-and-hardware">4. The e-stop (software and hardware)</a><a href="#5-a-dead-or-frozen-node">5. A dead or frozen node</a><a href="#6-commands-to-the-spine-lost">6. Commands to the spine lost</a><a href="#7-steering-stuck-or-the-wrong-centre">7. Steering stuck, or the wrong centre</a><a href="#8-a-weak-brake">8. A weak brake</a><a href="#9-leaving-the-area">9. Leaving the area</a><a href="#10-a-gps-jump-or-bad-localization">10. A GPS jump, or bad localization</a><a href="#11-a-stop-sign-missed">11. A stop sign missed</a><a href="#12-the-screen-freezes">12. The screen freezes</a><a href="#13-a-kerb">13. A kerb</a><a href="#the-biggest-gaps">The biggest gaps</a><a href="#add-a-number">Add a number</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-to-read-it">How to read it</a><a href="#the-layers-in-one-picture">The layers, in one picture</a><a href="#all-hazards-at-a-glance">All hazards at a glance</a><a href="#1-a-person-or-obstacle-ahead">1. A person or obstacle ahead</a><a href="#2-an-obstacle-behind-while-reversing">2. An obstacle behind, while reversing</a><a href="#3-runaway-speed-faster-than-asked">3. Runaway speed (faster than asked)</a><a href="#4-the-e-stop-software-and-hardware">4. The e-stop (software and hardware)</a><a href="#5-a-dead-or-frozen-node">5. A dead or frozen node</a><a href="#6-commands-to-the-spine-lost">6. Commands to the spine lost</a><a href="#7-steering-stuck-or-the-wrong-centre">7. Steering stuck, or the wrong centre</a><a href="#8-a-weak-brake">8. A weak brake</a><a href="#9-leaving-the-area">9. Leaving the area</a><a href="#10-a-gps-jump-or-bad-localization">10. A GPS jump, or bad localization</a><a href="#11-a-stop-sign-missed">11. A stop sign missed</a><a href="#12-the-screen-freezes">12. The screen freezes</a><a href="#13-a-kerb">13. A kerb</a><a href="#14-something-moving-near-the-car">14. Something moving near the car</a><a href="#the-biggest-gaps">The biggest gaps</a><a href="#add-a-number">Add a number</a></nav>
 <div class="lead"><p>One section per hazard: <strong>what stops it</strong>, <strong>the number</strong> that shows it works, and <strong>who
 measured it</strong>. TODO 159, from <a href="../designs/2026-11-14_the-whole-car.md">the whole car</a>
 ("What is missing", row 8) and <a href="../designs/2026-11-04_weak-links.md">weak links</a> 4.7.</p>
@@ -293,6 +293,14 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
 <td>A kerb</td>
 <td>the step finder (<code>kerbs:=true</code>), kept 10 s; the costmap; the stop zone</td>
 <td>a 0.3 m kerb seen 8.4 m out, stopped 0.80-0.82 m before it</td>
+<td>sim</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>14</td>
+<td>Something moving near</td>
+<td>the behaviour's hold (WAIT, moving), ego, the stop zone</td>
+<td>held for an oncoming car, a person on the roadside, cross traffic and a person crossing, every run; the parked box passed without a hold</td>
 <td>sim</td>
 <td>❌</td>
 </tr>
@@ -1212,6 +1220,76 @@ measurement.</p>
 <p><strong>Gaps:</strong> a 0.15 m kerb is found only in the last 4.7 m: enough at 1 m/s, not at 3 m/s.
 A 0.10 m kerb is never found. The memory forgets after 10 s: a car stood longer before a
 kerb it saw only from far forgets it. Not tried on the real VLP-16.</p>
+</section>
+<section class="card"><h2 id="14-something-moving-near-the-car">14. Something moving near the car</h2>
+<p>Ben, 16 Nov: "if we see a car people or stuff moving around us we should likely just
+stop." (<a href="stopping.html#anything-moving-near-stop-and-wait-17-nov">stopping</a>)</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The things</td>
+<td>the lidar's cubes grouped and followed: each one's place and speed</td>
+<td><code>aav_things</code>, <code>things:=true</code> (on in <code>stack:=ours</code>)</td>
+</tr>
+<tr>
+<td>Behaviour planner</td>
+<td>anything moving 0.3 m/s or more within 10 m, or onto the road ahead within 3 s: WAIT (moving), the road ahead ends at the car; GO 1 s after it has gone or stood still</td>
+<td><code>aav_behaviour_rs</code> (<code>aav_behaviour</code>)</td>
+</tr>
+<tr>
+<td>Ego</td>
+<td>holds the automatic drivers to the road ahead's limit: 0 at its end</td>
+<td><code>aav_ego_rs</code></td>
+</tr>
+<tr>
+<td>Stop zone</td>
+<td>still stops the car for anything in front of the bumper, moving or not</td>
+<td><code>aav_navigation</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sim-check --movers</code>, 2 runs each: held every time. Oncoming car 11.6 s, 2.4-3.5 m clear; a person on the roadside 20.3 s, 6.6-6.8 m clear; cross traffic 2.0 s, 19 m clear</td>
+<td>sim (ours), 17 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><code>sim-check --moving</code> (a person crossing): APPROACH, then held 17.7 s, 1.9 m clear</td>
+<td>sim (ours), 17 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><code>sim-check --behaviour-things</code> (a parked box): passed, never held, once the hold waits for 1.5 s of moving, not growing (it held 8 times before)</td>
+<td>sim (ours), 17 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the car</td>
+<td>not measured</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gaps:</strong> a hold needs the things, which need the lidar: the radar alone holds nothing.
+Someone walking beside the car the same way, within 10 m, holds it for as long as they
+walk. The things' speeds come from the lidar's cubes: a still thing whose shape changes as
+the car passes can look like it moves.</p>
 </section>
 <section class="card"><h2 id="the-biggest-gaps">The biggest gaps</h2>
 <div class="table-wrap"><table>

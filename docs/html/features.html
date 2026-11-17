@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">99 min read · 15 sections</div></header>
+<div class="meta">100 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -313,7 +313,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="trials.html#the-lane-finder-as-a-pose-sensor-15-nov-todo-155">The lane finder as a pose sensor</a> (<code>aav_lane_pose</code>, <code>lane_pose:=true</code>, a trial)</td>
-<td>Ben, TODO 155: the painted lines say where the car is across the road better than the GPS; with the lane map they correct <code>ekf_global</code> sideways only, to take the GPS's jitter out of the pose. Gated so bad lines never reach the filter. Off by default until it wins: in our simulator the sideways error 9-10 → 2 cm (road world), 9.9 → 5.4 cm (campus)</td>
+<td>Ben, TODO 155: the painted lines say where the car is across the road better than the GPS; with the lane map they correct <code>ekf_global</code> sideways only, to take the GPS's jitter out of the pose. Gated so bad lines never reach the filter. Off by default until it wins: in our simulator the sideways error 9-10 → 2 cm (road world), 9.9 → 5.4 cm (campus). 17 Nov (TODO 155), with the EKF steering ours' stack: University Drive 9.2-9.9 → 6.9-7.8 cm RMS, its box tour 7.1-8.2 → 1.9-2.1 cm, the campus tour no change, sway and the lane's centre no worse: <strong>ours' default</strong> (<code>stacks.yaml</code> pose <code>ekf_lane</code>, where there is a camera and a lane map)</td>
 <td>Ben</td>
 <td>2026-11-15</td>
 <td>sim</td>
@@ -717,7 +717,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tbody>
 <tr>
 <td><a href="stopping.html#2-the-behaviour-planner">The behaviour planner</a> (<code>aav_behaviour</code>, <code>behaviour:=true</code>, a trial): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK; a speed cap on Nav2 from the stopping law for a stop sign, an obstacle in the lane, the fence and the goal; <code>/drivers/nav/behaviour/state</code></td>
-<td>Ben, 7 Nov: "we can use that to say if we have turned enough or slowing down enough". Today the sign's lock fires at cruise speed and nothing says why the car waits: this slows the car before each stop, and the locks still make every stop. Since 15 Nov it holds the release of an obstacle 1 s, so a thing at the lane's edge no longer makes it speed up and slow down over and over; and (TODO 194) a person walking into the lane counts before they step in, if at their speed they get there before the car: it only saw them in the lane, a metre from the bumper, too late to slow</td>
+<td>Ben, 7 Nov: "we can use that to say if we have turned enough or slowing down enough". Today the sign's lock fires at cruise speed and nothing says why the car waits: this slows the car before each stop, and the locks still make every stop. Since 15 Nov it holds the release of an obstacle 1 s, so a thing at the lane's edge no longer makes it speed up and slow down over and over; and (TODO 194) a person walking into the lane counts before they step in, if at their speed they get there before the car: it only saw them in the lane, a metre from the bumper, too late to slow. 17 Nov (Ben, 16 Nov: "if we see a car people or stuff moving around us we should likely just stop"): anything moving 0.3 m/s or more within 10 m of the car, or onto the road ahead within 3 s at its speed, holds the car (WAIT, reason <code>moving</code>; the road ahead ends at the car) until 1 s after it has gone or stood still; only a still thing is passed. Python and Rust together, the shared vectors exact; <code>stack:=ours</code> turns the things on for it; <code>sim-check --movers</code></td>
 <td>Ben</td>
 <td>2026-11-07</td>
 <td>built</td>
