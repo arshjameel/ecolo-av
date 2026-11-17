@@ -13,14 +13,16 @@
 
 mod coco;
 mod decode;
+mod draw;
 mod error;
 #[cfg(feature = "ort")]
 mod model;
 mod picture;
 mod preprocess;
 
-pub use coco::ClassId;
+pub use coco::{normal_label, parse_labels, ClassId};
 pub use decode::{decode, Corners, DecodeOptions, Detection};
+pub use draw::Canvas;
 pub use error::Error;
 #[cfg(feature = "ort")]
 pub use model::{cache_dir, Detector, Provider};

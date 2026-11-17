@@ -25,21 +25,44 @@ What you can set:
               detector per computer, each under its own name, all on /perception/detections
   use_sim_time  true in Gazebo (sim.launch.py): the detector is a process, not a launch_ros
               Node, so launch_ros's SetParameter doesn't reach it
+  detector_impl  python (the default: aav_detector, PyTorch) or rust (aav_detector_rs, a
+              challenger: RF-DETR's ONNX through ONNX Runtime, models/rf-detr-nano.onnx;
+              device: auto, cpu, coreml, tensorrt; raw pictures only. docs/onnx.md)
 
 The detector runs as `python3 -m aav_detector.detector`: the python3 of the environment that
-started the launch, so the ml environment's PyTorch is the one it finds.
+started the launch, so the ml environment's PyTorch is the one it finds. The Rust one is
+aav_detector_rs's `detector`, with the same arguments, name and topics.
 """
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
+from launch_ros.substitutions import ExecutableInPackage
 
 
 def generate_launch_description():
     arg = LaunchConfiguration
     picture = PythonExpression(["'", arg('picture'), "' != ''"])
+    rust = PythonExpression(["'", arg('detector_impl'), "'.strip().lower() == 'rust'"])
+
+    def ros_args(node_name):
+        # The same for both: the node's name, its parameters and its topics.
+        return ['--ros-args',
+                '-r', ['__node:=', node_name],
+                '-p', ['detector:=', arg('detector')],
+                '-p', ['model:="', arg('model'), '"'],
+                '-p', ['device:=', arg('device')],
+                '-p', ['confidence:=', arg('confidence')],
+                '-p', ['labels:="', arg('labels'), '"'],
+                '-p', ['compressed:=', arg('compressed')],
+                '-p', ['extra_images:="', arg('extra_images'), '"'],
+                '-p', ['use_sim_time:=', arg('use_sim_time')],
+                '-r', ['image:=', arg('image')],
+                '-r', 'detections:=/perception/detections',
+                '-r', 'detections/image:=/perception/detections/image']
+
     return LaunchDescription([
         DeclareLaunchArgument('detector', default_value='rfdetr',
                               description='rfdetr (RF-DETR) or yolo (YOLO)'),
@@ -56,6 +79,9 @@ def generate_launch_description():
         DeclareLaunchArgument('picture', default_value=''),
         DeclareLaunchArgument('node_name', default_value='object_detector'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
+        DeclareLaunchArgument('detector_impl', default_value='python',
+                              description='python (aav_detector) or rust (aav_detector_rs, '
+                              'ONNX Runtime: a challenger)'),
         Node(
             package='image_publisher', executable='image_publisher_node', name='test_camera',
             parameters=[{'filename': arg('picture'), 'publish_rate': 10.0,
@@ -66,18 +92,12 @@ def generate_launch_description():
         ),
         ExecuteProcess(
             name=arg('node_name'), output='screen', emulate_tty=True,
-            cmd=['python3', '-m', 'aav_detector.detector', '--ros-args',
-                 '-r', ['__node:=', arg('node_name')],
-                 '-p', ['detector:=', arg('detector')],
-                 '-p', ['model:="', arg('model'), '"'],
-                 '-p', ['device:=', arg('device')],
-                 '-p', ['confidence:=', arg('confidence')],
-                 '-p', ['labels:="', arg('labels'), '"'],
-                 '-p', ['compressed:=', arg('compressed')],
-                 '-p', ['extra_images:="', arg('extra_images'), '"'],
-                 '-p', ['use_sim_time:=', arg('use_sim_time')],
-                 '-r', ['image:=', arg('image')],
-                 '-r', 'detections:=/perception/detections',
-                 '-r', 'detections/image:=/perception/detections/image'],
+            cmd=['python3', '-m', 'aav_detector.detector'] + ros_args(arg('node_name')),
+            condition=UnlessCondition(rust),
+        ),
+        ExecuteProcess(
+            name=arg('node_name'), output='screen', emulate_tty=True,
+            cmd=[ExecutableInPackage('detector', 'aav_detector_rs')] + ros_args(arg('node_name')),
+            condition=IfCondition(rust),
         ),
     ])

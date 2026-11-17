@@ -415,6 +415,22 @@ def check_voxels_impl(impl):
     return name
 
 
+# Which object detector runs (detector.launch.py, sim.launch.py detector_impl:=): python
+# (aav_detector: PyTorch, Core ML or TensorRT; the default) or rust (aav_detector_rs:
+# RF-DETR's ONNX through ONNX Runtime, a challenger, docs/onnx.md). The same node name and
+# topics. Each one's package.
+DETECTOR_IMPLS = {'python': 'aav_detector', 'rust': 'aav_detector_rs'}
+DEFAULT_DETECTOR_IMPL = 'python'
+
+
+def check_detector_impl(impl):
+    """Return the detector's language (lower case), or raise ValueError saying what to pick."""
+    name = str(impl).strip().lower()
+    if name not in DETECTOR_IMPLS:
+        raise ValueError(f'detector_impl:={impl}: pick one of {", ".join(DETECTOR_IMPLS)}')
+    return name
+
+
 # Which ego runs (ego.launch.py, car.launch.py, sim.launch.py ego_impl:=): rust
 # (aav_ego_rs: ego and look_ahead in one process; the default on the car and in the
 # simulator, Ben, 16 Nov) or python (aav_ego's two nodes: the same node names, topics and

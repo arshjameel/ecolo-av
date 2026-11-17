@@ -171,6 +171,9 @@ bench's argument names:
                       instead of the flat scan; only with the lidar
   voxels_impl:=rust   the Rust voxels node (aav_voxels_rs) in the Python one's place, for
                       voxels:=true or screen_cubes:=true: the same topics and answers
+  detector_impl:=rust with perception:=true, the Rust detector (aav_detector_rs: RF-DETR's
+                      ONNX through ONNX Runtime, Core ML on a Mac) in the Python one's
+                      place, a challenger: the same name and topics (docs/onnx.md)
   ego_impl:=rust      ego and look_ahead in Rust, one process (aav_ego_rs), in the Python
                       nodes' place: the same node names, topics and answers (TODO 185);
                       the default on the car and here since 16 Nov (python: aav_ego's two nodes)
@@ -687,7 +690,8 @@ def launch_setup(context):
     if flag['perception']:
         actions += [
             include(context, 'aav_detector', 'detector.launch.py', labels='stop sign',
-                    use_sim_time='true'),
+                    use_sim_time='true',
+                    detector_impl=vehicle.check_detector_impl(arg('detector_impl'))),
             # With things named (TODO 192), the lidar gives the stop sign's distance.
             Node(package='aav_detector', executable='stop_sign_watcher', name='stop_sign_watcher',
                  parameters=[{'use_sim_time': True,
@@ -888,6 +892,10 @@ def generate_launch_description():
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
                                           'cubes (aav_voxels, or aav_voxels_rs)'),
+        DeclareLaunchArgument('detector_impl', default_value=vehicle.DEFAULT_DETECTOR_IMPL,
+                              description='python or rust: which object detector runs, '
+                                          'with perception:=true (aav_detector, or '
+                                          'aav_detector_rs: ONNX Runtime)'),
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
                               description='python or rust: which sensor watchdog runs '
                                           '(aav_safety, or aav_watchdog_rs)'),

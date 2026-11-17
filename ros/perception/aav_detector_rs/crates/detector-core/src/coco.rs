@@ -26,6 +26,28 @@ impl fmt::Display for ClassId {
     }
 }
 
+/// A label as the detector compares them: "Stop_Sign" (the 2024-25 model's) and "stop
+/// sign" (the stock model's) are the same. As aav_detector's `boxes.normal_label`.
+pub fn normal_label(label: &str) -> String {
+    label
+        .replace(['_', '-'], " ")
+        .to_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// The labels parameter, "stop sign, person": the labels to keep; `None` (keep them all)
+/// when empty. As aav_detector's `boxes.parse_labels`.
+pub fn parse_labels(text: &str) -> Option<Vec<String>> {
+    let labels: Vec<String> = text
+        .split(',')
+        .filter(|s| !s.trim().is_empty())
+        .map(normal_label)
+        .collect();
+    (!labels.is_empty()).then_some(labels)
+}
+
 /// rfdetr 1.11's `rfdetr.assets.coco_classes.COCO_CLASSES` (Apache-2.0), sorted by number.
 const NAMES: [(u16, &str); 80] = [
     (1, "person"),
@@ -121,5 +143,16 @@ mod tests {
         assert_eq!(ClassId(12).name(), None); // COCO skips 12
         assert_eq!(ClassId(12).to_string(), "class 12");
         assert!(NAMES.windows(2).all(|w| w[0].0 < w[1].0));
+    }
+
+    #[test]
+    fn labels_as_the_python_reads_them() {
+        assert_eq!(normal_label(" Stop_Sign "), "stop sign");
+        assert_eq!(normal_label("traffic-light"), "traffic light");
+        assert_eq!(
+            parse_labels("stop sign, Person ,"),
+            Some(vec!["stop sign".to_owned(), "person".to_owned()])
+        );
+        assert_eq!(parse_labels(" , "), None);
     }
 }

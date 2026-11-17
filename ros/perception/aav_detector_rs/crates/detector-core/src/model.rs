@@ -47,6 +47,23 @@ impl Provider {
             .find(|p| p.name() == name.trim().to_ascii_lowercase())
     }
 
+    /// The provider for the detector's `device` parameter: `auto` (the best this build
+    /// has), `cpu`, `coreml` (or `mps`, the Python's name for a Mac's GPU), `cuda` (or
+    /// `cuda:N`: device N isn't picked yet, it runs on the first) or `tensorrt`.
+    pub fn from_device(device: &str) -> Result<Self> {
+        let name = device.trim().to_ascii_lowercase();
+        match name.as_str() {
+            "" | "auto" => Ok(Self::best()),
+            "mps" => Ok(Self::CoreMl),
+            n if n.starts_with("cuda:") => Ok(Self::Cuda),
+            n => Self::from_name(n).ok_or_else(|| {
+                Error::Provider(format!(
+                    "device:={device}: pick auto, cpu, coreml (mps), cuda or tensorrt"
+                ))
+            }),
+        }
+    }
+
     /// The best this build has: Core ML on a Mac, TensorRT, then CUDA, else the CPU.
     pub fn best() -> Self {
         if cfg!(all(feature = "coreml", target_os = "macos")) {
