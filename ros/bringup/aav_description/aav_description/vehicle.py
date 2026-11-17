@@ -345,23 +345,22 @@ def replan_tree(xml, hz):
     return xml.replace(REPLAN_TAG, f'RateController hz="{hz if hz > 0.0 else REPLAN_ONCE_HZ:g}"')
 
 
-# Nav2's path followers (docs/path-followers.md): rpp, Regulated Pure Pursuit, chases a point
-# ahead on the path; mppi samples thousands of futures through its Ackermann model. MPPI is
-# the default since 22 Oct: in Gazebo it did at least as well in every run, and it turns to
-# a goal's heading, which Pure Pursuit can't (it aims only at a point).
-CONTROLLERS = ('rpp', 'mppi')
+# The follower's tuning block in nav2.yaml (controller_server's FollowPath): mppi, Nav2's
+# MPPI block, which mppi_lag and the trackers read. Nav2's controller_server, and with it
+# Regulated Pure Pursuit (rpp), went with Nav2 on 17 Nov (TODO 184): its scores are in
+# docs/league-results-2026-11-16.md and docs/history/nav2-as-it-was.md.
+CONTROLLERS = ('mppi',)
 DEFAULT_CONTROLLER = 'mppi'
 
 
-# The trial path followers (docs/trials.md, aav_track): each stands in for controller_server's
-# FollowPath with tracker:=<name>. 'none' keeps controller_server (CONTROLLERS) following.
-# Apart from CONTROLLERS, not in it: nav2_tuned treats anything not mppi as RPP.
-# mppi_lag is aav_mppi_lag's node (Rust), not aav_track's: Nav2's MPPI ported, on a car
-# model with the actuators' lag (docs/mppi-lag.md). mpc_lag_rs is aav_mpc_lag's node (Rust):
-# aav_track's mpc_lag ported, a challenger beside it (TODO 132, 199).
-TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag',
+# The path followers (tracker:=, docs/trials.md): each serves follow_path. mppi_lag, the
+# default since Nav2 went (17 Nov), is aav_mppi_lag's node (Rust): Nav2's MPPI ported, on a
+# car model with the actuators' lag (docs/mppi-lag.md). mpc_lag_rs is aav_mpc_lag's node
+# (Rust): aav_track's mpc_lag ported, a challenger beside it (TODO 132, 199). The rest are
+# aav_track's (Python). 'none' (Nav2's controller_server) went with Nav2.
+TRACKERS = ('pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag',
             'mpc_lag_rs')
-DEFAULT_TRACKER = 'none'
+DEFAULT_TRACKER = 'mppi_lag'
 # The trackers that drive forwards only (aav_track's, and mpc_lag_rs): refused with
 # reversing:=true. mppi_lag reverses as Nav2's MPPI does (Ben, 14 Nov: "The car can reverse").
 FORWARD_ONLY_TRACKERS = ('pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag',
@@ -379,12 +378,14 @@ def check_tracker(tracker, reversing=False):
     return name
 
 
-# Whose costmaps (costmap:=, docs/own-costmap.md): nav2 (the car's) or own (aav_costmap:
-# the sim's, stack:=ours). Each one's raw local costmap, for aav_mppi_lag.
-COSTMAPS = ('nav2', 'own')
-DEFAULT_COSTMAP = 'nav2'
-COSTMAP_RAW_TOPICS = {'nav2': '/local_costmap/costmap_raw',
-                      'own': '/drivers/nav/costmap/local_raw'}
+# Whose costmaps (costmap:=, docs/own-costmap.md): own (aav_costmap), the only one since
+# Nav2's went (17 Nov, TODO 184); the switch stays so a challenger can join it. Its raw
+# local costmap, for aav_mppi_lag; its local costmap, for the screens' look ahead.
+COSTMAPS = ('own',)
+DEFAULT_COSTMAP = 'own'
+COSTMAP_RAW_TOPICS = {'own': '/drivers/nav/costmap/local_raw'}
+LOCAL_COSTMAP_TOPIC = '/drivers/nav/costmap/local'
+GLOBAL_COSTMAP_GRID_TOPIC = '/drivers/nav/costmap/global'
 
 
 def check_costmap(costmap):
@@ -395,11 +396,11 @@ def check_costmap(costmap):
     return name
 
 
-# Whose navigator (navigator:=, docs/own-navigator.md): nav2 (bt_navigator and
-# waypoint_follower: the car's) or own (aav_navigator: the sim's, stack:=ours). Both serve
-# the same four actions under Nav2's own names, so no goal sender knows which one runs.
-NAVIGATORS = ('nav2', 'own')
-DEFAULT_NAVIGATOR = 'nav2'
+# Whose navigator (navigator:=, docs/own-navigator.md): own (aav_navigator), the only one
+# since bt_navigator and waypoint_follower went with Nav2 (17 Nov). It serves the four
+# actions under Nav2's own names, so no goal sender changed.
+NAVIGATORS = ('own',)
+DEFAULT_NAVIGATOR = 'own'
 NAVIGATOR_ACTIONS = ('navigate_to_pose', 'navigate_through_poses', 'follow_waypoints',
                      'follow_gps_waypoints')
 
@@ -412,11 +413,11 @@ def check_navigator(navigator):
     return name
 
 
-# Whose velocity smoother (smoother:=, docs/own-smoother.md): nav2 (velocity_smoother: the
-# default, and the car's) or own (aav_smoother's car_smoother, a trial: the turn rate from
-# where the wheels can be). Ours runs under Nav2's node name, so it reads the same block.
-SMOOTHERS = ('nav2', 'own')
-DEFAULT_SMOOTHER = 'nav2'
+# Whose velocity smoother (smoother:=, docs/own-smoother.md): own (aav_smoother's
+# car_smoother: the turn rate from where the wheels can be), the only one since Nav2's
+# velocity_smoother went (17 Nov). It runs under that node name and reads its block.
+SMOOTHERS = ('own',)
+DEFAULT_SMOOTHER = 'own'
 
 
 def check_smoother(smoother):
@@ -568,17 +569,13 @@ def navigator_action(action):
 
 def all_ours(navigator, planner, costmap, tracker):
     """
-    Return True when every navigation piece is ours.
-
-    Then no Nav2 server is needed for navigation (planner_server, controller_server,
-    behavior_server, bt_navigator, waypoint_follower stay off). map_server, the velocity
-    smoother and collision_monitor still run: the map, and the command line in front of
-    the safety locks.
+    Return True when every navigation piece is ours' default (since 17 Nov, always so
+    but for a trial planner or tracker): our navigator, planner, costmap and mppi_lag.
     """
     return (navigator, planner, costmap, tracker) == ('own', 'own', 'own', 'mppi_lag')
 
 
-def navigator_params(v, reversing, waypoints='pass_through'):
+def navigator_params(v, reversing, waypoints='pass_through', replan_hz=None):
     """
     Return aav_navigator's settings (navigator:=own) as a dict, for its JSON parameter.
 
@@ -592,7 +589,9 @@ def navigator_params(v, reversing, waypoints='pass_through'):
     plan_timeout, twice nav2.yaml's max_planning_time (5 s); follow_timeout, the
     follower's silence, Nav2's bond_timeout (4 s); recovery_timeout, a costmap clear.
     """
-    out = {'replan_period': 1.0, 'through_replan_period': 3.0,
+    hz = REPLAN_HZ if replan_hz is None else float(replan_hz)
+    out = {'replan_period': 1.0 / (hz if hz > 0.0 else REPLAN_ONCE_HZ),
+           'through_replan_period': 3.0,
            'final_approach': round(final_approach(v), 3), 'path_end_tolerance': 0.5,
            'path_max_age': 20.0, 'keep_path_age': 10.0, 'retries': 6, 'wait': 5.0,
            'pass_radius': 1.0, 'on_path': 2.0, 'waypoints': waypoints, 'stop_on_failure': False,
@@ -603,42 +602,32 @@ def navigator_params(v, reversing, waypoints='pass_through'):
     return out
 
 
-# Nav2's planners (planner:=, docs/controllers.md "Planners"), each under the one plugin name
-# the behaviour trees ask for, GridBased. hybrid (SmacPlannerHybrid, the default) and lattice
-# (SmacPlannerLattice, on our own primitives: tools/lattice_primitives.py) keep to the car's
-# turning radius. smac2d (SmacPlanner2D), navfn (NavfnPlanner) and theta_star
-# (ThetaStarPlanner) plan on the grid as if the car could turn on the spot: their paths may
-# have corners the car can't drive, and the follower must round them. Trials only: refused
-# on the real car (check_planner real=True).
-# diffusion (aav_diffusion_planner, a trial: docs/designs/2026-11-02_diffusion-planner.md):
-# a model draws the path and a guard checks it, with the lattice behind it in planner_server
-# as the fallback (TRIAL_PLANNERS: the planner each stands on). Sim and bench only.
-# own (aav_planner, a trial: docs/own-planner.md): Nav2's State Lattice ported to Rust,
-# on the same primitives file and penalties; bt_navigator's trees call it, and
-# planner_server keeps running the lattice beside it (navigate_through_poses, and the
-# head-to-head in controller_compare). Sim and bench only.
-PLANNERS = ('hybrid', 'lattice', 'smac2d', 'navfn', 'theta_star', 'diffusion', 'own')
-CAR_PLANNERS = ('hybrid', 'lattice')
+# The planners (planner:=, docs/own-planner.md). own (aav_planner): Nav2's State Lattice
+# (and its Hybrid-A*, planner_search:=hybrid) ported to Rust, on the same primitives file
+# and penalties: the only one on the car. diffusion (aav_diffusion_planner, a trial:
+# docs/designs/2026-11-02_diffusion-planner.md): a model draws the path and a guard checks
+# it, our planner behind it as the fallback (TRIAL_PLANNERS: the block each plans from).
+# Nav2's planner_server and its planners (SmacPlannerHybrid, SmacPlannerLattice, Smac2D,
+# NavFn, Theta*) went with Nav2 on 17 Nov (TODO 184).
+PLANNERS = ('own', 'diffusion')
+CAR_PLANNERS = ('own',)
 TRIAL_PLANNERS = {'diffusion': 'lattice', 'own': 'lattice'}
-# planner:=own: our planner's action; bt_navigator's compute_path_to_pose is pointed here.
+# Our planner's action; the navigator's (and the diffusion planner's fallback) calls it.
 OWN_PLANNER_ACTION = '/drivers/nav/planner/compute_path_to_pose'
-# ... and its through-poses action (bt_navigator's, and our navigator's, are pointed here).
+# ... and its through-poses action (the navigator's).
 OWN_PLANNER_THROUGH_ACTION = '/drivers/nav/planner/compute_path_through_poses'
-# ... and planner_server's own /plan goes here (ours publishes /plan).
-OWN_PLANNER_NAV2_PLAN = '/drivers/nav/planner/nav2_plan'
-# The lattice is the default (Ben, 1 Nov): with reversing on, every leg of the lot tour,
-# 29 s quicker than Hybrid-A* (docs/trials.md, 30 Oct). Forward only it lost the U-turn
-# (29 Oct), so a car that may not reverse takes Hybrid-A* (FORWARD_ONLY_PLANNER).
-DEFAULT_PLANNER = 'lattice'
-FORWARD_ONLY_PLANNER = 'hybrid'
-# Each planner's block in nav2.yaml's planner_server (GridBased is hybrid's own).
+# Ours, forward or reversing (its Hybrid-A* is planner_search:=hybrid).
+DEFAULT_PLANNER = 'own'
+FORWARD_ONLY_PLANNER = 'own'
+# Each planner's block in nav2.yaml's planner_server (GridBased is hybrid's own): the
+# file keeps Nav2's layout, so our ports read the blocks they were tuned with.
 PLANNER_BLOCKS = {'hybrid': 'GridBased', 'lattice': 'Lattice', 'smac2d': 'Smac2D',
                   'navfn': 'NavFn', 'theta_star': 'ThetaStar', 'diffusion': 'Lattice',
                   'own': 'Lattice'}
 
 
 def server_planner(planner):
-    """Return the planner planner_server runs for planner:= (a trial's, the one behind it)."""
+    """Return nav2.yaml's planner block planner:= plans with: the lattice's (ours ported)."""
     return TRIAL_PLANNERS.get(planner, planner)
 
 
@@ -1315,6 +1304,52 @@ def with_plan_smoothing(cfg, smoothing):
     return cfg
 
 
+def _typed(value):
+    """A rewrite's text as its number or bool, as RewrittenYaml's convert_types; else the text."""
+    if not isinstance(value, str):
+        return value
+    try:
+        parsed = yaml.safe_load(value)
+    except yaml.YAMLError:
+        return value
+    return parsed if isinstance(parsed, (bool, int, float)) else value
+
+
+def rewrite(cfg, rewrites):
+    """
+    Return a copy of a parameter file's dict with `rewrites` written in (no ROS).
+
+    Nav2's RewrittenYaml's rules, so nav2.yaml's tuning reads the same without Nav2: a key
+    with no dot (`footprint`) changes every key of that name, at any depth; a dotted path
+    (`collision_monitor.ros__parameters.StopZone.forward.points`) changes that one key,
+    and adds it where it is missing. Text that reads as a number or a bool becomes one.
+    """
+    out = copy.deepcopy(cfg)
+    leaves = {k: _typed(v) for k, v in rewrites.items() if '.' not in k}
+
+    def walk(node):
+        if isinstance(node, dict):
+            for key in node:
+                if key in leaves:
+                    node[key] = leaves[key]
+                else:
+                    walk(node[key])
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    walk(out)
+    for path, value in rewrites.items():
+        if '.' not in path:
+            continue
+        *parents, leaf = path.split('.')
+        node = out
+        for key in parents:
+            node = node.setdefault(key, {})
+        node[leaf] = _typed(value)
+    return out
+
+
 def nav2_rewrites(v, reversing=False, planner='hybrid'):
     """
     Values to substitute into aav_navigation/config/nav2.yaml.
@@ -1352,7 +1387,7 @@ def nav2_rewrites(v, reversing=False, planner='hybrid'):
 
 def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False,
                ghost=False, controller=DEFAULT_CONTROLLER, plan_around=True, camera=False,
-               planner='hybrid', lattice_file=None, voxels=False, lattice_moves='nav2',
+               planner='own', lattice_file=None, voxels=False, lattice_moves='nav2',
                kerbs=False):
     """
     Return a copy of nav2.yaml's settings (`nav2`, loaded) with what RewrittenYaml can't write.
