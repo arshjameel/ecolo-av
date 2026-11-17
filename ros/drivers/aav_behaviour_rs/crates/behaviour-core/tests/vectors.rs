@@ -14,7 +14,8 @@ use behaviour_core::machine::{
     diagnostic, nav2_cap, Behaviour, Lock, Settings, Stop, StopReason, World,
 };
 use behaviour_core::paths::{
-    along_until, lane_ahead, moving_ahead, path_left, Crossing, Point, Seen, MOVING, REACH,
+    along_until, lane_ahead, moving_ahead, moving_near, path_left, Crossing, MovingFor, Nearby,
+    Point, Seen, MOVING, REACH,
 };
 use behaviour_core::road::{build, BuildOptions, Strip};
 use serde_json::Value;
@@ -152,11 +153,18 @@ fn the_machine_gives_the_pythons_every_tick() {
                 sign_age: f(&w["sign_age"]),
                 goal_active: w["goal_active"].as_bool().expect("goal"),
                 goal_aborted: w["goal_aborted"].as_bool().expect("aborted"),
+                moving: w["moving"].as_bool().expect("moving"),
             };
             let d = b.step(&world);
             let at = || format!("{name}, tick {i}");
             assert_eq!(d.state.as_str(), text(&t["state"]), "{}", at());
             assert_eq!(d.reason.to_string(), text(&t["reason"]), "{}", at());
+            assert_eq!(
+                b.holding(),
+                t["holding"].as_bool().expect("holding"),
+                "{}",
+                at()
+            );
             let warnings: Vec<&str> = t["warnings"]
                 .as_array()
                 .expect("warnings")
@@ -232,22 +240,7 @@ fn the_lane_ahead_and_moving_things_are_the_pythons() {
     }
     for (i, m) in v["movers"].as_array().expect("movers").iter().enumerate() {
         let car = fs_(&m["car"]);
-        let things: Vec<Seen> = m["things"]
-            .as_array()
-            .expect("things")
-            .iter()
-            .map(|t| {
-                let t = fs_(t);
-                Seen {
-                    x: t[0],
-                    y: t[1],
-                    vx: t[2],
-                    vy: t[3],
-                    length: t[4],
-                    width: t[5],
-                }
-            })
-            .collect();
+        let things = seen_things(&m["things"]);
         let crossing = (!m["crossing"].is_null()).then(|| {
             let c = fs_(&m["crossing"]);
             Crossing {
@@ -269,6 +262,84 @@ fn the_lane_ahead_and_moving_things_are_the_pythons() {
         worst.check(got, f(&m["ahead"]), || format!("movers {i}"));
     }
     worst.report("lane_ahead, moving_ahead");
+}
+
+fn seen_things(v: &Value) -> Vec<Seen> {
+    v.as_array()
+        .expect("things")
+        .iter()
+        .map(|t| {
+            let t = fs_(t);
+            Seen {
+                x: t[0],
+                y: t[1],
+                vx: t[2],
+                vy: t[3],
+                length: t[4],
+                width: t[5],
+            }
+        })
+        .collect()
+}
+
+#[test]
+fn which_things_have_moved_long_enough_is_the_pythons() {
+    let v = vectors();
+    let mut worst = Worst::default();
+    let mut ticks = 0;
+    for (r, run) in v["settles"].as_array().expect("settles").iter().enumerate() {
+        let mut sure = MovingFor::new(f(&run["settle"]), MOVING);
+        for (i, t) in run["ticks"].as_array().expect("ticks").iter().enumerate() {
+            let things: Vec<(u32, bool, Seen)> = t["things"]
+                .as_array()
+                .expect("things")
+                .iter()
+                .map(|x| {
+                    let id = u32::try_from(x[0].as_u64().expect("id")).expect("id");
+                    let s = seen_things(&Value::Array(vec![x[2].clone()]))[0];
+                    (id, x[1].as_bool().expect("coasting"), s)
+                })
+                .collect();
+            let got = sure.update(f(&t["now"]), &things);
+            let want = points(&t["sure"]);
+            assert_eq!(got.len(), want.len(), "settles {r}, tick {i}");
+            for (g, w) in got.iter().zip(&want) {
+                worst.check(g.x, w.0, || format!("settles {r}, tick {i}"));
+                worst.check(g.y, w.1, || format!("settles {r}, tick {i}"));
+            }
+            ticks += 1;
+        }
+    }
+    assert!(ticks >= 2000);
+    worst.report("MovingFor");
+}
+
+#[test]
+fn moving_things_near_are_the_pythons() {
+    let v = vectors();
+    let mut worst = Worst::default();
+    let cases = v["nears"].as_array().expect("nears");
+    for (i, m) in cases.iter().enumerate() {
+        let car = fs_(&m["car"]);
+        let n = fs_(&m["nearby"]);
+        let nearby = Nearby {
+            radius: n[0],
+            within: n[1],
+            step: n[2],
+            moving: n[3],
+        };
+        let got = moving_near(
+            &seen_things(&m["things"]),
+            (car[0], car[1], car[2]),
+            f(&m["front"]),
+            &points(&m["road"]),
+            f(&m["half_width"]),
+            nearby,
+        );
+        worst.check(got, f(&m["near"]), || format!("nears {i}"));
+    }
+    assert!(cases.len() >= 300);
+    worst.report("moving_near");
 }
 
 fn check_strip(worst: &mut Worst, s: &Strip, b: &Value, at: &str) {

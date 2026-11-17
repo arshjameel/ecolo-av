@@ -126,7 +126,7 @@ waiting to beat it.</p>
   ┌────────────┬───────────┬──────────────────────────────┐
   │ Level      │ Champion  │ Challengers                  │
   ├────────────┼───────────┼──────────────────────────────┤
-  │ pose       │ ekf       │ ndt_ekf, kiss_ekf            │
+  │ pose       │ ekf       │ ndt_ekf, kiss_ekf, ekf_lane  │
   │ costmap    │ ours      │ ours_chunks, ours_all_chunks │
   │ navigator  │ ours      │                              │
   │ path       │ lattice_rs│ lattice_rs_smooth, hybrid_rs,│
@@ -136,7 +136,7 @@ waiting to beat it.</p>
   │            │           │ mpc_lag_rs                   │
   │ smoother   │ ours      │                              │
   │ lanes      │ off       │ ramp (lane costs)            │
-  │ behaviour  │ off       │ on (the road ahead)          │
+  │ behaviour  │ off       │ on (road ahead and things)   │
   │ kerbs      │ off       │ on (the step finder)         │
   └────────────┴───────────┴──────────────────────────────┘
           │
@@ -214,8 +214,8 @@ stack's choice". Any value you give is yours, even one that matches the champion
 <tbody>
 <tr>
 <td><code>pose:=</code></td>
-<td><code>ekf</code>, <code>ndt_ekf</code>, <code>kiss_ekf</code></td>
-<td><code>ndt_ekf</code>, <code>kiss_ekf</code></td>
+<td><code>ekf</code>, <code>ndt_ekf</code>, <code>kiss_ekf</code>, <code>ekf_lane</code> (ours since 17 Nov: the lane finder into the EKF)</td>
+<td><code>ndt_ekf</code>, <code>kiss_ekf</code>, <code>lane_pose</code></td>
 </tr>
 <tr>
 <td><code>path:=</code></td>

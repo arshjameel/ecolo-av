@@ -281,11 +281,14 @@ def test_the_road_world_adds_the_radar_to_navigation_and_its_clusters():
     nav = sent['navigation.launch.py']
     assert (nav['radar'], nav['lidar'], nav['stop_zone']) == ('true', 'true', 'true')
     assert nav['map'].endswith(os.path.join('maps', 'empty.yaml'))
-    # Nothing reads the camera by default, so the watchdog leaves it alone.
+    # Ours' lane pose reads the camera (17 Nov), so the watchdog watches it.
     inputs = sent['watchdog.launch.py']['inputs'].split(',')
     # The sensors, then our own nodes the stack starts (warn only: TODO 180).
     sensors = [i for i in inputs if not i.startswith('node_')]
-    assert sensors == 'odom,imu,gps,local,global,radar,steering,speed'.split(',')
+    assert sensors == 'odom,imu,gps,local,global,camera,radar,steering,speed'.split(',')
+    # Nothing reads it on the stock stack, so the watchdog leaves it alone.
+    stock = included(started(SIM, world='road', stack='stock'))['watchdog.launch.py']
+    assert 'camera' not in stock['inputs'].split(',')
     assert {'node_ego', 'node_planner', 'node_mppi_lag'} <= set(inputs)
 
 
@@ -698,8 +701,15 @@ def test_the_watchdog_watches_only_our_nodes_that_run():
 
 
 def test_lane_pose_runs_the_lane_finder_and_feeds_the_global_ekf():
-    # Off by default: the global EKF on GPS alone (TODO 155, a challenger).
+    # Ours' pick since 17 Nov (TODO 155), where a camera and a lane map are; the stock
+    # stack's EKF on GPS alone; off without a camera when the stack chose it.
     assert included(started(SIM, world='road'))['localization.launch.py'][
+        'lane_pose'] == 'true'
+    assert included(started(SIM, world='road', stack='stock'))['localization.launch.py'][
+        'lane_pose'] == 'false'
+    assert included(started(SIM, world='road', cameras='false'))['localization.launch.py'][
+        'lane_pose'] == 'false'
+    assert included(started(SIM, world='road', pose='ekf'))['localization.launch.py'][
         'lane_pose'] == 'false'
     actions = started(SIM, world='road', lane_pose='true')
     sent = included(actions)
@@ -742,3 +752,13 @@ def test_the_global_ekf_reads_the_lane_pose_only_with_lane_pose():
     assert LOCALIZATION.lane_pose_node(context_for(LOCALIZATION)) == []
     with pytest.raises(ValueError, match='lane_map'):
         LOCALIZATION.lane_pose_node(context_for(LOCALIZATION, lane_pose='true'))
+
+
+def test_ours_runs_the_things_so_the_behaviour_can_hold_for_what_moves():
+    # Ben, 16 Nov: "if we see a car people or stuff moving around us we should likely just
+    # stop": the behaviour's hold reads the things (stacks.yaml's behaviour level).
+    assert included(started(SIM, world='road'))['navigation.launch.py']['things'] == 'true'
+    assert included(started(SIM, world='road', stack='stock'))['navigation.launch.py'][
+        'things'] == 'false'
+    # The empty world has no lidar: the stack's things are off there, not an error.
+    assert included(started(SIM))['navigation.launch.py']['things'] == 'false'

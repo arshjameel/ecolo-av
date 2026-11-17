@@ -108,6 +108,12 @@ Our simulator and our own stack by default (--simulator gazebo for Gazebo). Nav2
                                             clear and reach its goal. behaviour:=true
                                             things:=true; --moving-only skips the road
                                             world's run)
+    pixi run sim-check --movers           (17 Nov, our simulator: an oncoming car, a person
+                                            walking along the roadside, cross traffic; the
+                                            behaviour must hold the car for each
+                                            (WAIT(moving)), the car keep clear and reach
+                                            its goal after. --movers-only skips the road
+                                            world's run)
     pixi run sim-check --with name:=value  (any sim.launch.py argument on every session,
                                             repeatable: an A/B of one setting)
     pixi run -e ml sim-check --thing-names (TODO 192: the detector names the lidar's
@@ -2841,9 +2847,89 @@ def check_behaviour_things(probe):
     since = probe.now()
     check_plan_around(probe)
     seen = behaviour_seen(probe, since)
-    waited = [w for w in seen if w.endswith('(obstacle)')]
+    # Nor held for it as a moving thing (17 Nov): a parked box is passed, not waited for.
+    waited = [w for w in seen if w.endswith('(obstacle)') or w.endswith('(moving)')]
     result('behaviour things: no wait for a parked box', bool(seen) and not waited,
            f'states: {" > ".join(seen) or "none heard"}')
+
+
+# Things moving near the car (Ben, 16 Nov: "if we see a car people or stuff moving around us
+# we should likely just stop"): each one must hold the car (WAIT(moving)), which must then
+# keep clear of it and reach its goal once it has gone. Our simulator's road world (one
+# 4.5 m road on y = 0, -20 to 100 m). Each: name, model, where it starts against the car
+# (m ahead of the bumper, m to the left), its speed (m/s along the car's way, to the left).
+MOVERS = (
+    # An oncoming car in the other lane (3 m to the left), passing us at 2 m/s.
+    ('oncoming car', OBSTACLE, 30.0, 3.0, -2.0, 0.0),
+    # A person walking along the roadside 5 m to the right, towards the car.
+    ('person along the roadside', POST, 18.0, -5.0, -1.0, 0.0),
+    # Cross traffic: a car crossing the road 22 m ahead at 3 m/s, from 12 m to the right.
+    ('cross traffic', OBSTACLE, 22.0, -12.0, 0.0, 3.0),
+)
+
+
+def check_movers(probe, movers=MOVERS, goal=26.0):
+    """
+    Check the car holds for each of `movers`, and goes on once it has gone.
+
+    WAIT(moving) seen, the car keeps clear of it while it moves (0.3 m ahead of the
+    bumper), and reaches a goal `goal` m on once it has gone. Each starts moving when the
+    goal is sent. Our simulator only: Gazebo's models don't walk. One a session: the road
+    world's fence is near past 60 m.
+    """
+    if SIMULATOR == 'gazebo':
+        result('movers', None, "skipped: Gazebo's placed models don't walk")
+        return
+    body = vehicle.load()['vehicle']['body']
+    front = body['length'] - body['rear_overhang']
+    for i, (name, model, ahead, side, along_v, side_v) in enumerate(movers):
+        probe.spin_for(30.0, lambda: abs(probe.speed()) < STILL)
+        x0, y0 = probe.xy(probe.truth)
+        h = yaw_of(probe.truth)
+        c, s = math.cos(h), math.sin(h)
+        px, py = x0 + (front + ahead) * c - side * s, y0 + (front + ahead) * s + side * c
+        vx, vy = along_v * c - side_v * s, along_v * s + side_v * c
+        entity = f'mover{i}'
+        if not place_model(model, px, py, h, name=entity):
+            result(f'mover: {name}', False, f'could not place it: {SERVICE_SAID[0]}')
+            continue
+        since = probe.now()
+        start = len(probe.track)
+        done = probe.go_to(x0 + goal * c, y0 + goal * s, h)
+        if done is None:
+            remove_model(entity)
+            result(f'mover: {name}', False, 'no navigator, or it refused the goal')
+            continue
+        t0 = seconds(probe.truth.header.stamp)
+        walking = walk_model(entity, px, py, h, vx, vy)
+        if walking:
+            probe.spin_for(240.0, done.done)
+        if not done.done():
+            probe.goal.cancel_goal_async()
+        remove_model(entity)
+        if not walking:
+            result(f'mover: {name}', False, f'the simulator would not move it: '
+                   f'{SERVICE_SAID[0]}')
+            continue
+        size = 0.5 if model == POST else 1.0
+        gaps = []
+        for t, x, y, yaw, v in probe.track[start:]:
+            k_t = max(0.0, t - t0)
+            wx, wy = px + vx * k_t, py + vy * k_t
+            ux, uy = math.cos(yaw), math.sin(yaw)
+            along_car = (wx - x) * ux + (wy - y) * uy
+            if abs(v) > 0.05 and along_car >= front:
+                k = min(front, along_car)
+                gaps.append(math.hypot(wx - x - k * ux, wy - y - k * uy)
+                            - body['width'] / 2.0 - size / 2.0)
+        seen = behaviour_seen(probe, since)
+        reached = done.done() and done.result().status == 4
+        held = 'WAIT(moving)' in seen
+        clear = min(gaps) if gaps else float('nan')
+        result(f'mover: {name}', reached and held and not clear <= 0.3,
+               f'{"reached" if reached else "did not reach"} the goal; '
+               f'{"held" if held else "never held"} for it; {clear:.2f} m clear ahead of '
+               f'the moving car; states {" > ".join(seen) or "none heard"}')
 
 
 def walk_model(name, x, y, yaw, vx, vy):
@@ -2932,7 +3018,9 @@ def check_moving_thing(probe, ahead=20.0, side=4.0, walk=0.8, goal=35.0, near=15
     clear = min(moving) if moving else float('nan')
     at = speeds[gaps.index(min(gaps))] if gaps else float('nan')
     touched = min(gaps) if gaps else float('nan')
-    slowed = 'APPROACH(obstacle)' in seen or 'STOP(obstacle)' in seen
+    # Slowed for them, or held for something moving near (17 Nov).
+    slowed = ('APPROACH(obstacle)' in seen or 'STOP(obstacle)' in seen
+              or 'WAIT(moving)' in seen)
     result('moving thing', reached and slowed and clear > 0.3,
            f'{"reached" if reached else "did not reach"} the goal, {clear:.2f} m from the '
            f'walker ahead of the moving car ({touched:.2f} m in all, the car at '
@@ -3293,7 +3381,7 @@ def main():
     logs = [log]
     if not {'--drive-to-point-only', '--speed-steps-only', '--spine-points-only',
             '--stop-point-only', '--loaded-stop-only', '--behaviour-only', '--lane-only',
-            '--things-only', '--behaviour-things-only', '--legs-only',
+            '--things-only', '--behaviour-things-only', '--legs-only', '--movers-only',
             '--three-point-only', '--moving-only', '--low-box-only',
             '--thing-names-only',
             '--actuator-faults-only', '--kerb-only'} & set(args):
@@ -3429,6 +3517,15 @@ def main():
         logs.append(f'{stem}-moving{ext}')
         session(['behaviour:=true', 'things:=true', 'lidar:=true'],
                 [check_moving_thing], logs[-1], 'moving thing')
+    if {'--movers', '--movers-only'} & set(args):
+        # Its own run: an oncoming car, a person along the roadside, cross traffic; the
+        # behaviour must hold for each (Ben, 16 Nov).
+        stem, ext = os.path.splitext(log)
+        for i, mover in enumerate(MOVERS):
+            logs.append(f'{stem}-movers-{i}{ext}')
+            session(['behaviour:=true', 'things:=true', 'lidar:=true'],
+                    [lambda probe, m=mover: check_movers(probe, [m])], logs[-1],
+                    f'mover: {mover[0]}')
     if {'--thing-names', '--thing-names-only'} & set(args):
         # Its own run: the detector names the lidar's things (TODO 192; needs -e ml).
         stem, ext = os.path.splitext(log)

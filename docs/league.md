@@ -8,7 +8,7 @@ waiting to beat it.
   ┌────────────┬───────────┬──────────────────────────────┐
   │ Level      │ Champion  │ Challengers                  │
   ├────────────┼───────────┼──────────────────────────────┤
-  │ pose       │ ekf       │ ndt_ekf, kiss_ekf            │
+  │ pose       │ ekf       │ ndt_ekf, kiss_ekf, ekf_lane  │
   │ costmap    │ ours      │ ours_chunks, ours_all_chunks │
   │ navigator  │ ours      │                              │
   │ path       │ lattice_rs│ lattice_rs_smooth, hybrid_rs,│
@@ -18,7 +18,7 @@ waiting to beat it.
   │            │           │ mpc_lag_rs                   │
   │ smoother   │ ours      │                              │
   │ lanes      │ off       │ ramp (lane costs)            │
-  │ behaviour  │ off       │ on (the road ahead)          │
+  │ behaviour  │ off       │ on (road ahead and things)   │
   │ kerbs      │ off       │ on (the step finder)         │
   └────────────┴───────────┴──────────────────────────────┘
           │
@@ -77,7 +77,7 @@ Fable's clean-up (one shape, "From 36 switches to 8"): pick a level's option by 
 
 | Switch | Options | Sets |
 |---|---|---|
-| `pose:=` | `ekf`, `ndt_ekf`, `kiss_ekf` | `ndt_ekf`, `kiss_ekf` |
+| `pose:=` | `ekf`, `ndt_ekf`, `kiss_ekf`, `ekf_lane` (ours since 17 Nov: the lane finder into the EKF) | `ndt_ekf`, `kiss_ekf`, `lane_pose` |
 | `path:=` | `lattice_rs`, `lattice_rs_smooth`, `hybrid_rs`, `lattice_rs_strong`, `lane`, `lane_lanelet2`, `diffusion` | `planner`, `planner_search`, `plan_smoothing`, `lattice_moves`, `lane_route`, `lane_graph` |
 | `steer:=` | `mppi_lag`, `mppi_lag_calm`, `mpc_lag`, `mpc_lag_rs` | `controller`, `tracker`, `map_correction`, `mppi_lag_steer_gamma` |
 | `lanes:=` | `off`, `ramp` | `lane_costs` |

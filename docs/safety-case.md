@@ -56,6 +56,7 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 | 11 | A stop sign missed | RF-DETR + the stop-sign lock | missed 1 in 8 runs | sim | ❌ |
 | 12 | The screen freezes | the HUD's heartbeat | STALE in 1 s | a Mac | ❌ |
 | 13 | A kerb | the step finder (`kerbs:=true`), kept 10 s; the costmap; the stop zone | a 0.3 m kerb seen 8.4 m out, stopped 0.80-0.82 m before it | sim | ❌ |
+| 14 | Something moving near | the behaviour's hold (WAIT, moving), ego, the stop zone | held for an oncoming car, a person on the roadside, cross traffic and a person crossing, every run; the parked box passed without a hold | sim | ❌ |
 
 ## 1. A person or obstacle ahead
 
@@ -324,6 +325,30 @@ Ben, 15 Nov: "we don't want to hit a curb" (TODO 119; [kerbs](kerbs.md)).
 **Gaps:** a 0.15 m kerb is found only in the last 4.7 m: enough at 1 m/s, not at 3 m/s.
 A 0.10 m kerb is never found. The memory forgets after 10 s: a car stood longer before a
 kerb it saw only from far forgets it. Not tried on the real VLP-16.
+
+## 14. Something moving near the car
+
+Ben, 16 Nov: "if we see a car people or stuff moving around us we should likely just
+stop." ([stopping](stopping.md#anything-moving-near-stop-and-wait-17-nov))
+
+| Layer | What | Where |
+|---|---|---|
+| The things | the lidar's cubes grouped and followed: each one's place and speed | `aav_things`, `things:=true` (on in `stack:=ours`) |
+| Behaviour planner | anything moving 0.3 m/s or more within 10 m, or onto the road ahead within 3 s: WAIT (moving), the road ahead ends at the car; GO 1 s after it has gone or stood still | `aav_behaviour_rs` (`aav_behaviour`) |
+| Ego | holds the automatic drivers to the road ahead's limit: 0 at its end | `aav_ego_rs` |
+| Stop zone | still stops the car for anything in front of the bumper, moving or not | `aav_navigation` |
+
+| Number | Where, when | Who |
+|---|---|---|
+| `sim-check --movers`, 2 runs each: held every time. Oncoming car 11.6 s, 2.4-3.5 m clear; a person on the roadside 20.3 s, 6.6-6.8 m clear; cross traffic 2.0 s, 19 m clear | sim (ours), 17 Nov | Ben |
+| `sim-check --moving` (a person crossing): APPROACH, then held 17.7 s, 1.9 m clear | sim (ours), 17 Nov | Ben |
+| `sim-check --behaviour-things` (a parked box): passed, never held, once the hold waits for 1.5 s of moving, not growing (it held 8 times before) | sim (ours), 17 Nov | Ben |
+| the car | not measured | |
+
+**Gaps:** a hold needs the things, which need the lidar: the radar alone holds nothing.
+Someone walking beside the car the same way, within 10 m, holds it for as long as they
+walk. The things' speeds come from the lidar's cubes: a still thing whose shape changes as
+the car passes can look like it moves.
 
 ## The biggest gaps
 

@@ -50,7 +50,7 @@ names and defaults. One addition:
 | Module | Holds | From |
 |---|---|---|
 | `machine` | `Behaviour::step(&World) -> Decision`; `State`, `StopReason`, `Lock`, `Reason` (enums), `Settings`, `Stop`, `nav2_cap`, `diagnostic` | `behaviour.py`, `stop_law.nav2_cap` |
-| `paths` | `active_plan` → `Whose`, `path_left`, `along_until`, `lane_ahead`, `moving_ahead`, `Seen`, `Crossing` | `behaviour.py` |
+| `paths` | `active_plan` → `Whose`, `path_left`, `along_until`, `lane_ahead`, `moving_ahead`, `Seen`, `Crossing`; the hold for anything moving: `MovingFor`, `moving_near`, `Nearby` | `behaviour.py` |
 | `road` | `resample`, `build` → `Strip`, `StopOnLine`, `StopKind` | `road_ahead.py` (the writer) |
 | `lanes` | `LaneMap::lane_at`, `lane_offset`, `load`, `from_yaml`, `lane_line`, `with_edges` | `lane_map.py` |
 | `fence` | `Polygon::depth` | `aav_safety/geofence.py` |
@@ -76,11 +76,12 @@ names and defaults. One addition:
 
 | Part | Numbers | Largest difference |
 |---|---|---|
-| the machine: 8 runs of 600 ticks (4 settings × 2 stopping laws), every state, reason, warning and state-topic text | 9,600 + the text | 0, the text the same |
+| the machine: 8 runs of 600 ticks (4 settings × 2 stopping laws), every state, reason, warning and state-topic text, the hold for something moving (`holding`) | 9,600 + the text | 0, the text the same |
 | `nav2_cap` | 400 | 0 |
 | `path_left`, `along_until` (the fence's depth), the fence's depth | 750 | 0 |
 | `lane_ahead` (float32 scans), `moving_ahead` | 360 | 0 |
-| the road ahead, the lane line and its edges, `lane_at` (a map of 5 roads: a junction, two-way, one-way, a bend) | 21,761 | 0 |
+| `moving_near` (300 cases), `MovingFor` (40 runs of 60 ticks, 10,265 things in) | 300 + 4,164 | 0 |
+| the road ahead (its stops, the `moving` hold too), the lane line and its edges, `lane_at` (a map of 5 roads: a junction, two-way, one-way, a bend) | 24,453 | 0 |
 
 The same bit for bit: Python's own `hypot` (ego-core's) and its compensated `sum()`.
 

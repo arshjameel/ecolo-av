@@ -18,7 +18,10 @@
 //!             /sensors/lidar/scan      sensor_msgs/LaserScan (base_link, best effort), with
 //!                                      obstacles true: the lane
 //!             /world/things            aav_interfaces/Things (odom), with things true: an
-//!                                      obstacle stop only for a thing that moves
+//!                                      obstacle stop only for a thing that moves; with
+//!                                      moving_hold, a moving thing within moving_radius m
+//!                                      or on the road ahead within moving_within s holds
+//!                                      the car (WAIT, reason moving)
 //!             goal_status_topics       action_msgs/GoalStatusArray: a goal running, or aborted
 //!             /tf, /tf_static          the sign's camera in odom
 //! Publishes   /drivers/nav/speed_limit   nav2_msgs/SpeedLimit, rate_hz: absolute m/s,
@@ -28,7 +31,9 @@
 //!             /world/road_ahead        aav_interfaces/RoadAhead (map), road_rate_hz: the
 //!                                      plan's next road_length m from the car, its stops,
 //!                                      its end, the speed limit by the stopping law; with
-//!                                      lane_map, the lane's centre and its edges
+//!                                      lane_map, the lane's centre and its edges; while
+//!                                      something moving holds the car, a moving stop at
+//!                                      0 m (the road ends at the car)
 //! Parameters  behaviour_node.py's, the same names and defaults (README). vehicle_yaml '':
 //!             aav_description's vehicle.yaml, found on AMENT_PREFIX_PATH.
 //!
@@ -56,8 +61,8 @@ use behaviour_core::machine::{
     diagnostic, Behaviour, Decision, Lock, Settings, State, Stop, StopReason, World,
 };
 use behaviour_core::paths::{
-    active_plan, along_until, lane_ahead, moving_ahead, path_left, Car, Crossing, Point, Seen,
-    Whose, MOVING, REACH,
+    active_plan, along_until, lane_ahead, moving_ahead, moving_near, path_left, Car, Crossing,
+    MovingFor, Nearby, Point, Seen, Whose, MOVING, REACH,
 };
 use behaviour_core::road::{build, BuildOptions, Strip};
 use behaviour_core::tf::Buffer;
@@ -95,6 +100,9 @@ struct Params {
     plan_timeout: f64,
     things: bool,
     things_timeout: f64,
+    /// With things: something moving near holds the car.
+    moving_hold: bool,
+    nearby: Nearby,
     road_length: f64,
     road_spacing: f64,
 }
@@ -116,6 +124,14 @@ struct BehaviourNode {
     speed: Option<f64>,
     odom_time: f64,
     pose: Option<Point>,
+    /// rad, map: the global pose's heading.
+    pose_yaw: f64,
+    /// The last road ahead's line, (x, y) in map.
+    road_line: Vec<Point>,
+    /// m to the nearest moving thing that holds the car (infinity: none).
+    near_moving: f64,
+    /// The things that have moved long enough to count.
+    moving_for: MovingFor,
     /// The nearest scan point in the lane, x in base_link (m).
     ahead: f64,
     /// (x, y, yaw) in odom, from the local odometry.
@@ -208,6 +224,16 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
     // /world/things: wait only for what moves, leave a parked thing to the planner.
     let things = d.flag("things", false)?;
     let things_timeout = d.number("things_timeout", 1.0)?;
+    // With things: something moving near holds the car (Ben, 16 Nov: "if we see a car
+    // people or stuff moving around us we should likely just stop"). m, s, m/s.
+    let moving_hold = d.flag("moving_hold", true)?;
+    let nearby = Nearby {
+        radius: d.number("moving_radius", 10.0)?,
+        within: d.number("moving_within", 3.0)?,
+        moving: d.number("moving_speed", MOVING)?,
+        ..Nearby::default()
+    };
+    let moving_settle = d.number("moving_settle", 1.5)?;
     let p = Params {
         base_speed,
         stop_distance,
@@ -218,6 +244,8 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
         plan_timeout,
         things,
         things_timeout,
+        moving_hold,
+        nearby,
         road_length,
         road_spacing,
     };
@@ -298,6 +326,10 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
         speed: None,
         odom_time: f64::NEG_INFINITY,
         pose: None,
+        pose_yaw: 0.0,
+        road_line: Vec::new(),
+        near_moving: f64::INFINITY,
+        moving_for: MovingFor::new(moving_settle, nearby.moving),
         ahead: f64::INFINITY,
         odom_pose: None,
         moving: f64::INFINITY,
@@ -372,6 +404,8 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
         "/localization/odom/global".keep_last(10),
         |s: &mut BehaviourNode, m: Odometry| {
             s.pose = Some((m.pose.pose.position.x, m.pose.pose.position.y));
+            let q = &m.pose.pose.orientation;
+            s.pose_yaw = (2.0 * (q.w * q.z + q.x * q.y)).atan2(1.0 - 2.0 * (q.y * q.y + q.z * q.z));
         },
     )?));
     if things {
@@ -512,8 +546,18 @@ impl BehaviourNode {
         // The car's speed: a person walking in counts if they are in the lane by the time
         // the car would reach them (TODO 194).
         let speed = self.speed.map_or(0.0, |v| v.max(0.0));
+        // Only what has moved long enough (MovingFor): the parked box flickered into an
+        // obstacle stop as the car passed it (17 Nov).
+        let now = self.now();
+        let tracked: Vec<(u32, bool, Seen)> = msg
+            .things
+            .iter()
+            .zip(&seen)
+            .map(|(t, s)| (t.id, t.coasting, *s))
+            .collect();
+        let sure = self.moving_for.update(now, &tracked);
         self.moving = moving_ahead(
-            &seen,
+            &sure,
             car,
             self.p.front,
             self.p.half_width,
@@ -522,7 +566,38 @@ impl BehaviourNode {
             speed,
             Some(Crossing::default()),
         );
+        self.near_moving = if self.p.moving_hold {
+            moving_near(
+                &sure,
+                car,
+                self.p.front,
+                &self.road_here(),
+                self.p.half_width,
+                self.p.nearby,
+            )
+        } else {
+            f64::INFINITY
+        };
         self.things_time = self.now();
+    }
+
+    /// The last road ahead's line in base_link (by the global pose), or none.
+    fn road_here(&self) -> Vec<Point> {
+        let Some((gx, gy)) = self.pose else {
+            return Vec::new();
+        };
+        let (c, s) = (self.pose_yaw.cos(), self.pose_yaw.sin());
+        self.road_line
+            .iter()
+            .map(|&(x, y)| (c * (x - gx) + s * (y - gy), -s * (x - gx) + c * (y - gy)))
+            .collect()
+    }
+
+    /// Whether a moving thing near holds the car (fresh things only).
+    fn moving_holds(&self, now: f64) -> bool {
+        self.p.things
+            && now - self.things_time <= self.p.things_timeout
+            && self.near_moving.is_finite()
     }
 
     /// x (base_link) of what the car slows for: a moving thing, or the scan's.
@@ -636,6 +711,7 @@ impl BehaviourNode {
             // A drive to a point is a goal too: its line is there while it runs.
             goal_active: self.goal_active || self.point_plan.len() >= 2,
             goal_aborted: self.aborted,
+            moving: self.moving_holds(now),
         };
         self.aborted = false;
         let d = self.machine.step(&world);
@@ -703,10 +779,15 @@ impl BehaviourNode {
             spacing: self.p.road_spacing,
             length: self.p.road_length,
         };
+        let mut stops = self.stops(now);
+        if self.machine.holding() {
+            // Held for something moving: the road ends at the car, so ego holds it at 0.
+            stops.push(Stop::new(StopReason::Moving, 0.0));
+        }
         let strip = match build(
             &plan,
             self.pose,
-            &self.stops(now),
+            &stops,
             &self.curve,
             self.p.base_speed,
             &options,
@@ -721,6 +802,12 @@ impl BehaviourNode {
             Some(lanes) => lanes::with_edges(strip, lanes, self.passing),
             None => strip,
         };
+        self.road_line = strip
+            .x
+            .iter()
+            .copied()
+            .zip(strip.y.iter().copied())
+            .collect();
         let msg = road_msg(&strip, self.header("map"));
         if let Err(e) = self.pub_road.publish(msg) {
             log_error!(&self.logger, "road_ahead: {e}");

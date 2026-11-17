@@ -40,6 +40,8 @@ from aav_safety.geofence import Polygon  # noqa: E402
 
 OUT = HERE / 'crates' / 'behaviour-core' / 'tests' / 'vectors.json'
 REASONS = ('sign', 'obstacle', 'fence', 'goal')
+# The road ahead's stops also carry the hold for something moving (a stop at 0 m).
+ROAD_REASONS = REASONS + ('moving',)
 LOCKS = ('estop', 'stop_sign', 'stop_zone', 'geofence', 'sensors')
 
 
@@ -69,6 +71,7 @@ def worlds(rng, n):
     lefts = dict.fromkeys(REASONS)
     locks = set()
     sign_time = -math.inf
+    moving = False
     out = []
     for _ in range(n):
         now += rng.choice([0.05, 0.05, 0.05, 0.049, 0.0, 0.2, 1.3])
@@ -98,12 +101,16 @@ def worlds(rng, n):
         if lefts['sign'] is not None and rng.random() < 0.7:
             sign_time = now - rng.choice([0.0, 0.05, 0.3])
         odom = rng.random()
+        # Something moving near comes and goes (a person walks by), and flickers.
+        if moving and rng.random() < 0.05 or not moving and rng.random() < 0.01:
+            moving = not moving
         out.append(bh.World(
             now=now, speed=None if odom < 0.02 else speed,
             odom_age=rng.choice([0.05, 0.05, 0.05, 0.6, math.inf]) if odom < 0.1 else 0.05,
             locks=dict.fromkeys(locks, True) | ({'estop': False} if rng.random() < 0.1 else {}),
             near=rng.random() < 0.01, stops=stops, sign_age=now - sign_time,
-            goal_active=rng.random() < 0.8, goal_aborted=rng.random() < 0.002))
+            goal_active=rng.random() < 0.8, goal_aborted=rng.random() < 0.002,
+            moving=moving != (rng.random() < 0.02)))
     return out
 
 
@@ -111,7 +118,7 @@ def world_dict(w):
     return {'now': w.now, 'speed': w.speed, 'odom_age': w.odom_age,
             'locks': sorted(k for k, on in w.locks.items() if on), 'near': w.near,
             'stops': [[s.reason, s.left] for s in w.stops], 'sign_age': w.sign_age,
-            'goal_active': w.goal_active, 'goal_aborted': w.goal_aborted}
+            'goal_active': w.goal_active, 'goal_aborted': w.goal_aborted, 'moving': w.moving}
 
 
 def machine_runs():
@@ -124,6 +131,7 @@ def machine_runs():
             for w in ws:
                 d = b.step(w)
                 ticks.append({'world': world_dict(w), 'state': d.state, 'reason': d.reason,
+                              'holding': b.holding,
                               'cap': d.cap, 'left': d.left, 'warnings': list(d.warnings),
                               'diagnostic': bh.diagnostic(d)})
             runs.append({'settings': sname, 'curve': cname, 'ticks': ticks})
@@ -209,6 +217,60 @@ def movers():
     return out
 
 
+def nears():
+    """Return moving_near's cases: things round the car, a road ahead in base_link or none."""
+    rng = random.Random(13)
+    out = []
+    for _ in range(300):
+        car = (rng.uniform(-5, 5), rng.uniform(-5, 5), rng.uniform(-math.pi, math.pi))
+        things = [bh.Seen(car[0] + rng.uniform(-15, 30), car[1] + rng.uniform(-15, 15),
+                          rng.choice([0.0, rng.uniform(-2.0, 2.0), 0.2]),
+                          rng.choice([0.0, rng.uniform(-2.0, 2.0), 0.25]),
+                          rng.uniform(0.3, 4.5), rng.uniform(0.3, 2.0))
+                  for _ in range(rng.choice([0, 1, 3, 8]))]
+        road = rng.choice([[], wiggly(rng, 80, 0.5), [(0.0, 0.0)]])
+        tight = bh.Nearby(radius=5.0, within=1.5, step=0.1, moving=0.5)
+        nearby = rng.choice([bh.Nearby(), tight, bh.Nearby(radius=0.0, within=0.0)])
+        front, half = rng.choice([(2.0, 0.6), (1.8, 0.9)])
+        out.append({'car': car, 'things': [[t.x, t.y, t.vx, t.vy, t.length, t.width]
+                                           for t in things],
+                    'road': road, 'front': front, 'half_width': half,
+                    'nearby': [nearby.radius, nearby.within, nearby.step, nearby.moving],
+                    'near': bh.moving_near(things, car, front, road, half, nearby)})
+    return out
+
+
+def settles():
+    """Return MovingFor's runs: things whose speed comes and goes, seen or coasting."""
+    rng = random.Random(17)
+    out = []
+    for _ in range(40):
+        settle = rng.choice([1.0, 0.5, 0.0])
+        sure = bh.MovingFor(settle=settle)
+        now, ticks = 0.0, []
+        speeds = {i: rng.choice([0.0, 0.8]) for i in range(1, 6)}
+        for _ in range(60):
+            now += rng.choice([0.1, 0.1, 0.05, 0.3])
+            things = []
+            for i in range(1, 6):
+                if rng.random() < 0.1:
+                    speeds[i] = rng.choice([0.0, 0.2, 0.31, 0.8, 1.5])
+                if rng.random() < 0.85:
+                    a = rng.uniform(-math.pi, math.pi)
+                    size = rng.choice([0.5, 0.6, rng.uniform(0.3, 6.0)])
+                    things.append((i, rng.random() < 0.25,
+                                   bh.Seen(rng.uniform(-5, 20), rng.uniform(-8, 8),
+                                           speeds[i] * math.cos(a), speeds[i] * math.sin(a),
+                                           size, rng.uniform(0.3, size))))
+            got = sure.update(now, things)
+            ticks.append({'now': now,
+                          'things': [[i, c, [t.x, t.y, t.vx, t.vy, t.length, t.width]]
+                                     for i, c, t in things],
+                          'sure': [[t.x, t.y] for t in got]})
+        out.append({'settle': settle, 'ticks': ticks})
+    return out
+
+
 LANES = """
 roads:
 - name: main
@@ -252,7 +314,7 @@ def roads():
             spacing = rng.choice([0.5, 0.5, 0.3, 1.0])
             length = rng.choice([40.0, 10.0, 2.0])
             stops = [bh.Stop(r, rng.uniform(-1.0, 45.0))
-                     for r in rng.sample(REASONS, rng.randrange(5))]
+                     for r in rng.sample(ROAD_REASONS, rng.randrange(6))]
             base = rng.choice([1.0, 2.5])
             passing = rng.random() < 0.3
             strip = ra.build(route, car, stops, curve, base, state='APPROACH', reason='sign',
@@ -289,7 +351,7 @@ def main():
                                 s.odom_stale, s.sign_lost, s.passed, s.release_hold]
                             for k, s in SETTINGS.items()},
                'runs': machine_runs(), 'caps': caps(), 'paths': paths(), 'scans': scans(),
-               'movers': movers(), 'roads': roads()}
+               'movers': movers(), 'nears': nears(), 'settles': settles(), 'roads': roads()}
     OUT.write_text(json.dumps(enc(vectors), separators=(',', ':'), allow_nan=False) + '\n')
     print(f'wrote {OUT.relative_to(ROS.parent)} ({OUT.stat().st_size // 1024} kB)')
 

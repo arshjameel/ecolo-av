@@ -299,6 +299,13 @@ impl<M: CarModel + Clone> Follower<M> {
         self.lane = lane;
     }
 
+    /// The behaviour planner holds the car for something moving near: standing is not a
+    /// lack of progress, so the progress check starts again (Ben, 16 Nov: "we should
+    /// likely just stop").
+    pub fn held(&mut self) {
+        self.progress.reset();
+    }
+
     /// The lane it keeps to, if any.
     pub fn lane(&self) -> Option<&Lane> {
         self.lane.as_ref()

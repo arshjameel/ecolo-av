@@ -21,7 +21,13 @@ Subscribes  /perception/stop_sign/distance  geometry_msgs/PointStamped: a sign, 
                                      obstacle stop is only for a thing that moves (a parked
                                      one is the planner's to go round); the scan's rule
                                      again, where the scan runs, if the list is over
-                                     things_timeout s old (the stop zone still holds)
+                                     things_timeout s old (the stop zone still holds).
+                                     And with moving_hold: a moving thing within
+                                     moving_radius m, or on the road ahead within
+                                     moving_within s, having moved moving_settle s
+                                     (MovingFor), holds the car (WAIT, reason
+                                     moving; the road ahead ends at the car) until
+                                     release_hold s after it has gone or stood still
             /navigate_to_pose/_action/status  action_msgs/GoalStatusArray: a goal running,
                                      or aborted (goal_status_topics: each navigator
                                      action's; Nav2's and ours serve the same names)
@@ -36,7 +42,9 @@ Publishes   /drivers/nav/speed_limit   nav2_msgs/SpeedLimit, 20 Hz: absolute m/s
                                      the speed limit by the stopping law (road_ahead.py;
                                      docs/designs/2026-11-14_the-whole-car.md). With
                                      lane_map (a lanes.yaml): the line is the car's lane's
-                                     centre along the route, with its edges (lane_map.py)
+                                     centre along the route, with its edges (lane_map.py).
+                                     While something moving holds the car: a `moving`
+                                     stop at 0 m, so the road ends at the car
 
 The maths is behaviour.py (no ROS); the stopping law is aav_description stop_law.py, from
 the car model's numbers. It isn't a driver: no cmd_vel, no twist_mux slot. It only ever
@@ -48,7 +56,9 @@ import math
 import signal
 
 from aav_behaviour.behaviour import (active_plan, along_until, Behaviour, diagnostic, lane_ahead,
-                                     moving_ahead, path_left, Seen, Settings, Stop, World)
+                                     MOVING, moving_ahead, moving_near, MOVING_REASON,
+                                     MovingFor, Nearby, path_left, Seen, Settings, Stop,
+                                     World)
 from aav_description.car_model import ActuatorConfig, speed_loop_profile
 from aav_description.lane_map import lane_line, load as load_lanes, with_edges
 from aav_description.road_ahead import build
@@ -99,6 +109,10 @@ class BehaviourNode(Node):
             # /world/things (aav_things): wait only for what moves, leave a parked thing to
             # the planner. False: anything in the lane slows the car (the scan's rule).
             ('things', False), ('things_timeout', 1.0),
+            # With things: something moving near holds the car (Ben, 16 Nov: "if we see a
+            # car people or stuff moving around us we should likely just stop"). m, s, m/s.
+            ('moving_hold', True), ('moving_radius', 10.0), ('moving_within', 3.0),
+            ('moving_speed', MOVING), ('moving_settle', 1.5),
             # Each navigator action's status (navigation.launch.py; Nav2's and ours serve
             # the same names): a goal running on any of them.
             ('goal_status_topics', ['/navigate_to_pose/_action/status']))}
@@ -150,11 +164,16 @@ class BehaviourNode(Node):
             latched)
         self.speed, self.odom_time = None, -math.inf
         self.create_subscription(Odometry, '/localization/odom/local', self.on_local, 10)
-        self.pose = None
+        self.pose, self.pose_yaw = None, 0.0
         self.create_subscription(Odometry, '/localization/odom/global', self.on_global, 10)
         self.ahead = math.inf          # the nearest thing in the lane, x in base_link (m)
         self.odom_pose = None          # (x, y, yaw) in odom, from the local odometry
         self.moving, self.things_time = math.inf, -math.inf
+        self.nearby = Nearby(radius=p['moving_radius'], within=p['moving_within'],
+                             moving=p['moving_speed'])
+        self.near_moving = math.inf    # m to the nearest moving thing that holds the car
+        self.moving_for = MovingFor(p['moving_settle'], p['moving_speed'])
+        self.road_line = []            # the last road ahead's line, (x, y) in map
         if p['things']:
             self.create_subscription(Things, '/world/things', self.on_things, 10)
         if p['obstacles']:
@@ -206,11 +225,31 @@ class BehaviourNode(Node):
         if self.odom_pose is None:
             return
         seen = [Seen(t.x, t.y, t.vx, t.vy, t.length, t.width) for t in msg.things]
+        sure = self.moving_for.update(self.now(), [(t.id, t.coasting, s)
+                                                   for t, s in zip(msg.things, seen)])
         # The car's speed: a person walking in counts if they are in the lane by the time
-        # the car would reach them (TODO 194).
-        self.moving = moving_ahead(seen, self.odom_pose, self.p['front'], self.p['half_width'],
+        # the car would reach them (TODO 194). Only what has moved long enough (MovingFor):
+        # the parked box flickered into an obstacle stop as the car passed it (17 Nov).
+        self.moving = moving_ahead(sure, self.odom_pose, self.p['front'], self.p['half_width'],
                                    speed=max(0.0, self.speed or 0.0))
+        self.near_moving = (moving_near(sure, self.odom_pose, self.p['front'], self.road_here(),
+                                        self.p['half_width'], self.nearby)
+                            if self.p['moving_hold'] else math.inf)
         self.things_time = self.now()
+
+    def road_here(self):
+        """Return the last road ahead's line in base_link (by the global pose), or []."""
+        if self.pose is None or not self.road_line:
+            return []
+        (gx, gy), yaw = self.pose, self.pose_yaw
+        c, s = math.cos(yaw), math.sin(yaw)
+        return [(c * (x - gx) + s * (y - gy), -s * (x - gx) + c * (y - gy))
+                for x, y in self.road_line]
+
+    def moving_holds(self, now):
+        """Return whether a moving thing near holds the car (fresh things only)."""
+        return (self.p['things'] and now - self.things_time <= self.p['things_timeout']
+                and math.isfinite(self.near_moving))
 
     def obstacle_ahead(self, now):
         """Return x (base_link) of what the car slows for: a moving thing, or the scan's."""
@@ -220,6 +259,9 @@ class BehaviourNode(Node):
 
     def on_global(self, msg: Odometry):
         self.pose = (msg.pose.pose.position.x, msg.pose.pose.position.y)
+        q = msg.pose.pose.orientation
+        self.pose_yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y),
+                                   1.0 - 2.0 * (q.y * q.y + q.z * q.z))
 
     def on_scan(self, msg: LaserScan):
         self.ahead = lane_ahead(msg.ranges, msg.angle_min, msg.angle_increment,
@@ -294,7 +336,7 @@ class BehaviourNode(Node):
                       sign_age=now - self.sign_time,
                       # A drive to a point is a goal too: its line is there while it runs.
                       goal_active=self.goal_active or len(self.point_plan) >= 2,
-                      goal_aborted=self.aborted)
+                      goal_aborted=self.aborted, moving=self.moving_holds(now))
         self.aborted = False
         d = self.machine.step(world)
         if self.decision is None or (d.state, d.reason) != (self.decision.state,
@@ -320,12 +362,17 @@ class BehaviourNode(Node):
             plan = lane_line(self.lanes, plan, self.pose, spacing=self.p['road_spacing'],
                              length=self.p['road_length'], passing=self.passing)
         d = self.decision
-        strip = build(plan, self.pose, self.stops(now), self.curve,
+        stops = self.stops(now)
+        if self.machine.holding:
+            # Held for something moving: the road ends at the car, so ego holds it at 0.
+            stops.append(Stop(MOVING_REASON, 0.0))
+        strip = build(plan, self.pose, stops, self.curve,
                       self.p['base_speed'], state=d.state if d else '',
                       reason=d.reason if d else '', spacing=self.p['road_spacing'],
                       length=self.p['road_length'])
         if self.lanes is not None:
             strip = with_edges(strip, self.lanes, passing=self.passing)
+        self.road_line = list(zip(strip.x, strip.y))
         self.road.publish(to_msg(strip, Header(stamp=self.get_clock().now().to_msg(),
                                                frame_id='map')))
 
