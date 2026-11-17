@@ -1081,7 +1081,7 @@ def generate_launch_description():
                                           'stops for it'),
         DeclareLaunchArgument('lane_pose', default_value=stacks.CHOSEN,
                               description='the lane finder as a pose sensor into ekf_global '
-                                          '(aav_lane_pose, TODO 155). Empty: the stack\'s '
+                                          "(aav_lane_pose, TODO 155). Empty: the stack's "
                                           'choice (on in ours since 17 Nov, where a camera '
                                           'and a lane map are)'),
         DeclareLaunchArgument('truth_pose', default_value='false',
