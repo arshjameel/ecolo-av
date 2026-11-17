@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_lidar_rs</name>
+  <version>0.1.0</version>
+  <description>lidar_scan in Rust (rclrs): a drop-in for aav_lidar's Python node (navigation.launch.py lidar_impl:=rust). The same topics, QoS and ranges: /sensors/lidar/points in; /sensors/lidar/scan, a 720-ray LaserScan in base_link, out. The maths is the lidar-scan crate, with no ROS.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_cmake_test</test_depend>
+  <!-- The node test plays aav_voxels' made-up lidar turn and compares with scan.py. -->
+  <test_depend>aav_lidar</test_depend>
+  <test_depend>aav_voxels</test_depend>
+  <test_depend>python3-numpy</test_depend>
+  <test_depend>sensor_msgs_py</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

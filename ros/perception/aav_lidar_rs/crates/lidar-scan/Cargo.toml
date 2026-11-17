@@ -1,0 +1,16 @@
+[package]
+name = "lidar-scan"
+description = "The roof lidar's cloud flattened into a 2D scan around base_link, in plain Rust (no ROS): aav_lidar's scan.py and ground.py, ported"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# aav_voxels_rs's crate (ours): Point, the car's outline (Body), the lidar's mount and
+# PointCloud2's bytes; reused, not copied.
+voxels = { path = "../../../aav_voxels_rs/crates/voxels" }
+
+[dev-dependencies]
+# float_roundtrip: read each number exactly as Python wrote it.
+serde_json = { version = "1", features = ["float_roundtrip"] }
