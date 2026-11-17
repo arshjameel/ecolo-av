@@ -45,6 +45,26 @@ It reuses `aav_voxels_rs`'s `voxels` crate: `Point`, `Body`, the lidar's `Mount`
 The Python reads `vehicle.yaml` itself; the launch file passes the Rust node the same
 numbers (`voxels_car`, as for `aav_voxels_rs`).
 
+## How it matches the Python
+
+| Vectors | Clouds | Ranges | Different |
+|---|---|---|---|
+| made up (`aav_voxels`' test lot) | 7 | 4,440 | 0 |
+| recorded in Ravensim (every 12th point) | 3 | 2,160 | 0 |
+
+A range may land in the next direction if a point sits on the line between two, at most 1
+in 1,000; none did.
+
+## Measured
+
+Ravensim, `things:=true`, `/clock` at 100 Hz, standing; 60 s of `ps` after 75 s
+(`/tmp/p1/sample_cpu.py`), Python then Rust back to back.
+
+| World | Load at start | Python | Rust |
+|---|---|---|---|
+| road | 19.4 / 10.9 | 4.8 % of a core, 152 MB | **2.0 %**, 46 MB |
+| campus | 19.2 / 13.7 | 4.9 %, 154 MB | **2.0 %**, 43 MB |
+
 ## Invariants
 
 - The same ranges as `scan.py`: `tests/vectors.rs` reads `vectors.json`, which

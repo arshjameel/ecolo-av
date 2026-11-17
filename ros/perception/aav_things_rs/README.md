@@ -50,6 +50,28 @@ reader, `behaviour-core`'s TF buffer, `voxels`' point type.
 The same as `aav_things`' (its README): every topic, QoS and parameter, with the same
 names and defaults. It reads `aav_things`' `config/things.yaml`.
 
+## How it matches the Python
+
+`gen_vectors.py` plays the node's whole pipeline in Python (the map's walls, groups, odom,
+the radar, the tracker, the names) and writes every thing; `tests/vectors.rs` plays the same.
+
+| Vectors | Clouds | Things listed | Largest difference |
+|---|---|---|---|
+| made up (a walker, a car, the radar, a row of posts) and recorded in Ravensim (a lidar-obstacle run) | 298 | 2,237 | 4.6e-15 m (allowed 1e-9) |
+
+The same ids, kinds, positions, speeds, sizes and confidences. Names and the saved map's
+background have their own vectors.
+
+## Measured
+
+Ravensim, `things:=true`, `/clock` at 100 Hz, standing; 60 s of `ps` after 75 s
+(`/tmp/p1/sample_cpu.py`), Python then Rust back to back.
+
+| World | Load at start | Python | Rust |
+|---|---|---|---|
+| road | 19.4 / 10.9 | 7.6 % of a core, 78 MB | **1.5 %**, 31 MB |
+| campus (the 6400 x 6400 `/map` as background) | 19.2 / 13.7 | 7.4 %, 353 MB | **1.5 %**, 230 MB |
+
 ## Invariants
 
 - The same answers as the Python modules: `tests/vectors.rs` reads `vectors.json`, which
