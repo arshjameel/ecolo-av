@@ -3454,10 +3454,13 @@ def main():
                 world='empty')
     if '--behaviour' in args or '--behaviour-only' in args:
         # Its own run: the trial on, the planner blind to the box (the cap must slow, the
-        # stop zone must stop), the lidar on for the lane ahead.
+        # stop zone must stop), the lidar on for the lane ahead. The things off: with them
+        # (stack:=ours' default since 16 Nov) the obstacle stop is only for what moves, and
+        # a wall the planner can't see is the stop zone's alone. The scan's obstacle stop
+        # is what this run checks; --behaviour-things checks the things' way.
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-behaviour{ext}')
-        session(['behaviour:=true', 'lidar:=true', 'plan_around:=false',
+        session(['behaviour:=true', 'lidar:=true', 'plan_around:=false', 'things:=false',
                  f'perception:={str(perception).lower()}'],
                 [lambda probe: check_behaviour(probe, sign=perception)], logs[-1],
                 'behaviour')
