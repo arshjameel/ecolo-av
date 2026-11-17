@@ -399,6 +399,40 @@ Each leg's time, every run: 42-44, 60 and 68-69 s in all three (the ramp's first
 `decisions.md`). Off the lane map (the lot, a three-point turn in the road world) it is
 the lattice, as before. The ramp stays a challenger (`lanes:=ramp`).
 
+### Corners as clothoids (17 Nov, TODO 211): a challenger
+
+The lane line rounds each corner with a circle arc. Its curvature jumps from 0 to 1/radius
+where the arc starts, so the steering must jump too. `lane_corners:=clothoid` turns each
+corner with a clothoid (Euler spiral), an arc, and a clothoid back (Fraichard and
+Scheuer's continuous-curvature turn): the curvature climbs over 4 m, never above the
+turning radius's.
+
+```text
+   curvature
+   1/radius ┤   ┌──────┐            arc:      ┌──────┐
+            │  ╱        ╲                     │      │
+          0 ┼─╱          ╲─                 ──┘      └──
+             clothoid  clothoid               (a jump)
+```
+
+University Drive, `path:=lane`, 2 runs each (`pixi run measure controllers --stacks
+own_calm_chunks --tours university university_box --runs 2 --reversing --launch
+behaviour:=true lane_route:=true lane_corners:=<arc|clothoid>`; lanes by `lane_score.py`):
+
+| Leg | Sway, arc | Sway, clothoid | Left-right changes /100 m | Steering flips /s | Off lane centre (m) |
+|---|---|---|---|---|---|
+| onto University Drive | 0.089 | 0.101 | 7.3 / 5.4 | 0.19 / 0.15 | 0.13-0.16 / 0.17-0.44 |
+| down University Drive | 0.044 | 0.048 | 10.5 / 9.7 | 0.36 / 0.32 | 0.05 / 0.05 |
+| round the bend south | 0.047 | 0.042 | 5.3 / 4.6 | 0.19 / 0.22 | 0.10-0.11 / 0.09-0.10 |
+| past the parked box | 0.062 | 0.061 | 8.9 / 8.4 | 0.25 / 0.29 | 0.28-0.29 / 0.25-0.31 |
+| whole tour | 0.056 | 0.057 | | | |
+
+(Pairs are arc / clothoid.) **A tie**, within one run to the next. One clothoid run
+swung 0.44 m off the lane's centre turning onto University Drive (14 % of it over the
+centre line); the other did not. So the arcs stay the default and the clothoids wait
+beside them. The steering flips that Hybrid-A* halves are not the corners' jumps: next,
+the follower (TODO 214, the piecewise-jerk path).
+
 ## Passing something parked (16 Nov)
 
 Ben, 16 Nov: "stick to the right side of the lane unless we need to for obstical
@@ -515,7 +549,7 @@ The output is the same (`/plan`, `/drivers/nav/planner/route`): a drop-in.
 | The map | `maps/campus/campus.osm` (`pixi run campus`, `tools/campus_lanelet.py`): the street router's 517 roads, 998 lanes, 1,903 joins, and 98 stop lines from OpenStreetMap's stop signs |
 | Where a pose meets it | the lanes within 20 m. On a lane: those running the way it faces. Off every lane: any of the 12 nearest, the way to it counted twice (so no loop round a block to reach the lane facing its way) |
 | The route | `lanelet-map` `route_between`: Dijkstra over lanelets, never backwards; a change of lane where the car is, 10 m extra |
-| The line | the lanes' centres joined; a lane change eased over 20 m; corners rounded as before (circle arcs: TODO 211 makes them clothoids) |
+| The line | the lanes' centres joined; a lane change eased over 20 m; corners rounded as before (circle arcs; `lane_corners:=clothoid` for clothoids, TODO 211) |
 | The stop lines | those on the route, on `/drivers/nav/planner/route_stops` (PoseArray, map) and `stops` in the status. Nothing reads them yet: next, the road ahead |
 | Off the map | as before: the lattice, and why |
 | Pick it | `lane_graph:=lanelet2` (`path:=lane_lanelet2` in `stacks.yaml`); a world with no `.osm` beside its `lanes.yaml` keeps the roads |

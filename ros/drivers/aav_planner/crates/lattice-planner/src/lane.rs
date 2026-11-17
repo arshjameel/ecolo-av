@@ -13,7 +13,7 @@
 //! | the graph | each road's centre-line points are nodes; a segment is an edge each way the road runs (one way: its drawn way). Roads join where they share a point (OpenStreetMap's shared nodes) |
 //! | where on it | the start and the goal on their nearest segment: on the road, the way they face; off it but within [`LaneSettings::reach`], either way |
 //! | the route | Dijkstra, shortest along the centre lines |
-//! | the line | each segment moved right by its lane's centre (`Road::lane`, as the lanes layer and `lane_map.py`), corners turned by clothoid, arc, clothoid at the planner's turning radius (continuous curvature, [`LaneSettings::transition`]) |
+//! | the line | each segment moved right by its lane's centre (`Road::lane`, as the lanes layer and `lane_map.py`), corners rounded at the planner's turning radius: circle arcs, or with `lane_corners:=clothoid` clothoid, arc, clothoid (continuous curvature, [`LaneSettings::transition`]; a challenger, TODO 211) |
 //! | the ends | the lattice, from the car to the line `join` m on, and from `join` m before its end to the goal; a car already on its lane (within [`LaneSettings::snap`]) straight onto the line `ease` m ahead, and a goal on the line's end straight too |
 //!
 //! Something parked on the line (Ben, 16 Nov: keep right, leave the lane only to pass):
@@ -44,6 +44,11 @@ const ON_ROAD_MARGIN: f64 = 0.5;
 /// A join from off the lanes to them, in metres of lane: each metre off counts this much
 /// (Lanelet2: the lane picked near an off-road start or goal).
 const JOIN_WEIGHT: f64 = 2.0;
+/// m of clothoid at each end of a corner with `lane_corners:=clothoid` (TODO 211): the
+/// steering actuator turns 0.8 rad/s (vehicle.yaml), about 0.5 1/m of curvature a second
+/// on the 1.56 m wheelbase; 4 m of clothoid up to the 3.6 m radius asks a third of that at
+/// 2.5 m/s.
+pub const CLOTHOID_TRANSITION: f64 = 4.0;
 /// m: the sideways step the joins must make room for: one lane.
 const ONE_LANE: f64 = 3.5;
 /// m a pass keeps from the left kerb, beyond half the car.
@@ -63,7 +68,8 @@ pub struct LaneSettings {
     /// m between the lane line's poses.
     pub spacing: f64,
     /// m of clothoid at each end of a corner, from straight up to the turning radius's
-    /// curvature (TODO 211); 0: circle arcs, the curvature jumping (before 17 Nov).
+    /// curvature (TODO 211, [`CLOTHOID_TRANSITION`]); 0 (the default): circle arcs, the
+    /// curvature jumping. The clothoids are a challenger: on University Drive they tied.
     pub transition: f64,
     /// m and rad: a car (or goal) this near the lane line's end, and facing its way, is
     /// joined to it straight, not by the lattice: the path starts at the car and goes on
@@ -92,10 +98,7 @@ impl Default for LaneSettings {
             reach: 20.0,
             min_lane: 5.0,
             spacing: 0.25,
-            // 17 Nov (TODO 211): the steering actuator turns 0.8 rad/s (vehicle.yaml),
-            // about 0.3 1/m of curvature a second; 4 m of clothoid at the 5-6 m radius
-            // asks a third of that at 5 m/s.
-            transition: 4.0,
+            transition: 0.0,
             snap: (0.6, 20f64.to_radians()),
             ease: 2.0,
             // 16 Nov (TODO 175): on the campus tour a replan 10 m short of the goal (off

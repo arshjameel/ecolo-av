@@ -50,9 +50,9 @@
 //!             lane-centre planner (lattice_planner::lane): the right lane's centre along
 //!             the lane map, the lattice joining the car and the goal to it; off the map,
 //!             the lattice alone. "lanes"."pass": false (lane_pass:=false): a blocked
-//!             lane line is the lattice's, not passed. "lanes"."corners": "arc"
-//!             (lane_corners:=arc): the lane line's corners as circle arcs, as before
-//!             17 Nov; else clothoid, arc, clothoid (TODO 211).
+//!             lane line is the lattice's, not passed. "lanes"."corners": "clothoid"
+//!             (lane_corners:=clothoid): the lane line's corners as clothoid, arc,
+//!             clothoid (TODO 211, a challenger); else circle arcs.
 //!
 //! A goal off the costmap (a global costmap made of the chunks round the car): the path
 //! goes as far as the way there stays on it (lattice_planner::steps), and the navigator's
@@ -70,7 +70,7 @@ use anyhow::{anyhow, bail, Context as _, Result};
 use costmap::{footprint, Arrival, Grid, Inflation};
 use futures::channel::oneshot;
 use lanelet_map::{LaneletMap, Origin};
-use lattice_planner::lane::{roads_from_json, How, LaneRouter, LaneSettings};
+use lattice_planner::lane::{roads_from_json, How, LaneRouter, LaneSettings, CLOTHOID_TRANSITION};
 use lattice_planner::steps;
 use lattice_planner::{
     cusps, length, Hybrid, Lattice, Plan, PlanError, Planner, Pose, Settings, SmootherSettings,
@@ -151,11 +151,12 @@ fn main() -> Result<()> {
                 } else {
                     None
                 },
-                // lane_corners:=arc: circle arcs, the curvature jumping (before 17 Nov).
-                transition: if block["corners"].as_str() == Some("arc") {
-                    0.0
+                // lane_corners:=clothoid: clothoid, arc, clothoid (TODO 211, a
+                // challenger); else circle arcs.
+                transition: if block["corners"].as_str() == Some("clothoid") {
+                    CLOTHOID_TRANSITION
                 } else {
-                    LaneSettings::default().transition
+                    0.0
                 },
                 ..LaneSettings::default()
             };

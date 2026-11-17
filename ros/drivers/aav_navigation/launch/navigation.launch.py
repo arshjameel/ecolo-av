@@ -133,8 +133,8 @@ def flag(context, name):
 
 
 def check_lane_corners(value):
-    """Return lane_corners:= checked: 'clothoid' (empty too) or 'arc'."""
-    value = value.strip().lower() or 'clothoid'
+    """Return lane_corners:= checked: 'arc' (empty too) or 'clothoid'."""
+    value = value.strip().lower() or 'arc'
     if value not in ('clothoid', 'arc'):
         raise ValueError(f'lane_corners:={value}: clothoid or arc')
     return value
@@ -742,10 +742,10 @@ def generate_launch_description():
                               description='with lane_route: true, a parked obstacle on the '
                                           'lane is passed by moving only its stretch left; '
                                           "false: the whole path is the lattice's"),
-        DeclareLaunchArgument('lane_corners', default_value='clothoid',
+        DeclareLaunchArgument('lane_corners', default_value='arc',
                               description="with lane_route: the lane line's corners, "
-                                          'clothoid (continuous curvature, TODO 211) or arc '
-                                          '(circle arcs, before 17 Nov)'),
+                                          'arc (circle arcs, the default) or clothoid '
+                                          '(continuous curvature, TODO 211, a challenger)'),
         DeclareLaunchArgument('lane_graph', default_value=lane_map.DEFAULT_LANE_GRAPH,
                               description='with lane_route: lanes_yaml (its roads) or '
                                           'lanelet2 (the Lanelet2 map beside it; TODO 175)'),
