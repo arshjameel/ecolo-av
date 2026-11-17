@@ -83,6 +83,10 @@ pico = { cmd = "tools/pico.sh", description = "Our Rust Pico 2 boards: pixi run 
 esp = { cmd = "tools/esp32.sh", description = "The Rust firmware for today's ESP32 control board: pixi run esp tools (Espressif's Rust, once), build, flash (on the USB cable, bench only), qemu-tools (QEMU, once), qemu-check (it brakes when the heartbeat stops; docs/esp32-bench.md), first-check [port] (right after a flash: SAFE TO GO ON or STOP; --qemu on the QEMU build), walk [port] (walks the whole first flash, one step at a time, shown and spoken)" }
 
 [dependencies]
+# Python 3.12, as Jazzy on Ubuntu 24.04 (the car) and the ml environment: the build's
+# entry points carry this Python, and -e ml puts its 3.12 packages on their path. Unpinned,
+# the solver took 3.14 on 17 Nov and numpy failed to import under -e ml (TODO 243).
+python = ">=3.12,<3.13"
 ros-jazzy-desktop = ">=0.11.0,<0.12"
 ros-jazzy-turtlesim = ">=1.8.4,<2"
 ros-jazzy-teleop-twist-keyboard = ">=2.4.1,<3"
