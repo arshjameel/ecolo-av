@@ -113,6 +113,7 @@ stop."
 | Rule | Number | Parameter |
 |---|---|---|
 | it moves | 0.3 m/s or more over the ground | `moving_speed` |
+| and keeps moving | 1 s, the run started on a thing seen (not coasting); once sure, it stays sure while it coasts in the blind zone | `moving_settle` |
 | near | 10 m from the car (its centre, less half its narrow side) | `moving_radius` |
 | on the road ahead | within half the lane + half its narrow side of `/world/road_ahead`'s line, checked every 0.25 s for 3 s at its speed | `moving_within` |
 | go again | 1 s after the last one has gone or stood still | `release_hold` |
@@ -126,6 +127,10 @@ stop."
   WAIT don't go to GO while something moves near.
 - It needs the things (`things:=true`). `stack:=ours` turns them on since 17 Nov, where
   nav and the lidar run (`stacks.yaml`'s behaviour level).
+- **Why the 1 s:** the things' tracker gave the parked box a speed for 0.1-0.6 s as the
+  car passed and its shape changed, and new tracks a guessed one (seen 3-7 times, coasting
+  off at 0.5-1.8 m/s). Without the second the car held 8 times passing the box. A person
+  or a car really moving moved on for 9-38 s (`MovingFor`).
 - **Known limit:** a person walking beside the car the same way, within 10 m, holds it
   as long as they walk. That is the rule as asked.
 
