@@ -89,28 +89,31 @@ impl Background {
         slack: f64,
     ) -> Self {
         let reach = (slack / resolution - 1e-9).ceil().max(0.0) as usize;
-        let mut grown = taken.clone();
-        if reach > 0 {
-            // A square of `reach` cells round each taken cell: rows, then columns.
-            let mut rows = taken.clone();
-            for (row, out) in taken.chunks(width).zip(rows.chunks_mut(width)) {
-                for (col, &t) in row.iter().enumerate() {
-                    if t {
-                        let (a, b) = (col.saturating_sub(reach), (col + reach).min(width - 1));
-                        out[a..=b].fill(true);
-                    }
-                }
+        if reach == 0 || width == 0 || height == 0 {
+            return Self {
+                origin,
+                resolution,
+                width,
+                height,
+                taken,
+            };
+        }
+        // A square of `reach` cells round each taken cell: along the rows, then the
+        // columns. Two grids at a time: the campus's /map is 6400 x 6400.
+        let mut rows = vec![false; taken.len()];
+        for (row, out) in taken.chunks(width).zip(rows.chunks_mut(width)) {
+            for (col, _) in row.iter().enumerate().filter(|(_, &t)| t) {
+                let (a, b) = (col.saturating_sub(reach), (col + reach).min(width - 1));
+                out[a..=b].fill(true);
             }
-            grown.fill(false);
-            for r in 0..height {
-                for c in 0..width {
-                    if rows[r * width + c] {
-                        let (a, b) = (r.saturating_sub(reach), (r + reach).min(height - 1));
-                        for rr in a..=b {
-                            grown[rr * width + c] = true;
-                        }
-                    }
-                }
+        }
+        drop(taken);
+        let mut grown = vec![false; rows.len()];
+        for (i, _) in rows.iter().enumerate().filter(|(_, &t)| t) {
+            let (r, c) = (i / width, i % width);
+            let (a, b) = (r.saturating_sub(reach), (r + reach).min(height - 1));
+            for rr in a..=b {
+                grown[rr * width + c] = true;
             }
         }
         Self {
