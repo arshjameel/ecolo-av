@@ -20,10 +20,12 @@
 
 pub mod cloud;
 mod mount;
+pub mod steps;
 
 use std::{cmp::Ordering, error::Error, fmt};
 
 pub use mount::Mount;
+pub use steps::{steps, StepError, StepShape};
 
 /// A point in `base_link` (m), or in the lidar's frame before [`Mount::to_base`].
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

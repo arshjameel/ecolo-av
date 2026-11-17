@@ -1,4 +1,4 @@
-//! How long one cloud takes: the mount, then the cubes, ms per cloud.
+//! How long one cloud takes: the mount, then the cubes (and the steps), ms per cloud.
 //!
 //! ```sh
 //! python3 ros/perception/aav_voxels_rs/test/capture_python_vectors.py --bench /tmp/cloud.txt
@@ -13,7 +13,7 @@ mod vectors;
 
 use std::time::Instant;
 
-use voxels::{cloud, cubes, Point};
+use voxels::{cloud, cubes, steps, usable, Point, StepShape};
 
 const RUNS: u32 = 200;
 
@@ -34,6 +34,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::hint::black_box(run());
         }
         let ms = start.elapsed().as_secs_f64() * 1e3 / f64::from(RUNS);
+        // The kerbs' step finder, as the node runs it with steps:=true.
+        let base: Vec<Point> = c.lidar.iter().map(|p| c.mount.to_base(p)).collect();
+        let good = usable(&base, &shape);
+        let start = Instant::now();
+        for _ in 0..RUNS {
+            std::hint::black_box(steps(&good, &StepShape::default()));
+        }
+        let steps_ms = start.elapsed().as_secs_f64() * 1e3 / f64::from(RUNS);
         // And the bytes either side, as the node does them.
         let bytes = cloud::write_xyz32(&c.lidar);
         let start = Instant::now();
@@ -55,7 +63,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let io_ms = start.elapsed().as_secs_f64() * 1e3 / f64::from(RUNS);
         println!(
             "{}: {} points, {} cubes. Rust: to_base + cubes {ms:.2} ms per cloud \
-             (+ {io_ms:.2} ms reading and writing the bytes), mean of {RUNS}",
+             (+ {io_ms:.2} ms reading and writing the bytes; + {steps_ms:.2} ms the steps), \
+             mean of {RUNS}",
             c.name,
             c.lidar.len(),
             found.obstacles.len()
