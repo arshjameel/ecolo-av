@@ -4,7 +4,7 @@ Navigation as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out
   ros2 launch aav_navigation navigation.launch.py [map:=<path to map yaml>]
       [radar:=false] [lidar:=false] [stop_zone:=<radar or lidar>]
       [camera_obstacles:=false] [ghost:=false] [voxels:=false] [voxels_impl:=python]
-      [kerbs:=false]
+      [kerbs:=false] [lidar_impl:=rust] [things_impl:=rust]
       [reversing:=false] [max_speed:=] [planner:=own] [planner_search:=lattice]
       [diffusion_model:=] [diffusion_provider:=CPUExecutionProvider] [diffusion_record:=]
       [diffusion_python:=] [diffusion_smoothing:=gear]
@@ -35,8 +35,9 @@ lifecycle node: each respawns 1 s after it dies, and while one is down the car s
                     reversing) or a silent sensor; its state on /safety/stop_zone/state
   stop_hold         with the stop zone (aav_safety): holds its stops until the zone stays
                     clear for 1 s, through twist_mux's stop_zone lock
-  lidar_scan        with lidar:=true (aav_lidar): the roof lidar's cloud ->
-                    /sensors/lidar/scan, for the costmap and the stop zone
+  lidar_scan        with lidar:=true (aav_lidar_rs): the roof lidar's cloud ->
+                    /sensors/lidar/scan, for the costmap and the stop zone;
+                    lidar_impl:=python for the Python node (aav_lidar)
 
 The settings are config/nav2.yaml's, in Nav2's layout: our ports read the blocks they were
 tuned with (vehicle.nav2_tuned writes the car into a temporary copy; vehicle.rewrite the
@@ -77,8 +78,9 @@ Switches:
   lane_corners:=,
   lane_graph:=            our costmap's lanes and chunks, our planner's lane-centre route
                           (TODO 148, 175; docs/own-costmap.md, docs/own-planner.md)
-  things:=true            (with lidar:=true) aav_things: the cubes as tracked things on
-                          /world/things; things_background*, things_names: theirs
+  things:=true            (with lidar:=true) aav_things_rs: the cubes as tracked things on
+                          /world/things; things_background*, things_names: theirs;
+                          things_impl:=python for the Python node (aav_things)
   replan_hz:=0            the navigator plans a to-pose goal once (a test: TODO 149)
 
 Obstacles, from where the sensors are:
@@ -255,6 +257,8 @@ def nodes(context):
     screen_cubes = flag(context, 'screen_cubes')
     voxels_impl = vehicle.check_voxels_impl(LaunchConfiguration('voxels_impl').perform(context))
     things = flag(context, 'things')
+    lidar_impl = vehicle.check_lidar_impl(LaunchConfiguration('lidar_impl').perform(context))
+    things_impl = vehicle.check_things_impl(LaunchConfiguration('things_impl').perform(context))
     # The kerbs need the lidar; a world without one just runs without them.
     kerbs = flag(context, 'kerbs') and lidar
     if (voxels or screen_cubes or things) and not lidar:
@@ -373,9 +377,12 @@ def nodes(context):
     if lidar and (amcl or not voxels):
         # Not a lifecycle node: it runs from the start. With voxels:=true only AMCL still
         # reads its scan.
-        actions.append(Node(package='aav_lidar', executable='lidar_scan', name='lidar_scan',
-                            output='screen',
-                            parameters=[params, {'use_sim_time': use_sim_time}]))
+        # lidar_impl:=rust: the Rust port, the same name and topics; it reads no
+        # vehicle.yaml, so the lidar's mount and the car's outline come with it.
+        car = voxels_car(cfg) if lidar_impl == 'rust' else {}
+        actions.append(Node(package=vehicle.LIDAR_IMPLS[lidar_impl], executable='lidar_scan',
+                            name='lidar_scan', output='screen',
+                            parameters=[params, {'use_sim_time': use_sim_time, **car}]))
     if voxels or screen_cubes or things or kerbs:
         # The cubes, for the costmap and the stop zone (voxels:=true), or only for the
         # developer window (screen_cubes:=true) or the things (things:=true): the costmap
@@ -391,9 +398,11 @@ def nodes(context):
                             name='voxels', output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time, **car}]))
     if things:
-        # The cubes as things, on /world/things (aav_things).
+        # The cubes as things, on /world/things (aav_things; things_impl:=rust: the Rust
+        # port, aav_things_rs, the same name, topics and settings file).
         config = FindPackageShare('aav_things').perform(context) + '/config/things.yaml'
-        actions.append(Node(package='aav_things', executable='things', name='things',
+        actions.append(Node(package=vehicle.THINGS_IMPLS[things_impl], executable='things',
+                            name='things',
                             output='screen',
                             parameters=[config, {'radar': radar,
                                                  'background': flag(context,
@@ -653,6 +662,14 @@ def generate_launch_description():
                               description='python (aav_voxels) or rust (aav_voxels_rs, the '
                                           'same node in Rust): which voxels node runs, with '
                                           'voxels:=true or screen_cubes:=true'),
+        DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
+                              description='python (aav_lidar) or rust (aav_lidar_rs, the same '
+                                          'node in Rust): which lidar_scan runs, with '
+                                          'lidar:=true'),
+        DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
+                              description='python (aav_things) or rust (aav_things_rs, the '
+                                          'same node in Rust): which things node runs, with '
+                                          'things:=true'),
         DeclareLaunchArgument('max_speed', default_value='',
                               description="m/s: Nav2's top speed, if not nav2.yaml's 1.0 "
                                           '(sim.launch.py sim_speed:=)'),

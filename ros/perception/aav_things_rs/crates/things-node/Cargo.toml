@@ -1,0 +1,25 @@
+[package]
+name = "things-node"
+description = "things: the lidar's cubes as tracked things with an id, a speed and a memory, as ROS 2 topics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "things"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"] }
+things-core = { path = "../things-core" }
+# The TF buffer with history (aav_behaviour_rs's), and ego-core's Transform.
+behaviour-core = { path = "../../../../drivers/aav_behaviour_rs/crates/behaviour-core" }
+ego-core = { path = "../../../../ego/aav_ego_rs/crates/ego-core" }
+# The cubes' PointCloud2 reader (aav_voxels_rs's).
+voxels = { path = "../../../aav_voxels_rs/crates/voxels" }
+rclrs = "0.8"
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = "0.3"

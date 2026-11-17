@@ -187,6 +187,11 @@ programs only meet through messages.</p></div>
 <td>A port of <code>aav_voxels</code>' Python node (TODO 185, 15 Nov): the same cubes, 8 times faster. Picked with <code>voxels_impl:=rust</code>; the Python stays the default until the Rust one has run on the car</td>
 </tr>
 <tr>
+<td>The flat scan and the things, <code>aav_lidar_rs</code>, <code>aav_things_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Ports of <code>aav_lidar</code>'s and <code>aav_things</code>' Python nodes (TODO 185, 17 Nov): the same scan and things, at a third and a fifth of the CPU. The default in the simulator and on the car; <code>lidar_impl:=python</code>, <code>things_impl:=python</code> fall back</td>
+</tr>
+<tr>
 <td>The CAN bridge, <code>aav_spine_bridge</code></td>
 <td>Rust (<code>rclrs</code>)</td>
 <td>A port of <code>aav_spine</code>'s Python node (T1.8), on the firmware's own CAN code. The default since 23 Oct; the Python one stays until the Rust one has run on the car (no record of that yet)</td>

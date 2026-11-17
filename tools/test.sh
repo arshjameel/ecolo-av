@@ -44,6 +44,10 @@ if command -v cargo >/dev/null; then
   (cd ros/perception/aav_radar_clusters && cargo test -q --locked -p radar-clustering)
   echo "== ros/perception/aav_voxels_rs: the cubes in Rust, the Python's answers"
   (cd ros/perception/aav_voxels_rs && cargo test -q --locked -p voxels)
+  echo "== ros/perception/aav_lidar_rs: the flat scan in Rust, the Python's ranges"
+  (cd ros/perception/aav_lidar_rs && cargo test -q --locked -p lidar-scan)
+  echo "== ros/perception/aav_things_rs: the things in Rust, the Python modules' answers"
+  (cd ros/perception/aav_things_rs && cargo test -q --locked -p things-core)
   echo "== ros/perception/aav_detector_rs: the detector's maths in Rust (resize, decode, labels)"
   (cd ros/perception/aav_detector_rs && cargo test -q --locked -p detector-core)
   echo "== ros/ego/aav_ego_rs: ego and look_ahead in Rust, the Python modules' answers"
@@ -111,6 +115,8 @@ if command -v cargo >/dev/null; then
   rust_style ros/sources/aav_imu_yahboom -p yahboom-protocol
   rust_style ros/perception/aav_radar_clusters -p radar-clustering
   rust_style ros/ego/aav_ego_rs -p ego-core
+  rust_style ros/perception/aav_lidar_rs -p lidar-scan
+  rust_style ros/perception/aav_things_rs -p things-core
   rust_style ros/drivers/aav_behaviour_rs -p behaviour-core
   rust_style ros/safety/aav_watchdog_rs -p watchdog-core
   rust_style ros/can_bridge/aav_spine_bridge -p spine-bridge

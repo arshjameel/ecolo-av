@@ -249,6 +249,31 @@ impl Buffer {
         };
         Ok(to_root(&up_t)?.inverse().then(&to_root(&up_s)?))
     }
+
+    /// ns: the newest time every moving link up from `target` and `source` has (the
+    /// stamp tf2's `lookup_transform(target, source, Time())` answers with); `None` when
+    /// every link is static (any time will do).
+    ///
+    /// # Errors
+    ///
+    /// [`LookupError::Unconnected`] when the frames share no tree.
+    pub fn newest(&self, target: &str, source: &str) -> Result<Option<i64>, LookupError> {
+        let (target, source) = (clean(target), clean(source));
+        let unconnected = || LookupError::Unconnected {
+            target: target.to_string(),
+            source: source.to_string(),
+        };
+        let (root_s, up_s) = self.chain(source).ok_or_else(unconnected)?;
+        let (root_t, up_t) = self.chain(target).ok_or_else(unconnected)?;
+        if root_s != root_t {
+            return Err(unconnected());
+        }
+        Ok(up_s
+            .iter()
+            .chain(&up_t)
+            .filter_map(|(_, link)| link.newest())
+            .min())
+    }
 }
 
 #[cfg(test)]
@@ -276,6 +301,11 @@ mod tests {
         assert!((mid.yaw() - 0.5).abs() < 1e-12);
         // Time(): the newest.
         let now = tf.lookup("odom", "camera", None).unwrap();
+        assert_eq!(tf.newest("odom", "camera"), Ok(Some(11 * S)));
+        let mut fixed = Buffer::new();
+        fixed.set("base_link", "camera", 0, planar(1.0, 0.0, 0.0), true);
+        assert_eq!(fixed.newest("base_link", "camera"), Ok(None));
+        assert!(tf.newest("map", "camera").is_err());
         assert!((now.translation[0] - (2.0 + 1.0_f64.cos())).abs() < 1e-12);
         // Before the oldest, after the newest: no answer.
         assert!(matches!(

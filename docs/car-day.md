@@ -491,7 +491,7 @@ The same venv also runs the engine once on the test stop sign, with the score an
 
 ### 4f. The Rust nodes are the ones running
 
-Since 16 Nov (Ben) four nodes run in **Rust** on the car by default. The Python twins
+Since 16 Nov (Ben) four nodes run in **Rust** on the car by default; since 17 Nov six. The Python twins
 stay installed, one switch away. Check this each time you start `car.launch.py`.
 
 | Node | Rust package (default) | Fall back to Python |
@@ -500,12 +500,14 @@ stay installed, one switch away. Check this each time you start `car.launch.py`.
 | behaviour (with `behaviour:=true`) | `aav_behaviour_rs` | `behaviour_impl:=python` |
 | sensor watchdog | `aav_watchdog_rs` | `watchdog_impl:=python` |
 | localization_health | `aav_localization_health_rs` | `localization_health_impl:=python` |
+| lidar_scan (the flat scan) | `aav_lidar_rs` | `lidar_impl:=python` |
+| things (with `things:=true`) | `aav_things_rs` | `things_impl:=python` |
 
 | # | Do | You should see | If not |
 |---|---|---|---|
-| 1 | read the first lines of `car.launch.py` (`~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin ...`) | `languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust` | a word other than `rust`: someone passed `:=python` |
-| 2 | on the Orin: `ps -eo args \| grep '_rs/lib/' \| grep -v grep` | `aav_ego_rs/lib/...`, `aav_watchdog_rs/lib/...`, `aav_localization_health_rs/lib/...` (and `aav_behaviour_rs` with behaviour on) | a package missing: its build failed, see `~/aav-jazzy/build.log` |
-| 3 | `ros2 node list` | `/ego`, `/look_ahead`, `/sensor_watchdog`, `/localization_health`: the same names as the Python's | |
+| 1 | read the first lines of `car.launch.py` (`~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin ...`) | `languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust` | a word other than `rust`: someone passed `:=python` |
+| 2 | on the Orin: `ps -eo args \| grep '_rs/lib/' \| grep -v grep` | `aav_ego_rs/lib/...`, `aav_watchdog_rs/lib/...`, `aav_localization_health_rs/lib/...`, `aav_lidar_rs/lib/...` (and `aav_behaviour_rs`, `aav_things_rs` with behaviour and things on) | a package missing: its build failed, see `~/aav-jazzy/build.log` |
+| 3 | `ros2 node list` | `/ego`, `/look_ahead`, `/sensor_watchdog`, `/localization_health`, `/lidar_scan` (and `/things`): the same names as the Python's | |
 
 **If a Rust node misbehaves:** stop the car (e-stop), stop the launch, and start it again
 with that node's switch added to the same command, such as `... car.launch.py machine:=orin ... watchdog_impl:=python`. One switch

@@ -7,7 +7,7 @@
 <!-- Generated from docs/perception.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Perception: cameras, RF-DETR and YOLO, stop signs, lanes and radar</h1>
-<div class="meta">35 min read · 11 sections</div></header>
+<div class="meta">36 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -167,7 +167,7 @@ a person can still look at it in RViz or Lichtblick.</p>
 <tbody>
 <tr>
 <td>Roof lidar</td>
-<td><code>lidar_scan</code> (<code>aav_lidar</code>)</td>
+<td><code>lidar_scan</code> (<code>aav_lidar_rs</code>; <code>aav_lidar</code> with <code>lidar_impl:=python</code>)</td>
 <td><code>/sensors/lidar/scan</code></td>
 <td>the local costmap's <code>lidar_layer</code>; <code>collision_monitor</code>; AMCL (<code>amcl:=true</code>); <code>behaviour</code> (<code>behaviour:=true</code>)</td>
 </tr>
@@ -191,7 +191,7 @@ a person can still look at it in RViz or Lichtblick.</p>
 </tr>
 <tr>
 <td>Roof lidar</td>
-<td><code>things</code> (<code>aav_things</code>), only with <code>things:=true</code></td>
+<td><code>things</code> (<code>aav_things_rs</code>; <code>aav_things</code> with <code>things_impl:=python</code>), only with <code>things:=true</code></td>
 <td><code>/world/things</code>, <code>/markers</code></td>
 <td><strong>nobody</strong> yet: for RViz; the behaviour planner and the screens will</td>
 </tr>

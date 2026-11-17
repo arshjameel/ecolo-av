@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+# lidar-scan: the cloud flattened to a scan, the car's own outline, the body-roll sums. No ROS:
+#   cargo test -p lidar-scan
+# lidar-scan-node: the ROS node (rclrs), binary lidar_scan. colcon builds it through
+# CMakeLists.txt.
+members = ["crates/lidar-scan", "crates/lidar-scan-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
+
+# The vectors test reads whole clouds: build it optimised.
+[profile.test]
+opt-level = 3

@@ -26,9 +26,10 @@ The real car. One launch file for every machine; a machine file picks the parts.
                            not yet tried on the car: docs/designs/2026-10-30_voxels.md)
       [voxels_impl:=python] (rust: the same cubes from aav_voxels_rs, the Rust port)
       [ego_impl:=rust] [behaviour_impl:=rust] [watchdog_impl:=rust]
-      [localization_health_impl:=rust]
+      [localization_health_impl:=rust] [lidar_impl:=rust] [things_impl:=rust]
                           (Rust on the car since Ben, 16 Nov: aav_ego_rs, aav_behaviour_rs,
-                           aav_watchdog_rs, aav_localization_health_rs. python: the Python
+                           aav_watchdog_rs, aav_localization_health_rs; since 17 Nov
+                           aav_lidar_rs and aav_things_rs. python: the Python
                            node instead, the same names and topics; one switch each, the
                            fall-back if one misbehaves. docs/car-day.md)
       [ghost:=false]      (true: a pretend person only navigation sees, where it runs, for
@@ -429,7 +430,9 @@ def launch_setup(context):
              'behaviour_impl': vehicle.check_behaviour_impl(arg('behaviour_impl')),
              'watchdog_impl': vehicle.check_watchdog_impl(arg('watchdog_impl')),
              'localization_health_impl': vehicle.check_localization_health_impl(
-                 arg('localization_health_impl'))}
+                 arg('localization_health_impl')),
+             'lidar_impl': vehicle.check_lidar_impl(arg('lidar_impl')),
+             'things_impl': vehicle.check_things_impl(arg('things_impl'))}
     get_logger('car.launch.py').info(
         'languages: ' + ' '.join(f'{k}:={v}' for k, v in impls.items())
         + ' (any of them :=python falls back)')
@@ -596,6 +599,8 @@ def launch_setup(context):
                                lidar=on('lidar'), ghost=flag('ghost'),
                                voxels=bool(flag('voxels') and on('lidar')),
                                voxels_impl=vehicle.check_voxels_impl(arg('voxels_impl')),
+                               lidar_impl=impls['lidar_impl'],
+                               things_impl=impls['things_impl'],
                                behaviour_impl=impls['behaviour_impl'],
                                stop_zone=(on('radar') or on('lidar') or flag('ghost')
                                           or rear_camera),
@@ -686,6 +691,12 @@ def generate_launch_description():
         DeclareLaunchArgument('voxels', default_value='false',
                               description='true (with the lidar): the costmap reads the lidar as '
                                           '0.25 m cubes (aav_voxels) instead of the flat scan'),
+        DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
+                              description='python or rust: which lidar_scan flattens the '
+                                          'lidar (aav_lidar, or aav_lidar_rs)'),
+        DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
+                              description='python or rust: which things node tracks the '
+                                          'cubes (aav_things, or aav_things_rs)'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
                                           'cubes (aav_voxels, or aav_voxels_rs)'),

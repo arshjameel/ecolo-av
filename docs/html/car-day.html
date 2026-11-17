@@ -1417,7 +1417,7 @@ its TensorRT version).</p>
 </table></div>
 <p><strong>Stop point:</strong> our stack built on the Orin and the Motor Pi; the engine built (or why not).</p>
 <h3 id="4f-the-rust-nodes-are-the-ones-running">4f. The Rust nodes are the ones running</h3>
-<p>Since 16 Nov (Ben) four nodes run in <strong>Rust</strong> on the car by default. The Python twins
+<p>Since 16 Nov (Ben) four nodes run in <strong>Rust</strong> on the car by default; since 17 Nov six. The Python twins
 stay installed, one switch away. Check this each time you start <code>car.launch.py</code>.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -1448,6 +1448,16 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <td><code>aav_localization_health_rs</code></td>
 <td><code>localization_health_impl:=python</code></td>
 </tr>
+<tr>
+<td>lidar_scan (the flat scan)</td>
+<td><code>aav_lidar_rs</code></td>
+<td><code>lidar_impl:=python</code></td>
+</tr>
+<tr>
+<td>things (with <code>things:=true</code>)</td>
+<td><code>aav_things_rs</code></td>
+<td><code>things_impl:=python</code></td>
+</tr>
 </tbody>
 </table></div>
 <div class="table-wrap"><table>
@@ -1463,19 +1473,19 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <tr>
 <td>1</td>
 <td>read the first lines of <code>car.launch.py</code> (<code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin ...</code>)</td>
-<td><code>languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust</code></td>
+<td><code>languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust</code></td>
 <td>a word other than <code>rust</code>: someone passed <code>:=python</code></td>
 </tr>
 <tr>
 <td>2</td>
 <td>on the Orin: <code>ps -eo args \| grep '_rs/lib/' \| grep -v grep</code></td>
-<td><code>aav_ego_rs/lib/...</code>, <code>aav_watchdog_rs/lib/...</code>, <code>aav_localization_health_rs/lib/...</code> (and <code>aav_behaviour_rs</code> with behaviour on)</td>
+<td><code>aav_ego_rs/lib/...</code>, <code>aav_watchdog_rs/lib/...</code>, <code>aav_localization_health_rs/lib/...</code>, <code>aav_lidar_rs/lib/...</code> (and <code>aav_behaviour_rs</code>, <code>aav_things_rs</code> with behaviour and things on)</td>
 <td>a package missing: its build failed, see <code>~/aav-jazzy/build.log</code></td>
 </tr>
 <tr>
 <td>3</td>
 <td><code>ros2 node list</code></td>
-<td><code>/ego</code>, <code>/look_ahead</code>, <code>/sensor_watchdog</code>, <code>/localization_health</code>: the same names as the Python's</td>
+<td><code>/ego</code>, <code>/look_ahead</code>, <code>/sensor_watchdog</code>, <code>/localization_health</code>, <code>/lidar_scan</code> (and <code>/things</code>): the same names as the Python's</td>
 <td></td>
 </tr>
 </tbody>

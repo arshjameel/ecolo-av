@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">16 min read · 8 sections</div></header>
+<div class="meta">17 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -392,6 +392,24 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>paper</td>
 <td>idea, ported</td>
 <td>the radar's clusters (<code>aav_radar_clusters</code>)</td>
+</tr>
+<tr>
+<td><strong>AB3DMOT</strong>: X. Weng, J. Wang, D. Held, K. Kitani, "3D Multi-Object Tracking: A Baseline and New Evaluation Metrics", IROS 2020</td>
+<td>paper</td>
+<td>idea</td>
+<td>the things' tracker: a constant-velocity Kalman filter per thing, greedy association (<code>aav_things</code>, and its Rust twin <code>aav_things_rs</code>)</td>
+</tr>
+<tr>
+<td><strong>NumPy</strong>'s pairwise summation (<code>loops_utils.h.src</code>)</td>
+<td>BSD-3</td>
+<td>ported (the algorithm)</td>
+<td><code>things-core</code>'s <code>pairwise_sum</code>, so a radar cluster's mean is numpy's to the last bit (<code>aav_things_rs</code>)</td>
+</tr>
+<tr>
+<td><strong>nalgebra</strong></td>
+<td>Apache-2.0</td>
+<td>runs</td>
+<td>the things' 4 × 4 Kalman matrices (<code>things-core</code>), NDT's (<code>ndt-core</code>)</td>
 </tr>
 <tr>
 <td>OpenCV</td>
