@@ -1021,3 +1021,16 @@ def test_localization_health_impl_is_python_or_rust():
                                                  'rust': 'aav_localization_health_rs'}
     with pytest.raises(ValueError, match='localization_health_impl:=c'):
         vehicle.check_localization_health_impl('c')
+
+
+def test_ekf_control_term_follows_the_command_within_the_cars_limits():
+    cfg = vehicle.load()
+    p = vehicle.ekf_control_params(cfg)
+    assert p['use_control'] and p['stamped_control']
+    assert p['control_config'] == [True, False, False, False, False, False]
+    for key in ('control_config', 'acceleration_limits', 'acceleration_gains',
+                'deceleration_limits', 'deceleration_gains'):
+        assert len(p[key]) == 6, key
+    assert p['acceleration_limits'][0] == cfg['actuators']['max_accel']
+    assert p['deceleration_limits'][0] == cfg['actuators']['max_brake']
+    assert 0.0 < p['control_timeout'] <= 1.0

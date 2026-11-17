@@ -231,7 +231,7 @@ topics:
   /control/cmd_vel:
     type: geometry_msgs/msg/TwistStamped
     pub: [twist_mux]
-    sub: [ego, actuator_test, point_driver, hw_panel]
+    sub: [ego, actuator_test, point_driver, hw_panel, ekf_local, ekf_global]
     live: [turtle, sim, car, bench]
     note: The one command ego obeys. v (m/s) and w (rad/s) in base_link.
   /ego/trace:

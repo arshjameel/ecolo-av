@@ -19,6 +19,11 @@ map -> odom, worked out on top of ekf_local's odom -> base_link.
       ──> /localization/gps/heading: the heading from the receiver's velocity, while the
       car moves (TODO 13). gps_heading:=false leaves it out
 
+Both EKFs also read /control/cmd_vel (twist_mux's command): robot_localization's control
+term predicts the speed from it (vehicle.ekf_control_params), so with the wheels silent a
+car told to stop is predicted to stop (TODO 207; before, ekf_local kept its last speed and
+ran on 15 m while the car stood). The wheels, when they speak, still decide.
+
 global_ekf:=false (a test, sim only: sim.launch.py truth_pose:=true): no ekf_global;
 aav_gazebo's truth_localizer publishes /localization/odom/global and map -> odom from the
 simulator's truth instead.
@@ -98,8 +103,10 @@ def local_ekf(context):
         package='robot_localization',
         executable='ekf_node',
         name='ekf_local',
-        parameters=files + [{'use_sim_time': LaunchConfiguration('use_sim_time')}],
-        remappings=([('odometry/filtered', '/localization/odom/local')]
+        parameters=files + [vehicle.ekf_control_params(vehicle.load()),
+                            {'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        remappings=([('odometry/filtered', '/localization/odom/local'),
+                     ('cmd_vel', vehicle.EKF_CONTROL_TOPIC)]
                     + ekf_services('ekf_local')),
     )]
 
@@ -122,9 +129,11 @@ def global_ekf(context):
         package='robot_localization',
         executable='ekf_node',
         name='ekf_global',
-        parameters=files + [{'initial_state': initial_state,
+        parameters=files + [vehicle.ekf_control_params(vehicle.load()),
+                            {'initial_state': initial_state,
                              'use_sim_time': LaunchConfiguration('use_sim_time')}],
-        remappings=([('odometry/filtered', '/localization/odom/global')]
+        remappings=([('odometry/filtered', '/localization/odom/global'),
+                     ('cmd_vel', vehicle.EKF_CONTROL_TOPIC)]
                     + ekf_services('ekf_global')),
         condition=IfCondition(PythonExpression([
             "'", LaunchConfiguration('gps'), "' == 'true' and '",
