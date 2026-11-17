@@ -30,7 +30,7 @@ import numpy
 HERE = Path(__file__).resolve().parent
 PERCEPTION = HERE.parent
 sys.path[:0] = [str(PERCEPTION / 'aav_lidar'), str(PERCEPTION / 'aav_voxels' / 'test')]
-from aav_lidar.scan import flatten, ScanShape, to_base  # noqa: E402
+from aav_lidar.scan import flatten, ScanShape, to_base  # noqa: E402, I100
 import lot  # noqa: E402
 
 OUT = HERE / 'crates' / 'lidar-scan' / 'tests' / 'vectors.json'
@@ -107,7 +107,7 @@ def recorded(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    parser.add_argument('--recorded', help="clouds recorded in the simulator (JSON)")
+    parser.add_argument('--recorded', help='clouds recorded in the simulator (JSON)')
     args = parser.parse_args()
     cases = made_up()
     if args.recorded:

@@ -33,7 +33,7 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 PERCEPTION = HERE.parent
 sys.path[:0] = [str(PERCEPTION / 'aav_things'), str(PERCEPTION / 'aav_detector')]
-from aav_detector.ground import Lens, Mount, rotation  # noqa: E402
+from aav_detector.ground import Lens, Mount, rotation  # noqa: E402, I100
 from aav_things.background import Background, new_only  # noqa: E402
 from aav_things.groups import group, GroupShape, to_frame  # noqa: E402
 from aav_things.naming import best_label, Camera, Namer, project, Seen, thing_box  # noqa: E402
@@ -90,7 +90,7 @@ def grid_of(spec):
     data = np.zeros(spec['width'] * spec['height'], dtype=np.int8)
     data[np.asarray(spec['walls'], dtype=int)] = 100
     return Background.from_grid(data, spec['width'], spec['height'], spec['resolution'],
-                                 spec['origin'][0], spec['origin'][1], spec['slack'])
+                                spec['origin'][0], spec['origin'][1], spec['slack'])
 
 
 def play(run):

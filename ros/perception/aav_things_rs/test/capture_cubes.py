@@ -16,6 +16,7 @@ import argparse
 import json
 import math
 
+from nav_msgs.msg import OccupancyGrid, Odometry
 import numpy as np
 import rclpy
 from rclpy.node import Node
@@ -24,7 +25,6 @@ from rclpy.qos import (DurabilityPolicy, qos_profile_sensor_data, QoSProfile,
 from rclpy.time import Time
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
-from nav_msgs.msg import OccupancyGrid, Odometry
 import tf2_ros
 
 TAKEN = 65

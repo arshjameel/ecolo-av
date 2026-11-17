@@ -116,8 +116,8 @@ def test_a_walker_is_the_pythons_thing():
         assert thing.seen == want.seen
         array = marks[-1].markers
         assert array[0].action == Marker.DELETEALL
-        assert [m.type for m in array[1:]] == [Marker.CUBE, Marker.ARROW,
-                                                Marker.TEXT_VIEW_FACING]
+        assert [m.type for m in array[1:]] == [
+            Marker.CUBE, Marker.ARROW, Marker.TEXT_VIEW_FACING]
         assert array[3].text.startswith('1 ') and array[3].text.endswith(' m/s')
         me.destroy_node()
     finally:
