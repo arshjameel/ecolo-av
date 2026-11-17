@@ -622,17 +622,17 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="../designs/2026-11-15_three-levels.md">Map chunks</a> (<code>aav_description</code> <code>map-chunks</code>, Rust, no ROS): the map in fixed 64 m squares; the 3 x 3 round the car at 0.25 m, the route's next 100 m at 1 m; load and drop as the car goes; cut a whole map into chunk files (<code>chunk-map</code>: the campus in 625 chunks a detail, 1.5 s)</td>
-<td>Ben, 14-15 Nov: "I like having hte 3 levels with fixed size map chunks"; "the splitting of the map into quadtrees kind of thing or octree but fixed size". Steps 1, 2, 4 (core) and 5 (off) of 7 of the three levels (TODO 175); NDT's <code>ChunkedMap</code> holds 1.2 % of the campus's cubes: the store the planner, NDT, the things and the dev window will share. NDT uses it: on the campus with <code>ndt:=true</code> it holds only the 3 x 3 round the car, scored as good as the whole map and ready in 0.02 s, not 2.5 s (15 Nov, the default once <code>pixi run campus</code> made the chunks). The planner's first form (<code>global_window:=192</code>) scored worse on the campus's long legs: a challenger. 16 Nov (Ben: "Lets turn on chunking for sure"): <strong>our global costmap from the chunks</strong> round the car and along the route, each read and inflated on its own core (rayon), and our planner planning a goal off it in steps: every leg on the lot, campus and University Drive tours (2 runs each), the same driving, a third of the costmap's memory; <strong>on in <code>stack:=ours</code></strong> (<code>costmap:=ours_chunks</code>)</td>
+<td>Ben, 14-15 Nov: "I like having hte 3 levels with fixed size map chunks"; "the splitting of the map into quadtrees kind of thing or octree but fixed size". Steps 1, 2, 4 (core) and 5 (off) of 7 of the three levels (TODO 175); NDT's <code>ChunkedMap</code> holds 1.2 % of the campus's cubes: the store the planner, NDT, the things and the dev window will share. NDT uses it: on the campus with <code>ndt:=true</code> it holds only the 3 x 3 round the car, scored as good as the whole map and ready in 0.02 s, not 2.5 s (15 Nov, the default once <code>pixi run campus</code> made the chunks). The planner's first form (<code>global_window:=192</code>) scored worse on the campus's long legs: a challenger. 16 Nov (Ben: "Lets turn on chunking for sure"): <strong>our global costmap from the chunks</strong> round the car and along the route, each read and inflated on its own core (rayon), and our planner planning a goal off it in steps: every leg on the lot, campus and University Drive tours (2 runs each), the same driving, a third of the costmap's memory; <strong>on in <code>stack:=ours</code></strong> (<code>costmap:=ours_chunks</code>). The local costmap too (<code>local_chunks:=true</code>, <code>costmap:=ours_all_chunks</code>, on in <code>ours</code>): the same driving, half its memory, and nothing in <code>ours</code> reads the campus's 41 M-cell <code>/map</code></td>
 <td>Ben</td>
 <td>2026-11-16</td>
 <td>sim</td>
 </tr>
 <tr>
 <td><a href="../designs/2026-11-15_three-levels.md">Lanelet2 in Rust</a> (<code>aav_description</code> <code>lanelet-map</code>, Rust, no ROS): reads Lanelet2's <code>.osm</code> (lanelets, lines, stop signs, right of way), the routing graph (follows, beside over dashed lines), A* by lanes, the stop lines on a route</td>
-<td>Ben, 14-15 Nov: "convert lanelet2 to rust", "Tonight, after the sway". No Rust crate exists and the C++ one is hard on Macs; step 6 of the three levels (TODO 175). Nothing uses it yet</td>
+<td>Ben, 14-15 Nov: "convert lanelet2 to rust", "Tonight, after the sway". No Rust crate exists and the C++ one is hard on Macs; step 6 of the three levels (TODO 175). 16 Nov: the route level routes on it (<code>lane_graph:=lanelet2</code>: Dijkstra over lanelets, lane changes, one way; the route's stop lines on <code>/drivers/nav/planner/route_stops</code>): every leg on the campus and University Drive, but slower than <code>lanes.yaml</code>, so a challenger</td>
 <td>Ben</td>
-<td>2026-11-15</td>
-<td>built</td>
+<td>2026-11-16</td>
+<td>sim</td>
 </tr>
 <tr>
 <td><a href="own-navigator.html">Our own navigator</a> (<code>aav_navigator</code>, <code>navigator:=own</code>; all ours: <code>navigator:=own planner:=own costmap:=own tracker:=mppi_lag</code>)</td>

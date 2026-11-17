@@ -498,6 +498,53 @@ car drove it. A lane route longer than 2 x the straight distance + 40 m is now t
 lattice's (`Fallback::Detour`, `detour` in the status). It could happen on the whole map
 too: there the leg ended first.
 
+## Routing on Lanelet2 (`lane_graph:=lanelet2`, 16 Nov, TODO 175)
+
+The route level of the [three levels](designs/2026-11-15_three-levels.md), step 6. The
+lane-centre planner can route on the campus's **Lanelet2** map instead of `lanes.yaml`.
+The output is the same (`/plan`, `/drivers/nav/planner/route`): a drop-in.
+
+```text
+ lanes.yaml:  road centre lines ──Dijkstra──▶ moved right onto the lane ──▶ the line
+ Lanelet2:    lanes (lanelets) ──Dijkstra───────────────────────────────▶ each lane's own centre
+              + who follows whom, who sits beside (dashed line), one way, stop lines
+```
+
+| Part | What |
+|---|---|
+| The map | `maps/campus/campus.osm` (`pixi run campus`, `tools/campus_lanelet.py`): the street router's 517 roads, 998 lanes, 1,903 joins, and 98 stop lines from OpenStreetMap's stop signs |
+| Where a pose meets it | the lanes within 20 m. On a lane: those running the way it faces. Off every lane: any of the 12 nearest, the way to it counted twice (so no loop round a block to reach the lane facing its way) |
+| The route | `lanelet-map` `route_between`: Dijkstra over lanelets, never backwards; a change of lane where the car is, 10 m extra |
+| The line | the lanes' centres joined; a lane change eased over 20 m; corners rounded as before (circle arcs: TODO 211 makes them clothoids) |
+| The stop lines | those on the route, on `/drivers/nav/planner/route_stops` (PoseArray, map) and `stops` in the status. Nothing reads them yet: next, the road ahead |
+| Off the map | as before: the lattice, and why |
+| Pick it | `lane_graph:=lanelet2` (`path:=lane_lanelet2` in `stacks.yaml`); a world with no `.osm` beside its `lanes.yaml` keeps the roads |
+
+**Against `lanes.yaml`** (`cargo test -p lattice-planner --test lanelet2`, the campus's
+6 legs, no ROS):
+
+| Legs | Lanelet2 | lanes.yaml |
+|---|---|---|
+| on University Drive (2) | 134.4 m, 151.5 m | 134.4 m, 151.7 m; never more than 0.3 m apart |
+| out of lot P4 (2) | none: off the map, the lattice | the same |
+| the campus's 2 inner legs | 313 m, 245 m: service roads lanes.yaml hasn't got. Both over the detour limit, so the lattice, as with lanes.yaml | none: the lattice |
+
+Lanelet2 has more roads (all 517 the router drives; `lanes.yaml` has the 129 painted
+ones), so it finds lane routes where `lanes.yaml` finds none.
+
+**Driving** (16 Nov, our simulator, `measure controllers --stacks own_calm_chunks
+own_calm_chunks_ll2 --reversing --runs 2`, `/tmp/maps/b2b`, `b2c`):
+
+| Tour | lanes.yaml (the default) | Lanelet2 |
+|---|---|---|
+| campus | 6/6 legs, 533-562 s, sway 0.088 | 6/6 legs, **717 s**, sway 0.092 |
+| University Drive | 6/6 legs, 343 s, sway 0.056 | 6/6 legs, 389 s, sway 0.062 |
+
+So **Lanelet2 stays a challenger**: every leg reached, but slower. On the campus its
+replans take the service roads round blocks (fixed in part: an off-lane start takes any
+lane near, a loop limit of 1.5 x + 20 m). Next: stop lines into the road ahead (TODO 220),
+clothoid corners for both graphs (TODO 211).
+
 ## What's missing
 
 - **Hybrid-A*** (the forward-only default on the car): ported 14 Nov
