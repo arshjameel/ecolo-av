@@ -34,7 +34,7 @@ Who: the person who ran or recorded it (`docs/features.md`, the git log, the pag
  ROS locks     twist_mux: e-stop (255), no-timeout (60), geofence (51), stop sign and
                sensor watchdog (30), stop hold (21) ── a lock holds every slot below it
      │
- the planner   Nav2's stop zone (collision_monitor), the costmap, the behaviour planner
+ the planner   the stop zone (aav_stop_zone), the costmap, the behaviour planner
 ```
 
 The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
@@ -61,9 +61,9 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 
 | Layer | What | Where |
 |---|---|---|
-| Stop zone | Nav2's `collision_monitor` zeroes `/drivers/nav/cmd_vel` when the radar or lidar sees a point in front of the bumper | `aav_navigation` |
+| Stop zone | `aav_stop_zone` zeroes `/drivers/nav/cmd_vel` when the radar or lidar sees 3 points in front of the bumper, or a sensor goes silent. Nav2's `collision_monitor` until 17 Nov; ours took the lock after its shadow run ([the swap](#the-stop-zones-swap-17-nov)) | `aav_stop_zone` |
 | Stop hold | holds the stop until the zone stays clear 1 s, so it can't flicker (twist_mux 21) | `aav_safety` `stop_hold.py` |
-| Costmap | the controller's own collision check can stop first | Nav2, or `aav_costmap` |
+| Costmap | the follower's own collision check can stop first | `aav_costmap`, `aav_mppi_lag` |
 | Behaviour planner | slows before the stop zone (a trial, off) | `aav_behaviour` |
 
 | Number | Where, when | Who |
@@ -79,7 +79,7 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 | the same kerb with the step finder (`kerbs:=true`): stopped 0.80-0.82 m before it ([13](#13-a-kerb)) | sim (ours), 16 Nov, TODO 119 | Ben |
 | the car | not measured | |
 
-**Gaps:** the stop zone and the stop hold hold only Nav2 and the AI slot. The point driver
+**Gaps:** the stop zone and the stop hold hold only navigation and the AI slot. The point driver
 (25), scripts and replay are not stopped by an obstacle. The roof lidar can't see a 1 m
 box inside the stop zone: the radar's job ([perception](perception.md)). The flat scan
 sees no kerb 0.3 m high or lower; the step finder does, with `kerbs:=true` ([13](#13-a-kerb)).
@@ -90,7 +90,7 @@ the car is written down but not run ([ghost obstacles](ghost-obstacles.md#on-the
 
 | Layer | What | Where |
 |---|---|---|
-| Rear stop zone | `collision_monitor`'s zone behind the rear bumper, from the lidar | `aav_navigation`, `reversing:=true` |
+| Rear stop zone | the stop zone's box behind the rear bumper, from the lidar | `aav_stop_zone`, `reversing:=true` |
 
 | Number | Where, when | Who |
 |---|---|---|
@@ -154,7 +154,7 @@ brake does with no power ([ESP32 safety](esp32-safety.md), row 7; tests 3.5, 3.8
 
 | Layer | What | Where |
 |---|---|---|
-| Sensor watchdog | a sensor stale, NaN, frozen or jumped: holds the point driver, Nav2 and the AI slot (twist_mux 30). It sends 10 times a second: 1 s of its own silence holds them too | `aav_safety` `sensor_watchdog.py` |
+| Sensor watchdog | a sensor stale, NaN, frozen or jumped: holds the point driver, navigation and the AI slot (twist_mux 30). It sends 10 times a second: 1 s of its own silence holds them too | `aav_safety` `sensor_watchdog.py` |
 | Wheels cross-check | frozen wheels caught against the IMU and GPS | `aav_safety` `wheel_check.py` |
 | twist_mux | every driver counts only for 0.5 s after its last message | `twist_mux.yaml` |
 | ego | stops on 0.3 s of quiet | `aav_ego` |
@@ -251,7 +251,7 @@ measurement.
 
 | Layer | What | Where |
 |---|---|---|
-| Sensor watchdog | GPS lost, NaN or jumped: holds the point driver, Nav2 and the AI slot | `aav_safety` |
+| Sensor watchdog | GPS lost, NaN or jumped: holds the point driver, navigation and the AI slot | `aav_safety` |
 | Geofence | `LOST` (no pose 1 s, spread over 3 m, no GPS into the EKF 2 s), `JUMP` (latched) | `aav_safety` `geofence.py` |
 | Localization health | warns only: gyro bias, GPS quality, clock skew, runaway EKFs | `aav_localization_health` (Betsi) |
 
@@ -267,7 +267,7 @@ measurement.
 | Layer | What | Where |
 |---|---|---|
 | Detector | RF-DETR on the front camera | `aav_detector` |
-| Stop-sign lock | holds the point driver, Nav2 and the AI slot about 4.7 m before the sign (twist_mux 30); a watcher that dies while true keeps the car stopped | `stop_sign` watcher |
+| Stop-sign lock | holds the point driver, navigation and the AI slot about 4.7 m before the sign (twist_mux 30); a watcher that dies while true keeps the car stopped | `stop_sign` watcher |
 | A person | the safety driver | |
 
 | Number | Where, when | Who |
@@ -285,7 +285,7 @@ measurement.
 | Layer | What | Where |
 |---|---|---|
 | Heartbeat | the HUD beats 10 Hz on `/hud/heartbeat` while it draws | `aav_hud` |
-| Watchdog | quiet or stuck 1 s: holds the point driver, Nav2 and the AI slot; after the first 5 s, latched (`hud LOST`) | `aav_safety` `sensor_watchdog.py` |
+| Watchdog | quiet or stuck 1 s: holds the point driver, navigation and the AI slot; after the first 5 s, latched (`hud LOST`) | `aav_safety` `sensor_watchdog.py` |
 
 | Number | Where, when | Who |
 |---|---|---|
@@ -301,8 +301,8 @@ Ben, 15 Nov: "we don't want to hit a curb" (TODO 119; [kerbs](kerbs.md)).
 |---|---|---|
 | The map | every road edge on the campus is a lethal kerb line | `campus.pgm` and its chunks |
 | Step finder | a point 0.10-0.5 m above another within 0.3 m, kept 10 s in odom (the lidar loses a kerb 3-4 m before the bumper) | `aav_voxels_rs`, `kerbs:=true` |
-| Costmap | the local costmap's `kerb_layer` marks it, and nothing clears it | Nav2's, or `aav_costmap` |
-| Stop zone | `collision_monitor`'s `steps` source | `aav_navigation` |
+| Costmap | the local costmap's `kerb_layer` marks it, and nothing clears it | `aav_costmap` |
+| Stop zone | the stop zone's `steps` source (Nav2's `collision_monitor`'s until 17 Nov) | `aav_stop_zone` |
 
 | Number | Where, when | Who |
 |---|---|---|
@@ -326,7 +326,7 @@ kerb it saw only from far forgets it. Not tried on the real VLP-16.
 | The steering's centre, and the brake's limits | 7, 8 | 67, A7 |
 | A steering actuator that doesn't follow is noticed in the sim only (no feedback on the car yet); nothing but the e-stop and the drag stops a dead brake (the watchdog's OVERSPEED only notices it, in the sim) | 7, 8 | 159, 207 |
 | The car runs 14 % over its command in the sim | 3 | 163 |
-| Obstacles stop only Nav2 and the AI slot | 1 | |
+| Obstacles stop only navigation and the AI slot | 1 | |
 
 ## Add a number
 

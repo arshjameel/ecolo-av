@@ -176,14 +176,14 @@ this tests it against Gazebo's camera and radar stand-in, which see the road wor
    behind the rear bumper, and the stop zone behind the car must stop it.
 9. With --ghost: Gazebo again, with ghost:=true (aav_ghost): nothing in Gazebo, only a
    pretend person 15 m past the bumper in navigation's view (its own costmap layer and
-   collision_monitor source), placed through ghost_obstacle's parameters as
+   stop zone source), placed through ghost_obstacle's parameters as
    `pixi run ghost ahead 15` does. the car drives 30 m: the stop zone must stop the car
    0-2 m before the ghost (as the global EKF has the car), and the local costmap must mark
    it; once the ghost is switched off, the car must go on to the goal, through where it
    stood.
 10. With --faults: Gazebo again (faults:=true), and for each fault in FAULTS: the car drives,
    the fault goes on (fault.<sensor>, on its node: faults.NODES), and the car must stop within
-   REACT seconds, stopped by the sensor watchdog's lock or collision_monitor; then the
+   REACT seconds, stopped by the sensor watchdog's lock or the stop zone; then the
    fault goes off, and the lock must open again. Two faults are of the watchdog itself:
    `watchdog hang` stops its process (SIGSTOP, then SIGCONT to mend it) and `watchdog
    kill` kills it (the last fault: nothing mends it). Its silence must hold the navigator through
@@ -343,7 +343,7 @@ LOOKAHEAD = 3.0         # m: where lane_finder measures the offset (its config, 
 
 # Sensor failures on purpose (--faults): each while the car drives, in this order (the NaNs
 # last: a NaN that reaches an EKF could spoil the runs after it). The watchdog's limits
-# (aav_safety config/sensor_watchdog.yaml) and collision_monitor's source_timeout set how
+# (aav_safety config/sensor_watchdog.yaml) and the stop zone's source_timeout set how
 # soon each must stop the car: REACT gives each that, plus ego's stop.
 # The watchdog's own two: hang (mended by SIGCONT) early; kill last, as nothing mends it.
 FAULTS = [('gps', 'stop'), ('watchdog', 'hang'), ('hud', 'stop'), ('imu', 'stop'),
@@ -605,7 +605,7 @@ class Probe(Node):
         self.estop = self.create_publisher(Bool, '/safety/estop', 10)
         self.hw_estop = self.create_publisher(Bool, '/vehicle/bench/hw_estop', 10)
         self.arm_client = self.create_client(SetBool, '/spine/arm')
-        self.monitor = []    # (action, polygon) from collision_monitor, as it changes
+        self.monitor = []    # (action, polygon) from the stop zone, as it changes
         self.create_subscription(CollisionMonitorState, '/safety/stop_zone/state',
                                  lambda m: self.monitor.append((m.action_type, m.polygon_name)),
                                  10)
@@ -1803,7 +1803,7 @@ def check_faults(probe, watchdog=True):
         by = ', '.join(w for w, on_ in (('the watchdog', locked),
                                         ("the watchdog's silence (twist_mux's "
                                          f'{LOCK_TIMEOUT:g} s lock timeout)', silent),
-                                        ('collision_monitor (invalid source)', invalid)) if on_)
+                                        ('the stop zone (invalid source)', invalid)) if on_)
         stood = (f'stood still {stopped_at:.1f} s after it' if stopped_at is not None
                  else f'still driving after {probe.now() - t0:.0f} s')
         if frozen:
@@ -3322,7 +3322,7 @@ def main():
         logs.append(f'{stem}-around{ext}')
         session([f'lidar:={str(lidar).lower()}'], [check_plan_around], logs[-1], 'around')
     if '--ghost' in args:
-        # Its own run: the ghost is one more collision_monitor source, beside the radar and
+        # Its own run: the ghost is one more stop zone source, beside the radar and
         # the lidar, so the other runs keep the graph the car has.
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-ghost{ext}')
