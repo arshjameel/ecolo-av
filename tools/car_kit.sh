@@ -102,7 +102,7 @@ step "Models"
 n=0
 for m in models/*; do
   case "$m" in
-    models/README.md|*.mlpackage) continue ;;   # Core ML is a Mac's; the Orin makes TensorRT
+    models/README.md|models/CLAUDE.md|*.mlpackage) continue ;;   # Core ML is a Mac's; the Orin makes TensorRT
   esac
   [[ -e "$m" ]] || continue
   mkdir -p "$OUT/models"
@@ -167,7 +167,8 @@ EOF
    printf '%s  %s\n' "$(sha256 "$f")" "${f#./}"
  done > SHA256SUMS)
 
-step "Done in $(( $(date +%s) - T0 )) s: $ROOT/$OUT"
+case "$OUT" in /*) where=$OUT ;; *) where=$ROOT/$OUT ;; esac
+step "Done in $(( $(date +%s) - T0 )) s: $where"
 du -sh "$OUT"/* | sed 's/^/  /'
 echo "  total: $(du -sh "$OUT" | awk '{print $1}')"
 echo "Copy the folder to a USB stick. Any format: its biggest file is under FAT32's 4 GB."
