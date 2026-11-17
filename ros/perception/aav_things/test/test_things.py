@@ -165,3 +165,54 @@ def test_naming_hook():
     for k in range(3):
         tracker.step(k * 0.1, [seen(5.0, 0.0)], (0, 0))
     assert tracker.at(0.2)[0].kind == 'person'
+
+
+def _held_tracks(tracker, frames):
+    """Return the ids that moved 0.3 m/s or more for 1.5 s on end (the behaviour's hold)."""
+    since, held = {}, set()
+    for now, groups, car in frames:
+        tracker.step(now, groups, car)
+        for t in tracker.at(now):
+            if math.hypot(t.x[2], t.x[3]) >= 0.3:
+                if now - since.setdefault(t.id, now) >= 1.5:
+                    held.add(t.id)
+            else:
+                since.pop(t.id, None)
+    return held
+
+
+def test_a_row_of_thin_posts_never_moves():
+    # TODO 222: posts 1.5 m apart, each missed a third of the time, the car passing at
+    # 2 m/s. The tracker hopped post to post (13 m/s); the gates keep each post still.
+    import random
+    for seed in range(10):
+        rng = random.Random(seed)
+        posts = [(5.0 + 1.5 * i, 4.0) for i in range(12)]
+        frames = []
+        for k in range(200):
+            now, car = 0.1 * k, (0.2 * k - 5.0, 0.0)
+            groups = [Group(px + rng.uniform(-0.15, 0.15), py + rng.uniform(-0.15, 0.15),
+                            0.25 + rng.choice([0, 0.25]), 0.25 + rng.choice([0, 0.25]), 1.0, 2)
+                      for px, py in posts
+                      if math.hypot(px - car[0], py - car[1]) <= 25 and rng.random() > 0.35]
+            frames.append((now, groups, car))
+        assert _held_tracks(Tracker(), frames) == set(), seed
+
+
+def test_a_walker_and_a_car_still_get_their_speed():
+    # The gates must not lose what really moves, seen most of the time.
+    import random
+    rng = random.Random(5)
+    frames = []
+    for k in range(60):
+        now = 0.1 * k
+        groups = []
+        if rng.random() > 0.3:
+            groups.append(Group(10.0, -5.0 + 1.4 * now, 0.5, 0.5, 1.7, 4))     # walking
+        if rng.random() > 0.3:
+            groups.append(Group(-20.0 + 8.0 * now, 8.0, 4.5, 2.0, 1.5, 30))    # a car
+        frames.append((now, groups, (0.0, 0.0)))
+    tracker = Tracker()
+    assert len(_held_tracks(tracker, frames)) == 2
+    speeds = sorted(math.hypot(t.x[2], t.x[3]) for t in tracker.at(6.0))
+    assert speeds == pytest.approx([1.4, 8.0], abs=0.3)

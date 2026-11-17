@@ -12,6 +12,15 @@ Association is greedy nearest first inside a gate: the closest (thing, group) pa
 matched, then the next closest, until none is closer than `gate`. A group nobody claims
 starts a new thing; a thing nobody saw coasts on its speed.
 
+Two more checks on each pair (TODO 222: in the test lot a row of thin posts became things
+moving 1.5-11 m/s, the match hopping from post to post as each went in and out of view):
+
+| Check | A pair is refused when |
+|---|---|
+| where it should be | the group is outside the thing's own uncertainty: its Mahalanobis distance² is over `gate_chi2` (9.21: 99 %, two dimensions). A thing seen standing still for a while is known to a few cm, so a neighbour 1.5 m off is another thing; a new one, its speed unknown, still has a wide gate |
+| its speed, if small | a thing and group both no wider than `small_size` (a post, a person) would have moved faster than `small_speed` since it was last seen, give or take `small_slack` m. A new thing's speed is unknown, so the gate above is wide for it; this keeps a post's new track from jumping to the next post |
+| its shape | the group's footprint is over `shape_ratio` times the thing's, or under 1 / `shape_ratio`, and differs by more than `shape_slack` m: two posts seen as one are not the post |
+
 Memory: a thing seen `confirm` times is kept, coasting on its speed (taken as parked when
 slower than `still_speed`), for `keep` s after it was last seen, so
 what went into the blind zone in front of the bumper (the roof lidar can't see a 0.5 m
@@ -52,6 +61,12 @@ class TrackerShape:
     keep_tentative: float = 0.3   # s: a thing seen fewer than `confirm` times
     start_speed_sigma: float = 3.0  # m/s: how little a new thing's speed is known
     still_speed: float = 0.5      # m/s: an unseen thing slower than this is taken as parked
+    gate_chi2: float = 9.21       # Mahalanobis distance², over: not this thing (99 %, 2 dof)
+    shape_ratio: float = 2.5      # a footprint this many times larger or smaller ...
+    shape_slack: float = 0.6      # m: ... and this much: another thing
+    small_size: float = 0.8       # m: a thing no wider is small (a post, a person) ...
+    small_speed: float = 3.5      # m/s: ... and never moves faster than this
+    small_slack: float = 0.3      # m: a small thing's middle may wander this much a look
 
 
 @dataclass
@@ -154,7 +169,8 @@ class Tracker:
         h[0, 0] = h[1, 1] = 1.0
         pairs = sorted(
             (math.hypot(t.x[0] - g.x, t.x[1] - g.y), ti, gi)
-            for ti, t in enumerate(self.tracks) for gi, g in enumerate(groups))
+            for ti, t in enumerate(self.tracks) for gi, g in enumerate(groups)
+            if self._fits(t, g, h, r, now))
         used_t, used_g = set(), set()
         for distance, ti, gi in pairs:
             if distance > sh.gate:
@@ -177,6 +193,13 @@ class Tracker:
                 # reads as a little speed; coasting on it would walk the thing away.
                 if math.hypot(t.x[2], t.x[3]) < sh.still_speed:
                     t.x = np.array([t.x[0], t.x[1], 0.0, 0.0])
+                    # Parked, its speed known to be about 0 (TODO 222): otherwise the
+                    # uncertainty grows while unseen until a neighbour fits its gate.
+                    if t.seen >= sh.confirm:
+                        p = np.zeros((4, 4))
+                        p[:2, :2] = t.p[:2, :2]
+                        p[2, 2] = p[3, 3] = (0.5 * sh.still_speed) ** 2
+                        t.p = p
         for gi, g in enumerate(groups):
             if gi not in used_g:
                 self.tracks.append(self._start(g, now))
@@ -184,6 +207,23 @@ class Tracker:
         if self.name is not None:
             for t in self.tracks:
                 t.kind = self.name(t)
+
+    def _fits(self, t: Track, g: Group, h: np.ndarray, r: np.ndarray, now: float) -> bool:
+        """Return whether group g may be thing t: where it should be, a like shape."""
+        sh = self.shape
+        nu = np.array([g.x - t.x[0], g.y - t.x[1]])
+        s = h @ t.p @ h.T + r
+        if float(nu @ np.linalg.solve(s, nu)) > sh.gate_chi2:
+            return False
+        mine, its = max(t.length, t.width), max(g.length, g.width)
+        if max(mine, its) <= sh.small_size:
+            # From where it was last seen: the prediction has already moved it on.
+            seen_at = t.x[:2] - t.x[2:] * max(0.0, now - t.last_seen)
+            moved = math.hypot(g.x - seen_at[0], g.y - seen_at[1])
+            if moved > sh.small_speed * max(0.0, now - t.last_seen) + sh.small_slack:
+                return False
+        bigger, smaller = max(mine, its), max(1e-3, min(mine, its))
+        return bigger / smaller <= sh.shape_ratio or bigger - smaller <= sh.shape_slack
 
     def radar(self, now: float, clusters: Iterable[RadarCluster]) -> None:
         """Give each nearest confirmed thing within radar_gate its radar speed along the ray."""

@@ -14,7 +14,7 @@ a speed or a memory. `things` turns the lidar's cubes into one list:
 | Step | How |
 |---|---|
 | Group | cubes closer than `gap` (0.6 m, flat) are one thing; fewer than 2 cubes is noise; longer than 8 m is a wall (the map's job) |
-| Track | one constant-velocity Kalman filter per thing (x, y, vx, vy in odom); greedy nearest association inside a 2 m gate. AB3DMOT (Weng 2020): the simple tracker is a strong baseline |
+| Track | one constant-velocity Kalman filter per thing (x, y, vx, vy in odom); greedy nearest association inside a 2 m gate. AB3DMOT (Weng 2020): the simple tracker is a strong baseline. Since 17 Nov (TODO 222) a pair must also pass three checks: inside the thing's own uncertainty (Mahalanobis distance² under 9.21), a like footprint (not 2.5 times larger or smaller and 0.6 m apart), and a small thing (0.8 m or less: a post, a person) no faster than 3.5 m/s since it was last seen; a parked thing unseen keeps a small speed doubt. Before, a row of thin posts hopped post to post at up to 13 m/s |
 | Radar | where `radar:=true`, each cluster's mean radial speed, the car's own speed taken off, updates the nearest thing's speed along the ray |
 | Memory | a thing seen 3 times stays listed 3 s after it leaves view, moving on its speed (slower than 0.5 m/s: parked). Within 4 m of the car, 30 s: the roof lidar can't see a low box there, so not seeing it says nothing |
 | Background | `things_background:=true` (off by default): cubes on the saved map are dropped before grouping, so a wall seen again is not a new thing (`background.py`, TODO 175). Two saved maps, below. Safety never relies on it: the stop zone and the costmaps read the lidar's own topics, never `/world/things` |
@@ -63,6 +63,9 @@ So ours: about 300 lines of numpy, with tests.
 | `confirm` | 3 | clouds seen before it is listed |
 | `keep`, `keep_blind`, `blind_range` | 3 s, 30 s, 4 m | the memory |
 | `still_speed` | 0.5 m/s | slower, an unseen thing is taken as parked |
+| `gate_chi2` | 9.21 | a group further than this (Mahalanobis distance²) from a thing's own uncertainty is another thing |
+| `shape_ratio`, `shape_slack` | 2.5, 0.6 m | a footprint that many times larger or smaller, and that much, is another thing |
+| `small_size`, `small_speed`, `small_slack` | 0.8 m, 3.5 m/s, 0.3 m | a thing no wider never moves faster, give or take the slack |
 | `radar` | false | the launch file sets it to `radar:=` |
 | `background` | false | the launch file sets it to `things_background:=` (never in `things.yaml`: a node's own block there outranks the launch's) |
 | `background_chunks` | empty | the launch's `things_background_chunks:=`: a folder of NDT chunks, `chunks.yaml` beside it |
