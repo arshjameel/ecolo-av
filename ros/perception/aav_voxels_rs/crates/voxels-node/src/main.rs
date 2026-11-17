@@ -83,7 +83,7 @@ fn main() -> Result<()> {
         );
     }
 
-    // Reliable, depth 1: best-effort readers (the costmap's, collision_monitor's) still
+    // Reliable, depth 1: best-effort readers (the costmap's, the stop zone's) still
     // connect, and a Mac's UDP doesn't lose whole clouds.
     let state = State {
         shape,

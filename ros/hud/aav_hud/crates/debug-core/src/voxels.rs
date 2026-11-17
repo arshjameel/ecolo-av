@@ -1,5 +1,5 @@
 //! Nav2's cubes: what the voxels trial (aav_voxels, `voxels:=true`) tells the costmap
-//! and collision_monitor to stop for. The screen's own cubes are its own reading of the
+//! and the stop zone to stop for. The screen's own cubes are its own reading of the
 //! lidar; these are Nav2's, drawn over them as red wireframes (key V).
 //!
 //! `/perception/voxels/cubes` is a PointCloud2 in base_link, stamped with the lidar

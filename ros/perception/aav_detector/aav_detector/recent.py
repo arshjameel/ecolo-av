@@ -5,7 +5,7 @@ No ROS imports, so the tests run anywhere.
 
 camera_obstacles gets one detection message per picture, from whichever camera it came.
 Published one camera at a time, a person behind the car would come and go with every
-front picture, and collision_monitor, which keeps only a source's newest cloud, would
+front picture, and the stop zone, which keeps only a source's newest cloud, would
 stop and start. So it keeps each camera's newest points and publishes them all, every
 time; a camera silent for more than max_age seconds drops out (a stale picture shows
 where things were, not where they are).

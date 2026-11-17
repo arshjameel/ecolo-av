@@ -1,5 +1,5 @@
 """
-camera_obstacles: the detectors' boxes as points on the road, for Nav2's local costmap.
+camera_obstacles: the detectors' boxes as points on the road, for the local costmap.
 
 Subscribes  /perception/detections        vision_msgs/Detection2DArray, from every detector
                                           (one per computer with a GPU). Each message's
@@ -16,7 +16,7 @@ Publishes   /perception/camera_obstacles  sensor_msgs/PointCloud2 in base_link: 
 Reads TF    base_link -> each camera's frame (vehicle.yaml, through the URDF)
 
 Every camera's newest points go out together, each time (recent.py): so a person behind
-the car doesn't vanish with every front picture, for the costmap or collision_monitor.
+the car doesn't vanish with every front picture, for the costmap or the stop zone.
 
 Only the listed classes count (people, cyclists, cars...), and stop signs never do: they
 lock twist_mux instead (stop_sign_watcher). The maths is in ground.py: a pinhole camera

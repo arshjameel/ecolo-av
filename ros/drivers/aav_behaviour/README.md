@@ -17,7 +17,7 @@ Nav2's goal check makes every final stop. The page: `docs/stopping.md`; the desi
 | Stop for | `left` (m) | Final stop |
 |---|---|---|
 | a stop sign | camera range to the sign − the watcher's 4.7 m | the `stop_sign` lock |
-| an obstacle in the lane | lidar scan: nearest point ahead − bumper − stop zone | collision_monitor, then the `stop_zone` lock |
+| an obstacle in the lane | lidar scan: nearest point ahead − bumper − stop zone | the stop zone, then the `stop_zone` lock |
 | the fence | along `/plan` to where depth < `near_depth` | the geofence lock |
 | the goal | along `/plan` to its end | Nav2's goal check |
 

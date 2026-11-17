@@ -6,7 +6,7 @@ The roof lidar for Nav2. `lidar_scan` flattens the lidar's cloud (about 0.9 MB) 
 scan around `base_link` (a few kB): for each direction, the nearest point between the
 road and just over the roof. That is what the car would hit.
 
-Nav2's local costmap (`lidar_layer`) and `collision_monitor` read the scan.
+The local costmap (`lidar_layer`) and the stop zone read the scan.
 `navigation.launch.py lidar:=true` starts it, with its parameters from `nav2.yaml`.
 
 Why not the stock `pointcloud_to_laserscan`? It subscribes best effort, and on a Mac (UDP,

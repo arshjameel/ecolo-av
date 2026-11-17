@@ -99,9 +99,9 @@ twist_mux:
                                 # buttons (45).
                                 # Profiles with no watchdog (the turtle) start the mux with
                                 # sensor_lock:=false: no_sensor_lock.yaml sets this timeout to 0.
-      stop_zone:                # aav_safety's stop_hold: true from collision_monitor's stop
+      stop_zone:                # aav_safety's stop_hold: true from the stop zone's stop
         topic: /safety/stop_hold/lock  # until its zone has stayed clear for 1 s, so an
         timeout: 0.0            # obstacle at the zone's edge can't flicker it between stop
         priority: 21            # and go. Priority 21: Nav2 (20) and the AI slot (10) only,
-                                # as collision_monitor guards only Nav2. Never expires on
-                                # silence: profiles without collision_monitor never send it.
+                                # as the stop zone guards only navigation. Never expires on
+                                # silence: profiles without the stop zone never send it.

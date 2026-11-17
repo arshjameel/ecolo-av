@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_ghost</name>
   <version>0.1.0</version>
-  <description>Ghost obstacles: a pretend person or post in Nav2's view (its own costmap layer and collision_monitor source, so it only ever adds), to test stopping on the real car with nothing real to hit. ghost_obstacle publishes /safety/ghost/scan; the ghost command places it.</description>
+  <description>Ghost obstacles: a pretend person or post in navigation's view (its own costmap layer and stop zone source, so it only ever adds), to test stopping on the real car with nothing real to hit. ghost_obstacle publishes /safety/ghost/scan; the ghost command places it.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 

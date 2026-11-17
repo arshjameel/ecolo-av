@@ -1,4 +1,4 @@
-# ghost_obstacle (aav_ghost): a pretend person in Nav2's view. Started by
+# ghost_obstacle (aav_ghost): a pretend person in navigation's view. Started by
 # navigation.launch.py ghost:=true (sim.launch.py and car.launch.py pass ghost:= on).
 # docs/ghost-obstacles.md. Change these live: pixi run ghost ahead 10, ghost off ...
 ghost_obstacle:
@@ -10,4 +10,4 @@ ghost_obstacle:
     frame: map          # the ghost stands still in this frame
     width: 0.5          # m: a person
     height: 1.7         # m
-    rate_hz: 10.0       # Hz: well inside collision_monitor's 1 s source_timeout
+    rate_hz: 10.0       # Hz: well inside the stop zone's 1 s source_timeout

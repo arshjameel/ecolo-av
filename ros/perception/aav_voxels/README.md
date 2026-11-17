@@ -4,11 +4,11 @@
 
 A trial beside `aav_lidar`'s flat scan (Ben, 30 Oct: "this is a car not a needle").
 `voxels` reads the roof lidar's cloud once and publishes **0.25 m cubes**: what stands
-between the road and just over the roof. Nav2's local costmap and `collision_monitor`
+between the road and just over the roof. The local costmap and the stop zone
 read the cubes instead of the scan when `voxels:=true`.
 
 ```
-/sensors/lidar/points ──► voxels ──► /perception/voxels/cubes  ──► costmap (mark), collision_monitor
+/sensors/lidar/points ──► voxels ──► /perception/voxels/cubes  ──► costmap (mark), stop zone
                             ├──────► /perception/voxels/ground ──► costmap (clear)
                             └──────► /perception/voxels/status
 ```

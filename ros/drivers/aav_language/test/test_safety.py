@@ -83,7 +83,7 @@ def test_the_stop_hold_holds_nav2_not_the_point_driver():
     held = {'sensors': (False, 0.1), 'geofence': (False, 0.1), 'stop_zone': (True, 0.1)}
     assert safety.mux_choice(inputs, {'nav': 0.1}, locks, held)['blocked_by'] == 'stop_zone'
     assert safety.mux_choice(inputs, {'point': 0.1}, locks, held)['driver'] == 'point'
-    # Timeout 0: never heard (no collision_monitor in this profile) locks nothing.
+    # Timeout 0: never heard (no stop zone in this profile) locks nothing.
     quiet = {'sensors': (False, 0.1), 'geofence': (False, 0.1)}
     assert safety.mux_choice(inputs, {'nav': 0.1}, locks, quiet)['driver'] == 'nav'
 

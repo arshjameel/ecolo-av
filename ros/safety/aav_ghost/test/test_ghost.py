@@ -37,7 +37,7 @@ def test_the_scan_sees_the_ghosts_near_side_only_where_it_is():
 
 
 def test_close_up_enough_beams_for_the_stop_zone():
-    # collision_monitor's stop zone needs 3 points: a person 1 m past the bumper gives many.
+    # the stop zone needs 3 points: a person 1 m past the bumper gives many.
     r = ranges(Ghost(FRONT + 1.25, 0.0), Pose(0.0, 0.0, 0.0))
     assert numpy.isfinite(r).sum() >= 10
 
