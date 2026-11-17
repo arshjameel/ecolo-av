@@ -1,6 +1,6 @@
 [package]
 name = "costmap-node"
-description = "costmap: the ROS 2 node around the costmap crate, beside Nav2's costmaps"
+description = "costmap: the ROS 2 node around the costmap crate, and the map server"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,11 +10,18 @@ publish.workspace = true
 name = "costmap"
 path = "src/main.rs"
 
+# The map, latched, in Nav2's map_server's place (Nav2 deleted, 17 Nov).
+[[bin]]
+name = "map_server"
+path = "src/map_server.rs"
+
 [dependencies]
 anyhow = "1"
 # SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
 ctrlc = { version = "3", features = ["termination"] }
 costmap = { path = "../costmap" }
+# The map server reads the map as Nav2's did (read_map: trinary).
+map-chunks = { path = "../../../../bringup/aav_description/map-chunks" }
 rclrs = "0.8"
 # The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
 ros-env = "0.3"

@@ -16,12 +16,12 @@ set(CARGO_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR}/target)
 add_custom_target(cargo_build ALL
   COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS --unset=MFLAGS --unset=CARGO_MAKEFLAGS
     CARGO_TARGET_DIR=${CARGO_TARGET_DIR}
-    ${CARGO} build --release --locked --quiet --bin costmap
+    ${CARGO} build --release --locked --quiet --bin costmap --bin map_server
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMENT "cargo build --release --bin costmap"
+  COMMENT "cargo build --release --bin costmap --bin map_server"
   VERBATIM)
 
-install(PROGRAMS ${CARGO_TARGET_DIR}/release/costmap
+install(PROGRAMS ${CARGO_TARGET_DIR}/release/costmap ${CARGO_TARGET_DIR}/release/map_server
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)

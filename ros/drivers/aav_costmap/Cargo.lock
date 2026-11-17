@@ -325,6 +325,7 @@ dependencies = [
  "anyhow",
  "costmap",
  "ctrlc",
+ "map-chunks",
  "rclrs",
  "ros-env",
  "serde_json",
