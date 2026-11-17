@@ -66,6 +66,9 @@ Ours also stopped alone, for up to 3.7 s: at start-up, before Nav2's had been sw
     the message, not the decision.
 
 So ours took the lock (TODO 182): `stop_zone:=` in every stack, on the bench and the car.
+With Nav2 gone and ours the lock, the same checks in one run (17 Nov): every one passed.
+Ours stopped the car 0.93 m before the radar's box (Nav2's 0.91 m, the round before),
+0.98 m before the lidar's post, 0.74 and 0.77 m before the kerb; all 14 faults.
 
 ## The last scores
 
