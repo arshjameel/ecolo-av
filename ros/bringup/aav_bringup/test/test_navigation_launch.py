@@ -763,3 +763,23 @@ def test_the_sim_and_the_car_pass_voxels_impl_on():
                               voxels_impl='rust')['voxels_impl'] == 'rust'
     with pytest.raises(ValueError, match='voxels_impl'):
         sent_to_navigation(SIM, voxels_impl='go')
+
+
+def test_kerbs_run_the_rust_voxels_node_with_its_step_finder():
+    assert 'kerb_layer' not in local_costmap(lidar='true')['plugins']
+    # No lidar: no kerbs, and no refusal (a world without one runs as before).
+    assert 'voxels' not in nav_nodes(kerbs='true')
+    nodes = nav_nodes(lidar='true', kerbs='true')
+    # The scan stays; the Rust node runs beside it, even if voxels_impl says python.
+    assert {'voxels', 'lidar_scan'} <= set(nodes)
+    assert nodes['voxels']._Node__package == 'aav_voxels_rs'
+    assert given(nodes['voxels'])['steps'] is True
+    local = local_costmap(lidar='true', kerbs='true')
+    assert 'kerb_layer' in local['plugins']
+    assert local['kerb_layer']['steps']['topic'] == '/perception/voxels/steps'
+    assert local['lidar_layer']['observation_sources'] == 'lidar'
+
+
+def test_the_sim_passes_kerbs_on():
+    assert sent_to_navigation(SIM, world='road', kerbs='true')['kerbs'] == 'true'
+    assert sent_to_navigation(SIM, world='road', kerbs='false')['kerbs'] == 'false'
