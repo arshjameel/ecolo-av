@@ -16,6 +16,7 @@ Every page is in [`docs/`](docs/). The ones people ask for most:
 
 | Page | What it's for |
 |---|---|
+| [0.4-rc1 on the car](docs/release-0.4-rc1.md) | the release candidate: install it on the car, what to check first, what is untested there ([the release](docs/release-0.4.md)) |
 | [Status](docs/status.md) | what works, where and when it last ran, and what's next |
 | [The plan](docs/plan.md) | what's left to build, in order, by the gates |
 | [Features](docs/features.md) | what the software does, why, and who built it |

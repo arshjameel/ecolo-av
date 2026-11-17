@@ -24,6 +24,12 @@ order; each lands on `main` only after the full test and a sim check.
 | 10 | The Rust made more Rust-like | 176 |
 | waits | The car (hardware lead); one car drive scored | 157, 158, 173 |
 
+## Ben, 17 Nov: ready to install by Wednesday
+
+| # | Task | Status |
+|---|---|---|
+| 245 | **The 0.4-rc1 release check** (Ben, 17 Nov: "we want to have everything solid and ready to install by tomorrow"): the QEMU flake, every sim check in a row, the car kit, CI, a one-page note | ✅ 17 Nov: [0.4-rc1 on the car](docs/release-0.4-rc1.md). Every sim-check mode passes (`--behaviour` after a fix: the check turns the things off); CI green for `aaf3ab80`; the kit builds, 804 crates offline; the QEMU check retries once only when nothing but host-speed timings failed |
+
 ## Found 17 Nov (Nav2 and Gazebo deleted)
 
 | # | Task | Status |

@@ -7,11 +7,12 @@
 <!-- Generated from docs/release-0.4.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>0.4-rc1: start here</h1>
-<div class="meta">4 min read · 5 sections</div></header>
+<div class="meta">5 min read · 5 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
 <a class="here" href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -32,8 +33,8 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
-<a href="rollout.html">Rolling out on the car</a>
 <span class="sep">Learn:</span>
+<a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="measure-the-car.html">Measure the car</a>
@@ -48,8 +49,8 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<a href="learn-control.html">Learn: control</a>
 <span class="sep">Reference:</span>
+<a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
@@ -121,9 +122,11 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#what-04-means">What 0.4 means</a><a href="#one-command-per-job">One command per job</a><a href="#how-ours-compares-15-nov-3-runs-each-reversing-on">How ours compares (15 Nov, 3 runs each, reversing on)</a><a href="#whats-new-since-03">What&#x27;s new since 0.3</a><a href="#not-in-04-rc1">Not in 0.4-rc1</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#what-04-means">What 0.4 means</a><a href="#one-command-per-job">One command per job</a><a href="#how-ours-compares-the-leagues-final-16-nov">How ours compares: the league&#x27;s final (16 Nov)</a><a href="#whats-new-since-03">What&#x27;s new since 0.3</a><a href="#not-in-04-rc1">Not in 0.4-rc1</a></nav>
 <div class="lead"><p>The first release candidate of 0.4. <strong>Beta, not 1.0</strong> (Ben, 14 Nov: "We are still in beta
-stages"). It is about refining what we have, not adding more.</p></div>
+stages"). It is about refining what we have, not adding more.</p>
+<p><strong>Going to the car (Wed 18 Nov):</strong> <a href="release-0.4-rc1.html">0.4-rc1 on the car</a>: install,
+first checks, what is untested there, the seven blockers.</p></div>
 <section class="card"><h2 id="what-04-means">What 0.4 means</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -143,11 +146,11 @@ stages"). It is about refining what we have, not adding more.</p></div>
 </tr>
 <tr>
 <td><strong>No oscillation</strong> (no swaying)</td>
-<td>🔧 ours now sways about 2 times more than Nav2 (was 3-5 times); on mapped road, <code>path:=lane</code> sways least of all (TODO 167, 168)</td>
+<td>🔧 ours swayed about 2 times more than Nav2 at their last side-by-side (15 Nov; was 3-5 times); on mapped road, <code>path:=lane</code> sways least of all (TODO 167, 168)</td>
 </tr>
 <tr>
 <td>Nav2 and Gazebo only as yardsticks</td>
-<td>✅ both deleted early: Nav2 17 Nov, Gazebo 16 Nov (<a href="../history/gazebo-as-it-was.md">as it was</a>; TODO 184)</td>
+<td>✅ both deleted early: Nav2 17 Nov (<a href="../history/nav2-as-it-was.md">as it was</a>), Gazebo 16 Nov (<a href="../history/gazebo-as-it-was.md">as it was</a>); TODO 184. Ravensim, ours, is the only simulator</td>
 </tr>
 </tbody>
 </table></div>
@@ -178,8 +181,8 @@ stages"). It is about refining what we have, not adding more.</p></div>
 <td><code>pixi run sim-check</code> (2 min)</td>
 </tr>
 <tr>
-<td>compare our stack with Nav2</td>
-<td><code>pixi run measure controllers --stacks nav2 own --reversing</code></td>
+<td>compare options of our stack</td>
+<td><code>pixi run measure controllers --stacks own own_calm --reversing</code> (<a href="league.html">the league</a>)</td>
 </tr>
 <tr>
 <td>drive Carleton's campus</td>
@@ -196,7 +199,8 @@ stages"). It is about refining what we have, not adding more.</p></div>
 </tbody>
 </table></div>
 </section>
-<section class="card"><h2 id="how-ours-compares-15-nov-3-runs-each-reversing-on">How ours compares (15 Nov, 3 runs each, reversing on)</h2>
+<section class="card"><h2 id="how-ours-compares-the-leagues-final-16-nov">How ours compares: the league's final (16 Nov)</h2>
+<p>Nav2's last score before it was deleted, on the same three tours in Ravensim:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -207,29 +211,24 @@ stages"). It is about refining what we have, not adding more.</p></div>
 </thead>
 <tbody>
 <tr>
-<td>Legs reached, lot + campus</td>
-<td><strong>21 of 21</strong></td>
-<td>16 of 21 (14 Nov)</td>
+<td>Legs reached (lot, campus, University Drive)</td>
+<td><strong>30 of 30</strong> (3 runs)</td>
+<td>14 of 20 (2 runs)</td>
 </tr>
 <tr>
-<td>Off the path, on average</td>
-<td><strong>0.21-0.22 m</strong></td>
-<td>0.31-0.44 m</td>
+<td>Off the path, campus tour</td>
+<td><strong>0.17 m</strong></td>
+<td>0.83 m</td>
 </tr>
 <tr>
-<td>Sway (side-to-side), lot</td>
-<td>0.031 m/s²</td>
-<td><strong>0.017 m/s²</strong></td>
-</tr>
-<tr>
-<td>Sway (side-to-side), campus</td>
-<td>0.231 m/s²</td>
-<td><strong>0.12 m/s²</strong></td>
+<td>Time over the centre line, University Drive</td>
+<td><strong>0 %</strong></td>
+<td>13 %</td>
 </tr>
 </tbody>
 </table></div>
-<p>Ours wins on reaching goals and tracking; Nav2 still drives more smoothly. The details:
-<code>TODO.md</code> rows 164, 167 and 168.</p>
+<p>The final configuration: <strong>no champion changed</strong>; <code>pose:=ndt_ekf</code> is the one to try
+next (<a href="league-results-2026-11-16.html#final-configuration">the league, 16 Nov</a>).</p>
 <p>On University Drive (16 Nov, 3 runs each), ours with <code>path:=lane</code> (now its default):
 0 % of the time over the centre line (61 % before), 0.11 m off the lane centre, sway 0.055 m/s².</p>
 </section>
@@ -292,7 +291,7 @@ stages"). It is about refining what we have, not adding more.</p></div>
 <tbody>
 <tr>
 <td>The real car</td>
-<td>needs the hardware lead's go-ahead (TODO 173)</td>
+<td>needs the hardware lead's go-ahead and the seven blockers (<a href="release-0.4-rc1.html">on the car</a>; TODO 158, 173)</td>
 </tr>
 <tr>
 <td>The middle level planning far goals in chunks</td>
@@ -303,14 +302,14 @@ stages"). It is about refining what we have, not adding more.</p></div>
 <td>stops on the line, but sways more on the lot: a challenger (TODO 163)</td>
 </tr>
 <tr>
-<td>Heavy Python nodes in Rust</td>
-<td>voxels first (TODO 185)</td>
+<td>More heavy Python nodes in Rust</td>
+<td>six run in Rust by default since 17 Nov (ego, behaviour, watchdog, localization_health, lidar_scan, things); the rest in TODO 185</td>
 </tr>
 </tbody>
 </table></div>
 <p>The whole list: <code>TODO.md</code>. What works today: <a href="status.html">Status</a>.</p></section>
 <nav class="prevnext"><a class="prev" href="overview.html"><small>Previous</small>← Overview</a>
-<a class="next" href="release-notes.html"><small>Next</small>Release notes →</a></nav>
+<a class="next" href="release-0.4-rc1.html"><small>Next</small>0.4-rc1 on the car →</a></nav>
 </main>
 <footer>Source: <code>docs/release-0.4.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

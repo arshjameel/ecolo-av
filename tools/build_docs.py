@@ -45,6 +45,8 @@ PAGES = [
     ('overview.md', 'Overview', 'Everything in ecolo-av: ours, stock, inherited, missing'),
     ('release-0.4.md', '0.4-rc1',
      'The release candidate: what it means, one command per job, ours against Nav2'),
+    ('release-0.4-rc1.md', '0.4-rc1 on the car',
+     'Wednesday 18 Nov: install on the car, check first, untested there, the seven blockers'),
     ('release-notes.md', 'Release notes',
      'Release 0.2: what it does, the screens, how to use it, the words, what is left; 0.1 below'),
     ('getting-started.md', 'Getting started', 'A new laptop to the turtle in 30 minutes (T1.1)'),

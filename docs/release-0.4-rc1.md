@@ -1,0 +1,119 @@
+# 0.4-rc1 on the car: Wednesday 18 Nov
+
+One page for the team meeting: what is in it, how to put it on the car, what to check
+first, and what nobody has tried on the car yet.
+
+!!! warning "Beta, and almost all of it untried on the car"
+    The car drove on 13 Nov with **only the localization update** installed. Everything
+    below "Untested on the car" has run in Ravensim, bench mode, QEMU or unit tests only.
+
+## What's in it
+
+The whole stack on one page: [What we built](what-we-built.md). In short:
+
+| Area | In 0.4-rc1 |
+|---|---|
+| Driving | our own stack (`stack:=ours`): costmap, planner, navigator, MPPI, smoother, stop zone. Nav2 deleted 17 Nov |
+| Simulator | Ravensim, ours. Gazebo deleted 16 Nov |
+| Languages | six nodes run in Rust by default; their Python twins stay, one switch away |
+| The league | no champion changed on 16 Nov ([its final configuration](league-results-2026-11-16.md#final-configuration)) |
+
+The release in one page, one command per job: [0.4-rc1: start here](release-0.4.md).
+
+## Install it on the car, step by step
+
+Don't copy the steps from here: follow these pages in order.
+
+| # | Step | Where |
+|---|---|---|
+| 1 | Make the kit on a Mac with internet: `pixi run car-kit`, copy `car-kit/` to a stick | [Car install](car-install.md), section 1 |
+| 2 | Back up every car computer first | [Car day](car-day.md), A2 |
+| 3 | On the car: `car_install.sh --dry-run` (checks only) | [Car install](car-install.md), section 2 |
+| 4 | Install: `car_install.sh`, about 5 min a computer | [Car install](car-install.md), section 3 |
+| 5 | Look, read-only: `car_listen.sh` | [Car install](car-install.md), section 4 |
+| 6 | Our stack on the Orin and the Motor Pi | [Car day](car-day.md), A5 (4a-4f) |
+
+Undo: `rm -rf ~/aav-jazzy`. Nothing else changes, no sudo.
+
+## Check first on the car
+
+| # | Check | You should see | If not |
+|---|---|---|---|
+| 1 | which language runs ([car day 4f](car-day.md#4f-the-rust-nodes-are-the-ones-running)) | `languages: ego_impl:=rust ... things_impl:=rust` in `car.launch.py`'s first lines | a Rust package didn't build: `~/aav-jazzy/build.log` |
+| 2 | a Rust node misbehaves | - | e-stop, stop the launch, start again with that node's fall-back |
+| 3 | the clocks | `chronyc tracking` on every computer | [Car day](car-day.md#the-clocks) |
+
+The fall-backs, one per node (the others stay Rust):
+
+| Node | Fall back to Python |
+|---|---|
+| ego + look_ahead | `ego_impl:=python` |
+| behaviour | `behaviour_impl:=python` |
+| sensor watchdog | `watchdog_impl:=python` |
+| localization_health | `localization_health_impl:=python` |
+| lidar_scan | `lidar_impl:=python` |
+| things | `things_impl:=python` |
+
+## Untested on the car (everything since 13 Nov)
+
+| Item | Since | Tried in |
+|---|---|---|
+| Our own stack as the only stack (Nav2 gone) | 14-17 Nov | Ravensim, the league |
+| The six Rust defaults above | 16-17 Nov | Ravensim, unit tests |
+| `path:=lane`: the plan keeps the right lane | 16 Nov | Ravensim (University Drive) |
+| The behaviour planner and the stopping law | 14 Nov | Ravensim |
+| Map chunks (RavenTiles) for NDT, the costmap, the things | 16 Nov | Ravensim (campus) |
+| The watchdog's OVERSPEED latch | 16 Nov | Ravensim, unit tests |
+| `sensor_mux`'s start-up grace (TODO 234) | 17 Nov | Ravensim, unit tests |
+| The Rust ESP32 firmware | - | QEMU only; never flashed |
+| The kit on the Orin and the Motor Pi | - | CI's ARM runner only |
+
+## The seven hardware blockers
+
+The hardware lead decides each; we help. Details: `docs/designs/2026-11-04_weak-links.md`,
+section 1, and `TODO.md` 158.
+
+| # | Blocker | What clears it |
+|---|---|---|
+| 1 | The no-timeout lock, while the car runs the 2025-26 C++ ESP32 | the Rust ESP32 flashed ([car day A8](car-day.md#session-6-the-esp32)) |
+| 2 | COASTING until the stop is measured | test 4.3, then a decel in `vehicle.yaml` |
+| 3 | The brake doesn't follow a wish | the `pi` brake loop, unless `open` stops within 1 m |
+| 4 | Wheel speed not yet seen on the car | the Arduino's CAN frames seen (TODO 60) |
+| 5 | Clocks across the computers | `chronyc tracking` on each |
+| 6 | Steering pulls right; its ends and centre unknown | measure them (TODO 67) |
+| 7 | No way to score "1 m" | a tape mark at B (proposed) |
+
+## Checked on 17 Nov (Ben's Mac)
+
+Every `pixi run sim-check` mode in a row on Ravensim, main at `aaf3ab80`, each on its
+own ROS domain (160-177, this computer only), the load under 8 at each start.
+
+| Mode | Result | Note |
+|---|---|---|
+| the road world (no flag) | ✅ pass | |
+| `--obstacle` | ✅ pass | |
+| `--lidar-obstacle` | ✅ pass | |
+| `--kerb` | ✅ pass | |
+| `--movers` | ✅ pass | |
+| `--faults` | ✅ pass | |
+| `--actuator-faults` | ✅ pass | |
+| `--three-point` | ✅ pass | 5 changes of direction, 0.44 m from a wall |
+| `--behaviour` | ✅ pass, after a fix | failed once: the check now turns the things off (below) |
+| `-e ml --perception` | ✅ pass | stood still 4.3 m before the stop sign |
+| `tools/software_gl.sh --force ... --obstacle` (lockstep cameras) | ✅ pass | |
+
+| Also | Result |
+|---|---|
+| CI for `aaf3ab80`: linux, arm, car-kit, car-kit-22.04 | ✅ all green |
+| `pixi run car-kit` on the Mac | ✅ 68 s, 1.9 GB; 804 Rust crates, every `_rs` package resolves offline |
+| the ESP32 firmware in QEMU | ✅ pass; now runs once more if only host-speed timings fail |
+
+## Known issues
+
+| Issue | What it means | Where |
+|---|---|---|
+| With the things on (`stack:=ours`), the behaviour slows only for things that **move** | a still wall the planner can't see is stopped by the stop zone alone (0.80 m short, from 1.1 m/s), with no slow-down first. The planner normally sees it and plans round | `aav_behaviour_rs` README; `sim-check --behaviour` now runs with `things:=false` |
+| `aav_detector_rs` (ONNX in Rust) builds on macOS only | on Linux (the Orin) `-DDETECTOR_RS=ON` builds it; the Python detector is the default | [ONNX](onnx.md) |
+| The kit needs the models | build the kit from a checkout with `models/` filled (`pixi run get models`), or the Orin has no detector | [Car install](car-install.md) |
+| The QEMU check is host-speed sensitive | at load 11-32 its uplink rate and stop times slipped; it now retries once, only for timings | `tools/esp32_qemu.py` |
+| Sway | ours swayed about 2 times Nav2 at their last side-by-side (15 Nov) | [0.4-rc1](release-0.4.md) |

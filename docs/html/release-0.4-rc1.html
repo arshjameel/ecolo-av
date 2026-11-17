@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.4-rc1 on the car: Wednesday 18 Nov · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/release-0.4-rc1.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>0.4-rc1 on the car: Wednesday 18 Nov</h1>
+<div class="meta">7 min read · 7 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a class="here" href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#whats-in-it">What&#x27;s in it</a><a href="#install-it-on-the-car-step-by-step">Install it on the car, step by step</a><a href="#check-first-on-the-car">Check first on the car</a><a href="#untested-on-the-car-everything-since-13-nov">Untested on the car (everything since 13 Nov)</a><a href="#the-seven-hardware-blockers">The seven hardware blockers</a><a href="#checked-on-17-nov-bens-mac">Checked on 17 Nov (Ben&#x27;s Mac)</a><a href="#known-issues">Known issues</a></nav>
+<div class="lead"><p>One page for the team meeting: what is in it, how to put it on the car, what to check
+first, and what nobody has tried on the car yet.</p>
+<div class="admonition warning">
+<p class="admonition-title">Beta, and almost all of it untried on the car</p>
+<p>The car drove on 13 Nov with <strong>only the localization update</strong> installed. Everything
+below "Untested on the car" has run in Ravensim, bench mode, QEMU or unit tests only.</p>
+</div></div>
+<section class="card"><h2 id="whats-in-it">What's in it</h2>
+<p>The whole stack on one page: <a href="what-we-built.html">What we built</a>. In short:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Area</th>
+<th>In 0.4-rc1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Driving</td>
+<td>our own stack (<code>stack:=ours</code>): costmap, planner, navigator, MPPI, smoother, stop zone. Nav2 deleted 17 Nov</td>
+</tr>
+<tr>
+<td>Simulator</td>
+<td>Ravensim, ours. Gazebo deleted 16 Nov</td>
+</tr>
+<tr>
+<td>Languages</td>
+<td>six nodes run in Rust by default; their Python twins stay, one switch away</td>
+</tr>
+<tr>
+<td>The league</td>
+<td>no champion changed on 16 Nov (<a href="league-results-2026-11-16.html#final-configuration">its final configuration</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The release in one page, one command per job: <a href="release-0.4.html">0.4-rc1: start here</a>.</p>
+</section>
+<section class="card"><h2 id="install-it-on-the-car-step-by-step">Install it on the car, step by step</h2>
+<p>Don't copy the steps from here: follow these pages in order.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Make the kit on a Mac with internet: <code>pixi run car-kit</code>, copy <code>car-kit/</code> to a stick</td>
+<td><a href="car-install.html">Car install</a>, section 1</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Back up every car computer first</td>
+<td><a href="car-day.html">Car day</a>, A2</td>
+</tr>
+<tr>
+<td>3</td>
+<td>On the car: <code>car_install.sh --dry-run</code> (checks only)</td>
+<td><a href="car-install.html">Car install</a>, section 2</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Install: <code>car_install.sh</code>, about 5 min a computer</td>
+<td><a href="car-install.html">Car install</a>, section 3</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Look, read-only: <code>car_listen.sh</code></td>
+<td><a href="car-install.html">Car install</a>, section 4</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Our stack on the Orin and the Motor Pi</td>
+<td><a href="car-day.html">Car day</a>, A5 (4a-4f)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Undo: <code>rm -rf ~/aav-jazzy</code>. Nothing else changes, no sudo.</p>
+</section>
+<section class="card"><h2 id="check-first-on-the-car">Check first on the car</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Check</th>
+<th>You should see</th>
+<th>If not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>which language runs (<a href="car-day.html#4f-the-rust-nodes-are-the-ones-running">car day 4f</a>)</td>
+<td><code>languages: ego_impl:=rust ... things_impl:=rust</code> in <code>car.launch.py</code>'s first lines</td>
+<td>a Rust package didn't build: <code>~/aav-jazzy/build.log</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>a Rust node misbehaves</td>
+<td>-</td>
+<td>e-stop, stop the launch, start again with that node's fall-back</td>
+</tr>
+<tr>
+<td>3</td>
+<td>the clocks</td>
+<td><code>chronyc tracking</code> on every computer</td>
+<td><a href="car-day.html#the-clocks">Car day</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>The fall-backs, one per node (the others stay Rust):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Node</th>
+<th>Fall back to Python</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ego + look_ahead</td>
+<td><code>ego_impl:=python</code></td>
+</tr>
+<tr>
+<td>behaviour</td>
+<td><code>behaviour_impl:=python</code></td>
+</tr>
+<tr>
+<td>sensor watchdog</td>
+<td><code>watchdog_impl:=python</code></td>
+</tr>
+<tr>
+<td>localization_health</td>
+<td><code>localization_health_impl:=python</code></td>
+</tr>
+<tr>
+<td>lidar_scan</td>
+<td><code>lidar_impl:=python</code></td>
+</tr>
+<tr>
+<td>things</td>
+<td><code>things_impl:=python</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="untested-on-the-car-everything-since-13-nov">Untested on the car (everything since 13 Nov)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Since</th>
+<th>Tried in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Our own stack as the only stack (Nav2 gone)</td>
+<td>14-17 Nov</td>
+<td>Ravensim, the league</td>
+</tr>
+<tr>
+<td>The six Rust defaults above</td>
+<td>16-17 Nov</td>
+<td>Ravensim, unit tests</td>
+</tr>
+<tr>
+<td><code>path:=lane</code>: the plan keeps the right lane</td>
+<td>16 Nov</td>
+<td>Ravensim (University Drive)</td>
+</tr>
+<tr>
+<td>The behaviour planner and the stopping law</td>
+<td>14 Nov</td>
+<td>Ravensim</td>
+</tr>
+<tr>
+<td>Map chunks (RavenTiles) for NDT, the costmap, the things</td>
+<td>16 Nov</td>
+<td>Ravensim (campus)</td>
+</tr>
+<tr>
+<td>The watchdog's OVERSPEED latch</td>
+<td>16 Nov</td>
+<td>Ravensim, unit tests</td>
+</tr>
+<tr>
+<td><code>sensor_mux</code>'s start-up grace (TODO 234)</td>
+<td>17 Nov</td>
+<td>Ravensim, unit tests</td>
+</tr>
+<tr>
+<td>The Rust ESP32 firmware</td>
+<td>-</td>
+<td>QEMU only; never flashed</td>
+</tr>
+<tr>
+<td>The kit on the Orin and the Motor Pi</td>
+<td>-</td>
+<td>CI's ARM runner only</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-seven-hardware-blockers">The seven hardware blockers</h2>
+<p>The hardware lead decides each; we help. Details: <code>docs/designs/2026-11-04_weak-links.md</code>,
+section 1, and <code>TODO.md</code> 158.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Blocker</th>
+<th>What clears it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The no-timeout lock, while the car runs the 2025-26 C++ ESP32</td>
+<td>the Rust ESP32 flashed (<a href="car-day.html#session-6-the-esp32">car day A8</a>)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>COASTING until the stop is measured</td>
+<td>test 4.3, then a decel in <code>vehicle.yaml</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>The brake doesn't follow a wish</td>
+<td>the <code>pi</code> brake loop, unless <code>open</code> stops within 1 m</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Wheel speed not yet seen on the car</td>
+<td>the Arduino's CAN frames seen (TODO 60)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Clocks across the computers</td>
+<td><code>chronyc tracking</code> on each</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Steering pulls right; its ends and centre unknown</td>
+<td>measure them (TODO 67)</td>
+</tr>
+<tr>
+<td>7</td>
+<td>No way to score "1 m"</td>
+<td>a tape mark at B (proposed)</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="checked-on-17-nov-bens-mac">Checked on 17 Nov (Ben's Mac)</h2>
+<p>Every <code>pixi run sim-check</code> mode in a row on Ravensim, main at <code>aaf3ab80</code>, each on its
+own ROS domain (160-177, this computer only), the load under 8 at each start.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Result</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the road world (no flag)</td>
+<td>✅ pass</td>
+<td></td>
+</tr>
+<tr>
+<td><code>--obstacle</code></td>
+<td>✅ pass</td>
+<td></td>
+</tr>
+<tr>
+<td><code>--lidar-obstacle</code></td>
+<td>✅ pass</td>
+<td></td>
+</tr>
+<tr>
+<td><code>--kerb</code></td>
+<td>✅ pass</td>
+<td></td>
+</tr>
+<tr>
+<td><code>--movers</code></td>
+<td>✅ pass</td>
+<td></td>
+</tr>
+<tr>
+<td><code>--faults</code></td>
+<td>✅ pass</td>
+<td></td>
+</tr>
+<tr>
+<td><code>--actuator-faults</code></td>
+<td>✅ pass</td>
+<td></td>
+</tr>
+<tr>
+<td><code>--three-point</code></td>
+<td>✅ pass</td>
+<td>5 changes of direction, 0.44 m from a wall</td>
+</tr>
+<tr>
+<td><code>--behaviour</code></td>
+<td>✅ pass, after a fix</td>
+<td>failed once: the check now turns the things off (below)</td>
+</tr>
+<tr>
+<td><code>-e ml --perception</code></td>
+<td>✅ pass</td>
+<td>stood still 4.3 m before the stop sign</td>
+</tr>
+<tr>
+<td><code>tools/software_gl.sh --force ... --obstacle</code> (lockstep cameras)</td>
+<td>✅ pass</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Also</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CI for <code>aaf3ab80</code>: linux, arm, car-kit, car-kit-22.04</td>
+<td>✅ all green</td>
+</tr>
+<tr>
+<td><code>pixi run car-kit</code> on the Mac</td>
+<td>✅ 68 s, 1.9 GB; 804 Rust crates, every <code>_rs</code> package resolves offline</td>
+</tr>
+<tr>
+<td>the ESP32 firmware in QEMU</td>
+<td>✅ pass; now runs once more if only host-speed timings fail</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="known-issues">Known issues</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>What it means</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>With the things on (<code>stack:=ours</code>), the behaviour slows only for things that <strong>move</strong></td>
+<td>a still wall the planner can't see is stopped by the stop zone alone (0.80 m short, from 1.1 m/s), with no slow-down first. The planner normally sees it and plans round</td>
+<td><code>aav_behaviour_rs</code> README; <code>sim-check --behaviour</code> now runs with <code>things:=false</code></td>
+</tr>
+<tr>
+<td><code>aav_detector_rs</code> (ONNX in Rust) builds on macOS only</td>
+<td>on Linux (the Orin) <code>-DDETECTOR_RS=ON</code> builds it; the Python detector is the default</td>
+<td><a href="onnx.html">ONNX</a></td>
+</tr>
+<tr>
+<td>The kit needs the models</td>
+<td>build the kit from a checkout with <code>models/</code> filled (<code>pixi run get models</code>), or the Orin has no detector</td>
+<td><a href="car-install.html">Car install</a></td>
+</tr>
+<tr>
+<td>The QEMU check is host-speed sensitive</td>
+<td>at load 11-32 its uplink rate and stop times slipped; it now retries once, only for timings</td>
+<td><code>tools/esp32_qemu.py</code></td>
+</tr>
+<tr>
+<td>Sway</td>
+<td>ours swayed about 2 times Nav2 at their last side-by-side (15 Nov)</td>
+<td><a href="release-0.4.html">0.4-rc1</a></td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="release-0.4.html"><small>Previous</small>← 0.4-rc1</a>
+<a class="next" href="release-notes.html"><small>Next</small>Release notes →</a></nav>
+</main>
+<footer>Source: <code>docs/release-0.4-rc1.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

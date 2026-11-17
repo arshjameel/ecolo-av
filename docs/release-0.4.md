@@ -3,14 +3,17 @@
 The first release candidate of 0.4. **Beta, not 1.0** (Ben, 14 Nov: "We are still in beta
 stages"). It is about refining what we have, not adding more.
 
+**Going to the car (Wed 18 Nov):** [0.4-rc1 on the car](release-0.4-rc1.md): install,
+first checks, what is untested there, the seven blockers.
+
 ## What 0.4 means
 
 | Must-have | Where it stands |
 |---|---|
 | **Our own stack** drives by default (`stack:=ours`) | ✅ since 14 Nov: our costmap, planner, navigator, follower, behaviour, all in Rust where it is heavy |
 | **Reverse** everywhere the plan says | ✅ on the lot and the campus; a three-point turn in a 6.5 m street works, with 4-6 changes of direction where 3 are planned (TODO 174) |
-| **No oscillation** (no swaying) | 🔧 ours now sways about 2 times more than Nav2 (was 3-5 times); on mapped road, `path:=lane` sways least of all (TODO 167, 168) |
-| Nav2 and Gazebo only as yardsticks | ✅ both deleted early: Nav2 17 Nov, Gazebo 16 Nov ([as it was](history/gazebo-as-it-was.md); TODO 184) |
+| **No oscillation** (no swaying) | 🔧 ours swayed about 2 times more than Nav2 at their last side-by-side (15 Nov; was 3-5 times); on mapped road, `path:=lane` sways least of all (TODO 167, 168) |
+| Nav2 and Gazebo only as yardsticks | ✅ both deleted early: Nav2 17 Nov ([as it was](history/nav2-as-it-was.md)), Gazebo 16 Nov ([as it was](history/gazebo-as-it-was.md)); TODO 184. Ravensim, ours, is the only simulator |
 
 ## One command per job
 
@@ -20,22 +23,23 @@ stages"). It is about refining what we have, not adding more.
 | drive the simulated car | `pixi run sim`, then `pixi run dev-window --live` |
 | see everything at once | `pixi run demo` (`--debug` adds the seeing screen) |
 | check it all works | `pixi run sim-check` (2 min) |
-| compare our stack with Nav2 | `pixi run measure controllers --stacks nav2 own --reversing` |
+| compare options of our stack | `pixi run measure controllers --stacks own own_calm --reversing` ([the league](league.md)) |
 | drive Carleton's campus | `pixi run campus`, then `pixi run sim world:=campus` ([Campus](campus.md)) |
 | run every test | `pixi run test` |
 | go to the car | [Car day](car-day.md) |
 
-## How ours compares (15 Nov, 3 runs each, reversing on)
+## How ours compares: the league's final (16 Nov)
+
+Nav2's last score before it was deleted, on the same three tours in Ravensim:
 
 | | Ours | Nav2 |
 |---|---|---|
-| Legs reached, lot + campus | **21 of 21** | 16 of 21 (14 Nov) |
-| Off the path, on average | **0.21-0.22 m** | 0.31-0.44 m |
-| Sway (side-to-side), lot | 0.031 m/s² | **0.017 m/s²** |
-| Sway (side-to-side), campus | 0.231 m/s² | **0.12 m/s²** |
+| Legs reached (lot, campus, University Drive) | **30 of 30** (3 runs) | 14 of 20 (2 runs) |
+| Off the path, campus tour | **0.17 m** | 0.83 m |
+| Time over the centre line, University Drive | **0 %** | 13 % |
 
-Ours wins on reaching goals and tracking; Nav2 still drives more smoothly. The details:
-`TODO.md` rows 164, 167 and 168.
+The final configuration: **no champion changed**; `pose:=ndt_ekf` is the one to try
+next ([the league, 16 Nov](league-results-2026-11-16.md#final-configuration)).
 
 On University Drive (16 Nov, 3 runs each), ours with `path:=lane` (now its default):
 0 % of the time over the centre line (61 % before), 0.11 m off the lane centre, sway 0.055 m/s².
@@ -58,9 +62,9 @@ On University Drive (16 Nov, 3 runs each), ours with `path:=lane` (now its defau
 
 | Left | Why |
 |---|---|
-| The real car | needs the hardware lead's go-ahead (TODO 173) |
+| The real car | needs the hardware lead's go-ahead and the seven blockers ([on the car](release-0.4-rc1.md); TODO 158, 173) |
 | The middle level planning far goals in chunks | NDT and the things use chunks; the planner's rolling window loses far campus goals, so it stays a challenger (TODO 175) |
 | The `firm` speed loop | stops on the line, but sways more on the lot: a challenger (TODO 163) |
-| Heavy Python nodes in Rust | voxels first (TODO 185) |
+| More heavy Python nodes in Rust | six run in Rust by default since 17 Nov (ego, behaviour, watchdog, localization_health, lidar_scan, things); the rest in TODO 185 |
 
 The whole list: `TODO.md`. What works today: [Status](status.md).
