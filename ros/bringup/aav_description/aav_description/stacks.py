@@ -10,7 +10,7 @@ docs/designs/2026-11-13_one-shape.md, "The league"; the page: docs/league.md.
                                                      on the command line wins over the stack
 
 The stack's switches are declared empty (CHOSEN) in sim.launch.py, so a value given by
-hand is never mistaken for "not given": `costmap:=nav2` wins over `stack:=ours` too.
+hand is never mistaken for "not given": `tracker:=lqr` wins over `stack:=ours` too.
 
 One switch per level (one shape, "From 36 switches to 8"): `pose:=`, `path:=`, `steer:=`
 and `lanes:=` (LEVEL_SWITCHES) each pick that level's option by its league name, over the

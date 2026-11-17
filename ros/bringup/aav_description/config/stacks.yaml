@@ -8,7 +8,10 @@
 # Rules (one shape):
 #   - a challenger wins by a margin, on 3 or more runs of the same routes (tools/scorecard.py);
 #   - a person approves each swap, and the car needs its own win, on the Orin;
-#   - nothing is deleted: the loser stays a challenger (Ben, 5 Nov).
+#   - nothing is deleted: the loser stays a challenger (Ben, 5 Nov). Nav2 was the one
+#     exception (Ben, 16 Nov: "Now"): its options and the stock stack went on 17 Nov
+#     (TODO 184); their last scores are in docs/league-results-2026-11-16.md and
+#     docs/history/nav2-as-it-was.md. Each Nav2 champion handed over to its port.
 #
 # A level's options each set one or more of sim.launch.py's switches, as text.
 
@@ -22,10 +25,9 @@ levels:
       kiss_ekf: {ndt_ekf: 'false', kiss_ekf: 'true'}
     score: ''
   costmap:
-    what: what is in the way (Nav2's layers, or aav_costmap)
-    champion: nav2
+    what: what is in the way (aav_costmap, Nav2's layers ported)
+    champion: ours
     options:
-      nav2: {costmap: nav2}
       ours: {costmap: own, costmap_chunks: 'off'}
       # Ours, the global costmap from the map's 64 m chunks round the car and along the
       # route ahead (costmap_chunks:=auto; the campus's when pixi run campus made them, the
@@ -41,23 +43,20 @@ levels:
       ours_all_chunks: {costmap: own, costmap_chunks: auto, local_chunks: 'true'}
     score: ''
   navigator:
-    what: plan, follow, replan, recover (bt_navigator, or aav_navigator)
-    champion: nav2
+    what: plan, follow, replan, recover (aav_navigator, the trees' logic ported)
+    champion: ours
     options:
-      nav2: {navigator: nav2}
       ours: {navigator: own}
     score: ''
   path:
     what: the path to the goal (keeps to the turning radius on the car)
-    champion: lattice
+    champion: lattice_rs
     options:
-      lattice: {planner: lattice}
+      # Nav2's State Lattice ported (aav_planner): the champion since Nav2's lattice went.
       lattice_rs: {planner: own}
       # The smooth moves (tools/lattice_smooth.py): curvature no faster than the steering
       # turns at 1 m/s, each move straight at both ends, the smoother off. A trial (14 Nov).
-      lattice_smooth: {planner: lattice, lattice_moves: smooth}
       lattice_rs_smooth: {planner: own, lattice_moves: smooth}
-      hybrid: {planner: hybrid}
       # Nav2's Hybrid-A* ported into our planner, beside the lattice it shares the search
       # with (planner_search:=hybrid, docs/own-planner.md). A challenger (14 Nov, TODO 178).
       hybrid_rs: {planner: own, planner_search: hybrid}
@@ -79,9 +78,10 @@ levels:
     score: ''
   steer:
     what: follow the path and avoid (the path follower)
-    champion: mppi
+    champion: mppi_lag
     options:
-      mppi: {controller: mppi, tracker: none}
+      # Nav2's MPPI ported, its model with the actuators' lag: the champion since Nav2's
+      # controller_server (MPPI, Regulated Pure Pursuit) went.
       mppi_lag: {controller: mppi, tracker: mppi_lag}
       # mppi_lag following in odom with the map's corrections taken slowly (TODO 186), its
       # steering's control cost 0.05 (TODO 168). Ours' pick since 15 Nov: the sway at or
@@ -91,13 +91,11 @@ levels:
       mpc_lag: {controller: mppi, tracker: mpc_lag}
       # mpc_lag in Rust (aav_mpc_lag), beside the Python one: a challenger (TODO 132, 199).
       mpc_lag_rs: {controller: mppi, tracker: mpc_lag_rs}
-      rpp: {controller: rpp, tracker: none}
     score: ''
   smoother:
-    what: the velocity smoother after the follower
-    champion: nav2
+    what: the velocity smoother after the follower (aav_smoother: knows it drives a car)
+    champion: ours
     options:
-      nav2: {smoother: nav2}
       ours: {smoother: own}
     score: ''
   lanes:
@@ -134,15 +132,6 @@ stacks:
     what: every level's champion
   car:
     what: the champions approved for the car (car.launch.py runs these today)
-  stock:
-    what: every level stock (Nav2, robot_localization), as `measure controllers --stacks nav2`
-    pose: ekf
-    costmap: nav2
-    navigator: nav2
-    path: lattice
-    steer: mppi
-    smoother: nav2
-    behaviour: 'off'
   ours:
     what: every level ours that has one, as `measure controllers --stacks own`, plus the road ahead and the kerbs
     pose: ekf
@@ -150,6 +139,6 @@ stacks:
     navigator: ours
     path: lane
     steer: mppi_lag_calm
-    smoother: nav2
+    smoother: ours
     behaviour: 'on'
     kerbs: 'on'
