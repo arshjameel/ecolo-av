@@ -7,7 +7,7 @@
 <!-- Generated from docs/league.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The league</h1>
-<div class="meta">5 min read · 4 sections</div></header>
+<div class="meta">5 min read · 5 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -61,6 +61,7 @@
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
 <a class="here" href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -117,7 +118,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-stacks">The stacks</a><a href="#one-switch-per-level-15-nov">One switch per level (15 Nov)</a><a href="#how-a-challenger-wins">How a challenger wins</a><a href="#where-things-are">Where things are</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-latest-scores">The latest scores</a><a href="#the-stacks">The stacks</a><a href="#one-switch-per-level-15-nov">One switch per level (15 Nov)</a><a href="#how-a-challenger-wins">How a challenger wins</a><a href="#where-things-are">Where things are</a></nav>
 <div class="lead"><p>One file says <strong>what the car is</strong>: each level's champion, and the challengers
 waiting to beat it.</p>
 <pre class="highlight"><code class="language-text">  config/stacks.yaml (aav_description)
@@ -141,6 +142,12 @@ waiting to beat it.</p>
           ▼
   pixi run sim                  ours: the simulator's default stack
   pixi run sim stack:=stock     every level Nav2's: the yardstick</code></pre></div>
+<section class="card"><h2 id="the-latest-scores">The latest scores</h2>
+<p><strong>16 Nov, every level scored</strong> inside <code>stack:=ours</code>, then the best combination against it on
+all four tours: <a href="league-results-2026-11-16.html">the league's scores, 16 Nov</a>. No champion
+changed; <code>pose:=ndt_ekf</code> is the closest challenger (TODO 210). Nav2's last yardstick scores
+are there too.</p>
+</section>
 <section class="card"><h2 id="the-stacks">The stacks</h2>
 <p><strong>Ours is the simulator's default</strong> (Ben, 14 Nov: "Ours default now, then delete").
 The champions above stay as they are: they are what the car runs.</p>
@@ -320,7 +327,7 @@ challenger and propose a swap). <code>pixi run measure controllers --stacks nav2
 <code>stock</code> against <code>ours</code> today: every run there starts from <code>stack:=stock</code> and names the
 pieces it tests, so its scores stay comparable with the runs before 14 Nov.</p></section>
 <nav class="prevnext"><a class="prev" href="trials.html"><small>Previous</small>← Trials</a>
-<a class="next" href="mppi-lag.html"><small>Next</small>MPPI with lag →</a></nav>
+<a class="next" href="league-results-2026-11-16.html"><small>Next</small>League scores, 16 Nov →</a></nav>
 </main>
 <footer>Source: <code>docs/league.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

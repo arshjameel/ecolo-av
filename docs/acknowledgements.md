@@ -81,6 +81,23 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **OctoMap** (A. Hornung et al., *Autonomous Robots*, 2013) | paper | idea | 3D occupancy; why our chunks hold a flat hash of voxels instead of a tree (TODO 175) |
 | **Quadtrees** (R. Finkel, J. Bentley, *Acta Informatica*, 1974) | paper | idea | splitting a chunk only where it pays, the fallback in the three-levels design |
 
+## Looked at for the league (16 Nov)
+
+Read, not used yet: the survey in [the league's scores](league-results-2026-11-16.md#the-survey-open-source-we-havent-tried).
+Each has a TODO row to port its idea.
+
+| Source | Licence | Kind | Where we used it |
+|---|---|---|---|
+| **Smooth MPPI / KMPPI** (`pytorch_mppi`, UM ARM Lab) | MIT | idea | to try in `mppi_lag` (TODO 212) |
+| **Autoware's MPC lateral controller** (the Autoware Foundation) | Apache-2.0 | idea | a steering-rate cost and reverse for `mpc_lag_rs` (TODO 213) |
+| **Vector Pursuit** (`vector_pursuit_controller`, Black Coffee Robotics) | Apache-2.0 | idea | looked at as a follower yardstick |
+| **Apollo's piecewise-jerk path** (Baidu; Zhang et al., "Optimal Vehicle Path Planning Using Quadratic Optimization for Baidu Apollo Open Platform", IV 2020); Autoware's static obstacle avoidance | Apache-2.0; paper | idea | smooth lane corners and passes in `lane.rs` and `pass.rs` (TODO 211, 214) |
+| **Patchwork++** (S. Lee et al., IROS 2022; URL-KAIST) | BSD-2-Clause | idea | finding the ground so a kerb stands out (TODO 215) |
+| **grid_map** (ANYbotics, ETH); **nvblox** (NVIDIA) | BSD-3-Clause; Apache-2.0 | idea | looked at for the costmap's layers |
+| **CommonRoad route planner** (TU Munich) | BSD-3-Clause | idea | looked at for where `lane.rs` changes lane |
+| **Fast-Poly / Poly-MOT** (X. Li et al., 2023-24); **OC-SORT** (J. Cao et al., CVPR 2023); **MapMOS** (PRBonn) | MIT | idea | motion models per kind and re-found tracks for `aav_things` (TODO 217) |
+| **Kinematic-ICP** (T. Guadagnino et al., PRBonn, 2025); **small_gicp** (K. Koide); **GenZ-ICP** (D. Lee et al., 2024) | MIT | idea | the next lidar-odometry challenger (TODO 216); yardsticks for NDT |
+
 ## Simulators and screens
 
 | Source | Licence | Kind | Where we used it |

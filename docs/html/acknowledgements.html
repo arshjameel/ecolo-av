@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">13 min read · 7 sections</div></header>
+<div class="meta">15 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -61,6 +61,7 @@
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -117,7 +118,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-earlier-carleton-aav-teams">The earlier Carleton AAV teams</a><a href="#navigation">Navigation</a><a href="#where-the-car-is">Where the car is</a><a href="#seeing">Seeing</a><a href="#maps-and-routes">Maps and routes</a><a href="#simulators-and-screens">Simulators and screens</a><a href="#tools-and-the-build">Tools and the build</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-earlier-carleton-aav-teams">The earlier Carleton AAV teams</a><a href="#navigation">Navigation</a><a href="#where-the-car-is">Where the car is</a><a href="#seeing">Seeing</a><a href="#maps-and-routes">Maps and routes</a><a href="#looked-at-for-the-league-16-nov">Looked at for the league (16 Nov)</a><a href="#simulators-and-screens">Simulators and screens</a><a href="#tools-and-the-build">Tools and the build</a></nav>
 <div class="lead"><p>Everything we copied, ported, or took an idea from, with its licence and where we used it.
 Ben, 14 Nov: "give acknowlegement to stuff we have looked at or used as insperation".
 Add a row in the same commit as the work (<code>CLAUDE.md</code>). Copied or ported code also keeps
@@ -462,6 +463,76 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>paper</td>
 <td>idea</td>
 <td>splitting a chunk only where it pays, the fallback in the three-levels design</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="looked-at-for-the-league-16-nov">Looked at for the league (16 Nov)</h2>
+<p>Read, not used yet: the survey in <a href="league-results-2026-11-16.html#the-survey-open-source-we-havent-tried">the league's scores</a>.
+Each has a TODO row to port its idea.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Licence</th>
+<th>Kind</th>
+<th>Where we used it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Smooth MPPI / KMPPI</strong> (<code>pytorch_mppi</code>, UM ARM Lab)</td>
+<td>MIT</td>
+<td>idea</td>
+<td>to try in <code>mppi_lag</code> (TODO 212)</td>
+</tr>
+<tr>
+<td><strong>Autoware's MPC lateral controller</strong> (the Autoware Foundation)</td>
+<td>Apache-2.0</td>
+<td>idea</td>
+<td>a steering-rate cost and reverse for <code>mpc_lag_rs</code> (TODO 213)</td>
+</tr>
+<tr>
+<td><strong>Vector Pursuit</strong> (<code>vector_pursuit_controller</code>, Black Coffee Robotics)</td>
+<td>Apache-2.0</td>
+<td>idea</td>
+<td>looked at as a follower yardstick</td>
+</tr>
+<tr>
+<td><strong>Apollo's piecewise-jerk path</strong> (Baidu; Zhang et al., "Optimal Vehicle Path Planning Using Quadratic Optimization for Baidu Apollo Open Platform", IV 2020); Autoware's static obstacle avoidance</td>
+<td>Apache-2.0; paper</td>
+<td>idea</td>
+<td>smooth lane corners and passes in <code>lane.rs</code> and <code>pass.rs</code> (TODO 211, 214)</td>
+</tr>
+<tr>
+<td><strong>Patchwork++</strong> (S. Lee et al., IROS 2022; URL-KAIST)</td>
+<td>BSD-2-Clause</td>
+<td>idea</td>
+<td>finding the ground so a kerb stands out (TODO 215)</td>
+</tr>
+<tr>
+<td><strong>grid_map</strong> (ANYbotics, ETH); <strong>nvblox</strong> (NVIDIA)</td>
+<td>BSD-3-Clause; Apache-2.0</td>
+<td>idea</td>
+<td>looked at for the costmap's layers</td>
+</tr>
+<tr>
+<td><strong>CommonRoad route planner</strong> (TU Munich)</td>
+<td>BSD-3-Clause</td>
+<td>idea</td>
+<td>looked at for where <code>lane.rs</code> changes lane</td>
+</tr>
+<tr>
+<td><strong>Fast-Poly / Poly-MOT</strong> (X. Li et al., 2023-24); <strong>OC-SORT</strong> (J. Cao et al., CVPR 2023); <strong>MapMOS</strong> (PRBonn)</td>
+<td>MIT</td>
+<td>idea</td>
+<td>motion models per kind and re-found tracks for <code>aav_things</code> (TODO 217)</td>
+</tr>
+<tr>
+<td><strong>Kinematic-ICP</strong> (T. Guadagnino et al., PRBonn, 2025); <strong>small_gicp</strong> (K. Koide); <strong>GenZ-ICP</strong> (D. Lee et al., 2024)</td>
+<td>MIT</td>
+<td>idea</td>
+<td>the next lidar-odometry challenger (TODO 216); yardsticks for NDT</td>
 </tr>
 </tbody>
 </table></div>

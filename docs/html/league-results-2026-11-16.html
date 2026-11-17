@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The league, scored: 16 Nov · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/league-results-2026-11-16.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>The league, scored: 16 Nov</h1>
+<div class="meta">16 min read · 7 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<span class="sep">Learn:</span>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<span class="sep">Reference:</span>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a class="here" href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#final-configuration">Final configuration</a><a href="#how-it-was-run">How it was run</a><a href="#each-level-alone">Each level alone</a><a href="#hybrids">Hybrids</a><a href="#nav2s-last-yardstick">Nav2&#x27;s last yardstick</a><a href="#the-survey-open-source-we-havent-tried">The survey: open source we haven&#x27;t tried</a><a href="#skipped">Skipped</a></nav>
+<div class="lead"><p>Ben, 16 Nov: "lets test and score everything and fingure out the best options and maybe even
+the best hybrid options. Check the internet for other options too", then "What is our final
+configuration ... score them individually and then score them together".</p>
+<p>Every option was scored in our simulator with <strong>everything else at <code>stack:=ours</code></strong>, reversing
+on, on the same tours. The rule (<a href="league.html#how-a-challenger-wins">the league</a>): a challenger
+wins by a margin on 3 or more runs, with no column worse.</p></div>
+<section class="card"><h2 id="final-configuration">Final configuration</h2>
+<p><strong>No champion changed.</strong> Today's <code>stack:=ours</code> stays the best whole car. One challenger is
+close: <strong>NDT into the global EKF</strong> (<code>pose:=ndt_ekf</code>). It wins most columns, but not all.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Chosen</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pose</td>
+<td><code>ekf</code> (GPS)</td>
+<td><code>ndt_ekf</code> is calmer on every tour, but stops once on University Drive (2 of 3 runs) and backs up once at the box: <strong>recommended next</strong></td>
+</tr>
+<tr>
+<td>costmap</td>
+<td><code>ours_chunks</code></td>
+<td>the same drive as the whole map, a third of the memory; Nav2's went over the centre line</td>
+</tr>
+<tr>
+<td>navigator</td>
+<td><code>ours</code></td>
+<td>Nav2's bt_navigator drove the same (a tie): ours stays, Nav2 goes</td>
+</tr>
+<tr>
+<td>path</td>
+<td><code>lane</code> (+ pass)</td>
+<td>the only one that keeps right: every other path is over the centre line 45-74 % of University Drive</td>
+</tr>
+<tr>
+<td>steer</td>
+<td><code>mppi_lag_calm</code></td>
+<td>the calmest that reverses; Nav2 MPPI and plain <code>mppi_lag</code> fail or sway, RPP swings</td>
+</tr>
+<tr>
+<td>smoother</td>
+<td><code>nav2</code></td>
+<td>ours a tie (no column better)</td>
+</tr>
+<tr>
+<td>lanes</td>
+<td><code>off</code></td>
+<td>the ramp is a tie once <code>path:=lane</code> keeps right</td>
+</tr>
+<tr>
+<td>behaviour</td>
+<td><code>on</code></td>
+<td>off: a little more sway on the road (0.074 against 0.063)</td>
+</tr>
+<tr>
+<td>speed loop (the car's)</td>
+<td><code>default</code></td>
+<td><code>smooth</code> a tie; <code>firm</code> sways twice as much; <code>lqi</code> slower</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-head-to-head-ours-against-ours-ndt_ekf-3-runs-each-every-tour">The head-to-head: ours against ours + <code>ndt_ekf</code>, 3 runs each, every tour</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tour</th>
+<th>Option</th>
+<th>Legs</th>
+<th>Time (s)</th>
+<th>Sway (m/s²)</th>
+<th>Sway changes /100 m</th>
+<th>Off the path (m)</th>
+<th>Steering flips /s</th>
+<th>Stops a run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lot</td>
+<td>ours</td>
+<td>12/12</td>
+<td>159</td>
+<td>0.022</td>
+<td>5.1</td>
+<td>0.15</td>
+<td><strong>0.22</strong></td>
+<td>0</td>
+</tr>
+<tr>
+<td>lot</td>
+<td>+ ndt_ekf</td>
+<td>12/12</td>
+<td>157</td>
+<td><strong>0.019</strong></td>
+<td><strong>3.9</strong></td>
+<td><strong>0.10</strong></td>
+<td>0.30</td>
+<td>0</td>
+</tr>
+<tr>
+<td>campus</td>
+<td>ours</td>
+<td>9/9</td>
+<td>282</td>
+<td>0.087</td>
+<td>6.6</td>
+<td>0.17</td>
+<td>0.18</td>
+<td><strong>1.0</strong></td>
+</tr>
+<tr>
+<td>campus</td>
+<td>+ ndt_ekf</td>
+<td>9/9</td>
+<td>283</td>
+<td><strong>0.083</strong></td>
+<td><strong>6.0</strong></td>
+<td><strong>0.13</strong></td>
+<td><strong>0.14</strong></td>
+<td>1.3</td>
+</tr>
+<tr>
+<td>university</td>
+<td>ours</td>
+<td>9/9</td>
+<td>171</td>
+<td>0.064</td>
+<td>6.4</td>
+<td>0.10</td>
+<td>0.21</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>university</td>
+<td>+ ndt_ekf</td>
+<td>9/9</td>
+<td>170</td>
+<td><strong>0.046</strong></td>
+<td><strong>1.0</strong></td>
+<td><strong>0.03</strong></td>
+<td><strong>0.06</strong></td>
+<td>0.7</td>
+</tr>
+<tr>
+<td>university_box</td>
+<td>ours</td>
+<td>3/3</td>
+<td><strong>42</strong></td>
+<td>0.063</td>
+<td>8.2</td>
+<td>0.07</td>
+<td>0.26</td>
+<td>0</td>
+</tr>
+<tr>
+<td>university_box</td>
+<td>+ ndt_ekf</td>
+<td>3/3</td>
+<td>48</td>
+<td><strong>0.053</strong></td>
+<td><strong>4.3</strong></td>
+<td>0.07</td>
+<td><strong>0.14</strong></td>
+<td>0 (1 backed 3.4 m)</td>
+</tr>
+</tbody>
+</table></div>
+<p>On University Drive, <code>ndt_ekf</code> keeps the lane's centre twice as well (0.05 m off against
+0.12). It loses on: the lot's steering flips, a stop on the last leg in 2 of 3 runs, one
+reverse at the box (6 s slower). <strong>Not a swap by the rule.</strong> What it needs first (TODO 210):
+find the stop, the box's reverse, and a fallback to <code>ekf</code> in worlds with no NDT map (the
+launch refuses <code>ndt_ekf</code> there today, so it can't be <code>ours</code> as is). On the car it needs a
+lidar map of the real lot.</p>
+</section>
+<section class="card"><h2 id="how-it-was-run">How it was run</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tool</td>
+<td><code>pixi run measure controllers --stacks own_calm_chunks --reversing --launch behaviour:=true lane_route:=true &lt;option&gt;</code> (= <code>stack:=ours</code>)</td>
+</tr>
+<tr>
+<td>Tours</td>
+<td><code>lot</code> (4 legs, 135 m), <code>university</code> (3 legs, 290 m of University Drive), <code>university_box</code> (a 1 m box on the lane), <code>campus</code> (finals only)</td>
+</tr>
+<tr>
+<td>Runs</td>
+<td>2 each; the champion 3; the finals 3 on every tour</td>
+</tr>
+<tr>
+<td>Simulator</td>
+<td>ours, headless, a ROS domain 120-155 each, this computer only</td>
+</tr>
+<tr>
+<td>Load</td>
+<td>each job started under 8; the median while running 7.9 (other sessions were building)</td>
+</tr>
+<tr>
+<td>Results</td>
+<td><code>/tmp/r5/&lt;option&gt;/results.json</code> and <code>results.md</code>; lanes by <code>tools/lane_score.py</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>How much is noise: on the lot <code>ours_chunks</code> and the whole map are the same thing (the lot has no
+chunks), yet sway changes /100 m read 8.1 and 5.2. So only differences much larger than that
+count.</p>
+</section>
+<section class="card"><h2 id="each-level-alone">Each level alone</h2>
+<p>Columns as above. "Off centre" and "over the line" are the lanes scorecard on University Drive.</p>
+<h3 id="steer-the-follower">Steer (the follower)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Lot legs</th>
+<th>Lot sway</th>
+<th>Lot off path (m)</th>
+<th>Uni legs</th>
+<th>Uni sway</th>
+<th>Uni steering flips /s</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>mppi_lag_calm</strong> (champion)</td>
+<td>12/12</td>
+<td>0.022</td>
+<td>0.16</td>
+<td>9/9</td>
+<td>0.063</td>
+<td>0.20</td>
+<td>stays</td>
+</tr>
+<tr>
+<td>mppi_lag (plain)</td>
+<td>7/8</td>
+<td>0.027</td>
+<td>0.20</td>
+<td>6/6</td>
+<td>0.144</td>
+<td>0.21</td>
+<td>worse: the calm swap of 15 Nov holds</td>
+</tr>
+<tr>
+<td>Nav2 MPPI</td>
+<td>8/8</td>
+<td>0.019</td>
+<td>0.32 (worst 5.2)</td>
+<td><strong>3/6</strong></td>
+<td>0.068</td>
+<td>0.29</td>
+<td>worse: stuck "the car doesn't fit at the start"</td>
+</tr>
+<tr>
+<td>Nav2 RPP</td>
+<td>8/8</td>
+<td>0.054</td>
+<td>0.12</td>
+<td>6/6</td>
+<td>0.091</td>
+<td>0.44</td>
+<td>worse: 42 sway changes /100 m on the lot</td>
+</tr>
+<tr>
+<td>mpc_lag_rs</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td><strong>can't reverse</strong>: the launch refuses it</td>
+</tr>
+</tbody>
+</table></div>
+<p>Forward only (reversing off), 2 runs:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Lot sway</th>
+<th>Lot off path (m)</th>
+<th>Uni sway</th>
+<th>Uni off path (m)</th>
+<th>Uni steering flips /s</th>
+<th>Tick (ms)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mppi_lag_calm</td>
+<td>0.022</td>
+<td>0.14</td>
+<td>0.068</td>
+<td>0.10</td>
+<td>0.20</td>
+<td>3.4-5.3</td>
+</tr>
+<tr>
+<td>mpc_lag_rs</td>
+<td>0.047</td>
+<td><strong>0.07</strong></td>
+<td>0.160</td>
+<td><strong>0.07</strong></td>
+<td>0.70</td>
+<td><strong>0.7-0.9</strong></td>
+</tr>
+<tr>
+<td>mpc_lag_rs + ndt_ekf</td>
+<td>0.043</td>
+<td><strong>0.04</strong></td>
+<td>0.133</td>
+<td><strong>0.01</strong></td>
+<td>0.24</td>
+<td>0.7-0.9</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>mpc_lag_rs</code> follows the path 2-7 times closer at a fifth of the time, but swings: its sway
+is its own steering, not the GPS (NDT doesn't calm it). It needs a steering-rate cost and
+reverse. The Python <code>mpc_lag</code> was skipped (the same commands as the Rust, to 1e-3).</p>
+<h3 id="path">Path</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Lot sway</th>
+<th>Uni legs</th>
+<th>Uni sway</th>
+<th>Off centre (m)</th>
+<th>Over the line</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>lane</strong> (champion)</td>
+<td>0.022</td>
+<td>9/9</td>
+<td>0.063</td>
+<td><strong>0.10</strong></td>
+<td><strong>0 %</strong></td>
+<td>stays</td>
+</tr>
+<tr>
+<td>lattice_rs_strong</td>
+<td>(= lane on the lot)</td>
+<td>6/6</td>
+<td>0.083</td>
+<td>1.44</td>
+<td>66 %</td>
+<td>leaves the lane</td>
+</tr>
+<tr>
+<td>lattice_rs</td>
+<td>0.025</td>
+<td>6/6</td>
+<td>0.093</td>
+<td>1.43</td>
+<td>58 %</td>
+<td>leaves the lane</td>
+</tr>
+<tr>
+<td>hybrid_rs</td>
+<td>0.020</td>
+<td>6/6</td>
+<td><strong>0.035</strong></td>
+<td>1.51</td>
+<td>74 %</td>
+<td>calmest, wrong lane</td>
+</tr>
+<tr>
+<td>Nav2 lattice</td>
+<td>0.021</td>
+<td>6/6</td>
+<td>0.100</td>
+<td>1.35</td>
+<td>45 %</td>
+<td>leaves the lane</td>
+</tr>
+<tr>
+<td>Nav2 Hybrid-A*</td>
+<td>0.021</td>
+<td>6/6</td>
+<td><strong>0.033</strong></td>
+<td>1.43</td>
+<td>59 %</td>
+<td>calmest, wrong lane</td>
+</tr>
+</tbody>
+</table></div>
+<p>A parked box on the lane (<code>university_box</code>, 3 runs against 2):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Over the centre line</th>
+<th>Back in lane</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>lane</strong> (pass)</td>
+<td>5-5.5 s, 12-13 m</td>
+<td>8.6-9.6 m after the box</td>
+</tr>
+<tr>
+<td>lattice_rs_strong</td>
+<td>34-36 s, 82-84 m</td>
+<td>never</td>
+</tr>
+</tbody>
+</table></div>
+<p>Found: the Hybrid-A<em> paths sway half as much on University Drive (steering flips 0.05-0.06 /s
+against 0.20). The lane's corners are rounded with circle arcs (<code>lane.rs</code>
+<code>round_corners</code>), whose curvature jumps; Hybrid-A</em> goes through the smoother. Worth a
+challenger: the lane's corners as clothoids (TODO 211).</p>
+<h3 id="costmap-navigator-smoother-lanes-behaviour">Costmap, navigator, smoother, lanes, behaviour</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Option</th>
+<th>Lot sway</th>
+<th>Uni sway</th>
+<th>Uni off centre (m)</th>
+<th>Uni over the line</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>costmap</td>
+<td><strong>ours_chunks</strong></td>
+<td>0.022</td>
+<td>0.063</td>
+<td>0.10</td>
+<td>0 %</td>
+<td>stays</td>
+</tr>
+<tr>
+<td>costmap</td>
+<td>ours (whole map)</td>
+<td>0.024</td>
+<td>0.067</td>
+<td>0.13</td>
+<td>0.9 %</td>
+<td>a tie, 3 times the memory</td>
+</tr>
+<tr>
+<td>costmap</td>
+<td>Nav2's</td>
+<td>0.024</td>
+<td>0.062</td>
+<td>0.31</td>
+<td>6.5 %</td>
+<td>worse: over the line, 12 s slower</td>
+</tr>
+<tr>
+<td>navigator</td>
+<td>Nav2's bt_navigator</td>
+<td>0.023</td>
+<td>0.063</td>
+<td>0.11</td>
+<td>0 %</td>
+<td>a tie (a stop a run on the road)</td>
+</tr>
+<tr>
+<td>smoother</td>
+<td>ours</td>
+<td>0.022</td>
+<td>0.067</td>
+<td>0.10</td>
+<td>0 %</td>
+<td>a tie</td>
+</tr>
+<tr>
+<td>lanes</td>
+<td>ramp</td>
+<td>-</td>
+<td>0.066</td>
+<td>0.10</td>
+<td>0 %</td>
+<td>a tie: <code>lane</code> already keeps right</td>
+</tr>
+<tr>
+<td>behaviour</td>
+<td>off</td>
+<td>0.022</td>
+<td>0.074</td>
+<td>0.13</td>
+<td>0 %</td>
+<td>a little worse</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="pose">Pose</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Lot sway</th>
+<th>Lot off path (m)</th>
+<th>Uni sway</th>
+<th>Uni sway changes /100 m</th>
+<th>Uni off centre (m)</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ekf</strong> (GPS)</td>
+<td>0.022</td>
+<td>0.16</td>
+<td>0.063</td>
+<td>6.2</td>
+<td>0.10</td>
+<td>stays</td>
+</tr>
+<tr>
+<td>ndt_ekf</td>
+<td>0.021</td>
+<td>0.12</td>
+<td><strong>0.042</strong></td>
+<td><strong>0.8</strong></td>
+<td><strong>0.05</strong></td>
+<td>close: the head-to-head above</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>kiss_ekf</code> was skipped (it needs the <code>kiss</code> environment, and only feeds the local EKF).</p>
+<h3 id="the-cars-speed-loop-speed_loop">The car's speed loop (<code>speed_loop:=</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Lot time (s)</th>
+<th>Lot sway</th>
+<th>Uni sway</th>
+<th>Uni steering flips /s</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>default</strong></td>
+<td>157</td>
+<td>0.022</td>
+<td>0.063</td>
+<td>0.20</td>
+<td>stays</td>
+</tr>
+<tr>
+<td>smooth</td>
+<td>158</td>
+<td>0.019</td>
+<td>0.067</td>
+<td>0.22</td>
+<td>a tie</td>
+</tr>
+<tr>
+<td>lqi</td>
+<td>173</td>
+<td>0.019</td>
+<td>0.066</td>
+<td>0.16</td>
+<td>slower</td>
+</tr>
+<tr>
+<td>firm</td>
+<td>153</td>
+<td>0.034</td>
+<td>0.088</td>
+<td>0.43</td>
+<td>sways</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="hybrids">Hybrids</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Hybrid</th>
+<th>Lot sway</th>
+<th>Uni sway</th>
+<th>Uni off path (m)</th>
+<th>Uni over the line</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lane + Hybrid-A* search (<code>path:=lane planner_search:=hybrid</code>)</td>
+<td>0.024</td>
+<td>0.055</td>
+<td>0.18 (worst 2.1)</td>
+<td>6 %</td>
+<td>worse: leaves the lane at the joins</td>
+</tr>
+<tr>
+<td>ndt_ekf + the newest map correction</td>
+<td>0.021</td>
+<td>0.058</td>
+<td>0.07</td>
+<td>0 %</td>
+<td>worse than ndt_ekf alone (0.042)</td>
+</tr>
+<tr>
+<td>ndt_ekf + mpc_lag_rs (forward)</td>
+<td>0.043</td>
+<td>0.133</td>
+<td><strong>0.01</strong></td>
+<td>0 %</td>
+<td>still swings; one lot run's legs all refused (planner error 200)</td>
+</tr>
+<tr>
+<td><strong>ours + ndt_ekf</strong></td>
+<td>0.019</td>
+<td>0.046</td>
+<td>0.03</td>
+<td>0 %</td>
+<td>the best combination: <a href="#the-head-to-head-ours-against-ours-ndt_ekf-3-runs-each-every-tour">the head-to-head</a></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="nav2s-last-yardstick">Nav2's last yardstick</h2>
+<p>Ben decided on 16 Nov to delete Nav2 after the stop zone's shadow swap. These are its last
+scores, <code>--stacks nav2</code> (every level Nav2's: bt_navigator, its lattice, its costmaps, MPPI;
+no road ahead), reversing on, 2 runs each, beside <code>ours</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tour</th>
+<th>Stack</th>
+<th>Legs</th>
+<th>Time (s)</th>
+<th>Sway</th>
+<th>Sway changes /100 m</th>
+<th>Off the path (m), mean / worst</th>
+<th>Off centre (m)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lot</td>
+<td>Nav2</td>
+<td>8/8</td>
+<td>183</td>
+<td>0.020</td>
+<td>14.1</td>
+<td>0.27 / 3.7</td>
+<td>-</td>
+</tr>
+<tr>
+<td>lot</td>
+<td>ours</td>
+<td>12/12</td>
+<td>159</td>
+<td>0.022</td>
+<td>5.1</td>
+<td>0.15 / 0.7</td>
+<td>-</td>
+</tr>
+<tr>
+<td>campus</td>
+<td>Nav2</td>
+<td><strong>4/6</strong></td>
+<td>374</td>
+<td>0.093</td>
+<td>11.1</td>
+<td>0.83 / 7.0</td>
+<td>-</td>
+</tr>
+<tr>
+<td>campus</td>
+<td>ours</td>
+<td>9/9</td>
+<td>282</td>
+<td>0.087</td>
+<td>6.6</td>
+<td>0.17 / 1.7</td>
+<td>-</td>
+</tr>
+<tr>
+<td>university</td>
+<td>Nav2</td>
+<td><strong>2/6</strong></td>
+<td>-</td>
+<td>0.072</td>
+<td>5.1</td>
+<td>0.18 / 0.5</td>
+<td>0.77 (13 % over the line)</td>
+</tr>
+<tr>
+<td>university</td>
+<td>ours</td>
+<td>9/9</td>
+<td>171</td>
+<td>0.064</td>
+<td>6.4</td>
+<td>0.10 / 1.2</td>
+<td>0.13 (0 %)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Nav2 gave up (status 6) on "down University Drive" in both runs and "along the road" on the
+campus once. Its pieces alone inside ours are in the level tables above (MPPI, the lattice,
+Hybrid-A*, the costmaps, bt_navigator).</p>
+</section>
+<section class="card"><h2 id="the-survey-open-source-we-havent-tried">The survey: open source we haven't tried</h2>
+<p>Licences read from each project's GitHub record on 16 Nov. Our rule: learn from it, write it
+ourselves in Rust or Python; none installed.</p>
+<h3 id="follower">Follower</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Licence, language</th>
+<th>What it does better</th>
+<th>Fit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Smooth MPPI / KMPPI</strong> (<a href="https://github.com/UM-ARM-Lab/pytorch_mppi">pytorch_mppi</a>)</td>
+<td>MIT, Python</td>
+<td>samples the steering's <em>change</em> (or a few knots), so the commands come out smooth</td>
+<td>port into <code>mppi_lag</code>: our sway</td>
+</tr>
+<tr>
+<td><strong>Autoware's MPC lateral controller</strong> (<a href="https://github.com/autowarefoundation/autoware_universe">autoware_universe</a>)</td>
+<td>Apache-2.0, C++</td>
+<td>steering lag and dead time in the model, a steering-rate cost, reverse</td>
+<td>port into <code>mpc_lag_rs</code>: what it lacks above</td>
+</tr>
+<tr>
+<td><strong>Vector Pursuit</strong> (<a href="https://github.com/BlackCoffeeRobotics/vector_pursuit_controller">vector_pursuit_controller</a>)</td>
+<td>Apache-2.0, C++</td>
+<td>pure pursuit that also aims the heading; reverses</td>
+<td>a small yardstick beside RPP</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="path_1">Path</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Licence, language</th>
+<th>What it does better</th>
+<th>Fit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Piecewise-jerk path</strong> (Apollo's EM planner, <a href="https://github.com/ApolloAuto/apollo">apollo</a>)</td>
+<td>Apache-2.0, C++</td>
+<td>a QP along the lane: keeps the lane, bends round a parked thing under a jerk limit</td>
+<td>port into <code>lane.rs</code> with Clarabel: smooth corners and passes</td>
+</tr>
+<tr>
+<td><strong>Autoware static obstacle avoidance</strong> (behavior_path_planner)</td>
+<td>Apache-2.0, C++</td>
+<td>the pass's length from the speed and a lateral-jerk limit (0.3-2 m/s³)</td>
+<td>port the formula into <code>pass.rs</code></td>
+</tr>
+<tr>
+<td><strong>Autoware path optimizer</strong> (elastic band + MPT)</td>
+<td>Apache-2.0, C++</td>
+<td>the path made drivable (bicycle model) before the follower sees it</td>
+<td>idea for <code>plan_smoothing</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="costmap-and-ground">Costmap and ground</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Licence, language</th>
+<th>What it does better</th>
+<th>Fit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Patchwork++</strong> (<a href="https://github.com/url-kaist/patchwork-plusplus">patchwork-plusplus</a>)</td>
+<td>BSD-2-Clause, C++</td>
+<td>finds the ground ring by ring, so a 0.3 m kerb stands out</td>
+<td>port: the kerbs we miss (TODO 119)</td>
+</tr>
+<tr>
+<td><strong>grid_map</strong> (<a href="https://github.com/ANYbotics/grid_map">grid_map</a>)</td>
+<td>BSD-3-Clause, C++</td>
+<td>many layers on one grid</td>
+<td>idea for our costmap's layers</td>
+</tr>
+<tr>
+<td><strong>nvblox</strong> (<a href="https://github.com/nvidia-isaac/nvblox">nvblox</a>)</td>
+<td>Apache-2.0, C++/CUDA</td>
+<td>a distance field on the GPU (the Orin has one)</td>
+<td>a yardstick only: a big stack</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="lanes-and-routing">Lanes and routing</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Licence, language</th>
+<th>What it does better</th>
+<th>Fit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Lanelet2's routing graph</strong> (<a href="https://github.com/fzi-forschungszentrum-informatik/Lanelet2">Lanelet2</a>)</td>
+<td>BSD-3-Clause, C++</td>
+<td>lane changes as edges in the route</td>
+<td>add to <code>lane.rs</code>'s Dijkstra (we read Lanelet2 in Rust)</td>
+</tr>
+<tr>
+<td><strong>CommonRoad route planner</strong> (<a href="https://github.com/CommonRoad/commonroad-route-planner">commonroad-route-planner</a>)</td>
+<td>BSD-3-Clause, Python</td>
+<td>the reference path and where to change lane</td>
+<td>idea for <code>lane.rs</code></td>
+</tr>
+<tr>
+<td>Maliput (a Rust API over C++)</td>
+<td>not checked</td>
+<td>OpenDRIVE roads with routing</td>
+<td>only if we take OpenDRIVE maps</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="things-what-moves">Things (what moves)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Licence, language</th>
+<th>What it does better</th>
+<th>Fit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Fast-Poly / Poly-MOT</strong> (<a href="https://github.com/lixiaoyu2000/FastPoly">FastPoly</a>)</td>
+<td>MIT, Python</td>
+<td>a motion model per kind (bicycle for a car, constant speed for a person)</td>
+<td>port into <code>aav_things</code> (one constant-velocity filter today)</td>
+</tr>
+<tr>
+<td><strong>OC-SORT</strong> (<a href="https://github.com/noahcao/OC_SORT">OC_SORT</a>)</td>
+<td>MIT, Python</td>
+<td>a thing lost then found re-fits its speed from its last sightings</td>
+<td>port into our tracker</td>
+</tr>
+<tr>
+<td><strong>MapMOS</strong> (<a href="https://github.com/PRBonn/MapMOS">MapMOS</a>)</td>
+<td>MIT, Python (a network)</td>
+<td>moving points against the map</td>
+<td>idea for <code>things_background</code>, later</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="where-the-car-is-lidar">Where the car is (lidar)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Licence, language</th>
+<th>What it does better</th>
+<th>Fit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Kinematic-ICP</strong> (<a href="https://github.com/PRBonn/kinematic-icp">kinematic-icp</a>)</td>
+<td>MIT, C++</td>
+<td>KISS-ICP with the wheels and a car that can't slide sideways</td>
+<td>the next <code>kiss_ekf</code> challenger, ported</td>
+</tr>
+<tr>
+<td><strong>small_gicp</strong> (<a href="https://github.com/koide3/small_gicp">small_gicp</a>)</td>
+<td>MIT, C++</td>
+<td>fast GICP on many cores</td>
+<td>a yardstick for NDT</td>
+</tr>
+<tr>
+<td><strong>GenZ-ICP</strong> (<a href="https://github.com/cocel-postech/genz-icp">genz-icp</a>)</td>
+<td>MIT, C++</td>
+<td>mixes plane and point matching by the scene: long straight roads</td>
+<td>idea for NDT on University Drive</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="skipped">Skipped</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>aav_track's trackers (pure_pursuit, stanley, lqr, mpc)</td>
+<td>forward only: reversing is an rc1 must-have</td>
+</tr>
+<tr>
+<td><code>mpc_lag</code> (Python)</td>
+<td>the Rust gives the same commands; scored the Rust</td>
+</tr>
+<tr>
+<td><code>diffusion</code></td>
+<td>a trial for the lot, not the road; skipped for time</td>
+</tr>
+<tr>
+<td><code>kiss_ekf</code></td>
+<td>needs the <code>kiss</code> environment; the local EKF only</td>
+</tr>
+<tr>
+<td>ego and behaviour in Python, <code>things:=true</code></td>
+<td>drop-ins of the same behaviour, not choices of how to drive</td>
+</tr>
+<tr>
+<td>the campus tour for each level</td>
+<td>time: the finals ran it, 3 runs each</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="league.html"><small>Previous</small>← The league</a>
+<a class="next" href="mppi-lag.html"><small>Next</small>MPPI with lag →</a></nav>
+</main>
+<footer>Source: <code>docs/league-results-2026-11-16.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>
