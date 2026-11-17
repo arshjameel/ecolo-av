@@ -48,7 +48,9 @@ ekf_local:
     imu0_queue_size: 10
     imu0_remove_gravitational_acceleration: true
 
-    use_control: false
+    # use_control (the command as a control term, TODO 207) and its numbers come from the
+    # launch file, from vehicle.yaml (aav_description vehicle.ekf_control_params). Not
+    # here: a named entry in this file would beat the launch file's dict.
     # Diagonal, same order as the configs. From the package example; tune with bags.
     process_noise_covariance: [0.05, 0.05, 0.06, 0.03, 0.03, 0.06, 0.025, 0.025, 0.04, 0.01, 0.01, 0.02, 0.01, 0.01, 0.015]
     initial_estimate_covariance: [1e-9, 1e-9, 1e-9, 1.0, 1.0, 1e-9, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]

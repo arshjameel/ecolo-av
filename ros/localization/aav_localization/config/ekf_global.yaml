@@ -78,7 +78,9 @@ ekf_global:
     imu1_queue_size: 10
     imu1_remove_gravitational_acceleration: false
 
-    use_control: false
+    # use_control (the command as a control term, TODO 207) and its numbers come from the
+    # launch file, from vehicle.yaml (aav_description vehicle.ekf_control_params). Not
+    # here: a named entry in this file would beat the launch file's dict.
     # Yaw (6th) 0.01, not robot_localization's 0.06: the gyro and the wheels give the turn
     # rate well, so the heading should follow them and let GPS nudge it, not wander with
     # GPS noise. Gazebo, 22 Oct, 3 min of driving forward and back at 0.5-1 m/s: heading
