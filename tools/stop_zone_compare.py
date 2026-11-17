@@ -10,6 +10,11 @@ command. No ROS here; sim_check.py --stop-zone-shadow records both and calls com
                 never stopped
     missed      s Nav2 stopped while ours was clear: the one that matters for safety
     extra       s ours stopped while Nav2 was clear
+
+Per stop (lags(), travelled()): for each time Nav2 went from clear to stop, how much later
+ours stopped (negative or 0: ours already stopped), and the metres the car drove in that
+time by a track of (t, x, y, ...): the swap's rule, "ours stops every time Nav2's does, no
+later" (TODO 182).
 """
 
 from typing import NamedTuple, Optional, Sequence, Tuple
@@ -71,3 +76,42 @@ def compare(nav2: Sequence[Event], ours: Sequence[Event], start: float,
     delay = f_ours - f_nav2 if f_nav2 is not None and f_ours is not None else None
     return Comparison(same / total if total > 0 else 1.0, delay, missed, extra,
                       stops(nav2), stops(ours))
+
+
+def onsets(events: Sequence[Event]) -> list:
+    """Return the times it went from clear to stop."""
+    out, state = [], False
+    for when, stop in sorted(events):
+        if stop and not state:
+            out.append(when)
+        state = stop
+    return out
+
+
+def lags(nav2: Sequence[Event], ours: Sequence[Event]) -> list:
+    """
+    For each of Nav2's stops, return (its time, s until ours stopped, or None if never).
+
+    Ours already stopping then counts from its own onset (0 or less): it was there first.
+    """
+    ours = sorted(ours)
+    mine = onsets(ours)
+    out = []
+    for t in onsets(nav2):
+        if at(ours, t):
+            out.append((t, max((o for o in mine if o <= t), default=t) - t))
+        else:
+            later = next((o for o in mine if o > t), None)
+            out.append((t, None if later is None else later - t))
+    return out
+
+
+def travelled(track: Sequence[tuple], start: float, end: float) -> float:
+    """Return the metres along a track of (t, x, y, ...) between two times, either order."""
+    sign = 1.0
+    if end < start:
+        start, end, sign = end, start, -1.0
+    points = [p for p in track if start <= p[0] <= end]
+    total = sum(((b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2) ** 0.5
+                for a, b in zip(points, points[1:]))
+    return sign * total

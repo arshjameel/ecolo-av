@@ -1493,6 +1493,62 @@ def check_stop_zone_shadow(probe, delay_limit=0.3, missed_limit=0.2):
            f'stops: Nav2 {c.nav2_stops}, ours {c.our_stops}')
 
 
+# Our stop zone beside Nav2's on any run (--with stop_zone_shadow:=true, TODO 182): after
+# each check, every one of Nav2's stops must find ours stopped too, no later than SHADOW_LATE
+# s (one command tick, 20 Hz, and the probe hearing each a moment apart).
+SHADOW = False
+SHADOW_LATE = 0.1
+
+
+def listen_to_both_stop_zones(probe):
+    """Record both stop zones' states as (Gazebo's time, stop) on probe.shadow."""
+    probe.shadow = {'nav2': [], 'ours': []}
+    probe.create_subscription(
+        CollisionMonitorState, '/safety/collision_monitor/state',
+        lambda m: probe.shadow['nav2'].append(
+            (probe.now(), m.action_type == CollisionMonitorState.STOP)), 10)
+    probe.create_subscription(
+        DiagnosticStatus, '/safety/stop_zone/shadow/state',
+        lambda m: probe.shadow['ours'].append((probe.now(), m.level != DiagnosticStatus.OK)),
+        10)
+
+
+def shadow_result(probe, name, start):
+    """After one check: did ours stop at each of Nav2's stops, how much later, how far on."""
+    end = probe.now()
+    nav2 = [e for e in probe.shadow['nav2'] if e[0] <= end]
+    ours = [e for e in probe.shadow['ours'] if e[0] <= end]
+    # The state each held as the check began, then what changed during it.
+    nav2 = [(start, stop_zone_compare.at(nav2, start))] + [e for e in nav2 if e[0] > start]
+    ours = [(start, stop_zone_compare.at(ours, start))] + [e for e in ours if e[0] > start]
+    stops = [(t, lag) for t, lag in stop_zone_compare.lags(nav2, ours) if t > start]
+    c = stop_zone_compare.compare(nav2, ours, start, end)
+    each = []
+    for t, lag in stops:
+        if lag is None:
+            each.append({'t': round(t, 2), 'lag': None, 'metres': None})
+        else:
+            each.append({'t': round(t, 2), 'lag': round(lag, 3), 'metres': round(
+                stop_zone_compare.travelled(probe.track, t, t + lag), 3)})
+    log = os.environ.get('AAV_SHADOW_LOG')
+    if log:
+        with open(log, 'a') as f:
+            f.write(json.dumps({'check': name, 'stops': each, 'agree': round(c.agree, 4),
+                                'missed': round(c.missed, 3), 'extra': round(c.extra, 3),
+                                'our_stops': c.our_stops}) + '\n')
+    if not stops:
+        result(f'stop zone shadow ({name})', None,
+               f"Nav2's never stopped; ours stopped {c.our_stops} times "
+               f'({c.extra:.2f} s alone)')
+        return
+    late = [e for e in each if e['lag'] is None or e['lag'] > SHADOW_LATE]
+    words = '; '.join('never' if e['lag'] is None else
+                      f"{e['lag']:+.2f} s, {100 * e['metres']:+.0f} cm" for e in each)
+    result(f'stop zone shadow ({name})', not late,
+           f"Nav2's {len(stops)} stops, ours each (+ later, - sooner): {words}; "
+           f'clear while Nav2 stopped {c.missed:.2f} s, stopped alone {c.extra:.2f} s')
+
+
 def check_kerb(probe, sensors):
     """
     Lay a foot-tall kerb across the road (TODO 119), the planner blind to it: is it seen.
@@ -3221,8 +3277,14 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
             # --spine-steps run) only the sim profile's topics can be live.
             check_contract(probe, env, tag, ignore,
                            'spine' if spine and road else 'road' if road else 'sim')
+            shadow = SHADOW or 'stop_zone_shadow:=true' in launch_args
+            if shadow:
+                listen_to_both_stop_zones(probe)
             for check in checks:
+                start = probe.now()
                 check(probe)
+                if shadow:
+                    shadow_result(probe, getattr(check, '__name__', 'check'), start)
     finally:
         probe.destroy_node()
         rclpy.try_shutdown()
@@ -3320,6 +3382,8 @@ def main():
                 print('--with takes name:=value', file=sys.stderr)
                 return 2
             EVERY_RUN.append(args[at + 1])
+    global SHADOW
+    SHADOW = 'stop_zone_shadow:=true' in EVERY_RUN
     for flag_name, choices in (('--costmap', vehicle.COSTMAPS), ('--tracker', vehicle.TRACKERS),
                                ('--navigator', vehicle.NAVIGATORS),
                                ('--planner', vehicle.PLANNERS)):
