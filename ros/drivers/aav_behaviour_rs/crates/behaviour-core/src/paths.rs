@@ -248,6 +248,7 @@ fn walks_in(y: f64, vy: f64, lane: f64, gap: f64, closing: f64, crossing: Crossi
 /// thing stays sure while it coasts (it walked into the blind zone), until it is slow or
 /// gone. Nor while it grows (a building coming into view): a run starts again while its
 /// size goes over [`MovingFor::GROW`] times its smallest plus [`MovingFor::GROW_SLACK`].
+/// The node's `settle` is 1.5 s (`behaviour.py`'s `MovingFor` says why).
 #[derive(Debug, Clone, PartialEq)]
 pub struct MovingFor {
     settle: f64,

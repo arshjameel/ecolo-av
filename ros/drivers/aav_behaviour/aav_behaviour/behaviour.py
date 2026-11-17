@@ -486,12 +486,17 @@ class MovingFor:
     from under 1 m to 4-9 m in 2-3 s, their middles moving at 1-2 m/s (17 Nov). A run
     starts again while its size (the longer side) goes over GROW times its smallest plus
     GROW_SLACK; a person or a car stayed within 2 times (0.43-0.84 m, 1.03-1.35 m).
+
+    The node's `settle` is 1.5 s: at 1 s the lot's thin posts (tracks swapping between
+    them, 1.5-11 m/s), a low patch of grass and the parked box beside the car still held it
+    once a tour or so (3 holds in 7 runs, replayed from the recorded things: 0 at 1.5 s,
+    and every real mover still held).
     """
 
     GROW = 1.5          # its size over this times its smallest in the run: start again
     GROW_SLACK = 0.5    # m
 
-    def __init__(self, settle: float = 1.0, moving: float = MOVING):
+    def __init__(self, settle: float = 1.5, moving: float = MOVING):
         self.settle, self.moving = settle, moving
         self.since: Dict[int, Tuple[float, float, float]] = {}   # id -> run's start, sizes
         self.sure: set = set()               # ids that have moved `settle` s

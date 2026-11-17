@@ -233,7 +233,7 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
         moving: d.number("moving_speed", MOVING)?,
         ..Nearby::default()
     };
-    let moving_settle = d.number("moving_settle", 1.0)?;
+    let moving_settle = d.number("moving_settle", 1.5)?;
     let p = Params {
         base_speed,
         stop_distance,

@@ -112,7 +112,7 @@ class BehaviourNode(Node):
             # With things: something moving near holds the car (Ben, 16 Nov: "if we see a
             # car people or stuff moving around us we should likely just stop"). m, s, m/s.
             ('moving_hold', True), ('moving_radius', 10.0), ('moving_within', 3.0),
-            ('moving_speed', MOVING), ('moving_settle', 1.0),
+            ('moving_speed', MOVING), ('moving_settle', 1.5),
             # Each navigator action's status (navigation.launch.py; Nav2's and ours serve
             # the same names): a goal running on any of them.
             ('goal_status_topics', ['/navigate_to_pose/_action/status']))}
