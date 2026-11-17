@@ -100,6 +100,8 @@ PAGES = [
     ('switches.md', 'Switches', 'Every part you can swap, and pixi run pick'),
     ('trials.md', 'Trials', 'New path followers and AMCL, beside the main ones'),
     ('league.md', 'The league', "Each level's champion and challengers; stack:="),
+    ('league-results-2026-11-16.md', 'League scores, 16 Nov',
+     "Every level scored inside ours, the hybrids, Nav2's last scores, the survey"),
     ('mppi-lag.md', 'MPPI with lag', "Nav2's MPPI in Rust, planning with the actuators' lag"),
     ('own-costmap.md', 'Our own costmap', "Nav2's costmap layers in Rust, beside Nav2's"),
     ('own-planner.md', 'Our own planner', "Nav2's State Lattice planner in Rust, beside Nav2's"),

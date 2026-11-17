@@ -27,6 +27,13 @@ waiting to beat it.
   pixi run sim stack:=stock     every level Nav2's: the yardstick
 ```
 
+## The latest scores
+
+**16 Nov, every level scored** inside `stack:=ours`, then the best combination against it on
+all four tours: [the league's scores, 16 Nov](league-results-2026-11-16.md). No champion
+changed; `pose:=ndt_ekf` is the closest challenger (TODO 210). Nav2's last yardstick scores
+are there too.
+
 ## The stacks
 
 **Ours is the simulator's default** (Ben, 14 Nov: "Ours default now, then delete").
