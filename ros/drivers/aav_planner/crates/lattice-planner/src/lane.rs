@@ -41,6 +41,9 @@ use crate::{curves::wrap, Plan, PlanError, Planner, Pose};
 
 /// m past a road's kerb a pose still counts as on that road (`lane_map.py` MARGIN).
 const ON_ROAD_MARGIN: f64 = 0.5;
+/// A join from off the lanes to them, in metres of lane: each metre off counts this much
+/// (Lanelet2: the lane picked near an off-road start or goal).
+const JOIN_WEIGHT: f64 = 2.0;
 /// m: the sideways step the joins must make room for: one lane.
 const ONE_LANE: f64 = 3.5;
 /// m a pass keeps from the left kerb, beyond half the car.
@@ -68,6 +71,9 @@ pub struct LaneSettings {
     /// A lane route longer than `detour.0` times the straight distance plus `detour.1` m
     /// is a loop round the block to reach a goal close by: the lattice's instead.
     pub detour: (f64, f64),
+    /// The same on a Lanelet2 map, tighter: its lanes run one way each, so a goal across
+    /// the road is reached round the block more often than on lanes.yaml's two-way roads.
+    pub detour_lanelets: (f64, f64),
     /// Something parked on the line: pass it ([`crate::pass`]); None: the lattice, all of
     /// it, as before 16 Nov.
     pub pass: Option<PassSettings>,
@@ -88,6 +94,9 @@ impl Default for LaneSettings {
             // 16 Nov (TODO 175): on the campus tour a replan 10 m short of the goal (off
             // the road, at 45 degrees to it) gave a 430 m loop of lanes; the car drove it.
             detour: (2.0, 40.0),
+            // 16 Nov (TODO 175): replans along the campus legs on Lanelet2 gave 153-234 m
+            // loops to goals 44-103 m away, inside (2, 40); the sim drove them.
+            detour_lanelets: (1.5, 20.0),
             pass: Some(PassSettings::default()),
         }
     }
@@ -382,8 +391,8 @@ impl LaneRouter {
 /// On a Lanelet2 map, where a pose meets the lanes: the lanes within `reach`, nearest
 /// first. On a lane (within its half width and half a metre): the lanes there running the
 /// way the pose faces (at a junction, the lanes through it overlap; the route picks).
-/// Off every lane: the lanes up to 4 m further than the nearest, those running the way
-/// the pose faces if any do (Lanelet2's lanes each run one way), else all of them.
+/// Off every lane: every lane near (up to 12), either way; the route picks, counting the
+/// join (`JOIN_WEIGHT`).
 fn lanelet_places(m: &LaneletMap, pose: &Pose, reach: f64) -> Vec<Place> {
     let near = m.places_near(pose.x, pose.y, reach);
     let facing = |p: &Place| wrap(pose.yaw - p.heading).abs() <= std::f64::consts::FRAC_PI_2;
@@ -399,17 +408,8 @@ fn lanelet_places(m: &LaneletMap, pose: &Pose, reach: f64) -> Vec<Place> {
         // On the road: the lanes running the way the pose faces.
         return on.into_iter().filter(facing).take(6).collect();
     }
-    let nearest = near.first().map_or(0.0, |p| p.off);
-    let close: Vec<Place> = near
-        .into_iter()
-        .filter(|p| p.off <= nearest + 4.0)
-        .take(6)
-        .collect();
-    if close.iter().any(facing) {
-        close.into_iter().filter(facing).collect()
-    } else {
-        close
-    }
+    // Off every lane: each lane near, either way; the route picks, its join counted too.
+    near.into_iter().take(12).collect()
 }
 
 /// The lanes' centre from `start` to `goal` on a Lanelet2 map, and the stop lines met;
@@ -422,13 +422,24 @@ fn lanelet_line(
 ) -> Option<WithStops<(f64, f64)>> {
     let froms = lanelet_places(m, start, reach);
     let tos = lanelet_places(m, goal, reach);
+    // A join off the lane costs twice its length: the lattice's way there is no straight
+    // line. A lane passing 10 m from an off-road goal beats a loop to one 6 m from it.
+    let key = |(r, t): &(lanelet_map::Route, Place)| {
+        r.cost
+            + JOIN_WEIGHT
+                * (t.off
+                    + froms
+                        .iter()
+                        .find(|f| f.lanelet == r.lanelets[0])
+                        .map_or(0.0, |f| f.off))
+    };
     let (route, to) = froms
         .iter()
         .flat_map(|f| {
             tos.iter()
                 .filter_map(move |t| Some((m.route_between(f, t)?, *t)))
         })
-        .min_by(|a, b| a.0.cost.total_cmp(&b.0.cost))?;
+        .min_by(|a, b| key(a).total_cmp(&key(b)))?;
     let line = m
         .route_line(&route, &to)
         .iter()
@@ -707,7 +718,10 @@ impl LaneRouter {
             return lattice(Fallback::OffMap, vec![*start, *goal]);
         };
         let route = line.clone();
-        let (times, plus) = self.settings.detour;
+        let (times, plus) = match self.graph {
+            Graph::Roads(_) => self.settings.detour,
+            Graph::Lanelets(_) => self.settings.detour_lanelets,
+        };
         let straight = (goal.x - start.x).hypot(goal.y - start.y);
         if arc_lengths(&line).last().copied().unwrap_or(0.0) > times * straight + plus {
             return lattice(Fallback::Detour, vec![*start, *goal]);
