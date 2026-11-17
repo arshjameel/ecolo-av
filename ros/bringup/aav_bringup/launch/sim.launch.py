@@ -150,6 +150,9 @@ bench's argument names:
   lane_pass:=false    with lane_route: a parked obstacle on the lane line gives the whole
                       path to the lattice (before 16 Nov); true (the default): only the
                       blocked stretch moves left, the least that clears it, then back
+  lane_corners:=arc   with lane_route: the lane line's corners as circle arcs, the
+                      curvature jumping (before 17 Nov); clothoid (the default): clothoid,
+                      arc, clothoid, the curvature continuous (TODO 211)
   things:=true        the lidar's cubes as things with an id, a speed and a memory, on
                       /world/things (aav_things; voxels runs for it): only with nav:=true
                       and the lidar. The behaviour planner waits for what moves (a hold
@@ -622,6 +625,7 @@ def launch_setup(context):
                                # Every model of the car predicts the loop it runs (TODO 163).
                                speed_loop=speed_loop,
                                lane_route=lane_route, lane_pass=arg('lane_pass'),
+                               lane_corners=arg('lane_corners'),
                                lane_graph=check_lane_graph(arg('lane_graph')),
                                local_chunks=arg('local_chunks')))
     if ndt:
@@ -1012,6 +1016,10 @@ def generate_launch_description():
                               description='with lane_route: true, a parked obstacle is '
                                           'passed by moving only its stretch left; false: '
                                           "the whole path is the lattice's (before 16 Nov)"),
+        DeclareLaunchArgument('lane_corners', default_value='clothoid',
+                              description="with lane_route: the lane line's corners, "
+                                          'clothoid (continuous curvature, TODO 211) or arc '
+                                          '(circle arcs, before 17 Nov)'),
         DeclareLaunchArgument('navigator', default_value=stacks.CHOSEN,
                               description="own (aav_navigator, in bt_navigator's place; "
                                           'docs/own-navigator.md), the only one since Nav2 '

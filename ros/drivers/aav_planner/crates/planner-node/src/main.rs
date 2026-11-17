@@ -50,7 +50,9 @@
 //!             lane-centre planner (lattice_planner::lane): the right lane's centre along
 //!             the lane map, the lattice joining the car and the goal to it; off the map,
 //!             the lattice alone. "lanes"."pass": false (lane_pass:=false): a blocked
-//!             lane line is the lattice's, not passed.
+//!             lane line is the lattice's, not passed. "lanes"."corners": "arc"
+//!             (lane_corners:=arc): the lane line's corners as circle arcs, as before
+//!             17 Nov; else clothoid, arc, clothoid (TODO 211).
 //!
 //! A goal off the costmap (a global costmap made of the chunks round the car): the path
 //! goes as far as the way there stays on it (lattice_planner::steps), and the navigator's
@@ -148,6 +150,12 @@ fn main() -> Result<()> {
                     LaneSettings::default().pass
                 } else {
                     None
+                },
+                // lane_corners:=arc: circle arcs, the curvature jumping (before 17 Nov).
+                transition: if block["corners"].as_str() == Some("arc") {
+                    0.0
+                } else {
+                    LaneSettings::default().transition
                 },
                 ..LaneSettings::default()
             };

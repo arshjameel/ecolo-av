@@ -74,6 +74,7 @@ Switches:
                           the states and a speed cap, /drivers/nav/speed_limit; lane_map:=
                           a lanes.yaml for the road ahead's line
   lane_costs:=, costmap_chunks:=, local_chunks:=true, lane_route:=, lane_pass:=,
+  lane_corners:=,
   lane_graph:=            our costmap's lanes and chunks, our planner's lane-centre route
                           (TODO 148, 175; docs/own-costmap.md, docs/own-planner.md)
   things:=true            (with lidar:=true) aav_things: the cubes as tracked things on
@@ -129,6 +130,14 @@ LOCAL = 'local_costmap.local_costmap.ros__parameters.'
 
 def flag(context, name):
     return LaunchConfiguration(name).perform(context).lower() == 'true'
+
+
+def check_lane_corners(value):
+    """Return lane_corners:= checked: 'clothoid' (empty too) or 'arc'."""
+    value = value.strip().lower() or 'clothoid'
+    if value not in ('clothoid', 'arc'):
+        raise ValueError(f'lane_corners:={value}: clothoid or arc')
+    return value
 
 
 def voxels_car(cfg):
@@ -429,6 +438,8 @@ def nodes(context):
             lane_route, LaunchConfiguration('lane_graph').perform(context))
         settings['lanes']['pass'] = LaunchConfiguration('lane_pass').perform(
             context).strip().lower() != 'false'
+        settings['lanes']['corners'] = check_lane_corners(
+            LaunchConfiguration('lane_corners').perform(context))
     topic, updates, latched = vehicle.GLOBAL_COSTMAP_TOPICS['own']
     actions.append(Node(
         package='aav_planner', executable='planner', name='planner', output='screen',
@@ -731,6 +742,10 @@ def generate_launch_description():
                               description='with lane_route: true, a parked obstacle on the '
                                           'lane is passed by moving only its stretch left; '
                                           "false: the whole path is the lattice's"),
+        DeclareLaunchArgument('lane_corners', default_value='clothoid',
+                              description="with lane_route: the lane line's corners, "
+                                          'clothoid (continuous curvature, TODO 211) or arc '
+                                          '(circle arcs, before 17 Nov)'),
         DeclareLaunchArgument('lane_graph', default_value=lane_map.DEFAULT_LANE_GRAPH,
                               description='with lane_route: lanes_yaml (its roads) or '
                                           'lanelet2 (the Lanelet2 map beside it; TODO 175)'),

@@ -13,7 +13,7 @@
 //! | the graph | each road's centre-line points are nodes; a segment is an edge each way the road runs (one way: its drawn way). Roads join where they share a point (OpenStreetMap's shared nodes) |
 //! | where on it | the start and the goal on their nearest segment: on the road, the way they face; off it but within [`LaneSettings::reach`], either way |
 //! | the route | Dijkstra, shortest along the centre lines |
-//! | the line | each segment moved right by its lane's centre (`Road::lane`, as the lanes layer and `lane_map.py`), corners rounded at the planner's turning radius |
+//! | the line | each segment moved right by its lane's centre (`Road::lane`, as the lanes layer and `lane_map.py`), corners turned by clothoid, arc, clothoid at the planner's turning radius (continuous curvature, [`LaneSettings::transition`]) |
 //! | the ends | the lattice, from the car to the line `join` m on, and from `join` m before its end to the goal; a car already on its lane (within [`LaneSettings::snap`]) straight onto the line `ease` m ahead, and a goal on the line's end straight too |
 //!
 //! Something parked on the line (Ben, 16 Nov: keep right, leave the lane only to pass):
@@ -62,6 +62,9 @@ pub struct LaneSettings {
     pub min_lane: f64,
     /// m between the lane line's poses.
     pub spacing: f64,
+    /// m of clothoid at each end of a corner, from straight up to the turning radius's
+    /// curvature (TODO 211); 0: circle arcs, the curvature jumping (before 17 Nov).
+    pub transition: f64,
     /// m and rad: a car (or goal) this near the lane line's end, and facing its way, is
     /// joined to it straight, not by the lattice: the path starts at the car and goes on
     /// at the line `ease` m ahead (the goal: the line's end, then the goal).
@@ -89,6 +92,10 @@ impl Default for LaneSettings {
             reach: 20.0,
             min_lane: 5.0,
             spacing: 0.25,
+            // 17 Nov (TODO 211): the steering actuator turns 0.8 rad/s (vehicle.yaml),
+            // about 0.3 1/m of curvature a second; 4 m of clothoid at the 5-6 m radius
+            // asks a third of that at 5 m/s.
+            transition: 4.0,
             snap: (0.6, 20f64.to_radians()),
             ease: 2.0,
             // 16 Nov (TODO 175): on the campus tour a replan 10 m short of the goal (off
@@ -383,7 +390,12 @@ impl LaneRouter {
         if points.len() < 2 {
             return None;
         }
-        let rounded = round_corners(&points, radius, self.settings.spacing);
+        let rounded = round_corners(
+            &points,
+            radius,
+            self.settings.transition,
+            self.settings.spacing,
+        );
         Some((resample(&rounded, self.settings.spacing), stops))
     }
 }
@@ -1008,10 +1020,28 @@ fn offset(points: &[(f64, f64)], offsets: &[f64]) -> Vec<(f64, f64)> {
         .collect()
 }
 
-/// Each inner corner of `points` replaced by an arc of `radius` m (smaller where the
-/// segments beside it are too short for it: at most half of each), a point every
-/// `spacing` m or so along the arc.
-fn round_corners(points: &[(f64, f64)], radius: f64, spacing: f64) -> Vec<(f64, f64)> {
+/// Each inner corner of `points` replaced by a continuous-curvature turn (Fraichard and
+/// Scheuer's CC turn): a clothoid (Euler spiral) from straight up to the curvature of
+/// `radius` m over `transition` m, an arc of `radius` m, and a clothoid back to straight.
+/// A small corner is the two clothoids only, meeting below that curvature. The curvature
+/// never jumps, so the steering doesn't (TODO 211); `transition` 0 gives the circle arcs
+/// used before 17 Nov. Where the segments beside a corner are too short for the turn (it
+/// may use at most half of each), the whole turn shrinks to fit. A point every `spacing`
+/// m or less.
+///
+/// ```text
+///   curvature
+///   1/radius ┤      ┌──────┐
+///            │     ╱  arc   ╲
+///          0 ┼────╱          ╲────
+///              clothoid   clothoid
+/// ```
+fn round_corners(
+    points: &[(f64, f64)],
+    radius: f64,
+    transition: f64,
+    spacing: f64,
+) -> Vec<(f64, f64)> {
     if points.len() < 3 {
         return points.to_vec();
     }
@@ -1031,22 +1061,130 @@ fn round_corners(points: &[(f64, f64)], radius: f64, spacing: f64) -> Vec<(f64, 
             out.push(v);
             continue;
         }
-        let tangent = (radius * half.tan()).min(0.5 * l1).min(0.5 * l2);
-        let r = tangent / half.tan();
-        let t1 = (v.0 - u1.0 * tangent, v.1 - u1.1 * tangent);
+        let turn_curve = CcTurn::new(turn.abs(), radius, transition);
+        let tangent = turn_curve.tangent();
+        let scale = (0.5 * l1 / tangent).min(0.5 * l2 / tangent).min(1.0);
+        let start = (v.0 - u1.0 * tangent * scale, v.1 - u1.1 * tangent * scale);
         let side = turn.signum();
-        // The arc's centre: left of u1 on a left turn, right of it on a right turn.
-        let c = (t1.0 - side * r * u1.1, t1.1 + side * r * u1.0);
-        let a0 = (t1.1 - c.1).atan2(t1.0 - c.0);
-        let steps = ((r * turn.abs()) / spacing.max(1e-3)).ceil().max(1.0) as usize;
-        out.extend((0..=steps).map(|i| {
-            let ang = a0 + turn * i as f64 / steps as f64;
-            (c.0 + r * ang.cos(), c.1 + r * ang.sin())
-        }));
+        // The turn's own frame: x along u1, y to the turn's side.
+        out.extend(
+            turn_curve
+                .points(spacing / scale)
+                .into_iter()
+                .map(|(x, y)| {
+                    let (x, y) = (x * scale, side * y * scale);
+                    (start.0 + x * u1.0 - y * u1.1, start.1 + x * u1.1 + y * u1.0)
+                }),
+        );
     }
     out.push(points[points.len() - 1]);
     out.dedup_by(|b, a| distance(*a, *b) < 1e-6);
     out
+}
+
+/// A continuous-curvature turn to the left by `turn` rad, starting at the origin facing
+/// +x: a clothoid of `clothoid` m, an arc of `arc` m, the clothoid mirrored.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct CcTurn {
+    turn: f64,
+    /// 1/m per m: how fast the curvature grows along each clothoid (0: no clothoid).
+    sharpness: f64,
+    clothoid: f64,
+    arc: f64,
+    /// 1/m along the arc (the clothoids' peak).
+    curvature: f64,
+}
+
+impl CcTurn {
+    fn new(turn: f64, radius: f64, transition: f64) -> Self {
+        let most = 1.0 / radius.max(1e-6);
+        if transition <= 1e-9 {
+            return Self {
+                turn,
+                sharpness: 0.0,
+                clothoid: 0.0,
+                arc: turn / most,
+                curvature: most,
+            };
+        }
+        let sharpness = most / transition;
+        // Each full clothoid turns most * transition / 2.
+        if turn >= most * transition {
+            Self {
+                turn,
+                sharpness,
+                clothoid: transition,
+                arc: (turn - most * transition) / most,
+                curvature: most,
+            }
+        } else {
+            // Two clothoids only, each turning half: sharpness * l^2 / 2 = turn / 2.
+            let clothoid = (turn / sharpness).sqrt();
+            Self {
+                turn,
+                sharpness,
+                clothoid,
+                arc: 0.0,
+                curvature: sharpness * clothoid,
+            }
+        }
+    }
+
+    fn length(&self) -> f64 {
+        2.0 * self.clothoid + self.arc
+    }
+
+    /// The heading `s` m along.
+    fn heading(&self, s: f64) -> f64 {
+        let (c, a) = (self.clothoid, self.arc);
+        if s <= c {
+            0.5 * self.sharpness * s * s
+        } else if s <= c + a {
+            0.5 * self.sharpness * c * c + self.curvature * (s - c)
+        } else {
+            let left = (self.length() - s).max(0.0);
+            self.turn - 0.5 * self.sharpness * left * left
+        }
+    }
+
+    /// The curvature `s` m along (1/m).
+    #[cfg(test)]
+    fn curvature_at(&self, s: f64) -> f64 {
+        let (c, a) = (self.clothoid, self.arc);
+        if s <= c {
+            self.sharpness * s
+        } else if s <= c + a {
+            self.curvature
+        } else {
+            self.sharpness * (self.length() - s).max(0.0)
+        }
+    }
+
+    /// Points along the turn, at most `spacing` m apart, both ends included (the
+    /// midpoint rule on the exact heading: millimetres off over a corner).
+    fn points(&self, spacing: f64) -> Vec<(f64, f64)> {
+        let length = self.length();
+        let step = spacing.clamp(1e-3, 0.05);
+        let n = (length / step).ceil().max(1.0) as usize;
+        let h = length / n as f64;
+        let every = ((spacing / h).floor() as usize).max(1);
+        let mut out = vec![(0.0, 0.0)];
+        let mut p = (0.0, 0.0);
+        for i in 0..n {
+            let th = self.heading((i as f64 + 0.5) * h);
+            p = (p.0 + h * th.cos(), p.1 + h * th.sin());
+            if (i + 1) % every == 0 || i + 1 == n {
+                out.push(p);
+            }
+        }
+        out
+    }
+
+    /// m from the corner's vertex back to where the turn starts (and on to where it ends).
+    fn tangent(&self) -> f64 {
+        let (x, y) = self.points(0.05).last().copied().unwrap_or((0.0, 0.0));
+        x - y / self.turn.tan()
+    }
 }
 
 /// A pose every `spacing` m along `points` (and the last point), each facing along it.
@@ -1239,7 +1377,7 @@ mod tests {
         // right is south then east: the corner at (11, -1).
         let moved = offset(&[(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)], &[1.0, 1.0]);
         assert!((moved[1].0 - 11.0).abs() < 1e-9 && (moved[1].1 + 1.0).abs() < 1e-9);
-        let round = round_corners(&moved, 2.0, 0.1);
+        let round = round_corners(&moved, 2.0, 0.0, 0.1);
         // The arc stays inside the mitre's corner, at the radius from its centre (9, 1).
         for p in &round[1..round.len() - 1] {
             assert!(p.0 <= 11.0 + 1e-9 && p.1 >= -1.0 - 1e-9);
@@ -1249,5 +1387,57 @@ mod tests {
             .windows(2)
             .all(|w| (w[1].x - w[0].x).hypot(w[1].y - w[0].y) <= 0.5 + 1e-9));
         assert!((s_bend(5.0, 3.5) - (70.0f64 - 12.25).sqrt()).abs() < 1e-9);
+    }
+
+    #[test]
+    fn clothoid_corners_keep_the_curvature_continuous() {
+        // A right angle, the 5 m radius, 4 m clothoids: clothoid, arc, clothoid.
+        let big = CcTurn::new(0.5 * std::f64::consts::PI, 5.0, 4.0);
+        assert!((big.clothoid - 4.0).abs() < 1e-12 && big.arc > 0.0);
+        assert!((big.heading(big.length()) - big.turn).abs() < 1e-12);
+        // A small corner: two clothoids only, peaking below 1 / radius.
+        let small = CcTurn::new(0.2, 5.0, 4.0);
+        assert!(small.arc == 0.0 && small.curvature < 0.2);
+        for t in [big, small] {
+            let n = 400;
+            let h = t.length() / f64::from(n);
+            let ks: Vec<f64> = (0..=n).map(|i| t.curvature_at(f64::from(i) * h)).collect();
+            assert!(ks[0].abs() < 1e-12 && ks[n as usize].abs() < 1e-9);
+            assert!(ks.iter().all(|&k| k <= 0.2 + 1e-12));
+            // No jump: each step changes the curvature by at most sharpness * step.
+            assert!(ks
+                .windows(2)
+                .all(|w| (w[1] - w[0]).abs() <= t.sharpness * h + 1e-9));
+        }
+        // On a lane line: the end leaves along the second segment, at the tangent's
+        // distance from the corner, and the heading's change per metre (the curvature)
+        // never steps by more than the clothoid allows.
+        let line = round_corners(&[(0.0, 0.0), (30.0, 0.0), (30.0, 30.0)], 5.0, 4.0, 0.25);
+        let t = big.tangent();
+        assert!(t > 5.0, "longer than the arc's own 5 m: {t}");
+        assert!(line.iter().any(|p| distance(*p, (30.0 - t, 0.0)) < 1e-6));
+        assert!(line.iter().any(|p| distance(*p, (30.0, t)) < 0.01), "{t}");
+        let poses = resample(&line, 0.25);
+        let ks: Vec<f64> = poses
+            .windows(2)
+            .map(|w| wrap(w[1].yaw - w[0].yaw) / 0.25)
+            .collect();
+        let jump = ks
+            .windows(2)
+            .map(|w| (w[1] - w[0]).abs())
+            .fold(0.0, f64::max);
+        let arcs = resample(
+            &round_corners(&[(0.0, 0.0), (30.0, 0.0), (30.0, 30.0)], 5.0, 0.0, 0.25),
+            0.25,
+        );
+        let arc_jump = arcs
+            .windows(3)
+            .map(|w| (wrap(w[2].yaw - w[1].yaw) - wrap(w[1].yaw - w[0].yaw)).abs() / 0.25)
+            .fold(0.0, f64::max);
+        assert!(jump < 0.05, "{jump}");
+        assert!(
+            arc_jump > 0.08 && arc_jump > 4.0 * jump,
+            "{arc_jump} {jump}"
+        );
     }
 }
