@@ -545,7 +545,7 @@ def nodes(context):
             start['map_topic'] = '/localization/amcl/map'
             actions.append(Node(
                 package='aav_costmap', executable='map_server', name='amcl_map_server',
-                output='screen',
+                output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
                 parameters=[{'yaml_filename': amcl_map, 'topic_name': '/localization/amcl/map',
                              'frame_id': 'map', 'use_sim_time': use_sim_time}]))
         actions += [

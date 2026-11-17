@@ -621,8 +621,7 @@ DEFAULT_PLANNER = 'own'
 FORWARD_ONLY_PLANNER = 'own'
 # Each planner's block in nav2.yaml's planner_server (GridBased is hybrid's own): the
 # file keeps Nav2's layout, so our ports read the blocks they were tuned with.
-PLANNER_BLOCKS = {'hybrid': 'GridBased', 'lattice': 'Lattice', 'smac2d': 'Smac2D',
-                  'navfn': 'NavFn', 'theta_star': 'ThetaStar', 'diffusion': 'Lattice',
+PLANNER_BLOCKS = {'hybrid': 'GridBased', 'lattice': 'Lattice', 'diffusion': 'Lattice',
                   'own': 'Lattice'}
 
 
