@@ -132,6 +132,8 @@ Which lane the car drives in, so the road ahead's line is the lane's centre (W3,
 | `LaneMap.lane_at(x, y, heading)` | the car's lane there: the rightmost for the way it drives, its centre and edges; None off every road |
 | `LaneMap.roads_at(x, y)` | every road whose tarmac holds the point, either way: two or more is a junction (the lane pose trial's gate) |
 | `lane_line(lanes, route, car)` | the route ahead moved onto its lane's centre; off every road it stays; eased over 3 m where roads change |
+| `LANE_GRAPHS`, `DEFAULT_LANE_GRAPH`, `check_lane_graph(name)` | the route level's map for `lane_graph:=`: `lanes_yaml` (the default) or `lanelet2` (TODO 175) |
+| `lanelet2_beside(lanes_yaml)`, `planner_block(lanes_yaml, graph)` | the Lanelet2 map in the same folder (`<folder>.osm`, else its only `.osm`); our planner's `lanes` block: the roads, or `{"lanelet2": path}` (the roads, with a warning, if there is no map) |
 | `with_edges(strip, lanes)` | a `Strip` with its four edges from the map (NaN off every road) |
 
 | Lane map | Where | Covers |
