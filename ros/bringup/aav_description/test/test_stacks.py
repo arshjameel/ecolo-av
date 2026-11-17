@@ -18,7 +18,8 @@ DEFAULTS = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.DEFAULT
             'lattice_moves': vehicle.LATTICE_MOVES[0],
             'planner_search': vehicle.PLANNER_SEARCHES[0],
             'plan_smoothing': 'nav2', 'map_correction': 'newest', 'mppi_lag_steer_gamma': '',
-            'lane_costs': 'false', 'lane_route': 'false', 'costmap_chunks': 'off'}
+            'lane_costs': 'false', 'lane_route': 'false', 'costmap_chunks': 'off',
+            'kerbs': 'false'}
 # What the launch passes when no switch is given: each declared empty, "the stack's choice".
 NOT_GIVEN = {name: stacks.CHOSEN for name in DEFAULTS}
 VALID = {'controller': vehicle.CONTROLLERS, 'tracker': vehicle.TRACKERS,
@@ -30,7 +31,7 @@ VALID = {'controller': vehicle.CONTROLLERS, 'tracker': vehicle.TRACKERS,
          'plan_smoothing': tuple(vehicle.PLAN_SMOOTHINGS), 'map_correction': ('newest', 'slow'),
          'mppi_lag_steer_gamma': ('', '0.05'),
          'lane_costs': ('true', 'false'), 'lane_route': ('true', 'false'),
-         'costmap_chunks': ('auto', 'off')}
+         'costmap_chunks': ('auto', 'off'), 'kerbs': ('true', 'false')}
 
 
 def test_the_four_stacks_are_there():

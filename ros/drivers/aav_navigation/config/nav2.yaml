@@ -212,8 +212,11 @@ local_costmap:
       #                   part). Without it the launch file takes the layer out of this list
       #   ghost_layer     ghost:=true: aav_ghost's pretend person (docs/ghost-obstacles.md).
       #                   Without it the launch file takes the layer out of this list
+      #   kerb_layer      kerbs:=true (with lidar:=true): the kerbs the voxels node's step
+      #                   finder sees (TODO 119). Without it the launch file takes the
+      #                   layer out of this list
       plugins: ["static_layer", "obstacle_layer", "camera_layer", "lidar_layer",
-                "ghost_layer", "inflation_layer"]
+                "ghost_layer", "kerb_layer", "inflation_layer"]
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
         map_subscribe_transient_local: true
@@ -344,6 +347,26 @@ local_costmap:
           raytrace_min_range: 0.0
           raytrace_max_range: 15.0
           observation_persistence: 0.0  # s: the newest scan only
+      # The kerbs (kerbs:=true, TODO 119): voxels' step finder (aav_voxels_rs, steps:=true),
+      # the high side of every sudden step in the ground. Marks only, and nothing clears
+      # this layer: the roof lidar loses a kerb about 4 m before the bumper (its lowest
+      # beam), and the scan's inf rays would wipe it there. A kerb doesn't move; its mark
+      # goes when the window rolls past it, or the car drives over the cell.
+      kerb_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        min_obstacle_height: -1.5   # m, in odom: the node already chose the points
+        max_obstacle_height: 4.0
+        observation_sources: steps
+        steps:
+          topic: /perception/voxels/steps
+          data_type: "PointCloud2"
+          marking: true
+          clearing: false
+          min_obstacle_height: -1.5
+          max_obstacle_height: 4.0
+          obstacle_min_range: 0.0
+          obstacle_max_range: 12.0    # m: the step finder's own reach
+          observation_persistence: 0.0  # s: the newest cloud (the marks stay anyway)
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         inflation_radius: 2.0     # m; at least the car's circumscribed radius, 1.93

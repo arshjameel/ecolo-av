@@ -106,6 +106,15 @@ levels:
       'off': {behaviour: 'false'}
       'on': {behaviour: 'true'}
     score: ''
+  kerbs:
+    what: kerbs the lidar sees (the Rust voxels node's step finder, the local costmap's kerb_layer)
+    champion: 'off'
+    options:
+      'off': {kerbs: 'false'}
+      # A challenger (TODO 119, 16 Nov): sudden steps in the ground, 0.10-0.5 m over 0.3 m,
+      # marked in the local costmap and kept (docs/kerbs.md).
+      'on': {kerbs: 'true'}
+    score: ''
 
 # Each stack names an option per level; a level left out takes its champion.
 stacks:

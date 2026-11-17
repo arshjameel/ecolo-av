@@ -265,6 +265,13 @@ STACKS = {
                         ['planner:=own', 'costmap:=own', 'navigator:=own',
                          'plan_smoothing:=strong', 'map_correction:=slow',
                          'mppi_lag_steer_gamma:=0.05', 'costmap_chunks:=auto']),
+    # own_calm_chunks with the kerbs (kerbs:=true, TODO 119): the step finder's kerbs in
+    # the local costmap. Against own_calm_chunks: no phantom stops?
+    'own_calm_chunks_kerbs': ('tracker', 'mppi_lag',
+                              ['planner:=own', 'costmap:=own', 'navigator:=own',
+                               'plan_smoothing:=strong', 'map_correction:=slow',
+                               'mppi_lag_steer_gamma:=0.05', 'costmap_chunks:=auto',
+                               'kerbs:=true']),
     # One stage swapped (TODO 168, which stage sways?): ours with Nav2's MPPI following,
     # and Nav2's with mppi_lag following. Beside own and nav2, the follower's share.
     'own_nav2mppi': ('controller', 'mppi',
@@ -276,7 +283,8 @@ STACK_LABELS = {'nav2': 'all-nav2', 'own': 'all-ours', 'own32': 'all-ours-32',
                 'own_slow': 'all-ours-slow', 'own_nav2mppi': 'ours+nav2-mppi',
                 'nav2_mppilag': 'nav2+mppi_lag', 'own_strong': 'all-ours-strong',
                 'own_strong_slow': 'all-ours-strong-slow', 'own_calm': 'all-ours-calm',
-                'own_calm_chunks': 'all-ours-calm-chunks'}
+                'own_calm_chunks': 'all-ours-calm-chunks',
+                'own_calm_chunks_kerbs': 'all-ours-calm-kerbs'}
 BOX = 1.0               # m: the bench's obstacle, a cube (aav_gazebo models/obstacle)
 UP_TIME = 150.0         # s for Gazebo, the EKF, then Nav2, to come up
 SETTLE = 5.0            # s after that, before the first goal
