@@ -1405,4 +1405,31 @@ needs a long painted road with the car in its lane (our stack with `lane_map:=wo
   more than the filter.
 - **Not tested:** the car (a real camera, real paint, its EKF heading off by ~2°, which
   the angle gate leans on); the wiggle with it steering; reversing; night.
-- It stays a challenger, off by default.
+- 15 Nov: it stayed a challenger, off by default.
+
+### With the EKF steering, ours' stack (17 Nov): now ours' default
+
+`pixi run measure controllers --stacks own_calm_chunks --tours <tour> --runs 1 --reversing
+--series --launch behaviour:=true lane_route:=true things:=true [lane_pose:=true]`, our
+simulator with its cameras. Here the EKF steers, so the sway and the lane are its doing.
+The sideways error from each run's 0.05 s series (`lane_score.pose_error`); off the lane's
+centre by `lane_score.lane_error` on the campus's `lanes.yaml`.
+
+| Tour | lane_pose | Runs | EKF sideways, RMS | Jitter | Sway (m/s²) | Off the lane's centre |
+|---|---|---|---|---|---|---|
+| University Drive, 367 m | off | 4 | 9.2-9.9 cm | 2.7-2.9 cm | 0.057-0.063 | 0.10-0.11 m |
+| | **on** | 2 | **6.9, 7.8 cm** | **2.1 cm** | 0.056, 0.065 | 0.08, 0.10 m |
+| University Drive, the box tour, 90 m | off | 5 | 7.1-8.2 cm | 2.7-3.1 cm | 0.054-0.078 | 0.26-0.43 m (it passes the box) |
+| | **on** | 2 | **2.1, 1.9 cm** | **1.4, 1.2 cm** | 0.066, 0.060 | 0.33, 0.29 m |
+| the campus tour, 534 m | off | 1 | 9.1 cm | 3.1 cm | 0.100 | 1.53 m (mostly off painted lanes) |
+| | on | 1 | 9.4 cm | 3.0 cm | 0.097 | 1.34 m |
+
+- On a painted road it cuts the sideways error by a fifth (University Drive) to three
+  quarters (the box tour's straight), and the jitter by a quarter to a half.
+- The campus tour: no change (little paint on its way, the finder found no line most of
+  the time). Sway and the lane's centre: no worse, within one run to the next.
+- **Ours' default since 17 Nov** (`stacks.yaml`, pose level `ekf_lane`): on where the
+  world has a camera and a lane map, off elsewhere (the test lot, `cameras:=false`).
+  `pose:=ekf` turns it off; `stack:=stock` never has it.
+- Under a load of 15-20 (two simulators) the lane finder saw no line and the runs were
+  lost to stalls (`sensor_watchdog`): those runs are left out.
