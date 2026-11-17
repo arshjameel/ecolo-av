@@ -24,9 +24,7 @@
 //!                                      the car (WAIT, reason moving)
 //!             goal_status_topics       action_msgs/GoalStatusArray: a goal running, or aborted
 //!             /tf, /tf_static          the sign's camera in odom
-//! Publishes   /drivers/nav/speed_limit   nav2_msgs/SpeedLimit, rate_hz: absolute m/s,
-//!                                      0.0 = no limit
-//!             /drivers/nav/behaviour/state   diagnostic_msgs/DiagnosticStatus, state_rate_hz:
+//! Publishes   /drivers/nav/behaviour/state   diagnostic_msgs/DiagnosticStatus, state_rate_hz:
 //!                                      state, reason, cap_mps, left_m, warnings
 //!             /world/road_ahead        aav_interfaces/RoadAhead (map), road_rate_hz: the
 //!                                      plan's next road_length m from the car, its stops,
@@ -64,7 +62,7 @@ use behaviour_core::paths::{
     active_plan, along_until, lane_ahead, moving_ahead, moving_near, path_left, Car, Crossing,
     MovingFor, Nearby, Point, Seen, Whose, MOVING, REACH,
 };
-use behaviour_core::road::{build, BuildOptions, Strip};
+use behaviour_core::road::{build, capped, BuildOptions, Strip};
 use behaviour_core::tf::Buffer;
 use rclrs::*;
 use ros_env::aav_interfaces::msg::{RoadAhead, StopPoint, Things};
@@ -72,7 +70,6 @@ use ros_env::action_msgs::msg::{GoalStatus, GoalStatusArray};
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::diagnostic_msgs::msg::{DiagnosticStatus, KeyValue};
 use ros_env::geometry_msgs::msg::{PointStamped, PolygonStamped};
-use ros_env::nav2_msgs::msg::SpeedLimit;
 use ros_env::nav_msgs::msg::{Odometry, Path};
 use ros_env::sensor_msgs::msg::LaserScan;
 use ros_env::std_msgs::msg::{Bool, Header, String as Text};
@@ -147,7 +144,6 @@ struct BehaviourNode {
     running: HashMap<String, bool>,
     decision: Option<Decision>,
     said: HashSet<String>,
-    pub_limit: Publisher<SpeedLimit>,
     pub_state: Publisher<DiagnosticStatus>,
     pub_road: Publisher<RoadAhead>,
     clock: Clock,
@@ -304,7 +300,7 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
     )?;
     log_info!(
         &logger,
-        "{}; cap {}-{} m/s on /drivers/nav/speed_limit",
+        "{}; cap {}-{} m/s on the road ahead",
         curve.describe(),
         fmt_g(floor),
         fmt_g(base_speed)
@@ -342,7 +338,6 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
         running: HashMap::new(),
         decision: None,
         said: HashSet::new(),
-        pub_limit: node.create_publisher("/drivers/nav/speed_limit")?,
         pub_state: node.create_publisher("/drivers/nav/behaviour/state")?,
         pub_road: node.create_publisher("/world/road_ahead")?,
         clock: node.get_clock(),
@@ -739,15 +734,7 @@ impl BehaviourNode {
             }
         }
         self.said = d.warnings.iter().cloned().collect();
-        let limit = SpeedLimit {
-            header: self.header("base_link"),
-            percentage: false,
-            speed_limit: d.cap,
-        };
         self.decision = Some(d);
-        if let Err(e) = self.pub_limit.publish(limit) {
-            log_error!(&self.logger, "speed_limit: {e}");
-        }
     }
 
     /// The road ahead: the plan (or its lane's centre) from the car, cut at the end.
@@ -802,6 +789,8 @@ impl BehaviourNode {
             Some(lanes) => lanes::with_edges(strip, lanes, self.passing),
             None => strip,
         };
+        // The machine's cap, into the road ahead: ego caps by it (TODO 233).
+        let strip = capped(strip, self.decision.as_ref().map_or(0.0, |d| d.cap));
         self.road_line = strip
             .x
             .iter()

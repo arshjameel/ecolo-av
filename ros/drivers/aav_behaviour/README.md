@@ -33,7 +33,9 @@ ros2 topic echo /drivers/nav/behaviour/state
 
 **`behaviour`** (`behaviour_node.py`), started by `aav_navigation`'s
 `navigation.launch.py behaviour:=true` (`sim.launch.py behaviour:=true` passes it on).
-That also sets controller_server's `speed_limit_topic` to `/drivers/nav/speed_limit`.
+The states' cap goes into the road ahead's limits (no limit above it; TODO 233): ego holds
+every follower to them. Until 17 Nov it went to `/drivers/nav/speed_limit`, which only
+Nav2's controller read.
 
 | In / out | Topic | Type |
 |---|---|---|
@@ -45,7 +47,6 @@ That also sets controller_server's `speed_limit_topic` to `/drivers/nav/speed_li
 | in | `/sensors/lidar/scan` | `sensor_msgs/LaserScan` (not with `voxels:=true`) |
 | in | `/navigate_to_pose/_action/status` | `action_msgs/GoalStatusArray` |
 | in | `/drivers/nav/planner/status` | `diagnostic_msgs/DiagnosticStatus`: our planner's `how`; while it says `pass`, with `lane_map` the road ahead follows the pass and its left soft edge opens to the kerb there (Ben, 16 Nov) |
-| out | `/drivers/nav/speed_limit` | `nav2_msgs/SpeedLimit`, 20 Hz, absolute m/s |
 | out | `/drivers/nav/behaviour/state` | `diagnostic_msgs/DiagnosticStatus`, 5 Hz: state, reason, cap, left, warnings |
 | in | `/world/things` | `aav_interfaces/Things` (odom), with `things`: what moves ahead |
 | out | `/world/road_ahead` | `aav_interfaces/RoadAhead` (map), 10 Hz: `/plan`'s next 40 m from the car, its stops, its end, the speed limit by the stopping law ([the whole car](../../../docs/designs/2026-11-14_the-whole-car.md#the-road-ahead)). With `lane_map`: the line is the car's lane's centre along the route, with its edges |

@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_behaviour</name>
   <version>0.1.0</version>
-  <description>behaviour: a trial (navigation.launch.py behaviour:=true). The behaviour states (DRIVE, APPROACH, STOPPED, WAIT, GO, ASK) and a speed cap on Nav2 (/drivers/nav/speed_limit) from the stopping law, for a stop sign, an obstacle ahead, the fence and the goal. The locks make every final stop. Off by default.</description>
+  <description>behaviour: a trial (navigation.launch.py behaviour:=true). The behaviour states (DRIVE, APPROACH, STOPPED, WAIT, GO, ASK) and a speed cap from the stopping law, in the road ahead (/world/road_ahead), for a stop sign, an obstacle ahead, the fence and the goal. The locks make every final stop. Off by default.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 
@@ -14,7 +14,6 @@
   <exec_depend>action_msgs</exec_depend>
   <exec_depend>diagnostic_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>nav2_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>

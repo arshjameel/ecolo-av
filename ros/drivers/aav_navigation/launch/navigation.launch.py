@@ -71,7 +71,7 @@ Switches:
   kerbs:=true             (with lidar:=true) the Rust voxels node's step finder: the local
                           costmap's kerb_layer and the stop zone's steps source (TODO 119)
   behaviour:=true         the behaviour planner (aav_behaviour_rs; behaviour_impl:=python):
-                          the states and a speed cap, /drivers/nav/speed_limit; lane_map:=
+                          the states and a speed cap, in /world/road_ahead's limits; lane_map:=
                           a lanes.yaml for the road ahead's line
   lane_costs:=, costmap_chunks:=, local_chunks:=true, lane_route:=, lane_pass:=,
   lane_corners:=,
@@ -496,7 +496,7 @@ def nodes(context):
     gamma = LaunchConfiguration('mppi_lag_steer_gamma').perform(context).strip()
     if gamma:
         slew['steer_gamma'] = vehicle.check_steer_gamma(gamma)
-    # The behaviour planner's speed cap: the follower reads /drivers/nav/speed_limit.
+    # The behaviour planner's speed cap is in /world/road_ahead's limits (TODO 233).
     if tracker == 'mpc_lag_rs':
         # aav_mpc_lag (Rust): aav_track's mpc_lag ported, a challenger beside it.
         own = FindPackageShare('aav_mpc_lag').perform(context) + '/config/mpc_lag_rs.yaml'

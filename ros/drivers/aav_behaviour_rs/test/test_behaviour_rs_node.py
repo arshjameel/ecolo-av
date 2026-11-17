@@ -25,7 +25,6 @@ try:
     from aav_interfaces.msg import RoadAhead
     from diagnostic_msgs.msg import DiagnosticStatus
     from geometry_msgs.msg import PoseStamped
-    from nav2_msgs.msg import SpeedLimit
     from nav_msgs.msg import Odometry, Path
     import rclpy
     from sensor_msgs.msg import LaserScan
@@ -85,8 +84,7 @@ def test_a_drive_a_thing_ahead_and_a_lock():
     rclpy.init()
     try:
         me = rclpy.create_node('behaviour_rs_node_test')
-        got = {'limit': [], 'state': [], 'road': []}
-        me.create_subscription(SpeedLimit, '/drivers/nav/speed_limit', got['limit'].append, 10)
+        got = {'state': [], 'road': []}
         me.create_subscription(DiagnosticStatus, '/drivers/nav/behaviour/state',
                                got['state'].append, 10)
         me.create_subscription(RoadAhead, '/world/road_ahead', got['road'].append, 10)
@@ -135,14 +133,17 @@ def test_a_drive_a_thing_ahead_and_a_lock():
 
         # Wait for the process, then drive along the plan.
         end = time.monotonic() + 30.0
-        while not got['limit'] and time.monotonic() < end and node.poll() is None:
+        while not got['state'] and time.monotonic() < end and node.poll() is None:
             send(1.0)
             rclpy.spin_once(me, timeout_sec=0.1)
-        assert got['limit'], 'nothing back: ' + (
-            node.stdout.read().decode() if node.poll() is not None else 'no speed_limit')
+        assert got['state'], 'nothing back: ' + (
+            node.stdout.read().decode() if node.poll() is not None else 'no state')
+
+        def cap():
+            return float(state()['cap_mps'])
+
         run(2.0, speed=1.0)
-        assert state()['state'] == 'DRIVE' and got['limit'][-1].speed_limit == 0.0
-        assert not got['limit'][-1].percentage
+        assert state()['state'] == 'DRIVE' and cap() == 0.0
         road = got['road'][-1]
         assert road.header.frame_id == 'map' and len(road.x) == 61  # 30 m, every 0.5 m
         assert road.end == pytest.approx(30.0, abs=1e-4)          # the goal: /plan's end
@@ -153,15 +154,17 @@ def test_a_drive_a_thing_ahead_and_a_lock():
         # A thing 6 m ahead: 6 - 2 (bumper) - 1 (stop gap) = 3 m left.
         run(2.0, speed=1.0, obstacle=6.0)
         assert state()['state'] == 'APPROACH' and state()['reason'] == 'obstacle'
-        cap = got['limit'][-1].speed_limit
-        assert FLOOR <= cap < BASE
+        assert FLOOR <= cap() < BASE
+        # The cap is in the road ahead (TODO 233): no limit above it.
+        assert max(got['road'][-1].speed_limit) <= cap() + 1e-3
         assert got['road'][-1].end == pytest.approx(3.0, abs=1e-4)
         assert got['road'][-1].stops[0].reason == 'obstacle'
 
         # The stop zone's lock, the car standing: WAIT at the floor.
         run(1.5, speed=0.0, obstacle=2.5, locked=True)
         assert state()['state'] == 'WAIT'
-        assert got['limit'][-1].speed_limit == pytest.approx(FLOOR)
+        assert cap() == pytest.approx(FLOOR)
+        assert max(got['road'][-1].speed_limit) <= FLOOR + 1e-3
 
         stop(node)
         assert node.returncode == 0, node.stdout.read().decode()

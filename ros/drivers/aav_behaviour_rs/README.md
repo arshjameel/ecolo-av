@@ -12,9 +12,9 @@ falls back until a car day proves this one.
 locks, odometry, /plan, the scan or the things, a stop sign, the fence
         │
         ▼
-   behaviour ──► /drivers/nav/speed_limit (20 Hz): Nav2's cap, 0.0 = no limit
-             ──► /drivers/nav/behaviour/state (5 Hz): state, reason, cap, left
-             ──► /world/road_ahead (10 Hz): the road ahead, its stops, its end
+   behaviour ──► /drivers/nav/behaviour/state (5 Hz): state, reason, cap, left
+             ──► /world/road_ahead (10 Hz): the road ahead, its stops, its end, its
+                 limits under the states' cap (TODO 233)
 ```
 
 Pick it with `behaviour_impl:=rust` (`navigation.launch.py`, `sim.launch.py`), with

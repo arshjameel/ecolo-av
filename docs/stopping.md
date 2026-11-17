@@ -174,7 +174,7 @@ aborted. Each held every time.
 
 | Topic | Type | |
 |---|---|---|
-| `/drivers/nav/speed_limit` | `nav2_msgs/SpeedLimit`, 20 Hz | controller_server reads it with `behaviour:=true` |
+| `/world/road_ahead` | `aav_interfaces/RoadAhead`, 10 Hz | the cap is in its limits (none above it; TODO 233, 17 Nov): ego holds every follower to them. Before, `/drivers/nav/speed_limit`, read only by Nav2's controller |
 | `/drivers/nav/behaviour/state` | `diagnostic_msgs/DiagnosticStatus`, 5 Hz | for the screens: state, reason, cap, left |
 | `/perception/stop_sign/distance` | `geometry_msgs/PointStamped` | new, from the watcher: where the sign is |
 
@@ -229,7 +229,6 @@ At 1 m/s the law's cap binds only in the last 2 m, so the slowing is short.
 |---|---|
 | The `patient` progress checker | a stock tree edit; holds over 10 s still look stuck to Nav2 |
 | ASK's reply (`/hud/ask/answer`) | the HUD has no reply path |
-| The trial trackers reading the cap | they ignore `/drivers/nav/speed_limit` |
 | The car | the stage gates in the design: `pi` mode first |
 
 ## 3. Where the car really stops

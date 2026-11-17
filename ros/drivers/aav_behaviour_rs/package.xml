@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_behaviour_rs</name>
   <version>0.1.0</version>
-  <description>The behaviour planner in Rust (rclrs): the default since 16 Nov (Ben), beside aav_behaviour's Python node (navigation.launch.py behaviour_impl:=rust). The same node name, topics, QoS and parameters: the locks, odometry, /plan, the scan or the things, a stop sign and the fence in; /drivers/nav/speed_limit, /drivers/nav/behaviour/state and /world/road_ahead out. The maths is the behaviour-core crate, with no ROS, checked against the Python modules' answers.</description>
+  <description>The behaviour planner in Rust (rclrs): the default since 16 Nov (Ben), beside aav_behaviour's Python node (navigation.launch.py behaviour_impl:=rust). The same node name, topics, QoS and parameters: the locks, odometry, /plan, the scan or the things, a stop sign and the fence in; /drivers/nav/behaviour/state and /world/road_ahead (its speed limits under the states' cap) out. The maths is the behaviour-core crate, with no ROS, checked against the Python modules' answers.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 
@@ -15,7 +15,6 @@
   <depend>std_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
-  <depend>nav2_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>action_msgs</depend>
   <depend>unique_identifier_msgs</depend>

@@ -25,7 +25,7 @@ tune, and silence never means "carry on". A reader that has no strip at all allo
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import math
 from typing import List, Optional, Sequence, Tuple
 
@@ -164,6 +164,19 @@ def build(plan: Sequence[Tuple[float, float]], car: Optional[Tuple[float, float]
                  heading=tuple(p[2] for p in line), speed_limit=tuple(limits),
                  stops=tuple(on_line), end=end, state=state, reason=reason,
                  left_hard=nan, right_hard=nan, left_soft=nan, right_soft=nan)
+
+
+def capped(strip: Strip, cap: float) -> Strip:
+    """
+    Return the strip with no speed limit above `cap` m/s; 0.0 is no cap.
+
+    The behaviour planner's cap (its states: the floor while held, the gentle rise after a
+    wait, the sign's cap that never rises) goes into the road ahead this way: ego already
+    caps by it, so the cap reaches the car whichever follower drives (TODO 233).
+    """
+    if cap <= 0.0:
+        return strip
+    return replace(strip, speed_limit=tuple(min(v, cap) for v in strip.speed_limit))
 
 
 def along_of(strip: Strip, x: float, y: float) -> Tuple[float, float]:

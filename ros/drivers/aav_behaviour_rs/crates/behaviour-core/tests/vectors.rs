@@ -17,7 +17,7 @@ use behaviour_core::paths::{
     along_until, lane_ahead, moving_ahead, moving_near, path_left, Crossing, MovingFor, Nearby,
     Point, Seen, MOVING, REACH,
 };
-use behaviour_core::road::{build, BuildOptions, Strip};
+use behaviour_core::road::{build, capped, BuildOptions, Strip};
 use serde_json::Value;
 
 const EXACT: f64 = 1e-9;
@@ -380,6 +380,11 @@ fn the_road_ahead_and_the_lane_map_are_the_pythons() {
             &format!("{at} limit"),
         );
         worst.check(s.end, f(&b["end"]), || format!("{at} end"));
+        worst.all(
+            &capped(s.clone(), f(&b["cap"])).speed_limit,
+            &fs_(&b["capped"]),
+            &format!("{at} capped"),
+        );
         let want = b["on_line"].as_array().expect("on_line");
         assert_eq!(s.stops.len(), want.len(), "{at}: stops");
         for (got, want) in s.stops.iter().zip(want) {

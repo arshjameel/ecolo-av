@@ -319,8 +319,10 @@ def roads():
             passing = rng.random() < 0.3
             strip = ra.build(route, car, stops, curve, base, state='APPROACH', reason='sign',
                              spacing=spacing, length=length)
+            cap = rng.choice([0.0, 0.3, 0.8, 1.7])
             builds.append({'route': route, 'car': car, 'stops': [[s.reason, s.left]
                                                                  for s in stops],
+                           'cap': cap, 'capped': ra.capped(strip, cap).speed_limit,
                            'base': base, 'spacing': spacing, 'length': length,
                            'x': strip.x, 'y': strip.y, 'heading': strip.heading,
                            'speed_limit': strip.speed_limit, 'end': strip.end,

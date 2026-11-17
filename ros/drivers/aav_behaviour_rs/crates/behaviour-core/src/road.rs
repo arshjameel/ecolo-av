@@ -317,6 +317,21 @@ pub fn build(
     })
 }
 
+/// The strip with no speed limit above `cap` m/s (`road_ahead.capped`); 0.0 is no cap.
+///
+/// The behaviour planner's cap (the floor while held, the gentle rise after a wait, the
+/// sign's cap that never rises) goes into the road ahead this way: ego already caps by
+/// it, so the cap reaches the car whichever follower drives (TODO 233).
+#[must_use]
+pub fn capped(mut strip: Strip, cap: f64) -> Strip {
+    if cap > 0.0 {
+        for v in &mut strip.speed_limit {
+            *v = py_min(*v, cap);
+        }
+    }
+    strip
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

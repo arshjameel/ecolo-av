@@ -3,7 +3,7 @@
 from collections import namedtuple
 import math
 
-from aav_description.road_ahead import (along_of, build, FINAL, limit_at, resample, room_at,
+from aav_description.road_ahead import (along_of, build, capped, FINAL, limit_at, resample, room_at,
                                         WAIT)
 from aav_description.stop_law import from_car_model
 import pytest
@@ -116,3 +116,13 @@ def test_bad_inputs_are_refused():
         build(STRAIGHT, (0.0, 0.0), [], CURVE, 0.0)
     with pytest.raises(ValueError):
         resample(STRAIGHT, 0.0, 0.0, spacing=0.0)
+
+
+def test_the_behaviour_cap_is_in_the_limits():
+    # TODO 233: no limit above the cap; 0.0 is no cap.
+    strip = build(STRAIGHT, (0.0, 0.0), [], CURVE, BASE)
+    assert capped(strip, 0.0) is strip
+    held = capped(strip, 0.3)
+    assert max(held.speed_limit) == pytest.approx(0.3)
+    assert all(h == min(v, 0.3) for h, v in zip(held.speed_limit, strip.speed_limit))
+    assert held.speed_limit[-1] == 0.0 and held.end == strip.end

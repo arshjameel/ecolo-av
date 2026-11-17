@@ -32,10 +32,7 @@ Subscribes  /perception/stop_sign/distance  geometry_msgs/PointStamped: a sign, 
                                      or aborted (goal_status_topics: each navigator
                                      action's; Nav2's and ours serve the same names)
             /tf, /tf_static          the sign's camera in odom
-Publishes   /drivers/nav/speed_limit   nav2_msgs/SpeedLimit, 20 Hz: absolute m/s, 0.0 = no
-                                     limit (controller_server's speed_limit_topic with
-                                     behaviour:=true)
-            /drivers/nav/behaviour/state   diagnostic_msgs/DiagnosticStatus, 5 Hz: state,
+Publishes   /drivers/nav/behaviour/state   diagnostic_msgs/DiagnosticStatus, 5 Hz: state,
                                      reason, cap_mps, left_m, warnings
             /world/road_ahead        aav_interfaces/RoadAhead (map), 10 Hz: the road ahead,
                                      /plan's next 40 m from the car, its stops, its end,
@@ -61,7 +58,7 @@ from aav_behaviour.behaviour import (active_plan, along_until, Behaviour, diagno
                                      World)
 from aav_description.car_model import ActuatorConfig, speed_loop_profile
 from aav_description.lane_map import lane_line, load as load_lanes, with_edges
-from aav_description.road_ahead import build
+from aav_description.road_ahead import build, capped
 from aav_description.road_ahead_ros import to_msg
 from aav_description.stop_law import from_car_model
 from aav_interfaces.msg import RoadAhead, Things
@@ -69,7 +66,6 @@ from aav_safety.geofence import Polygon
 from action_msgs.msg import GoalStatus, GoalStatusArray
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from geometry_msgs.msg import PointStamped, PolygonStamped
-from nav2_msgs.msg import SpeedLimit
 from nav_msgs.msg import Odometry, Path
 import rclpy
 from rclpy.duration import Duration
@@ -134,7 +130,7 @@ class BehaviourNode(Node):
             ask_after=p['ask_after'], release_hold=p['release_hold']))
         self.get_logger().info(
             f'{curve.describe()}; cap {p["floor"]:g}-{p["base_speed"]:g} m/s on '
-            '/drivers/nav/speed_limit')
+            'the road ahead')
 
         self.tf = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf, self)
@@ -188,7 +184,6 @@ class BehaviourNode(Node):
             self.create_subscription(GoalStatusArray, topic,
                                      lambda msg, t=topic: self.on_status(msg, t), 10)
 
-        self.limit = self.create_publisher(SpeedLimit, '/drivers/nav/speed_limit', 10)
         self.state = self.create_publisher(DiagnosticStatus, '/drivers/nav/behaviour/state', 10)
         self.road = self.create_publisher(RoadAhead, '/world/road_ahead', 10)
         self.decision = None
@@ -348,11 +343,6 @@ class BehaviourNode(Node):
                 self.get_logger().warning(warning)
         self.said = set(d.warnings)
         self.decision = d
-        self.limit.publish(SpeedLimit(header=self.header(), percentage=False,
-                                      speed_limit=float(d.cap)))
-
-    def header(self):
-        return Header(stamp=self.get_clock().now().to_msg(), frame_id='base_link')
 
     def publish_road(self):
         """Send the road ahead: /plan (or its lane's centre) from the car, cut at the end."""
@@ -372,6 +362,8 @@ class BehaviourNode(Node):
                       length=self.p['road_length'])
         if self.lanes is not None:
             strip = with_edges(strip, self.lanes, passing=self.passing)
+        # The machine's cap, into the road ahead: ego caps by it (TODO 233).
+        strip = capped(strip, d.cap if d else 0.0)
         self.road_line = list(zip(strip.x, strip.y))
         self.road.publish(to_msg(strip, Header(stamp=self.get_clock().now().to_msg(),
                                                frame_id='map')))
