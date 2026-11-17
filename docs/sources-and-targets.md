@@ -58,9 +58,9 @@ Evidence and doubt:
 |---|---|---|
 | `/system/source` says SIM, BENCH or REPLAY (on the car) | evidence, at once | a stand-in says so itself |
 | Two publishers on one sensor topic | doubt; evidence once it lasts 5 s | discovery can show a node before its name |
-| In a simulator, a sensor nobody announces | doubt; evidence once it lasts 5 s | a node can publish before its announcement arrives |
+| In a simulator, a sensor nobody announces | doubt; evidence once it lasts 5 s **and** the start-up grace (30 s) has passed | a node can publish before its announcement arrives: on a busy computer, 10 s before (TODO 234) |
 | The sensor mux quiet for 3 s | doubt | a busy computer can delay it; it never latches |
-| A node on `/system/source` whose announcement hasn't arrived | doubt; evidence once it lasts 5 s | the graph can show it before its message (up to 30 ms across processes, measured 24 Oct); the message may say SIM |
+| A node on `/system/source` whose announcement hasn't arrived | doubt; evidence once it lasts 5 s and the start-up grace has passed | the graph can show it before its message (up to 30 ms across processes, measured 24 Oct); the message may say SIM |
 | An announcement whose node isn't in the graph yet | counts at once (for up to 10 s) | the message can come first; only once its node has been seen and gone is it forgotten |
 
 ## Arming waits for OPEN

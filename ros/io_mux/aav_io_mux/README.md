@@ -35,7 +35,7 @@ takes the target's. A source the target can't take is refused before anything st
 |---|---|
 | Subscribes | `/system/source` (`aav_interfaces/DataSource`; reliable, transient local, depth 50) |
 | Publishes | `/system/sensor_mux/state` (`aav_interfaces/SourceCheck`), every `period` |
-| Parameters | `source` (`real`), `period` (0.5 s), `startup` (2.0 s silent while discovery settles), `hold` (5.0 s before a graph doubt counts) |
+| Parameters | `source` (`real`), `period` (0.5 s), `startup` (2.0 s silent while discovery settles), `hold` (5.0 s before a graph doubt counts), `grace` (30.0 s from start before a missing announcement counts) |
 
 It watches `provenance.SENSORS`: IMU, GPS, three cameras, radar, lidar, `/vehicle/odom`,
 `/vehicle/wheels`, `/vehicle/status`, `/vehicle/battery`.
@@ -70,6 +70,11 @@ Modules:
   problems. Only `/safety/output_mux/clear` reopens it, and only once the evidence is gone.
 - **Doubt only holds WAIT**: the sensor mux not heard yet or quiet for `stale_after`,
   its doubts, an announcer not heard yet. It reopens after `settle` s of all clear.
+- **A missing announcement gets a start-up grace** (`grace`, 30 s; TODO 234): a sensor
+  nobody announces, or an announcer not heard yet, stays a doubt (WAIT, closed) until
+  then, because on a busy computer discovery has shown `sim_gps` 10 s before `sim_adapter`,
+  which announces it. After the grace it latches as before. An announcement of another
+  source (a simulator on the car) and two publishers on one sensor get no grace.
 - Closed, nothing goes out; each backend's own timeout brakes (spine_bridge 0.1 s then
   the spine's 100 ms; legacy_uart_bridge 0.3 s; Gazebo 0.2 s).
 - Each backend reads only its own target's topic, so a simulator's ego can't reach the car.

@@ -8,7 +8,8 @@ Publishes   system/sensor_mux/state  aav_interfaces/SourceCheck, 2 Hz: the verdi
 
 Parameters  source (real; sim, bench or replay), period (0.5 s), startup (2.0 s: silent
             while discovery settles, so the output mux waits rather than judging an
-            unfinished graph), hold (5.0 s: how long a graph doubt lasts before it counts)
+            unfinished graph), hold (5.0 s: how long a graph doubt lasts before it counts),
+            grace (30.0 s from start: a missing announcement counts only after it)
 
 It moves no data. Each launch starts only the chosen source's drivers or stand-ins on the
 canonical topics (/sensors/..., /vehicle/odom...); this node checks, from the ROS graph,
@@ -19,7 +20,10 @@ shows it; a node on /system/source not heard yet is a doubt (provenance.Announce
 
 An announcement of another source is a problem at once. What the graph suggests is a
 doubt until it has lasted `hold` s (provenance.Hold): a node can be seen publishing
-before its announcement arrives, or before its name is known.
+before its announcement arrives, or before its name is known. A doubt an announcement
+would settle (a sensor nobody announces, an announcer not heard yet) also waits out the
+start-up `grace`: on a busy computer, discovery has shown a simulator's sensors 10 s
+before the node announcing them (TODO 234). Meanwhile the output mux holds WAIT, closed.
 """
 
 import signal
@@ -58,7 +62,9 @@ class SensorMux(Node):
         self.expected = provenance.source_of(source)
         period = self.declare_parameter('period', 0.5).value
         self.ready_at = time.monotonic() + self.declare_parameter('startup', 2.0).value
-        self.hold = provenance.Hold(self.declare_parameter('hold', 5.0).value)
+        grace = self.declare_parameter('grace', 30.0).value
+        self.hold = provenance.Hold(self.declare_parameter('hold', 5.0).value,
+                                    grace_until=time.monotonic() + grace)
         self.announcers = provenance.Announcers()
         self.last_problems = None
         self.pub = self.create_publisher(SourceCheck, 'system/sensor_mux/state', 10)
@@ -78,20 +84,28 @@ class SensorMux(Node):
         alive = announcers_alive(self)
         publishers = {topic: [i.node_name for i in self.get_publishers_info_by_topic(topic)]
                       for _, topic in provenance.SENSORS}
-        check = self.hold.judge(now, provenance.check_sensors(
+        found = provenance.check_sensors(
             self.expected, self.announcers.entries(alive, now), publishers,
-            unheard=self.announcers.unheard(alive)))
+            unheard=self.announcers.unheard(alive))
+        grace = self.hold.in_grace(now, found)
+        check = self.hold.judge(now, found)
         msg = SourceCheck(source=check.source, ok=check.ok, problems=list(check.problems),
                           doubts=list(check.doubts))
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.sensors = [SensorSource(name=s.name, topic=s.topic, source=s.kind)
                        for s in check.sensors]
         self.pub.publish(msg)
-        verdict = (check.problems, check.doubts)
+        verdict = (check.problems, check.doubts, grace)
         if verdict != self.last_problems:
             want = provenance.kind_name(self.expected)
             if check.problems:
                 self.get_logger().error(f'NOT {want}: ' + '; '.join(check.problems))
+            elif check.doubts and grace:
+                left = self.hold.grace_until - now
+                self.get_logger().warning(
+                    f'unsure, waiting for /system/source (the output mux holds WAIT; '
+                    f'a missing announcement counts in {left:.0f} s): '
+                    + '; '.join(check.doubts))
             elif check.doubts:
                 self.get_logger().warning(f'unsure (for {self.hold.hold:g} s): '
                                           + '; '.join(check.doubts))

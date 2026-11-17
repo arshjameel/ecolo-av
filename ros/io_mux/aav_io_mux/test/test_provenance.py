@@ -167,6 +167,79 @@ def test_a_doubt_that_goes_away_starts_again():
     assert hold.judge(9.0, p.check_sensors(REAL, gazebo(IMU), {IMU: ['sim_imu']})).problems
 
 
+# --- start-up order (TODO 234): sensors seen before the announcement of what they are ---
+
+GRACE = 30.0
+
+
+def tick(hold, gate, now, expected, entries, publishers, unheard=()):
+    """One sensor mux tick, its report to the output mux; return whether the gate opens."""
+    check = hold.judge(now, p.check_sensors(expected, entries, publishers, unheard=unheard))
+    gate.report = Report(now, check.source, check.ok, check.problems, check.doubts)
+    return gate.is_open(now)
+
+
+def test_announcement_first_opens_after_settle():
+    hold, gate = p.Hold(5.0, grace_until=GRACE), Gate('sim', settle=2.0)
+    assert not tick(hold, gate, 0.0, SIM, gazebo(GPS), {GPS: ['sim_gps']})
+    assert tick(hold, gate, 2.0, SIM, gazebo(GPS), {GPS: ['sim_gps']})
+
+
+def test_sensor_first_then_its_announcement_within_the_grace_drives():
+    # A busy computer: sim_gps seen 10 s before sim_adapter (17 Nov's sessions latched).
+    hold, gate = p.Hold(5.0, grace_until=GRACE), Gate('sim', settle=2.0)
+    for now in range(0, 11):
+        assert not tick(hold, gate, float(now), SIM, [], {GPS: ['sim_gps']})
+        assert gate.latched == ()
+        assert gate.state(float(now)).startswith('WAIT - sim: unsure: gps:')
+    assert not tick(hold, gate, 11.0, SIM, gazebo(GPS), {GPS: ['sim_gps']})
+    assert tick(hold, gate, 13.0, SIM, gazebo(GPS), {GPS: ['sim_gps']})
+
+
+def test_an_announcer_heard_late_within_the_grace_drives():
+    unheard = ['sim_adapter publishes /system/source, its announcement not heard yet']
+    hold, gate = p.Hold(5.0, grace_until=GRACE), Gate('sim', settle=0.0)
+    assert not tick(hold, gate, 0.0, SIM, [], {}, unheard)
+    assert not tick(hold, gate, 9.0, SIM, [], {}, unheard) and gate.latched == ()
+    assert tick(hold, gate, 9.5, SIM, gazebo(GPS), {GPS: ['sim_gps']})
+
+
+def test_no_announcement_holds_wait_then_latches_after_the_grace():
+    hold, gate = p.Hold(5.0, grace_until=GRACE), Gate('sim', settle=0.0)
+    for now in (0.0, 5.0, 29.9):
+        assert not tick(hold, gate, now, SIM, [], {GPS: ['gps_driver']})
+        assert gate.latched == ()
+    assert not tick(hold, gate, GRACE, SIM, [], {GPS: ['gps_driver']})
+    assert gate.latched and 'nobody announces' in gate.latched[0]
+    # A late announcement no longer reopens it: only a person's clear.
+    assert not tick(hold, gate, 31.0, SIM, gazebo(GPS), {GPS: ['gps_driver']})
+
+
+def test_after_the_grace_a_new_unannounced_sensor_counts_after_hold():
+    hold = p.Hold(5.0, grace_until=GRACE)
+    late = p.check_sensors(SIM, [], {GPS: ['gps_driver']})
+    assert hold.judge(40.0, late).doubts
+    assert hold.judge(44.9, late).problems == ()
+    assert hold.judge(45.0, late).problems
+
+
+def test_a_sim_source_on_the_car_latches_at_once_even_in_the_grace():
+    hold, gate = p.Hold(5.0, grace_until=GRACE), Gate('car', settle=0.0)
+    assert not tick(hold, gate, 0.0, REAL, gazebo(GPS), {GPS: ['sim_gps']})
+    assert gate.latched == ('gps is SIM (sim_adapter)',)
+
+
+def test_the_grace_never_lets_an_unannounced_sim_pass_on_the_car():
+    # On the car an unannounced publisher counts as REAL (stock drivers can't announce).
+    # A simulator beside the real driver is two publishers: not pending, so no grace.
+    hold, gate = p.Hold(5.0, grace_until=GRACE), Gate('car', settle=0.0)
+    pubs = {GPS: ['ublox_gps', 'sim_gps']}
+    assert p.check_sensors(REAL, [], pubs).pending == ()
+    assert not tick(hold, gate, 0.0, REAL, [], pubs) and gate.latched == ()
+    assert not tick(hold, gate, 5.0, REAL, [], pubs)
+    assert gate.latched and 'two sources at once' in gate.latched[0]
+
+
 def test_gazebo_in_gazebo_is_fine_and_absent_sensors_are_not_faults():
     check = p.check_sensors(SIM, gazebo(IMU, GPS, CAMERA),
                             {IMU: ['sim_imu'], GPS: ['sim_gps']})
