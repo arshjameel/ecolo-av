@@ -546,16 +546,8 @@ impl BehaviourNode {
         // The car's speed: a person walking in counts if they are in the lane by the time
         // the car would reach them (TODO 194).
         let speed = self.speed.map_or(0.0, |v| v.max(0.0));
-        self.moving = moving_ahead(
-            &seen,
-            car,
-            self.p.front,
-            self.p.half_width,
-            REACH,
-            MOVING,
-            speed,
-            Some(Crossing::default()),
-        );
+        // Only what has moved long enough (MovingFor): the parked box flickered into an
+        // obstacle stop as the car passed it (17 Nov).
         let now = self.now();
         let tracked: Vec<(u32, bool, Seen)> = msg
             .things
@@ -564,6 +556,16 @@ impl BehaviourNode {
             .map(|(t, s)| (t.id, t.coasting, *s))
             .collect();
         let sure = self.moving_for.update(now, &tracked);
+        self.moving = moving_ahead(
+            &sure,
+            car,
+            self.p.front,
+            self.p.half_width,
+            REACH,
+            MOVING,
+            speed,
+            Some(Crossing::default()),
+        );
         self.near_moving = if self.p.moving_hold {
             moving_near(
                 &sure,

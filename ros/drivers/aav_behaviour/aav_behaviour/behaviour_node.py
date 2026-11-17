@@ -228,8 +228,9 @@ class BehaviourNode(Node):
         sure = self.moving_for.update(self.now(), [(t.id, t.coasting, s)
                                                    for t, s in zip(msg.things, seen)])
         # The car's speed: a person walking in counts if they are in the lane by the time
-        # the car would reach them (TODO 194).
-        self.moving = moving_ahead(seen, self.odom_pose, self.p['front'], self.p['half_width'],
+        # the car would reach them (TODO 194). Only what has moved long enough (MovingFor):
+        # the parked box flickered into an obstacle stop as the car passed it (17 Nov).
+        self.moving = moving_ahead(sure, self.odom_pose, self.p['front'], self.p['half_width'],
                                    speed=max(0.0, self.speed or 0.0))
         self.near_moving = (moving_near(sure, self.odom_pose, self.p['front'], self.road_here(),
                                         self.p['half_width'], self.nearby)
