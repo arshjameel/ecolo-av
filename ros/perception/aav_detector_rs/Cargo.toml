@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+# detector-core: RF-DETR's picture in, boxes out, in plain Rust (no ROS). The maths always;
+# the model through ONNX Runtime (the ort crate) with --features ort:
+#   cargo test -p detector-core                       the maths: resize, normalise, decode
+#   cargo test -p detector-core --features ort        and the model on saved pictures
+#   cargo run --release -p detector-core --features ort,coreml --example timing
+members = ["crates/detector-core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# The parity tests run the model: build them optimised.
+[profile.test]
+opt-level = 3

@@ -1,0 +1,86 @@
+{
+ "sim_pretty_10m.png": [
+  {
+   "corners": [
+    369.156,
+    158.634,
+    389.856,
+    178.933
+   ],
+   "score": 0.87542,
+   "label": "stop sign"
+  }
+ ],
+ "sim_pretty_18m.png": [
+  {
+   "corners": [
+    444.236,
+    125.599,
+    495.017,
+    175.82
+   ],
+   "score": 0.92494,
+   "label": "stop sign"
+  }
+ ],
+ "sim_simple_10m.png": [
+  {
+   "corners": [
+    369.05,
+    158.532,
+    389.732,
+    179.064
+   ],
+   "score": 0.89013,
+   "label": "stop sign"
+  }
+ ],
+ "sim_simple_14m.png": [
+  {
+   "corners": [
+    390.165,
+    149.478,
+    419.0,
+    178.481
+   ],
+   "score": 0.9157,
+   "label": "stop sign"
+  }
+ ],
+ "sim_simple_18m.png": [
+  {
+   "corners": [
+    444.215,
+    125.644,
+    494.93,
+    175.896
+   ],
+   "score": 0.92742,
+   "label": "stop sign"
+  }
+ ],
+ "sim_simple_5m.png": [
+  {
+   "corners": [
+    355.837,
+    164.311,
+    370.793,
+    178.721
+   ],
+   "score": 0.74681,
+   "label": "stop sign"
+  }
+ ],
+ "stop_sign_photo.png": [
+  {
+   "corners": [
+    199.083,
+    116.866,
+    442.819,
+    364.058
+   ],
+   "score": 0.96137,
+   "label": "stop sign"
+  }
+ ]
+}

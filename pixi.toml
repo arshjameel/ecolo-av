@@ -187,6 +187,9 @@ torchvision = ">=0.28,<1"
 ultralytics = ">=8.4.175,<9"
 rfdetr = ">=1.11,<2"   # RF-DETR (Roboflow, Apache-2.0): S6, docs/model-comparison.md
 numpy = ">=2,<=2.3.5"   # Ultralytics' Core ML export fails on NumPy 2.4 and newer
+onnx = ">=1.23,<2"       # tools/export_model.py --format onnx (Apache-2.0)
+onnxruntime = ">=1.31,<2" # ONNX Runtime (MIT): the exported model's boxes against PyTorch's (docs/onnx.md)
+onnxscript = ">=0.7,<1"  # torch.onnx's exporter needs it (MIT)
 
 [feature.ml.tasks]
 detect = { cmd = "tools/ros.sh ros2 launch aav_detector detector.launch.py", description = "The object detector on the camera's images: RF-DETR, or YOLO with detector:=yolo. pixi run detect picture:=<file> to try a picture" }
