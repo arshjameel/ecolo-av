@@ -110,6 +110,7 @@ The strip every level shares (`/world/road_ahead`; [the whole car](../../../docs
 |---|---|
 | `build(plan, car, stops, curve, base)` | the writer's (`aav_behaviour`): the plan's next 40 m from the car, a point every 0.5 m; its stops; its end (the nearest stop); the speed limit by the stopping law, 0 at the end |
 | `limit_at(strip, x, y, curve, base)`, `room_at`, `along_of` | the readers' (ego): the speed allowed here, the metres left to the end; no strip allows 0 |
+| `capped(strip, cap)` | the writer's: no limit above the behaviour planner's cap (TODO 233); 0.0 is no cap |
 | `Strip`, `StopOnLine`, `resample`; `WAIT`, `FINAL` | the strip; a stop on it; the plan cut into points |
 | `road_ahead_ros.py`: `to_msg`, `from_msg` | `Strip` and `aav_interfaces/RoadAhead` (this one imports ROS messages) |
 

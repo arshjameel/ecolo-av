@@ -99,7 +99,7 @@ def worlds(rng, n):
         if rng.random() < 0.1:
             speed = rng.choice([0.0, 0.03, 0.06, speed])
         stops = [bh.Stop(r, lefts[r]) for r in rng.sample(REASONS, len(REASONS))
-             if lefts[r] is not None]
+                 if lefts[r] is not None]
         if lefts['sign'] is not None and rng.random() < 0.7:
             sign_time = now - rng.choice([0.0, 0.05, 0.3])
         odom = rng.random()

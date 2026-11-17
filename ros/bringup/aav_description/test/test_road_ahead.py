@@ -3,8 +3,8 @@
 from collections import namedtuple
 import math
 
-from aav_description.road_ahead import (along_of, build, capped, FINAL, limit_at, resample, room_at,
-                                        WAIT)
+from aav_description.road_ahead import (along_of, build, capped, FINAL, limit_at, resample,
+                                        room_at, WAIT)
 from aav_description.stop_law import from_car_model
 import pytest
 
