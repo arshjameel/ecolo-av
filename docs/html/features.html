@@ -71,6 +71,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -393,6 +394,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Turns radar points into objects; our C++ moves to Rust, with the same answers bit for bit</td>
 <td>Ben</td>
 <td>2026-10-15</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="kerbs.html">Kerbs: the step finder</a> (<code>aav_voxels_rs</code> <code>steps.rs</code>, <code>memory.rs</code>; <code>kerbs:=true</code>, the league's <code>kerbs</code> level)</td>
+<td>"we don't want to hit a curb. we need to know if the lidar will see them" (Ben, 15 Nov, TODO 119): the flat scan's 0.3 m floor never saw one. A point 0.10-0.5 m above another within 0.3 m is a step; kept 10 s in odom, since the roof lidar loses a kerb 3-4 m before the bumper; the local costmap's kerb_layer and the stop zone read it. Not slopes, ramps to 10°, camber, a 7.5 cm bump or grass</td>
+<td>Ben</td>
+<td>2026-11-16</td>
 <td>sim</td>
 </tr>
 <tr>

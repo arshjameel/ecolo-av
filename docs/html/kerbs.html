@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kerbs · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/kerbs.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Kerbs</h1>
+<div class="meta">7 min read · 10 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<span class="sep">Learn:</span>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<span class="sep">Reference:</span>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a class="here" href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#the-short-answer">The short answer</a><a href="#in-the-simulator">In the simulator</a><a href="#why-the-flat-scan-misses-it">Why the flat scan misses it</a><a href="#no-worse-on-the-tours">No worse on the tours</a><a href="#the-step-finder">The step finder</a><a href="#what-it-must-not-see">What it must not see</a><a href="#the-memory">The memory</a><a href="#does-the-real-lidar-see-a-kerb">Does the real lidar see a kerb?</a><a href="#in-the-map">In the map</a><a href="#how-to-check-it">How to check it</a></nav>
+<div class="lead"><p>Ben, 15 Nov: "we don't want to hit a curb. we need to know if the lidar will see them."
+TODO 119.</p></div>
+<section class="card"><h2 id="the-short-answer">The short answer</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Does the flat scan see a kerb?</td>
+<td><strong>No.</strong> It keeps only what stands 0.3 m over the road</td>
+</tr>
+<tr>
+<td>Does the step finder see a 0.3 m kerb?</td>
+<td><strong>Yes</strong>, from about 8.5 m past the bumper (sim)</td>
+</tr>
+<tr>
+<td>Does it see a 0.15 m kerb?</td>
+<td><strong>Yes</strong>, but only from about 4.7 m past the bumper (cast clouds)</td>
+</tr>
+<tr>
+<td>A 0.10 m kerb?</td>
+<td><strong>No</strong>: a step must rise more than 0.10 m</td>
+</tr>
+<tr>
+<td>Does the car stop before it?</td>
+<td><strong>Yes</strong> in sim: the stop zone stopped it 0.80-0.82 m before a 0.3 m kerb</td>
+</tr>
+<tr>
+<td>Is it on by default?</td>
+<td><strong>Yes</strong>, in <code>stack:=ours</code> (the simulator's) since 16 Nov. Not on the car yet</td>
+</tr>
+<tr>
+<td>On the real car?</td>
+<td><strong>Not tried yet</strong></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="in-the-simulator">In the simulator</h2>
+<p><code>pixi run sim-check --kerb-only --with kerbs:=true</code> (on by default now; our simulator, the road world, a
+10 m x 0.3 m x 0.3 m kerb across the road, the planner blind to it):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Run</th>
+<th>Seen from (past the bumper)</th>
+<th>Stopped</th>
+<th>By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>15 Nov, no step finder, lidar</td>
+<td>never</td>
+<td><strong>drove into it</strong></td>
+<td>nothing</td>
+</tr>
+<tr>
+<td>16 Nov, step finder, no memory, lidar</td>
+<td>8.6 m</td>
+<td>0.12 m before it</td>
+<td>the controller</td>
+</tr>
+<tr>
+<td>16 Nov, step finder, no memory, lidar + radar</td>
+<td>8.5 m</td>
+<td><strong>0.24 m into it</strong></td>
+<td>nothing in time</td>
+</tr>
+<tr>
+<td>16 Nov, with the memory, lidar</td>
+<td>8.4 m</td>
+<td><strong>0.82 m before it</strong></td>
+<td>the stop zone</td>
+</tr>
+<tr>
+<td>16 Nov, with the memory, lidar + radar</td>
+<td>8.4 m</td>
+<td><strong>0.80 m before it</strong></td>
+<td>the stop zone</td>
+</tr>
+</tbody>
+</table></div>
+<p>Two more runs never started driving: the computer was loaded by other runs and the
+simulator's odometry went stale, so the goal was aborted before the car moved (not the
+kerbs). Results: <code>/tmp/kerb/</code> on Ben's Mac.</p>
+</section>
+<section class="card"><h2 id="why-the-flat-scan-misses-it">Why the flat scan misses it</h2>
+<pre class="highlight"><code class="language-text">   lidar, 1.52 m up
+      ╲  ╲  ╲
+       ╲  ╲  ╲        everything under 0.3 m is "road" to lidar_scan
+   ─────╲──╲──╲─────────▄▄▄  ← a 0.3 m kerb: under the line, so not there</code></pre>
+<p>The 0.3 m floor is there so a pitched car doesn't see far road as a wall.</p>
+</section>
+<section class="card"><h2 id="no-worse-on-the-tours">No worse on the tours</h2>
+<p><code>pixi run measure controllers --stacks own_calm_chunks own_calm_chunks_kerbs --tours lot
+university --runs 2 --reversing</code> (16 Nov), our stack without and with the kerbs:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tour</th>
+<th>Without</th>
+<th>With the kerbs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>University Drive: legs reached</td>
+<td>6/6</td>
+<td>6/6</td>
+</tr>
+<tr>
+<td>University Drive: time, mean speed</td>
+<td>357 s, 2.07 m/s</td>
+<td>352 s, 2.10 m/s</td>
+</tr>
+<tr>
+<td>University Drive: stop-zone stops</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>the lot: legs reached</td>
+<td>6/8</td>
+<td>6/8</td>
+</tr>
+<tr>
+<td>the lot: stop-zone stops</td>
+<td>3</td>
+<td>1</td>
+</tr>
+<tr>
+<td>the voxels node's time a cloud</td>
+<td>-</td>
+<td>3.3-3.9 ms (University), 4.8-5.2 ms (the lot)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Every leg missed, both ways, was the computer being too busy (the local costmap or the
+odometry late), not a kerb. The campus's kerbs line every road there: no phantom stop.</p>
+</section>
+<section class="card"><h2 id="the-step-finder">The step finder</h2>
+<p>A step is <strong>two points close together, one much higher</strong>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Number</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>how close, flat</td>
+<td>within 0.3 m</td>
+</tr>
+<tr>
+<td>how much higher</td>
+<td>more than 0.10 m, at most 0.5 m</td>
+</tr>
+<tr>
+<td>how far out</td>
+<td>12 m from <code>base_link</code></td>
+</tr>
+<tr>
+<td>noise</td>
+<td>2 points in a 0.1 m square, or it doesn't count</td>
+</tr>
+</tbody>
+</table></div>
+<pre class="highlight"><code class="language-text">   ring k+1 ─────────╮
+   ring k   ──────╮  │       ● within 0.3 m of ○, flat,
+                  │  ●       and more than 0.10 m higher: a step
+   road ──────────○──┘</code></pre>
+<p>One ring alone can't see a step: all its points lie on one cone, so a kerb looks
+like a ramp. It takes <strong>two rings</strong>, one on the road just before the kerb and the
+next on its face or top.</p>
+<p>It runs in the Rust voxels node (<code>aav_voxels_rs</code>, <code>steps.rs</code>): <code>kerbs:=true</code>.</p>
+</section>
+<section class="card"><h2 id="what-it-must-not-see">What it must not see</h2>
+<p>Tested on clouds cast the way the roof lidar casts them (16 rings, 3 cm noise):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Ground</th>
+<th>Steps found</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>flat road</td>
+<td>none</td>
+</tr>
+<tr>
+<td>slopes of 3°, 6°, 10°, up, down and sideways</td>
+<td>none</td>
+</tr>
+<tr>
+<td>a ramp starting 5 m ahead, up to 10°</td>
+<td>none</td>
+</tr>
+<tr>
+<td>a crowned road, 2.5 % each side</td>
+<td>none</td>
+</tr>
+<tr>
+<td>a speed bump, 7.5 cm high</td>
+<td>none</td>
+</tr>
+<tr>
+<td>rough grass beside the road</td>
+<td>none</td>
+</tr>
+<tr>
+<td>a sign hanging 2.2 m up</td>
+<td>none</td>
+</tr>
+<tr>
+<td>the nine recorded clouds: the ramp, the crowned road</td>
+<td>none</td>
+</tr>
+</tbody>
+</table></div>
+<p>Walls and parked cars do give steps at their feet. That's fine: they are in the way too.</p>
+</section>
+<section class="card"><h2 id="the-memory">The memory</h2>
+<p>The roof lidar's lowest ring meets the road 4.4 m past the bumper. A kerb nearer than
+about 3.2 m (a 0.3 m kerb) or 3.8 m (a 0.15 m one) is <strong>under every beam</strong>.</p>
+<pre class="highlight"><code class="language-text">   bumper   1 m   3.2-3.8 m    8.5 m
+     │ stop │ blind │ seen by   │
+     │ zone │       │ the lidar │</code></pre>
+<p>So the node keeps every step point for <strong>10 s</strong>, fixed in <code>odom</code>, and sends back the
+ones within 12 m with each cloud.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who reads <code>/perception/voxels/steps</code></th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>local costmap, <code>kerb_layer</code></td>
+<td>marks it; nothing clears it</td>
+</tr>
+<tr>
+<td>stop zone (<code>collision_monitor</code>, source <code>steps</code>)</td>
+<td>stops the car for it</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="does-the-real-lidar-see-a-kerb">Does the real lidar see a kerb?</h2>
+<p>The roof VLP-16: 16 rings, 2° apart, the lidar 1.52 m up (<code>vehicle.yaml</code>), 1.31 m
+behind the front bumper.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Ring</th>
+<th>Meets the road, past the bumper</th>
+<th>Gap to the next ring</th>
+<th>Rings' height apart at that range</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>-15°</td>
+<td>4.4 m</td>
+<td>0.9 m</td>
+<td>0.21 m</td>
+</tr>
+<tr>
+<td>-13°</td>
+<td>5.3 m</td>
+<td>1.2 m</td>
+<td>0.24 m</td>
+</tr>
+<tr>
+<td>-11°</td>
+<td>6.5 m</td>
+<td>1.8 m</td>
+<td>0.28 m</td>
+</tr>
+<tr>
+<td>-9°</td>
+<td>8.3 m</td>
+<td>2.8 m</td>
+<td>0.34 m</td>
+</tr>
+<tr>
+<td>-7°</td>
+<td>11.1 m</td>
+<td>5.0 m</td>
+<td>0.44 m</td>
+</tr>
+</tbody>
+</table></div>
+<p>What that means:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Kerb</th>
+<th>Rings on its face at once</th>
+<th>The step finder</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.3 m</td>
+<td>1, sometimes 2, out to about 8.6 m</td>
+<td>finds it from 8.6 m past the bumper</td>
+</tr>
+<tr>
+<td>0.15 m</td>
+<td>at most 1; each ring only in a 0.6 m band</td>
+<td>only the two lowest rings pair up: from 4.7 m</td>
+</tr>
+<tr>
+<td>0.10 m</td>
+<td>at most 1</td>
+<td>never (the rule is <strong>more</strong> than 0.10 m)</td>
+</tr>
+</tbody>
+</table></div>
+<p>A real 0.15 m kerb is hit by enough rings only for the last 4.7 m. At 1 m/s the car
+needs about 1 m to stop, so that's enough at our speeds. At 3 m/s it is not.</p>
+</section>
+<section class="card"><h2 id="in-the-map">In the map</h2>
+<p>The campus (<code>pixi run campus</code>, <code>tools/campus_world.py</code>) already had every kerb:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenStreetMap's tags</td>
+<td><strong>none</strong> on the campus: no <code>barrier=kerb</code>, no <code>kerb=*</code></td>
+</tr>
+<tr>
+<td>so</td>
+<td>a 0.3 m kerb along <strong>every</strong> edge of every road and lot: 58 km</td>
+</tr>
+<tr>
+<td>the static map (<code>campus.pgm</code>) and its chunks</td>
+<td>everything off the pavement is occupied, the kerb line too: lethal</td>
+</tr>
+<tr>
+<td>our simulator's campus</td>
+<td>the kerbs are real 0.3 m walls the lidar hits</td>
+</tr>
+<tr>
+<td>the lanes layer (a challenger)</td>
+<td>the kerb costs 150, and 1 m past it</td>
+</tr>
+</tbody>
+</table></div>
+<p>Nothing to add there. If OpenStreetMap ever gets <code>barrier=kerb</code> lines, they are drawn
+too (<code>campus_world.py</code> reads them).</p>
+</section>
+<section class="card"><h2 id="how-to-check-it">How to check it</h2>
+<pre class="highlight"><code class="language-sh">cd ros/perception/aav_voxels_rs &amp;&amp; cargo test -p voxels          # the cast clouds
+cargo test -p voxels --release -- --ignored --nocapture steps_range   # the distances
+pixi run sim-check --kerb-only                                   # the car and a kerb (ours: kerbs on)</code></pre></section>
+<nav class="prevnext"><a class="prev" href="perception.html"><small>Previous</small>← Perception</a>
+<a class="next" href="perception-and-hud-map.html"><small>Next</small>Perception options →</a></nav>
+</main>
+<footer>Source: <code>docs/kerbs.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

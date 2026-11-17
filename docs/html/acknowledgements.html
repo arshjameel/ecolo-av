@@ -71,6 +71,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -508,7 +509,7 @@ Each has a TODO row to port its idea.</p>
 <td><strong>Patchwork++</strong> (S. Lee et al., IROS 2022; URL-KAIST)</td>
 <td>BSD-2-Clause</td>
 <td>idea</td>
-<td>finding the ground so a kerb stands out (TODO 215)</td>
+<td>finding the ground so a kerb stands out (TODO 215). Read for the kerbs' step finder (<code>aav_voxels_rs</code> <code>steps.rs</code>, TODO 119): its lesson that the ground must be found locally, not one plane for all; we kept a simpler local rule (a point 0.10 m above another within 0.3 m), since its zones fit a pavement's top as ground too. No code taken</td>
 </tr>
 <tr>
 <td><strong>grid_map</strong> (ANYbotics, ETH); <strong>nvblox</strong> (NVIDIA)</td>

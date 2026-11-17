@@ -71,6 +71,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -137,6 +138,7 @@ waiting to beat it.</p>
   │ smoother   │ nav2      │ ours                         │
   │ lanes      │ off       │ ramp (lane costs, ours only) │
   │ behaviour  │ off       │ on (the road ahead)          │
+  │ kerbs      │ off       │ on (the step finder)         │
   └────────────┴───────────┴──────────────────────────────┘
           │
           ▼
@@ -161,7 +163,7 @@ The champions above stay as they are: they are what the car runs.</p>
 <tbody>
 <tr>
 <td><code>ours</code> (the default)</td>
-<td>every level we built: our costmap (<code>ours_chunks</code> since 16 Nov: only the map's 64 m chunks round the car and along the route, <a href="own-costmap.html#from-map-chunks-on-every-core-16-nov-todo-175-195">why</a>), navigator, planner (<code>lane</code> since 16 Nov: the right lane's centre on the lane map, <code>lattice_rs_strong</code> off it, <a href="own-planner.html#the-swap-16-nov-3-clean-runs-each">why</a>), <code>mppi_lag_calm</code> (<code>mppi_lag</code> with <code>map_correction:=slow</code> and <code>mppi_lag_steer_gamma:=0.05</code>), and the road ahead (<code>behaviour:=true</code>). The two calm picks since 15 Nov: they took ours' sway to Nav2's (<a href="mppi-lag.html#the-sway-that-was-left">why</a>)</td>
+<td>every level we built: our costmap (<code>ours_chunks</code> since 16 Nov: only the map's 64 m chunks round the car and along the route, <a href="own-costmap.html#from-map-chunks-on-every-core-16-nov-todo-175-195">why</a>), navigator, planner (<code>lane</code> since 16 Nov: the right lane's centre on the lane map, <code>lattice_rs_strong</code> off it, <a href="own-planner.html#the-swap-16-nov-3-clean-runs-each">why</a>), <code>mppi_lag_calm</code> (<code>mppi_lag</code> with <code>map_correction:=slow</code> and <code>mppi_lag_steer_gamma:=0.05</code>), the road ahead (<code>behaviour:=true</code>), and the kerbs (<code>kerbs:=true</code> since 16 Nov: the lidar's step finder, <a href="kerbs.html#in-the-simulator">why</a>). The two calm picks since 15 Nov: they took ours' sway to Nav2's (<a href="mppi-lag.html#the-sway-that-was-left">why</a>)</td>
 </tr>
 <tr>
 <td><code>stock</code></td>
