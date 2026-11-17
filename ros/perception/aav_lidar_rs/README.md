@@ -11,8 +11,8 @@ rust ... so we get our performance under control" (TODO 185).
    (0.9 MB cloud)                                  (720 ranges round base_link)
 ```
 
-Pick it with `lidar_impl:=rust` (`navigation.launch.py`, `sim.launch.py`,
-`car.launch.py`), beside `lidar:=true`.
+The default since 17 Nov, in the simulator and on the car; `lidar_impl:=python`
+(`navigation.launch.py`, `sim.launch.py`, `car.launch.py`) runs the Python one instead.
 
 ## Interface
 

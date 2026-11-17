@@ -15,8 +15,9 @@ rust ... so we get our performance under control" (TODO 185).
                                                                      └─► /world/things/markers
 ```
 
-Pick it with `things_impl:=rust` (`navigation.launch.py`, `sim.launch.py`,
-`car.launch.py`), beside `things:=true`.
+The default since 17 Nov with `things:=true`, in the simulator and on the car;
+`things_impl:=python` (`navigation.launch.py`, `sim.launch.py`, `car.launch.py`) runs the
+Python one instead.
 
 What it does, the gates and the memory: `aav_things`' README.
 
@@ -71,6 +72,21 @@ Ravensim, `things:=true`, `/clock` at 100 Hz, standing; 60 s of `ps` after 75 s
 |---|---|---|---|
 | road | 19.4 / 10.9 | 7.6 % of a core, 78 MB | **1.5 %**, 31 MB |
 | campus (the 6400 x 6400 `/map` as background) | 19.2 / 13.7 | 7.4 %, 353 MB | **1.5 %**, 230 MB |
+
+### In the simulator
+
+Python and Rust back to back, the same load (`ROS_DOMAIN_ID` 180-194):
+
+| Check | Load at start | Python | Rust |
+|---|---|---|---|
+| `sim-check --movers-only` | 19.7 / 19.8 | 2 of 3 (the person along the roadside: goal not reached) | **3 of 3** |
+| `sim-check --lidar-obstacle` | 7.7 / 26.7 | passes, 0.18 m | passes, 0.19 m |
+| the movers in that first pair | 7.7 / 26.7 | 2 of 3 | 1 of 3; both logs: odometry stale, goals aborted (the load: so run again above) |
+| lot + University Drive, 2 runs each, `own_calm_chunks`, reversing | 18.2 / 17.0 | 10 of 10 legs, 1 false hold | 10 of 10 legs (one run again\*), **0 false holds** |
+
+\* One University Drive run never moved: the output mux latched STOP at start-up
+(`sim_gps`, "which nobody announces on /system/source"). The same race is in both
+languages' logs; not the things.
 
 ## Invariants
 
