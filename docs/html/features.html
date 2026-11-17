@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">101 min read · 15 sections</div></header>
+<div class="meta">102 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -142,7 +142,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>sim</td>
-<td>works in Gazebo or the turtle (or bench mode)</td>
+<td>works in Ravensim (or Gazebo, until 16 Nov), the turtle or bench mode</td>
 </tr>
 <tr>
 <td>car</td>
@@ -1000,7 +1000,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>Gazebo backend (<code>aav_gazebo</code>)</td>
-<td>The car in 3D with Ackermann steering, an IMU and GPS, to test Nav2 before the car</td>
+<td>The car in 3D with Ackermann steering, an IMU and GPS, to test Nav2 before the car. <strong>Removed 16 Nov</strong> (Ben: "lets do it"): Ravensim took its place; its nodes, worlds and sim models live on in <code>aav_sim_models</code> (<a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a>)</td>
 <td>Ben</td>
 <td>2026-10-09</td>
 <td>sim</td>
@@ -1253,24 +1253,24 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td>Today's car in the loop (<code>sim esp32:=true</code>, <code>gazebo_esp32</code>)</td>
+<td>Today's car in the loop (<code>sim esp32:=true</code>, <code>sim_esp32</code>)</td>
 <td>Today's car runs the 2025-26 C++ ESP32, not the spine: Gazebo drives through the real UART bridge and that firmware's throttle ramp and brake, so its speed loop is tested before car day</td>
 <td>Ben</td>
 <td>2026-10-29</td>
 <td>sim</td>
 </tr>
 <tr>
-<td>Longer lags than the car was told (<code>sim lag_scale:=2</code>, Gazebo's adapter only)</td>
+<td>Longer lags than the car was told (<code>sim lag_scale:=2</code>, in <code>sim_adapter</code>)</td>
 <td>How a path follower copes with a car slower than <code>vehicle.yaml</code> says</td>
 <td>Ben</td>
 <td>2026-11-07</td>
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="own-simulator.html">Our own simulator in Rust</a> (<code>aav_simulator</code>; the default, <code>simulator:=gazebo</code> for Gazebo)</td>
-<td>Ben, 7 Nov: "merge in everything from gazebo so its standalone in rust". Gazebo's worlds, car, lidar, radar stand-in, IMU, GPS, wheels and clock on Gazebo's own topics, so the stack runs unchanged; no GPU, a seed repeats every sensor, and the car stops at what it hits. Since 15 Nov the wheels can be noisy and slip (<code>wheel_noise:=</code>, <code>wheel_slip:=</code>, seeded, off by default), so the odometry drifts as on the car. Since 15 Nov the radar stand-in gives a moving model (a person walking) its own Doppler speed: it had said everything stood still, and the things' tracker took a walker at 0.8 m/s for 0.55 (TODO 194). Its cameras are <code>aav_sim_cameras</code>, started beside it. Since 8 Nov each wheel finds the ground: slopes tilt the car, a 0.3 m kerb stops it. <strong>The default since 8 Nov</strong> (<code>simulator:=gazebo</code> for Gazebo): every <code>sim-check</code> leg passes, <code>--perception</code>, <code>--faults</code> and <code>--drive-to-point</code> three times each</td>
+<td><a href="own-simulator.html">Ravensim, our own simulator in Rust</a> (<code>aav_simulator</code>, <code>aav_sim_models</code>; <code>simulator:=ravensim</code>, the only one; its chunked maps are RavenTiles)</td>
+<td>Ben, 7 Nov: "merge in everything from gazebo so its standalone in rust". Gazebo's worlds, car, lidar, radar stand-in, IMU, GPS, wheels and clock on Gazebo's own topics, so the stack runs unchanged; no GPU, a seed repeats every sensor, and the car stops at what it hits. Since 15 Nov the wheels can be noisy and slip (<code>wheel_noise:=</code>, <code>wheel_slip:=</code>, seeded, off by default), so the odometry drifts as on the car. Since 15 Nov the radar stand-in gives a moving model (a person walking) its own Doppler speed: it had said everything stood still, and the things' tracker took a walker at 0.8 m/s for 0.55 (TODO 194). Its cameras are <code>aav_sim_cameras</code>, started beside it. Since 8 Nov each wheel finds the ground: slopes tilt the car, a 0.3 m kerb stops it. <strong>The default since 8 Nov</strong>: every <code>sim-check</code> leg passes, <code>--perception</code>, <code>--faults</code> and <code>--drive-to-point</code> three times each. <strong>Named Ravensim and the only simulator since 16 Nov</strong> (Ben): Gazebo removed, its shared sim modules and nodes moved to <code>aav_sim_models</code> (<code>sim_adapter</code>, <code>sim_imu</code>...), its <code>/gazebo/*</code> topics now <code>/vehicle/sim/*</code>; <code>simulator:=own</code> works for one release</td>
 <td>Ben</td>
-<td>2026-11-08</td>
+<td>2026-11-16</td>
 <td>sim</td>
 </tr>
 <tr>
@@ -1289,7 +1289,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>Sensor and actuator failures on purpose (<code>pixi run sim-fault</code>; <code>sim-check --faults</code>, <code>--actuator-faults</code>)</td>
-<td>Breaks a sensor in the sim, to prove the watchdog catches it. Since 15 Nov (TODO 159) the actuators too, in <code>gazebo_adapter</code>: the steering or throttle stuck, the brake weak or dead, so the safety case has a number for hazards 3, 7 and 8 (a dead brake rolls 9.7 m after the e-stop from 0.9 m/s; stuck steering goes unnoticed)</td>
+<td>Breaks a sensor in the sim, to prove the watchdog catches it. Since 15 Nov (TODO 159) the actuators too, in <code>sim_adapter</code>: the steering or throttle stuck, the brake weak or dead, so the safety case has a number for hazards 3, 7 and 8 (a dead brake rolls 9.7 m after the e-stop from 0.9 m/s; stuck steering goes unnoticed)</td>
 <td>Ben</td>
 <td>2026-10-15</td>
 <td>sim</td>
@@ -1309,10 +1309,10 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="own-simulator-cameras.html">Our simulator's cameras</a> (<code>aav_sim_cameras</code>, <code>pixi run sim-cameras</code>)</td>
-<td>Ben, 7 Nov: replace Gazebo with our own Rust simulator, every sensor. Bevy draws each car camera offscreen with Gazebo's picture, lens, rate and frame, so the detector and stop-sign watcher can't tell them apart. Joined to the core (8 Nov): they draw the same world files (test lot, road, campus: boxes, cylinders, planes, OBJ meshes and their pictures), so <code>simulator:=own</code> runs perception, lane and faults. Models placed while running (<code>spawn_entity</code>, the obstacle) are drawn too, from <code>/vehicle/sim/entities</code>. Since 15 Nov they draw with no GPU too, on Mesa's lavapipe (<code>tools/software_gl.sh</code>; TODO 183: Gazebo's last job), and say which adapter draws</td>
+<td><a href="own-simulator-cameras.html">Ravensim's cameras</a> (<code>aav_sim_cameras</code>, <code>pixi run sim-cameras</code>)</td>
+<td>Ben, 7 Nov: replace Gazebo with our own Rust simulator, every sensor. Bevy draws each car camera offscreen with Gazebo's picture, lens, rate and frame, so the detector and stop-sign watcher can't tell them apart. Joined to the core (8 Nov): they draw the same world files (test lot, road, campus: boxes, cylinders, planes, OBJ meshes and their pictures), so Ravensim runs perception, lane and faults. Models placed while running (<code>spawn_entity</code>, the obstacle) are drawn too, from <code>/vehicle/sim/entities</code>. Since 15 Nov they draw with no GPU too, on Mesa's lavapipe (<code>tools/software_gl.sh</code>; TODO 183: Gazebo's last job), and say which adapter draws. <strong>Camera lockstep (16 Nov):</strong> drawn in software they ran at 1.6 Hz on CI, skipping poses, while Gazebo drew in lockstep; now Ravensim's clock waits for each picture (<code>camera_lockstep:=auto</code> under <code>tools/software_gl.sh</code>), so every camera keeps 10 Hz in sim time and the world runs slower instead</td>
 <td>Ben</td>
-<td>2026-11-08</td>
+<td>2026-11-16</td>
 <td>sim</td>
 </tr>
 </tbody>
@@ -1690,7 +1690,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td>CI: Linux and 64-bit ARM on every push, a Mac and Gazebo nightly</td>
+<td>CI: Linux and 64-bit ARM on every push, a Mac and Ravensim nightly (Gazebo until 16 Nov)</td>
 <td>A break shows on the push that made it, including on the car's ARM computers</td>
 <td>Ben</td>
 <td>2026-10-10</td>

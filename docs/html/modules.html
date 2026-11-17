@@ -204,7 +204,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><a href="#backends">can_bridge, sim</a></td>
-<td><code>aav_spine</code>, <code>aav_legacy</code>, <code>aav_turtlesim</code>, <code>aav_gazebo</code>, <code>aav_carla</code>; <code>aav_spine_bridge</code>, <code>aav_simulator</code>, <code>aav_sim_cameras</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
+<td><code>aav_spine</code>, <code>aav_legacy</code>, <code>aav_turtlesim</code>, <code>aav_sim_models</code>, <code>aav_carla</code>; <code>aav_spine_bridge</code>, <code>aav_simulator</code>, <code>aav_sim_cameras</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
 </tr>
 <tr>
 <td><a href="#perception">perception</a></td>
@@ -1149,7 +1149,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 </tbody>
 </table></div>
-<h3 id="aav_gazebo">aav_gazebo</h3>
+<h3 id="aav_sim_models">aav_sim_models</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1172,7 +1172,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>In → out</strong></td>
-<td><code>/control/sim/actuator_cmd</code>, <code>/gazebo/odom</code>, <code>/gazebo/imu</code>, <code>/gazebo/navsat</code>, <code>/gazebo/radar/points</code> → <code>/gazebo/cmd_vel</code>, <code>/vehicle/odom</code>, <code>/vehicle/status</code>, <code>/sensors/imu/data_raw</code>, <code>/sensors/gps/fix</code>, <code>/sensors/radar/points</code>. The road world's bridges add <code>/sensors/camera/front_left/*</code>, <code>/sensors/lidar/points</code> and <code>/vehicle/sim/truth</code></td>
+<td><code>/control/sim/actuator_cmd</code>, <code>/vehicle/sim/odom</code>, <code>/vehicle/sim/imu</code>, <code>/vehicle/sim/navsat</code>, <code>/vehicle/sim/radar/points</code> → <code>/vehicle/sim/cmd_vel</code>, <code>/vehicle/odom</code>, <code>/vehicle/status</code>, <code>/sensors/imu/data_raw</code>, <code>/sensors/gps/fix</code>, <code>/sensors/radar/points</code>. The road world's bridges add <code>/sensors/camera/front_left/*</code>, <code>/sensors/lidar/points</code> and <code>/vehicle/sim/truth</code></td>
 </tr>
 <tr>
 <td><strong>Origin</strong></td>
@@ -1192,7 +1192,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>Read first</strong></td>
-<td><code>aav_gazebo/gazebo_adapter.py</code></td>
+<td><code>aav_sim_models/sim_adapter.py</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1796,12 +1796,12 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_simulator</code></td>
-<td>our own simulator in Rust, in <code>gz sim</code>'s place: the default since 8 Nov (<code>simulator:=gazebo</code> for Gazebo)</td>
-<td><code>ros/sim/aav_simulator/README.md</code>, then <a href="own-simulator.html">Our simulator</a></td>
+<td>Ravensim, our own simulator in Rust: the only one since Gazebo went (16 Nov)</td>
+<td><code>ros/sim/aav_simulator/README.md</code>, then <a href="own-simulator.html">Ravensim</a></td>
 </tr>
 <tr>
 <td><code>aav_sim_cameras</code></td>
-<td>our simulator's cameras (Bevy, offscreen; needs a GPU); a cargo program, not a colcon package</td>
+<td>Ravensim's cameras (Bevy, offscreen; needs a GPU); a cargo program, not a colcon package</td>
 <td><code>ros/sim/aav_sim_cameras/README.md</code>, then <a href="own-simulator-cameras.html">its page</a></td>
 </tr>
 <tr>

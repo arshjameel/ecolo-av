@@ -7,7 +7,7 @@
 <!-- Generated from docs/first-day.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Your first day</h1>
-<div class="meta">7 min read · 9 sections</div></header>
+<div class="meta">6 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -119,7 +119,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#what-you-need">What you need</a><a href="#1-install-everything-once-about-20-minutes">1. Install everything (once, about 20 minutes)</a><a href="#2-drive-the-turtle-10-minutes">2. Drive the turtle (10 minutes)</a><a href="#3-see-the-graph-5-minutes">3. See the graph (5 minutes)</a><a href="#4-gazebo-the-simulated-car-15-minutes">4. Gazebo: the simulated car (15 minutes)</a><a href="#5-a-nav2-goal-through-a-costmap-10-minutes">5. A Nav2 goal through a costmap (10 minutes)</a><a href="#whats-been-tested">What&#x27;s been tested</a><a href="#where-next">Where next</a><a href="#when-something-doesnt-work">When something doesn&#x27;t work</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#what-you-need">What you need</a><a href="#1-install-everything-once-about-20-minutes">1. Install everything (once, about 20 minutes)</a><a href="#2-drive-the-turtle-10-minutes">2. Drive the turtle (10 minutes)</a><a href="#3-see-the-graph-5-minutes">3. See the graph (5 minutes)</a><a href="#4-ravensim-the-simulated-car-15-minutes">4. Ravensim: the simulated car (15 minutes)</a><a href="#5-a-nav2-goal-through-a-costmap-10-minutes">5. A Nav2 goal through a costmap (10 minutes)</a><a href="#whats-been-tested">What&#x27;s been tested</a><a href="#where-next">Where next</a><a href="#when-something-doesnt-work">When something doesn&#x27;t work</a></nav>
 <div class="lead"><p>New to the team? Start here. In about an hour you'll have ROS on your laptop, drive a
 turtle that steers like the car, see every node and topic in rqt_graph, drive the
 simulated car, and watch Nav2 plan a path through a costmap. Each step says what
@@ -245,20 +245,16 @@ path a real drive takes:</p>
 <p><strong>You should see</strong> <code>0 failed</code> at the end. The contract is <code>docs/interfaces.yaml</code>: every
 topic, its type, and who publishes and reads it.</p>
 </section>
-<section class="card"><h2 id="4-gazebo-the-simulated-car-15-minutes">4. Gazebo: the simulated car (15 minutes)</h2>
+<section class="card"><h2 id="4-ravensim-the-simulated-car-15-minutes">4. Ravensim: the simulated car (15 minutes)</h2>
 <p>Stop the turtle first (Ctrl-C in each terminal).</p>
-<pre class="highlight"><code class="language-bash">pixi run sim simulator:=gazebo      # the same on Linux and on a Mac</code></pre>
+<pre class="highlight"><code class="language-bash">pixi run sim                        # the same on Linux and on a Mac
+tools/software_gl.sh pixi run sim   # a computer with no GPU (slower than real time)</code></pre>
 <p><strong>You should see:</strong></p>
 <ul>
-<li><strong>Gazebo:</strong> the car, red and white, on a grey ground plane. The camera follows it.</li>
 <li><strong>RViz:</strong> the car model, the map, and the costmaps around the car.</li>
 </ul>
-<p>Plain <code>pixi run sim</code> runs our own simulator instead (the default since 8 Nov,
-<a href="own-simulator.html">its page</a>). It has no window of its own: you get RViz only, and the
-rest of this page works the same.</p>
-<p><img alt="The car in Gazebo, driving a left curve" src="../img/gazebo-car.png" /></p>
-<p>On a Mac, Gazebo's window runs as a separate program, and <code>simulator:=gazebo</code> starts it for you.
-If you close it, <code>pixi run tools/ros.sh tools/gz_window.sh</code> opens it again.</p>
+<p>Ravensim is Ravensim (<a href="own-simulator.html">its page</a>). It has no window of its
+own: watch in RViz (or Lichtblick, <a href="foxglove.html">Foxglove</a>).</p>
 <p>Drive it with <code>pixi run keyboard --sim</code> in another terminal. Then run
 <code>pixi run check sim</code>: it should say <code>0 failed</code>.</p>
 </section>
@@ -275,8 +271,8 @@ Any keyboard or joystick input overrides Nav2 at once.</p>
 <li><strong>local</strong>: 20 m × 20 m around the car;</li>
 <li><strong>global</strong>: the whole map.</li>
 </ul>
-<p>For walls to plan around, start Gazebo with the test lot instead:
-<code>pixi run sim world:=test_lot</code> (add <code>simulator:=gazebo</code> for Gazebo's window). <a href="costmaps.html">Costmaps</a> explains how to draw your own.</p>
+<p>For walls to plan around, start Ravensim with the test lot instead:
+<code>pixi run sim world:=test_lot</code>. <a href="costmaps.html">Costmaps</a> explains how to draw your own.</p>
 <div class="admonition note">
 <p class="admonition-title">The same goal from a terminal</p>
 <p><code>pixi run tools/ros.sh ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose "{pose: {header: {frame_id: map}, pose: {position: {x: 8.0, y: 0.0}, orientation: {w: 1.0}}}}"</code></p>
@@ -390,10 +386,6 @@ Any keyboard or joystick input overrides Nav2 at once.</p>
 <tr>
 <td>The turtle doesn't move</td>
 <td>click into the keyboard terminal and hold the key; see <a href="simulation.html#when-nothing-moves">when nothing moves</a></td>
-</tr>
-<tr>
-<td>The Gazebo window stays empty, or the car never appears</td>
-<td><code>export GZ_IP=127.0.0.1</code> in every terminal, then start again</td>
 </tr>
 <tr>
 <td>macOS asks whether <code>python3</code> or <code>rviz2</code> may accept connections</td>

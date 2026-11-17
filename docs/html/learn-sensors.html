@@ -298,7 +298,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 </tr>
 <tr>
 <td><strong>Gazebo</strong></td>
-<td>yes: <code>gazebo_adapter</code> reads the car model's motion</td>
+<td>yes: <code>sim_adapter</code> reads the car model's motion</td>
 </tr>
 </tbody>
 </table></div>
@@ -459,7 +459,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 </tr>
 <tr>
 <td><strong>Gazebo</strong></td>
-<td>yes, in the road world: a lidar shaped like the radar (<code>/gazebo/radar/points</code>, turned into ours by <code>gazebo_radar</code>)</td>
+<td>yes, in the road world: a lidar shaped like the radar (<code>/vehicle/sim/radar/points</code>, turned into ours by <code>sim_radar</code>)</td>
 </tr>
 <tr>
 <td><strong>Bench</strong></td>
@@ -651,7 +651,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 </tr>
 <tr>
 <td>Gazebo's sensors</td>
-<td><code>ros/bringup/aav_description/urdf/aav.gazebo.xacro</code>, <code>ros/sim/aav_gazebo</code></td>
+<td><code>ros/bringup/aav_description/urdf/aav.gazebo.xacro</code>, <code>ros/sim/aav_sim_models</code></td>
 </tr>
 <tr>
 <td>The bench's pretend sensors</td>

@@ -7,7 +7,7 @@
 <!-- Generated from docs/status.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Status: what works and what doesn&#x27;t yet</h1>
-<div class="meta">34 min read · 6 sections</div></header>
+<div class="meta">35 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -139,12 +139,12 @@ row dated October hasn't been run again unless it says so.</p>
 <td><a href="bench.html">Bench mode</a>: the car's own software, with stand-ins for the hardware</td>
 </tr>
 <tr>
-<td>"In our simulator"</td>
-<td><code>pixi run sim</code>, the default since 8 Nov (<a href="own-simulator.html">Our own simulator</a>)</td>
+<td>"In Ravensim"</td>
+<td><code>pixi run sim</code>, the default since 8 Nov (<a href="own-simulator.html">Ravensim</a>)</td>
 </tr>
 <tr>
 <td>"In Gazebo"</td>
-<td>every <code>sim</code> run before 8 Nov; since then <code>simulator:=gazebo</code></td>
+<td>every <code>sim</code> run before 8 Nov, and <code>simulator:=gazebo</code> until it was removed on 16 Nov (<a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a>)</td>
 </tr>
 <tr>
 <td>"Untested"</td>
@@ -300,13 +300,13 @@ car, in what order: <a href="rollout.html">Rolling out</a>.</p>
 </tr>
 <tr>
 <td>Gazebo</td>
-<td><code>aav_gazebo</code></td>
-<td><span class="badge b-works">works</span> headless on Linux and a Mac; its window on a Mac, with the car driving (10 Oct). Since 8 Nov not the default: <code>simulator:=gazebo</code>, for computers with no GPU and the nightly CI job</td>
+<td>was <code>aav_gazebo</code></td>
+<td><strong>Removed 16 Nov</strong> (Ben): Ravensim plays its part; its nodes and models moved to <code>aav_sim_models</code>. It <span class="badge b-works">works</span>ed headless on Linux and a Mac until then; last scores in <a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a></td>
 </tr>
 <tr>
-<td>Gazebo's road world</td>
-<td><code>aav_gazebo</code> <code>world:=road</code></td>
-<td><span class="badge b-works">works</span> on the Mac, 15 Oct: the car's camera (10 Hz), radar stand-in (10 Hz) and a roof lidar (10 Hz) render headless; <code>pixi run sim-check</code>, <code>--obstacle</code>, <code>--lidar-obstacle</code>, <code>--faults</code>, <code>--spine</code> and <code>--perception</code> pass. On Linux with no GPU, through <code>tools/software_gl.sh</code>: <span class="badge b-works">works</span> on oirp-spss, 23 Oct (<code>sim-check --obstacle</code>: the sensors and the stop; the nightly CI job uses it) (<a href="simulation.html">Simulation</a>)</td>
+<td>The road world (Gazebo's until 16 Nov, Ravensim's since)</td>
+<td><code>aav_sim_models</code> <code>world:=road</code></td>
+<td><span class="badge b-works">works</span> on the Mac, 15 Oct, in Gazebo: the car's camera (10 Hz), radar stand-in (10 Hz) and a roof lidar (10 Hz) render headless; <code>pixi run sim-check</code>, <code>--obstacle</code>, <code>--lidar-obstacle</code>, <code>--faults</code>, <code>--spine</code> and <code>--perception</code> pass. On Linux with no GPU, through <code>tools/software_gl.sh</code>: <span class="badge b-works">works</span> on oirp-spss, 23 Oct (<code>sim-check --obstacle</code>: the sensors and the stop; the nightly CI job uses it) (<a href="simulation.html">Simulation</a>)</td>
 </tr>
 <tr>
 <td>The lidar in Nav2, in Gazebo (15 Oct)</td>
@@ -335,7 +335,7 @@ car, in what order: <a href="rollout.html">Rolling out</a>.</p>
 </tr>
 <tr>
 <td>The spine in the loop, in Gazebo (15 Oct)</td>
-<td><code>pixi run sim spine:=true</code>: <code>spine_bridge</code> → CAN topics → <code>spine_sim</code> (<code>car:=gazebo</code>, the spine's logic) → the actuator model</td>
+<td><code>pixi run sim spine:=true</code>: <code>spine_bridge</code> → CAN topics → <code>spine_sim</code> (<code>car:=ravensim</code>, was <code>gazebo</code>; the spine's logic) → the actuator model</td>
 <td><span class="badge b-works">works</span> on the Mac: <code>pixi run sim-check --spine</code> passes (graph, drive, EKF, a Nav2 goal; commands lost: full brake 195-209 ms and latched; both e-stops: brake within 12 ms, latched; disarmed: no motion). <span class="badge b-untested">untested</span> on Linux (<a href="simulation.html#the-spine-in-the-loop-spinetrue">Simulation</a>)</td>
 </tr>
 <tr>
@@ -531,17 +531,17 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <tr>
 <td>The lane finder as a pose sensor (15 Nov)</td>
 <td><code>aav_lane_pose</code>, <code>lane_pose:=true</code></td>
-<td><span class="badge b-works">works</span> in our simulator: the global EKF's sideways error 9.5 → 2 cm (road world), 9.9 → 5.4 cm (campus). No effect on the wiggle yet (little paint on that tour). Off; not wired on the car (<a href="trials.html">Trials</a>)</td>
+<td><span class="badge b-works">works</span> in Ravensim: the global EKF's sideways error 9.5 → 2 cm (road world), 9.9 → 5.4 cm (campus). No effect on the wiggle yet (little paint on that tour). Off; not wired on the car (<a href="trials.html">Trials</a>)</td>
 </tr>
 <tr>
 <td>Things: the lidar's cubes with an id, a speed, a memory (14 Nov)</td>
 <td><code>aav_things</code>, <code>things:=true</code></td>
-<td><span class="badge b-works">works</span> in our simulator, 15 Nov: the behaviour slows for a walker crossing, 5 of 5 (0.5-1.0 m clear). Names from the camera (<code>things_names:=true</code>) and the stop sign's distance from the lidar: built, not yet run with the detector. Off</td>
+<td><span class="badge b-works">works</span> in Ravensim, 15 Nov: the behaviour slows for a walker crossing, 5 of 5 (0.5-1.0 m clear). Names from the camera (<code>things_names:=true</code>) and the stop sign's distance from the lidar: built, not yet run with the detector. Off</td>
 </tr>
 <tr>
 <td>Lane drives, scored (8 Nov)</td>
 <td><code>pixi run measure lane</code></td>
-<td><span class="badge b-works">works</span> in our simulator: Library Road, 171 m at 1.4 m/s, mean error 4 cm. In Gazebo on the campus the lane was lost in 68 % of pictures (not diagnosed) (<a href="perception.html#in-the-simulators-8-nov">Perception</a>)</td>
+<td><span class="badge b-works">works</span> in Ravensim: Library Road, 171 m at 1.4 m/s, mean error 4 cm. In Gazebo on the campus the lane was lost in 68 % of pictures (not diagnosed) (<a href="perception.html#in-the-simulators-8-nov">Perception</a>)</td>
 </tr>
 <tr>
 <td><strong>Navigation</strong></td>
@@ -556,37 +556,37 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <tr>
 <td>Trial path followers (29 Oct)</td>
 <td><code>aav_track</code>, <code>tracker:=pure_pursuit</code>, <code>stanley</code>, <code>lqr</code>, <code>mpc</code>, <code>mpc_full</code>, <code>mpc_lag</code></td>
-<td><span class="badge b-works">works</span> in Gazebo, 29 Oct: pure pursuit, Stanley and MPC 12 of 12 legs. <code>mpc_lag</code> in our simulator, 8 Nov: 6 of 12. Forward only; none reads the costmap</td>
+<td><span class="badge b-works">works</span> in Gazebo, 29 Oct: pure pursuit, Stanley and MPC 12 of 12 legs. <code>mpc_lag</code> in Ravensim, 8 Nov: 6 of 12. Forward only; none reads the costmap</td>
 </tr>
 <tr>
 <td>MPPI that knows the lag (7 Nov)</td>
 <td><code>aav_mppi_lag</code> (Rust), <code>tracker:=mppi_lag</code></td>
-<td><span class="badge b-works">works</span> in our simulator, 8 Nov, 3 runs: 11 of 12 legs (Nav2's MPPI 8). <strong>Open:</strong> overshoots the campus's first goal at 2.5 m/s; twice Nav2's CPU. <span class="badge b-untested">untested</span> on the Orin (<a href="mppi-lag.html">page</a>)</td>
+<td><span class="badge b-works">works</span> in Ravensim, 8 Nov, 3 runs: 11 of 12 legs (Nav2's MPPI 8). <strong>Open:</strong> overshoots the campus's first goal at 2.5 m/s; twice Nav2's CPU. <span class="badge b-untested">untested</span> on the Orin (<a href="mppi-lag.html">page</a>)</td>
 </tr>
 <tr>
 <td>Our own costmap (8 Nov)</td>
 <td><code>aav_costmap</code> (Rust), <code>costmap:=own</code></td>
-<td><span class="badge b-works">works</span> in our simulator: 100 % of 40,000 cells as Nav2's; the lidar obstacle 3 of 3 (<a href="own-costmap.html">page</a>)</td>
+<td><span class="badge b-works">works</span> in Ravensim: 100 % of 40,000 cells as Nav2's; the lidar obstacle 3 of 3 (<a href="own-costmap.html">page</a>)</td>
 </tr>
 <tr>
 <td>Our own planner (8 Nov)</td>
 <td><code>aav_planner</code> (Rust), <code>planner:=own</code></td>
-<td><span class="badge b-works">works</span> in our simulator: test lot 12 of 12 legs, as Nav2's lattice. On long campus plans slower: 168-195 ms against 138-151 (TODO 152) (<a href="own-planner.html">page</a>)</td>
+<td><span class="badge b-works">works</span> in Ravensim: test lot 12 of 12 legs, as Nav2's lattice. On long campus plans slower: 168-195 ms against 138-151 (TODO 152) (<a href="own-planner.html">page</a>)</td>
 </tr>
 <tr>
 <td>Our own navigator (8 Nov)</td>
 <td><code>aav_navigator</code> (Rust), <code>navigator:=own</code></td>
-<td><span class="badge b-works">works</span> in our simulator, forward only: test lot 7 of 12 legs (Nav2 8); campus 4 of 6 (Nav2 2); <code>sim-check</code> all ours 13 of 13 (<a href="own-navigator.html">page</a>)</td>
+<td><span class="badge b-works">works</span> in Ravensim, forward only: test lot 7 of 12 legs (Nav2 8); campus 4 of 6 (Nav2 2); <code>sim-check</code> all ours 13 of 13 (<a href="own-navigator.html">page</a>)</td>
 </tr>
 <tr>
 <td>Our own velocity smoother (8 Nov)</td>
 <td><code>aav_smoother</code> (Rust), <code>smoother:=own</code></td>
-<td><span class="badge b-works">works</span> in our simulator, 3 runs: 10 of 12 legs both; ego clipped 0-0.1 % of the steering (Nav2's: 9-15 %) (<a href="own-smoother.html">page</a>)</td>
+<td><span class="badge b-works">works</span> in Ravensim, 3 runs: 10 of 12 legs both; ego clipped 0-0.1 % of the steering (Nav2's: 9-15 %) (<a href="own-smoother.html">page</a>)</td>
 </tr>
 <tr>
 <td>Diffusion planner (2 Nov; 0.3: 7-8 Nov)</td>
 <td><code>aav_diffusion_planner</code>, <code>planner:=diffusion</code>; on the car only with <code>diffusion_trial:=true</code>, 0.5 m/s</td>
-<td><span class="badge b-works">works</span> in our simulator, 8 Nov, 3 runs: every leg, 88 % of plans from the model. <span class="badge b-untested">untested</span> on the Orin (TensorRT) and the car</td>
+<td><span class="badge b-works">works</span> in Ravensim, 8 Nov, 3 runs: every leg, 88 % of plans from the model. <span class="badge b-untested">untested</span> on the Orin (TensorRT) and the car</td>
 </tr>
 <tr>
 <td>The behaviour planner (7 Nov)</td>
@@ -621,7 +621,7 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <tr>
 <td>The adaptive brake (8 Nov)</td>
 <td><code>aav_description</code> <code>adaptive_brake.py</code>, <code>adaptive_brake:=true</code></td>
-<td><span class="badge b-works">works</span> in our simulator, 5 of 5: with 150 kg aboard, 0.87 m past the empty car's stop without it, 0.21 m with it. Refused with today's ESP32; the brake's limits are placeholders (car day A7)</td>
+<td><span class="badge b-works">works</span> in Ravensim, 5 of 5: with 150 kg aboard, 0.87 m past the empty car's stop without it, 0.21 m with it. Refused with today's ESP32; the brake's limits are placeholders (car day A7)</td>
 </tr>
 <tr>
 <td>Geofence (29 Oct)</td>
@@ -631,7 +631,7 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <tr>
 <td>Our stop zone in Rust (15 Nov; the stop zone since 17 Nov)</td>
 <td><code>aav_stop_zone</code>, <code>stop_zone:=</code></td>
-<td><span class="badge b-works">works</span> in our simulator: in shadow, 3 rounds of every obstacle check, Nav2 stopped 24 times and ours on the same command each time, never later; then it took the lock (<a href="safety-case.html#the-stop-zones-swap-17-nov">the swap</a>). <span class="badge b-untested">untested</span> on the car</td>
+<td><span class="badge b-works">works</span> in Ravensim: in shadow, 3 rounds of every obstacle check, Nav2 stopped 24 times and ours on the same command each time, never later; then it took the lock (<a href="safety-case.html#the-stop-zones-swap-17-nov">the swap</a>). <span class="badge b-untested">untested</span> on the car</td>
 </tr>
 <tr>
 <td>Stop hold (29 Oct); the no-timeout lock (26 Oct)</td>
@@ -654,9 +654,9 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <td></td>
 </tr>
 <tr>
-<td>Our own simulator: <strong>the default</strong> since 8 Nov</td>
+<td>Ravensim: <strong>the default</strong> since 8 Nov, <strong>the only simulator</strong> since 16 Nov</td>
 <td><code>aav_simulator</code> (Rust) and its cameras, <code>aav_sim_cameras</code> (Bevy; a crate, not a ROS package)</td>
-<td><span class="badge b-works">works</span> on a Mac, 8 Nov: every <code>sim-check</code> leg; <code>--perception</code>, <code>--faults</code> and <code>--drive-to-point-only</code> 3 of 3. Without a GPU its cameras draw in software (<code>tools/software_gl.sh</code>, 15 Nov): the road world at 27 rounds a second on a Mac; the campus needs a GPU; <span class="badge b-untested">untested</span> on Linux. <strong>Open:</strong> one stop-sign miss in 8 (<a href="own-simulator.html">page</a>)</td>
+<td><span class="badge b-works">works</span> on a Mac, 8 Nov: every <code>sim-check</code> leg; <code>--perception</code>, <code>--faults</code> and <code>--drive-to-point-only</code> 3 of 3. Without a GPU its cameras draw in software (<code>tools/software_gl.sh</code>, 15 Nov): the road world at 27 rounds a second on a Mac; the campus needs a GPU; <span class="badge b-untested">untested</span> on Linux. Since 16 Nov the clock waits for each picture in software (camera lockstep), so the cameras keep 10 Hz in sim time (<a href="own-simulator-cameras.html#camera-lockstep-16-nov">cameras</a>). <strong>Open:</strong> one stop-sign miss in 8 (<a href="own-simulator.html">page</a>)</td>
 </tr>
 <tr>
 <td>The campus world (5-8 Nov)</td>
@@ -666,7 +666,7 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <tr>
 <td>Drop-in check (5 Nov)</td>
 <td><code>pixi run drop-in</code></td>
-<td><span class="badge b-works">works</span> in our simulator, 8 Nov: every stream passes, each camera at 10 Hz. Against real sensors: not yet</td>
+<td><span class="badge b-works">works</span> in Ravensim, 8 Nov: every stream passes, each camera at 10 Hz. Against real sensors: not yet</td>
 </tr>
 <tr>
 <td><strong>Screens and tools</strong></td>
@@ -797,7 +797,7 @@ behaviour missed a walker 1 time in 3) and built the trials above.</p>
 </tr>
 <tr>
 <td>2</td>
-<td>Our simulator's software cameras on Linux (oirp-spss, CI's nightly job)</td>
+<td>Ravensim's software cameras on Linux (oirp-spss, CI's nightly job)</td>
 <td>183</td>
 </tr>
 <tr>

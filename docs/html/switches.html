@@ -233,12 +233,12 @@ refuses <code>diffusion</code> without <code>diffusion_trial</code>). More: <a h
 <tr>
 <td><code>tracker:=mpc_lag</code></td>
 <td>ours: MPC that knows the car is late, and plans for it (7 Nov)</td>
-<td>our simulator, 8 Nov: 6 of 12 (no U-turn by the building; <a href="trials.html#lag-aware-mpc-7-nov-mpc_lag">trials</a>)</td>
+<td>Ravensim, 8 Nov: 6 of 12 (no U-turn by the building; <a href="trials.html#lag-aware-mpc-7-nov-mpc_lag">trials</a>)</td>
 </tr>
 <tr>
 <td><code>tracker:=mppi_lag</code> (default; Nav2's MPPI and RPP went on 17 Nov)</td>
 <td>ours: Nav2's MPPI in Rust, knowing the steering and pedals lag (<a href="mppi-lag.html">page</a>)</td>
-<td>our simulator, 8 Nov, 3 runs: 11 of 12 (Nav2's MPPI 8; <a href="trials.html#results-our-simulator-8-nov-the-lot-tour-3-runs-each">trials</a>). It passes a goal at 2.5 m/s and uses twice Nav2's MPPI's CPU (<a href="own-navigator.html#the-verdict">our navigator</a>)</td>
+<td>Ravensim, 8 Nov, 3 runs: 11 of 12 (Nav2's MPPI 8; <a href="trials.html#results-our-simulator-8-nov-the-lot-tour-3-runs-each">trials</a>). It passes a goal at 2.5 m/s and uses twice Nav2's MPPI's CPU (<a href="own-navigator.html#the-verdict">our navigator</a>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -342,8 +342,8 @@ law. <code>tracker:=mpc_lag</code> and <code>mpc_lag_rs</code> don't model <code
 <td>where the car is (<code>sim</code> only; the demos use the test lot; the default is <code>empty</code>). <code>campus</code> needs <code>pixi run campus</code> first (<a href="campus.html">page</a>)</td>
 </tr>
 <tr>
-<td><code>simulator:=gazebo</code></td>
-<td>Gazebo plays the world. The default is <code>simulator:=own</code>, our simulator, since 8 Nov (<a href="own-simulator.html">page</a>); it needs a GPU for its cameras</td>
+<td><code>camera_lockstep:=true</code></td>
+<td>Ravensim's clock waits for each picture (<code>auto</code>, the default: under <code>tools/software_gl.sh</code>, no GPU). <code>simulator:=ravensim</code> is the only simulator since Gazebo went (16 Nov); <code>own</code> still works for one release</td>
 </tr>
 <tr>
 <td><code>reversing:=false</code></td>
@@ -355,7 +355,7 @@ law. <code>tracker:=mpc_lag</code> and <code>mpc_lag_rs</code> don't model <code
 </tr>
 <tr>
 <td><code>lag_scale:=2</code></td>
-<td>the car's throttle, brake and steering lags twice what <code>vehicle.yaml</code> says; every driver still reads <code>vehicle.yaml</code> (a robustness test; with <code>simulator:=gazebo</code> only)</td>
+<td>the car's throttle, brake and steering lags twice what <code>vehicle.yaml</code> says; every driver still reads <code>vehicle.yaml</code> (a robustness test, in <code>sim_adapter</code>)</td>
 </tr>
 <tr>
 <td><code>geofence:=false</code></td>
@@ -578,11 +578,11 @@ Sim column below. On 17 Nov Nav2 went: the bench and the car run ours too.</p>
 </tr>
 <tr>
 <td>Who plays the world</td>
-<td>ours (<code>simulator:=own</code>, since 8 Nov)</td>
+<td>Ravensim (<code>simulator:=ravensim</code>, since 8 Nov; <code>own</code> until the next release)</td>
 <td>-</td>
 <td>-</td>
-<td>every <code>sim-check</code> leg Gazebo passes, 3 times each; no GPU-less start-up crashes</td>
-<td><code>simulator:=gazebo</code> (and on a computer with no GPU)</td>
+<td>every <code>sim-check</code> leg Gazebo passed, 3 times each; no GPU-less start-up crashes</td>
+<td>none: Gazebo removed 16 Nov (<a href="../history/gazebo-as-it-was.md">as it was</a>)</td>
 </tr>
 </tbody>
 </table></div>

@@ -584,7 +584,8 @@ simulator running beside it):</p>
 <section class="card"><h2 id="from-map-chunks-on-every-core-16-nov-todo-175-195">From map chunks, on every core (16 Nov, TODO 175, 195)</h2>
 <p>Ben, 16 Nov: "why are map chunks and obstical avoidance not using rayon ... we should load
 the closest ones or atleas the ones on the path. Lets turn on chunking for sure."</p>
-<p><strong>The idea.</strong> The global costmap holds only the 64 m chunks it needs, not the whole map.</p>
+<p><strong>The idea.</strong> The global costmap holds only the 64 m chunks it needs, not the whole map.
+The chunked maps are called <strong>RavenTiles</strong> (Ben, 16 Nov).</p>
 <pre class="highlight"><code class="language-text"> car + the route ahead ─▶ map_chunks::wanted: the 3 x 3 round the car + 100 m of route
                           ─▶ the rectangle round them, one chunk more each side
    ┌────┬────┬────┬────┬────┐

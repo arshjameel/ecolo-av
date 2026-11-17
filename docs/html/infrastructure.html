@@ -146,7 +146,7 @@ tests, and how a change goes from an idea to the car.</p></div>
 </tr>
 <tr>
 <td>The environment</td>
-<td>ROS, Gazebo, compilers, Python and Rust, all from Pixi</td>
+<td>ROS, compilers, Python and Rust, all from Pixi</td>
 <td><code>pixi.toml</code>, <code>pixi.lock</code></td>
 </tr>
 <tr>
@@ -192,7 +192,7 @@ tests, and how a change goes from an idea to the car.</p></div>
     io_mux/             the sensor mux and the output mux: real or simulated, never mixed
     ego/                the virtual car: one command into speed and steering
     can_bridge/         the real car: the spine bridge (CAN) and today's ESP32 link
-    sim/                whatever plays the car instead: our simulator, Gazebo, turtlesim, CARLA,
+    sim/                whatever plays the car instead: Ravensim, turtlesim, CARLA,
                         bench mode
     safety/             the sensor watchdog and the ghost obstacles
     hud/                the in-car screens: the raylib HUD and the map window; the developer
@@ -309,7 +309,7 @@ because <code>pixi.lock</code> pins them all.</p>
 <tbody>
 <tr>
 <td><code>default</code></td>
-<td>ROS 2 Jazzy, Gazebo, Nav2, Rust, the compilers</td>
+<td>ROS 2 Jazzy, Rust, the compilers</td>
 <td>everyone</td>
 </tr>
 <tr>
@@ -541,7 +541,7 @@ changes.</p>
 <tr>
 <td><code>sim</code></td>
 <td><code>pixi run sim</code></td>
-<td>our own simulator (the default since 8 Nov; it needs a GPU), or Gazebo with <code>simulator:=gazebo</code></td>
+<td>Ravensim, our own simulator (with no GPU: <code>tools/software_gl.sh</code> in front, the cameras in lockstep)</td>
 <td>the whole stack: both EKFs, <code>navsat_transform</code>, Nav2</td>
 </tr>
 <tr>
@@ -765,51 +765,43 @@ request. The nightly <code>mac</code> and <code>sim</code> runs stay in the team
 <td><code>sim</code></td>
 <td>Ubuntu 24.04, x86_64</td>
 <td>every night (team's repo)</td>
-<td><code>sim-check --obstacle</code> on Gazebo, on ours with no cameras, and on ours with its cameras in software, below</td>
+<td><code>sim-check --obstacle</code> on Ravensim, its cameras in software and in lockstep, and with no cameras, below</td>
 </tr>
 </tbody>
 </table></div>
 <p>Every job also runs from the Actions tab (Run workflow).</p>
-<p>Every night the job <code>sim</code> runs <code>sim-check --obstacle</code> (headless) on Linux, three ways.
+<p>Every night the job <code>sim</code> runs <code>sim-check --obstacle</code> (headless) on Linux, on Ravensim.
 GitHub's computers have no GPU, so the pictures are drawn in software, through
-<code>tools/software_gl.sh</code>. A failure there doesn't fail the night yet (<code>continue-on-error</code>).</p>
+<code>tools/software_gl.sh</code>, with the clock waiting for each one (camera lockstep, 16 Nov). A
+failure there doesn't fail the night yet (<code>continue-on-error</code>).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Step</th>
-<th>Simulator</th>
 <th>Pictures drawn by</th>
 <th>Since</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>1</td>
-<td>Gazebo</td>
-<td>Mesa's llvmpipe (OpenGL)</td>
-<td>22 Oct</td>
+<td>1. <code>sim-check --obstacle</code>, with the cameras</td>
+<td>Mesa's lavapipe (Vulkan), in lockstep</td>
+<td>16 Nov, <span class="badge b-untested">untested</span> on GitHub yet</td>
 </tr>
 <tr>
-<td>2</td>
-<td>ours, <code>--no-cameras</code></td>
+<td>2. <code>sim-check --no-cameras --obstacle</code></td>
 <td>none</td>
 <td>14 Nov</td>
 </tr>
 <tr>
-<td>3</td>
-<td>ours, with its cameras</td>
-<td>Mesa's lavapipe (Vulkan): <a href="own-simulator-cameras.html">no GPU</a></td>
-<td>15 Nov, <span class="badge b-untested">untested</span> on GitHub yet</td>
-</tr>
-<tr>
-<td>4</td>
-<td>the cameras' picture tests (<code>tests/render.rs</code>)</td>
+<td>3. the cameras' picture tests (<code>tests/render.rs</code>)</td>
 <td>lavapipe</td>
 <td>15 Nov, <span class="badge b-untested">untested</span> on GitHub yet</td>
 </tr>
 </tbody>
 </table></div>
-<p>Once step 3 passes a few nights, Gazebo's step goes (TODO 183, after 0.4-rc1).</p>
+<p>Gazebo's step went with Gazebo (16 Nov): its last nights in <a href="../history/gazebo-as-it-was.md">Gazebo, as it
+was</a>.</p>
 <h3 id="reading-a-ci-failure-without-signing-in">Reading a CI failure without signing in</h3>
 <p>A job's log needs a GitHub sign-in. Its <strong>annotations</strong> don't: when the test step fails,
 <code>tools/ci_annotate.py</code> prints one annotation per failing test, with its error message.</p>

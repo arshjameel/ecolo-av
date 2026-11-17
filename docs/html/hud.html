@@ -153,7 +153,7 @@
 <td><a href="#the-hardware-panel">The hardware panel</a></td>
 <td><code>hw_panel</code></td>
 <td>a wired laptop</td>
-<td>every sensor's number, and simple buttons for the actuators (Gazebo and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path</td>
+<td>every sensor's number, and simple buttons for the actuators (Ravensim and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path</td>
 </tr>
 </tbody>
 </table></div>
@@ -306,12 +306,12 @@ HUD and on the developer window.</p>
 <p><img alt="The HUD with the road ahead's line, bottom right, pretend data" src="../img/hud-road.png" /></p>
 <p>While braking for the goal, the bold line shrinks to the bar and goes green:</p>
 <p><img alt="AHEAD braking for the goal: the line short, on the plan" src="../img/hud-squiggly-braking.png" /></p>
-<p><strong>Live, 8 Nov</strong> (our own simulator, <code>simulator:=own world:=test_lot</code>, a Nav2 goal at
+<p><strong>Live, 8 Nov</strong> (Ravensim, <code>simulator:=own world:=test_lot</code>, a Nav2 goal at
 (14, 3), which succeeded): the faint line is Nav2's MPPI's own future
 (<code>/drivers/nav/local_plan</code>). <code>/ego/ahead</code> said ON PLAN 0.01-0.18 m and "13.4 m short of
 the goal" while it drove; here the trace runs 0.31 m off MPPI's future (amber): MPPI plans
 without the lag, ego's model has it.</p>
-<p><img alt="AHEAD live in our own simulator, driving to a Nav2 goal" src="../img/hud-squiggly-live.png" /></p>
+<p><img alt="AHEAD live in Ravensim, driving to a Nav2 goal" src="../img/hud-squiggly-live.png" /></p>
 <p><strong>One answer for every screen.</strong> The maths lives in ROS, once; the screens only draw:</p>
 <pre class="highlight"><code class="language-text">ego ──▶ /ego/trace       (base_link)  the car model, 2 s ahead
     └─▶ /ego/stop_point  (base_link)  the car model, full brake now   (stop_ahead.py)
@@ -580,7 +580,7 @@ in <code>aav_safety</code> <code>watchdog.py</code>, with tests. The HUD shows i
 <td>yes: <code>car.launch.py watch_hud:=true</code>, the default. <code>watch_hud:=false</code> for a session with no HUD screen</td>
 </tr>
 <tr>
-<td>Gazebo</td>
+<td>Ravensim</td>
 <td>with <code>hud:=true</code> (the window), or <code>watch_hud:=true</code> (something else beats)</td>
 </tr>
 <tr>
@@ -674,13 +674,13 @@ in <code>aav_safety</code> <code>watchdog.py</code>, with tests. The HUD shows i
 <h3 id="what-it-shows-with-each-backend">What it shows with each backend</h3>
 <p>The HUD reads topics, so it works next to anything that publishes them. Start the backend,
 then <code>pixi run hud</code> in another terminal (the same <code>ROS_DOMAIN_ID</code>).
-With Gazebo, one command does both: <code>pixi run sim world:=test_lot hud:=true</code>.</p>
+In Ravensim, one command does both: <code>pixi run sim world:=test_lot hud:=true</code>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>HUD panel</th>
 <th>Turtle (<code>pixi run turtle</code>)</th>
-<th>Gazebo (<code>pixi run sim world:=road</code>)</th>
+<th>Sim (<code>pixi run sim world:=road</code>; Gazebo until 16 Nov)</th>
 <th>Bench (<code>pixi run bench</code>)</th>
 <th>Car</th>
 </tr>

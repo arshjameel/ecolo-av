@@ -120,8 +120,9 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#whats-real-and-whats-guessed">What&#x27;s real and what&#x27;s guessed</a><a href="#what-it-makes">What it makes</a><a href="#what-was-measured-gazebo-5-nov">What was measured (Gazebo, 5 Nov)</a><a href="#ndts-score-floor">NDT&#x27;s score floor</a><a href="#found-along-the-way">Found along the way</a><a href="#next-the-real-lidar-drive">Next: the real lidar drive</a></nav>
-<div class="lead"><p>Carleton in the simulator (ours, the default since 8 Nov, or Gazebo), on one Nav2 costmap, with a guessed NDT map. It's for practice while the
-hardware catches up (Ben, 5 Nov). Nothing here has met the real campus yet.</p>
+<div class="lead"><p>Carleton in Ravensim (Gazebo too, until 16 Nov), on one Nav2 costmap, with a guessed NDT map. It's for practice while the
+hardware catches up (Ben, 5 Nov). Nothing here has met the real campus yet. Its map, cut
+into 64 m chunks (<code>maps/campus/chunks/</code>), is <strong>RavenTiles</strong> (<a href="own-costmap.html">Own costmap</a>).</p>
 <pre class="highlight"><code class="language-sh">pixi run campus                                       # builds maps/campus/ (about 10 s)
 pixi run sim world:=campus screen_cubes:=true ndt:=true gui:=false rviz:=false
 pixi run dev-window --live --ndt-map maps/ndt/campus.pcd   # in a second terminal</code></pre>
@@ -278,7 +279,7 @@ campus: NDT is watched, and doesn't steer the estimate.</p>
 </tr>
 </tbody>
 </table></div>
-<p>Newer runs here (8 Nov, our simulator, 2.5 m/s): <a href="own-planner.html#the-campus-3-legs-25-ms">our planner</a>,
+<p>Newer runs here (8 Nov, Ravensim, 2.5 m/s): <a href="own-planner.html#the-campus-3-legs-25-ms">our planner</a>,
 <a href="own-navigator.html#the-campus-25-ms-2-runs">our navigator</a>, <a href="routes.html#on-the-campus">directions</a>.</p>
 </section>
 <section class="card"><h2 id="next-the-real-lidar-drive">Next: the real lidar drive</h2>

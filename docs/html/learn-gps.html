@@ -539,7 +539,7 @@ source helps too: since 25 Oct the receiver's own velocity gives one while the c
 </tr>
 <tr>
 <td>Path</td>
-<td><code>/aav/navsat</code> → <code>/gazebo/navsat</code> → <code>gazebo_gps</code> → <code>/sensors/gps/fix</code></td>
+<td><code>/aav/navsat</code> → <code>/vehicle/sim/navsat</code> → <code>sim_gps</code> → <code>/sensors/gps/fix</code></td>
 <td>straight to <code>/sensors/gps/fix</code></td>
 <td>straight to <code>/sensors/gps/fix</code></td>
 </tr>
@@ -557,7 +557,7 @@ source helps too: since 25 Oct the receiver's own velocity gives one while the c
 </tr>
 <tr>
 <td>Velocity (<code>/sensors/gps/fix_velocity</code>)</td>
-<td><code>gazebo_gps</code>: the car's true motion + 0.05 m/s noise</td>
+<td><code>sim_gps</code>: the car's true motion + 0.05 m/s noise</td>
 <td>none</td>
 <td><code>ublox_gps</code>, from the Doppler shift</td>
 </tr>
@@ -680,7 +680,7 @@ and y near 11.</p>
 </tr>
 <tr>
 <td>Gazebo → our topic name</td>
-<td><code>ros/sim/aav_gazebo/aav_gazebo/gazebo_gps.py</code></td>
+<td><code>ros/sim/aav_sim_models/aav_sim_models/sim_gps.py</code></td>
 </tr>
 <tr>
 <td>The bench's pretend GPS</td>

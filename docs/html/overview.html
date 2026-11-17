@@ -135,7 +135,7 @@ package, one per row: <a href="packages.html">Packages</a>. What works: <a href=
 <tbody>
 <tr>
 <td>ROS packages</td>
-<td>51: 30 in Python, 21 in CMake (12 of them Rust nodes). Plus two Bevy crates outside colcon: the developer window and our simulator's cameras</td>
+<td>51: 30 in Python, 21 in CMake (12 of them Rust nodes). Plus two Bevy crates outside colcon: the developer window and Ravensim's cameras</td>
 </tr>
 <tr>
 <td>Rust firmware crates</td>
@@ -215,7 +215,7 @@ package, one per row: <a href="packages.html">Packages</a>. What works: <a href=
 </tr>
 <tr>
 <td><code>pixi.toml</code>, <code>pixi.lock</code></td>
-<td>the whole environment: ROS 2 Jazzy, Gazebo, Nav2, Rust, compilers</td>
+<td>the whole environment: ROS 2 Jazzy, Rust, compilers</td>
 <td><a href="infrastructure.html">Infrastructure</a></td>
 </tr>
 </tbody>
@@ -342,12 +342,12 @@ also write our own algorithms, each a trial beside its stock default (the second
 </tr>
 <tr>
 <td><code>aav_simulator</code>, <code>aav_sim_cameras</code></td>
-<td>our own simulator in Rust, the default since 8 Nov, and its cameras (Bevy)</td>
+<td>Ravensim in Rust, the default since 8 Nov, and its cameras (Bevy)</td>
 <td>sim</td>
 </tr>
 <tr>
-<td><code>aav_turtlesim</code>, <code>aav_gazebo</code>, <code>aav_carla</code></td>
-<td>the turtle, Gazebo's car (<code>simulator:=gazebo</code>), a CARLA car (untested)</td>
+<td><code>aav_turtlesim</code>, <code>aav_simulator</code>, <code>aav_sim_models</code>, <code>aav_carla</code></td>
+<td>the turtle, Ravensim's car, a CARLA car (untested)</td>
 <td>sim</td>
 </tr>
 <tr>
@@ -545,8 +545,8 @@ also write our own algorithms, each a trial beside its stock default (the second
 </tr>
 <tr>
 <td>Backends</td>
-<td><code>turtlesim</code>; <code>ros_gz</code> with Gazebo Harmonic</td>
-<td>the turtle; the simulated car</td>
+<td><code>turtlesim</code></td>
+<td>the turtle (the simulated car is ours: Ravensim; Gazebo until 16 Nov)</td>
 </tr>
 <tr>
 <td>Watching</td>
@@ -570,7 +570,7 @@ also write our own algorithms, each a trial beside its stock default (the second
 </tr>
 </tbody>
 </table></div>
-<h3 id="the-plugins-inside-nav2-and-gazebo">The plugins inside Nav2 and Gazebo</h3>
+<h3 id="the-plugins-inside-nav2-until-17-nov-and-gazebo-until-16-nov">The plugins inside Nav2 (until 17 Nov) and Gazebo (until 16 Nov)</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -787,7 +787,7 @@ avoidance, odometry and QNX layer. <a href="older-code.html">The older code</a> 
 </tr>
 <tr>
 <td>Simulation</td>
-<td>CARLA: adapter ready, never run (needs the NVIDIA computer). Our simulator's cameras need a GPU. Bench mode works: <a href="bench.html">Bench mode</a></td>
+<td>CARLA: adapter ready, never run (needs the NVIDIA computer). Ravensim's cameras need a GPU. Bench mode works: <a href="bench.html">Bench mode</a></td>
 <td><a href="carla.html">CARLA</a></td>
 </tr>
 <tr>

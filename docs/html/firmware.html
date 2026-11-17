@@ -201,15 +201,15 @@ publishes the same thing drops in, and nothing downstream changes.</p>
 <tbody>
 <tr>
 <td>IMU: <code>sensor_msgs/Imu</code> on <code>/sensors/imu/data_raw</code>, frame <code>imu_link</code></td>
-<td><code>aav_imu_yahboom</code>, <code>gazebo_imu</code></td>
+<td><code>aav_imu_yahboom</code>, <code>sim_imu</code></td>
 </tr>
 <tr>
 <td>GPS: <code>sensor_msgs/NavSatFix</code> on <code>/sensors/gps/fix</code>, frame <code>gps_link</code></td>
-<td><code>ublox_gps</code>, <code>nmea_navsat_driver</code>, <code>ublox_dgnss</code>, <code>gazebo_gps</code></td>
+<td><code>ublox_gps</code>, <code>nmea_navsat_driver</code>, <code>ublox_dgnss</code>, <code>sim_gps</code></td>
 </tr>
 <tr>
 <td>Backend: <code>/control/&lt;target&gt;/actuator_cmd</code> in (ego's, through the output mux), <code>/vehicle/odom</code> out</td>
-<td><code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>turtlesim_adapter</code>, <code>gazebo_adapter</code>, <code>carla_adapter</code></td>
+<td><code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>turtlesim_adapter</code>, <code>sim_adapter</code>, <code>carla_adapter</code></td>
 </tr>
 </tbody>
 </table></div>

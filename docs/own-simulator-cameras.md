@@ -156,6 +156,40 @@ The road world's test copy, all four cameras (640 x 360, 4x MSAA, shadows), `--b
 So the road world at 10 Hz x 3 cameras fits in software with 2 cores to spare for it.
 GitHub's runners have 4 (x86_64), slower than the M4's: [[untested]] there.
 
+## Camera lockstep (16 Nov)
+
+**The problem.** On CI, drawn in software, the cameras ran at 1.6 Hz: the world ran on
+without them and they skipped poses. Gazebo drew its sensors in lockstep; now Ravensim does.
+
+```text
+ sim_cameras ── /vehicle/sim/cameras/free_until ──▶ simulator
+   "my next picture is due at t"                       at each truth stamped t or later:
+                                                       hold /clock until a later t comes
+```
+
+| Setting | Means |
+|---|---|
+| `camera_lockstep:=auto` (the default) | on under `tools/software_gl.sh` (it exports `AAV_SOFTWARE_GL=1`), off with a GPU |
+| `camera_lockstep:=true` / `false` | always on / off |
+| `camera_timeout` (10 s) | no word that long: the clock runs free until the cameras speak again |
+
+The logic is `sim-core`'s `lockstep.rs` (`CameraGate`), tested without ROS. The simulator
+logs `camera lockstep on`, and in each 30 s report how often it held the clock.
+
+### Measured (17 Nov, Ben's M4 Max, lavapipe forced, load 6-14)
+
+`tools/software_gl.sh --force pixi run sim-check --obstacle`, the road world:
+
+| What | Result |
+|---|---|
+| sim-check | every leg passes, the obstacle too (stopped 0.80 m short) |
+| The cameras, in sim time | front left 10.0 Hz, front right 10.0 Hz, rear 10.0 Hz |
+| The lockstep | held the clock at every picture: about 300 times per 30 s, 12.5-14.2 s of waiting in all; never timed out |
+| The real-time factor | 0.99-1.00: on this Mac lavapipe keeps up, so the waits fit inside the time the clock would have slept anyway |
+
+On a slower computer (CI's 4 cores) the clock should slow instead of the cameras:
+[[untested]] on Linux until CI's `sim` job has run it.
+
 ## What it is not, yet
 
 | Missing | Why it matters |

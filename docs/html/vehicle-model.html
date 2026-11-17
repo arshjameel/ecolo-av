@@ -879,7 +879,7 @@ between them (<code>analysis.fit_follower</code>).</p>
 </tr>
 <tr>
 <td>A busy computer adds more</td>
-<td>gazebo_adapter's ticks stall (up to 0.2 s of Gazebo's time) when other simulators run</td>
+<td>sim_adapter's ticks stall (up to 0.2 s of Gazebo's time) when other simulators run</td>
 <td>none needed: run it twice</td>
 </tr>
 </tbody>
@@ -1258,7 +1258,7 @@ Three runs of each profile on Ben's Mac, beside two other helpers' simulators:</
 </table></div>
 <ul>
 <li>Runs 2 and 3 of today's gains gave the same numbers; so did all three of <code>smooth</code>. Run 1 of today's was spoiled by the Mac's load (late commands made
-  gazebo_adapter brake: sim-check reports that, and drives the step again, up to 3 times).</li>
+  sim_adapter brake: sim-check reports that, and drives the step again, up to 3 times).</li>
 <li>At 2 m/s today's loop passes the coast band (2.2), brakes, and the brake resets the
   integral: the car then sags to 1.76 m/s and takes 10 s to come back. <code>smooth</code> never
   gets there.</li>

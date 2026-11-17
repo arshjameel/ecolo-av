@@ -417,8 +417,23 @@
 </tr>
 <tr>
 <td>Gazebo</td>
-<td>a 3D physics simulator. Ours until 8 Nov; since then <code>pixi run sim</code> starts our own simulator, and Gazebo is <code>simulator:=gazebo</code></td>
-<td><code>pixi run sim simulator:=gazebo</code></td>
+<td>a 3D physics simulator. Ours until 8 Nov, removed 16 Nov: <a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a></td>
+<td>-</td>
+</tr>
+<tr>
+<td>Ravensim</td>
+<td>Ravensim, in Rust: the world, the car, its sensors and cameras</td>
+<td><code>pixi run sim</code></td>
+</tr>
+<tr>
+<td>RavenTiles</td>
+<td>a big map cut into 64 m chunks, so only those round the car are loaded</td>
+<td><code>pixi run campus</code></td>
+</tr>
+<tr>
+<td>camera lockstep</td>
+<td>with no GPU, Ravensim's clock waits for each camera's picture</td>
+<td><code>tools/software_gl.sh pixi run sim</code></td>
 </tr>
 <tr>
 <td>GNSS</td>
@@ -647,8 +662,8 @@
 <td>today's throttle</td>
 </tr>
 <tr>
-<td>our simulator</td>
-<td>our own simulator in Rust, in Gazebo's place: the same worlds and topics; the default since 8 Nov. Its cameras need a GPU</td>
+<td>Ravensim</td>
+<td>Ravensim in Rust, in Gazebo's place: the same worlds and topics; the default since 8 Nov. Its cameras need a GPU</td>
 <td><code>ros/sim/aav_simulator</code>, <a href="own-simulator.html">its page</a></td>
 </tr>
 <tr>

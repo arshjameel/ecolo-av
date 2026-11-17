@@ -122,10 +122,9 @@
 <nav class="toc"><span>On this page:</span><a href="#1-the-big-idea-swap-the-bottom-layer">1. The big idea: swap the bottom layer</a><a href="#2-the-three-bottom-boxes">2. The three bottom boxes</a><a href="#3-does-gazebo-produce-sensor-data-yes">3. Does Gazebo produce sensor data? Yes</a><a href="#4-works-means-in-simulation-or-on-the-bench">4. &quot;Works&quot; means: in simulation or on the bench</a><a href="#5-why-none-of-it-has-run-on-the-car-yet">5. Why none of it has run on the car yet</a><a href="#6-today-vs-after-the-kefc-changes">6. Today vs after the KEFC changes</a><a href="#7-the-plan-in-order">7. The plan, in order</a><a href="#8-try-it-yourself">8. Try it yourself</a></nav>
 <div class="lead"><p>Written 15 October 2026, checked 25 October and 13 November. <strong>This page:</strong> what is
 simulated, what is real, and which layer swaps. How to run it: <a href="simulation.html">Simulation</a>;
-the plan behind it: <a href="full-simulation.html">Full simulation</a>; the default simulator since
-8 Nov: <a href="own-simulator.html">Our own simulator</a>. Where it says Gazebo, read either simulator:
-<code>pixi run sim</code> now starts ours, and <code>simulator:=gazebo</code> starts Gazebo. It answers three
-questions:</p>
+the plan behind it: <a href="full-simulation.html">Full simulation</a>; the simulator: <a href="own-simulator.html">Ravensim</a>, our own (Gazebo until 16 Nov:
+<a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a>). Where it says Gazebo, it was measured
+there before 16 Nov; Ravensim plays the same part. It answers three questions:</p>
 <ol>
 <li>How far did we get with Gazebo?</li>
 <li>Does it really produce sensor data?</li>
@@ -177,7 +176,7 @@ questions:</p>
 </tr>
 <tr>
 <td>Command</td>
-<td><code>pixi run sim simulator:=gazebo</code> (<code>pixi run sim</code> alone: our own simulator, the same topics)</td>
+<td><code>pixi run sim</code> (Ravensim)</td>
 <td><code>pixi run bench</code></td>
 <td><code>pixi run car &lt;machine&gt;</code>: <span class="badge b-untested">untested</span> as a whole</td>
 </tr>
@@ -259,7 +258,7 @@ questions:</p>
 </table></div>
 <p><strong>How it gets there:</strong></p>
 <pre class="highlight"><code class="language-text">Gazebo sensor → ros_gz_bridge → /gazebo/... → one node per sensor → the real drivers' topic names</code></pre>
-<p><code>gazebo_adapter</code> (the car), <code>gazebo_imu</code>, <code>gazebo_gps</code> and <code>gazebo_radar</code> rename everything to the <strong>same names the real drivers use</strong> (<code>/sensors/gps/fix</code>, <code>/sensors/imu/data_raw</code>, <code>/vehicle/odom</code>). The software above can't tell the difference. One process each, as each sensor on the car has its own driver.</p>
+<p><code>sim_adapter</code> (the car), <code>sim_imu</code>, <code>sim_gps</code> and <code>sim_radar</code> rename everything to the <strong>same names the real drivers use</strong> (<code>/sensors/gps/fix</code>, <code>/sensors/imu/data_raw</code>, <code>/vehicle/odom</code>). The software above can't tell the difference. One process each, as each sensor on the car has its own driver.</p>
 <p><img alt="The simulated car in Gazebo" src="../img/gazebo-car.png" /></p>
 <h3 id="in-the-road-world-pixi-run-sim-worldroad">In the road world (<code>pixi run sim world:=road</code>)</h3>
 <p>Merged from the branch <code>wt/sim-full</code> on 15 Oct. Rates measured on Ben's Mac, on simulated time.</p>
@@ -287,7 +286,7 @@ questions:</p>
 </tr>
 <tr>
 <td>A radar on the grill (a lidar shaped like it)</td>
-<td><code>/sensors/radar/points</code> (via <code>/gazebo/radar/points</code>)</td>
+<td><code>/sensors/radar/points</code> (via <code>/vehicle/sim/radar/points</code>)</td>
 <td>10 Hz</td>
 <td>✅</td>
 </tr>
@@ -510,7 +509,7 @@ questions:</p>
 <tbody>
 <tr>
 <td>See the simulated car</td>
-<td><code>pixi run sim</code> (our simulator, no window: watch in RViz); Gazebo's window: <code>pixi run sim simulator:=gazebo</code></td>
+<td><code>pixi run sim</code> (Ravensim, no window: watch in RViz or Lichtblick)</td>
 </tr>
 <tr>
 <td>See its sensor data</td>

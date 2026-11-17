@@ -994,6 +994,11 @@ answer.</p>
 </thead>
 <tbody>
 <tr>
+<td><strong>Gazebo deleted; our simulator is Ravensim</strong> (16 Nov, TODO 184, 183): <code>simulator:=ravensim</code>, the only one (<code>own</code> works for one release); its chunked maps are RavenTiles. Gazebo's shared nodes and models moved to <code>aav_sim_models</code>; its topics are <code>/vehicle/sim/*</code>. Without a GPU the cameras draw in software and the clock waits for each picture (camera lockstep). CARLA stays. Last scores: <a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a></td>
+<td>Ravensim passed every <code>sim-check</code> leg Gazebo did (8 Nov); Gazebo's last job was the cameras with no GPU, and lockstep does that now</td>
+<td>Ben</td>
+</tr>
+<tr>
 <td><strong>Nav2 deleted; ours everywhere</strong> (TODO 184): the simulator, the bench and the car run our navigator, planner, costmaps, <code>mppi_lag</code>, smoother, stop zone and map server. Kept: <code>nav2_msgs</code>, and <code>nav2_amcl</code> for the AMCL trial (<a href="../history/nav2-as-it-was.md">Nav2, as it was</a>)</td>
 <td>Ben, 16 Nov: "Now". Every Nav2 server had its port, scored on 16 Nov (<a href="league-results-2026-11-16.html">the league</a>)</td>
 <td>Ben</td>

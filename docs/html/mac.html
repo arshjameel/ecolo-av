@@ -7,7 +7,7 @@
 <!-- Generated from docs/mac.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Your Mac: run it, and drive the car</h1>
-<div class="meta">19 min read · 12 sections</div></header>
+<div class="meta">18 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -119,7 +119,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#three-ways">Three ways</a><a href="#set-up-the-mac-once">Set up the Mac (once)</a><a href="#join-the-cars-network">Join the car&#x27;s network</a><a href="#drive-and-watch-from-the-mac">Drive and watch from the Mac</a><a href="#ml-on-your-mac-against-the-bench">ML on your Mac, against the bench</a><a href="#watch-without-ros-lichtblick">Watch without ROS: Lichtblick</a><a href="#gazebo-on-a-mac">Gazebo on a Mac</a><a href="#macos-hides-one-setting-from-ros">macOS hides one setting from ROS</a><a href="#four-more-things-the-bench-found-on-a-mac">Four more things the bench found on a Mac</a><a href="#if-the-native-way-fails-ubuntu-in-utm">If the native way fails: Ubuntu in UTM</a><a href="#if-something-breaks">If something breaks</a><a href="#whats-been-tested">What&#x27;s been tested</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#three-ways">Three ways</a><a href="#set-up-the-mac-once">Set up the Mac (once)</a><a href="#join-the-cars-network">Join the car&#x27;s network</a><a href="#drive-and-watch-from-the-mac">Drive and watch from the Mac</a><a href="#ml-on-your-mac-against-the-bench">ML on your Mac, against the bench</a><a href="#watch-without-ros-lichtblick">Watch without ROS: Lichtblick</a><a href="#ravensim-on-a-mac">Ravensim on a Mac</a><a href="#macos-hides-one-setting-from-ros">macOS hides one setting from ROS</a><a href="#four-more-things-the-bench-found-on-a-mac">Four more things the bench found on a Mac</a><a href="#if-the-native-way-fails-ubuntu-in-utm">If the native way fails: Ubuntu in UTM</a><a href="#if-something-breaks">If something breaks</a><a href="#whats-been-tested">What&#x27;s been tested</a></nav>
 <div class="lead"><p>Three ways to use a Mac with the car. Use Pixi to run ROS on the Mac itself, and to
 drive. Lichtblick only watches, but needs no setup. Ubuntu in a VM is the fallback.</p></div>
 <section class="card"><h2 id="three-ways">Three ways</h2>
@@ -374,23 +374,14 @@ default) or MISSING.</p>
 </tbody>
 </table></div>
 </section>
-<section class="card"><h2 id="gazebo-on-a-mac">Gazebo on a Mac</h2>
-<p>Since 8 Nov <code>pixi run sim</code> starts our own simulator (<a href="own-simulator.html">Our simulator</a>);
-Gazebo needs <code>simulator:=gazebo</code>. On macOS, Gazebo's window has to run as a separate
-program from the simulator. <code>pixi run sim simulator:=gazebo</code> starts both, and points the
-window's camera at the car:</p>
-<pre class="highlight"><code class="language-bash">pixi run sim simulator:=gazebo               # the simulator, its window, and RViz
-pixi run tools/ros.sh tools/gz_window.sh         # opens the window again, if you closed it
-pixi run sim simulator:=gazebo follow:=false # a free camera instead of one that follows the car</code></pre>
-<p>Cameras and lidars inside Gazebo can crash it on some Macs. Ours don't: in the road world
-(<code>pixi run sim simulator:=gazebo world:=road</code>), the cameras, the radar stand-in and the roof
-lidar render with no window, on Metal, at their full rates (Ben's Mac, 15 Oct). The lidar
-was off by default for a while: with YOLO too it failed, but those runs shared the Mac with a stray simulator. On a quiet Mac (15 Oct afternoon) everything together passed twice, so it's on by default
-(<a href="simulation.html#the-lidar-gazebo-only">Simulation</a>). If Gazebo crashes, use the empty
-world, which renders nothing.</p>
-<p>If the window stays empty, or the car never appears, run <code>export GZ_IP=127.0.0.1</code> in both
-terminals and start again: Gazebo's two programs then find each other on the Mac itself.
-On Ben's Mac the simulator ran without it (10 Oct); it fixed the same symptom on Linux.</p>
+<section class="card"><h2 id="ravensim-on-a-mac">Ravensim on a Mac</h2>
+<p><code>pixi run sim</code> starts Ravensim, our own simulator (<a href="own-simulator.html">Ravensim</a>). It has
+no window: watch in RViz, Lichtblick or the developer window. Its cameras draw on the
+Mac's GPU (Metal), at their full rates.</p>
+<pre class="highlight"><code class="language-bash">pixi run sim world:=road                          # the simulator and RViz
+tools/software_gl.sh --force pixi run sim-check   # CI's way: the cameras in software, in lockstep</code></pre>
+<p>Gazebo ran here until 16 Nov, its window as a second program: <a href="../history/gazebo-as-it-was.md">Gazebo, as it
+was</a>.</p>
 <h3 id="why-we-use-cyclone-dds">Why we use Cyclone DDS</h3>
 <p>Cyclone DDS has been the team's middleware since 23 Oct (Ben: "yes lets do it"). Pixi sets
 it everywhere (<code>RMW_IMPLEMENTATION</code> in <code>pixi.toml</code>), so there's nothing to type.</p>
@@ -617,12 +608,12 @@ discovery stays on it, and the whole Gazebo graph starts more. On Linux the 33rd
 <td><span class="badge b-works">works</span> on Linux and the Mac. The real keyboard keys are <span class="badge b-untested">untested</span> on a Mac</td>
 </tr>
 <tr>
-<td>Gazebo without its window, and a Nav2 goal</td>
+<td>Gazebo without its window, and a Nav2 goal (until 16 Nov)</td>
 <td><span class="badge b-works">works</span> on the Mac, without <code>GZ_IP</code></td>
 </tr>
 <tr>
-<td>Gazebo's window on a Mac</td>
-<td><span class="badge b-works">works</span> 10 Oct: <code>pixi run sim</code> opened it (now <code>simulator:=gazebo</code>); the car drives in it (pictures in <a href="first-day.html">Your first day</a>)</td>
+<td>Gazebo's window on a Mac (until 16 Nov)</td>
+<td><span class="badge b-works">works</span> 10 Oct: <code>pixi run sim</code> opened it; the car drives in it (pictures in <a href="first-day.html">Your first day</a>)</td>
 </tr>
 <tr>
 <td>Gazebo's cameras and lidar on a Mac</td>

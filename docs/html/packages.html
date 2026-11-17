@@ -205,7 +205,7 @@ each one's README has its topics.</p></div>
 <td><code>aav_localization_health_rs</code></td>
 <td>localization</td>
 <td><code>localization_health</code> in Rust (<code>localization_health_impl:=rust</code>): the same topics and answers</td>
-<td><span class="badge b-works">works</span> against the Python's answers; our simulator's road world</td>
+<td><span class="badge b-works">works</span> against the Python's answers; Ravensim's road world</td>
 <td>new: a port of <code>aav_localization_health</code></td>
 </tr>
 <tr>
@@ -338,7 +338,7 @@ each one's README has its topics.</p></div>
 <td><code>aav_behaviour_rs</code></td>
 <td>drivers</td>
 <td><code>behaviour</code> in Rust, the default (Ben, 16 Nov) beside <code>aav_behaviour</code>'s (<code>behaviour_impl:=python</code>): the same topics and answers</td>
-<td><span class="badge b-works">works</span> against the Python's answers, and in our simulator</td>
+<td><span class="badge b-works">works</span> against the Python's answers, and in Ravensim</td>
 <td>new: a port of <code>aav_behaviour</code></td>
 </tr>
 <tr>
@@ -391,23 +391,23 @@ each one's README has its topics.</p></div>
 <td>new</td>
 </tr>
 <tr>
-<td><code>aav_gazebo</code></td>
+<td><code>aav_sim_models</code></td>
 <td>sim</td>
-<td>Gazebo's car behind the real car's topics; its adapters run with our simulator too</td>
+<td>Gazebo's car behind the real car's topics; its adapters run with Ravensim too</td>
 <td><span class="badge b-works">works</span> headless</td>
 <td>new</td>
 </tr>
 <tr>
 <td><code>aav_simulator</code></td>
 <td>sim</td>
-<td>our own simulator in Rust, in <code>gz sim</code>'s place: the default since 8 Nov (<code>simulator:=gazebo</code> for Gazebo)</td>
+<td>Ravensim, our own simulator in Rust: the only one since Gazebo went (16 Nov)</td>
 <td>passed every <code>sim-check</code> leg Gazebo passes, 8 Nov (<a href="own-simulator.html">its page</a>)</td>
 <td>new</td>
 </tr>
 <tr>
 <td><code>aav_sim_cameras</code></td>
 <td>sim</td>
-<td>our simulator's cameras (Bevy, offscreen; needs a GPU). A cargo program, not a colcon package</td>
+<td>Ravensim's cameras (Bevy, offscreen; needs a GPU). A cargo program, not a colcon package</td>
 <td>built 7-8 Nov (<a href="own-simulator-cameras.html">its page</a>)</td>
 <td>new</td>
 </tr>
@@ -805,8 +805,8 @@ Only one runs at a time.</p>
 <td></td>
 </tr>
 <tr>
-<td><code>aav_gazebo</code></td>
-<td><code>/gazebo/cmd_vel</code></td>
+<td><code>aav_sim_models</code></td>
+<td><code>/vehicle/sim/cmd_vel</code></td>
 <td>turns Gazebo's IMU and GPS into <code>/sensors/imu/data_raw</code> and <code>/sensors/gps/fix</code></td>
 </tr>
 <tr>

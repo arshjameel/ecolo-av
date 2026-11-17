@@ -375,7 +375,7 @@ files hand them to every part that needs them.</p>
 <td>the footprint, and the tightest turn: wheelbase ÷ tan(max steer) = 2.86 m</td>
 </tr>
 <tr>
-<td><code>turtlesim_adapter</code>, <code>gazebo_adapter</code></td>
+<td><code>turtlesim_adapter</code>, <code>sim_adapter</code></td>
 <td>the wheelbase, so the turtle and the simulated car turn like the car</td>
 </tr>
 <tr>
@@ -418,14 +418,9 @@ margins with the delays): <a href="vehicle-model.html">The car as a linear model
 <td>the stock turtlesim, steered with the bicycle model</td>
 </tr>
 <tr>
-<td>Our own simulator (<code>pixi run sim</code>, the default since 8 Nov)</td>
+<td>Ravensim (<code>pixi run sim</code>, the default since 8 Nov)</td>
 <td><code>aav_simulator</code>, <code>aav_sim_cameras</code></td>
 <td>Rust: the worlds, the car, lidar, radar, IMU, GPS, wheels and cameras, on the real car's topics (<a href="own-simulator.html">page</a>)</td>
-</tr>
-<tr>
-<td>Gazebo (<code>simulator:=gazebo</code>)</td>
-<td><code>aav_gazebo</code></td>
-<td>the same car and sensors; for computers with no GPU</td>
 </tr>
 <tr>
 <td>CARLA</td>
@@ -544,7 +539,7 @@ tests drive.</p>
 </section>
 <section class="card"><h2 id="8-the-real-graph-three-ways">8. The real graph, three ways</h2>
 <p>The same layers, as they really run: <code>pixi run tools/ros.sh python3 tools/graph_picture.py</code> saved each one from a live
-profile on Ben's Mac (saved 20 Oct: before the output mux, the trials and our own simulator, so today's graphs have more nodes). Read them left to right. The middle stays the same in all
+profile on Ben's Mac (saved 20 Oct: before the output mux, the trials and Ravensim, so today's graphs have more nodes). Read them left to right. The middle stays the same in all
 three; only the left edge (where the data comes from) and the right edge (who plays the
 car) change.</p>
 <div class="table-wrap"><table>
@@ -567,9 +562,9 @@ car) change.</p>
 <td>the stand-ins on the left (<code>mock_*</code>, <code>spine_sim</code>); <code>/vehicle/bench/truth</code> feeding every mock; <code>spine_bridge</code> and <code>spine_sim</code> talking over <code>/can/tx</code>, <code>/can/rx</code></td>
 </tr>
 <tr>
-<td><code>pixi run sim simulator:=gazebo</code> (empty world)</td>
+<td><code>pixi run sim</code> (empty world)</td>
 <td>19, 38</td>
-<td>no mocks: <code>gz_bridge</code> brings in <code>/gazebo/imu</code> and <code>/gazebo/navsat</code>, and <code>gazebo_imu</code> and <code>gazebo_gps</code> turn them into <code>/sensors/...</code></td>
+<td>no mocks: Ravensim publishes <code>/vehicle/sim/imu</code> and <code>/vehicle/sim/navsat</code>, and <code>sim_imu</code> and <code>sim_gps</code> turn them into <code>/sensors/...</code></td>
 </tr>
 </tbody>
 </table></div>
