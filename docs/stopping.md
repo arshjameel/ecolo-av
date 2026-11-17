@@ -135,7 +135,7 @@ stop."
   | the parked box, as the car passes | 0.5-0.9 m/s | 0.1-0.6 s | 8 holds passing it |
   | new tracks, coasting off | 0.5-1.8 m/s | seen 3-7 times | (in those 8) |
   | buildings coming into view at 2 m/s, growing 1 → 9 m | 1-2 m/s | 2-3 s | not growing: never |
-  | the lot's thin posts, a low patch of grass | 1.5-11 m/s | 1-1.4 s | 3 holds in 7 runs at 1 s, none at 1.5 s |
+  | the lot's thin posts, a low patch of grass | 1.5-11 m/s | 1-1.4 s | 3 holds in 7 runs at 1 s, none at 1.5 s; the posts gone since the tracker's gates (17 Nov, TODO 222): 0 holds in 3 lot tours |
   | a person, a car really moving | 0.8-3 m/s | 9-42 s | held, every time |
 - **Known limit:** a person walking beside the car the same way, within 10 m, holds it
   as long as they walk. That is the rule as asked.

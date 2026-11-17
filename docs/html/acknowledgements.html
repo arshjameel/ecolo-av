@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">15 min read · 8 sections</div></header>
+<div class="meta">16 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -225,6 +225,12 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>paper</td>
 <td>idea, ported (through Nav2)</td>
 <td>Nav2's Smac Hybrid; ours, built 14 Nov (TODO 178): Nav2's SmacPlannerHybrid ported into <code>aav_planner</code> (<code>planner_search:=hybrid</code>), sharing the lattice's search</td>
+</tr>
+<tr>
+<td><strong>Continuous-curvature paths</strong>: T. Fraichard, A. Scheuer, "From Reeds and Shepp's to Continuous-Curvature Paths", IEEE Trans. Robotics, 2004</td>
+<td>paper</td>
+<td>idea</td>
+<td>the lane line's corners as clothoid, arc, clothoid (<code>aav_planner</code> <code>lane.rs</code>, <code>lane_corners:=clothoid</code>, TODO 211)</td>
 </tr>
 <tr>
 <td><strong>A*</strong>: P. Hart, N. Nilsson, B. Raphael, IEEE Trans. Systems Science and Cybernetics, 1968</td>

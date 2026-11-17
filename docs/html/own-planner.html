@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-planner.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own planner</h1>
-<div class="meta">35 min read · 13 sections</div></header>
+<div class="meta">37 min read · 13 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -1046,6 +1046,79 @@ machine's load under 8 (no other simulator running). Results in <code>/tmp/w152<
 <p><strong>No worse on any column: <code>path:=lane</code> is <code>ours</code>' path since 16 Nov</strong> (<code>stacks.yaml</code>;
 <code>decisions.md</code>). Off the lane map (the lot, a three-point turn in the road world) it is
 the lattice, as before. The ramp stays a challenger (<code>lanes:=ramp</code>).</p>
+<h3 id="corners-as-clothoids-17-nov-todo-211-a-challenger">Corners as clothoids (17 Nov, TODO 211): a challenger</h3>
+<p>The lane line rounds each corner with a circle arc. Its curvature jumps from 0 to 1/radius
+where the arc starts, so the steering must jump too. <code>lane_corners:=clothoid</code> turns each
+corner with a clothoid (Euler spiral), an arc, and a clothoid back (Fraichard and
+Scheuer's continuous-curvature turn): the curvature climbs over 4 m, never above the
+turning radius's.</p>
+<pre class="highlight"><code class="language-text">   curvature
+   1/radius ┤   ┌──────┐            arc:      ┌──────┐
+            │  ╱        ╲                     │      │
+          0 ┼─╱          ╲─                 ──┘      └──
+             clothoid  clothoid               (a jump)</code></pre>
+<p>University Drive, <code>path:=lane</code>, 2 runs each (<code>pixi run measure controllers --stacks
+own_calm_chunks --tours university university_box --runs 2 --reversing --launch
+behaviour:=true lane_route:=true lane_corners:=&lt;arc|clothoid&gt;</code>; lanes by <code>lane_score.py</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Leg</th>
+<th>Sway, arc</th>
+<th>Sway, clothoid</th>
+<th>Left-right changes /100 m</th>
+<th>Steering flips /s</th>
+<th>Off lane centre (m)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>onto University Drive</td>
+<td>0.089</td>
+<td>0.101</td>
+<td>7.3 / 5.4</td>
+<td>0.19 / 0.15</td>
+<td>0.13-0.16 / 0.17-0.44</td>
+</tr>
+<tr>
+<td>down University Drive</td>
+<td>0.044</td>
+<td>0.048</td>
+<td>10.5 / 9.7</td>
+<td>0.36 / 0.32</td>
+<td>0.05 / 0.05</td>
+</tr>
+<tr>
+<td>round the bend south</td>
+<td>0.047</td>
+<td>0.042</td>
+<td>5.3 / 4.6</td>
+<td>0.19 / 0.22</td>
+<td>0.10-0.11 / 0.09-0.10</td>
+</tr>
+<tr>
+<td>past the parked box</td>
+<td>0.062</td>
+<td>0.061</td>
+<td>8.9 / 8.4</td>
+<td>0.25 / 0.29</td>
+<td>0.28-0.29 / 0.25-0.31</td>
+</tr>
+<tr>
+<td>whole tour</td>
+<td>0.056</td>
+<td>0.057</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>(Pairs are arc / clothoid.) <strong>A tie</strong>, within one run to the next. One clothoid run
+swung 0.44 m off the lane's centre turning onto University Drive (14 % of it over the
+centre line); the other did not. So the arcs stay the default and the clothoids wait
+beside them. The steering flips that Hybrid-A* halves are not the corners' jumps: next,
+the follower (TODO 214, the piecewise-jerk path).</p>
 </section>
 <section class="card"><h2 id="passing-something-parked-16-nov">Passing something parked (16 Nov)</h2>
 <p>Ben, 16 Nov: "stick to the right side of the lane unless we need to for obstical
@@ -1309,7 +1382,7 @@ The output is the same (<code>/plan</code>, <code>/drivers/nav/planner/route</co
 </tr>
 <tr>
 <td>The line</td>
-<td>the lanes' centres joined; a lane change eased over 20 m; corners rounded as before (circle arcs: TODO 211 makes them clothoids)</td>
+<td>the lanes' centres joined; a lane change eased over 20 m; corners rounded as before (circle arcs; <code>lane_corners:=clothoid</code> for clothoids, TODO 211)</td>
 </tr>
 <tr>
 <td>The stop lines</td>

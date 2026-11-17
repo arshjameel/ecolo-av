@@ -455,7 +455,7 @@ stop."</p>
 <td>the lot's thin posts, a low patch of grass</td>
 <td>1.5-11 m/s</td>
 <td>1-1.4 s</td>
-<td>3 holds in 7 runs at 1 s, none at 1.5 s</td>
+<td>3 holds in 7 runs at 1 s, none at 1.5 s; the posts gone since the tracker's gates (17 Nov, TODO 222): 0 holds in 3 lot tours</td>
 </tr>
 <tr>
 <td>a person, a car really moving</td>
@@ -575,9 +575,9 @@ aborted. Each held every time.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>/drivers/nav/speed_limit</code></td>
-<td><code>nav2_msgs/SpeedLimit</code>, 20 Hz</td>
-<td>controller_server reads it with <code>behaviour:=true</code></td>
+<td><code>/world/road_ahead</code></td>
+<td><code>aav_interfaces/RoadAhead</code>, 10 Hz</td>
+<td>the cap is in its limits (none above it; TODO 233, 17 Nov): ego holds every follower to them. Before, <code>/drivers/nav/speed_limit</code>, read only by Nav2's controller</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/behaviour/state</code></td>
@@ -702,10 +702,6 @@ waited for. Passing a parked box is <code>--behaviour-things</code>' leg. So <co
 <tr>
 <td>ASK's reply (<code>/hud/ask/answer</code>)</td>
 <td>the HUD has no reply path</td>
-</tr>
-<tr>
-<td>The trial trackers reading the cap</td>
-<td>they ignore <code>/drivers/nav/speed_limit</code></td>
 </tr>
 <tr>
 <td>The car</td>
