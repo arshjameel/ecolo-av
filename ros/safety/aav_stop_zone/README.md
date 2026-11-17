@@ -4,12 +4,15 @@
 
 The stop zone, a **safety lock**, in Rust: Nav2's `collision_monitor` stop decision ported
 with no ROS (TODO 182: "ours in Rust with its own tests first"): the decision
-(`crates/stop-zone`) and a node (`crates/stop-zone-node`, `stop_zone`) that runs **in
-shadow** with `stop_zone_shadow:=true`: the same settings and sensors as Nav2's
-`collision_monitor`, from the same tuned `nav2.yaml` (`vehicle.stop_zone_params`), but its
-own topics, `/safety/stop_zone/shadow/cmd_vel` and `.../state`. Nothing drives by it.
-Nav2's stays the lock until ours has scored the same. Safety locks are never swapped
-casually.
+(`crates/stop-zone`) and a node (`crates/stop-zone-node`, `stop_zone`). **The car's stop
+zone since 17 Nov**, in every stack and on the car: it sits between the smoother and
+twist_mux (`/control/cmd_vel_smoothed` -> `/drivers/nav/cmd_vel`), with the settings and
+sensors of the tuned `nav2.yaml`'s `collision_monitor` block (`vehicle.stop_zone_params`).
+
+It ran in shadow first, beside Nav2's `collision_monitor` on every obstacle check, and
+stopped every time Nav2's did, no later
+([Nav2, as it was](../../../docs/history/nav2-as-it-was.md#the-swap-of-the-stop-zone)).
+Then it took the lock, and Nav2 went (TODO 184).
 
 ```text
  command ─▶ the box for its direction ─▶ points in it (all sensors) ≥ min_points ─▶ zero
@@ -33,7 +36,10 @@ casually.
 | `StopZone::step(now, Command, readings)` | `Decision { out, stop, band }`: the command to send (or none), why it stopped |
 | `Polygon::contains` | the ray-crossing point test |
 
-The comparison: `pixi run sim-check --stop-zone-shadow` (ours must stop within 0.3 s of Nav2's and never be clear while it stops for more than 0.2 s). Not yet: mounts from
+The node: `cmd_in`, `cmd_out`, `state` (`nav2_msgs/CollisionMonitorState`, on each change,
+as collision_monitor's: `stop_hold` reads it), `status` (`DiagnosticStatus`, each command),
+`box` (`PolygonStamped`, the box in use). Its defaults are the shadow's topics, so a stop
+zone started by hand drives nothing; `navigation.launch.py` passes the live ones. Not yet: mounts from
 `/tf_static` (the launch gives the radar's from vehicle.yaml; the rest send base_link);
 the `slowdown`, `limit` and `approach` actions (our config uses none); sensors with roll
 or pitch.

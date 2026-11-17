@@ -44,7 +44,7 @@ Many values are still `TODO measure` (docs/car_measurements.md).
 | `min_turning_radius(v)` | `base_link`'s radius at full lock (m) |
 | `wheel_angles(v, centre)`, `centre_angle(v, inner, outer)` | Ackermann: each front wheel from the bicycle angle, and back |
 | `gazebo_steering_limit(v)` | the limit Gazebo's AckermannSteering needs to reach `max_steering_angle` |
-| `footprint(v)`, `stop_zone_points(v)`, `rear_stop_zone_points(v)` | Nav2's footprint and collision_monitor zones |
+| `footprint(v)`, `stop_zone_points(v)`, `rear_stop_zone_points(v)` | the costmaps' footprint and the stop zone's boxes |
 | `self_box(cfg, margin=SELF_MARGIN)` | the car and every sensor on it from above, 15 cm wider: lidar points inside are the car itself (NDT's map and scan, the debug HUD's cubes) |
 | `footprint_points(v)`, `polygon(points)` | the body outline as corners; corners as Nav2's polygon string |
 | `blind_behind(reversing, **sensors)`, `reverse_limit(v, reversing)` | may Nav2 back up, and how fast |
