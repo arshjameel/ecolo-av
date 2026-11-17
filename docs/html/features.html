@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">99 min read · 15 sections</div></header>
+<div class="meta">100 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -525,8 +525,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td>Nav2 set up for a car (<code>aav_navigation</code>)</td>
-<td>A car can't turn on the spot: SmacPlannerHybrid plans paths it can drive, with no Spin</td>
+<td>Navigation set up for a car (<code>aav_navigation</code>): Nav2 until 17 Nov, our own nodes since (<a href="../history/nav2-as-it-was.md">Nav2, as it was</a>)</td>
+<td>A car can't turn on the spot: paths it can drive, with no Spin. Ben, 16 Nov: delete Nav2 "Now" (TODO 184): every server had its port (the navigator, planner, costmaps, mppi_lag, smoother, stop zone, map server), so the launch starts only ours; <code>nav2_msgs</code> and the AMCL trial stay</td>
 <td>Ben</td>
 <td>2026-10-09</td>
 <td>sim</td>
@@ -546,8 +546,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td>Obstacles in the costmap, and a stop zone (<code>collision_monitor</code>)</td>
-<td>Radar and lidar points stop Nav2 before it hits something: 0.3-0.4 m short of a box on the bench</td>
+<td>Obstacles in the costmap, and a stop zone (Nav2's <code>collision_monitor</code>; <code>aav_stop_zone</code> since 17 Nov)</td>
+<td>Radar and lidar points stop navigation before it hits something: 0.3-0.4 m short of a box on the bench</td>
 <td>Ben</td>
 <td>2026-10-11</td>
 <td>sim</td>
@@ -659,7 +659,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="controllers.html#planners">Trial planners</a> (<code>planner:=</code> hybrid, lattice, smac2d, navfn or theta_star; the lattice on our own primitives, <code>pixi run python3 tools/lattice_primitives.py</code>, 16 headings or 32 with <code>lattice_headings:=32</code>)</td>
-<td>To see whether another of Nav2's planners plans better or faster than Hybrid-A<em> on the same routes, scored by <code>measure controllers --planners</code> (<code>--reversing</code> for the car's own setting, <code>lattice32</code> for the 32-heading file), before any replaces the default. The lattice won (30 Oct, reversing: every leg, 29 s quicker a tour) and is the default since 1 Nov; the car, forward only until H5, keeps Hybrid-A</em>. Only hybrid and lattice keep to the turning radius, so the car refuses the other three</td>
+<td>To see whether another of Nav2's planners plans better or faster than Hybrid-A<em> on the same routes, scored by <code>measure controllers --planners</code> (<code>--reversing</code> for the car's own setting, <code>lattice32</code> for the 32-heading file), before any replaces the default. The lattice won (30 Oct, reversing: every leg, 29 s quicker a tour) and is the default since 1 Nov; the car, forward only until H5, keeps Hybrid-A</em>. Only hybrid and lattice keep to the turning radius, so the car refused the other three. Deleted with Nav2 on 17 Nov: our planner (<code>planner:=own</code>, the lattice and Hybrid-A* ported) took their place</td>
 <td>Ben</td>
 <td>2026-10-29</td>
 <td>sim</td>
@@ -872,11 +872,11 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="../../ros/safety/aav_stop_zone/README.md">The stop zone in Rust</a> (<code>aav_stop_zone</code> <code>stop-zone</code>, no ROS): Nav2's collision_monitor stop decision ported: the box by direction, points from every sensor, a silent sensor stops, zeros held; its node runs in shadow (<code>stop_zone_shadow:=true</code>, its own topics)</td>
-<td>Ben, 14 Nov: "We want to run everythign ourselves in rust"; a safety lock, so its own tests first (TODO 182). Nav2's runs until the node scores the same</td>
+<td><a href="../../ros/safety/aav_stop_zone/README.md">The stop zone in Rust</a> (<code>aav_stop_zone</code> <code>stop-zone</code>, no ROS): Nav2's collision_monitor stop decision ported: the box by direction, points from every sensor, a silent sensor stops, zeros held; its node, the car's stop zone since 17 Nov in every stack (<code>stop_zone:=</code>; <code>/safety/stop_zone/state</code>, <code>status</code>, <code>box</code>)</td>
+<td>Ben, 14 Nov: "We want to run everythign ourselves in rust"; a safety lock, so its own tests first (TODO 182), then a shadow run beside Nav2's on every obstacle check (Ben, 16 Nov: "shadow run, then swap"): it stopped every time Nav2's did, no later, so it took the lock and Nav2 went</td>
 <td>Ben</td>
 <td>2026-11-15</td>
-<td>built</td>
+<td>sim</td>
 </tr>
 <tr>
 <td>Command mux and e-stop lock (<code>aav_command_mux</code>, twist_mux)</td>

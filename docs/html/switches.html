@@ -7,7 +7,7 @@
 <!-- Generated from docs/switches.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Switches: what you can swap in the simulated car</h1>
-<div class="meta">16 min read · 7 sections</div></header>
+<div class="meta">15 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -145,20 +145,18 @@ now, then delete"). One switch sets every level at once (<a href="league.html">t
 <td>ours: our planner, <code>mppi_lag</code>, our costmaps and navigator, the behaviour planner (<code>stack:=ours</code>)</td>
 </tr>
 <tr>
-<td><code>pixi run sim stack:=stock</code></td>
-<td>every level Nav2's: the yardstick</td>
+<td><code>pixi run sim stack:=best</code></td>
+<td>every level's champion</td>
 </tr>
 <tr>
-<td><code>pixi run sim costmap:=nav2</code></td>
-<td>Nav2's costmaps, the rest ours: <strong>a switch you give always wins</strong></td>
-</tr>
-<tr>
-<td><code>pixi run sim stack:=stock planner:=own</code></td>
-<td>Nav2's stack with our planner</td>
+<td><code>pixi run sim tracker:=lqr</code></td>
+<td>ours, but LQR steers: <strong>a switch you give always wins</strong></td>
 </tr>
 </tbody>
 </table></div>
-<p>The real car (<code>pixi run car</code>) keeps its own choices until ours wins there too.</p>
+<p>Nav2 went on 17 Nov (Ben, 16 Nov: "Now"; <a href="../history/nav2-as-it-was.md">Nav2, as it was</a>):
+<code>stack:=stock</code> and Nav2's planners, controllers, costmaps, navigator and smoother went with
+it. The real car (<code>pixi run car</code>) and the bench run ours too.</p>
 </section>
 <section class="card"><h2 id="who-draws-the-route">Who draws the route</h2>
 <div class="table-wrap"><table>
@@ -176,34 +174,14 @@ now, then delete"). One switch sets every level at once (<a href="league.html">t
 <td>8 Nov: the test lot 12 of 12 as Nav2's</td>
 </tr>
 <tr>
-<td><code>planner:=lattice</code> (<code>stack:=stock</code>, the car)</td>
-<td>Nav2's State Lattice: strings our car's own moves together; fast</td>
-<td>30 Oct, reversing: every leg, <strong>184 s</strong> a tour. Forward only (29 Oct): 2 of 4, lost the U-turn</td>
+<td><code>planner:=own planner_search:=hybrid</code></td>
+<td>ours running Hybrid-A* (<code>path:=hybrid_rs</code>, a challenger)</td>
+<td>14 Nov (<a href="own-planner.html">page</a>)</td>
 </tr>
 <tr>
-<td><code>planner:=hybrid</code> (forward only)</td>
-<td>Hybrid-A*: only routes a car can drive</td>
-<td>30 Oct, reversing: every leg, 213 s a tour</td>
-</tr>
-<tr>
-<td><code>planner:=lattice lattice_headings:=32</code></td>
+<td><code>lattice_headings:=32</code></td>
 <td>the lattice with 32 headings, not 16</td>
-<td>30 Oct, reversing: every leg, 197 s; slower plans. No better</td>
-</tr>
-<tr>
-<td><code>planner:=smac2d</code></td>
-<td>A<em> on the grid: </em><em>ignores the turning circle</em>*</td>
-<td>29 Oct, forward only: 2 of 4</td>
-</tr>
-<tr>
-<td><code>planner:=navfn</code></td>
-<td>NavFn, the classic: ignores the turning circle</td>
-<td>3 Nov, one leg: finished (its tightest turn 128 m)</td>
-</tr>
-<tr>
-<td><code>planner:=theta_star</code></td>
-<td>Theta*: straight lines: ignores the turning circle</td>
-<td>3 Nov, one leg: finished</td>
+<td>30 Oct (Nav2's lattice), reversing: every leg, 197 s; slower plans. No better</td>
 </tr>
 <tr>
 <td><code>planner:=diffusion</code> (a trial)</td>
@@ -212,10 +190,10 @@ now, then delete"). One switch sets every level at once (<a href="league.html">t
 </tr>
 </tbody>
 </table></div>
-<p>Nav2's lattice is the car's default since 1 Nov (Ben), now that it may reverse; the
-simulator runs ours since 14 Nov.
-Forward only (<code>reversing:=false</code>, or no lidar), the car takes <code>hybrid</code>: the lattice lost
-the U-turn. The real car takes only <code>hybrid</code> or <code>lattice</code> (it refuses <code>diffusion</code> too). More: <a href="controllers.html">Controllers, Planners</a>, <a href="trials.html#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">the runs</a>.</p>
+<p>Ours is the default everywhere since Nav2 went (17 Nov); the simulator ran it from 14 Nov.
+Nav2's planners (<code>lattice</code>, <code>hybrid</code>, <code>smac2d</code>, <code>navfn</code>, <code>theta_star</code>) went with it; their
+scores stay in <a href="controllers.html">Controllers, Planners</a>. The real car takes only <code>own</code> (it
+refuses <code>diffusion</code> without <code>diffusion_trial</code>). More: <a href="controllers.html">Controllers, Planners</a>, <a href="trials.html#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">the runs</a>.</p>
 </section>
 <section class="card"><h2 id="who-steers-along-the-path">Who steers along the path</h2>
 <div class="table-wrap"><table>
@@ -227,16 +205,6 @@ the U-turn. The real car takes only <code>hybrid</code> or <code>lattice</code> 
 </tr>
 </thead>
 <tbody>
-<tr>
-<td><code>controller:=mppi</code> (<code>stack:=stock</code>, the car)</td>
-<td>Nav2's: try 1,000 wiggles, keep the good ones. In the sim add <code>tracker:=none</code></td>
-<td>8-10 of 12 legs</td>
-</tr>
-<tr>
-<td><code>controller:=rpp</code></td>
-<td>Nav2's: steer at a point ahead, slow in bends (with <code>tracker:=none</code>)</td>
-<td>10 of 12</td>
-</tr>
 <tr>
 <td><code>tracker:=pure_pursuit</code></td>
 <td>ours: steer at a point ahead</td>
@@ -268,7 +236,7 @@ the U-turn. The real car takes only <code>hybrid</code> or <code>lattice</code> 
 <td>our simulator, 8 Nov: 6 of 12 (no U-turn by the building; <a href="trials.html#lag-aware-mpc-7-nov-mpc_lag">trials</a>)</td>
 </tr>
 <tr>
-<td><code>tracker:=mppi_lag</code> (default)</td>
+<td><code>tracker:=mppi_lag</code> (default; Nav2's MPPI and RPP went on 17 Nov)</td>
 <td>ours: Nav2's MPPI in Rust, knowing the steering and pedals lag (<a href="mppi-lag.html">page</a>)</td>
 <td>our simulator, 8 Nov, 3 runs: 11 of 12 (Nav2's MPPI 8; <a href="trials.html#results-our-simulator-8-nov-the-lot-tour-3-runs-each">trials</a>). It passes a goal at 2.5 m/s and uses twice Nav2's MPPI's CPU (<a href="own-navigator.html#the-verdict">our navigator</a>)</td>
 </tr>
@@ -281,8 +249,8 @@ In <code>demo --debug</code>, keys 1-4 swap the tracker live. More: <a href="con
 </section>
 <section class="card"><h2 id="where-am-i">Where am I</h2>
 <p>These run <strong>beside</strong> the EKFs and are only scored for now. They never steer, except
-<code>ndt_ekf:=true</code>: then the global EKF, which Nav2 plans by, takes NDT's pose too; and
-<code>kiss_ekf:=true</code>: then the local EKF, which Nav2 steers by, takes KISS-ICP's speed too.
+<code>ndt_ekf:=true</code>: then the global EKF, which the planner plans by, takes NDT's pose too; and
+<code>kiss_ekf:=true</code>: then the local EKF, which the follower steers by, takes KISS-ICP's speed too.
 In <code>pixi run pick</code>, <code>demo --debug</code> offers NDT + AMCL first (to see every finder); the
 others offer the EKFs only first.</p>
 <div class="table-wrap"><table>
@@ -379,7 +347,7 @@ law. <code>tracker:=mpc_lag</code> and <code>mpc_lag_rs</code> don't model <code
 </tr>
 <tr>
 <td><code>reversing:=false</code></td>
-<td>Nav2 drives forward only</td>
+<td>navigation drives forward only</td>
 </tr>
 <tr>
 <td><code>sim_speed:=3</code></td>
@@ -399,31 +367,31 @@ law. <code>tracker:=mpc_lag</code> and <code>mpc_lag_rs</code> don't model <code
 </tr>
 <tr>
 <td><code>voxels:=true</code></td>
-<td>Nav2 sees the lidar as 0.25 m cubes, not a flat scan (a trial: <a href="trials.html#voxels-30-oct-the-lidar-as-cubes">Trials</a>)</td>
+<td>the costmap sees the lidar as 0.25 m cubes, not a flat scan (a trial: <a href="trials.html#voxels-30-oct-the-lidar-as-cubes">Trials</a>)</td>
 </tr>
 <tr>
-<td><code>costmap:=own</code> (default; <code>costmap:=nav2</code>: Nav2's)</td>
+<td><code>costmap:=own</code> (the only one since 17 Nov)</td>
 <td>our own costmaps (Rust); <code>tracker:=mppi_lag</code> then reads ours. 8 Nov: the same grid as Nav2's, half the CPU; with its clear service, the obstacle legs 3 of 3 as Nav2's (<a href="own-costmap.html">page</a>)</td>
 </tr>
 <tr>
 <td><code>planner:=own</code> (default)</td>
-<td>our own planner (Rust: Nav2's lattice ported) answers the behaviour trees, Nav2's lattice beside it; with <code>costmap:=own</code> it plans on our global costmap. 8 Nov: the test lot 12 of 12 as Nav2's, about 20 % slower on the campus's long legs (<a href="own-planner.html">page</a>)</td>
+<td>our own planner (Rust: Nav2's lattice ported), on our global costmap. 8 Nov: the test lot 12 of 12 as Nav2's, about 20 % slower on the campus's long legs (<a href="own-planner.html">page</a>)</td>
 </tr>
 <tr>
-<td><code>navigator:=own</code> (default; <code>navigator:=nav2</code>: Nav2's)</td>
-<td>our own navigator (Rust) in place of Nav2's bt_navigator and waypoint_follower; with <code>planner:=own costmap:=own tracker:=mppi_lag</code> no Nav2 server navigates (all ours). 8 Nov: test lot 7 of 12 legs (Nav2 8), campus 4 of 6 (Nav2 2) (<a href="own-navigator.html">page</a>)</td>
+<td><code>navigator:=own</code> (the only one since 17 Nov)</td>
+<td>our own navigator (Rust) in place of Nav2's bt_navigator and waypoint_follower. 8 Nov: test lot 7 of 12 legs (Nav2 8), campus 4 of 6 (Nav2 2) (<a href="own-navigator.html">page</a>)</td>
 </tr>
 <tr>
-<td><code>smoother:=own</code></td>
+<td><code>smoother:=own</code> (the only one since 17 Nov)</td>
 <td>our own velocity smoother (Rust) in Nav2's <code>velocity_smoother</code>'s place: Nav2's speed limits, and the turn rate from where the wheels can be (the steering's rate and full lock). 8 Nov, test lot: the same legs as Nav2's, ego clipped 0-0.1 % of the steering against 9-15 % (<a href="own-smoother.html">page</a>)</td>
 </tr>
 </tbody>
 </table></div>
-<p>| <code>behaviour:=false</code> | no behaviour planner. On by default in the sim (<code>stack:=ours</code>; off with <code>stack:=stock</code>): a speed cap before a stop sign, an obstacle, the fence and the goal (<a href="stopping.html#2-the-behaviour-planner">page</a>) |
+<p>| <code>behaviour:=false</code> | no behaviour planner. On by default in the sim (<code>stack:=ours</code>; off with <code>stack:=best</code>): a speed cap before a stop sign, an obstacle, the fence and the goal (<a href="stopping.html#2-the-behaviour-planner">page</a>) |
 | <code>lane_map:=world</code> | with <code>behaviour:=true</code>: the road ahead's line on the right lane's centre, with its edges, from the world's lane map (the road world's, or the campus's <code>maps/campus/lanes.yaml</code>); or a <code>lanes.yaml</code>'s path. Off by default: the line is <code>/plan</code>'s |
 | <code>payload:=150</code>, <code>adaptive_brake:=true</code> | kg aboard the modelled car; the brake that learns it stops too slowly (off by default; not with <code>spine</code> or <code>esp32</code>: <a href="stopping.html#4-a-heavier-car-the-adaptive-brake">page</a>) |
 | <code>plan_around:=false</code> | the planner sees only the map, so the car stops for an obstacle (default <code>true</code>: it plans round) |
-| <code>obstacle:=true</code>, <code>ghost:=true</code> | a 1 m box 15 m ahead in the lane; a pretend person in Nav2's view (<a href="ghost-obstacles.html">page</a>) |</p>
+| <code>obstacle:=true</code>, <code>ghost:=true</code> | a 1 m box 15 m ahead in the lane; a pretend person only navigation sees (<a href="ghost-obstacles.html">page</a>) |</p>
 <h3 id="every-other-switch-of-simlaunchpy">Every other switch of <code>sim.launch.py</code></h3>
 <p><code>sim.launch.py</code> declares <strong>59</strong> switches (14 Nov); the tables above cover the ones that
 swap an algorithm. The rest:</p>
@@ -438,7 +406,7 @@ swap an algorithm. The rest:</p>
 <tbody>
 <tr>
 <td><code>nav</code>, <code>rviz</code>, <code>gui</code>, <code>chase_camera</code>, <code>arm</code>, <code>watchdog</code>, <code>actuator_model</code></td>
-<td>Nav2, RViz, the simulator's window, the chase camera, arming the spine, the sensor watchdog, the actuator model</td>
+<td>navigation, RViz, the simulator's window, the chase camera, arming the spine, the sensor watchdog, the actuator model</td>
 <td><code>true</code></td>
 </tr>
 <tr>
@@ -491,7 +459,7 @@ said LQI, and a Nav2 goal 15 m ahead ended SUCCEEDED.</p>
 <p>Checked 3 Nov (<a href="trials.html#3-nov-everything-for-02">the runs</a>): every switch that existed then
 started and drove a leg in Gazebo. Checked against the launch files 14 Nov: 0.3 changed one
 default (the simulator). Later on 14 Nov the sim's stack became ours (<code>stack:=ours</code>): the
-Sim column below. The bench and the car keep Nav2's; <code>stack:=stock</code> gives the sim Nav2's.</p>
+Sim column below. On 17 Nov Nav2 went: the bench and the car run ours too.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -507,42 +475,50 @@ Sim column below. The bench and the car keep Nav2's; <code>stack:=stock</code> g
 <tr>
 <td>Who draws the route</td>
 <td><code>own</code> (ours)</td>
-<td><code>lattice</code></td>
-<td><code>lattice</code> (<code>hybrid</code> if it can't reverse)</td>
-<td>every leg reversing, the fastest: 183 s a tour (3 Nov, 3 runs)</td>
-<td><code>hybrid</code>, <code>lattice32</code>, <code>smac2d</code>, <code>navfn</code>, <code>theta_star</code>, <code>diffusion</code> (8 Nov: 88 % from the model, still a trial), <code>own</code> (8 Nov: 12 of 12 as Nav2's; about 20 % slower on the campus)</td>
+<td><code>own</code></td>
+<td><code>own</code></td>
+<td>Nav2's lattice ported; Nav2's went on 17 Nov</td>
+<td>Hybrid-A* in ours (<code>planner_search:=hybrid</code>), <code>lattice32</code>, <code>diffusion</code> (8 Nov: 88 % from the model, still a trial)</td>
 </tr>
 <tr>
 <td>Who steers</td>
 <td><code>mppi_lag</code> (ours)</td>
-<td>MPPI</td>
-<td>MPPI</td>
+<td><code>mppi_lag</code></td>
+<td><code>mppi_lag</code></td>
 <td>it reads the costmap, so it steers round what the lidar sees; it reverses</td>
-<td>RPP; our pure pursuit, Stanley, LQR, MPC, <code>mpc_full</code>, <code>mpc_lag</code> (forward only), <code>mppi_lag</code> (reverses too); sim only: the bench and the car have no <code>tracker:=</code></td>
+<td>our pure pursuit, Stanley, LQR, MPC, <code>mpc_full</code>, <code>mpc_lag</code> (forward only), <code>mpc_lag_rs</code>; sim only: the bench and the car have no <code>tracker:=</code></td>
 </tr>
 <tr>
 <td>The costmaps</td>
 <td>ours</td>
-<td>Nav2's</td>
-<td>Nav2's (always)</td>
-<td>stock; the car never takes ours</td>
-<td><code>costmap:=own</code> (8 Nov: the same grid, half the CPU; sim only)</td>
+<td>ours</td>
+<td>ours</td>
+<td>Nav2's went on 17 Nov</td>
+<td></td>
 </tr>
 <tr>
 <td>Who runs the goal</td>
 <td>ours (<code>aav_navigator</code>)</td>
-<td>Nav2's <code>bt_navigator</code></td>
-<td>Nav2's (always)</td>
-<td>stock</td>
-<td><code>navigator:=own</code> (8 Nov: lot 7 of 12 legs, Nav2 8; campus 4 of 6, Nav2 2; sim only)</td>
+<td>ours</td>
+<td>ours</td>
+<td>Nav2's went on 17 Nov</td>
+<td></td>
 </tr>
 <tr>
 <td>The velocity smoother</td>
-<td>Nav2's</td>
-<td>Nav2's</td>
-<td>Nav2's (always)</td>
-<td>stock</td>
-<td><code>smoother:=own</code> (8 Nov: the same legs, ego clips 0-0.1 % against 9-15 %; sim only)</td>
+<td>ours</td>
+<td>ours</td>
+<td>ours</td>
+<td>Nav2's went on 17 Nov (a tie, 16 Nov)</td>
+<td></td>
+</tr>
+<tr>
+<td>The stop zone</td>
+<td>ours (<code>aav_stop_zone</code>)</td>
+<td>ours</td>
+<td>ours</td>
+<td>it stopped every time Nav2's did, no later, in its shadow run (17 Nov)</td>
+<td></td>
 </tr>
 <tr>
 <td>Behaviour planner</td>
@@ -561,7 +537,7 @@ Sim column below. The bench and the car keep Nav2's; <code>stack:=stock</code> g
 <td><code>reversing:=false</code></td>
 </tr>
 <tr>
-<td>What Nav2 sees</td>
+<td>What the costmap sees</td>
 <td>the flat lidar scan</td>
 <td>the radar only (no lidar)</td>
 <td>the flat scan</td>
@@ -597,7 +573,7 @@ Sim column below. The bench and the car keep Nav2's; <code>stack:=stock</code> g
 <td>on</td>
 <td>on</td>
 <td>on</td>
-<td>they hold Nav2 when the pose or a sensor goes bad</td>
+<td>they hold navigation when the pose or a sensor goes bad</td>
 <td><code>geofence:=false</code> (sim only)</td>
 </tr>
 <tr>

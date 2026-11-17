@@ -7,7 +7,7 @@
 <!-- Generated from docs/league.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The league</h1>
-<div class="meta">5 min read · 5 sections</div></header>
+<div class="meta">6 min read · 5 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -127,32 +127,40 @@ waiting to beat it.</p>
   │ Level      │ Champion  │ Challengers                  │
   ├────────────┼───────────┼──────────────────────────────┤
   │ pose       │ ekf       │ ndt_ekf, kiss_ekf            │
-  │ costmap    │ nav2      │ ours, ours_chunks            │
-  │ navigator  │ nav2      │ ours                         │
-  │ path       │ lattice   │ lattice_rs, lattice_smooth,  │
-  │            │           │ lattice_rs_smooth, hybrid,   │
-  │            │           │ hybrid_rs, diffusion,        │
-  │            │           │ lattice_rs_strong, lane      │
-  │ steer      │ mppi      │ mppi_lag, mppi_lag_calm,     │
-  │            │           │ mpc_lag, rpp                 │
-  │ smoother   │ nav2      │ ours                         │
-  │ lanes      │ off       │ ramp (lane costs, ours only) │
+  │ costmap    │ ours      │ ours_chunks, ours_all_chunks │
+  │ navigator  │ ours      │                              │
+  │ path       │ lattice_rs│ lattice_rs_smooth, hybrid_rs,│
+  │            │           │ lattice_rs_strong, lane,     │
+  │            │           │ lane_lanelet2, diffusion     │
+  │ steer      │ mppi_lag  │ mppi_lag_calm, mpc_lag,      │
+  │            │           │ mpc_lag_rs                   │
+  │ smoother   │ ours      │                              │
+  │ lanes      │ off       │ ramp (lane costs)            │
   │ behaviour  │ off       │ on (the road ahead)          │
   │ kerbs      │ off       │ on (the step finder)         │
   └────────────┴───────────┴──────────────────────────────┘
           │
           ▼
   pixi run sim                  ours: the simulator's default stack
-  pixi run sim stack:=stock     every level Nav2's: the yardstick</code></pre></div>
+  pixi run sim stack:=best      every level's champion</code></pre>
+<div class="admonition note">
+<p class="admonition-title">Nav2 went on 17 Nov (TODO 184)</p>
+<p>Ben, 16 Nov: delete Nav2 "Now". Each level Nav2 held handed over to its port: the
+costmap to <code>ours</code>, the navigator to <code>ours</code>, the path to <code>lattice_rs</code>, the steering to
+<code>mppi_lag</code>, the smoother to <code>ours</code>, and the stop zone (not a level: a safety lock) to
+<code>aav_stop_zone</code> once it had stopped every time Nav2's did, no later. <code>stack:=stock</code> and
+the Nav2 options went with it. What Nav2 was and its last scores:
+<a href="../history/nav2-as-it-was.md">Nav2, as it was</a>.</p>
+</div></div>
 <section class="card"><h2 id="the-latest-scores">The latest scores</h2>
 <p><strong>16 Nov, every level scored</strong> inside <code>stack:=ours</code>, then the best combination against it on
 all four tours: <a href="league-results-2026-11-16.html">the league's scores, 16 Nov</a>. No champion
 changed; <code>pose:=ndt_ekf</code> is the closest challenger (TODO 210). Nav2's last yardstick scores
-are there too.</p>
+are there too: the last time it ran.</p>
 </section>
 <section class="card"><h2 id="the-stacks">The stacks</h2>
 <p><strong>Ours is the simulator's default</strong> (Ben, 14 Nov: "Ours default now, then delete").
-The champions above stay as they are: they are what the car runs.</p>
+The champions above are what the car runs.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -164,10 +172,6 @@ The champions above stay as they are: they are what the car runs.</p>
 <tr>
 <td><code>ours</code> (the default)</td>
 <td>every level we built: our costmap (<code>ours_chunks</code> since 16 Nov: only the map's 64 m chunks round the car and along the route, <a href="own-costmap.html#from-map-chunks-on-every-core-16-nov-todo-175-195">why</a>), navigator, planner (<code>lane</code> since 16 Nov: the right lane's centre on the lane map, <code>lattice_rs_strong</code> off it, <a href="own-planner.html#the-swap-16-nov-3-clean-runs-each">why</a>), <code>mppi_lag_calm</code> (<code>mppi_lag</code> with <code>map_correction:=slow</code> and <code>mppi_lag_steer_gamma:=0.05</code>), the road ahead (<code>behaviour:=true</code>), and the kerbs (<code>kerbs:=true</code> since 16 Nov: the lidar's step finder, <a href="kerbs.html#in-the-simulator">why</a>). The two calm picks since 15 Nov: they took ours' sway to Nav2's (<a href="mppi-lag.html#the-sway-that-was-left">why</a>)</td>
-</tr>
-<tr>
-<td><code>stock</code></td>
-<td>every level stock: Nav2 and robot_localization</td>
 </tr>
 <tr>
 <td><code>best</code></td>
@@ -186,15 +190,14 @@ The champions above stay as they are: they are what the car runs.</p>
 <p>A switch you give by hand <strong>always wins</strong>:</p>
 <pre class="highlight"><code class="language-sh">pixi run sim world:=campus                       # all ours
 pixi run sim world:=campus tracker:=mpc_lag      # all ours, but MPC follows
-pixi run sim world:=campus costmap:=nav2         # Nav2's costmaps, the rest ours
-pixi run sim stack:=stock planner:=own           # Nav2's, but our planner</code></pre>
+pixi run sim stack:=best behaviour:=true        # the champions, with the road ahead</code></pre>
 <p>The launch prints what it picked, such as
 <code>stack:=ours - pose ekf, costmap ours_chunks, navigator ours, path lane, steer mppi_lag_calm, ...</code>.</p>
 <div class="admonition note">
 <p class="admonition-title">How a hand-set switch is seen</p>
 <p>The switches a stack sets are empty by default in <code>sim.launch.py</code>, meaning "the
 stack's choice". Any value you give is yours, even one that matches the champion:
-<code>costmap:=nav2</code> wins over <code>stack:=ours</code>.</p>
+<code>tracker:=mppi_lag</code> wins over <code>stack:=ours</code>' <code>mppi_lag_calm</code>.</p>
 </div>
 </section>
 <section class="card"><h2 id="one-switch-per-level-15-nov">One switch per level (15 Nov)</h2>
@@ -216,12 +219,12 @@ stack's choice". Any value you give is yours, even one that matches the champion
 </tr>
 <tr>
 <td><code>path:=</code></td>
-<td><code>lattice</code>, <code>lattice_rs</code>, <code>lattice_smooth</code>, <code>lattice_rs_smooth</code>, <code>hybrid</code>, <code>hybrid_rs</code>, <code>lattice_rs_strong</code>, <code>lane</code>, <code>diffusion</code></td>
-<td><code>planner</code>, <code>planner_search</code>, <code>plan_smoothing</code>, <code>lattice_moves</code>, <code>lane_route</code></td>
+<td><code>lattice_rs</code>, <code>lattice_rs_smooth</code>, <code>hybrid_rs</code>, <code>lattice_rs_strong</code>, <code>lane</code>, <code>lane_lanelet2</code>, <code>diffusion</code></td>
+<td><code>planner</code>, <code>planner_search</code>, <code>plan_smoothing</code>, <code>lattice_moves</code>, <code>lane_route</code>, <code>lane_graph</code></td>
 </tr>
 <tr>
 <td><code>steer:=</code></td>
-<td><code>mppi</code>, <code>mppi_lag</code>, <code>mppi_lag_calm</code>, <code>mpc_lag</code>, <code>rpp</code></td>
+<td><code>mppi_lag</code>, <code>mppi_lag_calm</code>, <code>mpc_lag</code>, <code>mpc_lag_rs</code></td>
 <td><code>controller</code>, <code>tracker</code>, <code>map_correction</code>, <code>mppi_lag_steer_gamma</code></td>
 </tr>
 <tr>
@@ -233,7 +236,7 @@ stack's choice". Any value you give is yours, even one that matches the champion
 </table></div>
 <pre class="highlight"><code class="language-sh">pixi run sim world:=campus path:=hybrid_rs       # all ours, but our Hybrid-A*
 pixi run sim world:=campus path:=lane            # all ours, the path on the right lane's centre
-pixi run sim stack:=stock steer:=mppi_lag_calm   # Nav2's, but our calm MPPI</code></pre>
+pixi run sim stack:=best steer:=mppi_lag_calm    # the champions, but the calm MPPI</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -252,7 +255,7 @@ pixi run sim stack:=stock steer:=mppi_lag_calm   # Nav2's, but our calm MPPI</co
 </tr>
 <tr>
 <td>the stack (<code>stack:=ours</code>)</td>
-<td>the fallback (Nav2's)</td>
+<td>the fallback (the champions')</td>
 </tr>
 </tbody>
 </table></div>
@@ -286,7 +289,7 @@ so they stay as they are. The old switches keep working.</p>
 </tr>
 <tr>
 <td>Nothing is deleted</td>
-<td>the loser stays a challenger (Ben, 5 Nov)</td>
+<td>the loser stays a challenger (Ben, 5 Nov). Nav2 was the one exception (Ben, 16 Nov)</td>
 </tr>
 </tbody>
 </table></div>
@@ -312,7 +315,7 @@ recording in its <code>score:</code>.</p>
 </tr>
 <tr>
 <td>Its tests</td>
-<td><code>ros/bringup/aav_description/test/test_stacks.py</code>: every switch real, <code>ours</code> reverses, a hand-set switch wins; <code>aav_bringup/test/test_sim_launch.py</code>: ours by default, <code>stock</code> is Nav2's, a hand-set switch wins</td>
+<td><code>ros/bringup/aav_description/test/test_stacks.py</code>: every switch real, <code>ours</code> reverses, a hand-set switch wins; <code>aav_bringup/test/test_sim_launch.py</code>: ours by default, <code>best</code> is the champions, <code>stock</code> refused, a hand-set switch wins</td>
 </tr>
 <tr>
 <td>The launch</td>
@@ -325,9 +328,9 @@ recording in its <code>score:</code>.</p>
 </tbody>
 </table></div>
 <p>Not yet: <code>stack:=</code> on <code>car.launch.py</code>, and <code>pixi run measure league</code> (re-score every
-challenger and propose a swap). <code>pixi run measure controllers --stacks nav2 own</code> scores
-<code>stock</code> against <code>ours</code> today: every run there starts from <code>stack:=stock</code> and names the
-pieces it tests, so its scores stay comparable with the runs before 14 Nov.</p></section>
+challenger and propose a swap). <code>pixi run measure controllers --stacks own own_calm</code> scores
+stacks against each other: every run there starts from <code>stack:=best</code> (until 17 Nov,
+<code>stack:=stock</code>) and names the pieces it tests.</p></section>
 <nav class="prevnext"><a class="prev" href="trials.html"><small>Previous</small>← Trials</a>
 <a class="next" href="league-results-2026-11-16.html"><small>Next</small>League scores, 16 Nov →</a></nav>
 </main>

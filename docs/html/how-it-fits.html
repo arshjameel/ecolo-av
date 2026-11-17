@@ -7,7 +7,7 @@
 <!-- Generated from docs/how-it-fits.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>How it fits together</h1>
-<div class="meta">14 min read · 9 sections</div></header>
+<div class="meta">13 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -244,7 +244,7 @@ topic. None of them knows what kind of vehicle it's driving.</p>
 <td>25</td>
 </tr>
 <tr>
-<td>Nav2: drive to a point on the map</td>
+<td>Navigation: drive to a point on the map</td>
 <td><code>/drivers/nav/cmd_vel</code></td>
 <td>20</td>
 </tr>
@@ -261,19 +261,18 @@ topic. None of them knows what kind of vehicle it's driving.</p>
 <p>Locks hold every driver below their priority: the e-stop (255), the no-timeout lock (60),
 the geofence (51), the stop sign and the sensor watchdog (30), the stop hold (21). See
 <a href="#7-safety-layers">section 7</a>.</p>
-<p>Teleop is just another driver. The keyboard's commands take the same path as Nav2's:
+<p>Teleop is just another driver. The keyboard's commands take the same path as navigation's:
 mux, ego, then the turtle or the car.</p>
-<h3 id="inside-the-nav2-driver">Inside the Nav2 driver</h3>
-<p><code>/drivers/nav/cmd_vel</code> is the end of a chain. In the simulator <strong>ours is the default</strong> for
-each step we have built (<code>stack:=ours</code>, since 14 Nov); Nav2's is one switch away
-(<code>stack:=stock</code>), and still the only choice on the car (<a href="league.html">The league</a>,
-<a href="switches.html">Switches</a>).</p>
+<h3 id="inside-the-navigation-driver">Inside the navigation driver</h3>
+<p><code>/drivers/nav/cmd_vel</code> is the end of a chain. Every step is ours, in the simulator and on
+the car: Nav2 went on 17 Nov (<a href="../history/nav2-as-it-was.md">Nav2, as it was</a>). Each step is a
+level of <a href="league.html">the league</a>, with challengers beside the champion
+(<a href="switches.html">Switches</a>).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Step</th>
-<th>Sim default (ours)</th>
-<th>The car, and <code>stack:=stock</code></th>
+<th>Ours</th>
 <th>Other choices</th>
 </tr>
 </thead>
@@ -281,49 +280,45 @@ each step we have built (<code>stack:=ours</code>, since 14 Nov); Nav2's is one 
 <tr>
 <td>Which roads</td>
 <td>none: a goal on the map</td>
-<td>the same</td>
 <td>street routes (Valhalla) or the campus's road graph, <code>aav_routes</code></td>
 </tr>
 <tr>
 <td>The rules: slow, stop, wait</td>
-<td>the behaviour planner, <code>aav_behaviour</code> (<a href="stopping.html">Stopping</a>)</td>
-<td>none</td>
+<td>the behaviour planner, <code>aav_behaviour</code> (<a href="stopping.html">Stopping</a>), in <code>stack:=ours</code></td>
 <td><code>behaviour:=false</code></td>
 </tr>
 <tr>
 <td>Plan, follow, replan, recover</td>
 <td><code>aav_navigator</code></td>
-<td>Nav2's bt_navigator</td>
-<td><code>navigator:=nav2</code></td>
+<td></td>
 </tr>
 <tr>
 <td>Where may I go</td>
 <td><code>aav_costmap</code></td>
-<td>Nav2's costmaps</td>
-<td><code>costmap:=nav2</code></td>
+<td></td>
 </tr>
 <tr>
 <td>The path</td>
 <td><code>aav_planner</code> (Nav2's lattice in Rust)</td>
-<td>Nav2's State Lattice (since 1 Nov)</td>
-<td>Hybrid-A* (forward only), the diffusion planner (<code>planner:=diffusion</code>)</td>
+<td>Hybrid-A* (<code>path:=hybrid_rs</code>), the lane's centre (<code>path:=lane</code>), the diffusion planner (<code>planner:=diffusion</code>)</td>
 </tr>
 <tr>
 <td>Steer along it</td>
 <td><code>aav_mppi_lag</code></td>
-<td>Nav2's MPPI</td>
-<td>Pure Pursuit (<code>tracker:=none controller:=rpp</code>); <code>aav_track</code> (<code>tracker:=</code>)</td>
+<td><code>aav_track</code> (<code>tracker:=</code>), <code>mpc_lag_rs</code></td>
 </tr>
 <tr>
 <td>Smooth the command</td>
-<td>Nav2's velocity smoother</td>
-<td>the same</td>
-<td><code>aav_smoother</code> (<code>smoother:=own</code>)</td>
+<td><code>aav_smoother</code></td>
+<td></td>
+</tr>
+<tr>
+<td>Stop for what is ahead</td>
+<td><code>aav_stop_zone</code></td>
+<td></td>
 </tr>
 </tbody>
 </table></div>
-<p>A switch given by hand wins over the stack: <code>pixi run sim costmap:=nav2</code> is ours with Nav2's
-costmaps.</p>
 </section>
 <section class="card"><h2 id="4-ego-the-virtual-car">4. ego: the virtual car</h2>
 <p>ego is the only node that knows the car is a car. Fifty times a second it turns <code>/control/cmd_vel</code>
@@ -376,7 +371,7 @@ files hand them to every part that needs them.</p>
 <td>where each sensor sits</td>
 </tr>
 <tr>
-<td>Nav2</td>
+<td>Navigation (costmaps, planner, mppi_lag, stop zone)</td>
 <td>the footprint, and the tightest turn: wheelbase ÷ tan(max steer) = 2.86 m</td>
 </tr>
 <tr>
@@ -508,18 +503,18 @@ the data comes from. See <a href="sources-and-targets.html">Sources and targets<
 </tr>
 </tbody>
 </table></div>
-<p>Two more, for the automatic drivers only (Nav2 and the AI slot; never a person or a test):</p>
+<p>Two more, for the automatic drivers only (navigation and the AI slot; never a person or a test):</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Layer</th>
-<th>Stops Nav2 when</th>
+<th>Stops navigation when</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>collision_monitor</td>
-<td>radar or lidar points in the stop zone just ahead; or the radar or lidar goes quiet for 1 s</td>
+<td>The stop zone (<code>aav_stop_zone</code>)</td>
+<td>radar or lidar points in the box just ahead (behind, reversing); or the radar or lidar goes quiet for 1 s</td>
 </tr>
 <tr>
 <td>The stop-sign lock (<code>aav_detector</code>'s watcher)</td>
@@ -527,7 +522,7 @@ the data comes from. See <a href="sources-and-targets.html">Sources and targets<
 </tr>
 <tr>
 <td>The stop hold (<code>aav_safety</code>)</td>
-<td>collision_monitor stopped the car: held until the zone stays clear for 1 s</td>
+<td>the stop zone stopped the car: held until the zone stays clear for 1 s</td>
 </tr>
 <tr>
 <td>The sensor watchdog (<code>aav_safety</code>)</td>
@@ -535,7 +530,7 @@ the data comes from. See <a href="sources-and-targets.html">Sources and targets<
 </tr>
 </tbody>
 </table></div>
-<p>The <strong>geofence</strong> (<code>aav_safety</code>, 29 Oct) holds every program, not only Nav2: before the
+<p>The <strong>geofence</strong> (<code>aav_safety</code>, 29 Oct) holds every program, not only navigation: before the
 car's stopping distance reaches the fence, or when the position can't be trusted. People
 still drive (<a href="geofence.html">Geofence</a>).</p>
 <div class="admonition warning">
@@ -543,7 +538,7 @@ still drive (<a href="geofence.html">Geofence</a>).</p>
 <p>The 2025-26 ESP32 firmware has no timeout. If the bridge dies, the last throttle stays
 on. Keep the wheels off the ground and the e-stop in hand: see <a href="firmware.html">Firmware</a>.
 So, with <code>frame_version: 1</code>, the bridge locks the programs out: twist_mux's no-timeout
-lock (60) holds scripted, replay, point, Nav2 and AI. Only people and the actuator
+lock (60) holds scripted, replay, point, navigation and AI. Only people and the actuator
 tests drive.</p>
 </div>
 </section>

@@ -7,7 +7,7 @@
 <!-- Generated from docs/decisions.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Decisions and open questions</h1>
-<div class="meta">58 min read · 16 sections</div></header>
+<div class="meta">60 min read · 17 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -119,7 +119,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-to-read-the-labels">How to read the labels</a><a href="#decided">Decided</a><a href="#tentative">Tentative</a><a href="#proposed-for-the-next-team-meeting">Proposed: for the next team meeting</a><a href="#ground-rules">Ground rules</a><a href="#decided-on-10-october-on-the-mac">Decided on 10 October, on the Mac</a><a href="#decided-on-11-october">Decided on 11 October</a><a href="#decided-on-15-october">Decided on 15 October</a><a href="#decided-on-22-and-23-october">Decided on 22 and 23 October</a><a href="#decided-on-24-october">Decided on 24 October</a><a href="#decided-on-25-october">Decided on 25 October</a><a href="#decided-on-29-october">Decided on 29 October</a><a href="#decided-from-26-october-to-14-november">Decided from 26 October to 14 November</a><a href="#proposed-in-november-bens-to-decide">Proposed in November: Ben&#x27;s to decide</a><a href="#open-questions">Open questions</a><a href="#also-waiting-on-the-team">Also waiting on the team</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-to-read-the-labels">How to read the labels</a><a href="#decided">Decided</a><a href="#tentative">Tentative</a><a href="#proposed-for-the-next-team-meeting">Proposed: for the next team meeting</a><a href="#ground-rules">Ground rules</a><a href="#decided-on-10-october-on-the-mac">Decided on 10 October, on the Mac</a><a href="#decided-on-11-october">Decided on 11 October</a><a href="#decided-on-15-october">Decided on 15 October</a><a href="#decided-on-22-and-23-october">Decided on 22 and 23 October</a><a href="#decided-on-24-october">Decided on 24 October</a><a href="#decided-on-25-october">Decided on 25 October</a><a href="#decided-on-29-october">Decided on 29 October</a><a href="#decided-from-26-october-to-14-november">Decided from 26 October to 14 November</a><a href="#decided-on-17-november">Decided on 17 November</a><a href="#proposed-in-november-bens-to-decide">Proposed in November: Ben&#x27;s to decide</a><a href="#open-questions">Open questions</a><a href="#also-waiting-on-the-team">Also waiting on the team</a></nav>
 <div class="lead"><p>What the team has decided, what's still open, and the 34 numbered questions. The source
 is the team design doc, <em>AAV 2026–27 Autonomy Stack — Architecture &amp; Plan</em> (a Claude Doc,
 revision 61 on 10 October 2026). This page is a short copy, so you don't have to hunt.
@@ -979,6 +979,34 @@ answer.</p>
 <td>16 Nov</td>
 <td><strong>New ROS nodes are Rust</strong> (rclrs), replacing decision 8's "Python for the ROS nodes we write". Still Python: ML on the GPU (train in PyTorch; inference later through ONNX), launch files, tools and tests</td>
 <td>Ben: "lets remove python were possible. I trust rust more then python"</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="decided-on-17-november">Decided on 17 November</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Why</th>
+<th>By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Nav2 deleted; ours everywhere</strong> (TODO 184): the simulator, the bench and the car run our navigator, planner, costmaps, <code>mppi_lag</code>, smoother, stop zone and map server. Kept: <code>nav2_msgs</code>, and <code>nav2_amcl</code> for the AMCL trial (<a href="../history/nav2-as-it-was.md">Nav2, as it was</a>)</td>
+<td>Ben, 16 Nov: "Now". Every Nav2 server had its port, scored on 16 Nov (<a href="league-results-2026-11-16.html">the league</a>)</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>Our stop zone is the stop zone</strong> (<code>aav_stop_zone</code>, TODO 182)</td>
+<td>Ben, 16 Nov: "shadow run, then swap". In shadow on every obstacle check, 3 rounds, it stopped on the same command all 24 times Nav2's did, never later</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>The EKFs take the car's command, to slow only</strong> (robot_localization's control term, TODO 207)</td>
+<td>With the wheels quiet the EKFs ran on at their last speed, and <code>map -&gt; odom</code> jumped 9-10 m when the wheels came back; <code>sim-check --faults</code> 14 of 14, three runs in a row</td>
+<td>Ben</td>
 </tr>
 </tbody>
 </table></div>

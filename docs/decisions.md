@@ -226,6 +226,14 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | 16 Nov | **Rust is the default on the car too** for ego + look_ahead, behaviour, the sensor watchdog and localization_health (`aav_ego_rs`, `aav_behaviour_rs`, `aav_watchdog_rs`, `aav_localization_health_rs`). The Python stays installed, one switch each (`*_impl:=python`), until a car day proves the Rust ([car day, 4f](car-day.md#4f-the-rust-nodes-are-the-ones-running)) | Ben: "watchdog in rust sure"; the same answers as the Python, in the simulator first |
 | 16 Nov | **New ROS nodes are Rust** (rclrs), replacing decision 8's "Python for the ROS nodes we write". Still Python: ML on the GPU (train in PyTorch; inference later through ONNX), launch files, tools and tests | Ben: "lets remove python were possible. I trust rust more then python" |
 
+## Decided on 17 November
+
+| Decision | Why | By |
+|---|---|---|
+| **Nav2 deleted; ours everywhere** (TODO 184): the simulator, the bench and the car run our navigator, planner, costmaps, `mppi_lag`, smoother, stop zone and map server. Kept: `nav2_msgs`, and `nav2_amcl` for the AMCL trial ([Nav2, as it was](history/nav2-as-it-was.md)) | Ben, 16 Nov: "Now". Every Nav2 server had its port, scored on 16 Nov ([the league](league-results-2026-11-16.md)) | Ben |
+| **Our stop zone is the stop zone** (`aav_stop_zone`, TODO 182) | Ben, 16 Nov: "shadow run, then swap". In shadow on every obstacle check, 3 rounds, it stopped on the same command all 24 times Nav2's did, never later | Ben |
+| **The EKFs take the car's command, to slow only** (robot_localization's control term, TODO 207) | With the wheels quiet the EKFs ran on at their last speed, and `map -> odom` jumped 9-10 m when the wheels came back; `sim-check --faults` 14 of 14, three runs in a row | Ben |
+
 ## Proposed in November: Ben's to decide
 
 Designs, **nothing of them built**.

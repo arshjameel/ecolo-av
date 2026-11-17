@@ -7,7 +7,7 @@
 <!-- Generated from docs/safety-case.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The safety case</h1>
-<div class="meta">23 min read · 18 sections</div></header>
+<div class="meta">25 min read · 18 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -176,7 +176,7 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
  ROS locks     twist_mux: e-stop (255), no-timeout (60), geofence (51), stop sign and
                sensor watchdog (30), stop hold (21) ── a lock holds every slot below it
      │
- the planner   Nav2's stop zone (collision_monitor), the costmap, the behaviour planner</code></pre>
+ the planner   the stop zone (aav_stop_zone), the costmap, the behaviour planner</code></pre>
 <p>The locks are in <code>ros/command_mux/aav_command_mux/config/twist_mux.yaml</code>.</p>
 </section>
 <section class="card"><h2 id="all-hazards-at-a-glance">All hazards at a glance</h2>
@@ -311,8 +311,8 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
 <tbody>
 <tr>
 <td>Stop zone</td>
-<td>Nav2's <code>collision_monitor</code> zeroes <code>/drivers/nav/cmd_vel</code> when the radar or lidar sees a point in front of the bumper</td>
-<td><code>aav_navigation</code></td>
+<td><code>aav_stop_zone</code> zeroes <code>/drivers/nav/cmd_vel</code> when the radar or lidar sees 3 points in front of the bumper, or a sensor goes silent. Nav2's <code>collision_monitor</code> until 17 Nov; ours took the lock after its shadow run (<a href="#the-stop-zones-swap-17-nov">the swap</a>)</td>
+<td><code>aav_stop_zone</code></td>
 </tr>
 <tr>
 <td>Stop hold</td>
@@ -321,8 +321,8 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
 </tr>
 <tr>
 <td>Costmap</td>
-<td>the controller's own collision check can stop first</td>
-<td>Nav2, or <code>aav_costmap</code></td>
+<td>the follower's own collision check can stop first</td>
+<td><code>aav_costmap</code>, <code>aav_mppi_lag</code></td>
 </tr>
 <tr>
 <td>Behaviour planner</td>
@@ -392,12 +392,18 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
 </tr>
 </tbody>
 </table></div>
-<p><strong>Gaps:</strong> the stop zone and the stop hold hold only Nav2 and the AI slot. The point driver
+<p><strong>Gaps:</strong> the stop zone and the stop hold hold only navigation and the AI slot. The point driver
 (25), scripts and replay are not stopped by an obstacle. The roof lidar can't see a 1 m
 box inside the stop zone: the radar's job (<a href="perception.html">perception</a>). The flat scan
 sees no kerb 0.3 m high or lower; the step finder does, with <code>kerbs:=true</code> (<a href="#13-a-kerb">13</a>).
 The ghost test on
 the car is written down but not run (<a href="ghost-obstacles.html#on-the-real-car">ghost obstacles</a>).</p>
+<h3 id="the-stop-zones-swap-17-nov">The stop zone's swap (17 Nov)</h3>
+<p>Ours (<code>aav_stop_zone</code>) ran in shadow beside Nav2's <code>collision_monitor</code> on every obstacle
+check, 3 rounds: <strong>Nav2 stopped 24 times; ours stopped on the same command all 24, never
+later</strong> (each node's own log of its decision). Ours also stopped alone, up to 3.7 s, at
+start-up: only extra caution. So ours took the lock, and Nav2 went
+(<a href="../history/nav2-as-it-was.md#the-swap-of-the-stop-zone">the table</a>).</p>
 </section>
 <section class="card"><h2 id="2-an-obstacle-behind-while-reversing">2. An obstacle behind, while reversing</h2>
 <div class="table-wrap"><table>
@@ -411,8 +417,8 @@ the car is written down but not run (<a href="ghost-obstacles.html#on-the-real-c
 <tbody>
 <tr>
 <td>Rear stop zone</td>
-<td><code>collision_monitor</code>'s zone behind the rear bumper, from the lidar</td>
-<td><code>aav_navigation</code>, <code>reversing:=true</code></td>
+<td>the stop zone's box behind the rear bumper, from the lidar</td>
+<td><code>aav_stop_zone</code>, <code>reversing:=true</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -640,7 +646,7 @@ brake does with no power (<a href="esp32-safety.html">ESP32 safety</a>, row 7; t
 <tbody>
 <tr>
 <td>Sensor watchdog</td>
-<td>a sensor stale, NaN, frozen or jumped: holds the point driver, Nav2 and the AI slot (twist_mux 30). It sends 10 times a second: 1 s of its own silence holds them too</td>
+<td>a sensor stale, NaN, frozen or jumped: holds the point driver, navigation and the AI slot (twist_mux 30). It sends 10 times a second: 1 s of its own silence holds them too</td>
 <td><code>aav_safety</code> <code>sensor_watchdog.py</code></td>
 </tr>
 <tr>
@@ -697,6 +703,11 @@ brake does with no power (<a href="esp32-safety.html">ESP32 safety</a>, row 7; t
 <tr>
 <td><code>--faults</code> 3 of 3</td>
 <td>sim (ours), 8 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>Fixed 17 Nov (TODO 207):</strong> 1-6 fault cases a run failed after <code>odom stop</code>: with the wheels quiet, both EKFs kept their last speed and acceleration, <code>ekf_local</code> ran 15 m on while the car stood, and <code>map -&gt; odom</code> jumped 9-10 m back when the wheels returned. Now the car's command may slow each EKF's speed (robot_localization's control term, never speeding it up). And the watchdog waits 10 s, not 3, after its own stall before anything latches (DDS took 7 s to bring the HUD's beats back, and the HUD latched LOST). <code>sim-check --faults</code> <strong>14 of 14, 3 runs in a row</strong> (the Rust watchdog, a computer at load 10-34)</td>
+<td>sim (ours), 17 Nov</td>
 <td>Ben</td>
 </tr>
 <tr>
@@ -984,7 +995,7 @@ measurement.</p>
 <tbody>
 <tr>
 <td>Sensor watchdog</td>
-<td>GPS lost, NaN or jumped: holds the point driver, Nav2 and the AI slot</td>
+<td>GPS lost, NaN or jumped: holds the point driver, navigation and the AI slot</td>
 <td><code>aav_safety</code></td>
 </tr>
 <tr>
@@ -1048,7 +1059,7 @@ measurement.</p>
 </tr>
 <tr>
 <td>Stop-sign lock</td>
-<td>holds the point driver, Nav2 and the AI slot about 4.7 m before the sign (twist_mux 30); a watcher that dies while true keeps the car stopped</td>
+<td>holds the point driver, navigation and the AI slot about 4.7 m before the sign (twist_mux 30); a watcher that dies while true keeps the car stopped</td>
 <td><code>stop_sign</code> watcher</td>
 </tr>
 <tr>
@@ -1113,7 +1124,7 @@ measurement.</p>
 </tr>
 <tr>
 <td>Watchdog</td>
-<td>quiet or stuck 1 s: holds the point driver, Nav2 and the AI slot; after the first 5 s, latched (<code>hud LOST</code>)</td>
+<td>quiet or stuck 1 s: holds the point driver, navigation and the AI slot; after the first 5 s, latched (<code>hud LOST</code>)</td>
 <td><code>aav_safety</code> <code>sensor_watchdog.py</code></td>
 </tr>
 </tbody>
@@ -1164,12 +1175,12 @@ measurement.</p>
 <tr>
 <td>Costmap</td>
 <td>the local costmap's <code>kerb_layer</code> marks it, and nothing clears it</td>
-<td>Nav2's, or <code>aav_costmap</code></td>
+<td><code>aav_costmap</code></td>
 </tr>
 <tr>
 <td>Stop zone</td>
-<td><code>collision_monitor</code>'s <code>steps</code> source</td>
-<td><code>aav_navigation</code></td>
+<td>the stop zone's <code>steps</code> source (Nav2's <code>collision_monitor</code>'s until 17 Nov)</td>
+<td><code>aav_stop_zone</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1254,7 +1265,7 @@ kerb it saw only from far forgets it. Not tried on the real VLP-16.</p>
 <td>163</td>
 </tr>
 <tr>
-<td>Obstacles stop only Nav2 and the AI slot</td>
+<td>Obstacles stop only navigation and the AI slot</td>
 <td>1</td>
 <td></td>
 </tr>

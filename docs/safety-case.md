@@ -86,6 +86,14 @@ sees no kerb 0.3 m high or lower; the step finder does, with `kerbs:=true` ([13]
 The ghost test on
 the car is written down but not run ([ghost obstacles](ghost-obstacles.md#on-the-real-car)).
 
+### The stop zone's swap (17 Nov)
+
+Ours (`aav_stop_zone`) ran in shadow beside Nav2's `collision_monitor` on every obstacle
+check, 3 rounds: **Nav2 stopped 24 times; ours stopped on the same command all 24, never
+later** (each node's own log of its decision). Ours also stopped alone, up to 3.7 s, at
+start-up: only extra caution. So ours took the lock, and Nav2 went
+([the table](history/nav2-as-it-was.md#the-swap-of-the-stop-zone)).
+
 ## 2. An obstacle behind, while reversing
 
 | Layer | What | Where |
@@ -167,6 +175,7 @@ brake does with no power ([ESP32 safety](esp32-safety.md), row 7; tests 3.5, 3.8
 | 13 faults on purpose, each stops the car within 6 s | sim (Gazebo), `sim-check --faults` | Ben |
 | frozen wheels: 25 of 25 caught | sim (Gazebo), since 24 Oct | Ben |
 | `--faults` 3 of 3 | sim (ours), 8 Nov | Ben |
+| **Fixed 17 Nov (TODO 207):** 1-6 fault cases a run failed after `odom stop`: with the wheels quiet, both EKFs kept their last speed and acceleration, `ekf_local` ran 15 m on while the car stood, and `map -> odom` jumped 9-10 m back when the wheels returned. Now the car's command may slow each EKF's speed (robot_localization's control term, never speeding it up). And the watchdog waits 10 s, not 3, after its own stall before anything latches (DDS took 7 s to bring the HUD's beats back, and the HUD latched LOST). `sim-check --faults` **14 of 14, 3 runs in a row** (the Rust watchdog, a computer at load 10-34) | sim (ours), 17 Nov | Ben |
 | a 2.5 s stall of the whole Mac flagged, then let go | bench, Oct | Ben |
 | joystick alive: `bench-check` 11 of 11 | bench, 2 Nov | Ben |
 | respawn and age checks | tests only | Ben |

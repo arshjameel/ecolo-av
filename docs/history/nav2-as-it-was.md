@@ -40,7 +40,32 @@ delete it "Now" (TODO 184), with the stop zone "shadow run, then swap". It went 
 The stop zone is a safety lock, so it ran in shadow first: ours on its own topics beside
 Nav2's `collision_monitor`, driving nothing, on every obstacle check.
 
-SHADOW_TABLE
+Three rounds (17 Nov, our simulator, `sim-check --obstacle --lidar-obstacle --kerb --moving
+--behaviour-things --faults --with stop_zone_shadow:=true`). Each node logs its decision on
+the command it decides on; for each of Nav2's stops, was ours stopped on the same command?
+
+| Check | Runs | Nav2's stops | Ours stopped too | Ours later |
+|---|---|---|---|---|
+| obstacle (the radar) | 3 | 2 | 2 | never |
+| lidar obstacle | 3 | 6 | 6 | never |
+| kerb (lidar) | 3 | 4 | 4 | never |
+| kerb (lidar and radar) | 3 | 4 | 4 | never |
+| moving thing | 3 | 3 | 3 | never |
+| parked box | 3 | 2 | 2 | never |
+| faults (the radar silent) | 3 | 3 | 3 | never |
+| **All** | 21 | **24** | **24** | **never** |
+
+Ours also stopped alone, for up to 3.7 s: at start-up, before Nav2's had been switched on
+(a silent sensor stops ours at once). Only extra caution.
+
+!!! note "Two clocks"
+    sim-check also timed each node's state message as it arrived (`AAV_SHADOW_LOG`). On a
+    busy computer (load 10-34) ours' messages sometimes came later: up to 1.95 s with the
+    car standing (0 cm), and 0.16 s (8 cm) once in a fault run. The nodes' own logs show ours
+    decided on the same command each time, 13 µs sooner in that fault run: the delay was
+    the message, not the decision.
+
+So ours took the lock (TODO 182): `stop_zone:=` in every stack, on the bench and the car.
 
 ## The last scores
 

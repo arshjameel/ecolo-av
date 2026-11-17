@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">125 min read · 4 sections</div></header>
+<div class="meta">120 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="overview.html">Overview</a>
 <a href="release-0.4.html">0.4-rc1</a>
@@ -235,18 +235,18 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <tr>
 <td><code>/drivers/nav/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
-<td><code>velocity_smoother</code>, <code>collision_monitor</code></td>
+<td><code>velocity_smoother</code>, <code>stop_zone</code></td>
 <td><code>twist_mux</code>, <code>language_drive</code>, <code>ego</code></td>
 <td>-</td>
-<td>Priority 20. Nav2. From collision_monitor where the radar or the lidar runs (navigation.launch.py radar:=true or lidar:=true - the bench, the car with its radar part, Gazebo's road and test_lot worlds), else straight from velocity_smoother. With smoother:=own (sim only, docs/own-smoother.md) velocity_smoother is aav_smoother's car_smoother under Nav2's node name - the same parameters and topics, the turn rate from the steering's rate and full lock.</td>
+<td>Priority 20. Navigation (ours since Nav2 went, 17 Nov). From the stop zone (aav_stop_zone) where a radar, lidar or ghost feeds it (navigation.launch.py stop_zone:=true - the bench, the car with its radar or lidar, the simulator's road and test_lot worlds), else straight from velocity_smoother (aav_smoother's car_smoother under Nav2's old node name, docs/own-smoother.md).</td>
 </tr>
 <tr>
 <td><code>/control/cmd_vel_smoothed</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>velocity_smoother</code></td>
-<td><code>collision_monitor</code></td>
+<td><code>stop_zone</code></td>
 <td>-</td>
-<td>Nav2's smoothed command, into collision_monitor, where the radar or the lidar runs. It stops the car for radar or lidar points in its stop zone, or when either goes silent; it only guards Nav2.</td>
+<td>The smoothed command, into the stop zone (aav_stop_zone), where a sensor feeds it. It stops the car for radar or lidar points in its box, or when a sensor goes silent; it only guards navigation.</td>
 </tr>
 <tr>
 <td><code>/safety/sensor_watchdog/lock</code></td>
@@ -297,28 +297,28 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td>The hardware panel is alive - the number of frames it has drawn, 10 Hz. Read only with sim watch_screens - a test of what stops the car, refused for the real car</td>
 </tr>
 <tr>
-<td><code>/safety/collision_monitor/state</code></td>
+<td><code>/safety/stop_zone/state</code></td>
 <td><code>nav2_msgs/msg/CollisionMonitorState</code></td>
-<td><code>collision_monitor</code></td>
-<td><code>stop_hold</code></td>
-<td>-</td>
-<td>What collision_monitor does, on each change - action_type 0 nothing, 1 stop; polygon_name StopZone, or "invalid source" when the radar or the lidar is silent or its TF is late. It decides afresh on every command, so it can flicker between the two at the stop zone's edge - stop_hold holds the stop.</td>
-</tr>
-<tr>
-<td><code>/safety/stop_zone/shadow/cmd_vel</code></td>
-<td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>stop_zone</code></td>
+<td><code>stop_hold</code>, <code>controller_compare</code></td>
 <td>-</td>
-<td>-</td>
-<td>Our stop zone in Rust (aav_stop_zone, stop_zone_shadow:=true), in shadow - the command collision_monitor's twin would send, zero where it would stop. Nothing reads it; measures compare it with collision_monitor's (TODO 182).</td>
+<td>What the stop zone does (aav_stop_zone, the car's since 17 Nov - it replaced Nav2's collision_monitor after stopping every time it did, no later - docs/safety-case.md), on each change, in collision_monitor's message - action_type 0 nothing, 1 stop; polygon_name StopZone, or "invalid source" when a sensor it reads is silent. It decides afresh on every command, so it can flicker between the two at the box's edge - stop_hold holds the stop.</td>
 </tr>
 <tr>
-<td><code>/safety/stop_zone/shadow/state</code></td>
+<td><code>/safety/stop_zone/status</code></td>
 <td><code>diagnostic_msgs/msg/DiagnosticStatus</code></td>
 <td><code>stop_zone</code></td>
 <td>-</td>
 <td>-</td>
-<td>Each command - OK (clear) or WARN and why it would stop (points in the forward or backward box, or a silent sensor).</td>
+<td>Each command - name stop_zone; level OK (clear) or WARN and why it stops (points in the forward or backward box, or a silent sensor); values stop, band (the box in use, by speed) and sent.</td>
+</tr>
+<tr>
+<td><code>/safety/stop_zone/box</code></td>
+<td><code>geometry_msgs/msg/PolygonStamped</code></td>
+<td><code>stop_zone</code></td>
+<td>-</td>
+<td>-</td>
+<td>The box in use in base_link, each command, for RViz and Foxglove (collision_monitor's polygon_pub_topic) - from the front bumper ahead (behind, reversing), 0.2 m wider than the body each side (vehicle.yaml, through aav_description vehicle.py).</td>
 </tr>
 <tr>
 <td><code>/safety/stop_hold/lock</code></td>
@@ -326,7 +326,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>stop_hold</code></td>
 <td><code>twist_mux</code>, <code>language_drive</code>, <code>behaviour</code></td>
 <td>bench, road</td>
-<td>true from collision_monitor's STOP until it has said anything else for 1 s without a break (aav_safety stop_hold, 10 Hz, wherever navigation.launch.py starts collision_monitor). A twist_mux lock at priority 21 - it holds Nav2 (20) and the AI slot (10) only, never the point driver, a person or a test. Timeout 0 - silence locks nothing (profiles without collision_monitor never publish it), and a stop_hold that dies while true keeps the stop. Without it, an obstacle at the stop zone's edge flickered the monitor between stop and go, and each go let the car creep on.</td>
+<td>true from the stop zone's STOP (/safety/stop_zone/state) until it has said anything else for 1 s without a break (aav_safety stop_hold, 10 Hz, wherever navigation.launch.py starts the stop zone). A twist_mux lock at priority 21 - it holds navigation (20) and the AI slot (10) only, never the point driver, a person or a test. Timeout 0 - silence locks nothing (profiles without the stop zone never publish it).</td>
 </tr>
 <tr>
 <td><code>/drivers/language/heartbeat</code></td>
@@ -361,20 +361,12 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td>The fence in the map frame (a circle as 36 corners), for RViz and Lichtblick, and so the point driver and the drive server refuse a goal outside it before the car moves. Reliable, transient local, depth 1 - sent once, at start-up.</td>
 </tr>
 <tr>
-<td><code>/safety/collision_monitor/stop_zone</code></td>
-<td><code>geometry_msgs/msg/PolygonStamped</code></td>
-<td><code>collision_monitor</code></td>
-<td>-</td>
-<td>-</td>
-<td>The stop zone in base_link, for RViz - from the front bumper to 1 m ahead, 0.2 m wider than the body each side (vehicle.yaml, through aav_description vehicle.py).</td>
-</tr>
-<tr>
 <td><code>/safety/ghost/scan</code></td>
 <td><code>sensor_msgs/msg/LaserScan</code></td>
 <td><code>ghost_obstacle</code></td>
-<td><code>local_costmap</code>, <code>collision_monitor</code></td>
+<td><code>costmap</code>, <code>stop_zone</code></td>
 <td>-</td>
-<td>A pretend person for stopping tests with nothing real to hit (aav_ghost ghost_obstacle, navigation.launch.py ghost:=true - sim.launch.py and car.launch.py pass it; off by default). In base_link, 720 ranges all the way round, 10 Hz - the ghost's near side, inf everywhere else, all inf with no ghost. Read by the local costmap's own ghost_layer and as collision_monitor's ghost source, so it only ever adds an obstacle, never clears or hides a real one. Silent for 1 s, it stops Nav2 like a silent radar. Placed with pixi run ghost (ahead 10, at x y, off). docs/ghost-obstacles.md.</td>
+<td>A pretend person for stopping tests with nothing real to hit (aav_ghost ghost_obstacle, navigation.launch.py ghost:=true - sim.launch.py and car.launch.py pass it; off by default). In base_link, 720 ranges all the way round, 10 Hz - the ghost's near side, inf everywhere else, all inf with no ghost. Read by the local costmap's ghost layer and as the stop zone's ghost source, so it is stopped for like a real one.</td>
 </tr>
 <tr>
 <td><code>/safety/ghost/marker</code></td>
@@ -383,14 +375,6 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td>-</td>
 <td>-</td>
 <td>The ghost as a purple cylinder in the map frame, for RViz and Lichtblick; DELETE when it goes.</td>
-</tr>
-<tr>
-<td><code>/safety/collision_monitor/collision_points_marker</code></td>
-<td><code>visualization_msgs/msg/MarkerArray</code></td>
-<td><code>collision_monitor</code></td>
-<td>-</td>
-<td>-</td>
-<td>The radar and lidar points collision_monitor sees, for RViz; sent only while someone listens.</td>
 </tr>
 <tr>
 <td><code>/drivers/scripted/lag_aware</code></td>
@@ -444,7 +428,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/control/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
 <td><code>twist_mux</code></td>
-<td><code>ego</code>, <code>actuator_test</code>, <code>point_driver</code>, <code>hw_panel</code></td>
+<td><code>ego</code>, <code>actuator_test</code>, <code>point_driver</code>, <code>hw_panel</code>, <code>ekf_local</code>, <code>ekf_global</code></td>
 <td>turtle, sim, car, bench</td>
 <td>The one command ego obeys. v (m/s) and w (rad/s) in base_link.</td>
 </tr>
@@ -788,9 +772,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/sensors/radar/points</code></td>
 <td><code>sensor_msgs/msg/PointCloud2</code></td>
 <td><code>radar</code>, <code>mock_radar</code>, <code>gazebo_radar</code>, <code>carla_adapter</code></td>
-<td><code>radar_clusters</code>, <code>local_costmap</code>, <code>collision_monitor</code>, <code>sensor_watchdog</code>, <code>actuator_test</code>, <code>hw_panel</code></td>
+<td><code>radar_clusters</code>, <code>costmap</code>, <code>stop_zone</code>, <code>sensor_watchdog</code>, <code>actuator_test</code>, <code>hw_panel</code></td>
 <td>bench, road</td>
-<td>The TI radar's points, in radar_link, 10 Hz, an empty cloud when it sees nothing. Best effort - subscribe best effort, or nothing matches. Clustered by radar_clusters (aav_radar_clusters, Rust); read by the local costmap's obstacle layer and collision_monitor where it runs (navigation.launch.py radar:=true). In Gazebo's road world, gazebo_radar makes them from a lidar shaped like the radar - the rays that hit something, with the TI driver's fields.</td>
+<td>The TI radar's points, in radar_link, 10 Hz, an empty cloud when it sees nothing. Best effort - subscribe best effort, or nothing matches. Clustered by radar_clusters (aav_radar_clusters, Rust); read by the local costmap's obstacle layer and the stop zone where it runs (navigation.launch.py radar:=true). In Gazebo's road world, gazebo_radar makes them from a lidar shaped like the radar - the rays that hit something, with the TI driver's fields.</td>
 </tr>
 <tr>
 <td><code>/vehicle/battery</code></td>
@@ -884,23 +868,23 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/sensors/lidar/scan</code></td>
 <td><code>sensor_msgs/msg/LaserScan</code></td>
 <td><code>lidar_scan</code></td>
-<td><code>local_costmap</code>, <code>collision_monitor</code>, <code>amcl</code>, <code>behaviour</code></td>
+<td><code>costmap</code>, <code>stop_zone</code>, <code>amcl</code>, <code>behaviour</code></td>
 <td>road, car</td>
-<td>The roof lidar flattened (aav_lidar lidar_scan - navigation.launch.py lidar:=true) - in base_link, 720 ranges all the way round, each the nearest point between 0.3 m and the roof plus 0.5 m (vehicle.obstacle_heights), inf where there is none. Best effort, 10 Hz. Read by the local costmap's lidar_layer and collision_monitor's stop zone. From the roof, the lowest beam (15 degrees down from 1.8 m) meets a 1 m box only 3 m away, so low things close in front are the radar's.</td>
+<td>The roof lidar flattened (aav_lidar lidar_scan - navigation.launch.py lidar:=true) - in base_link, 720 ranges all the way round, each the nearest point between 0.3 m and the roof plus 0.5 m (vehicle.obstacle_heights), inf where there is none. Best effort, 10 Hz. Read by the local costmap's lidar_layer and the stop zone. From the roof, the lowest beam (15 degrees down from 1.8 m) meets a 1 m box only 3 m away, so low things close in front are the radar's.</td>
 </tr>
 <tr>
 <td><code>/perception/voxels/cubes</code></td>
 <td><code>sensor_msgs/msg/PointCloud2</code></td>
 <td><code>voxels</code></td>
-<td><code>local_costmap</code>, <code>collision_monitor</code>, <code>debug_hud</code>, <code>dev_window</code>, <code>things</code></td>
+<td><code>costmap</code>, <code>stop_zone</code>, <code>debug_hud</code>, <code>dev_window</code>, <code>things</code></td>
 <td>-</td>
-<td>A trial (docs/designs/2026-10-30_voxels.md), only with navigation.launch.py voxels:=true (or screen_cubes:=true, or things:=true - then only the developer window and aav_things read it) (sim.launch.py and car.launch.py pass it on; needs the lidar) - the roof lidar's cloud as 0.25 m cubes (aav_voxels voxels), in base_link, the cloud's stamp, 10 Hz. Fields x, y, z (float32) - the centre of every cube holding a point between 0.3 m and the roof plus 0.5 m (vehicle.obstacle_heights) above the road, the road's plane fitted to each cloud (so a leaning car doesn't see the road as an obstacle); the car's own body left out; out to 30 m. Reliable, depth 1. Then the local costmap's lidar_layer marks with it and collision_monitor's voxels source stops for it, instead of /sensors/lidar/scan. The debug HUD draws it as red wireframes over its own cubes (key V), placed with the local EKF's pose at the cloud's stamp.</td>
+<td>A trial (docs/designs/2026-10-30_voxels.md), only with navigation.launch.py voxels:=true (or screen_cubes:=true, or things:=true - then only the developer window and aav_things read it) (sim.launch.py and car.launch.py pass it on; needs the lidar) - the roof lidar's cloud as 0.25 m cubes (aav_voxels voxels), in base_link, the cloud's stamp, 10 Hz. Fields x, y, z (float32) - the centre of every cube holding a point between 0.3 m and the roof plus 0.5 m (vehicle.obstacle_heights) above the road, the road's plane fitted to each cloud (so a leaning car doesn't see the road as an obstacle); the car's own body left out; out to 30 m. Reliable, depth 1. Then the local costmap's lidar_layer marks with it and the stop zone's voxels source stops for it, instead of /sensors/lidar/scan. The debug HUD draws it as red wireframes over its own cubes (key V), placed with the local EKF's pose at the cloud's stamp.</td>
 </tr>
 <tr>
 <td><code>/perception/voxels/ground</code></td>
 <td><code>sensor_msgs/msg/PointCloud2</code></td>
 <td><code>voxels</code></td>
-<td><code>local_costmap</code>, <code>dev_window</code></td>
+<td><code>costmap</code>, <code>dev_window</code></td>
 <td>-</td>
 <td>The voxels trial's road - in base_link, the centre of every flat 0.25 m square where the lidar saw the fitted road (within 0.15 m of it), z on that plane. Free space - the local costmap's lidar_layer clears with it (marking false), as the scan's inf rays did. Reliable, depth 1, with each cube cloud.</td>
 </tr>
@@ -908,9 +892,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/perception/voxels/steps</code></td>
 <td><code>sensor_msgs/msg/PointCloud2</code></td>
 <td><code>voxels</code></td>
-<td><code>local_costmap</code>, <code>costmap</code>, <code>collision_monitor</code></td>
+<td><code>costmap</code>, <code>stop_zone</code></td>
 <td>-</td>
-<td>The kerbs (TODO 119), only with navigation.launch.py kerbs:=true (sim.launch.py's kerbs level; needs the lidar) - the Rust voxels node (aav_voxels_rs, steps:=true; it runs for this whatever voxels_impl says) finds sudden steps in the ground, which the cubes' 0.3 m floor misses. In base_link, the cloud's stamp, 10 Hz, fields x, y, z (float32) - the high side of every step, a point 0.10 to 0.5 m above a point within 0.3 m of it flat (voxels::steps), out to 12 m; one point per 0.1 m square holding 2 or more; and every such point of the last 10 s (step_keep), kept in odom by /localization/odom/local and sent back in base_link while within 12 m (voxels::StepMemory) - the roof lidar loses a kerb about 4 m before the bumper. Not a slope or ramp to 10 degrees, the road's camber, a 7.5 cm speed bump or grass. The local costmap's kerb_layer (Nav2's and ours) marks with it, marks only and kept; collision_monitor's steps source stops for it. Reliable, depth 1, with each cube cloud.</td>
+<td>The kerbs (TODO 119), only with navigation.launch.py kerbs:=true (sim.launch.py's kerbs level; needs the lidar) - the Rust voxels node (aav_voxels_rs, steps:=true; it runs for this whatever voxels_impl says) finds sudden steps in the ground, which the cubes' 0.3 m floor misses. In base_link, the cloud's stamp, 10 Hz, fields x, y, z (float32) - the high side of every step, a point 0.10 to 0.5 m above a point within 0.3 m of it flat (voxels::steps), out to 12 m; one point per 0.1 m square holding 2 or more; and every such point of the last 10 s (step_keep), kept in odom by /localization/odom/local and sent back in base_link while within 12 m (voxels::StepMemory) - the roof lidar loses a kerb about 4 m before the bumper. Not a slope or ramp to 10 degrees, the road's camber, a 7.5 cm speed bump or grass. The local costmap's kerb_layer marks with it, marks only and kept; the stop zone's steps source stops for it. Reliable, depth 1, with each cube cloud.</td>
 </tr>
 <tr>
 <td><code>/perception/voxels/status</code></td>
@@ -996,15 +980,15 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/perception/camera_obstacles</code></td>
 <td><code>sensor_msgs/msg/PointCloud2</code></td>
 <td><code>camera_obstacles</code></td>
-<td><code>local_costmap</code>, <code>collision_monitor</code></td>
+<td><code>costmap</code>, <code>stop_zone</code></td>
 <td>-</td>
-<td>Where each detected object stands on the road, in base_link (z = 0) - points 0.1 m apart along its box's bottom edge, out to 12 m from the camera. Each message carries every camera's newest points (those heard in the last max_age, 1 s), so the rear camera's stay while the front one's pictures come in. Only the listed COCO classes (people, cyclists, cars...), never stop signs. The local costmap's camera layer marks them, and with camera_guard (the car, once a detector reads the rear camera for people) collision_monitor stops for them, ahead going forward and behind reversing - bench.launch.py camera_obstacles:=true, or the car's camera_obstacles part next to navigation. Off until the cameras are calibrated (Q22).</td>
+<td>Where each detected object stands on the road, in base_link (z = 0) - points 0.1 m apart along its box's bottom edge, out to 12 m from the camera. Each message carries every camera's newest points (those heard in the last max_age, 1 s), so the rear camera's stay while the front one's pictures come in. Only the listed COCO classes (people, cyclists, cars...), never stop signs. The local costmap's camera layer marks them, and with camera_guard (the car, once a detector reads the rear camera for people) the stop zone stops for them, ahead going forward and behind reversing - bench.launch.py camera_obstacles:=true, or the car's camera_obstacles part next to navigation. Off until the cameras are calibrated (Q22).</td>
 </tr>
 <tr>
 <td><code>/perception/camera_view</code></td>
 <td><code>sensor_msgs/msg/PointCloud2</code></td>
 <td><code>camera_obstacles</code></td>
-<td><code>local_costmap</code></td>
+<td><code>costmap</code></td>
 <td>-</td>
 <td>The far edge of what the cameras see (each one heard in the last second), on the road, 12 m out, in base_link. The camera layer clears up to it before it marks, so old boxes don't linger.</td>
 </tr>
@@ -1140,7 +1124,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/localization/odom/local</code></td>
 <td><code>nav_msgs/msg/Odometry</code></td>
 <td><code>ekf_local</code></td>
-<td><code>controller_server</code>, <code>bt_navigator</code>, <code>scripted_driver</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>sensor_watchdog</code>, <code>debug_hud</code>, <code>ndt</code>, <code>localization_health</code>, <code>dev_window</code>, <code>behaviour</code>, <code>ego</code>, <code>things</code>, <code>hud</code>, <code>voxels</code></td>
+<td><code>mppi_lag</code>, <code>navigator</code>, <code>scripted_driver</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>sensor_watchdog</code>, <code>debug_hud</code>, <code>ndt</code>, <code>localization_health</code>, <code>dev_window</code>, <code>behaviour</code>, <code>ego</code>, <code>things</code>, <code>hud</code>, <code>voxels</code></td>
 <td>turtle, sim, car, replay, bench</td>
 <td>odom frame. Smooth; drifts.</td>
 </tr>
@@ -1265,60 +1249,36 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td>localization_health (aav_localization_health) once a second - OK, or WARN and each check that isn't OK (gyro_bias parked, imu_mounting, gps_quality, timestamps, frames, tf, wheels, motion; STALE where an input it needs went quiet). Warn only - nothing drives from it, and it changes nothing in the EKFs. The same checks, with their numbers, on /diagnostics. The debug HUD shows it (green OK, amber WARN with each check). With localization_health_impl:=rust (localization.launch.py, sim.launch.py) aav_localization_health_rs publishes it instead, with the same node name, QoS and answers (TODO 185).</td>
 </tr>
 <tr>
-<td><code>/global_costmap/costmap</code></td>
-<td><code>nav_msgs/msg/OccupancyGrid</code></td>
-<td><code>global_costmap</code></td>
-<td><code>dev_window</code></td>
-<td>sim, car</td>
-<td>Nav2's whole costmap, as a grid. The developer window draws it on the map. Nav2's own name.</td>
-</tr>
-<tr>
 <td><code>/map</code></td>
 <td><code>nav_msgs/msg/OccupancyGrid</code></td>
 <td><code>map_server</code></td>
-<td><code>global_costmap</code>, <code>local_costmap</code>, <code>map</code>, <code>dev_window</code>, <code>things</code></td>
+<td><code>costmap</code>, <code>map</code>, <code>dev_window</code>, <code>things</code></td>
 <td>sim</td>
-<td>Transient local (latched). From aav_navigation/maps. things reads it only with background true (its walls are not things). AMCL reads it too when launched without amcl_map:= (the sim gives it /localization/amcl/map). The map window (map, aav_hud) draws it north up, for the big screen.</td>
+<td>Transient local (latched). From aav_navigation/maps, by our map server (aav_costmap map_server, Nav2's map_server's job). things reads it only with background true (its walls are not things). AMCL reads it too when launched without amcl_map:= (the sim gives it /localization/amcl/map). The map window (map, aav_hud) draws it north up, for the big screen.</td>
 </tr>
 <tr>
 <td><code>/goal_pose</code></td>
 <td><code>geometry_msgs/msg/PoseStamped</code></td>
 <td><code>rviz2</code>, <code>map</code>, <code>dev_window</code></td>
-<td><code>bt_navigator</code>, <code>navigator</code>, <code>map</code></td>
+<td><code>navigator</code>, <code>map</code></td>
 <td>-</td>
 <td>RViz "2D Goal Pose", or the map window's place search (map, aav_hud - only after DRIVE HERE then CONFIRM, map frame, facing from the car, refused off Nav2's /map or with no car), starts a navigate_to_pose. The map window shows it until Nav2 plans for it.</td>
 </tr>
 <tr>
-<td><code>/local_costmap/costmap</code></td>
-<td><code>nav_msgs/msg/OccupancyGrid</code></td>
-<td><code>local_costmap</code></td>
-<td><code>look_ahead</code></td>
-<td>sim, car</td>
-<td>Nav2's own name - the local costmap as a grid, odom, rolling with the car. look_ahead (aav_ego) finds the first obstacle ahead of the stop point in it.</td>
-</tr>
-<tr>
 <td><code>/drivers/nav/local_plan</code></td>
 <td><code>nav_msgs/msg/Path</code></td>
-<td><code>controller_server</code>, <code>mppi_lag</code></td>
+<td><code>mppi_lag</code></td>
 <td><code>look_ahead</code></td>
 <td>-</td>
-<td>What the path follower WANTS over its own horizon - the future its chosen commands lead to, odom. Nav2's MPPI (controller:=mppi, the default; nav2.yaml visualize true, its optimal_trajectory renamed here, sent only while someone listens) or aav_mppi_lag (tracker:=mppi_lag, every tick). Regulated Pure Pursuit and aav_track's trial trackers have none - then look_ahead falls back to /plan. Only while a path runs.</td>
+<td>What the path follower WANTS over its own horizon - the future its chosen commands lead to, odom. aav_mppi_lag (tracker:=mppi_lag, the default, every tick). aav_track's trial trackers have none - then look_ahead falls back to /plan. Only while a path runs.</td>
 </tr>
 <tr>
 <td><code>/plan</code></td>
 <td><code>nav_msgs/msg/Path</code></td>
-<td><code>planner_server</code>, <code>diffusion_planner</code>, <code>planner</code></td>
+<td><code>planner</code>, <code>diffusion_planner</code></td>
 <td><code>map</code>, <code>debug_hud</code>, <code>dev_window</code>, <code>look_ahead</code>, <code>behaviour</code>, <code>costmap</code></td>
 <td>-</td>
-<td>The planned path, for RViz/Foxglove, and the map window (map, aav_hud) - the line, the goal (its last point) and the distance left along it. The dev window marks its last point as the goal while plans keep coming (within 5 s), whoever sent the goal. Nav2 plans again every second while it drives. Which planner makes it is navigation.launch.py planner:= (docs/controllers.md, Planners) - hybrid (SmacPlannerHybrid, the default) or lattice (SmacPlannerLattice, our own primitives) keep to the car's turning radius; smac2d, navfn and theta_star, trials in sim and bench only, don't. Always the plugin GridBased, so the behaviour trees never change. With planner:=diffusion (aav_diffusion_planner, a trial) diffusion_planner publishes it - the path it returned, the model's or the lattice's - and planner_server's own goes to /drivers/nav/diffusion/lattice_plan. With planner:=own (aav_planner, a trial) our planner node publishes it - each path it returns - and planner_server's own goes to /drivers/nav/planner/nav2_plan. With lane_costs (costmap:=own, a challenger, TODO 148) our costmap reads it too - the way the route drives each road, so the lanes layer is lowest in the right lane.</td>
-</tr>
-<tr>
-<td><code>/drivers/nav/planner/nav2_plan</code></td>
-<td><code>nav_msgs/msg/Path</code></td>
-<td><code>planner_server</code></td>
-<td>-</td>
-<td>-</td>
-<td>Only with planner:=own - planner_server's own /plan, renamed - Nav2's lattice's path, when something still asks it (navigate_through_poses, controller_compare's head-to-head).</td>
+<td>The planned path, for RViz/Foxglove, and the map window (map, aav_hud) - the line, the goal (its last point) and the distance left along it. The dev window marks its last point as the goal while plans keep coming (within 5 s), whoever sent the goal. The navigator plans again every second while it drives. Our planner (aav_planner, planner:=own - the State Lattice, or Hybrid-A* with planner_search:=hybrid) keeps to the car's turning radius; with planner:=diffusion the diffusion planner's path, ours then on /drivers/nav/diffusion/lattice_plan.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/navigator/status</code></td>
@@ -1326,7 +1286,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>navigator</code></td>
 <td>-</td>
 <td>-</td>
-<td>Only with navigator:=own (aav_navigator, a trial; docs/own-navigator.md) - 2 Hz and at each goal's end. name navigator; level OK, or WARN while recovering; message the step (idle, planning, following, recovering - clearing costmaps or backing up). values step, succeeded, failed (goals since start), last_end (the last goal's number and how it ended), and with a goal running goal, distance_remaining_m (along the path), recoveries, waypoint (passed, or driven to), poses_remaining.</td>
+<td>The navigator (aav_navigator; docs/own-navigator.md) - 2 Hz and at each goal's end. name navigator; level OK, or WARN while recovering; message the step (idle, planning, following, recovering - clearing costmaps or backing up). values step, succeeded, failed (goals since start), last_end (the last goal's number and how it ended), and with a goal running goal, distance_remaining_m (along the path), recoveries, waypoint (passed, or driven to), poses_remaining.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/planner/status</code></td>
@@ -1334,7 +1294,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>planner</code></td>
 <td><code>behaviour</code></td>
 <td>-</td>
-<td>Only with planner:=own - one a plan. name planner; level OK (a path) or ERROR (none - message why, values error_code and failures). values search_ms, total_ms (with smoothing), iterations, length_m, cusps, poses, plans and failures since the node started; with lane_route (path:=lane) also how (lane; pass - the lane's centre but for a stretch moved left round something parked on it, with pass_m, the most it moved, Ben 16 Nov; or lattice and why - off_map, short, blocked, join_failed, detour) and lane_m; stops (the stop lines the route meets, /drivers/nav/planner/route_stops); the behaviour planner reads how, so with a lane map the road ahead follows a pass and opens its left soft edge there (LaneCritic doesn't fight it); cut (true - the goal was off the costmap, so the path ends where the way there leaves it, TODO 175).</td>
+<td>One a plan (aav_planner). name planner; level OK (a path) or ERROR (none - message why, values error_code and failures). values search_ms, total_ms (with smoothing), iterations, length_m, cusps, poses, plans and failures since the node started; with lane_route (path:=lane) also how (lane; pass - the lane's centre but for a stretch moved left round something parked on it, with pass_m, the most it moved, Ben 16 Nov; or lattice and why - off_map, short, blocked, join_failed, detour) and lane_m; stops (the stop lines the route meets, /drivers/nav/planner/route_stops); the behaviour planner reads how, so with a lane map the road ahead follows a pass and opens its left soft edge there (LaneCritic doesn't fight it); cut (true - the goal was off the costmap, so the path ends where the way there leaves it, TODO 175).</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/planner/route</code></td>
@@ -1342,7 +1302,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>planner</code></td>
 <td><code>costmap</code></td>
 <td>-</td>
-<td>Only with planner:=own - one with each plan, in map. The route level's whole way to the goal - with lane_route the right lane's centre along the lane map, else the start and the goal - however far, even when /plan stops short at the costmap's edge. With costmap_chunks (TODO 175) our global costmap holds the chunks it crosses in the next 100 m.</td>
+<td>One with each plan, in map. The route level's whole way to the goal - with lane_route the right lane's centre along the lane map, else the start and the goal - however far, even when /plan stops short at the costmap's edge. With costmap_chunks (TODO 175) our global costmap holds the chunks it crosses in the next 100 m.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/planner/route_stops</code></td>
@@ -1350,23 +1310,23 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>planner</code></td>
 <td>-</td>
 <td>-</td>
-<td>Only with planner:=own and lane_route - one with each plan, in map. The stop lines the route meets, in order, each line's middle as a position (no heading); empty on lanes.yaml (it has none) or with none on the way. With lane_graph:=lanelet2 (TODO 175, step 6) they come from the Lanelet2 map's traffic_sign rules (the campus - OpenStreetMap's stop signs). Nothing reads them yet - next, the behaviour planner's road ahead.</td>
+<td>Only with lane_route - one with each plan, in map. The stop lines the route meets, in order, each line's middle as a position (no heading); empty on lanes.yaml (it has none) or with none on the way. With lane_graph:=lanelet2 (TODO 175, step 6) they come from the Lanelet2 map's traffic_sign rules (the campus - OpenStreetMap's stop signs). Nothing reads them yet - next, the behaviour planner's road ahead.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/diffusion/lattice_plan</code></td>
 <td><code>nav_msgs/msg/Path</code></td>
-<td><code>planner_server</code></td>
+<td><code>planner</code></td>
 <td>-</td>
 <td>-</td>
-<td>Only with planner:=diffusion - planner_server's own /plan, renamed - the lattice's path for each plan, the fallback, whether or not the car got it.</td>
+<td>Only with planner:=diffusion - our planner's own /plan, renamed - the lattice's path for each plan, the fallback, whether or not the car got it.</td>
 </tr>
 <tr>
 <td><code>/cmd_vel_nav</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
-<td><code>controller_server</code>, <code>behavior_server</code>, <code>track</code>, <code>mppi_lag</code>, <code>mpc_lag_rs</code></td>
+<td><code>mppi_lag</code>, <code>track</code>, <code>mpc_lag_rs</code></td>
 <td><code>velocity_smoother</code></td>
 <td>-</td>
-<td>Nav2's own name, inside Nav2 - the path follower's command, before the velocity smoother, collision_monitor and /drivers/nav/cmd_vel. controller_server publishes it (tracker:=none, the default), or aav_track's track node with a trial tracker on (tracker:=pure_pursuit</td>
+<td>Nav2's old name - the path follower's command, before the velocity smoother, the stop zone and /drivers/nav/cmd_vel. aav_mppi_lag's mppi_lag publishes it (tracker:=mppi_lag, the default, docs/mppi-lag.md), or aav_track's track node with a trial tracker on (tracker:=pure_pursuit</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/diffusion/status</code></td>
@@ -1388,9 +1348,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/nav/speed_limit</code></td>
 <td><code>nav2_msgs/msg/SpeedLimit</code></td>
 <td><code>behaviour</code></td>
-<td><code>controller_server</code></td>
 <td>-</td>
-<td>Only with behaviour:=true (navigation.launch.py, a trial - aav_behaviour, docs/stopping.md), 20 Hz - Nav2's speed cap, absolute m/s (percentage false), from the stopping law (aav_description stop_law.py, v_cap of the metres left to a stop sign's line, an obstacle in the lane, the fence or the goal). 0.0 means no limit to Nav2, so a cap is 0.0 or between the floor (0.3 m/s) and Nav2's own top speed, never lower - the cap slows the car, the locks and Nav2's goal check stop it. controller_server reads it as its speed_limit_topic only with behaviour:=true; it keeps the last value for ever, so a dead node leaves the car slower, never faster (respawn brings it back in DRIVE, sending 0.0). Trial trackers (tracker:=) don't read it yet. With behaviour_impl:=rust (navigation.launch.py, sim.launch.py) aav_behaviour_rs publishes it instead, with the same node name, QoS and answers (a challenger, TODO 185).</td>
+<td>-</td>
+<td>Only with behaviour:=true (navigation.launch.py - aav_behaviour, docs/stopping.md), 20 Hz - the stopping law's speed cap, absolute m/s (percentage false), from aav_description stop_law.py (v_cap of the metres left to a stop sign's line, an obstacle in the lane, the fence or the goal). 0.0 means no limit. Nothing reads it since Nav2's controller_server went (17 Nov) - ego takes the same cap from /world/road_ahead; mppi_lag reading it is TODO 233.</td>
 </tr>
 <tr>
 <td><code>/drivers/point/plan</code></td>
@@ -1438,7 +1398,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>costmap</code></td>
 <td>-</td>
 <td>-</td>
-<td>Only with navigation.launch.py costmap:=own (sim.launch.py passes it). Our local costmap, Nav2's local_costmap rebuilt in Rust from the same nav2.yaml block - odom, a 20 m x 20 m window of 0.1 m cells rolling with the car, the static map, the same obstacle layers and sources (the lidar scan; the radar, cameras, ghost and cubes where they run), inflation with the car's padded outline. Updated at the block's update_frequency (5 Hz), sent at its publish_frequency (2 Hz). Values as Nav2's publisher writes them - 0 free, 1-98 inflated, 99 inscribed, 100 lethal, -1 unknown. Nav2's /local_costmap/costmap keeps running beside it.</td>
+<td>Our local costmap (aav_costmap), Nav2's local_costmap rebuilt in Rust from the same nav2.yaml block - odom, a 20 m x 20 m window of 0.1 m cells rolling with the car, the static map, the same obstacle layers and sources (the lidar scan; the radar, cameras, ghost and cubes where they run), inflation with the car's padded outline. Updated at the block's update_frequency (5 Hz), sent at its publish_frequency (2 Hz). Values as Nav2's publisher writes them - 0 free, 1-98 inflated, 99 inscribed, 100 lethal, -1 unknown. Nav2's /local_costmap/costmap keeps running beside it.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/costmap/local_raw</code></td>
@@ -1446,7 +1406,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>costmap</code></td>
 <td><code>mppi_lag</code></td>
 <td>-</td>
-<td>The same grid as /drivers/nav/costmap/local, with Nav2's raw costs (0 free, 1-252 inflated, 253 inscribed, 254 lethal, 255 unknown), as Nav2's /local_costmap/costmap_raw sends them. aav_mppi_lag's mppi_lag reads it instead of Nav2's when both tracker:=mppi_lag and costmap:=own (its costmap_topic).</td>
+<td>The same grid as /drivers/nav/costmap/local, with Nav2's raw costs (0 free, 1-252 inflated, 253 inscribed, 254 lethal, 255 unknown), in Nav2's Costmap message. aav_mppi_lag's mppi_lag reads it (its costmap_topic).</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/costmap/global</code></td>
@@ -1454,7 +1414,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>costmap</code></td>
 <td>-</td>
 <td>-</td>
-<td>Only with costmap:=own. Our global costmap - map frame, the map's own size and cells, the static map (unknown kept), the radar and lidar layers when the planner sees them (plan_around), inflation (3 m, scaling 1.0). With lane_costs (navigation.launch.py lane_costs:=<lanes.yaml>, sim.launch.py lane_costs:=true; a challenger, TODO 148) the lanes layer goes over the inflation - each road of the lane map a soft ramp, 0 at the right lane's centre (by /plan's way along the road; both lanes until a plan says), the lane's lines 50, the oncoming lanes 100, the kerb 150, 150 for 1 m past it, never as high as inscribed. 1 Hz. Nav2's planner_server keeps its own; our planner (planner:=own) plans on this one when costmap:=own (docs/own-planner.md).</td>
+<td>Our global costmap - map frame, the map's own size and cells, the static map (unknown kept), the radar and lidar layers when the planner sees them (plan_around), inflation (3 m, scaling 1.0). With lane_costs (navigation.launch.py lane_costs:=<lanes.yaml>, sim.launch.py lane_costs:=true; a challenger, TODO 148) the lanes layer goes over the inflation - each road of the lane map a soft ramp, 0 at the right lane's centre (by /plan's way along the road; both lanes until a plan says), the lane's lines 50, the oncoming lanes 100, the kerb 150, 150 for 1 m past it, never as high as inscribed. 1 Hz. Nav2's planner_server keeps its own; our planner (planner:=own) plans on this one when costmap:=own (docs/own-planner.md).</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/costmap/global_raw</code></td>
@@ -1462,7 +1422,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>costmap</code></td>
 <td><code>planner</code></td>
 <td>-</td>
-<td>The same grid as /drivers/nav/costmap/global, raw costs (0-255). aav_planner's planner plans on it with planner:=own and costmap:=own (with costmap:=nav2 it reads Nav2's /global_costmap/costmap_raw and its _raw_updates instead).</td>
+<td>The same grid as /drivers/nav/costmap/global, raw costs (0-255). aav_planner's planner plans on it.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/costmap/status</code></td>
@@ -1470,7 +1430,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>costmap</code></td>
 <td>-</td>
 <td>-</td>
-<td>Only with costmap:=own. One message per costmap each time it is sent. name 'costmap local' or 'costmap global'; level OK (0), or WARN (1) while it waits for something; values costmap (local, global), update_ms (the last update's time, wall clock), worst_ms, updates, lethal_cells, cells (width x height), waiting_for (odometry, map -&gt; odom, the map, a silent sensor topic, a sensor frame with no mount in /tf_static; empty when nothing is missing), lane_routes (the routes that changed the lanes layer's costs; 0 without lane_costs), chunk_moves and chunks (with costmap_chunks, TODO 175 - how often the global window moved, and the last move - its chunks, the corner chunk, read, dropped, redone, ms).</td>
+<td>One message per costmap each time it is sent. name 'costmap local' or 'costmap global'; level OK (0), or WARN (1) while it waits for something; values costmap (local, global), update_ms (the last update's time, wall clock), worst_ms, updates, lethal_cells, cells (width x height), waiting_for (odometry, map -&gt; odom, the map, a silent sensor topic, a sensor frame with no mount in /tf_static; empty when nothing is missing), lane_routes (the routes that changed the lanes layer's costs; 0 without lane_costs), chunk_moves and chunks (with costmap_chunks, TODO 175 - how often the global window moved, and the last move - its chunks, the corner chunk, read, dropped, redone, ms).</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/route/destination</code></td>
@@ -1578,13 +1538,13 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/drivers/nav/costmap/clear_entirely_local</code></td>
 <td><code>nav2_msgs/srv/ClearEntireCostmap</code></td>
 <td><code>costmap</code></td>
-<td>Only with costmap:=own (aav_costmap). Forgets every mark in our local costmap, as Nav2's /local_costmap/clear_entirely_local_costmap does for its own; the map comes back at the next update, the sensors' marks as they see them again. With tracker:=mppi_lag too (mppi_lag reads ours), navigation.launch.py remaps bt_navigator's local clear here, so the behaviour trees' recovery clears the costmap the follower reads.</td>
+<td>Our costmap (aav_costmap). Forgets every mark in the local costmap, as Nav2's /local_costmap/clear_entirely_local_costmap did; the map comes back at the next update, the sensors' marks as they see them again. The navigator calls it in its recoveries.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/costmap/clear_entirely_global</code></td>
 <td><code>nav2_msgs/srv/ClearEntireCostmap</code></td>
 <td><code>costmap</code></td>
-<td>The same for our global costmap. Our navigator (navigator:=own, aav_navigator) calls it with costmap:=own - its planner recovery and its clear-both recovery; bt_navigator's trees still clear Nav2's.</td>
+<td>The same for our global costmap. The navigator calls it - its planner recovery and its clear-both recovery.</td>
 </tr>
 <tr>
 <td><code>/spine/arm</code></td>
@@ -1699,50 +1659,50 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <tr>
 <td><code>/follow_path</code></td>
 <td><code>nav2_msgs/action/FollowPath</code></td>
-<td><code>controller_server</code></td>
-<td>bt_navigator's FollowPath - follow one planned path (replaced every second as the planner replans). Served by controller_server (MPPI or RPP) with tracker:=none, the default; with tracker:=pure_pursuit</td>
+<td><code>mppi_lag</code></td>
+<td>The navigator's FollowPath - follow one planned path (replaced every second as the planner replans). Served by aav_mppi_lag's mppi_lag (tracker:=mppi_lag, the default); with tracker:=pure_pursuit</td>
 </tr>
 <tr>
 <td><code>/compute_path_to_pose</code></td>
 <td><code>nav2_msgs/action/ComputePathToPose</code></td>
-<td><code>planner_server</code></td>
-<td>Nav2's own - one path from the car to a pose, planner_id GridBased (whichever planner:= runs). With planner:=diffusion diffusion_planner serves it instead, and planner_server's own is renamed /compute_path_to_pose_lattice, which diffusion_planner calls for each plan (the fallback). bt_navigator calls it every second while it drives; controller_compare (tools/controller_compare.py --planners) calls it once before each leg, to score the planner alone - its planning_time, the path's length and tightest turn. Planning only, nothing moves.</td>
+<td><code>diffusion_planner</code></td>
+<td>Only with planner:=diffusion - the diffusion planner's (aav_diffusion_planner), one path from the car to a pose; it calls our planner's /drivers/nav/planner/compute_path_to_pose for each plan (the fallback), and the navigator calls it. controller_compare (--planners diffusion) calls it once before each leg, to score the planner alone. Nav2's planner_server served it until 17 Nov.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/planner/compute_path_to_pose</code></td>
 <td><code>nav2_msgs/action/ComputePathToPose</code></td>
 <td><code>planner</code></td>
-<td>Only with planner:=own (aav_planner, a trial; docs/own-planner.md). Our planner - Nav2's State Lattice in Rust, the same primitives file, penalties and smoothing - one path from the car (map -&gt; odom -&gt; base_link on /tf, or the goal's start with use_start) to a map pose, on the global costmap costmap:= picks. navigation.launch.py remaps bt_navigator's compute_path_to_pose here, so the trees call ours; planner_server's /compute_path_to_pose keeps answering beside it (controller_compare asks both from the same spot). Error codes as Nav2's (203-208). Planning only, nothing moves.</td>
+<td>Our planner (aav_planner, docs/own-planner.md) - Nav2's State Lattice in Rust, the same primitives file, penalties and smoothing - one path from the car (map -&gt; odom -&gt; base_link on /tf, or the goal's start with use_start) to a map pose, on our global costmap. The navigator calls it (with planner:=diffusion, the diffusion planner does, as its fallback); controller_compare (--planners own) calls it once before each leg.</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/planner/compute_path_through_poses</code></td>
 <td><code>nav2_msgs/action/ComputePathThroughPoses</code></td>
 <td><code>planner</code></td>
-<td>Only with planner:=own (aav_planner). One path through each goal in turn - a plan a leg, each leg from the last goal, joined - as planner_server does. bt_navigator's compute_path_through_poses is remapped here, and our navigator calls it for through-poses goals and waypoints. Error codes as Nav2's (303-309); the message names the leg that failed.</td>
+<td>Our planner (aav_planner). One path through each goal in turn - a plan a leg, each leg from the last goal, joined - as Nav2's planner_server did. Our navigator calls it for through-poses goals and waypoints. Error codes as Nav2's (303-309); the message names the leg that failed.</td>
 </tr>
 <tr>
 <td><code>/navigate_to_pose</code></td>
 <td><code>nav2_msgs/action/NavigateToPose</code></td>
-<td><code>bt_navigator</code>, <code>navigator</code></td>
-<td>Drive to one map-frame pose. Nav2's bt_navigator (navigator:=nav2, the car's), or our navigator in its place (navigator:=own - aav_navigator, the sim's default; docs/own-navigator.md) under the same name, so no goal sender knows which runs. Ours - our behaviour trees' logic in Rust - plans (the planner's ComputePathToPose), follows (FollowPath), replans every second except on the final approach, recovers (clear the local or global costmap, then in turn clear both, wait 5 s, back up 1 m when reversing; 6 times), else gives up with the step's Nav2 error code. A newer goal on any of its actions replaces this one (aborted, code 0). Feedback as Nav2's (distance along the path, recoveries). Cancelled through its _action/cancel_goal by the goal leash (aav_safety) and the developer window's CANCEL THE GOAL (dev_window, --live, SIM only; an empty request - every goal).</td>
+<td><code>navigator</code></td>
+<td>Drive to one map-frame pose. Our navigator (aav_navigator, docs/own-navigator.md - Nav2's behaviour trees' logic in Rust) under Nav2's name, so no goal sender knows Nav2's bt_navigator went (17 Nov). It plans (the planner's ComputePathToPose), follows (FollowPath), replans every second except on the final approach, and recovers (clear the local or global costmap, then in turn clear both, wait 5 s, back up 1 m where it may reverse).</td>
 </tr>
 <tr>
 <td><code>/navigate_through_poses</code></td>
 <td><code>nav2_msgs/action/NavigateThroughPoses</code></td>
-<td><code>bt_navigator</code>, <code>navigator</code></td>
-<td>One path through each pose. Ours (navigator:=own) - the planner's ComputePathThroughPoses, replanned every 3 s from the car through the poses not yet passed - passed within 1 m, or passed along the path.</td>
+<td><code>navigator</code></td>
+<td>One path through each pose. Our navigator - the planner's ComputePathThroughPoses, replanned every 3 s from the car through the poses not yet passed - passed within 1 m, or passed along the path.</td>
 </tr>
 <tr>
 <td><code>/follow_waypoints</code></td>
 <td><code>nav2_msgs/action/FollowWaypoints</code></td>
-<td><code>waypoint_follower</code>, <code>navigator</code></td>
-<td>Map poses. Nav2's waypoint_follower stops at each; ours (navigator:=own) drives them as one through-poses goal (waypoints - pass_through, the default - no stop and no turn to face at each, TODO 140) or as Nav2's does (stop_at_each). missed_waypoints - those not reached when it ends.</td>
+<td><code>navigator</code></td>
+<td>Map poses. Our navigator drives them as one through-poses goal (waypoints - pass_through, the default - no stop and no turn to face at each, TODO 140) or as Nav2's waypoint_follower did (stop_at_each). missed_waypoints - those not reached when it ends.</td>
 </tr>
 <tr>
 <td><code>/follow_gps_waypoints</code></td>
 <td><code>nav2_msgs/action/FollowGPSWaypoints</code></td>
-<td><code>waypoint_follower</code>, <code>navigator</code></td>
-<td>Lat/lon waypoints. street_router sends its street route here (asked on /drivers/nav/route/follow). Phase 2. language_drive (aav_language) sends one point for go_to_gps(), at most 200 m away. Nav2's waypoint_follower puts them on the map through /fromLL; ours (navigator:=own) by navsat_transform's datum (aav_localization navsat.yaml - the same UTM steps as /fromLL, map-core's earth.rs), then as follow_waypoints.</td>
+<td><code>navigator</code></td>
+<td>Lat/lon waypoints. street_router sends its street route here (asked on /drivers/nav/route/follow). Phase 2. language_drive (aav_language) sends one point for go_to_gps(), at most 200 m away. Our navigator puts them on the map by navsat_transform's datum (aav_localization navsat.yaml - the same UTM steps as /fromLL, map-core's earth.rs), then as follow_waypoints.</td>
 </tr>
 </tbody>
 </table></div>

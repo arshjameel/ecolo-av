@@ -259,13 +259,13 @@ car, in what order: <a href="rollout.html">Rolling out</a>.</p>
 <td><span class="badge b-works">works</span> in Gazebo and the turtle, 15 Oct: "drive 10 m forward" drove 10.02 m in Gazebo, a 90° turn turned 87.6°. Asks before it moves; refuses the real car without <code>--car</code>. <span class="badge b-untested">untested</span> on the bench and the car (<a href="plain-english.html">Plain English</a>)</td>
 </tr>
 <tr>
-<td>Nav2</td>
+<td>Navigation (Nav2 until 17 Nov; ours since, <a href="../history/nav2-as-it-was.md">Nav2, as it was</a>)</td>
 <td><code>aav_navigation</code></td>
 <td><span class="badge b-works">works</span> in Gazebo: goals of 8 m and 9.5 m reached; on the bench, 40 m past a stop sign. Reversing (<code>reversing:=true</code>): on in the simulators and on the bench; on the car by default again since 1 Nov (Ben; off 26 Oct-1 Nov; until the wheels tell direction, H5, the speed's sign is the last command's), where the lidar watches behind it, with a stop zone behind the rear bumper (<span class="badge b-works">works</span> in Gazebo: <code>sim-check --rear-obstacle</code> stopped 0.75 m short of a post); its settings are tested; <span class="badge b-works">works</span> in Gazebo, 15 Oct: a goal 5 m behind the car succeeded twice, backing straight up, ego's command never past -0.5 m/s</td>
 </tr>
 <tr>
 <td>Path followers (22 Oct)</td>
-<td>Nav2's MPPI (default) or Regulated Pure Pursuit, <code>controller:=rpp</code>; <code>pixi run measure controllers</code></td>
+<td>Nav2's MPPI or Regulated Pure Pursuit until 17 Nov (deleted with Nav2: <code>aav_mppi_lag</code> since); <code>pixi run measure controllers</code></td>
 <td><span class="badge b-works">works</span> in Gazebo: in the lot both reached all 4 goals in the best run; MPPI reached the first goal cleanly in every run. <code>sim-check --obstacle</code> passes with MPPI. Open: stuck facing a wall after a wide turn (forward only); MPPI's forward U-turn (<a href="path-followers.html">Path followers</a>). <span class="badge b-untested">untested</span> on the Orin</td>
 </tr>
 <tr>
@@ -409,8 +409,8 @@ car, in what order: <a href="rollout.html">Rolling out</a>.</p>
 <td><span class="badge b-works">works</span> on the bench and in Gazebo's road world (15 Oct); gives the 2025-26 C++ node's answers, bit for bit</td>
 </tr>
 <tr>
-<td>Obstacles in Nav2</td>
-<td>the radar in the local costmap; <code>collision_monitor</code>'s stop zone; <code>camera_obstacles</code></td>
+<td>Obstacles in navigation</td>
+<td>the radar in the local costmap; the stop zone (Nav2's <code>collision_monitor</code>, <code>aav_stop_zone</code> since 17 Nov); <code>camera_obstacles</code></td>
 <td><span class="badge b-works">works</span> on the bench: the stop zone stops the car 0.3-0.4 m before a box as wide as the lane. Open: the car weaves up to 1.5 m off its line (N7), so it can pass beside a narrow box; the stop zone flickers at its edge. The camera layer is off until the cameras are calibrated (Q22)</td>
 </tr>
 <tr>
@@ -550,7 +550,7 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 </tr>
 <tr>
 <td>The State Lattice planner: the default (1 Nov)</td>
-<td>Nav2, <code>planner:=lattice</code>; <code>hybrid</code> forward only; <code>smac2d</code>, <code>navfn</code>, <code>theta_star</code> in sim only</td>
+<td>Nav2's until 17 Nov (deleted, with <code>hybrid</code>, <code>smac2d</code>, <code>navfn</code>, <code>theta_star</code>); ours since, <code>aav_planner</code></td>
 <td><span class="badge b-works">works</span> in Gazebo, 30 Oct, reversing, 3-4 runs: every leg, 184 s a tour (Hybrid-A* 213 s) (<a href="switches.html">Switches</a>)</td>
 </tr>
 <tr>
@@ -629,9 +629,9 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <td><span class="badge b-works">works</span> on the bench, 29 Oct: a scripted drive at 1 m/s stopped 1.06 m after the lock closed, inside a 12 m fence. Not yet run in a simulator with a fence you can reach (<a href="geofence.html">Geofence</a>)</td>
 </tr>
 <tr>
-<td>Our stop zone in Rust, in shadow (15 Nov)</td>
-<td><code>aav_stop_zone</code>, <code>stop_zone_shadow:=true</code></td>
-<td><span class="badge b-works">works</span> in our simulator: agrees with Nav2's collision_monitor 100 % of the time, stops at the same instant. Never drives the car yet</td>
+<td>Our stop zone in Rust (15 Nov; the stop zone since 17 Nov)</td>
+<td><code>aav_stop_zone</code>, <code>stop_zone:=</code></td>
+<td><span class="badge b-works">works</span> in our simulator: in shadow, 3 rounds of every obstacle check, Nav2 stopped 24 times and ours on the same command each time, never later; then it took the lock (<a href="safety-case.html#the-stop-zones-swap-17-nov">the swap</a>). <span class="badge b-untested">untested</span> on the car</td>
 </tr>
 <tr>
 <td>Stop hold (29 Oct); the no-timeout lock (26 Oct)</td>
