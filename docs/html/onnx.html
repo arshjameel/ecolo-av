@@ -7,7 +7,7 @@
 <!-- Generated from docs/onnx.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>ONNX models from Rust</h1>
-<div class="meta">7 min read · 8 sections</div></header>
+<div class="meta">7 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -121,7 +121,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#why">Why</a><a href="#how">How</a><a href="#same-boxes">Same boxes?</a><a href="#how-fast">How fast?</a><a href="#in-the-simulator">In the simulator</a><a href="#untested-the-orin">Untested: the Orin</a><a href="#licences">Licences</a><a href="#next">Next</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#why">Why</a><a href="#how">How</a><a href="#same-boxes">Same boxes?</a><a href="#how-fast">How fast?</a><a href="#in-the-simulator">In the simulator</a><a href="#untested-the-orin">Untested: the Orin</a><a href="#licences">Licences</a><a href="#next">Next</a><a href="#where-the-rust-detector-is-built-17-nov">Where the Rust detector is built (17 Nov)</a></nav>
 <div class="lead"><p>Train in PyTorch; run the model as <strong>ONNX</strong>, from Rust, with ONNX Runtime (Ben, 16 Nov,
 TODO 243). First on a Mac through Core ML; on the Orin later through TensorRT.</p>
 <p>The first model done end to end: the <strong>RF-DETR Nano detector</strong> (the stop signs). The
@@ -467,7 +467,30 @@ with boxes out), while Ravensim draws its cameras on the same GPU:</p>
 <td>later</td>
 </tr>
 </tbody>
-</table></div></section>
+</table></div>
+</section>
+<section class="card"><h2 id="where-the-rust-detector-is-built-17-nov">Where the Rust detector is built (17 Nov)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Computer</th>
+<th>Built?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>macOS</td>
+<td>yes, by default (ONNX Runtime + Core ML)</td>
+</tr>
+<tr>
+<td>Linux: CI, the car kit, the Orin</td>
+<td>only with <code>colcon build --cmake-args -DDETECTOR_RS=ON</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Why: on 17 Nov ort's downloaded ONNX Runtime didn't link with conda's gcc on GitHub's Linux
+runners (x86 and ARM), and the car kit installs offline. Until it is proven there, Linux runs
+the Python detector; <code>detector_impl:=rust</code> stays a challenger.</p></section>
 <nav class="prevnext"><a class="prev" href="model-comparison.html"><small>Previous</small>← Newer models</a>
 <a class="next" href="firmware.html"><small>Next</small>Firmware →</a></nav>
 </main>

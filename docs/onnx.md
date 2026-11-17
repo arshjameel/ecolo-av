@@ -136,3 +136,14 @@ All in [acknowledgements](acknowledgements.md).
 |---|---|
 | the diffusion planner | after the detector wins on the car |
 | the lane finder (once it is a model) | later |
+
+## Where the Rust detector is built (17 Nov)
+
+| Computer | Built? |
+|---|---|
+| macOS | yes, by default (ONNX Runtime + Core ML) |
+| Linux: CI, the car kit, the Orin | only with `colcon build --cmake-args -DDETECTOR_RS=ON` |
+
+Why: on 17 Nov ort's downloaded ONNX Runtime didn't link with conda's gcc on GitHub's Linux
+runners (x86 and ARM), and the car kit installs offline. Until it is proven there, Linux runs
+the Python detector; `detector_impl:=rust` stays a challenger.
