@@ -512,6 +512,20 @@ each one's README has its topics.</p></div>
 <td>new: a port of <code>aav_voxels</code></td>
 </tr>
 <tr>
+<td><code>aav_lidar_rs</code></td>
+<td>perception</td>
+<td><code>lidar_scan</code> in Rust: the lidar flattened to a 720-ray scan, a drop-in for <code>aav_lidar</code>'s (<code>lidar_impl:=rust</code>)</td>
+<td><span class="badge b-works">works</span> against the Python's answers</td>
+<td>new: a port of <code>aav_lidar</code></td>
+</tr>
+<tr>
+<td><code>aav_things_rs</code></td>
+<td>perception</td>
+<td><code>things</code> in Rust: the cubes as tracked things, a drop-in for <code>aav_things</code>' (<code>things_impl:=rust</code>)</td>
+<td><span class="badge b-works">works</span> against the Python's answers</td>
+<td>new: a port of <code>aav_things</code></td>
+</tr>
+<tr>
 <td><code>aav_detector_rs</code></td>
 <td>perception</td>
 <td>the detector in Rust, a challenger (<code>detector_impl:=rust</code>): RF-DETR's ONNX through ONNX Runtime (<a href="onnx.html">ONNX</a>)</td>
