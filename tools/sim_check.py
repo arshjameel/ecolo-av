@@ -981,7 +981,7 @@ def check_wheels_vs_imu(probe):
 
 
 def check_stop_sign(probe):
-    """the car drives to 40 m east, past the stop sign at 25 m: it must stop before it."""
+    """Drive to 40 m east, past the stop sign at 25 m: it must stop before it."""
     body = vehicle.load()['vehicle']['body']
     front = body['length'] - body['rear_overhang']   # base_link to the front bumper
     done = probe.go_to(40.0, ROAD_Y, 0.0)
@@ -1861,7 +1861,7 @@ def check_faults(probe, watchdog=True):
 
 
 def check_nav_goal(probe):
-    """the car drives 15 m on, along the car's heading: it must get there."""
+    """Drive 15 m on, along the car's heading: it must get there."""
     x0, y0 = probe.xy(probe.truth)
     h = yaw_of(probe.truth)
     gx, gy = x0 + 15.0 * math.cos(h), y0 + 15.0 * math.sin(h)

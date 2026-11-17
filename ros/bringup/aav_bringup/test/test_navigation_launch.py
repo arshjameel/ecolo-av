@@ -493,7 +493,8 @@ def test_our_smoother_runs_under_velocity_smoothers_name():
     ours = nav_nodes()['velocity_smoother']
     assert ours._Node__package == 'aav_smoother'
     assert ours._Node__node_executable == 'car_smoother'
-    assert remaps(ours) == [('cmd_vel', 'cmd_vel_nav'), ('cmd_vel_smoothed', '/drivers/nav/cmd_vel')]
+    assert remaps(ours) == [('cmd_vel', 'cmd_vel_nav'),
+                            ('cmd_vel_smoothed', '/drivers/nav/cmd_vel')]
     p = given(ours)
     cfg = vehicle.load()
     assert p['vehicle_yaml'] == vehicle.config_path()
@@ -514,8 +515,8 @@ def test_the_stop_zone_sits_between_the_smoother_and_twist_mux():
     assert (p['cmd_in'], p['cmd_out']) == ('/control/cmd_vel_smoothed', '/drivers/nav/cmd_vel')
     assert (p['state'], p['status'], p['box']) == (
         '/safety/stop_zone/state', '/safety/stop_zone/status', '/safety/stop_zone/box')
-    assert remaps(nodes['velocity_smoother'])[1] == ('cmd_vel_smoothed',
-                                                      '/control/cmd_vel_smoothed')
+    assert remaps(nodes['velocity_smoother'])[1] == (
+        'cmd_vel_smoothed', '/control/cmd_vel_smoothed')
     s = json.loads(p['settings'])
     assert [x['name'] for x in s['sources']] == ['radar', 'lidar']
     assert s['min_points'] == 3

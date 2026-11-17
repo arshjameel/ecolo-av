@@ -1287,7 +1287,7 @@ def with_plan_smoothing(cfg, smoothing):
 
 
 def _typed(value):
-    """A rewrite's text as its number or bool, as RewrittenYaml's convert_types; else the text."""
+    """Return a rewrite's text as its number or bool (RewrittenYaml's convert_types)."""
     if not isinstance(value, str):
         return value
     try:

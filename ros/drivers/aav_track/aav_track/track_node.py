@@ -40,7 +40,8 @@ Parameters  tracker can be changed while it runs, only with live_swap:=true (sim
 
 navigation.launch.py tracker:=pure_pursuit|stanley|lqr|mpc|mpc_full|mpc_lag starts it in
 mppi_lag's place, so the navigator's FollowPath comes here. Everything after cmd_vel_nav
-(the smoother, the stop zone, twist_mux's slot 20, the locks) is unchanged. The checks are Nav2's own (checks.py, with nav2.yaml's numbers):
+(the smoother, the stop zone, twist_mux's slot 20, the locks) is unchanged. The checks are
+Nav2's own (checks.py, with nav2.yaml's numbers):
 
 | Result | When |
 |---|---|

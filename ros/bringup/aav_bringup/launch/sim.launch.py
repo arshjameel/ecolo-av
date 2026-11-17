@@ -873,7 +873,7 @@ def generate_launch_description():
                               description='python or rust: which ego runs (aav_ego, or '
                                           'aav_ego_rs: ego and look_ahead in one process)'),
         DeclareLaunchArgument('ghost', default_value='false',
-                              description="a pretend person only navigation sees (aav_ghost); "
+                              description='a pretend person only navigation sees (aav_ghost); '
                                           'place it with pixi run ghost ahead 10'),
         DeclareLaunchArgument('sim_speed', default_value='',
                               description='m/s, up to 5: a higher top speed for ego and the '
@@ -884,7 +884,7 @@ def generate_launch_description():
                                           '(docs/learn-nav2.md, Reversing)'),
         DeclareLaunchArgument('controller', default_value=stacks.CHOSEN,
                               description="mppi: nav2.yaml's MPPI block, which mppi_lag "
-                                          'reads (Nav2\'s controller_server went, 17 Nov). '
+                                          "reads (Nav2's controller_server went, 17 Nov). "
                                           "Empty: the stack's choice"),
         DeclareLaunchArgument('planner', default_value=stacks.CHOSEN,
                               description=', '.join(vehicle.PLANNERS) + ': the planner. '
@@ -993,7 +993,7 @@ def generate_launch_description():
                                           'docs/own-navigator.md), the only one since Nav2 '
                                           "went. Empty: the stack's choice"),
         DeclareLaunchArgument('smoother', default_value=stacks.CHOSEN,
-                              description="own: our velocity smoother, for a car "
+                              description='own: our velocity smoother, for a car '
                                           '(aav_smoother; docs/own-smoother.md), the only '
                                           "one since Nav2 went. Empty: the stack's choice"),
         DeclareLaunchArgument('costmap', default_value=stacks.CHOSEN,
@@ -1031,7 +1031,7 @@ def generate_launch_description():
                                           'twist into ekf_local, beside the wheels and IMU. '
                                           "Empty: the stack's choice (false)"),
         DeclareLaunchArgument('plan_around', default_value='true',
-                              description="true: the planner plans round what the radar "
+                              description='true: the planner plans round what the radar '
                                           'and lidar see; false: the map only, so the car '
                                           'stops for it'),
         DeclareLaunchArgument('lane_pose', default_value='false',
@@ -1045,7 +1045,7 @@ def generate_launch_description():
                                           "map -> odom, TODO 186). Empty: the stack's "
                                           'choice (ours: slow; best: newest)'),
         DeclareLaunchArgument('replan_hz', default_value='1.0',
-                              description="how often the navigator plans a to-pose goal "
+                              description='how often the navigator plans a to-pose goal '
                                           'again; 0: once per goal (a test)'),
         DeclareLaunchArgument('simulator', default_value=worlds.DEFAULT_SIMULATOR,
                               description="gazebo, or own: our Rust simulator in gz sim's "

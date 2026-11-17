@@ -374,7 +374,7 @@ def check_joystick(probe):
 
 
 def check_stop_sign(probe):
-    """navigation drives 40 m east, past the stop sign at x = 25 m: it must stop before it."""
+    """Drive 40 m east, past the stop sign at x = 25 m: it must stop before it."""
     goal = NavigateToPose.Goal()
     goal.pose.header.frame_id = 'map'
     goal.pose.pose.position.x = 40.0

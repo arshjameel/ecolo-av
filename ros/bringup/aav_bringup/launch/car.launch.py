@@ -704,7 +704,7 @@ def generate_launch_description():
                               description='rust (aav_localization_health_rs) or python '
                                           '(aav_localization_health)'),
         DeclareLaunchArgument('ghost', default_value='false',
-                              description="true: a pretend person only navigation sees, placed "
+                              description='true: a pretend person only navigation sees, placed '
                                           'with pixi run ghost ahead 10 (it only adds)'),
         # The car's fence until the test lot's polygon is surveyed (a TODO for the team):
         # 30 m round where it first stood still. Change it per test card, not in passing.

@@ -250,7 +250,7 @@ def generate_launch_description():
         DeclareLaunchArgument('reversing', default_value='true',
                               description='the car may drive backwards, as on the car'),
         DeclareLaunchArgument('plan_around', default_value='true',
-                              description="true: the planner plans round what the radar "
+                              description='true: the planner plans round what the radar '
                                           'and lidar see; false: the map only, so the car '
                                           'stops for it (bench-check --obstacle)'),
         DeclareLaunchArgument('bridge', default_value=bridges.DEFAULT,

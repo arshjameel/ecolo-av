@@ -101,7 +101,7 @@ Reversing: nothing but the lidar senses behind the car, so it is off unless aske
 The car's footprint, turning radius and reverse speed come from
 aav_description/config/vehicle.yaml.
 Send a goal: RViz "2D Goal Pose" (publishes /goal_pose), or
-  ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose \\
+  ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose ...
     "{pose: {header: {frame_id: map}, pose: {position: {x: 20.0, y: 5.0}}}}"
 """
 
@@ -653,7 +653,7 @@ def generate_launch_description():
                                           "followers read (Nav2's controllers went, 17 Nov)"),
         DeclareLaunchArgument('planner', default_value=vehicle.DEFAULT_PLANNER,
                               description=', '.join(vehicle.PLANNERS) + ': own '
-                                          "(aav_planner, the lattice or Hybrid-A* in Rust), "
+                                          '(aav_planner, the lattice or Hybrid-A* in Rust), '
                                           'or diffusion (a trial, ours behind it). '
                                           'docs/own-planner.md'),
         DeclareLaunchArgument('diffusion_model', default_value='',
@@ -747,7 +747,7 @@ def generate_launch_description():
                                           'docs/own-costmap.md'),
         DeclareLaunchArgument('navigator', default_value=vehicle.DEFAULT_NAVIGATOR,
                               description="own: aav_navigator, under Nav2's action "
-                                          "names (bt_navigator went, 17 Nov). "
+                                          'names (bt_navigator went, 17 Nov). '
                                           'docs/own-navigator.md'),
         DeclareLaunchArgument('smoother', default_value=vehicle.DEFAULT_SMOOTHER,
                               description="own: aav_smoother's car_smoother, under "
@@ -761,7 +761,7 @@ def generate_launch_description():
                                           '(mpc_lag, mpc_lag_rs: not lqi)'),
         DeclareLaunchArgument('tracker', default_value=vehicle.DEFAULT_TRACKER,
                               description='the path follower (mppi_lag: aav_mppi_lag, the '
-                                          "default; mpc_lag_rs: aav_mpc_lag; the rest "
+                                          'default; mpc_lag_rs: aav_mpc_lag; the rest '
                                           "aav_track's): " +
                                           ', '.join(vehicle.TRACKERS) +
                                           '. docs/trials.md'),
