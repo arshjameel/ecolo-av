@@ -168,7 +168,9 @@ bench's argument names:
                       blocked stretch moves left, the least that clears it, then back
   things:=true        the lidar's cubes as things with an id, a speed and a memory, on
                       /world/things (aav_things; voxels runs for it): only with nav:=true
-                      and the lidar. Nothing reads the list yet
+                      and the lidar. The behaviour planner waits for what moves (a hold
+                      for anything moving near, 17 Nov). Empty: the stack's choice (on in
+                      ours, where nav and the lidar run)
   things_background:=true  with things (the default): low cubes on the saved map are not
                       things (TODO 175); false: every cube is;
                       things_background_chunks:=maps/campus/chunks/ndt: the NDT map's
@@ -366,7 +368,7 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'planner_search': vehicle.PLANNER_SEARCHES[0],
                   'plan_smoothing': 'nav2', 'map_correction': 'newest',
                   'mppi_lag_steer_gamma': '', 'lane_costs': 'false', 'lane_route': 'false',
-                  'costmap_chunks': 'off', 'kerbs': 'false',
+                  'costmap_chunks': 'off', 'kerbs': 'false', 'things': 'false',
                   'lane_graph': DEFAULT_LANE_GRAPH,
                   'local_chunks': 'false'}
 
@@ -472,6 +474,9 @@ def launch_setup(context):
     if amcl and not (world == 'test_lot' and flag['nav'] and lidar):
         raise ValueError('amcl:=true needs world:=test_lot nav:=true lidar:=true: the only '
                          'world with a real map, and AMCL reads the lidar')
+    if flag['things'] and raw('things').strip() == stacks.CHOSEN and not (lidar and flag['nav']):
+        # Picked by the stack (ours' behaviour level), not by hand: only where it can run.
+        flag['things'] = False
     if flag['things'] and not (lidar and flag['nav']):
         raise ValueError('things:=true needs the lidar and nav:=true (navigation.launch.py '
                          'starts it, with voxels)')
@@ -867,9 +872,11 @@ def generate_launch_description():
         DeclareLaunchArgument('screen_cubes', default_value='false',
                               description='true: the cubes for the developer window, while '
                                           'Nav2 stays on the flat scan'),
-        DeclareLaunchArgument('things', default_value='false',
+        DeclareLaunchArgument('things', default_value=stacks.CHOSEN,
                               description='true: the cubes as tracked things on /world/things '
-                                          '(aav_things; with nav and the lidar)'),
+                                          '(aav_things; with nav and the lidar). Empty: the '
+                                          "stack's choice (on in ours since 17 Nov, where the "
+                                          'lidar and nav run)'),
         DeclareLaunchArgument('voxels', default_value='false',
                               description='true: Nav2 reads the lidar as 0.25 m cubes '
                                           '(aav_voxels, a trial) instead of the flat scan'),

@@ -25,6 +25,14 @@ the stopping law's v_cap(left) (aav_description stop_law.py). The lowest one bin
 | `obstacle` | to a thing in the lane (moving, with things), less bumper and gap | `stop_zone` |
 | `fence` | along the plan to where the geofence would close NEAR | the `geofence` lock |
 | `goal` | along the plan to its end | Nav2's goal check |
+
+**Something moving near: hold** (Ben, 16 Nov: "if we see a car people or stuff moving
+around us we should likely just stop"). A moving thing (`/world/things`) within
+`Nearby.radius` of the car, or on the road ahead within `Nearby.within` s at its speed
+(`moving_near`), puts the machine in WAIT, reason `moving`, from any state but the
+e-stop's and ASK's; the node then ends the road ahead at the car (a `moving` stop at 0 m),
+so ego holds the car at 0. It goes again `release_hold` s after the last one has gone or
+stood still. Only a still thing is passed (the planner's lane pass).
 """
 
 from __future__ import annotations
@@ -39,7 +47,10 @@ DRIVE, APPROACH, STOPPED, WAIT, GO, ASK = 'DRIVE', 'APPROACH', 'STOPPED', 'WAIT'
 STATES = (DRIVE, APPROACH, STOPPED, WAIT, GO, ASK)
 
 # The lock that makes each reason's final stop (twist_mux's names, aav_command_mux).
-LOCK_OF = {'sign': 'stop_sign', 'obstacle': 'stop_zone', 'fence': 'geofence', 'goal': None}
+LOCK_OF = {'sign': 'stop_sign', 'obstacle': 'stop_zone', 'fence': 'geofence', 'goal': None,
+           'moving': None}
+# The reason (and the road ahead's stop) while something moving near holds the car.
+MOVING_REASON = 'moving'
 LOCKS = ('estop', 'stop_sign', 'stop_zone', 'geofence', 'sensors')
 
 
@@ -83,6 +94,7 @@ class World:
     sign_age: float = math.inf             # s since the last sign point
     goal_active: bool = False
     goal_aborted: bool = False             # this tick's news: Nav2 aborted the goal
+    moving: bool = False                   # something moving near (moving_near): hold
 
 
 @dataclass(frozen=True)
@@ -112,6 +124,8 @@ class Behaviour:
         self.sign_lock = False      # the stop_sign lock, last tick
         self.served = -math.inf     # when the stop_sign lock last went off
         self.gone_since = None      # APPROACH(obstacle): when the obstacle stopped binding
+        self.moving_seen = -math.inf    # when something moving near was last seen
+        self.holding = False        # this tick: held for something moving near
 
     # --- the pieces ------------------------------------------------------------------
 
@@ -156,12 +170,19 @@ class Behaviour:
         still = w.speed is not None and abs(w.speed) < s.still
         stop = self.binding(w.stops)
         left = stop.left if stop is not None else math.inf
+        # Something moving near, or gone or still for under release_hold s: hold.
+        if w.moving:
+            self.moving_seen = w.now
+        held = w.moving or w.now - self.moving_seen < s.release_hold
 
         # Any state: the e-stop and an aborted goal.
         if locks.get('estop'):
             self._go(WAIT, 'e-stop', w.now)
         elif w.goal_aborted:
             self._go(ASK, 'the goal was aborted', w.now)
+        elif held and self.state in (DRIVE, APPROACH, STOPPED, GO):
+            self.gone_since = None
+            self._go(WAIT, MOVING_REASON, w.now)
         elif self.state == DRIVE:
             if locks and still:
                 self._go(WAIT, ', '.join(sorted(locks)), w.now)
@@ -172,8 +193,12 @@ class Behaviour:
         elif self.state == STOPPED:
             self._go(WAIT, self.reason, w.now)
         elif self.state == WAIT:
-            if not locks:
+            if held and not locks:
+                self._go(WAIT, MOVING_REASON, w.now)
+            elif not locks:
                 self._go(GO, self.reason, w.now)
+            elif self.reason == MOVING_REASON:
+                self._go(WAIT, ', '.join(sorted(locks)), w.now)
             elif w.near and still:
                 self._go(ASK, 'the geofence is NEAR: only a person can clear it', w.now)
             elif (set(locks) != {'stop_sign'} and w.now - self.since > s.ask_after):
@@ -185,8 +210,11 @@ class Behaviour:
             elif stop is not None and self.cap_for(stop.left) <= max(self.cap, s.floor):
                 self._go(APPROACH, stop.reason, w.now)
         elif self.state == ASK:
-            if not locks:
+            if held and not locks:
+                self._go(WAIT, MOVING_REASON, w.now)
+            elif not locks:
                 self._go(GO, self.reason, w.now)
+        self.holding = self.state == WAIT and self.reason == MOVING_REASON
 
         # The cap for the state.
         if self.state == DRIVE:
@@ -432,6 +460,53 @@ def _walks_in(y: float, vy: float, lane: float, gap: float, closing: float,
     enters = (abs(y) - lane) / towards
     reaches = max(0.0, gap) / closing if closing > 0.0 else math.inf
     return enters <= min(reaches + crossing.slack, crossing.horizon)
+
+
+@dataclass(frozen=True)
+class Nearby:
+    """When a moving thing holds the car (Ben, 16 Nov: "we should likely just stop")."""
+
+    radius: float = 10.0    # m from the car: a moving thing this near holds it
+    within: float = 3.0     # s: one on the road ahead, at its speed, this soon holds it
+    step: float = 0.25      # s between the places it is checked at
+    moving: float = MOVING  # m/s over the ground: slower is still (passed, not waited for)
+
+
+def moving_near(things: Sequence[Seen], car: Tuple[float, float, float], front: float,
+                road: Sequence[Tuple[float, float]], half_width: float,
+                nearby: Nearby = Nearby()) -> float:
+    """
+    Return the metres from the car to the nearest moving thing that holds it, or inf.
+
+    car: (x, y, yaw) in odom, as the things are; front: the front bumper, m ahead of
+    base_link (the car is the line base_link .. front). road: the road ahead's line in
+    base_link (empty: none). A thing at least `nearby.moving` m/s holds the car if it is
+    within `nearby.radius` (its centre, less half its narrow side), or if at its speed it
+    is within half_width + half its narrow side of the road's line at some time
+    0, step, ... up to `nearby.within` s (a person crossing, cross traffic, an oncoming car
+    in our lane). A still thing never holds it: the planner passes it.
+    """
+    cx, cy, yaw = car
+    c, s = math.cos(yaw), math.sin(yaw)
+    steps = int(nearby.within / nearby.step + 1e-9) if nearby.step > 0.0 else 0
+    nearest = math.inf
+    for t in things:
+        if math.hypot(t.vx, t.vy) < nearby.moving:
+            continue
+        dx, dy = t.x - cx, t.y - cy
+        px, py = c * dx + s * dy, -s * dx + c * dy
+        vx, vy = c * t.vx + s * t.vy, -s * t.vx + c * t.vy
+        size = min(t.length, t.width) / 2.0
+        gap = math.hypot(px - min(max(px, 0.0), front), py) - size
+        holds = gap <= nearby.radius
+        if not holds and road:
+            lane = half_width + size
+            holds = any(path_left(road, px + vx * k * nearby.step,
+                                  py + vy * k * nearby.step)[1] <= lane
+                        for k in range(steps + 1))
+        if holds:
+            nearest = min(nearest, max(0.0, gap))
+    return nearest
 
 
 def diagnostic(decision: Decision) -> Dict[str, str]:

@@ -3,8 +3,8 @@
 import math
 
 from aav_behaviour.behaviour import (along_until, APPROACH, ASK, Behaviour, diagnostic, DRIVE,
-                                     GO, lane_ahead, path_left, Settings, Stop, STOPPED, WAIT,
-                                     World)
+                                     GO, lane_ahead, MOVING_REASON, moving_near, Nearby,
+                                     path_left, Seen, Settings, Stop, STOPPED, WAIT, World)
 from aav_description.stop_law import FLOOR, from_car_model
 import pytest
 
@@ -316,3 +316,64 @@ def test_moving_ahead_counts_a_person_who_will_walk_into_the_lane_before_the_car
                         crossing=Crossing(slack=1.0)) == math.inf
     # The car standing: within the horizon, they count.
     assert moving_ahead([walker], car, front=1.8, half_width=0.6) == pytest.approx(5.35)
+
+
+def test_something_moving_near_holds_the_car_until_it_has_gone_release_hold_s():
+    b = Behaviour(CURVE, Settings(release_hold=1.0))
+    b.step(world(0.0))
+    d = b.step(world(0.05, moving=True))
+    assert (d.state, d.reason, d.cap) == (WAIT, MOVING_REASON, FLOOR) and b.holding
+    # Gone, but not yet 1 s: still held; a flicker back restarts the second.
+    assert b.step(world(0.6, speed=0.0)).state == WAIT
+    assert b.step(world(0.7, speed=0.0, moving=True)).state == WAIT
+    assert b.step(world(1.6, speed=0.0)).state == WAIT and b.holding
+    d = b.step(world(1.75, speed=0.0))
+    assert (d.state, d.reason) == (GO, MOVING_REASON) and not b.holding
+
+
+def test_a_hold_for_something_moving_never_outranks_the_estop_and_keeps_a_lock_waiting():
+    b = Behaviour(CURVE)
+    d = b.step(world(0.0, locks={'estop': True}, moving=True))
+    assert (d.state, d.reason) == (WAIT, 'e-stop') and not b.holding
+    # The e-stop off, the thing still there: held for it, not GO.
+    d = b.step(world(0.1, speed=0.0, moving=True))
+    assert (d.state, d.reason) == (WAIT, MOVING_REASON)
+    # A lock comes while held: the wait is the lock's; the lock off, the thing near: held.
+    d = b.step(world(0.2, speed=0.0, locks={'stop_zone': True}, moving=True))
+    assert (d.state, d.reason) == (WAIT, 'stop_zone')
+    d = b.step(world(0.3, speed=0.0, moving=True))
+    assert (d.state, d.reason) == (WAIT, MOVING_REASON)
+
+
+def test_ask_waits_for_something_moving_before_it_goes():
+    b = Behaviour(CURVE)
+    assert b.step(world(0.0, goal_aborted=True)).state == ASK
+    d = b.step(world(0.1, speed=0.0, moving=True))
+    assert (d.state, d.reason) == (WAIT, MOVING_REASON)
+
+
+def test_moving_near_holds_for_what_moves_near_or_onto_the_road_and_passes_still_things():
+    car = (0.0, 0.0, 0.0)
+    road = [(0.5 * i, 0.0) for i in range(80)]
+
+    def near(*things, nearby=Nearby()):
+        return moving_near(things, car, 2.0, road, 0.6, nearby)
+
+    # An oncoming car in the other lane, 8 m ahead and 3.5 m over: within 10 m.
+    oncoming = Seen(10.0, 3.5, -1.0, 0.0, 4.5, 1.8)
+    assert near(oncoming) == pytest.approx(math.hypot(8.0, 3.5) - 0.9)
+    # A person walking along the roadside 5 m away, level with the car: within 10 m.
+    assert near(Seen(1.0, -5.0, 1.0, 0.0, 0.5, 0.5)) == pytest.approx(4.75)
+    # The parked box 6 m ahead, its speed noise under 0.3 m/s: never.
+    assert near(Seen(8.0, 0.0, 0.1, 0.1, 1.0, 1.0)) == math.inf
+    # Cross traffic 25 m ahead, 6 m to the side, 3 m/s towards the road: on it in 1.5 s.
+    cross = Seen(25.0, -6.0, 0.0, 3.0, 4.5, 1.8)
+    assert near(cross) == pytest.approx(math.hypot(23.0, 6.0) - 0.9)
+    # Going away from the road, or 5 s from it: not yet.
+    assert near(Seen(25.0, -6.0, 0.0, -3.0, 4.5, 1.8)) == math.inf
+    assert near(Seen(25.0, -16.0, 0.0, 3.0, 4.5, 1.8)) == math.inf
+    # No road: only the radius counts.
+    assert moving_near([cross], car, 2.0, [], 0.6) == math.inf
+    # Behind the car, measured from base_link; a smaller radius.
+    assert near(Seen(-4.0, 0.0, 1.0, 0.0, 0.5, 0.5),
+                nearby=Nearby(radius=3.0, within=0.0)) == math.inf

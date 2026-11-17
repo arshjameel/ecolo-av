@@ -240,6 +240,77 @@ fn walks_in(y: f64, vy: f64, lane: f64, gap: f64, closing: f64, crossing: Crossi
     enters <= py_min(reaches + crossing.slack, crossing.horizon)
 }
 
+/// When a moving thing holds the car (`Nearby`; Ben, 16 Nov: "we should likely just stop").
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Nearby {
+    /// m from the car: a moving thing this near holds it.
+    pub radius: f64,
+    /// s: one on the road ahead, at its speed, this soon holds it.
+    pub within: f64,
+    /// s between the places it is checked at.
+    pub step: f64,
+    /// m/s over the ground: slower is still (passed, not waited for).
+    pub moving: f64,
+}
+
+impl Default for Nearby {
+    fn default() -> Self {
+        Nearby {
+            radius: 10.0,
+            within: 3.0,
+            step: 0.25,
+            moving: MOVING,
+        }
+    }
+}
+
+/// The metres from the car to the nearest moving thing that holds it, or infinity
+/// (`moving_near`).
+///
+/// `car`: (x, y, yaw) in odom, as the things are; `front`: the front bumper, m ahead of
+/// base_link (the car is the line base_link .. front). `road`: the road ahead's line in
+/// base_link (empty: none). A thing at least `nearby.moving` m/s holds the car if it is
+/// within `nearby.radius` (its centre, less half its narrow side), or if at its speed it
+/// is within `half_width` + half its narrow side of the road's line at some time 0, step,
+/// ... up to `nearby.within` s. A still thing never holds it: the planner passes it.
+#[must_use]
+pub fn moving_near(
+    things: &[Seen],
+    car: Car,
+    front: f64,
+    road: &[Point],
+    half_width: f64,
+    nearby: Nearby,
+) -> f64 {
+    let (cx, cy, yaw) = car;
+    let (c, s) = (yaw.cos(), yaw.sin());
+    // Python's int(): towards zero; never below 0 here.
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let steps = if nearby.step > 0.0 {
+        (nearby.within / nearby.step + 1e-9) as usize
+    } else {
+        0
+    };
+    let mut nearest = f64::INFINITY;
+    for t in things.iter().filter(|t| hypot(t.vx, t.vy) >= nearby.moving) {
+        let (dx, dy) = (t.x - cx, t.y - cy);
+        let (px, py) = (c * dx + s * dy, -s * dx + c * dy);
+        let (vx, vy) = (c * t.vx + s * t.vy, -s * t.vx + c * t.vy);
+        let size = py_min(t.length, t.width) / 2.0;
+        let gap = hypot(px - py_min(py_max(px, 0.0), front), py) - size;
+        let lane = half_width + size;
+        #[allow(clippy::cast_precision_loss)]
+        let on_road = |k: usize| {
+            let k = k as f64;
+            path_left(road, px + vx * k * nearby.step, py + vy * k * nearby.step).1 <= lane
+        };
+        if gap <= nearby.radius || (!road.is_empty() && (0..=steps).any(on_road)) {
+            nearest = py_min(nearest, py_max(0.0, gap));
+        }
+    }
+    nearest
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -335,5 +406,35 @@ mod tests {
         });
         assert_eq!(ahead(&[late], car, 2.0, slack), f64::INFINITY);
         assert!(close(ahead(&[walker], car, 0.0, c), 5.35));
+    }
+
+    #[test]
+    fn moving_near_holds_for_what_moves_near_or_onto_the_road_and_passes_still_things() {
+        let car = (0.0, 0.0, 0.0);
+        let road: Vec<Point> = (0..80).map(|i| (0.5 * f64::from(i), 0.0)).collect();
+        let near = |t: Seen| moving_near(&[t], car, 2.0, &road, 0.6, Nearby::default());
+        let thing = |x, y, vx, vy, length, width| Seen {
+            x,
+            y,
+            vx,
+            vy,
+            length,
+            width,
+        };
+        // An oncoming car in the other lane; a person along the roadside 5 m away.
+        assert!(close(
+            near(thing(10.0, 3.5, -1.0, 0.0, 4.5, 1.8)),
+            hypot(8.0, 3.5) - 0.9
+        ));
+        assert!(close(near(seen(1.0, -5.0, 1.0, 0.0, 0.5)), 4.75));
+        // The parked box: never.
+        assert_eq!(near(seen(8.0, 0.0, 0.1, 0.1, 1.0)), f64::INFINITY);
+        // Cross traffic 25 m ahead, on the road in 1.5 s; away from it, or 5 s off: not.
+        let cross = thing(25.0, -6.0, 0.0, 3.0, 4.5, 1.8);
+        assert!(close(near(cross), hypot(23.0, 6.0) - 0.9));
+        assert_eq!(near(thing(25.0, -6.0, 0.0, -3.0, 4.5, 1.8)), f64::INFINITY);
+        assert_eq!(near(thing(25.0, -16.0, 0.0, 3.0, 4.5, 1.8)), f64::INFINITY);
+        let no_road = moving_near(&[cross], car, 2.0, &[], 0.6, Nearby::default());
+        assert_eq!(no_road, f64::INFINITY);
     }
 }

@@ -11,6 +11,11 @@
 //! The cap slows the car. **It can't stop it**: a lock or Nav2's goal check makes the final
 //! stop. So a cap is 0.0 (Nav2: no limit) or at least the floor, never in between, and this
 //! module never clears a lock, a latch or the e-stop.
+//!
+//! Something moving near (`World::moving`, from `paths::moving_near`) holds the car: WAIT,
+//! reason `moving`, from any state but the e-stop's and ASK's, until `release_hold` s after
+//! it has gone or stood still (Ben, 16 Nov: "if we see a car people or stuff moving around
+//! us we should likely just stop"). The node ends the road ahead at the car meanwhile.
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -79,6 +84,9 @@ pub enum StopReason {
     Fence,
     /// The plan's end.
     Goal,
+    /// Something moving near holds the car: the road ahead's stop at 0 m (never a
+    /// stop the machine is given).
+    Moving,
 }
 
 /// A stop reason that isn't one of the four.
@@ -87,7 +95,7 @@ pub struct UnknownReason(pub String);
 
 impl fmt::Display for UnknownReason {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}: not sign, obstacle, fence or goal", self.0)
+        write!(f, "{:?}: not sign, obstacle, fence, goal or moving", self.0)
     }
 }
 
@@ -102,6 +110,7 @@ impl StopReason {
             StopReason::Obstacle => "obstacle",
             StopReason::Fence => "fence",
             StopReason::Goal => "goal",
+            StopReason::Moving => "moving",
         }
     }
 
@@ -112,7 +121,7 @@ impl StopReason {
             StopReason::Sign => Some(Lock::StopSign),
             StopReason::Obstacle => Some(Lock::StopZone),
             StopReason::Fence => Some(Lock::Geofence),
-            StopReason::Goal => None,
+            StopReason::Goal | StopReason::Moving => None,
         }
     }
 
@@ -131,6 +140,7 @@ impl FromStr for StopReason {
             "obstacle" => Ok(StopReason::Obstacle),
             "fence" => Ok(StopReason::Fence),
             "goal" => Ok(StopReason::Goal),
+            "moving" => Ok(StopReason::Moving),
             other => Err(UnknownReason(other.to_string())),
         }
     }
@@ -220,6 +230,8 @@ pub enum Reason {
     Nothing,
     /// A stop's reason.
     Stop(StopReason),
+    /// Something moving near holds the car (`moving`).
+    Moving,
     /// Words: the locks on, the e-stop, an aborted goal, a long hold.
     Said(String),
 }
@@ -237,7 +249,7 @@ impl Reason {
     pub fn is_empty(&self) -> bool {
         match self {
             Reason::Nothing => true,
-            Reason::Stop(_) => false,
+            Reason::Stop(_) | Reason::Moving => false,
             Reason::Said(s) => s.is_empty(),
         }
     }
@@ -248,6 +260,7 @@ impl fmt::Display for Reason {
         match self {
             Reason::Nothing => Ok(()),
             Reason::Stop(r) => f.write_str(r.as_str()),
+            Reason::Moving => f.write_str(StopReason::Moving.as_str()),
             Reason::Said(s) => f.write_str(s),
         }
     }
@@ -354,6 +367,8 @@ pub struct World {
     pub goal_active: bool,
     /// This tick's news: the goal was aborted.
     pub goal_aborted: bool,
+    /// Something moving near (`paths::moving_near`): hold.
+    pub moving: bool,
 }
 
 impl World {
@@ -370,6 +385,7 @@ impl World {
             sign_age: f64::INFINITY,
             goal_active: false,
             goal_aborted: false,
+            moving: false,
         }
     }
 }
@@ -442,6 +458,10 @@ pub struct Behaviour {
     served: f64,
     /// s: APPROACH(obstacle): when the obstacle stopped binding.
     gone_since: Option<f64>,
+    /// s: when something moving near was last seen.
+    moving_seen: f64,
+    /// This tick: held for something moving near.
+    holding: bool,
 }
 
 impl Behaviour {
@@ -468,6 +488,8 @@ impl Behaviour {
             sign_lock: false,
             served: f64::NEG_INFINITY,
             gone_since: None,
+            moving_seen: f64::NEG_INFINITY,
+            holding: false,
         })
     }
 
@@ -475,6 +497,13 @@ impl Behaviour {
     #[must_use]
     pub fn state(&self) -> State {
         self.state
+    }
+
+    /// Held for something moving near, last tick (WAIT, reason `moving`): the node ends
+    /// the road ahead at the car.
+    #[must_use]
+    pub fn holding(&self) -> bool {
+        self.holding
     }
 
     /// The last cap sent (m/s; 0.0: no limit).
@@ -544,6 +573,11 @@ impl Behaviour {
         let still = w.speed.is_some_and(|v| v.abs() < s.still);
         let stop = self.binding(&stops).copied();
         let mut left = stop.map_or(f64::INFINITY, |x| x.left);
+        // Something moving near, or gone or still for under release_hold s: hold.
+        if w.moving {
+            self.moving_seen = w.now;
+        }
+        let held = w.moving || w.now - self.moving_seen < s.release_hold;
 
         // Any state: the e-stop and an aborted goal.
         if locks.contains(&Lock::Estop) {
@@ -554,6 +588,14 @@ impl Behaviour {
                 Reason::Said("the goal was aborted".into()),
                 w.now,
             );
+        } else if held
+            && matches!(
+                self.state,
+                State::Drive | State::Approach | State::Stopped | State::Go
+            )
+        {
+            self.gone_since = None;
+            self.go(State::Wait, Reason::Moving, w.now);
         } else {
             match self.state {
                 State::Drive => {
@@ -567,8 +609,12 @@ impl Behaviour {
                 State::Stopped => self.go(State::Wait, self.reason.clone(), w.now),
                 State::Wait => {
                     let only_sign = locks.len() == 1 && locks.contains(&Lock::StopSign);
-                    if locks.is_empty() {
+                    if held && locks.is_empty() {
+                        self.go(State::Wait, Reason::Moving, w.now);
+                    } else if locks.is_empty() {
                         self.go(State::Go, self.reason.clone(), w.now);
+                    } else if self.reason == Reason::Moving {
+                        self.go(State::Wait, Reason::Said(joined(locks)), w.now);
                     } else if w.near && still {
                         self.go(
                             State::Ask,
@@ -590,12 +636,15 @@ impl Behaviour {
                     }
                 }
                 State::Ask => {
-                    if locks.is_empty() {
+                    if held && locks.is_empty() {
+                        self.go(State::Wait, Reason::Moving, w.now);
+                    } else if locks.is_empty() {
                         self.go(State::Go, self.reason.clone(), w.now);
                     }
                 }
             }
         }
+        self.holding = self.state == State::Wait && self.reason == Reason::Moving;
 
         // The cap for the state.
         let mut want = match self.state {
@@ -824,6 +873,10 @@ mod tests {
         }
         fn aborted(mut self) -> Self {
             self.0.goal_aborted = true;
+            self
+        }
+        fn moving(mut self) -> Self {
+            self.0.moving = true;
             self
         }
     }
@@ -1194,5 +1247,44 @@ mod tests {
         }
         assert_eq!("fence".parse::<StopReason>(), Ok(StopReason::Fence));
         assert!("wall".parse::<StopReason>().is_err());
+    }
+
+    #[test]
+    fn something_moving_near_holds_the_car_until_it_has_gone_release_hold_s() {
+        let mut b = fresh();
+        step(&mut b, world(0.0));
+        let d = step(&mut b, world(0.05).moving());
+        assert_eq!(
+            (d.state, d.reason, d.cap),
+            (State::Wait, Reason::Moving, FLOOR)
+        );
+        assert!(b.holding());
+        assert_eq!(step(&mut b, world(0.6).speed(0.0)).state, State::Wait);
+        assert_eq!(
+            step(&mut b, world(0.7).speed(0.0).moving()).state,
+            State::Wait
+        );
+        assert_eq!(step(&mut b, world(1.6).speed(0.0)).state, State::Wait);
+        let d = step(&mut b, world(1.75).speed(0.0));
+        assert_eq!((d.state, d.reason), (State::Go, Reason::Moving));
+        assert!(!b.holding());
+    }
+
+    #[test]
+    fn a_hold_for_something_moving_never_outranks_the_estop_and_keeps_a_lock_waiting() {
+        let mut b = fresh();
+        let d = step(&mut b, world(0.0).lock(Lock::Estop).moving());
+        assert_eq!(d.reason, Reason::Said("e-stop".into()));
+        assert!(!b.holding());
+        let d = step(&mut b, world(0.1).speed(0.0).moving());
+        assert_eq!((d.state, d.reason), (State::Wait, Reason::Moving));
+        let d = step(&mut b, world(0.2).speed(0.0).lock(Lock::StopZone).moving());
+        assert_eq!(d.reason, Reason::Said("stop_zone".into()));
+        let d = step(&mut b, world(0.3).speed(0.0).moving());
+        assert_eq!((d.state, d.reason), (State::Wait, Reason::Moving));
+        let mut b = fresh();
+        assert_eq!(step(&mut b, world(0.0).aborted()).state, State::Ask);
+        let d = step(&mut b, world(0.1).speed(0.0).moving());
+        assert_eq!((d.state, d.reason), (State::Wait, Reason::Moving));
     }
 }

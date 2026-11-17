@@ -33,7 +33,7 @@ from aav_description.stop_law import StopCurve
 
 WAIT, FINAL = 0, 1      # as aav_interfaces/StopPoint
 # Each reason's kind: stop then go on, or stop and stay.
-KIND_OF = {'sign': WAIT, 'obstacle': WAIT, 'fence': FINAL, 'goal': FINAL}
+KIND_OF = {'sign': WAIT, 'obstacle': WAIT, 'fence': FINAL, 'goal': FINAL, 'moving': WAIT}
 
 LENGTH = 40.0           # m: how much road the writer grants at a time
 SPACING = 0.5           # m between the line's points

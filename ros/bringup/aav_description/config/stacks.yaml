@@ -113,8 +113,11 @@ levels:
     what: the behaviour planner and the road ahead (stop sign, obstacle, fence, goal)
     champion: 'off'
     options:
-      'off': {behaviour: 'false'}
-      'on': {behaviour: 'true'}
+      'off': {behaviour: 'false', things: 'false'}
+      # With the things (aav_things): the behaviour planner holds the car for anything
+      # moving near (Ben, 16 Nov: "if we see a car people or stuff moving around us we
+      # should likely just stop"), and passes only what is still.
+      'on': {behaviour: 'true', things: 'true'}
     score: ''
   kerbs:
     what: kerbs the lidar sees (the Rust voxels node's step finder, the local costmap's kerb_layer)
