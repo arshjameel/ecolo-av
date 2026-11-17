@@ -30,11 +30,14 @@ levels:
       # Ours, the global costmap from the map's 64 m chunks round the car and along the
       # route ahead (costmap_chunks:=auto; the campus's when pixi run campus made them, the
       # whole map elsewhere), each read and inflated on its own core (TODO 175, 195). Ours'
-      # pick since 16 Nov: no worse on any tour (lot, campus, University Drive; 2 runs each),
-      # a third of the memory and CPU (docs/own-costmap.md, "From map chunks").
+      # pick on 16 Nov (no worse on any tour: lot, campus, University Drive; 2 runs each;
+      # a third of the memory and CPU; docs/own-costmap.md, "From map chunks"), until
+      # ours_all_chunks below.
       ours_chunks: {costmap: own, costmap_chunks: auto, local_chunks: 'false'}
       # And the local costmap's static layer from the 3 x 3 chunks round the car, not /map
-      # (TODO 175): no costmap then reads the campus's 41 million cells. A challenger.
+      # (TODO 175): no costmap then reads the campus's 41 million cells. Ours' pick since
+      # 16 Nov: every leg of the campus and box tours (2 runs each), the same times, half
+      # the costmap node's memory (docs/own-costmap.md, "The local costmap from the chunks").
       ours_all_chunks: {costmap: own, costmap_chunks: auto, local_chunks: 'true'}
     score: ''
   navigator:
@@ -132,7 +135,7 @@ stacks:
   ours:
     what: every level ours that has one, as `measure controllers --stacks own`, plus the road ahead
     pose: ekf
-    costmap: ours_chunks
+    costmap: ours_all_chunks
     navigator: ours
     path: lane
     steer: mppi_lag_calm

@@ -158,7 +158,7 @@ bench's argument names:
                       Empty: the stack's choice (TODO 175, step 6)
   local_chunks:=true  with costmap_chunks: the local costmap's static layer from the 3 x 3
                       chunks round the car too, so no costmap reads /map (TODO 175).
-                      Empty: the stack's choice
+                      Empty: the stack's choice (true in ours since 16 Nov)
   lane_pass:=false    with lane_route: a parked obstacle on the lane line gives the whole
                       path to the lattice (before 16 Nov); true (the default): only the
                       blocked stretch moves left, the least that clears it, then back

@@ -94,10 +94,14 @@ def test_the_lanes_layer_is_a_challenger_off_in_every_stack():
 def test_ours_global_costmap_is_made_of_chunks():
     # TODO 175 (16 Nov): no worse on the lot, campus and University Drive tours, a third of
     # the memory: ours holds only the chunks it needs; the others the whole map.
-    assert stacks.choices(LEAGUE, 'ours')['costmap'] == 'ours_chunks'
+    # And its local one too (16 Nov): the campus and the box tour, 2 runs each, every leg,
+    # the same times, half the node's memory; no costmap of ours then reads /map.
+    assert stacks.choices(LEAGUE, 'ours')['costmap'] == 'ours_all_chunks'
     for stack in stacks.names(LEAGUE):
         want = 'auto' if stack == 'ours' else 'off'
         assert stacks.switches(LEAGUE, stack).get('costmap_chunks', 'off') == want, stack
+        want = 'true' if stack == 'ours' else 'false'
+        assert stacks.switches(LEAGUE, stack).get('local_chunks', 'false') == want, stack
 
 
 def test_the_lane_centre_planner_is_ours_only():
