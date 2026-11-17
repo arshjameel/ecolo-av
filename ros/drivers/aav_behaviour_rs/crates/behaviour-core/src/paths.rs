@@ -246,18 +246,24 @@ fn walks_in(y: f64, vy: f64, lane: f64, gap: f64, closing: f64, crossing: Crossi
 /// The things' tracker gives a parked box a speed for a moment as the car passes, and a new
 /// track a guessed one. A run starts only on a thing seen this cloud (not coasting); a sure
 /// thing stays sure while it coasts (it walked into the blind zone), until it is slow or
-/// gone.
+/// gone. Nor while it grows (a building coming into view): a run starts again while its
+/// size goes over [`MovingFor::GROW`] times its smallest plus [`MovingFor::GROW_SLACK`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct MovingFor {
     settle: f64,
     moving: f64,
-    /// id -> when its run began.
-    since: std::collections::HashMap<u32, f64>,
+    /// id -> when its run began, and its smallest and largest size (m) since.
+    since: std::collections::HashMap<u32, (f64, f64, f64)>,
     /// The ids that have moved `settle` s.
     sure: std::collections::HashSet<u32>,
 }
 
 impl MovingFor {
+    /// Its size over this times its smallest in the run: the run starts again.
+    pub const GROW: f64 = 1.5;
+    /// m.
+    pub const GROW_SLACK: f64 = 0.5;
+
     /// None moving yet.
     #[must_use]
     pub fn new(settle: f64, moving: f64) -> Self {
@@ -277,17 +283,29 @@ impl MovingFor {
         for &(id, coasting, t) in things {
             let mut start = self.since.get(&id).copied();
             let mut was = self.sure.contains(&id);
+            let size = py_max(t.length, t.width);
             if hypot(t.vx, t.vy) < self.moving {
                 start = None;
                 was = false;
             } else if !coasting {
-                let began = *start.get_or_insert(now);
-                was = was || now - began >= self.settle;
+                let run = match start {
+                    None => (now, size, size),
+                    Some((began, low, high)) => {
+                        let (low, high) = (py_min(low, size), py_max(high, size));
+                        if !was && high > Self::GROW * low + Self::GROW_SLACK {
+                            (now, size, size)
+                        } else {
+                            (began, low, high)
+                        }
+                    }
+                };
+                start = Some(run);
+                was = was || now - run.0 >= self.settle;
             } else if !was {
                 start = None;
             }
-            if let Some(began) = start {
-                since.insert(id, began);
+            if let Some(run) = start {
+                since.insert(id, run);
             }
             if was {
                 sure.insert(id);
@@ -466,6 +484,33 @@ mod tests {
         });
         assert_eq!(ahead(&[late], car, 2.0, slack), f64::INFINITY);
         assert!(close(ahead(&[walker], car, 0.0, c), 5.35));
+    }
+
+    #[test]
+    fn a_thing_that_grows_as_it_comes_into_view_never_holds() {
+        let mut sure = MovingFor::new(1.0, MOVING);
+        for (now, size) in [(0.0, 0.8), (0.5, 3.0), (1.0, 4.5), (1.5, 6.0), (1.9, 6.2)] {
+            let building = Seen {
+                length: size,
+                width: 1.0,
+                ..seen(20.0, 12.0, 1.5, 0.0, 1.0)
+            };
+            assert!(sure.update(now, &[(9, false, building)]).is_empty());
+        }
+        for (now, size) in [(0.0, 0.5), (0.5, 0.8)] {
+            let walker = Seen {
+                length: size,
+                width: 0.4,
+                ..seen(5.0, -3.0, 0.0, 0.8, 0.5)
+            };
+            assert!(sure.update(now, &[(1, false, walker)]).is_empty());
+        }
+        let walker = Seen {
+            length: 0.6,
+            width: 0.4,
+            ..seen(5.0, -3.0, 0.0, 0.8, 0.5)
+        };
+        assert_eq!(sure.update(1.0, &[(1, false, walker)]), [walker]);
     }
 
     #[test]

@@ -257,10 +257,11 @@ def settles():
                     speeds[i] = rng.choice([0.0, 0.2, 0.31, 0.8, 1.5])
                 if rng.random() < 0.85:
                     a = rng.uniform(-math.pi, math.pi)
+                    size = rng.choice([0.5, 0.6, rng.uniform(0.3, 6.0)])
                     things.append((i, rng.random() < 0.25,
                                    bh.Seen(rng.uniform(-5, 20), rng.uniform(-8, 8),
                                            speeds[i] * math.cos(a), speeds[i] * math.sin(a),
-                                           0.5, 0.5)))
+                                           size, rng.uniform(0.3, size))))
             got = sure.update(now, things)
             ticks.append({'now': now,
                           'things': [[i, c, [t.x, t.y, t.vx, t.vy, t.length, t.width]]

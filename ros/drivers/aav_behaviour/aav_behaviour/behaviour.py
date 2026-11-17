@@ -481,26 +481,42 @@ class MovingFor:
     tracks seen 3-7 times coasting off at 0.5-1.8 m/s). Something really moving moves on.
     A run starts only on a thing seen this cloud (not coasting); a sure thing stays sure
     while it coasts (it walked into the blind zone), until it is slow or gone.
+
+    Nor while it grows: on the campus at 2 m/s, buildings and hedges coming into view grew
+    from under 1 m to 4-9 m in 2-3 s, their middles moving at 1-2 m/s (17 Nov). A run
+    starts again while its size (the longer side) goes over GROW times its smallest plus
+    GROW_SLACK; a person or a car stayed within 2 times (0.43-0.84 m, 1.03-1.35 m).
     """
+
+    GROW = 1.5          # its size over this times its smallest in the run: start again
+    GROW_SLACK = 0.5    # m
 
     def __init__(self, settle: float = 1.0, moving: float = MOVING):
         self.settle, self.moving = settle, moving
-        self.since: Dict[int, float] = {}    # id -> when its run began
+        self.since: Dict[int, Tuple[float, float, float]] = {}   # id -> run's start, sizes
         self.sure: set = set()               # ids that have moved `settle` s
 
     def update(self, now: float, things: Sequence[Tuple[int, bool, Seen]]) -> List[Seen]:
         """Return the things (id, coasting, seen) in order that count as moving at `now`."""
-        since: Dict[int, float] = {}
+        since: Dict[int, Tuple[float, float, float]] = {}
         sure = set()
         out = []
         for ident, coasting, t in things:
             start = self.since.get(ident)
             was = ident in self.sure
+            size = max(t.length, t.width)
             if math.hypot(t.vx, t.vy) < self.moving:
                 start, was = None, False
             elif not coasting:
-                start = now if start is None else start
-                was = was or now - start >= self.settle
+                if start is None:
+                    start = (now, size, size)
+                else:
+                    began, low, high = start
+                    low, high = min(low, size), max(high, size)
+                    start = (began, low, high)
+                    if not was and high > self.GROW * low + self.GROW_SLACK:
+                        start = (now, size, size)
+                was = was or now - start[0] >= self.settle
             elif not was:
                 start = None
             if start is not None:

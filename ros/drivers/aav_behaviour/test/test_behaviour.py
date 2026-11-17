@@ -399,3 +399,15 @@ def test_a_thing_holds_only_once_it_has_moved_settle_s_and_a_coasting_one_never_
     assert sure.update(2.6, [(1, False, halt)]) == []
     assert sure.update(2.7, [(1, False, walker)]) == []
     assert sure.update(3.7, [(1, False, walker)]) == [walker]
+
+
+def test_a_thing_that_grows_as_it_comes_into_view_never_holds():
+    sure = MovingFor(settle=1.0)
+    # A building coming into view: 0.8 m, then 3 m, then 6 m, its middle moving 1.5 m/s.
+    for now, size in ((0.0, 0.8), (0.5, 3.0), (1.0, 4.5), (1.5, 6.0), (1.9, 6.2)):
+        assert sure.update(now, [(9, False, Seen(20.0, 12.0, 1.5, 0.0, size, 1.0))]) == []
+    # A person stays near their size: 0.5-0.8 m.
+    for now, size in ((0.0, 0.5), (0.5, 0.8)):
+        assert sure.update(now, [(1, False, Seen(5.0, -3.0, 0.0, 0.8, size, 0.4))]) == []
+    walker = Seen(5.0, -3.0, 0.0, 0.8, 0.6, 0.4)
+    assert sure.update(1.0, [(1, False, walker)]) == [walker]
