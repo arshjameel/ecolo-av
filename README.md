@@ -106,14 +106,14 @@ reaches a real car on the same network. A family is one command and a word after
 |---|---|
 | `turtle` | turtlesim plays the car |
 | `keyboard` | drive from the keyboard, in a second terminal: `keyboard --local` with `turtle` or `bench`, `keyboard --sim` with `sim`. With no flag it drives whatever shares the ROS domain: on the car's network, the car |
-| `sim` | our own simulator plays the car (the default since 8 Nov; `simulator:=gazebo` for Gazebo, on a computer with no GPU), driven by our own stack (`stack:=ours`, the default since 14 Nov; `stack:=stock` for Nav2's, [the league](docs/league.md)); `world:=road`, `hud:=true`, `sim_speed:=3`... |
+| `sim` | our own simulator plays the car (the default since 8 Nov; `simulator:=gazebo` for Gazebo, on a computer with no GPU), driven by our own stack (`stack:=ours`, the default since 14 Nov; `stack:=best` for the champions, [the league](docs/league.md); Nav2 went on 17 Nov); `world:=road`, `hud:=true`, `sim_speed:=3`... |
 | `demo` | the whole simulated car at once: the simulator, RViz, the HUD and the map window. `demo --debug` adds the debug HUD (the lidar's cubes, NDT, where each localizer puts the car); `demo --fullscreen` |
 | `pick` | a menu of the switches (who steers, where-am-I, speed loop), so you needn't remember them: prints the command, saves it, runs it; `pick last` runs it again ([Switches](docs/switches.md)) |
 | `bench` | the real car's software, with stand-ins for the hardware |
 | `view` | the car's model in RViz |
 | `carla-car` | CARLA plays the car: `carla-car host:=<the CARLA computer>` |
 | `drive-to-point` | drive to one point and stop smoothly: `drive-to-point --sim --ahead 20` |
-| `ghost` | a pretend person in Nav2's view, to test stopping: `ghost ahead 10` |
+| `ghost` | a pretend person only navigation sees, to test stopping: `ghost ahead 10` |
 | `sim-fault` | make a simulated sensor fail on purpose: `sim-fault gps stop`, then `sim-fault gps ok` |
 
 ### The screens
@@ -138,10 +138,10 @@ Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
 | `check` | the running graph against the contract: `check turtle` (or `sim`, `road`, `spine`, `car`, `replay`, `bench`) |
 | `drop-in` | is what's running a true drop-in? Each stream's rate and frame against the contract; only listens |
 | `bench-check` | starts bench mode and tests the whole graph: contract, drive, e-stops (2 min) |
-| `sim-check` | starts the road world headless and tests the whole graph in it, on our own stack (2 min); `--simulator gazebo` for Gazebo, `--stack stock` for Nav2's |
+| `sim-check` | starts the road world headless and tests the whole graph in it, on our own stack (2 min); `--simulator gazebo` for Gazebo, `--stack best` for the champions |
 | `measure` | `measure controllers`: Pure Pursuit against MPPI (and the trials: docs/trials.md) on the same routes; `measure timing`: are messages on time?; `measure stream`: the camera stream end to end; `measure atob <bag>`: scores an A-to-B run; `measure lane`: a long lane drive scored by the truth (`--simulator own`, `--world campus`); `measure bandwidth`: every topic's MB/s; `measure diffusion`: the diffusion planner's time a plan against its budget (for the Orin) |
 | `diffusion` | the diffusion planner trial (`planner:=diffusion`): `diffusion data` (the lattice's and Hybrid-A*'s paths on random maps, no Gazebo), `diffusion train` (the model, scored by its guard, into `models/diffusion/planner.onnx`; `pixi install --locked -e learn` first), `diffusion score`, `diffusion replay <folder>` (a Gazebo run's recorded plans through a model, offline), `diffusion export --fp16` |
-| `campus` | Carleton for the simulators, Nav2 and NDT, from OpenStreetMap, into `maps/campus/`: then `pixi run sim world:=campus` ([docs](docs/campus.md)) |
+| `campus` | Carleton for the simulators, navigation and NDT, from OpenStreetMap, into `maps/campus/`: then `pixi run sim world:=campus` ([docs](docs/campus.md)) |
 | `campus-route` | directions on the campus, without ROS: `campus-route "Mackenzie Building"` (from P4), `--from`, `--waypoints`, `--list`; the same graph as `street_router router:=campus` ([docs](docs/routes.md#on-the-campus)) |
 | `ndt-map` | NDT's map of the simulator's test lot: `drive` the mapping route headless, or `build` from a bag; into `maps/ndt/` |
 
