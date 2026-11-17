@@ -67,8 +67,8 @@ In `demo --debug`, keys 1-4 swap the tracker live. More: [Controllers](controlle
 ## Where am I
 
 These run **beside** the EKFs and are only scored for now. They never steer, except
-`ndt_ekf:=true`: then the global EKF, which Nav2 plans by, takes NDT's pose too; and
-`kiss_ekf:=true`: then the local EKF, which Nav2 steers by, takes KISS-ICP's speed too.
+`ndt_ekf:=true`: then the global EKF, which the planner plans by, takes NDT's pose too; and
+`kiss_ekf:=true`: then the local EKF, which the follower steers by, takes KISS-ICP's speed too.
 In `pixi run pick`, `demo --debug` offers NDT + AMCL first (to see every finder); the
 others offer the EKFs only first.
 
@@ -118,7 +118,7 @@ law. `tracker:=mpc_lag` and `mpc_lag_rs` don't model `lqi` yet: the launch refus
 | `lane_map:=world` | with `behaviour:=true`: the road ahead's line on the right lane's centre, with its edges, from the world's lane map (the road world's, or the campus's `maps/campus/lanes.yaml`); or a `lanes.yaml`'s path. Off by default: the line is `/plan`'s |
 | `payload:=150`, `adaptive_brake:=true` | kg aboard the modelled car; the brake that learns it stops too slowly (off by default; not with `spine` or `esp32`: [page](stopping.md#4-a-heavier-car-the-adaptive-brake)) |
 | `plan_around:=false` | the planner sees only the map, so the car stops for an obstacle (default `true`: it plans round) |
-| `obstacle:=true`, `ghost:=true` | a 1 m box 15 m ahead in the lane; a pretend person in Nav2's view ([page](ghost-obstacles.md)) |
+| `obstacle:=true`, `ghost:=true` | a 1 m box 15 m ahead in the lane; a pretend person only navigation sees ([page](ghost-obstacles.md)) |
 
 ### Every other switch of `sim.launch.py`
 
@@ -127,7 +127,7 @@ swap an algorithm. The rest:
 
 | Switches | What | Default |
 |---|---|---|
-| `nav`, `rviz`, `gui`, `chase_camera`, `arm`, `watchdog`, `actuator_model` | Nav2, RViz, the simulator's window, the chase camera, arming the spine, the sensor watchdog, the actuator model | `true` |
+| `nav`, `rviz`, `gui`, `chase_camera`, `arm`, `watchdog`, `actuator_model` | navigation, RViz, the simulator's window, the chase camera, arming the spine, the sensor watchdog, the actuator model | `true` |
 | `teleop`, `hud`, `map`, `foxglove` | a joystick here, the HUD, the map window, the Foxglove bridge | `false` |
 | `perception`, `lane`, `camera_obstacles`, `faults` | the detector, lane keeping (`true` or `fake`), boxes into the costmap, the camera fault path (worlds with cameras) | `false` |
 | `spine`, `esp32`, `esp32_loop`, `bridge` | the spine or today's ESP32 in the loop; `pi` or `open`; `rust` or `python` | `false`, `false`, `pi`, `rust` |
