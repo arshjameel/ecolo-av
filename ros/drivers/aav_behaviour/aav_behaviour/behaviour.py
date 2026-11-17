@@ -48,7 +48,12 @@ STATES = (DRIVE, APPROACH, STOPPED, WAIT, GO, ASK)
 
 # The lock that makes each reason's final stop (twist_mux's names, aav_command_mux).
 LOCK_OF = {'sign': 'stop_sign', 'obstacle': 'stop_zone', 'fence': 'geofence', 'goal': None,
-           'moving': None}
+           'moving': None, 'stop_line': None}
+# A stop line on the route (Lanelet2's, TODO 220): no lock; the road ahead ends at it, and
+# StopLines takes it away once the car has stood there.
+STOP_LINE = 'stop_line'
+# The reasons whose release waits for the stop to stop binding (not a sign: its lock's).
+LETS_GO = ('obstacle', 'fence', 'goal', STOP_LINE)
 # The reason (and the road ahead's stop) while something moving near holds the car.
 MOVING_REASON = 'moving'
 LOCKS = ('estop', 'stop_sign', 'stop_zone', 'geofence', 'sensors')
@@ -272,7 +277,7 @@ class Behaviour:
                   warnings: List[str]) -> None:
         s = self.s
         mine = [x for x in w.stops if x.reason == self.reason]
-        if self.reason in ('obstacle', 'fence', 'goal') and self.binding(mine) is None:
+        if self.reason in LETS_GO and self.binding(mine) is None:
             # No longer binds: a new goal's long path, or the obstacle moved further off.
             mine = []
         if mine or self.reason != 'obstacle':
@@ -290,7 +295,7 @@ class Behaviour:
             self._go(DRIVE, '', w.now)
         elif self.reason == 'goal' and not w.goal_active:
             self._go(DRIVE, '', w.now)
-        elif self.reason in ('obstacle', 'fence', 'goal') and not mine:
+        elif self.reason in LETS_GO and not mine:
             # What we slowed for has gone (the obstacle moved, a new plan): speed up again;
             # an obstacle only once it has stayed gone release_hold s (TODO 189).
             if self.reason == 'obstacle' and stop is None:
@@ -365,6 +370,87 @@ def along_until(points: Sequence[Tuple[float, float]], x: float, y: float, bad) 
         if done >= start and bad(p[0], p[1]):
             return done - start
     return math.inf
+
+
+@dataclass(frozen=True)
+class StopLineSettings:
+    """When a stop line counts as stopped at. m, m/s, s."""
+
+    near: float = 1.5       # the car's stop within this of the line's: standing at it
+    still: float = 0.05     # slower than this is standing
+    dwell: float = 2.0      # s standing at it: a full stop, then go
+    off_path: float = 3.0   # a line further than this off the plan isn't on the way
+    forget: float = 30.0    # a served line this far from the car is forgotten
+    same: float = 1.0       # two lines this close are the same line
+
+
+class StopLines:
+    """
+    The stop lines on the route (TODO 220): stop at each, then go, as at a seen stop sign.
+
+    The planner sends the route's stop lines (/drivers/nav/planner/route_stops, from the
+    Lanelet2 map). Each one on the plan is a stop ('stop_line', WAIT) whose `left` puts
+    the front bumper on the line. Standing within `near` m of it for `dwell` s serves it:
+    it goes, and the car goes on (GO, gently), unless something else holds it (a person
+    crossing: the moving hold). One passed by more than `near` m is served too. A served
+    line is forgotten once the car is `forget` m from it, so the next lap stops again.
+
+        car ●──────────────▶│ line          left = along to the line - front
+                  front ◀──▶│
+    """
+
+    def __init__(self, settings: StopLineSettings = StopLineSettings()):
+        self.s = settings
+        self.lines: List[Tuple[float, float]] = []
+        self.served: List[Tuple[float, float]] = []
+        self.still_since: Optional[float] = None
+
+    def set_lines(self, lines: Sequence[Tuple[float, float]]) -> None:
+        """Take the route's stop lines (map frame, in order)."""
+        self.lines = [(float(x), float(y)) for x, y in lines]
+
+    def _served(self, line: Tuple[float, float]) -> bool:
+        return any(math.hypot(line[0] - p[0], line[1] - p[1]) < self.s.same
+                   for p in self.served)
+
+    def update(self, now: float, plan: Sequence[Tuple[float, float]],
+               car: Optional[Tuple[float, float]], speed: Optional[float],
+               front: float) -> List[float]:
+        """Return the unserved lines' `left`s (m from the car to its stop), nearest first."""
+        s = self.s
+        if car is None or len(plan) < 2:
+            self.still_since = None
+            return []
+        x, y = car
+        self.served = [p for p in self.served if math.hypot(p[0] - x, p[1] - y) <= s.forget]
+        car_left, _ = path_left(plan, x, y)
+        ahead: List[Tuple[float, Tuple[float, float]]] = []
+        for line in self.lines:
+            if self._served(line):
+                continue
+            line_left, off = path_left(plan, line[0], line[1])
+            if off > s.off_path:
+                continue
+            left = car_left - line_left - front
+            if left < -s.near:
+                self.served.append(line)    # passed it
+                continue
+            ahead.append((left, line))
+        if ahead:
+            k = min(range(len(ahead)), key=lambda i: ahead[i][0])
+            left, line = ahead[k]
+            if abs(left) <= s.near and speed is not None and abs(speed) < s.still:
+                if self.still_since is None:
+                    self.still_since = now
+                if now - self.still_since >= s.dwell:
+                    self.served.append(line)
+                    self.still_since = None
+                    del ahead[k]
+            else:
+                self.still_since = None
+        else:
+            self.still_since = None
+        return sorted(a[0] for a in ahead)
 
 
 def lane_ahead(ranges: Sequence[float], angle_min: float, angle_increment: float,

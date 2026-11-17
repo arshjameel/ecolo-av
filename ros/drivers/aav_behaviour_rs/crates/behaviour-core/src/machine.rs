@@ -87,6 +87,9 @@ pub enum StopReason {
     /// Something moving near holds the car: the road ahead's stop at 0 m (never a
     /// stop the machine is given).
     Moving,
+    /// A stop line on the route (Lanelet2's, TODO 220): no lock; the road ahead ends at
+    /// it, and [`crate::stop_lines::StopLines`] takes it away once the car has stood there.
+    StopLine,
 }
 
 /// A stop reason that isn't one of the four.
@@ -95,7 +98,11 @@ pub struct UnknownReason(pub String);
 
 impl fmt::Display for UnknownReason {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}: not sign, obstacle, fence, goal or moving", self.0)
+        write!(
+            f,
+            "{:?}: not sign, obstacle, fence, goal, moving or stop_line",
+            self.0
+        )
     }
 }
 
@@ -111,6 +118,7 @@ impl StopReason {
             StopReason::Fence => "fence",
             StopReason::Goal => "goal",
             StopReason::Moving => "moving",
+            StopReason::StopLine => "stop_line",
         }
     }
 
@@ -121,7 +129,7 @@ impl StopReason {
             StopReason::Sign => Some(Lock::StopSign),
             StopReason::Obstacle => Some(Lock::StopZone),
             StopReason::Fence => Some(Lock::Geofence),
-            StopReason::Goal | StopReason::Moving => None,
+            StopReason::Goal | StopReason::Moving | StopReason::StopLine => None,
         }
     }
 
@@ -141,6 +149,7 @@ impl FromStr for StopReason {
             "fence" => Ok(StopReason::Fence),
             "goal" => Ok(StopReason::Goal),
             "moving" => Ok(StopReason::Moving),
+            "stop_line" => Ok(StopReason::StopLine),
             other => Err(UnknownReason(other.to_string())),
         }
     }

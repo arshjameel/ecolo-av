@@ -411,3 +411,22 @@ def test_a_thing_that_grows_as_it_comes_into_view_never_holds():
         assert sure.update(now, [(1, False, Seen(5.0, -3.0, 0.0, 0.8, size, 0.4))]) == []
     walker = Seen(5.0, -3.0, 0.0, 0.8, 0.6, 0.4)
     assert sure.update(1.0, [(1, False, walker)]) == [walker]
+
+
+def test_a_stop_line_is_stood_at_then_gone():
+    # TODO 220; behaviour-core's stop_lines test, the same case.
+    from aav_behaviour.behaviour import StopLines
+    plan = [(float(i), 0.0) for i in range(61)]
+    lines = StopLines()
+    lines.set_lines([(20.0, 0.5), (40.0, 10.0)])    # one on the way, one 10 m off it
+    lefts = lines.update(0.0, plan, (5.0, 0.0), 2.0, 2.0)
+    assert lefts == pytest.approx([13.0])
+    at = (17.8, 0.0)
+    assert len(lines.update(1.0, plan, at, 0.0, 2.0)) == 1
+    assert len(lines.update(2.9, plan, at, 0.0, 2.0)) == 1
+    assert lines.update(3.0, plan, at, 0.0, 2.0) == []
+    assert lines.update(4.0, plan, (25.0, 0.0), 2.0, 2.0) == []
+    creep = StopLines()
+    creep.set_lines([(20.0, 0.0)])
+    assert all(len(creep.update(0.1 * i, plan, at, 0.2, 2.0)) == 1 for i in range(100))
+    assert creep.update(11.0, plan, None, 0.0, 2.0) == []

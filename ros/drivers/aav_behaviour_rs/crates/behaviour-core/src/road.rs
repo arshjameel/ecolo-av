@@ -46,7 +46,9 @@ impl StopKind {
     #[must_use]
     pub fn of(reason: StopReason) -> Self {
         match reason {
-            StopReason::Sign | StopReason::Obstacle | StopReason::Moving => StopKind::Wait,
+            StopReason::Sign | StopReason::Obstacle | StopReason::Moving | StopReason::StopLine => {
+                StopKind::Wait
+            }
             StopReason::Fence | StopReason::Goal => StopKind::Final,
         }
     }

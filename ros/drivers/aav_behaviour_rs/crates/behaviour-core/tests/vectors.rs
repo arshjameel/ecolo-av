@@ -18,6 +18,7 @@ use behaviour_core::paths::{
     Point, Seen, MOVING, REACH,
 };
 use behaviour_core::road::{build, capped, BuildOptions, Strip};
+use behaviour_core::stop_lines::{StopLineSettings, StopLines};
 use serde_json::Value;
 
 const EXACT: f64 = 1e-9;
@@ -469,4 +470,35 @@ fn the_road_ahead_and_the_lane_map_are_the_pythons() {
         }
     }
     worst.report("the road ahead, the lane line, its edges, lane_at");
+}
+
+#[test]
+fn the_stop_lines_are_the_pythons() {
+    let v = vectors();
+    let mut worst = Worst::default();
+    let mut ticks = 0;
+    let mut stops = 0;
+    for (r, run) in v["stop_lines"]
+        .as_array()
+        .expect("stop_lines")
+        .iter()
+        .enumerate()
+    {
+        let plan = points(&run["plan"]);
+        let front = f(&run["front"]);
+        let mut lines = StopLines::new(StopLineSettings::default());
+        for (i, t) in run["ticks"].as_array().expect("ticks").iter().enumerate() {
+            lines.set_lines(points(&t["lines"]));
+            let car = (!t["car"].is_null()).then(|| (f(&t["car"][0]), f(&t["car"][1])));
+            let speed = (!t["speed"].is_null()).then(|| f(&t["speed"]));
+            let got = lines.update(f(&t["now"]), &plan, car, speed, front);
+            let want = fs_(&t["lefts"]);
+            assert_eq!(got.len(), want.len(), "stop lines {r}, tick {i}");
+            worst.all(&got, &want, &format!("stop lines {r}, tick {i}"));
+            stops += got.len();
+            ticks += 1;
+        }
+    }
+    assert!(ticks >= 6000 && stops > 500, "{ticks} {stops}");
+    worst.report("StopLines");
 }

@@ -13,6 +13,9 @@ Subscribes  /perception/stop_sign/distance  geometry_msgs/PointStamped: a sign, 
                                      with lane_map the road ahead follows the pass there
                                      and its left soft edge opens to the kerb
             /drivers/point/plan      nav_msgs/Path (map, latched): a drive to a point's line
+            /drivers/nav/planner/route_stops  geometry_msgs/PoseArray (map): the route's
+                                     stop lines; each on the plan is a stop (stop_line):
+                                     stand there 2 s, then go (TODO 220)
                                      A -> B; while it runs it is the plan (active_plan)
             /localization/odom/local   nav_msgs/Odometry: the speed, and its age
             /localization/odom/global  nav_msgs/Odometry: where the car is on /plan
@@ -55,7 +58,7 @@ import signal
 from aav_behaviour.behaviour import (active_plan, along_until, Behaviour, diagnostic, lane_ahead,
                                      MOVING, moving_ahead, moving_near, MOVING_REASON,
                                      MovingFor, Nearby, path_left, Seen, Settings, Stop,
-                                     World)
+                                     STOP_LINE, StopLines, World)
 from aav_description.car_model import ActuatorConfig, speed_loop_profile
 from aav_description.lane_map import lane_line, load as load_lanes, with_edges
 from aav_description.road_ahead import build, capped
@@ -65,7 +68,7 @@ from aav_interfaces.msg import RoadAhead, Things
 from aav_safety.geofence import Polygon
 from action_msgs.msg import GoalStatus, GoalStatusArray
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
-from geometry_msgs.msg import PointStamped, PolygonStamped
+from geometry_msgs.msg import PointStamped, PolygonStamped, PoseArray
 from nav_msgs.msg import Odometry, Path
 import rclpy
 from rclpy.duration import Duration
@@ -158,6 +161,12 @@ class BehaviourNode(Node):
             lambda m: setattr(self, 'point_plan',
                               [(s.pose.position.x, s.pose.position.y) for s in m.poses]),
             latched)
+        # The route's stop lines (TODO 220), and the lefts of those not yet stopped at.
+        self.stop_lines, self.line_lefts = StopLines(), []
+        self.create_subscription(
+            PoseArray, '/drivers/nav/planner/route_stops',
+            lambda m: self.stop_lines.set_lines([(p.position.x, p.position.y)
+                                                 for p in m.poses]), 1)
         self.speed, self.odom_time = None, -math.inf
         self.create_subscription(Odometry, '/localization/odom/local', self.on_local, 10)
         self.pose, self.pose_yaw = None, 0.0
@@ -311,6 +320,7 @@ class BehaviourNode(Node):
         ahead = self.obstacle_ahead(now)
         if math.isfinite(ahead):
             found.append(Stop('obstacle', ahead - self.p['front'] - self.p['stop_gap']))
+        found.extend(Stop(STOP_LINE, left) for left in self.line_lefts)
         plan, whose = self.driving(now)
         if plan and self.pose is not None:
             gx, gy = self.pose
@@ -326,6 +336,9 @@ class BehaviourNode(Node):
 
     def tick(self):
         now = self.now()
+        plan, _ = self.driving(now)
+        self.line_lefts = self.stop_lines.update(now, plan, self.pose, self.speed,
+                                                 self.p['front'])
         world = World(now=now, speed=self.speed, odom_age=now - self.odom_time,
                       locks=dict(self.locks), near=self.near, stops=self.stops(now),
                       sign_age=now - self.sign_time,

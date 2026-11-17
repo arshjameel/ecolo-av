@@ -43,6 +43,7 @@ Nav2's controller read.
 | in | `/perception/stop_sign`, `/safety/stop_hold/lock`, `/safety/geofence/lock`, `/safety/sensor_watchdog/lock`, `/safety/estop` | `std_msgs/Bool`: the locks |
 | in | `/safety/geofence/state`, `/safety/geofence/fence` | `std_msgs/String` (NEAR), `geometry_msgs/PolygonStamped` |
 | in | `/plan`, `/localization/odom/local`, `/localization/odom/global` | `nav_msgs/Path`, `nav_msgs/Odometry` |
+| in | `/drivers/nav/planner/route_stops` | `geometry_msgs/PoseArray` (map): the route's stop lines (Lanelet2's); each on the plan is a stop (`stop_line`) in the road ahead: stand there 2 s, then go, as at a seen stop sign (`StopLines`, TODO 220) |
 | in | `/drivers/point/plan` | `nav_msgs/Path` (latched): a drive to a point's line; while it runs it is the plan (`active_plan`) |
 | in | `/sensors/lidar/scan` | `sensor_msgs/LaserScan` (not with `voxels:=true`) |
 | in | `/navigate_to_pose/_action/status` | `action_msgs/GoalStatusArray` |

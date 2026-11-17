@@ -13,6 +13,9 @@
 //!             /drivers/nav/planner/status  diagnostic_msgs/DiagnosticStatus: our planner's
 //!                                      how; pass: with lane_map the road ahead follows it
 //!             /drivers/point/plan      nav_msgs/Path (map, latched): a drive to a point's line
+//!             /drivers/nav/planner/route_stops  geometry_msgs/PoseArray (map): the route's
+//!                                      stop lines; each on the plan is a stop (stop_line):
+//!                                      stand there 2 s, then go (TODO 220)
 //!             /localization/odom/local   nav_msgs/Odometry: the speed, and its age
 //!             /localization/odom/global  nav_msgs/Odometry: where the car is on /plan
 //!             /sensors/lidar/scan      sensor_msgs/LaserScan (base_link, best effort), with
@@ -63,13 +66,14 @@ use behaviour_core::paths::{
     MovingFor, Nearby, Point, Seen, Whose, MOVING, REACH,
 };
 use behaviour_core::road::{build, capped, BuildOptions, Strip};
+use behaviour_core::stop_lines::{StopLineSettings, StopLines};
 use behaviour_core::tf::Buffer;
 use rclrs::*;
 use ros_env::aav_interfaces::msg::{RoadAhead, StopPoint, Things};
 use ros_env::action_msgs::msg::{GoalStatus, GoalStatusArray};
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::diagnostic_msgs::msg::{DiagnosticStatus, KeyValue};
-use ros_env::geometry_msgs::msg::{PointStamped, PolygonStamped};
+use ros_env::geometry_msgs::msg::{PointStamped, PolygonStamped, PoseArray};
 use ros_env::nav_msgs::msg::{Odometry, Path};
 use ros_env::sensor_msgs::msg::LaserScan;
 use ros_env::std_msgs::msg::{Bool, Header, String as Text};
@@ -118,6 +122,9 @@ struct BehaviourNode {
     plan_time: f64,
     passing: bool,
     point_plan: Vec<Point>,
+    /// The route's stop lines (TODO 220), and the `left`s of those not yet stopped at.
+    stop_lines: StopLines,
+    line_lefts: Vec<f64>,
     speed: Option<f64>,
     odom_time: f64,
     pose: Option<Point>,
@@ -319,6 +326,8 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
         plan_time: f64::NEG_INFINITY,
         passing: false,
         point_plan: Vec::new(),
+        stop_lines: StopLines::new(StopLineSettings::default()),
+        line_lefts: Vec::new(),
         speed: None,
         odom_time: f64::NEG_INFINITY,
         pose: None,
@@ -391,6 +400,17 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
             |s: &mut BehaviourNode, m: Path| s.point_plan = path_points(&m),
         )?,
     ));
+    keep.push(Box::new(worker.create_subscription(
+        "/drivers/nav/planner/route_stops".keep_last(1),
+        |s: &mut BehaviourNode, m: PoseArray| {
+            s.stop_lines.set_lines(
+                m.poses
+                    .iter()
+                    .map(|p| (p.position.x, p.position.y))
+                    .collect(),
+            );
+        },
+    )?));
     keep.push(Box::new(worker.create_subscription(
         "/localization/odom/local".keep_last(10),
         |s: &mut BehaviourNode, m: Odometry| s.on_local(&m),
@@ -672,6 +692,11 @@ impl BehaviourNode {
                 ahead - self.p.front - self.p.stop_gap,
             ));
         }
+        found.extend(
+            self.line_lefts
+                .iter()
+                .map(|&left| Stop::new(StopReason::StopLine, left)),
+        );
         let (plan, whose) = self.driving(now);
         if let (false, Some((gx, gy))) = (plan.is_empty(), self.pose) {
             if self.goal_active || whose == Whose::Point {
@@ -690,6 +715,10 @@ impl BehaviourNode {
 
     fn tick(&mut self) {
         let now = self.now();
+        let plan = self.driving(now).0.to_vec();
+        self.line_lefts = self
+            .stop_lines
+            .update(now, &plan, self.pose, self.speed, self.p.front);
         let world = World {
             now,
             speed: self.speed,

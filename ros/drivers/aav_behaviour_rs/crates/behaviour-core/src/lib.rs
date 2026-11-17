@@ -27,6 +27,7 @@ pub mod lanes;
 pub mod machine;
 pub mod paths;
 pub mod road;
+pub mod stop_lines;
 pub mod tf;
 
 pub use ego_core;

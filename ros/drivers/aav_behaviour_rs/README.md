@@ -51,7 +51,8 @@ names and defaults. One addition:
 |---|---|---|
 | `machine` | `Behaviour::step(&World) -> Decision`; `State`, `StopReason`, `Lock`, `Reason` (enums), `Settings`, `Stop`, `nav2_cap`, `diagnostic` | `behaviour.py`, `stop_law.nav2_cap` |
 | `paths` | `active_plan` → `Whose`, `path_left`, `along_until`, `lane_ahead`, `moving_ahead`, `Seen`, `Crossing`; the hold for anything moving: `MovingFor`, `moving_near`, `Nearby` | `behaviour.py` |
-| `road` | `resample`, `build` → `Strip`, `StopOnLine`, `StopKind` | `road_ahead.py` (the writer) |
+| `road` | `resample`, `build` → `Strip`, `StopOnLine`, `StopKind`, `capped` (the states' cap in the limits) | `road_ahead.py` (the writer) |
+| `stop_lines` | `StopLines`: the route's stop lines as stops, served once stood at 2 s (TODO 220) | `behaviour.py` |
 | `lanes` | `LaneMap::lane_at`, `lane_offset`, `load`, `from_yaml`, `lane_line`, `with_edges` | `lane_map.py` |
 | `fence` | `Polygon::depth` | `aav_safety/geofence.py` |
 | `tf` | `Buffer`: each link's last 10 s, looked up at a stamp (interpolated, as tf2) or at the newest shared time | new |
@@ -80,8 +81,9 @@ names and defaults. One addition:
 | `nav2_cap` | 400 | 0 |
 | `path_left`, `along_until` (the fence's depth), the fence's depth | 750 | 0 |
 | `lane_ahead` (float32 scans), `moving_ahead` | 360 | 0 |
-| `moving_near` (300 cases), `MovingFor` (40 runs of 60 ticks, 10,265 things in) | 300 + 4,164 | 0 |
-| the road ahead (its stops, the `moving` hold too), the lane line and its edges, `lane_at` (a map of 5 roads: a junction, two-way, one-way, a bend) | 24,453 | 0 |
+| `moving_near` (300 cases), `MovingFor` (40 runs of 60 ticks) | 300 + 5,274 | 0 |
+| the road ahead (its stops, the `moving` hold too, the cap), the lane line and its edges, `lane_at` (a map of 5 roads: a junction, two-way, one-way, a bend) | 21,774 | 0 |
+| `StopLines` (40 runs of 150 ticks: standing, creeping, passing) | 5,453 | 0 |
 
 The same bit for bit: Python's own `hypot` (ego-core's) and its compensated `sum()`.
 

@@ -10,6 +10,7 @@ The Rust (crates/behaviour-core, tests/vectors.rs) must give the same answers, w
   - the state machine: long random runs of worlds, each tick's state, reason, cap, left
     and warnings, and the state topic's text;
   - path_left, along_until (the fence's depth), lane_ahead, moving_ahead;
+  - the stop lines on the route (StopLines, TODO 220);
   - the road ahead (resample, build), the lane map (lane_at, lane_line, with_edges);
   - the fence's depth.
 
@@ -39,7 +40,7 @@ from aav_description.stop_law import from_car_model, StopCurve  # noqa: E402
 from aav_safety.geofence import Polygon  # noqa: E402
 
 OUT = HERE / 'crates' / 'behaviour-core' / 'tests' / 'vectors.json'
-REASONS = ('sign', 'obstacle', 'fence', 'goal')
+REASONS = ('sign', 'obstacle', 'fence', 'goal', 'stop_line')
 # The road ahead's stops also carry the hold for something moving (a stop at 0 m).
 ROAD_REASONS = REASONS + ('moving',)
 LOCKS = ('estop', 'stop_sign', 'stop_zone', 'geofence', 'sensors')
@@ -97,7 +98,8 @@ def worlds(rng, n):
             speed = min(2.0, speed + rng.uniform(-0.1, 0.2))
         if rng.random() < 0.1:
             speed = rng.choice([0.0, 0.03, 0.06, speed])
-        stops = [bh.Stop(r, lefts[r]) for r in rng.sample(REASONS, 4) if lefts[r] is not None]
+        stops = [bh.Stop(r, lefts[r]) for r in rng.sample(REASONS, len(REASONS))
+             if lefts[r] is not None]
         if lefts['sign'] is not None and rng.random() < 0.7:
             sign_time = now - rng.choice([0.0, 0.05, 0.3])
         odom = rng.random()
@@ -295,6 +297,41 @@ roads:
 """
 
 
+def stop_line_runs():
+    """Return runs of StopLines: a car along a plan, standing, creeping, passing lines."""
+    rng = random.Random(41)
+    out = []
+    for _ in range(40):
+        if rng.random() < 0.7:
+            plan = wiggly(rng, 60, 1.0)
+        else:
+            plan = [(float(i), 0.0) for i in range(61)]
+        lines = []
+        for _ in range(rng.randrange(4)):
+            i = rng.randrange(len(plan))
+            lines.append((plan[i][0] + rng.uniform(-4, 4), plan[i][1] + rng.uniform(-4, 4)))
+        sl = bh.StopLines()
+        sl.set_lines(lines)
+        front = rng.choice([0.0, 2.0])
+        now, k = 0.0, 0.0
+        ticks = []
+        for _ in range(150):
+            now += rng.choice([0.1, 0.1, 0.5, 0.0])
+            speed = rng.choice([0.0, 0.0, 0.03, 0.5, 2.0, None])
+            if speed:
+                k = min(len(plan) - 1.0, k + speed * 0.3)
+            p = plan[int(k)]
+            car = (None if rng.random() < 0.03
+                   else (p[0] + rng.uniform(-0.3, 0.3), p[1] + rng.uniform(-0.3, 0.3)))
+            if rng.random() < 0.02:
+                lines = lines[::-1]
+                sl.set_lines(lines)
+            ticks.append({'now': now, 'car': car, 'speed': speed, 'lines': lines,
+                          'lefts': sl.update(now, plan, car, speed, front)})
+        out.append({'plan': plan, 'front': front, 'ticks': ticks})
+    return out
+
+
 def roads():
     import yaml
     rng = random.Random(21)
@@ -353,7 +390,8 @@ def main():
                                 s.odom_stale, s.sign_lost, s.passed, s.release_hold]
                             for k, s in SETTINGS.items()},
                'runs': machine_runs(), 'caps': caps(), 'paths': paths(), 'scans': scans(),
-               'movers': movers(), 'nears': nears(), 'settles': settles(), 'roads': roads()}
+               'movers': movers(), 'nears': nears(), 'settles': settles(), 'roads': roads(),
+               'stop_lines': stop_line_runs()}
     OUT.write_text(json.dumps(enc(vectors), separators=(',', ':'), allow_nan=False) + '\n')
     print(f'wrote {OUT.relative_to(ROS.parent)} ({OUT.stat().st_size // 1024} kB)')
 
