@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-simulator-cameras.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Ravensim&#x27;s cameras</h1>
-<div class="meta">12 min read · 9 sections</div></header>
+<div class="meta">13 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -253,6 +253,10 @@ with none, Mesa's software renderer draws them (<a href="#with-no-gpu-15-nov">be
 <tr>
 <td><code>pixi run sim-cameras --software</code></td>
 <td>a software renderer only, even beside a GPU</td>
+</tr>
+<tr>
+<td><code>pixi run sim-cameras --graphics simple</code></td>
+<td>the plain look (<code>pretty</code>: grain, a sky, haze; the default <code>auto</code>: pretty on a GPU, simple in software). <a href="own-simulator.html#looks-graphicspretty-17-nov">Looks</a></td>
 </tr>
 <tr>
 <td><code>tools/software_gl.sh pixi run sim-check</code></td>

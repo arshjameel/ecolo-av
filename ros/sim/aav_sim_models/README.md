@@ -52,7 +52,7 @@ no command timeout). `esp32_loop:=pi|open` is the bridge's `speed_loop.mode`.
 
 Arguments: `world` (empty, test_lot, road, or a path), `obstacle`, `start_x`, `start_y` (m),
 `start_yaw` (rad), `lidar`, `cameras`, `camera_lockstep` (auto, true, false; auto = on
-under `tools/software_gl.sh`), `chase_camera`, `radar`, `actuator_model`, `speed_loop`,
+under `tools/software_gl.sh`), `graphics` (auto, simple, pretty; auto = pretty on a GPU), `chase_camera`, `radar`, `actuator_model`, `speed_loop`,
 `payload` (kg aboard), `adaptive_brake`, `lag_scale`, `faults`, `spine`, `arm`, `bridge`
 (rust or python), `esp32`, `esp32_loop` (pi or open), `noise_seed`, `wheel_noise`,
 `wheel_slip`, `clock_hz`.

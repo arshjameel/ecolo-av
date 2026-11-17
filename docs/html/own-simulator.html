@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-simulator.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Ravensim</h1>
-<div class="meta">13 min read · 9 sections</div></header>
+<div class="meta">16 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -120,7 +120,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#in-one-picture">In one picture</a><a href="#what-it-gives">What it gives</a><a href="#the-worlds">The worlds</a><a href="#the-car">The car</a><a href="#plug-in-points">Plug-in points</a><a href="#head-to-head-with-the-cameras-8-nov-bens-mac-quiet-load-4-15">Head to head, with the cameras (8 Nov, Ben&#x27;s Mac, quiet: load 4-15)</a><a href="#results-7-nov-bens-mac-other-agents-running-load-30-40">Results (7 Nov, Ben&#x27;s Mac, other agents running: load 30-40)</a><a href="#no-gpu-15-nov">No GPU (15 Nov)</a><a href="#not-there-yet">Not there yet</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#in-one-picture">In one picture</a><a href="#what-it-gives">What it gives</a><a href="#the-worlds">The worlds</a><a href="#looks-graphicspretty-17-nov">Looks: graphics:=pretty (17 Nov)</a><a href="#the-car">The car</a><a href="#plug-in-points">Plug-in points</a><a href="#head-to-head-with-the-cameras-8-nov-bens-mac-quiet-load-4-15">Head to head, with the cameras (8 Nov, Ben&#x27;s Mac, quiet: load 4-15)</a><a href="#results-7-nov-bens-mac-other-agents-running-load-30-40">Results (7 Nov, Ben&#x27;s Mac, other agents running: load 30-40)</a><a href="#no-gpu-15-nov">No GPU (15 Nov)</a><a href="#not-there-yet">Not there yet</a></nav>
 <div class="lead"><p><strong>Ravensim</strong> is our own simulator, in Rust (Ben named it, 16 Nov). Ben, 7 Nov: "merge in
 everything from gazebo so its standalone in rust". This page is the simulator's <strong>core</strong>: the world, the car, the lidar, the radar, the IMU, the GPS, the wheels
 and the clock. The cameras are their own program (<a href="own-simulator-cameras.html">its page</a>),
@@ -251,6 +251,141 @@ picture (<strong>camera lockstep</strong>, 16 Nov): <code>tools/software_gl.sh p
 </table></div>
 <p>The rays see what Gazebo's lidar sees: the <strong>visuals</strong>. One roof-lidar scan takes 1.7 ms in the
 test lot and 15 ms on the campus (Ben's Mac, 4 threads).</p>
+</section>
+<section class="card"><h2 id="looks-graphicspretty-17-nov">Looks: <code>graphics:=pretty</code> (17 Nov)</h2>
+<p>Ben, 16 Nov: "its pretty ugly and flat looking" (TODO 244). The cameras now draw more:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Before (<code>graphics:=simple</code>)</th>
+<th>After (<code>graphics:=pretty</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="The road world, before" src="../img/ravensim-road-before.png" /></td>
+<td><img alt="The road world, after" src="../img/ravensim-road-after.png" /></td>
+</tr>
+<tr>
+<td><img alt="The campus, before" src="../img/ravensim-campus-before.png" /></td>
+<td><img alt="The campus, after" src="../img/ravensim-campus-after.png" /></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Added</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Grain on grass, asphalt, concrete and paint</td>
+<td>small pictures made from noise in code (<code>camera_core::pretty</code>), laid in metres; each keeps its surface's average colour</td>
+</tr>
+<tr>
+<td>A sky</td>
+<td>haze at the horizon, bluer overhead, a glow round the sun (a skybox, made in code)</td>
+</tr>
+<tr>
+<td>Haze far off</td>
+<td>none nearer than 50 m; a fifth at the cameras' 150 m edge</td>
+</tr>
+<tr>
+<td>Light</td>
+<td>a warm sun, a blue-grey sky light, sharper shadows out to 120 m</td>
+</tr>
+<tr>
+<td>The campus's bumps</td>
+<td>its bump maps (<code>normal_map</code> in the SDF), drawn at last</td>
+</tr>
+<tr>
+<td>Stop lines on the campus</td>
+<td>a white bar where the Lanelet2 map's stop line is (<code>pixi run campus</code> again)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The campus already had OpenStreetMap's building heights, roofs, trees and lane lines.
+No downloads: every picture is made in code.</p>
+<p><strong>Only the cameras change.</strong> The lidar and radar read the same shapes. Pretty or simple,
+the pictures keep the lens, size, rate and noise.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>graphics:=</code></th>
+<th>Draws</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>auto</code></td>
+<td>pretty on a GPU, simple drawn in software (<code>tools/software_gl.sh</code>, CI)</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>pretty</code></td>
+<td>all of the above</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>simple</code></td>
+<td>plain colours, a flat sky: as Gazebo drew</td>
+<td>-</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>pixi run sim-cameras --graphics simple|pretty</code> draws either one without ROS.</p>
+<p>Checked (17 Nov, Ben's Mac, pretty unless it says):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Simple</th>
+<th>Pretty</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sim-check --obstacle --lane</code> (road)</td>
+<td>passed before</td>
+<td>all pass; stopped 0.80 m from the box</td>
+</tr>
+<tr>
+<td>The lane finder, from the truth</td>
+<td>1.0 cm; both lines in 299 of 299</td>
+<td><strong>0.8 cm</strong>; 299 of 299</td>
+</tr>
+<tr>
+<td>Stop sign, RF-DETR, 7 to 20 m</td>
+<td>0.75 to 0.93</td>
+<td>0.88 to 0.92</td>
+</tr>
+<tr>
+<td>Stop sign, YOLO, 7 to 15 m</td>
+<td>0.41 to 0.92</td>
+<td>0.44 to 0.93</td>
+</tr>
+<tr>
+<td>4 cameras, one round, GPU (road / campus)</td>
+<td>14.7 / 19.4 ms</td>
+<td>22.7 / 27.2 ms</td>
+</tr>
+<tr>
+<td>4 cameras, one round, software (lavapipe, road)</td>
+<td>44.5 ms</td>
+<td>105 ms: so <code>auto</code> draws simple there</td>
+</tr>
+<tr>
+<td><code>tools/software_gl.sh --force pixi run sim-check --obstacle</code></td>
+<td>all pass; cameras 10 Hz in sim time, real-time factor 0.98-1.00 (lockstep)</td>
+<td>not drawn: <code>auto</code> is simple there</td>
+</tr>
+</tbody>
+</table></div>
+<p>The stop sign 25 m off and the lane lines sit inside the 50 m with no haze, so the
+detectors see the same red and white. The lane finder did a little better on real grain.</p>
 </section>
 <section class="card"><h2 id="the-car">The car</h2>
 <div class="table-wrap"><table>

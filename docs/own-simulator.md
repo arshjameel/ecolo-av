@@ -62,6 +62,53 @@ It replaced `gz sim` **and** its bridges. Every node above them is the one Gazeb
 The rays see what Gazebo's lidar sees: the **visuals**. One roof-lidar scan takes 1.7 ms in the
 test lot and 15 ms on the campus (Ben's Mac, 4 threads).
 
+## Looks: `graphics:=pretty` (17 Nov)
+
+Ben, 16 Nov: "its pretty ugly and flat looking" (TODO 244). The cameras now draw more:
+
+| Before (`graphics:=simple`) | After (`graphics:=pretty`) |
+|---|---|
+| ![The road world, before](img/ravensim-road-before.png) | ![The road world, after](img/ravensim-road-after.png) |
+| ![The campus, before](img/ravensim-campus-before.png) | ![The campus, after](img/ravensim-campus-after.png) |
+
+| Added | How |
+|---|---|
+| Grain on grass, asphalt, concrete and paint | small pictures made from noise in code (`camera_core::pretty`), laid in metres; each keeps its surface's average colour |
+| A sky | haze at the horizon, bluer overhead, a glow round the sun (a skybox, made in code) |
+| Haze far off | none nearer than 50 m; a fifth at the cameras' 150 m edge |
+| Light | a warm sun, a blue-grey sky light, sharper shadows out to 120 m |
+| The campus's bumps | its bump maps (`normal_map` in the SDF), drawn at last |
+| Stop lines on the campus | a white bar where the Lanelet2 map's stop line is (`pixi run campus` again) |
+
+The campus already had OpenStreetMap's building heights, roofs, trees and lane lines.
+No downloads: every picture is made in code.
+
+**Only the cameras change.** The lidar and radar read the same shapes. Pretty or simple,
+the pictures keep the lens, size, rate and noise.
+
+| `graphics:=` | Draws | Default |
+|---|---|---|
+| `auto` | pretty on a GPU, simple drawn in software (`tools/software_gl.sh`, CI) | yes |
+| `pretty` | all of the above | - |
+| `simple` | plain colours, a flat sky: as Gazebo drew | - |
+
+`pixi run sim-cameras --graphics simple|pretty` draws either one without ROS.
+
+Checked (17 Nov, Ben's Mac, pretty unless it says):
+
+| Check | Simple | Pretty |
+|---|---|---|
+| `sim-check --obstacle --lane` (road) | passed before | all pass; stopped 0.80 m from the box |
+| The lane finder, from the truth | 1.0 cm; both lines in 299 of 299 | **0.8 cm**; 299 of 299 |
+| Stop sign, RF-DETR, 7 to 20 m | 0.75 to 0.93 | 0.88 to 0.92 |
+| Stop sign, YOLO, 7 to 15 m | 0.41 to 0.92 | 0.44 to 0.93 |
+| 4 cameras, one round, GPU (road / campus) | 14.7 / 19.4 ms | 22.7 / 27.2 ms |
+| 4 cameras, one round, software (lavapipe, road) | 44.5 ms | 105 ms: so `auto` draws simple there |
+| `tools/software_gl.sh --force pixi run sim-check --obstacle` | all pass; cameras 10 Hz in sim time, real-time factor 0.98-1.00 (lockstep) | not drawn: `auto` is simple there |
+
+The stop sign 25 m off and the lane lines sit inside the 50 m with no haze, so the
+detectors see the same red and white. The lane finder did a little better on real grain.
+
 ## The car
 
 | Part | How |

@@ -408,7 +408,10 @@ mod tests {
             assert!((d.mean() - 1.0).abs() < 0.01, "{s:?}: {}", d.mean());
             // Not flat: it has grain.
             let first = d.rgba[0];
-            assert!(d.rgba.chunks_exact(4).any(|p| p[0] != first), "{s:?}");
+            assert!(
+                d.rgba.as_chunks::<4>().0.iter().any(|p| p[0] != first),
+                "{s:?}"
+            );
         }
         assert_eq!(Surface::Plain.detail(64), None);
         // The same picture every run.

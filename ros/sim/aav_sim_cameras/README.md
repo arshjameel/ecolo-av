@@ -28,7 +28,7 @@ no distortion. The chase camera: 70 degrees across.
 
 | File | What it is |
 |---|---|
-| `crates/camera-core/` | no Bevy, no ROS: lenses and camera_info (`lens.rs`), mounts and topics (`rig.rs`), the shared world type (`world.rs`), the core's world as that type (`core_world.rs`), OBJ meshes (`obj.rs`), when each camera is due (`schedule.rs`), pictures (`frame.rs`), the `CameraRenderer` trait and `Cameras` (`lib.rs`) |
+| `crates/camera-core/` | no Bevy, no ROS: lenses and camera_info (`lens.rs`), what `graphics:=pretty` adds (`pretty.rs`: surfaces, their grain, the sky), mounts and topics (`rig.rs`), the shared world type (`world.rs`), the core's world as that type (`core_world.rs`), OBJ meshes (`obj.rs`), when each camera is due (`schedule.rs`), pictures (`frame.rs`), the `CameraRenderer` trait and `Cameras` (`lib.rs`) |
 | `src/lib.rs` | `BevyRenderer`: the trait in Bevy, offscreen, stepped by hand |
 | `src/scene.rs` | a `SimWorld` as Bevy's meshes, materials, sky and sun |
 | `src/main.rs` | the program `sim_cameras`: the timing check, `--bench`, `--save`, `--ros` |
@@ -47,6 +47,8 @@ pixi run sim-cameras --ros                   # publish, a scripted drive, wall-c
 pixi run sim-cameras --ros --pose truth      # draw where /vehicle/sim/truth says, its stamps
 pixi run sim-cameras --world maps/campus/campus.sdf --at 49,-71,0 --save /tmp/pics
                                              # an SDF world, parked there (x, y, yaw)
+pixi run sim-cameras --graphics simple       # the plain look; pretty: grain, sky, haze
+                                             # (auto, the default: pretty on a GPU)
 ```
 
 `pixi run sim` (ours is the default) starts it with `--ros --pose truth --world <the world>`

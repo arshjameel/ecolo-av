@@ -81,10 +81,17 @@ names are in [Who](#who-built-it).
 | What it does | Algorithms we built | Language | Status | Key number |
 |---|---|---|---|---|
 | Plays the car: world, car, lidar, radar, IMU, GPS, wheels, clock, on the car's own topics | ✅ Ravensim (`aav_simulator`); reads the same SDF worlds Gazebo did | Rust | sim | passed every `sim-check` leg Gazebo passed (8 Nov) |
-| Cameras | ✅ `aav_sim_cameras` (Bevy, no window); **camera lockstep**: with no GPU the clock waits for each picture | Rust | sim | 640 x 360, Gazebo's lens and rate |
+| Cameras | ✅ `aav_sim_cameras` (Bevy, no window); **camera lockstep**: with no GPU the clock waits for each picture; **`graphics:=pretty`** (17 Nov): grain, a sky, haze, painted stop lines | Rust | sim | 640 x 360, Gazebo's lens and rate |
 | Faults on purpose | `pixi run sim-fault`, `sim-check --faults`, `--actuator-faults` | Python | sim | 14 sensor faults; 6 of 6 actuator faults |
 | Wheels that slip, kerbs that stop the car | seeded wheel noise and slip; each wheel finds the ground | Rust | sim | a 0.3 m kerb stops the car |
 | Big maps | **RavenTiles**: a map cut into 64 m chunks | data | sim | the campus in 625 chunks a detail |
+
+What the car's cameras see on the campus, before and after `graphics:=pretty`
+([Looks](own-simulator.md#looks-graphicspretty-17-nov)):
+
+| Before | After |
+|---|---|
+| ![The campus, before](img/ravensim-campus-before.png) | ![The campus, after](img/ravensim-campus-after.png) |
 
 ### Screens
 
@@ -207,7 +214,7 @@ We kept a few small, proven stock parts: `robot_localization`, `twist_mux` and t
 | 2 | **Car day**: drive our stack on the real car, record it, score it ([Car day](car-day.md)) | the team |
 | 3 | The last heavy Python nodes to Rust, and the champions made the car's default | software |
 | 4 | The models in ONNX | software |
-| 5 | A prettier Ravensim | software |
+| 5 | A prettier Ravensim: grain, sky and haze done (17 Nov); more on the road world | software |
 
 The whole list: `TODO.md`, "What is next".
 

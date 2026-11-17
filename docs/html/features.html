@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">103 min read · 15 sections</div></header>
+<div class="meta">104 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -1311,9 +1311,9 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="own-simulator-cameras.html">Ravensim's cameras</a> (<code>aav_sim_cameras</code>, <code>pixi run sim-cameras</code>)</td>
-<td>Ben, 7 Nov: replace Gazebo with our own Rust simulator, every sensor. Bevy draws each car camera offscreen with Gazebo's picture, lens, rate and frame, so the detector and stop-sign watcher can't tell them apart. Joined to the core (8 Nov): they draw the same world files (test lot, road, campus: boxes, cylinders, planes, OBJ meshes and their pictures), so Ravensim runs perception, lane and faults. Models placed while running (<code>spawn_entity</code>, the obstacle) are drawn too, from <code>/vehicle/sim/entities</code>. Since 15 Nov they draw with no GPU too, on Mesa's lavapipe (<code>tools/software_gl.sh</code>; TODO 183: Gazebo's last job), and say which adapter draws. <strong>Camera lockstep (16 Nov):</strong> drawn in software they ran at 1.6 Hz on CI, skipping poses, while Gazebo drew in lockstep; now Ravensim's clock waits for each picture (<code>camera_lockstep:=auto</code> under <code>tools/software_gl.sh</code>), so every camera keeps 10 Hz in sim time and the world runs slower instead</td>
+<td>Ben, 7 Nov: replace Gazebo with our own Rust simulator, every sensor. Bevy draws each car camera offscreen with Gazebo's picture, lens, rate and frame, so the detector and stop-sign watcher can't tell them apart. Joined to the core (8 Nov): they draw the same world files (test lot, road, campus: boxes, cylinders, planes, OBJ meshes and their pictures), so Ravensim runs perception, lane and faults. Models placed while running (<code>spawn_entity</code>, the obstacle) are drawn too, from <code>/vehicle/sim/entities</code>. Since 15 Nov they draw with no GPU too, on Mesa's lavapipe (<code>tools/software_gl.sh</code>; TODO 183: Gazebo's last job), and say which adapter draws. <strong>Camera lockstep (16 Nov):</strong> drawn in software they ran at 1.6 Hz on CI, skipping poses, while Gazebo drew in lockstep; now Ravensim's clock waits for each picture (<code>camera_lockstep:=auto</code> under <code>tools/software_gl.sh</code>), so every camera keeps 10 Hz in sim time and the world runs slower instead. <strong>Prettier (17 Nov, TODO 244; Ben: "its pretty ugly and flat looking"):</strong> <code>graphics:=pretty</code>, the default on a GPU, adds grain on grass, asphalt, concrete and paint (made in code, each keeping its average colour), a sky with haze and the sun's glow, haze past 50 m, a warm sun and sharper shadows, the campus's bump maps, and the campus's stop lines painted where the Lanelet2 map has them; <code>simple</code> (the default in software) is the plain look. Only the pictures change: the lidar and radar read the same shapes</td>
 <td>Ben</td>
-<td>2026-11-16</td>
+<td>2026-11-17</td>
 <td>sim</td>
 </tr>
 </tbody>

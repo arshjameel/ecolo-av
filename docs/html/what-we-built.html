@@ -291,7 +291,7 @@ names are in <a href="#who-built-it">Who</a>.</p>
 </tr>
 <tr>
 <td>Cameras</td>
-<td>✅ <code>aav_sim_cameras</code> (Bevy, no window); <strong>camera lockstep</strong>: with no GPU the clock waits for each picture</td>
+<td>✅ <code>aav_sim_cameras</code> (Bevy, no window); <strong>camera lockstep</strong>: with no GPU the clock waits for each picture; <strong><code>graphics:=pretty</code></strong> (17 Nov): grain, a sky, haze, painted stop lines</td>
 <td>Rust</td>
 <td>sim</td>
 <td>640 x 360, Gazebo's lens and rate</td>
@@ -316,6 +316,22 @@ names are in <a href="#who-built-it">Who</a>.</p>
 <td>data</td>
 <td>sim</td>
 <td>the campus in 625 chunks a detail</td>
+</tr>
+</tbody>
+</table></div>
+<p>What the car's cameras see on the campus, before and after <code>graphics:=pretty</code>
+(<a href="own-simulator.html#looks-graphicspretty-17-nov">Looks</a>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="The campus, before" src="../img/ravensim-campus-before.png" /></td>
+<td><img alt="The campus, after" src="../img/ravensim-campus-after.png" /></td>
 </tr>
 </tbody>
 </table></div>
@@ -859,7 +875,7 @@ names are in <a href="#who-built-it">Who</a>.</p>
 </tr>
 <tr>
 <td>5</td>
-<td>A prettier Ravensim</td>
+<td>A prettier Ravensim: grain, sky and haze done (17 Nov); more on the road world</td>
 <td>software</td>
 </tr>
 </tbody>
