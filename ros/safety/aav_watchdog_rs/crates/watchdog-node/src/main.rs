@@ -1,7 +1,7 @@
 //! sensor_watchdog in Rust: stops the automatic drivers when a sensor they need dies, lies
 //! or freezes. A drop-in for aav_safety's sensor_watchdog.py: the same node name, topics,
 //! QoS, parameters and answers. The logic is the `watchdog-core` crate, with no ROS.
-//! **A safety lock**: a challenger until proven; the Python stays the default.
+//! **A safety lock**: the default since Ben, 16 Nov; `watchdog_impl:=python` falls back.
 //!
 //! Subscribes  each input's topic, as config/sensor_watchdog.yaml says (the launch file
 //!             picks which: inputs), by its kind: odom nav_msgs/Odometry, imu

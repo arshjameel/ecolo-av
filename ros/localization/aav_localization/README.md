@@ -33,7 +33,7 @@ The two EKFs never read each other's topic. They meet only in TF.
 | `ndt_ekf` | false | a trial: `ekf_global` also takes NDT's pose (`/localization/ndt/pose`: x, y, yaw), with `config/ekf_global_ndt.yaml` on top. `sim.launch.py ndt_ekf:=true` starts NDT too |
 | `lane_pose`, `lane_map` | false, empty | a trial (TODO 155): `lane_pose` ([aav_lane_pose](../aav_lane_pose/README.md)) runs on `lane_map` (a lanes.yaml), and `ekf_global` takes its x and y, with `config/ekf_global_lane.yaml` on top (`pose1` after NDT's). `sim.launch.py lane_pose:=true` starts the lane finder too |
 | `health` | true | false leaves out `localization_health` |
-| `localization_health_impl` | python | `rust`: [aav_localization_health_rs](../aav_localization_health_rs/README.md) instead, the same node name, topics and answers (TODO 185) |
+| `localization_health_impl` | rust | [aav_localization_health_rs](../aav_localization_health_rs/README.md) (Ben, 16 Nov); `python`: aav_localization_health instead, the same node name, topics and answers |
 | `start_x`, `start_y`, `start_yaw` | 0, 0, 0 | where the car starts: m east and north of the datum, rad counter-clockwise from east |
 | `use_sim_time` | false | |
 

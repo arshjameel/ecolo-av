@@ -2,11 +2,11 @@
 
 ## Overview
 
-ego and look_ahead in Rust (rclrs), **one process holding both nodes**: a challenger beside
-`aav_ego`'s two Python nodes. The same node names, topics, QoS, parameters and answers.
-Ben, 14 Nov: "convert anything that uses a lot of resources to rust" (TODO 185). The
-simulator's default since 16 Nov (below); the car keeps the Python until this one has
-run on it.
+ego and look_ahead in Rust (rclrs), **one process holding both nodes**: the default, in
+place of `aav_ego`'s two Python nodes. The same node names, topics, QoS, parameters and
+answers. Ben, 14 Nov: "convert anything that uses a lot of resources to rust" (TODO 185).
+The simulator's default since 16 Nov (below), and the car's too (Ben, 16 Nov);
+`ego_impl:=python` falls back until a car day proves this one.
 
 ```
 /control/cmd_vel ──► ego ──► /ego/actuator_cmd (50 Hz)          one process: `ego`
@@ -148,8 +148,8 @@ Most of the Python's cost at 1000 Hz is `/clock` itself: rclpy wakes for each me
 ### The simulator's default
 
 Since 16 Nov this is **the simulator's default** (`sim.launch.py`,
-`vehicle.SIM_DEFAULT_EGO_IMPL`); the car (`ego.launch.py`) keeps the Python until Rust has run on
-it. Both gates were no worse with Rust (ego, behaviour and voxels all Rust, against all Python):
+`vehicle.SIM_DEFAULT_EGO_IMPL`), and the car's too (`vehicle.DEFAULT_EGO_IMPL`,
+`ego.launch.py`, `car.launch.py`; Ben, 16 Nov). Both gates were no worse with Rust (ego, behaviour and voxels all Rust, against all Python):
 
 | Gate | Python | Rust |
 |---|---|---|

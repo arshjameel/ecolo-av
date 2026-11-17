@@ -278,7 +278,7 @@ def test_the_rust_nodes_are_the_cars_default_and_python_one_switch_away():
     sent = included(started(CAR, machine='all'))
     for name, switch in switches.items():
         assert sent[name][switch] == 'rust', name
-    back = included(started(CAR, machine='all', **{s: 'python' for s in switches.values()}))
+    back = included(started(CAR, machine='all', **dict.fromkeys(switches.values(), 'python')))
     for name, switch in switches.items():
         assert back[name][switch] == 'python', name
     with pytest.raises(ValueError, match='watchdog_impl'):

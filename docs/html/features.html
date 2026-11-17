@@ -255,7 +255,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="../../ros/localization/aav_localization_health_rs/README.md">Localization health in Rust</a> (<code>aav_localization_health_rs</code>, <code>localization_health_impl:=rust</code>)</td>
-<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust" (TODO 185). The same answers as the Python, exactly (3,600 reports: every check's level, words, numbers and /diagnostics text; 300 TF trees against tf2's own Buffer). Our simulator's road world, /clock at 100 Hz, parked: 1.5 % of a core against 9.4 %; both say OK; sim-check's road world passes with each. The simulator's default since 16 Nov; the car keeps the Python until it has run there</td>
+<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust" (TODO 185). The same answers as the Python, exactly (3,600 reports: every check's level, words, numbers and /diagnostics text; 300 TF trees against tf2's own Buffer). Our simulator's road world, /clock at 100 Hz, parked: 1.5 % of a core against 9.4 %; both say OK; sim-check's road world passes with each. The default in the simulator and, since 16 Nov (Ben), on the car too; <code>localization_health_impl:=python</code> falls back until a car day proves it</td>
 <td>Ben</td>
 <td>2026-11-16</td>
 <td>sim</td>
@@ -728,8 +728,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="../../ros/drivers/aav_behaviour_rs/README.md">The behaviour planner in Rust</a> (<code>aav_behaviour_rs</code>, <code>behaviour_impl:=rust</code>), a challenger beside the Python</td>
-<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust": the Python node cost 10.7 % of a core in the road world, the most of any. The same answers as the Python modules, bit for bit (4,800 ticks of the states, the cap and the road ahead with its lane and edges); the same node, topics and parameters. Our simulator's road world, /clock at 100 Hz: 1.3 % of a core against 9.0 %; sim-check's road world and <code>--behaviour-only</code> the same as the Python's, <code>--behaviour-things-only</code> passed. 16 Nov: the simulator's default (sim-check and the scores on lot and university_box no worse than the Python's); the car keeps the Python</td>
+<td><a href="../../ros/drivers/aav_behaviour_rs/README.md">The behaviour planner in Rust</a> (<code>aav_behaviour_rs</code>, <code>behaviour_impl:=rust</code>), the default</td>
+<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust": the Python node cost 10.7 % of a core in the road world, the most of any. The same answers as the Python modules, bit for bit (4,800 ticks of the states, the cap and the road ahead with its lane and edges); the same node, topics and parameters. Our simulator's road world, /clock at 100 Hz: 1.3 % of a core against 9.0 %; sim-check's road world and <code>--behaviour-only</code> the same as the Python's, <code>--behaviour-things-only</code> passed. 16 Nov: the simulator's default (sim-check and the scores on lot and university_box no worse than the Python's); the car's default too (Ben, 16 Nov), <code>behaviour_impl:=python</code> falls back</td>
 <td>Ben</td>
 <td>2026-11-16</td>
 <td>sim</td>
@@ -827,8 +827,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="../../ros/ego/aav_ego_rs/README.md">ego and look_ahead in Rust</a> (<code>aav_ego_rs</code>, <code>ego_impl:=rust</code>): both nodes in one process, a challenger beside the Python</td>
-<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust". The same answers as the Python modules (0 difference, but the trace's f32 speed loop: 4e-8); our simulator's road world, /clock at 100 Hz: 2.4 % of a core against 17 % (ego 10.5, look_ahead 6.5); at 1000 Hz 4 % against 58 %; the same scripted drive (5.83 m, 0.00 m to the side). 16 Nov: the simulator's default (sim-check and the scores on lot and university_box no worse than the Python's); the car keeps the Python</td>
+<td><a href="../../ros/ego/aav_ego_rs/README.md">ego and look_ahead in Rust</a> (<code>aav_ego_rs</code>, <code>ego_impl:=rust</code>): both nodes in one process, the default</td>
+<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust". The same answers as the Python modules (0 difference, but the trace's f32 speed loop: 4e-8); our simulator's road world, /clock at 100 Hz: 2.4 % of a core against 17 % (ego 10.5, look_ahead 6.5); at 1000 Hz 4 % against 58 %; the same scripted drive (5.83 m, 0.00 m to the side). 16 Nov: the simulator's default (sim-check and the scores on lot and university_box no worse than the Python's); the car's default too (Ben, 16 Nov), <code>ego_impl:=python</code> falls back</td>
 <td>Ben</td>
 <td>2026-11-15</td>
 <td>sim</td>
@@ -891,8 +891,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="../../ros/safety/aav_watchdog_rs/README.md">The sensor watchdog in Rust</a> (<code>aav_watchdog_rs</code>, <code>watchdog_impl:=rust</code>), a challenger beside the Python</td>
-<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust" (TODO 185). A safety lock, so it must answer exactly as the Python: every tick the same (1,600 ticks of each input's state and words, the lock, the state line and /diagnostics, with all 11 states, the STUCK and OVERSPEED latches among them). Our simulator's road world, /clock at 100 Hz: 1.4 % of a core against 9.9 %; sim-check's road world and <code>--actuator-faults</code> pass; since the OVERSPEED fix (16 Nov) <code>--faults</code> loses 2-6 of 14 cases a run to a navigation flake after the odom faults (the Python watchdog lost 0 and 1 in 2 runs; TODO 207). The Python stays the default until a person decides</td>
+<td><a href="../../ros/safety/aav_watchdog_rs/README.md">The sensor watchdog in Rust</a> (<code>aav_watchdog_rs</code>, <code>watchdog_impl:=rust</code>), the default</td>
+<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust" (TODO 185). A safety lock, so it must answer exactly as the Python: every tick the same (1,600 ticks of each input's state and words, the lock, the state line and /diagnostics, with all 11 states, the STUCK and OVERSPEED latches among them). Our simulator's road world, /clock at 100 Hz: 1.4 % of a core against 9.9 %; sim-check's road world and <code>--actuator-faults</code> pass; since the OVERSPEED fix (16 Nov) <code>--faults</code> loses 2-6 of 14 cases a run to a navigation flake after the odom faults (the Python watchdog lost 0 and 1 in 2 runs; TODO 207). The default on the car and in the simulator since Ben decided (16 Nov: "watchdog in rust sure"); <code>watchdog_impl:=python</code> falls back until a car day proves it</td>
 <td>Ben</td>
 <td>2026-11-16</td>
 <td>sim</td>

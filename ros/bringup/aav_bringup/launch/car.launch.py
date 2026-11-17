@@ -424,6 +424,16 @@ def launch_setup(context):
     # Who drives the car (docs/can-plan.md): uart, today's wiring, leaves the CAN bus to
     # the sensors (spine_bridge role sensors); can, the KEFC spine (role spine).
     role = bridges.role_for(arg('actuators'))
+    # Which language each switchable node runs, in one line, so car day can see it
+    # (docs/car-day.md, 4f). Checked here, so a typo stops the launch before anything runs.
+    impls = {'ego_impl': vehicle.check_ego_impl(arg('ego_impl')),
+             'behaviour_impl': vehicle.check_behaviour_impl(arg('behaviour_impl')),
+             'watchdog_impl': vehicle.check_watchdog_impl(arg('watchdog_impl')),
+             'localization_health_impl': vehicle.check_localization_health_impl(
+                 arg('localization_health_impl'))}
+    get_logger('car.launch.py').info(
+        'languages: ' + ' '.join(f'{k}:={v}' for k, v in impls.items())
+        + ' (any of them :=python falls back)')
 
     def on(name):
         # A launch argument can switch a part off, wherever the machine file has it.
@@ -472,7 +482,7 @@ def launch_setup(context):
                                inputs='odom,imu,local,global' + (',gps' if flag('gps') else '')
                                + (',hud' if flag('watch_hud') else '')
                                + ''.join(f',{c}_stream' for c in streaming),
-                               watchdog_impl=vehicle.check_watchdog_impl(arg('watchdog_impl'))))
+                               watchdog_impl=impls['watchdog_impl']))
         # The goal leash (TODO 116), next to the mux, always: the language driver runs on a
         # laptop and sends goals to drivers here; if its beats stop (the laptop dropped off),
         # its goals are cancelled and the car slows to a stop. Idle until a first beat.
@@ -491,7 +501,7 @@ def launch_setup(context):
                                stands=str(flag('stands')).lower()))
     if on('ego'):
         actions.append(include('aav_ego', 'ego.launch.py',
-                               ego_impl=vehicle.check_ego_impl(arg('ego_impl'))))
+                               ego_impl=impls['ego_impl']))
         # Next to ego: the sensor mux and the output mux. The real backends (spine_bridge,
         # legacy_uart_bridge, on any machine) read only /control/car/actuator_cmd, which
         # carries ego's commands only while every source on the network is REAL.
@@ -556,8 +566,7 @@ def launch_setup(context):
         actions.append(include('aav_localization', 'localization.launch.py',
                                gps=flag('gps'), start_x=arg('start_x'),
                                start_y=arg('start_y'), start_yaw=arg('start_yaw'),
-                               localization_health_impl=vehicle.check_localization_health_impl(
-                                   arg('localization_health_impl'))))
+                               localization_health_impl=impls['localization_health_impl']))
     if on('navigation'):
         # Always pass a map: an empty `map` here would override Nav2's own default,
         # because included launch files share launch arguments.
@@ -590,8 +599,7 @@ def launch_setup(context):
                                lidar=on('lidar'), ghost=flag('ghost'),
                                voxels=bool(flag('voxels') and on('lidar')),
                                voxels_impl=vehicle.check_voxels_impl(arg('voxels_impl')),
-                               behaviour_impl=vehicle.check_behaviour_impl(
-                                   arg('behaviour_impl')),
+                               behaviour_impl=impls['behaviour_impl'],
                                collision_monitor=(on('radar') or on('lidar') or flag('ghost')
                                                   or rear_camera),
                                camera_obstacles=on('camera_obstacles'),

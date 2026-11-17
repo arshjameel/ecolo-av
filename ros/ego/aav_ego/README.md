@@ -40,7 +40,7 @@ Launch arguments:
 | `look_ahead` | `true`: also start `look_ahead` (the screens' squiggly line); `false`: ego alone |
 | `road_ahead` | `false`; `true`: hold Nav2 to `/world/road_ahead` (`sim.launch.py` sets it with `behaviour:=true`, its writer) |
 | `speed_loop` | `default`: the spine's speed loop profile the car runs (`default`, `smooth`, `lqi`, `firm`), set as `trace_speed_loop` over `ego.yaml`'s, so the trace's twin assumes it; `sim.launch.py` and `bench.launch.py` pass theirs (TODO 163). An unknown name is refused |
-| `ego_impl` | `python`; `rust`: [`aav_ego_rs`](../aav_ego_rs/README.md) instead, ego and look_ahead in one Rust process with the same names, topics and answers (a challenger, TODO 185; `sim.launch.py` passes it on) |
+| `ego_impl` | `rust`: [`aav_ego_rs`](../aav_ego_rs/README.md), ego and look_ahead in one Rust process with the same names, topics and answers (the default since Ben, 16 Nov; `sim.launch.py` and `car.launch.py` pass it on); `python`: this package's two nodes |
 
 Parameters. From `config/ego.yaml`:
 

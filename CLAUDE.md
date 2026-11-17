@@ -67,7 +67,11 @@ These are the conventions decided so far. They apply to people and to Claude ses
   job. `docs/interfaces.yaml` is what they must match. Nothing downstream may care which one
   is running, and tests score them the same way. The safety locks are never swapped out.
 - **Languages:**
-  - Python (rclpy) for the ROS nodes we write;
+  - Rust (rclrs) for new ROS nodes (Ben, 16 Nov: "lets remove python were possible. I
+    trust rust more then python"). Still Python: ML on the GPU (train in PyTorch;
+    inference later via ONNX), launch files, tools and tests. The Rust twins of ego,
+    behaviour, the sensor watchdog and localization_health are the defaults on the car
+    too; `*_impl:=python` falls back;
   - Rust (`no_std`, Embassy) for all firmware and hardware drivers, not C or C++ (Ben,
     10 Oct): the spine first. The 2025-26 C++ boards keep running until each one's Rust
     version replaces it. Logic goes in crates like `spine-core` and `aav-inputs` (tested
@@ -84,9 +88,8 @@ These are the conventions decided so far. They apply to people and to Claude ses
     a laptop or desktop can be Bevy. The Orin runs no graphics and no simulator: Gazebo, and
     later our own simulator, run on a Mac or Linux desktop, for testing only
     (`docs/designs/2026-11-05_own-simulator.md`);
-  - Rust ROS nodes (rclrs from crates.io: `aav_imu_yahboom`, `aav_spine_bridge`)
-    are for those ports, the HUD (raylib, Ben, 11 Oct), and later for a node where Rust
-    pays off, such as ego.
+  - Rust ROS nodes use rclrs from crates.io (such as `aav_imu_yahboom`, `aav_spine_bridge`,
+    `aav_ego_rs`); the HUD is Rust with raylib (Ben, 11 Oct).
 - **Keep the maths out of ROS.** A node's logic lives in a module with no ROS imports
   and has its own tests. Examples: `ackermann.py`, `can_codec.py`, `speed_profile.py`,
   `legacy_protocol.py` and `vehicle.py`; in Rust, `spine-core`.
