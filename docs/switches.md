@@ -26,43 +26,38 @@ now, then delete"). One switch sets every level at once ([the league](league.md)
 | Command | What runs |
 |---|---|
 | `pixi run sim` | ours: our planner, `mppi_lag`, our costmaps and navigator, the behaviour planner (`stack:=ours`) |
-| `pixi run sim stack:=stock` | every level Nav2's: the yardstick |
-| `pixi run sim costmap:=nav2` | Nav2's costmaps, the rest ours: **a switch you give always wins** |
-| `pixi run sim stack:=stock planner:=own` | Nav2's stack with our planner |
+| `pixi run sim stack:=best` | every level's champion |
+| `pixi run sim tracker:=lqr` | ours, but LQR steers: **a switch you give always wins** |
 
-The real car (`pixi run car`) keeps its own choices until ours wins there too.
+Nav2 went on 17 Nov (Ben, 16 Nov: "Now"; [Nav2, as it was](history/nav2-as-it-was.md)):
+`stack:=stock` and Nav2's planners, controllers, costmaps, navigator and smoother went with
+it. The real car (`pixi run car`) and the bench run ours too.
 
 ## Who draws the route
 
 | Switch | In plain words | Gazebo, the lot tour |
 |---|---|---|
 | `planner:=own` (default) | ours: Nav2's lattice ported to Rust (more in the table below) | 8 Nov: the test lot 12 of 12 as Nav2's |
-| `planner:=lattice` (`stack:=stock`, the car) | Nav2's State Lattice: strings our car's own moves together; fast | 30 Oct, reversing: every leg, **184 s** a tour. Forward only (29 Oct): 2 of 4, lost the U-turn |
-| `planner:=hybrid` (forward only) | Hybrid-A*: only routes a car can drive | 30 Oct, reversing: every leg, 213 s a tour |
-| `planner:=lattice lattice_headings:=32` | the lattice with 32 headings, not 16 | 30 Oct, reversing: every leg, 197 s; slower plans. No better |
-| `planner:=smac2d` | A* on the grid: **ignores the turning circle** | 29 Oct, forward only: 2 of 4 |
-| `planner:=navfn` | NavFn, the classic: ignores the turning circle | 3 Nov, one leg: finished (its tightest turn 128 m) |
-| `planner:=theta_star` | Theta*: straight lines: ignores the turning circle | 3 Nov, one leg: finished |
+| `planner:=own planner_search:=hybrid` | ours running Hybrid-A* (`path:=hybrid_rs`, a challenger) | 14 Nov ([page](own-planner.md)) |
+| `lattice_headings:=32` | the lattice with 32 headings, not 16 | 30 Oct (Nav2's lattice), reversing: every leg, 197 s; slower plans. No better |
 | `planner:=diffusion` (a trial) | **a model draws the route**, a guard checks it, the lattice's route if it fails. Needs `pixi install --locked -e learn` and `pixi run diffusion train` | 3 Nov, reversing, 3 runs: every leg, 177-270 s (the lattice 183-184); **73 %** of routes from the model ([trials](trials.md#3-nov-everything-for-02)) |
 
-Nav2's lattice is the car's default since 1 Nov (Ben), now that it may reverse; the
-simulator runs ours since 14 Nov.
-Forward only (`reversing:=false`, or no lidar), the car takes `hybrid`: the lattice lost
-the U-turn. The real car takes only `hybrid` or `lattice` (it refuses `diffusion` too). More: [Controllers, Planners](controllers.md), [the runs](trials.md#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32).
+Ours is the default everywhere since Nav2 went (17 Nov); the simulator ran it from 14 Nov.
+Nav2's planners (`lattice`, `hybrid`, `smac2d`, `navfn`, `theta_star`) went with it; their
+scores stay in [Controllers, Planners](controllers.md). The real car takes only `own` (it
+refuses `diffusion` without `diffusion_trial`). More: [Controllers, Planners](controllers.md), [the runs](trials.md#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32).
 
 ## Who steers along the path
 
 | Switch | In plain words | Gazebo, 29 Oct |
 |---|---|---|
-| `controller:=mppi` (`stack:=stock`, the car) | Nav2's: try 1,000 wiggles, keep the good ones. In the sim add `tracker:=none` | 8-10 of 12 legs |
-| `controller:=rpp` | Nav2's: steer at a point ahead, slow in bends (with `tracker:=none`) | 10 of 12 |
 | `tracker:=pure_pursuit` | ours: steer at a point ahead | **12 of 12** |
 | `tracker:=stanley` | ours: fix the distance off the path and the heading | **12 of 12** |
 | `tracker:=lqr` | ours: a formula for the best steering each moment | 10 of 12 |
 | `tracker:=mpc` | ours: try the next 1.5 s of steering, keep the best | **12 of 12** |
 | `tracker:=mpc_full` | ours: MPC that plans the speed too | 10 of 12 |
 | `tracker:=mpc_lag` | ours: MPC that knows the car is late, and plans for it (7 Nov) | our simulator, 8 Nov: 6 of 12 (no U-turn by the building; [trials](trials.md#lag-aware-mpc-7-nov-mpc_lag)) |
-| `tracker:=mppi_lag` (default) | ours: Nav2's MPPI in Rust, knowing the steering and pedals lag ([page](mppi-lag.md)) | our simulator, 8 Nov, 3 runs: 11 of 12 (Nav2's MPPI 8; [trials](trials.md#results-our-simulator-8-nov-the-lot-tour-3-runs-each)). It passes a goal at 2.5 m/s and uses twice Nav2's MPPI's CPU ([our navigator](own-navigator.md#the-verdict)) |
+| `tracker:=mppi_lag` (default; Nav2's MPPI and RPP went on 17 Nov) | ours: Nav2's MPPI in Rust, knowing the steering and pedals lag ([page](mppi-lag.md)) | our simulator, 8 Nov, 3 runs: 11 of 12 (Nav2's MPPI 8; [trials](trials.md#results-our-simulator-8-nov-the-lot-tour-3-runs-each)). It passes a goal at 2.5 m/s and uses twice Nav2's MPPI's CPU ([our navigator](own-navigator.md#the-verdict)) |
 
 `aav_track`'s trackers drive forward only: give them `reversing:=false` (the menu does).
 `mppi_lag` reverses (14 Nov).
@@ -108,18 +103,18 @@ law. `tracker:=mpc_lag` and `mpc_lag_rs` don't model `lqi` yet: the launch refus
 |---|---|
 | `world:=test_lot` / `road` / `empty` / `campus` | where the car is (`sim` only; the demos use the test lot; the default is `empty`). `campus` needs `pixi run campus` first ([page](campus.md)) |
 | `simulator:=gazebo` | Gazebo plays the world. The default is `simulator:=own`, our simulator, since 8 Nov ([page](own-simulator.md)); it needs a GPU for its cameras |
-| `reversing:=false` | Nav2 drives forward only |
+| `reversing:=false` | navigation drives forward only |
 | `sim_speed:=3` | a top speed above the car's 1 m/s (up to 5), in the simulator only; `world:=campus` sets 2.5 |
 | `lag_scale:=2` | the car's throttle, brake and steering lags twice what `vehicle.yaml` says; every driver still reads `vehicle.yaml` (a robustness test; with `simulator:=gazebo` only) |
 | `geofence:=false` | no geofence (it's on by default) |
 | `lidar:=false`, `radar:=false` | sensors off |
-| `voxels:=true` | Nav2 sees the lidar as 0.25 m cubes, not a flat scan (a trial: [Trials](trials.md#voxels-30-oct-the-lidar-as-cubes)) |
-| `costmap:=own` (default; `costmap:=nav2`: Nav2's) | our own costmaps (Rust); `tracker:=mppi_lag` then reads ours. 8 Nov: the same grid as Nav2's, half the CPU; with its clear service, the obstacle legs 3 of 3 as Nav2's ([page](own-costmap.md)) |
-| `planner:=own` (default) | our own planner (Rust: Nav2's lattice ported) answers the behaviour trees, Nav2's lattice beside it; with `costmap:=own` it plans on our global costmap. 8 Nov: the test lot 12 of 12 as Nav2's, about 20 % slower on the campus's long legs ([page](own-planner.md)) |
-| `navigator:=own` (default; `navigator:=nav2`: Nav2's) | our own navigator (Rust) in place of Nav2's bt_navigator and waypoint_follower; with `planner:=own costmap:=own tracker:=mppi_lag` no Nav2 server navigates (all ours). 8 Nov: test lot 7 of 12 legs (Nav2 8), campus 4 of 6 (Nav2 2) ([page](own-navigator.md)) |
-| `smoother:=own` | our own velocity smoother (Rust) in Nav2's `velocity_smoother`'s place: Nav2's speed limits, and the turn rate from where the wheels can be (the steering's rate and full lock). 8 Nov, test lot: the same legs as Nav2's, ego clipped 0-0.1 % of the steering against 9-15 % ([page](own-smoother.md)) |
+| `voxels:=true` | the costmap sees the lidar as 0.25 m cubes, not a flat scan (a trial: [Trials](trials.md#voxels-30-oct-the-lidar-as-cubes)) |
+| `costmap:=own` (the only one since 17 Nov) | our own costmaps (Rust); `tracker:=mppi_lag` then reads ours. 8 Nov: the same grid as Nav2's, half the CPU; with its clear service, the obstacle legs 3 of 3 as Nav2's ([page](own-costmap.md)) |
+| `planner:=own` (default) | our own planner (Rust: Nav2's lattice ported), on our global costmap. 8 Nov: the test lot 12 of 12 as Nav2's, about 20 % slower on the campus's long legs ([page](own-planner.md)) |
+| `navigator:=own` (the only one since 17 Nov) | our own navigator (Rust) in place of Nav2's bt_navigator and waypoint_follower. 8 Nov: test lot 7 of 12 legs (Nav2 8), campus 4 of 6 (Nav2 2) ([page](own-navigator.md)) |
+| `smoother:=own` (the only one since 17 Nov) | our own velocity smoother (Rust) in Nav2's `velocity_smoother`'s place: Nav2's speed limits, and the turn rate from where the wheels can be (the steering's rate and full lock). 8 Nov, test lot: the same legs as Nav2's, ego clipped 0-0.1 % of the steering against 9-15 % ([page](own-smoother.md)) |
 
-| `behaviour:=false` | no behaviour planner. On by default in the sim (`stack:=ours`; off with `stack:=stock`): a speed cap before a stop sign, an obstacle, the fence and the goal ([page](stopping.md#2-the-behaviour-planner)) |
+| `behaviour:=false` | no behaviour planner. On by default in the sim (`stack:=ours`; off with `stack:=best`): a speed cap before a stop sign, an obstacle, the fence and the goal ([page](stopping.md#2-the-behaviour-planner)) |
 | `lane_map:=world` | with `behaviour:=true`: the road ahead's line on the right lane's centre, with its edges, from the world's lane map (the road world's, or the campus's `maps/campus/lanes.yaml`); or a `lanes.yaml`'s path. Off by default: the line is `/plan`'s |
 | `payload:=150`, `adaptive_brake:=true` | kg aboard the modelled car; the brake that learns it stops too slowly (off by default; not with `spine` or `esp32`: [page](stopping.md#4-a-heavier-car-the-adaptive-brake)) |
 | `plan_around:=false` | the planner sees only the map, so the car stops for an obstacle (default `true`: it plans round) |
@@ -151,22 +146,23 @@ said LQI, and a Nav2 goal 15 m ahead ended SUCCEEDED.
 Checked 3 Nov ([the runs](trials.md#3-nov-everything-for-02)): every switch that existed then
 started and drove a leg in Gazebo. Checked against the launch files 14 Nov: 0.3 changed one
 default (the simulator). Later on 14 Nov the sim's stack became ours (`stack:=ours`): the
-Sim column below. The bench and the car keep Nav2's; `stack:=stock` gives the sim Nav2's.
+Sim column below. On 17 Nov Nav2 went: the bench and the car run ours too.
 
 | System | Sim | Bench | Car | Why this default | On trial beside it |
 |---|---|---|---|---|---|
-| Who draws the route | `own` (ours) | `lattice` | `lattice` (`hybrid` if it can't reverse) | every leg reversing, the fastest: 183 s a tour (3 Nov, 3 runs) | `hybrid`, `lattice32`, `smac2d`, `navfn`, `theta_star`, `diffusion` (8 Nov: 88 % from the model, still a trial), `own` (8 Nov: 12 of 12 as Nav2's; about 20 % slower on the campus) |
-| Who steers | `mppi_lag` (ours) | MPPI | MPPI | it reads the costmap, so it steers round what the lidar sees; it reverses | RPP; our pure pursuit, Stanley, LQR, MPC, `mpc_full`, `mpc_lag` (forward only), `mppi_lag` (reverses too); sim only: the bench and the car have no `tracker:=` |
-| The costmaps | ours | Nav2's | Nav2's (always) | stock; the car never takes ours | `costmap:=own` (8 Nov: the same grid, half the CPU; sim only) |
-| Who runs the goal | ours (`aav_navigator`) | Nav2's `bt_navigator` | Nav2's (always) | stock | `navigator:=own` (8 Nov: lot 7 of 12 legs, Nav2 8; campus 4 of 6, Nav2 2; sim only) |
-| The velocity smoother | Nav2's | Nav2's | Nav2's (always) | stock | `smoother:=own` (8 Nov: the same legs, ego clips 0-0.1 % against 9-15 %; sim only) |
+| Who draws the route | `own` (ours) | `own` | `own` | Nav2's lattice ported; Nav2's went on 17 Nov | Hybrid-A* in ours (`planner_search:=hybrid`), `lattice32`, `diffusion` (8 Nov: 88 % from the model, still a trial) |
+| Who steers | `mppi_lag` (ours) | `mppi_lag` | `mppi_lag` | it reads the costmap, so it steers round what the lidar sees; it reverses | our pure pursuit, Stanley, LQR, MPC, `mpc_full`, `mpc_lag` (forward only), `mpc_lag_rs`; sim only: the bench and the car have no `tracker:=` |
+| The costmaps | ours | ours | ours | Nav2's went on 17 Nov | |
+| Who runs the goal | ours (`aav_navigator`) | ours | ours | Nav2's went on 17 Nov | |
+| The velocity smoother | ours | ours | ours | Nav2's went on 17 Nov (a tie, 16 Nov) | |
+| The stop zone | ours (`aav_stop_zone`) | ours | ours | it stopped every time Nav2's did, no later, in its shadow run (17 Nov) | |
 | Behaviour planner | on | off | none | a trial (7 Nov); in the sim it never slowed for the stop sign ([page](stopping.md#2-the-behaviour-planner)) | `behaviour:=true` (sim only) |
 | May it reverse? | yes | yes | yes, unless nothing watches behind | the U-turn needs it | `reversing:=false` |
-| What Nav2 sees | the flat lidar scan | the radar only (no lidar) | the flat scan | stops 0.16 m before the post, every time | `voxels:=true`: 16 s slower a tour, and 1 of 3 post runs drove through it |
+| What the costmap sees | the flat lidar scan | the radar only (no lidar) | the flat scan | stops 0.16 m before the post, every time | `voxels:=true`: 16 s slower a tour, and 1 of 3 post runs drove through it |
 | Where am I (map) | the global EKF: wheels, IMU, GPS | the same | the same | needs nothing but the sensors | `ndt_ekf:=true`: **17 → 1.8 cm**, every leg, but needs a saved map; `amcl:=true`, `ndt:=true` (scored only) |
 | How far it moved | `ekf_local`: wheels, IMU | the same | the same | | `kiss_icp:=true` (scored), `kiss_ekf:=true` (no clear win) |
 | Speed loop | `default` (PI) | `default` | `default` (no switch on the car) | today's PI loop; `sim-check` 9 of 9 with each of the three | `lqi`, `smooth` (sim and bench) |
-| Geofence, sensor watchdog | on | on | on | they hold Nav2 when the pose or a sensor goes bad | `geofence:=false` (sim only) |
+| Geofence, sensor watchdog | on | on | on | they hold navigation when the pose or a sensor goes bad | `geofence:=false` (sim only) |
 | Who plays the world | ours (`simulator:=own`, since 8 Nov) | - | - | every `sim-check` leg Gazebo passes, 3 times each; no GPU-less start-up crashes | `simulator:=gazebo` (and on a computer with no GPU) |
 
 **Why the winners stay off:**
