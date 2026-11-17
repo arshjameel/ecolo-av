@@ -10,6 +10,7 @@
 //! | [`ground`] | the ground under each wheel: slopes tilt the car, a kerb too high stops it |
 //! | [`geo`] | the datum, and world positions as latitude and longitude |
 //! | [`sim`] | the loop: step the car, and which stream speaks when; the camera plug-in |
+//! | [`lockstep`] | the cameras' gate: the simulated time waits for a slow picture (software rendering) |
 //! | [`noise`] | seeded noise, so the same seed gives the same sensor streams |
 //! | [`math`] | vectors, rotations, poses |
 //!
@@ -23,6 +24,7 @@ pub mod car;
 pub mod geo;
 pub mod ground;
 pub mod lidar;
+pub mod lockstep;
 pub mod math;
 pub mod noise;
 pub mod scene;

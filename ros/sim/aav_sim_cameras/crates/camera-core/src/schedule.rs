@@ -27,6 +27,12 @@ impl Timer {
         }
     }
 
+    /// When the next picture is due: `None` before the first look.
+    #[must_use]
+    pub fn next(&self) -> Option<Duration> {
+        self.next
+    }
+
     /// Is a picture due at `now`? If so, the timer moves on to the next whole period.
     pub fn due(&mut self, now: Duration) -> bool {
         if self.last.is_some_and(|last| now < last) {
@@ -67,6 +73,16 @@ mod tests {
         assert!(t.due(ms(550)));
         assert!(!t.due(ms(560)));
         assert!(t.due(ms(600)));
+    }
+
+    #[test]
+    fn says_when_the_next_picture_is_due() {
+        let mut t = Timer::new(Hz::new(10.0).unwrap());
+        assert_eq!(t.next(), None);
+        assert!(t.due(ms(0)));
+        assert_eq!(t.next(), Some(ms(100)));
+        assert!(!t.due(ms(60)));
+        assert_eq!(t.next(), Some(ms(100)));
     }
 
     #[test]

@@ -25,6 +25,10 @@
 //!                                     effort: the radar stand-in's 61 x 3 rays (radar).
 //!                                     Both clouds add `speed` (float32, at 20): what each
 //!                                     ray hit moves along it, for the radar's Doppler
+//! Subscribes  vehicle/sim/cameras/free_until  rosgraph_msgs/Clock: with camera_lockstep, the
+//!                                     cameras' next picture's sim time; at a truth stamped
+//!                                     that late the clock holds until they say a later one
+//!                                     (sim-core lockstep.rs: software rendering, no GPU)
 //!             vehicle/sim/entities    visualization_msgs/MarkerArray, latched: every model
 //!                                     placed while running (obstacle, spawn_entity), each a
 //!                                     MESH_RESOURCE marker: ns its name, mesh_resource its
@@ -51,7 +55,8 @@
 //!             highest step a wheel rolls up, 0.1; the car rides the world's ground, tilts on
 //!             slopes, stops at a higher kerb; 0: flat ground), seed, wheel_noise (m/s on
 //!             each wheel reading, 0: off), wheel_slip (a fraction, 0: off), step (s),
-//!             clock_hz, real_time_factor (1.0; 0: as fast as it can), threads
+//!             clock_hz, real_time_factor (1.0; 0: as fast as it can), threads, camera_lockstep
+//!             (false; true: wait for the cameras, above), camera_timeout (s, wall: 10)
 //!
 //! The simulated time runs in a thread of its own, paced against the wall clock; the
 //! executor only takes the commands. Cameras plug in through sim-core's SensorPlugin.
@@ -87,6 +92,7 @@ use ros_env::std_msgs::msg::Header;
 use ros_env::visualization_msgs::msg::{Marker, MarkerArray};
 use sim_core::car::{Command, TwistFollower};
 use sim_core::lidar::{LidarSpec, Scan, FIELDS, POINT_STEP};
+use sim_core::lockstep::{CameraGate, Waited};
 use sim_core::math::{Pose, Rot3, Vec3};
 use sim_core::scene::Mesh;
 use sim_core::sim::{
@@ -262,6 +268,28 @@ fn main() -> Result<()> {
         move |request: DeleteEntity_Request| delete(&deleting, &request),
     )?;
 
+    // Lockstep with the cameras (software rendering): the clock waits for their pictures.
+    let gate = params.camera_lockstep.get().then(|| {
+        Arc::new(CameraGate::new(Duration::from_secs_f64(
+            params.camera_timeout.get(),
+        )))
+    });
+    let _free_until = match &gate {
+        Some(gate) => {
+            let gate = Arc::clone(gate);
+            Some(node.create_subscription(
+                "vehicle/sim/cameras/free_until",
+                move |msg: Clock| {
+                    let t = &msg.clock;
+                    gate.free_until(
+                        u64::try_from(t.sec).unwrap_or(0) * 1_000_000_000 + u64::from(t.nanosec),
+                    );
+                },
+            )?)
+        }
+        None => None,
+    };
+
     let stop = Arc::new(AtomicBool::new(false));
     let rtf = params.real_time_factor.get();
     if rtf < 0.0 {
@@ -271,7 +299,7 @@ fn main() -> Result<()> {
     let running = Arc::clone(&stop);
     let looping = std::thread::Builder::new()
         .name("simulator".into())
-        .spawn(move || run(sim, out, shared, running, rtf, logger))?;
+        .spawn(move || run(sim, out, shared, running, rtf, gate, logger))?;
 
     let commands = Arc::clone(executor.commands());
     let halting = Arc::clone(&stop);
@@ -293,6 +321,7 @@ fn run(
     shared: Arc<Mutex<Shared>>,
     stop: Arc<AtomicBool>,
     rtf: f64,
+    gate: Option<Arc<CameraGate>>,
     logger: Logger,
 ) -> Result<()> {
     let first = sim.start();
@@ -323,7 +352,17 @@ fn run(
             }
         }
         let outputs = sim.step(&now_command);
+        let pose_out = outputs.iter().any(|o| matches!(o, Output::Truth(_)));
         out.publish(&sim, outputs)?;
+        if let (Some(gate), true) = (&gate, pose_out) {
+            // The cameras draw from the truth: hold the clock until they're past it.
+            if gate.wait_past(sim.time_ns()) == Waited::TimedOut {
+                log_warn!(
+                    &logger,
+                    "camera lockstep: no word from the cameras; running free until they speak"
+                );
+            }
+        }
         if rtf > 0.0 {
             let due =
                 origin + Duration::from_secs_f64((sim.time_ns() - origin_ns) as f64 * 1e-9 / rtf);
@@ -864,6 +903,8 @@ struct Params {
     clock_hz: ReadOnlyParameter<f64>,
     real_time_factor: ReadOnlyParameter<f64>,
     threads: ReadOnlyParameter<i64>,
+    camera_lockstep: ReadOnlyParameter<bool>,
+    camera_timeout: ReadOnlyParameter<f64>,
 }
 
 impl Params {
@@ -921,6 +962,8 @@ impl Params {
             clock_hz: number("clock_hz", 1000.0)?,
             real_time_factor: number("real_time_factor", 1.0)?,
             threads: node.declare_parameter("threads").default(4).read_only()?,
+            camera_lockstep: flag("camera_lockstep", false)?,
+            camera_timeout: number("camera_timeout", 10.0)?,
         })
     }
 }

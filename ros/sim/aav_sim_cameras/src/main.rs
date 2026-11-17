@@ -367,6 +367,8 @@ fn run_in(o: &Options, rig: Rig, world: &SimWorld, dirs: &[PathBuf]) -> Result<(
             if o.pose == PoseSource::Script {
                 std::thread::sleep(Duration::from_millis(1));
             }
+            #[cfg(feature = "ros")]
+            free_until(out.as_ref(), cameras.next_due())?;
             continue;
         }
         let frames = cameras
@@ -386,12 +388,24 @@ fn run_in(o: &Options, rig: Rig, world: &SimWorld, dirs: &[PathBuf]) -> Result<(
             }
             tallies[i].delays.push(due_at.elapsed());
         }
+        // Every picture for this pose is out: the simulator's lockstep may go on.
+        #[cfg(feature = "ros")]
+        free_until(out.as_ref(), cameras.next_due())?;
     }
     report(&cameras, &tallies, started.elapsed());
     Ok(())
 }
 
 use camera_core::CameraRenderer;
+
+/// Lockstep: tell the simulator when the next picture is due (only with `--pose truth`).
+#[cfg(feature = "ros")]
+fn free_until(out: Option<&ros::RosOut>, next: Option<Duration>) -> Result<(), String> {
+    match (out, next) {
+        (Some(out), Some(next)) => out.free_until(next),
+        _ => Ok(()),
+    }
+}
 
 fn save(dir: &PathBuf, name: &str, f: &Frame) -> Result<(), String> {
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;

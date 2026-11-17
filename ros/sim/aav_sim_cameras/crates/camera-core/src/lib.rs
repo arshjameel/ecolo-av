@@ -111,6 +111,13 @@ impl<R: CameraRenderer> Cameras<R> {
             .collect()
     }
 
+    /// The sim time the next picture is due, of any camera: `None` before the first
+    /// look. Lockstep (software rendering): the simulator holds its clock there until
+    /// the cameras say a later one.
+    pub fn next_due(&self) -> Option<Duration> {
+        self.timers.iter().map(Timer::next).min().flatten()
+    }
+
     /// Draws the cameras due at `now`, with the car at `car`. Often none.
     ///
     /// # Errors
@@ -182,5 +189,23 @@ mod tests {
             assert_eq!(drawn.iter().filter(|&&d| d == c).count(), 600);
         }
         assert!(stamps.iter().all(|s| s.as_millis() % 100 == 0));
+    }
+
+    /// Lockstep: after each look, the cameras say when their next picture is due.
+    #[test]
+    fn says_its_next_picture() {
+        let rig = Rig::from_yaml(
+            include_str!("../../../config/cameras.yaml"),
+            include_str!("../../../../../bringup/aav_description/config/vehicle.yaml"),
+        )
+        .unwrap();
+        let mut cameras = Cameras::new(rig, Fake(Vec::new()));
+        assert_eq!(cameras.next_due(), None);
+        cameras.tick(&Pose::IDENTITY, Duration::ZERO).unwrap();
+        assert_eq!(cameras.next_due(), Some(Duration::from_millis(100)));
+        cameras
+            .tick(&Pose::IDENTITY, Duration::from_millis(120))
+            .unwrap();
+        assert_eq!(cameras.next_due(), Some(Duration::from_millis(200)));
     }
 }
