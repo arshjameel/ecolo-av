@@ -265,18 +265,18 @@ STACKS = {
                         ['planner:=own', 'costmap:=own', 'navigator:=own',
                          'plan_smoothing:=strong', 'map_correction:=slow',
                          'mppi_lag_steer_gamma:=0.05', 'costmap_chunks:=auto']),
-    # own_calm_chunks routed on the campus's Lanelet2 map (lane_graph:=lanelet2), and with
-    # the local costmap from the chunks too (local_chunks:=true): TODO 175, 16 Nov.
+    # own_calm_chunks routed on the campus's Lanelet2 map (lane_graph:=lanelet2); and that
+    # with the local costmap from the chunks too (local_chunks:=true): TODO 175.
     'own_calm_chunks_ll2': ('tracker', 'mppi_lag',
                             ['planner:=own', 'costmap:=own', 'navigator:=own',
                              'plan_smoothing:=strong', 'map_correction:=slow',
                              'mppi_lag_steer_gamma:=0.05', 'costmap_chunks:=auto',
                              'lane_graph:=lanelet2']),
-    'own_calm_chunks_local': ('tracker', 'mppi_lag',
-                              ['planner:=own', 'costmap:=own', 'navigator:=own',
-                               'plan_smoothing:=strong', 'map_correction:=slow',
-                               'mppi_lag_steer_gamma:=0.05', 'costmap_chunks:=auto',
-                               'local_chunks:=true']),
+    'own_calm_chunks_maps': ('tracker', 'mppi_lag',
+                             ['planner:=own', 'costmap:=own', 'navigator:=own',
+                              'plan_smoothing:=strong', 'map_correction:=slow',
+                              'mppi_lag_steer_gamma:=0.05', 'costmap_chunks:=auto',
+                              'lane_graph:=lanelet2', 'local_chunks:=true']),
     # One stage swapped (TODO 168, which stage sways?): ours with Nav2's MPPI following,
     # and Nav2's with mppi_lag following. Beside own and nav2, the follower's share.
     'own_nav2mppi': ('controller', 'mppi',
@@ -290,7 +290,7 @@ STACK_LABELS = {'nav2': 'all-nav2', 'own': 'all-ours', 'own32': 'all-ours-32',
                 'own_strong_slow': 'all-ours-strong-slow', 'own_calm': 'all-ours-calm',
                 'own_calm_chunks': 'all-ours-calm-chunks',
                 'own_calm_chunks_ll2': 'all-ours-calm-chunks-ll2',
-                'own_calm_chunks_local': 'all-ours-calm-chunks-local'}
+                'own_calm_chunks_maps': 'all-ours-calm-chunks-maps'}
 BOX = 1.0               # m: the bench's obstacle, a cube (aav_gazebo models/obstacle)
 UP_TIME = 150.0         # s for Gazebo, the EKF, then Nav2, to come up
 SETTLE = 5.0            # s after that, before the first goal
@@ -313,7 +313,7 @@ COLOURS = {'rpp': '#1f6fb4', 'mppi': '#e8590c', 'pure_pursuit': '#2b8a3e', 'stan
            'ours+nav2-mppi': '#862e9c', 'nav2+mppi_lag': '#2b8a3e',
            'all-ours-strong': '#c92a2a', 'all-ours-strong-slow': '#e8590c',
            'all-ours-calm': '#2f9e44', 'all-ours-calm-chunks': '#e67700',
-           'all-ours-calm-chunks-ll2': '#1f6fb4', 'all-ours-calm-chunks-local': '#862e9c'}
+           'all-ours-calm-chunks-ll2': '#1f6fb4', 'all-ours-calm-chunks-maps': '#862e9c'}
 # --smoothers: Nav2's smoother keeps the follower's colour; ours is red.
 COLOURS.update({f'{k}+{w}-smoother': (c if w == 'nav2' else '#c92a2a')
                 for k, c in list(COLOURS.items()) for w in vehicle.SMOOTHERS})
