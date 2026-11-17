@@ -185,6 +185,21 @@ pub enum Why {
     },
 }
 
+/// The polygon name collision_monitor's state gives a silent sensor's stop.
+pub const INVALID_SOURCE: &str = "invalid source";
+
+impl Why {
+    /// The polygon name the state says for this stop, as collision_monitor's: the box's
+    /// `polygon` name for points in it, [`INVALID_SOURCE`] for a silent sensor.
+    #[must_use]
+    pub fn polygon_name(&self, polygon: &str) -> String {
+        match self {
+            Why::Points { .. } => polygon.to_owned(),
+            Why::Silent { .. } => INVALID_SOURCE.to_owned(),
+        }
+    }
+}
+
 impl fmt::Display for Why {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

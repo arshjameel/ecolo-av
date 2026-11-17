@@ -242,3 +242,16 @@ fn a_box_needs_three_corners() {
         SettingsError::BadBox("forward".into())
     );
 }
+
+#[test]
+fn the_state_names_the_box_or_the_silent_sensor_as_collision_monitor() {
+    let points = Why::Points {
+        band: "forward".into(),
+        count: 3,
+    };
+    let silent = Why::Silent {
+        source: "radar".into(),
+    };
+    assert_eq!(points.polygon_name("StopZone"), "StopZone");
+    assert_eq!(silent.polygon_name("StopZone"), INVALID_SOURCE);
+}

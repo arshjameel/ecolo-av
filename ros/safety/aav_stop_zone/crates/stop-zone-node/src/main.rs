@@ -1,25 +1,33 @@
-//! stop_zone: the stop zone as a ROS 2 node, **in shadow**: it decides beside Nav2's
-//! collision_monitor on the same inputs and publishes on its own topics; nothing drives
-//! by it until it scores the same (TODO 182). The decision is the `stop-zone` crate.
+//! stop_zone: the stop zone as a ROS 2 node, **the car's stop zone** since 17 Nov (TODO
+//! 182): it sits between the smoother and twist_mux and sends the command on, or zero when
+//! points stand in the box ahead (behind, reversing) or a sensor goes silent. It ran in
+//! shadow beside Nav2's collision_monitor first and stopped every time it did, no later
+//! (docs/safety-case.md). The decision is the `stop-zone` crate.
 //!
 //! Subscribes  cmd_in (/control/cmd_vel_smoothed)
-//!                                         geometry_msgs/TwistStamped: the command the
-//!                                         stop zone would check
+//!                                         geometry_msgs/TwistStamped: the command to check
 //!             each source's topic         sensor_msgs/LaserScan or PointCloud2, best
-//!                                         effort, as nav2.yaml's collision_monitor names
-//!                                         them (the radar, the lidar scan, the cubes...)
-//! Publishes   cmd_out (/safety/stop_zone/shadow/cmd_vel)
+//!                                         effort, as nav2.yaml's collision_monitor block
+//!                                         names them (the radar, the lidar scan, the
+//!                                         cubes, the kerbs' steps, the ghost...)
+//! Publishes   cmd_out (/drivers/nav/cmd_vel; shadow: /safety/stop_zone/shadow/cmd_vel)
 //!                                         geometry_msgs/TwistStamped: the command, or zero
-//!                                         when it would stop (none stop_pub_timeout s
-//!                                         after a stop, as Nav2's)
-//!             state (/safety/stop_zone/shadow/state)
+//!                                         when it stops (none stop_pub_timeout s after a
+//!                                         stop, as Nav2's)
+//!             state (/safety/stop_zone/state; shadow: /safety/stop_zone/shadow/state)
+//!                                         nav2_msgs/CollisionMonitorState, on each change
+//!                                         (as collision_monitor's): STOP with the box's
+//!                                         polygon name, or "invalid source" for a silent
+//!                                         sensor; DO_NOTHING when clear. stop_hold reads it
+//!             status (/safety/stop_zone/status; shadow: /safety/stop_zone/shadow/status)
 //!                                         diagnostic_msgs/DiagnosticStatus, each command:
 //!                                         OK or WARN and why; the box; the stop
-//! Parameters  settings (JSON: aav_description's vehicle.stop_zone_params: the boxes,
-//!             min_points, the timeouts, each source's topic, kind, heights, range and
-//!             mount); cmd_in, cmd_out, state.
+//! Parameters  settings (JSON: aav_description's vehicle.stop_zone_params: the boxes, the
+//!             polygon's name, min_points, the timeouts, each source's topic, kind,
+//!             heights, range and mount); cmd_in, cmd_out, state, status.
 //!
-//! navigation.launch.py stop_zone_shadow:=true starts it.
+//! navigation.launch.py starts it wherever a sensor can feed it (stop_zone:=); with
+//! stop_zone_shadow:=true a second one runs on the shadow topics, driving nothing.
 
 use std::sync::Arc;
 
@@ -28,15 +36,19 @@ use rclrs::*;
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::diagnostic_msgs::msg::{DiagnosticStatus, KeyValue};
 use ros_env::geometry_msgs::msg::{Twist, TwistStamped, Vector3};
+use ros_env::nav2_msgs::msg::CollisionMonitorState;
 use ros_env::sensor_msgs::msg::{LaserScan, PointCloud2};
 use serde::Deserialize;
 use stop_zone::{
-    Command, Mount, Point, Polygon, Reading, Settings, Source, SourceKind, SpeedBand, StopZone,
+    Command, Mount, Point, Polygon, Reading, Settings, Source, SourceKind, SpeedBand, StopZone, Why,
 };
 
 /// The JSON settings, as vehicle.stop_zone_params writes them.
 #[derive(Deserialize)]
 struct Json {
+    /// collision_monitor's polygon name ("StopZone"): what the state says when it stops.
+    #[serde(default = "stop_zone_name")]
+    polygon: String,
     min_points: usize,
     source_timeout: f64,
     stop_pub_timeout: f64,
@@ -67,6 +79,10 @@ struct JsonSource {
     /// [x, y, z, yaw] in base_link: where the source's frame sits.
     #[serde(default)]
     mount: [f64; 4],
+}
+
+fn stop_zone_name() -> String {
+    "StopZone".into()
 }
 
 fn low() -> f64 {
@@ -135,11 +151,12 @@ fn main() -> Result<()> {
     let cmd_in = text("cmd_in", "/control/cmd_vel_smoothed")?;
     let cmd_out = text("cmd_out", "/safety/stop_zone/shadow/cmd_vel")?;
     let state_topic = text("state", "/safety/stop_zone/shadow/state")?;
+    let status_topic = text("status", "/safety/stop_zone/shadow/status")?;
     let spec: Json = serde_json::from_str(&json).context("parameter settings: JSON")?;
     let zone = spec.zone().context("the stop zone's settings")?;
     log_info!(
         node.logger(),
-        "stop zone (shadow): {} boxes, {} points stop, sources [{}]; {cmd_in} -> {cmd_out}",
+        "stop zone: {} boxes, {} points stop, sources [{}]; {cmd_in} -> {cmd_out}",
         spec.bands.len(),
         spec.min_points,
         spec.sources
@@ -155,8 +172,11 @@ fn main() -> Result<()> {
         clock: node.get_clock(),
         out: node.create_publisher(cmd_out.as_str())?,
         state: node.create_publisher(state_topic.as_str())?,
+        status: node.create_publisher(status_topic.as_str())?,
         logger: node.logger().clone(),
+        polygon: spec.polygon.clone(),
         last_stop: None,
+        last_state: None,
     };
     let worker = node.create_worker(core);
     let mut keep: Vec<Box<dyn std::any::Any>> = Vec::new();
@@ -190,10 +210,23 @@ struct Core {
     readings: Vec<Option<Reading>>,
     clock: Clock,
     out: Publisher<TwistStamped>,
-    state: Publisher<DiagnosticStatus>,
+    state: Publisher<CollisionMonitorState>,
+    status: Publisher<DiagnosticStatus>,
     logger: Logger,
+    /// collision_monitor's polygon name for the box.
+    polygon: String,
     /// The last stop's reason, to log only changes.
     last_stop: Option<String>,
+    /// The last state sent, to send only changes (as collision_monitor).
+    last_state: Option<(u8, String)>,
+}
+
+/// The state collision_monitor would send for this stop: (action, polygon name).
+fn monitor_state(stop: Option<&Why>, polygon: &str) -> (u8, String) {
+    match stop {
+        None => (CollisionMonitorState::DO_NOTHING, String::new()),
+        Some(why) => (CollisionMonitorState::STOP, why.polygon_name(polygon)),
+    }
 }
 
 impl Core {
@@ -226,14 +259,22 @@ impl Core {
         let why = decision.stop.as_ref().map(ToString::to_string);
         if why != self.last_stop {
             match &why {
-                Some(why) => log_warn!(&self.logger, "would stop: {why}"),
+                Some(why) => log_warn!(&self.logger, "stop: {why}"),
                 None => log_info!(&self.logger, "clear"),
             }
             self.last_stop = why.clone();
         }
-        let _ = self.state.publish(DiagnosticStatus {
+        let state = monitor_state(decision.stop.as_ref(), &self.polygon);
+        if self.last_state.as_ref() != Some(&state) {
+            let _ = self.state.publish(CollisionMonitorState {
+                action_type: state.0,
+                polygon_name: state.1.clone(),
+            });
+            self.last_state = Some(state);
+        }
+        let _ = self.status.publish(DiagnosticStatus {
             level: if why.is_some() { 1 } else { 0 },
-            name: "stop_zone (shadow)".into(),
+            name: "stop_zone".into(),
             message: why.clone().unwrap_or_else(|| "clear".into()),
             hardware_id: String::new(),
             values: [
