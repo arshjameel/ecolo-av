@@ -26,7 +26,7 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 
 | Source | Licence | Kind | Where we used it |
 |---|---|---|---|
-| **Nav2** (S. Macenski and the Nav2 authors; "The Marathon 2: A Navigation System", IROS 2020) | Apache-2.0 | ported, runs | our costmap (`aav_costmap`), planner (`aav_planner`), navigator (`aav_navigator`), smoother (`aav_smoother`) and follower (`aav_mppi_lag`) are Nav2's, in Rust; Nav2 itself runs as the yardstick until 0.4-rc1, the stop zone's decision (`aav_stop_zone`, from `collision_monitor`) |
+| **Nav2** (S. Macenski and the Nav2 authors; "The Marathon 2: A Navigation System", IROS 2020) | Apache-2.0 | ported, runs | our costmap (`aav_costmap`), planner (`aav_planner`), navigator (`aav_navigator`), smoother (`aav_smoother`) and follower (`aav_mppi_lag`) are Nav2's, in Rust, as are the stop zone (`aav_stop_zone`, from `collision_monitor`) and the map server (`aav_costmap` `map_server`, `map_server`'s job). Nav2 itself ran as the yardstick until 17 Nov, when it was deleted (TODO 184); `nav2_msgs` (the message types) and `nav2_amcl` (the AMCL trial) still run |
 | ROS 1 `costmap_2d` (Willow Garage) | BSD | ported (through Nav2) | the costmap's layers |
 | **Nav2's Costmap Filters** (keepout and speed masks; A. Merzlyakov, S. Macenski) | Apache-2.0 | idea | the lanes layer (`aav_costmap` `lanes.rs`, `lane_costs`, TODO 148): lanes as costs the planner pays, not walls. Ours is drawn from the lane map per route, since a mask can't know which way the car drives |
 | **MPPI**: G. Williams, A. Aldrich, E. Theodorou, "Model Predictive Path Integral Control: From Theory to Parallel Computation", J. Guidance, Control, and Dynamics, 2017 | paper | idea | the local planner (`aav_mppi_lag`, and Nav2's) |

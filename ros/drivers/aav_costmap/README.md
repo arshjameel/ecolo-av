@@ -30,14 +30,22 @@ pixi run sim-check --costmap own --tracker mppi_lag --lidar-obstacle --plan-arou
 ## Interface
 
 **`costmap`** (`crates/costmap-node/src/main.rs`), started by `aav_navigation`'s
-`navigation.launch.py costmap:=own`
+`navigation.launch.py` (the only costmaps since Nav2's went, 17 Nov)
 
 | Item | What |
 |---|---|
 | Subscribes | `/map` (transient local; not when every costmap is made of chunks); `/localization/odom/local`; `/tf` (map -> odom); `/tf_static` (sensor mounts); each layer's sources from nav2.yaml (`/sensors/lidar/scan`; the radar, cubes, camera points and ghost where they run), best effort; `/plan` (`route_topic`) only with a lanes block; `/drivers/nav/planner/route` (`ahead_topic`) only with a chunks block |
 | Publishes | `/drivers/nav/costmap/local`, `/global` (OccupancyGrid); `/drivers/nav/costmap/local_raw`, `/global_raw` (nav2_msgs/Costmap); `/drivers/nav/costmap/status` (DiagnosticStatus) |
-| Serves | `/drivers/nav/costmap/clear_entirely_local`, `_global` (nav2_msgs/srv/ClearEntireCostmap): forget every mark. With `tracker:=mppi_lag`, `bt_navigator`'s local clear is remapped here |
+| Serves | `/drivers/nav/costmap/clear_entirely_local`, `_global` (nav2_msgs/srv/ClearEntireCostmap): forget every mark. The navigator calls them in its recoveries |
 | Parameters | `local`, `global`: one JSON block each, made by `aav_description`'s `vehicle.costmap_params` from the tuned nav2.yaml; the global one may hold `lanes` (`lane_map.costmap_block`, from `navigation.launch.py lane_costs:=<lanes.yaml>`) and `chunks` (`vehicle.costmap_chunks_block`: `dir`, `ahead` 100 m, `margin` 1 chunk; from `costmap_chunks:=<folder>`); the local one may hold `chunks` too (`ahead` 0, `margin` 0: the 3 x 3 round the car, its static layer stamped from them; `local_chunks:=true`); `odom_topic`, `map_topic`, `base_frame`, `route_topic`, the topic names |
+
+**`map_server`** (`crates/costmap-node/src/map_server.rs`), started by `navigation.launch.py`
+in Nav2's `map_server`'s place (17 Nov, TODO 184; and as `amcl_map_server` for AMCL's map)
+
+| Item | What |
+|---|---|
+| Publishes | `topic_name` (`/map`): the map YAML's grid (`map_chunks::files::read_map`, Nav2's trinary rule), transient local (latched), once |
+| Parameters | `yaml_filename`, `topic_name`, `frame_id` (`map`) |
 
 ### The lanes layer (`lane_costs`, a challenger, TODO 148)
 
