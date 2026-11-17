@@ -1,12 +1,13 @@
 """
-The stop hold: once collision_monitor stops the car, keep it stopped until the way stays clear.
+The stop hold: once the stop zone stops the car, keep it stopped until the way stays clear.
 
 No ROS here, so the tests run anywhere.
 
-Nav2's collision_monitor (Jazzy, 1.3.13) decides afresh on every command: three points in
-the stop zone, stop; two, go. An obstacle at the zone's edge, with a sensor's noise on it,
-flickers between the two, and each go lets the car creep on (TODO, 11 Oct). It has no
-setting to hold a stop: none of its parameters looks at what it decided before.
+The stop zone (aav_stop_zone, as Nav2's collision_monitor did) decides afresh on every
+command: three points in the stop zone, stop; two, go. An obstacle at the zone's edge,
+with a sensor's noise on it, flickers between the two, and each go lets the car creep on
+(TODO, 11 Oct). It has no setting to hold a stop: none of its parameters looks at what it
+decided before.
 
 StopHold adds that memory. It is locked from the moment the monitor says STOP, and lets go
 only once the monitor has said something else for `clear_time` seconds without a break.

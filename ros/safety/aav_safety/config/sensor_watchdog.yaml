@@ -115,7 +115,7 @@ sensor_watchdog:
       over_warn: 1.0            # s
       over_persist: 2.0         # s
       over_slowing: 0.3         # m/s^2
-    radar:                      # collision_monitor stops Nav2 itself when it goes quiet
+    radar:                      # the stop zone stops navigation itself when it goes quiet
       topic: /sensors/radar/points
       kind: cloud
       max_age: 1.0

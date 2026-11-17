@@ -6,7 +6,7 @@ The sensor watchdog. When a sensor Nav2, the point driver or the AI slot needs d
 it stops them, and says why loudly: in the log, on `/diagnostics` and on the HUD. People and
 test scripts can still drive.
 
-And the stop hold (`stop_hold`). Nav2's collision_monitor decides afresh on every
+And the stop hold (`stop_hold`). The stop zone (`aav_stop_zone`) decides afresh on every
 command, so an obstacle at its stop zone's edge flickers it between stop and go, and the
 car creeps on. The hold keeps a stop until the monitor has said "go" for `clear_time` s
 without a break.
@@ -61,11 +61,11 @@ A person clears latched faults: `pixi run clear watchdog`. More in
 
 | In / out | Topic | Type |
 |---|---|---|
-| in | `/safety/collision_monitor/state` | `nav2_msgs/CollisionMonitorState`: on each change |
+| in | `/safety/stop_zone/state` | `nav2_msgs/CollisionMonitorState`: on each change (`aav_stop_zone`) |
 | out | `/safety/stop_hold/lock`, at `rate_hz` | `std_msgs/Bool`: twist_mux's `stop_zone` lock (priority 21) |
 
 Parameters (`config/stop_hold.yaml`): `clear_time` (s, 1.0), `rate_hz` (10).
-`aav_navigation`'s `navigation.launch.py` starts it wherever it starts collision_monitor.
+`aav_navigation`'s `navigation.launch.py` starts it wherever it starts the stop zone.
 
 ### Node `joy_alive`
 
@@ -145,7 +145,7 @@ it starts the mux; the bench always; Gazebo with `geofence:=true` (the default).
 | `hud` | `/hud/heartbeat` | heartbeat, latched | 1.0 s | yes |
 | `steering` | `/vehicle/steering` | actuator (STUCK: 0.15 rad for 1 s) | 1.0 s | yes; the sim only so far (not with `esp32:=true`), the car's uplink has no measured angle |
 | `speed` | `/ego/actuator_cmd`, against `/vehicle/odom`'s speed | speed (0.2 m/s over while not slowing: OVER after 1 s, OVERSPEED after 2 s) | 1.0 s | yes; the sim only so far |
-| `radar` | `/sensors/radar/points` | cloud | 1.0 s | no (collision_monitor stops Nav2 itself) |
+| `radar` | `/sensors/radar/points` | cloud | 1.0 s | no (the stop zone stops navigation itself) |
 | `node_costmap`, `node_planner`, `node_navigator`, `node_mppi_lag`, `node_smoother`, `node_behaviour`, `node_voxels`, `node_things`, `node_ego`, `node_look_ahead` | the node's full name (`/planner`...), looked for in the ROS graph | node | 3.0 s | no: warn only (Ben, 14 Nov). The sim watches the ones it starts |
 
 Per input parameters: `topic`, `kind`, `max_age` (s), `stop`, `frozen_after` (s),

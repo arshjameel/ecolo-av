@@ -1,23 +1,24 @@
 """
-stop_hold: once collision_monitor stops Nav2, hold the stop until the way stays clear.
+stop_hold: once the stop zone stops the car, hold the stop until the way stays clear.
 
-Subscribes  safety/collision_monitor/state   nav2_msgs/CollisionMonitorState: Nav2's
-                                             collision_monitor, each time its action
-                                             changes (STOP, DO_NOTHING...)
+Subscribes  safety/stop_zone/state           nav2_msgs/CollisionMonitorState: the stop
+                                             zone (aav_stop_zone; Nav2's collision_monitor
+                                             until 17 Nov), each time its action changes
+                                             (STOP, DO_NOTHING...)
 Publishes   safety/stop_hold/lock            std_msgs/Bool, at rate_hz: true from a STOP
                                              until the monitor has said something else for
                                              clear_time s without a break (hold.py).
                                              twist_mux's stop_zone lock (priority 21): it
-                                             holds Nav2 (20) and the AI slot (10) only. Its
+                                             holds navigation (20) and the AI slot (10) only. Its
                                              timeout is 0, so this node's silence locks
                                              nothing, and a node that dies while true keeps
                                              the stop
 
 Parameters  clear_time (s, 1.0), rate_hz (10): config/stop_hold.yaml
 
-Why: collision_monitor decides afresh on every command, so an obstacle at its stop zone's
-edge flickers it between stop and go, and each go lets the car creep on (TODO, 11 Oct).
-navigation.launch.py starts this node wherever it starts collision_monitor.
+Why: the stop zone decides afresh on every command, so an obstacle at its box's edge
+flickers it between stop and go, and each go lets the car creep on (TODO, 11 Oct).
+navigation.launch.py starts this node wherever it starts the stop zone.
 """
 
 import signal
