@@ -532,8 +532,8 @@ def nodes(context):
                 'learn_python': LaunchConfiguration('diffusion_python').perform(context),
                 'smoothing': LaunchConfiguration('diffusion_smoothing').perform(context),
                 'use_sim_time': use_sim_time}],
-            remappings=[('compute_path_to_pose_lattice', vehicle.OWN_PLANNER_ACTION),
-                        ('/global_costmap/costmap', vehicle.GLOBAL_COSTMAP_GRID_TOPIC)]))
+            # It reads our global costmap's grid (/drivers/nav/costmap/global) itself.
+            remappings=[('compute_path_to_pose_lattice', vehicle.OWN_PLANNER_ACTION)]))
     if amcl:
         # Stock AMCL, scored only (a pose trial; tf_broadcast false). It is Nav2's
         # (nav2_amcl) and a lifecycle node, with its own manager: the one part of Nav2 kept

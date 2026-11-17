@@ -270,8 +270,7 @@ def test_diffusion_takes_compute_path_to_pose_with_our_planner_behind_it():
     assert 'planner' in nodes
     assert ('compute_path_to_pose_lattice', vehicle.OWN_PLANNER_ACTION) in remaps(
         nodes['diffusion_planner'])
-    assert ('/global_costmap/costmap', vehicle.GLOBAL_COSTMAP_GRID_TOPIC) in remaps(
-        nodes['diffusion_planner'])
+    assert len(remaps(nodes['diffusion_planner'])) == 1
     assert given(nodes['navigator'])['planner_action'] == '/compute_path_to_pose'
     assert given(nav_nodes()['navigator'])['planner_action'] == vehicle.OWN_PLANNER_ACTION
     # Ours plans on its own topic then: /plan is the model's.
