@@ -415,10 +415,11 @@ def check_voxels_impl(impl):
     return name
 
 
-# Which lidar_scan flattens the lidar (lidar:=true, lidar_impl:=): python (aav_lidar) or
-# rust (aav_lidar_rs, its port: the same node name, topics and ranges). Each one's package.
+# Which lidar_scan flattens the lidar (lidar:=true, lidar_impl:=): rust (aav_lidar_rs, the
+# default since 17 Nov: the same node name, topics and ranges, 2 % of a core against 5 %)
+# or python (aav_lidar, the fallback). Each one's package.
 LIDAR_IMPLS = {'python': 'aav_lidar', 'rust': 'aav_lidar_rs'}
-DEFAULT_LIDAR_IMPL = 'python'
+DEFAULT_LIDAR_IMPL = 'rust'
 
 
 def check_lidar_impl(impl):
@@ -429,11 +430,11 @@ def check_lidar_impl(impl):
     return name
 
 
-# Which things node tracks the cubes (things:=true, things_impl:=): python (aav_things) or
-# rust (aav_things_rs, its port: the same node name, topics, parameters and things).
-# Each one's package.
+# Which things node tracks the cubes (things:=true, things_impl:=): rust (aav_things_rs,
+# the default since 17 Nov: the same node name, topics, parameters and things, 1.5 % of a
+# core against 7.5 %) or python (aav_things, the fallback). Each one's package.
 THINGS_IMPLS = {'python': 'aav_things', 'rust': 'aav_things_rs'}
-DEFAULT_THINGS_IMPL = 'python'
+DEFAULT_THINGS_IMPL = 'rust'
 
 
 def check_things_impl(impl):

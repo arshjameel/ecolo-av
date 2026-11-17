@@ -4,7 +4,7 @@ Navigation as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out
   ros2 launch aav_navigation navigation.launch.py [map:=<path to map yaml>]
       [radar:=false] [lidar:=false] [stop_zone:=<radar or lidar>]
       [camera_obstacles:=false] [ghost:=false] [voxels:=false] [voxels_impl:=python]
-      [kerbs:=false] [lidar_impl:=python] [things_impl:=python]
+      [kerbs:=false] [lidar_impl:=rust] [things_impl:=rust]
       [reversing:=false] [max_speed:=] [planner:=own] [planner_search:=lattice]
       [diffusion_model:=] [diffusion_provider:=CPUExecutionProvider] [diffusion_record:=]
       [diffusion_python:=] [diffusion_smoothing:=gear]
@@ -35,9 +35,9 @@ lifecycle node: each respawns 1 s after it dies, and while one is down the car s
                     reversing) or a silent sensor; its state on /safety/stop_zone/state
   stop_hold         with the stop zone (aav_safety): holds its stops until the zone stays
                     clear for 1 s, through twist_mux's stop_zone lock
-  lidar_scan        with lidar:=true (aav_lidar): the roof lidar's cloud ->
+  lidar_scan        with lidar:=true (aav_lidar_rs): the roof lidar's cloud ->
                     /sensors/lidar/scan, for the costmap and the stop zone;
-                    lidar_impl:=rust for the Rust node (aav_lidar_rs)
+                    lidar_impl:=python for the Python node (aav_lidar)
 
 The settings are config/nav2.yaml's, in Nav2's layout: our ports read the blocks they were
 tuned with (vehicle.nav2_tuned writes the car into a temporary copy; vehicle.rewrite the
@@ -78,9 +78,9 @@ Switches:
   lane_corners:=,
   lane_graph:=            our costmap's lanes and chunks, our planner's lane-centre route
                           (TODO 148, 175; docs/own-costmap.md, docs/own-planner.md)
-  things:=true            (with lidar:=true) aav_things: the cubes as tracked things on
+  things:=true            (with lidar:=true) aav_things_rs: the cubes as tracked things on
                           /world/things; things_background*, things_names: theirs;
-                          things_impl:=rust for the Rust node (aav_things_rs)
+                          things_impl:=python for the Python node (aav_things)
   replan_hz:=0            the navigator plans a to-pose goal once (a test: TODO 149)
 
 Obstacles, from where the sensors are:
