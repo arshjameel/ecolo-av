@@ -4,6 +4,8 @@
 
 > **A snapshot from 3 November 2026.** Release 0.3 merged on 9 November:
 > [what landed](#release-03-what-landed-9-november). What's true now: [Status](status.md) and [Features](features.md).
+>
+> **Nav2 and Gazebo, named below, are gone**: Gazebo on 16 Nov, Nav2 on 17 Nov. Today: Ravensim and our stack (`stack:=ours`). What each was: [Nav2, as it was](history/nav2-as-it-was.md), [Gazebo, as it was](history/gazebo-as-it-was.md).
 
 <div class="pitch"><p><b>Sim-complete, car-ready.</b> Four screens of our own, a cockpit
 in Lichtblick, a joystick that stops when the pad dies, a Rust ESP32 that brakes in
