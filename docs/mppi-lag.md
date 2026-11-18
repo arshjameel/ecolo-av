@@ -4,7 +4,9 @@ Ben, 7 Nov (0.3): **"have the algorithms know about lag"**.
 
 Nav2's MPPI plans as if the car obeys at once. It can't take our lag model without a C++
 plugin, and we write no C++. So MPPI is **ported to Rust**, with the lag in its model.
-Nav2 still plans the path; ours follows it. It is a **trial**, beside Nav2's MPPI.
+It began as a trial beside Nav2's MPPI; since 14 Nov it is the follower in `stack:=ours`,
+and since Nav2 went (17 Nov, [as it was](history/nav2-as-it-was.md)) the only MPPI.
+The comparisons with Nav2's MPPI below are the record.
 
 > **The short version**
 > - **Switch:** `tracker:=mppi_lag`. Package `aav_mppi_lag`.
@@ -24,7 +26,7 @@ Nav2 still plans the path; ours follows it. It is a **trial**, beside Nav2's MPP
 >   In an all-ours stack it passes the campus's first goal at 2.5 m/s and uses twice
 >   Nav2's MPPI's CPU (33-39 % against 17-18 %: [our navigator](own-navigator.md#the-verdict)).
 >   Open: TODO 152 (slow earlier near the goal, fewer futures, time it on the Orin).
-> - **Costmap:** Nav2's local costmap, or ours with `costmap:=own` ([page](own-costmap.md)).
+> - **Costmap:** our local costmap ([page](own-costmap.md)); Nav2's until 17 Nov.
 > - **No wiggle at speed** (15 Nov, TODO 168): at 2.5 m/s the steering noise sized for
 >   1 m/s made the steering jump side to side; it now shrinks with the speed
 >   ([Oscillation](#oscillation-the-cause)).
@@ -36,9 +38,9 @@ Nav2 still plans the path; ours follows it. It is a **trial**, beside Nav2's MPP
 ## How it fits
 
 ```
-planner (Nav2) ──path──▶ bt_navigator ──FollowPath──▶ mppi_lag ──cmd_vel_nav──▶ smoother
-                                                         ▲          ──▶ collision_monitor
-            odometry, /vehicle/steering, throttle, brake ┘          ──▶ twist_mux ──▶ ego
+planner (ours) ──path──▶ navigator ──FollowPath──▶ mppi_lag ──cmd_vel_nav──▶ smoother
+                                                     ▲          ──▶ stop zone
+        odometry, /vehicle/steering, throttle, brake ┘          ──▶ twist_mux ──▶ ego
 ```
 
 The same place as `aav_track`'s trackers: controller_server's `follow_path` is renamed
@@ -677,7 +679,7 @@ Ego's lead (0.3) cancels lag for drivers that don't know about it. It must turn 
 a lag-aware driver drives.
 
 Ego's contract: `/drivers/<slot>/lag_aware`, `std_msgs/Bool`, reliable, transient local,
-depth 1. This drives through Nav2's slot: `/drivers/nav/lag_aware`.
+depth 1. This drives through navigation's slot: `/drivers/nav/lag_aware`.
 
 | When | Says |
 |---|---|
@@ -706,7 +708,7 @@ cd ros/drivers/aav_mppi_lag && cargo test --release -p mppi-lag
 | The forward legs with the new control cost | closer to the path without ROS; the simulator's tours again (forward only too) |
 | ego's jerk limit, sideways slow-down | not modelled (off at our speeds) |
 | The goal at speed, the CPU | passes a goal at 2.5 m/s; twice Nav2's MPPI's CPU (8 Nov; TODO 152) |
-| A gap in odometry | gives up after 1 s, as `aav_track`; Nav2's MPPI drives on: decide which is right |
+| A gap in odometry | gives up after 1 s, as `aav_track` (Nav2's MPPI drove on) |
 | A live swap | it is its own node: `tracker:=` at launch only |
 | The lane's soft edge, opened | ✅ 16 Nov: while our planner passes something parked (status `how: pass`), the road ahead follows the pass and its left soft edge opens to the kerb there; `LaneCritic` reads it as sent ([own-planner.md](own-planner.md#passing-something-parked-16-nov)). Not yet driven with `lane_map:=` on |
 

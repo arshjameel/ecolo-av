@@ -1,4 +1,4 @@
-# The full simulation: the whole car in Gazebo
+# The full simulation: the whole car, first built in Gazebo
 
 Written 15 October 2026, checked 25 October. The goal (Ben, 15 Oct): "fully simulate the car inside
 Gazebo with all the sensors, and build the full pipeline." This page says what we have,

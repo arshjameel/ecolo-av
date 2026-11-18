@@ -45,7 +45,7 @@ Bevy draws the world from each camera on the car, with no window, and the pictur
 | `pixi run sim-cameras --bench 300` | as fast as it can: the most pictures a second |
 | `pixi run sim-cameras --ros` | publishes the topics, a scripted drive, wall-clock stamps |
 | `pixi run sim-cameras --ros --pose truth` | draws where `/vehicle/sim/truth` says, with its stamps |
-| `pixi run sim-cameras --world maps/campus/campus.sdf --at 49,-71,0` | a Gazebo world (the core's reader), parked at x, y, yaw |
+| `pixi run sim-cameras --world maps/campus/campus.sdf --at 49,-71,0` | an SDF world (the core's reader), parked at x, y, yaw |
 | `pixi run sim world:=road` | the whole simulator: the launch starts the cameras on the world it runs |
 | `pixi run sim-cameras --software` | a software renderer only, even beside a GPU |
 | `pixi run sim-cameras --graphics simple` | the plain look (`pretty`: grain, a sky, haze; the default `auto`: pretty on a GPU, simple in software). [Looks](own-simulator.md#looks-graphicspretty-17-nov) |
@@ -199,6 +199,6 @@ On a slower computer (CI's 4 cores) the clock should slow instead of the cameras
 | A side-by-side with Gazebo's pictures | the looks match by eye (`docs/img/sim-cameras.png`); not measured |
 | The detector on these pictures | the stop sign carries Gazebo's own picture: see [own-simulator.md](own-simulator.md)'s results |
 | The campus at 10 Hz on a busy computer | 4 cameras on the campus: 9.1 Hz, 105 ms median (no ROS, load 11) |
-| Faults (freeze, stop) | `sim_camera_relay` does them for Gazebo; the simulator's fault switch should cover these |
-| The JPEG topics | Gazebo has none either: `chase_jpeg` and `preview_jpeg` still make them |
-| Lifelike pictures | a non-goal: Gazebo's aren't either |
+| Faults (freeze, stop) | `sim_camera_relay` does them (as it did for Gazebo); the simulator's fault switch should cover these |
+| The JPEG topics | Gazebo had none either: `chase_jpeg` and `preview_jpeg` still make them |
+| Lifelike pictures | a non-goal: Gazebo's weren't either |

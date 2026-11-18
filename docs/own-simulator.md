@@ -47,7 +47,7 @@ picture (**camera lockstep**, 16 Nov): `tools/software_gl.sh pixi run sim-check`
                       (actuator model)                      │ world: SDF files      
                                                             │ car, rays, IMU, GPS, clock
  sim_imu, sim_gps, sim_radar, sim_adapter <─────┘ /vehicle/sim/*: Gazebo's rates, QoS
-   └─> /sensors/*, /vehicle/*  ─> localization, Nav2, safety: unchanged
+   └─> /sensors/*, /vehicle/*  ─> localization, navigation, safety: unchanged
 ```
 
 It replaced `gz sim` **and** its bridges. Every node above them is the one Gazebo used.
@@ -126,8 +126,8 @@ detectors see the same red and white. The lane finder did a little better on rea
 
 | Part | How |
 |---|---|
-| Today | `sim_adapter`'s actuator model, then Gazebo's AckermannSteering (±10 m/s², the wheels steer at once), then the bicycle |
-| Hitting things | the outline (`vehicle.yaml` `body:`) stops at what it meets, at 0.35, 0.8 and 1.3 m up, as Gazebo's physics does. The log says "the car hit something" |
+| Today | `sim_adapter`'s actuator model, then `TwistFollower` (Gazebo's AckermannSteering, copied: ±10 m/s², the wheels steer at once), then the bicycle |
+| Hitting things | the outline (`vehicle.yaml` `body:`) stops at what it meets, at 0.35, 0.8 and 1.3 m up, as Gazebo's physics did. The log says "the car hit something" |
 | The ground (8 Nov) | each wheel finds the ground below it (a ray straight down). The car rides up a slope and tilts on it; a step up to 0.1 m (`ground_step`) it rolls up; a higher one (a 0.3 m kerb) stops it, as a wall does. The truth carries the height and tilt, so the cameras follow |
 | The trait | `sim-core` `CarModel`: `step`, `state`, `reset`, `hold`. The shared `car-model` crate goes in behind it at the merge |
 | `ActuatorCar` | the actuator model itself, to `car-model`'s rules (exact lags, rate-limited motor, deadband, dead time). Tested; not wired in yet |
@@ -207,7 +207,7 @@ time (`simulator:=`).
 | Check | Ours | Gazebo |
 |---|---|---|
 | `drop-in`, test lot | odom, status, IMU, GPS, radar, lidar: pass. Cameras: nothing (none yet) | pass (5 Nov) |
-| A Nav2 goal, (14, 0) in the test lot | succeeded; the truth 0.4 m short, 0.9 m aside | succeeded (5 Nov) |
+| A goal (then Nav2's), (14, 0) in the test lot | succeeded; the truth 0.4 m short, 0.9 m aside | succeeded (5 Nov) |
 | `sim-check`: start-up, contract, lidar, scan, scripted drive, EKF vs truth (0.05-0.20 m), wheels vs IMU | pass | pass |
 | `--lidar-obstacle` (the post) | pass: stopped 0.20 m before it | pass |
 | `--obstacle` (the box) | stopped **0.33 m** before it; then the goal failed: a TF lookup ran late on the loaded Mac | 0.23 m (3 Nov) |
@@ -241,5 +241,5 @@ Their own page has the details: [the cameras, with no GPU](own-simulator-cameras
 |---|---|
 | Hills in a world | the ground works on any mesh; none of our worlds has a slope yet |
 | The car's own body in the lidar | Gazebo's lidar may see the car; ours doesn't |
-| The Bevy window drawing ours | the window reads the same topics, so it works as with Gazebo; not run yet |
-| `ActuatorCar` driving the node | the Python actuator model stays in front, as with Gazebo |
+| The Bevy window drawing ours | `pixi run ravensim` starts it on Ravensim (17 Nov); a person still has to look it over |
+| `ActuatorCar` driving the node | the Python actuator model stays in front |

@@ -5,7 +5,7 @@ Four raylib programs in one package, `ros/hud/aav_hud`, each also its own ROS no
 | Program | Node | Screen | Shows |
 |---|---|---|---|
 | [The HUD](#the-hud-in-rust-raylib) | `hud` | the small ~7" touchscreen | speed, GO / STOP, the e-stop button, the camera, the topics |
-| [The map window](#the-map-window-big-screen) | `map` | the big ~15" monitor | Nav2's map over Ottawa's streets, the plan, place search |
+| [The map window](#the-map-window-big-screen) | `map` | the big ~15" monitor | the navigation map over Ottawa's streets, the plan, place search |
 | [The debug HUD](#the-debug-hud) (the seeing screen) | `debug_hud` | a laptop | the lidar's cubes in 3D, NDT's map and match from above, where each localizer puts the car; key L: every sensor |
 | [The hardware panel](#the-hardware-panel) | `hw_panel` | a wired laptop | every sensor's number, and simple buttons for the actuators (Ravensim and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path |
 
@@ -44,7 +44,7 @@ a second program. Each opens full screen on its own monitor at boot:
 | Speed | km/h, big. Grey with "OLD" when `/vehicle/status` stops |
 | GO / STOP (24 Oct) | may the car move? A colour, an icon, a word, the one main reason: [below](#may-the-car-move-the-go-stop-panel) |
 | Controls | steering (left of centre = left), throttle, brake: one row each |
-| Camera | the picture (rgb8, bgr8, rgba8, bgra8, mono8); a STOP SIGN banner over it; a big orange **SIMULATED** / **BENCH** / **REPLAY** band along its bottom when `/system/source` says any data isn't the real car's; the sensor watchdog's banner (15 Oct): red **STOP: gps STALE (...)** while it holds Nav2, amber for a warning, red **SENSOR WATCHDOG SILENT** if it stops talking (twist_mux then holds Nav2 for its silence) ([simulation](simulation.md#sensor-failures-on-purpose)) |
+| Camera | the picture (rgb8, bgr8, rgba8, bgra8, mono8); a STOP SIGN banner over it; a big orange **SIMULATED** / **BENCH** / **REPLAY** band along its bottom when `/system/source` says any data isn't the real car's; the sensor watchdog's banner (15 Oct): red **STOP: gps STALE (...)** while it holds navigation, amber for a warning, red **SENSOR WATCHDOG SILENT** if it stops talking (twist_mux then holds navigation for its silence) ([simulation](simulation.md#sensor-failures-on-purpose)) |
 | E-STOP | the button: `/safety/estop` true 5 times, 0.1 s apart. Never false. Says whether anything heard it |
 | (nothing on screen) | the heartbeat, `/hud/heartbeat`: below |
 | Topics | every topic it listens to: OK, STALE (quiet for 1 s) or NEVER, and how long ago; a REAL / SIM / BENCH / REPLAY tag where `/system/source` names it |
@@ -64,7 +64,7 @@ HUD and on the developer window.
 |---|---|---|
 | **bold line** | where the car WILL go in the next 2 s, from the car model: shorter when braking, longer when speeding up, bent where it turns | `/ego/trace` (ego) |
 | its colour | **green**: within 0.3 m of the plan. **amber**: within 0.6 m. **red**: further. White: no plan (a person drives) | `/ego/ahead` |
-| thin grey line | what the planner WANTS: MPPI's own future, or Nav2's plan ahead | `/ego/plan_ahead` |
+| thin grey line | what the planner WANTS: MPPI's own future, or the planner's plan ahead | `/ego/plan_ahead` |
 | white bar across | where the **front bumper** stops if the car brakes fully now | `/ego/stop_point` |
 | red bar | the first obstacle in the local costmap the bumper would meet | `/ego/ahead` |
 | the box | the car, from `vehicle.yaml` (sent by `look_ahead`, never copied) | `/ego/ahead` |
@@ -83,13 +83,13 @@ While braking for the goal, the bold line shrinks to the bar and goes green:
 
 ![AHEAD braking for the goal: the line short, on the plan](img/hud-squiggly-braking.png)
 
-**Live, 8 Nov** (Ravensim, `simulator:=own world:=test_lot`, a Nav2 goal at
-(14, 3), which succeeded): the faint line is Nav2's MPPI's own future
+**Live, 8 Nov** (Ravensim, `simulator:=own world:=test_lot`, a goal (then Nav2's) at
+(14, 3), which succeeded): the faint line is MPPI's own future (Nav2's then)
 (`/drivers/nav/local_plan`). `/ego/ahead` said ON PLAN 0.01-0.18 m and "13.4 m short of
 the goal" while it drove; here the trace runs 0.31 m off MPPI's future (amber): MPPI plans
 without the lag, ego's model has it.
 
-![AHEAD live in Ravensim, driving to a Nav2 goal](img/hud-squiggly-live.png)
+![AHEAD live in Ravensim, driving to a goal](img/hud-squiggly-live.png)
 
 **One answer for every screen.** The maths lives in ROS, once; the screens only draw:
 
@@ -102,7 +102,7 @@ look_ahead ──▶ /ego/plan_ahead (base_link)  the plan, moved with TF, cut a
 
 All four are in base_link, so the screens need no TF. The stop-point check in `sim-check`
 reads the same `/ego/stop_point`. The faint line is `/drivers/nav/local_plan` while a
-follower sends one (Nav2's MPPI, the default, and `mppi_lag`), else Nav2's `/plan`.
+follower sends one (`mppi_lag`, the default), else the planner's `/plan`.
 
 The GPS fix moved into the top strip (GPS: 3D FIX, RTK FIXED, NO GPS, SILENT) to make room.
 Its lat, lon and accuracy are on the hardware panel and the map window.
@@ -141,7 +141,7 @@ Taken with `pixi run hud --demo --screenshot FILE --screenshot-after 50` (STOP) 
 | green, a tick | **GO** | the gate is open; nothing holds the drivers |
 | amber, a pause sign | **WAIT** | the gate is shut for now; it opens by itself |
 | red, a stop sign | **STOP** | nothing reaches the car (people's commands too), until fixed or cleared |
-| red, a stop sign | **AUTO STOP** | Nav2 and the AI slot are held; people can still drive |
+| red, a stop sign | **AUTO STOP** | navigation and the AI slot are held; people can still drive |
 | grey, a question mark | **NO GATE** | no output mux heard: nothing reaches the car |
 
 The one main reason, the first that applies:
@@ -201,15 +201,15 @@ The safety drivers rely on this screen, so the sensor watchdog must know it's al
  window draws a frame --> count + 1
  every 10 ms, the e-stop's timer (ROS thread):
      0.1 s since the last beat, and the count rose?  --> /hud/heartbeat = count (10 Hz)
- sensor_watchdog, input hud:  quiet 1 s, or the count stuck 1 s  --> STOP: Nav2 and the AI slot
+ sensor_watchdog, input hud:  quiet 1 s, or the count stuck 1 s  --> STOP: nav and the AI slot
 ```
 
 | What fails | What happens |
 |---|---|
 | The window freezes | the count stops rising: no more beats |
-| The ROS thread freezes | the timer stops: no beats, and no e-stop either. The watchdog stops Nav2 |
-| The program dies | no beats. systemd restarts it in 5 s; Nav2 stays held (**latched**, below) |
-| The HUD never started | the watchdog says `hud NEVER`: Nav2 never drives |
+| The ROS thread freezes | the timer stops: no beats, and no e-stop either. The watchdog stops navigation |
+| The program dies | no beats. systemd restarts it in 5 s; navigation stays held (**latched**, below) |
+| The HUD never started | the watchdog says `hud NEVER`: navigation never drives |
 
 **Latched (Ben, 24 Oct: a HUD that keeps crashing holds Nav2 until a person clears it):**
 
@@ -218,7 +218,7 @@ The safety drivers rely on this screen, so the sensor watchdog must know it's al
    one dropout in the grace: forgiven      any dropout: hud LOST, latched
    (held only while it lasts)              (held even once it beats again)
 
- a person checks the screen ──► pixi run clear watchdog ──► Nav2 may drive
+ a person checks the screen ──► pixi run clear watchdog ──► nav may drive
 ```
 
 | Case | What happens |
@@ -226,7 +226,7 @@ The safety drivers rely on this screen, so the sensor watchdog must know it's al
 | A slow first frame, within 5 s of the first beat | held while it lasts, then drives by itself (once) |
 | A crash, a freeze or a closed window after that | `hud LOST`: held, even once systemd restarts it |
 | A HUD that keeps crashing while it starts | the second dropout latches |
-| `pixi run clear watchdog` | Nav2 drives again, if the HUD beats; the grace starts again |
+| `pixi run clear watchdog` | navigation drives again, if the HUD beats; the grace starts again |
 | The watchdog itself stalled (a busy computer) | not the HUD's fault: nothing latches |
 
 The rule is `latch: true` on the `hud` input (`sensor_watchdog.yaml`, `latch_grace: 5.0`),
@@ -238,7 +238,7 @@ in `aav_safety` `watchdog.py`, with tests. The HUD shows it: **AUTO STOP, HUD LO
 | Ravensim | with `hud:=true` (the window), or `watch_hud:=true` (something else beats) |
 | Bench, turtle, CARLA | no: no HUD window there |
 
-- People, the joystick and the e-stop are never held by it: only Nav2 and the AI slot.
+- People, the joystick and the e-stop are never held by it: only navigation and the AI slot.
 - The e-stop button doesn't depend on it. It's the same timer, so a beat also proves the
   e-stop's sender runs.
 - The logic: `hud-core` `heartbeat` (no ROS). The watchdog's side: `kind: heartbeat` in
@@ -271,9 +271,9 @@ The HUD reads topics, so it works next to anything that publishes them. Start th
 then `pixi run hud` in another terminal (the same `ROS_DOMAIN_ID`).
 In Ravensim, one command does both: `pixi run sim world:=test_lot hud:=true`.
 
-| HUD panel | Turtle (`pixi run turtle`) | Sim (`pixi run sim world:=road`; Gazebo until 16 Nov) | Bench (`pixi run bench`) | Car |
+| HUD panel | Turtle (`pixi run turtle`) | Sim (`pixi run sim world:=road`; Ravensim, Gazebo until 16 Nov) | Bench (`pixi run bench`) | Car |
 |---|---|---|---|---|
-| Speed, steering, mode, armed | ✅ from the turtle's motion (15 Oct) | ✅ 50 Hz, from Gazebo's wheels | ✅ | the backend's `/vehicle/status` |
+| Speed, steering, mode, armed | ✅ from the turtle's motion (15 Oct) | ✅ 50 Hz, from the simulated wheels | ✅ | the backend's `/vehicle/status` |
 | GPS panel | NEVER: no GPS | ✅ 3D fix, about 5 Hz | ✅ | the ZED-F9R, once it runs |
 | Camera | NEVER: no camera | ✅ road world, about 9 Hz | ✅ the drawn road | the camera Pis |
 | Stop sign | NEVER | with `perception:=true` (`pixi run -e ml sim ...`) | with `--perception` | YOLO |
@@ -287,10 +287,10 @@ nothing publishes that topic there.
 ## The map window (big screen)
 
 `ros/hud/aav_hud`, binary `map`: its own window, which is also the ROS node `map`.
-Step 1 (15 October): what Nav2 already knows, drawn north up. Step 2 (15 October): an
+Step 1 (15 October): what navigation already knows, drawn north up. Step 2 (15 October): an
 offline street map of Ottawa under it ([below](#the-street-map-under-it)). Step 3
 (15 October): [search for a place](#search-for-a-place-and-drive-there) and send it to
-Nav2.
+navigation.
 
 ![The map window, with pretend data (--demo)](img/map-raylib.png)
 
@@ -299,13 +299,13 @@ Nav2.
 | The map: free light, occupied dark, unknown grey; grid lines every round number of metres | `/map` (latched) |
 | The car: its outline to scale (`vehicle.yaml`), with an arrow; grey when its position is old | `/localization/odom/global` (map frame) |
 | The plan: a blue line | `/plan` |
-| The goal: a green dot | the plan's last point; RViz's `/goal_pose` until Nav2 plans for it |
-| TRIP | NO GOAL, DRIVING, ARRIVED (within 1 m), WAITING FOR A PLAN, NO NEW PLAN (Nav2 stopped replanning: cancelled or failed), NO POSITION |
+| The goal: a green dot | the plan's last point; RViz's `/goal_pose` until the planner plans for it |
+| TRIP | NO GOAL, DRIVING, ARRIVED (within 1 m), WAITING FOR A PLAN, NO NEW PLAN (the navigator stopped replanning: cancelled or failed), NO POSITION |
 | DISTANCE LEFT | along the plan, from the point nearest the car |
 | TIME LEFT, SPEED | distance / speed; km/h from the odometry |
 | TOPICS | each topic: OK, STALE or NEVER |
 | Orange band | SIMULATED / BENCH / REPLAY, as on the HUD (`/system/source`) |
-| Watchdog banner (15 Oct) | across the bottom of the map: the sensor watchdog's verdict, as on the HUD: red **STOP: ...** while it holds Nav2, or **SENSOR WATCHDOG SILENT**; amber for a warning (`/safety/sensor_watchdog/state`) |
+| Watchdog banner (15 Oct) | across the bottom of the map: the sensor watchdog's verdict, as on the HUD: red **STOP: ...** while it holds navigation, or **SENSOR WATCHDOG SILENT**; amber for a warning (`/safety/sensor_watchdog/state`) |
 | Scale bar, N | bottom left; north is always up |
 
 ### Keys
@@ -324,7 +324,7 @@ Nav2.
 ```bash
 pixi run map --demo                          # pretend data: no ROS, no car
 pixi run build && pixi run map             # the real node (ros2 launch aav_hud map.launch.py)
-pixi run sim world:=test_lot map:=true     # the simulator, Nav2 and the map window together
+pixi run sim world:=test_lot map:=true     # the simulator, our stack and the map window together
 pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor
 ```
 
@@ -334,9 +334,9 @@ pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor
 |---|---|
 | `crates/map-core` | the maths, no ROS, no raylib: map to screen and back, zoom, the grid's pixels, the nearest point and the distance left, the trip's status. `cargo test -p map-core` (in `tools/test.sh`) |
 | `crates/map-app` | the window and the node, built like the HUD's. `--demo`, `--screenshot FILE`, `--vehicle FILE` |
-| `config/map.yaml` | every topic name, the limits: `stale_after`, `plan_stale_after` (3 s; 25 s, `plan_kept_for`, within `final_approach` 8 m of the plan's end, where Nav2 keeps its path), `arrive_within` (1 m), and `street_map`, the street map's file |
+| `config/map.yaml` | every topic name, the limits: `stale_after`, `plan_stale_after` (3 s; 25 s, `plan_kept_for`, within `final_approach` 8 m of the plan's end, where the navigator keeps its path), `arrive_within` (1 m), and `street_map`, the street map's file |
 
-- The distance comes from `/plan` and the car, not from Nav2's action feedback: simpler,
+- The distance comes from `/plan` and the car, not from the navigator's action feedback: simpler,
   and it works for a goal sent from anywhere.
 - The car's size: `vehicle.yaml`, built in, and the installed one at launch (`--vehicle`).
 
@@ -353,14 +353,14 @@ pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor
 
 ![The map window next to Gazebo, whole map (--whole-map), driving to a goal](img/map-raylib-sim.png)
 
-- `/plan` isn't latched: a window opened after Nav2 finished shows NO GOAL until the
+- `/plan` isn't latched: a window opened after the navigator finished shows NO GOAL until the
   next goal.
-- Near the goal, Nav2 may plan a loop to arrive facing the right way; the distance left
+- Near the goal, the planner may plan a loop to arrive facing the right way; the distance left
   follows the loop.
 
 ### The street map under it
 
-OpenStreetMap's streets, water, parks and buildings, drawn under Nav2's map, so the car
+OpenStreetMap's streets, water, parks and buildings, drawn under the navigation map, so the car
 and its path sit on real streets. It works with no internet: the map is a file.
 
 ![The demo lot on a Carleton parking lot, by Stadium Way and Bronson Avenue (--demo --zoom 2.5)](img/map-streets-demo.png)
@@ -410,7 +410,7 @@ datum, turned by the meridian convergence (-0.495 degrees at Carleton).
 | Parliament Hill (4 km north) | ours (-93.875, 3944.025) m; `/fromLL` the same to 1 mm |
 | Without the convergence turn | 34 m off at Parliament Hill: why it's there |
 
-The sim's datum is the placeholder near Carleton, so in Gazebo the test lot sits on
+The sim's datum is the placeholder near Carleton, so in the simulator the test lot sits on
 campus streets that aren't really there: the streets only match the world on the car.
 
 #### How it draws
@@ -424,7 +424,7 @@ campus streets that aren't really there: the streets only match the world on the
 | What to keep, load, forget | `map-core/src/tilecache.rs` (160 tiles; a parent tile stands in while one loads) |
 | The loader thread, the colours, the names | `map-app/src/streets.rs` (rlgl: one batch per colour) |
 
-- Order: streets, then Nav2's map see-through (unknown clear, free a faint blue,
+- Order: streets, then the navigation map see-through (unknown clear, free a faint blue,
   occupied near-white), then the plan, the goal and the car.
 - Roads by class: paths and service roads dim, residential grey, major roads (Bronson,
   Colonel By) brighter and wider, highways (the 417) amber. Zoomed in, roads are their
@@ -449,7 +449,7 @@ campus streets that aren't really there: the streets only match the world on the
 
 ### Search for a place, and drive there
 
-Type a name or an address, pick a result, and send it to Nav2 as the goal. Two presses
+Type a name or an address, pick a result, and send it to the navigator as the goal. Two presses
 (DRIVE HERE, then CONFIRM), so a stray tap never moves the car.
 
 ![Typing "carleton": names, types, streets and the distance from the car (--demo --search carleton)](img/map-search.png)
@@ -491,15 +491,15 @@ bottom. A mouse click counts as a tap, so it works the same on a Mac.
 | | |
 |---|---|
 | Message | `geometry_msgs/PoseStamped` on `/goal_pose` (`goal_topic` in `config/map.yaml`), as RViz's "2D Goal Pose": `bt_navigator` starts a navigate_to_pose |
-| Frame | Nav2's map frame (`map`), from the place's lat/lon by the same sums as navsat_transform (`earth.rs`) |
+| Frame | the map frame (`map`), from the place's lat/lon by the same sums as navsat_transform (`earth.rs`) |
 | Facing | from the car toward the place |
-| Refused | outside Nav2's `/map` (**Outside Nav2's map: 3.8 km away**, from its edge), no `/map` yet, or no car position |
-| `--demo` | no Nav2: the goal shows, and the pretend car stops |
+| Refused | outside the navigation map (`/map`) (**Outside Nav2's map: 3.8 km away**, from its edge), no `/map` yet, or no car position |
+| `--demo` | no ROS: the goal shows, and the pretend car stops |
 
 ![A place 3.8 km off Nav2's map: no DRIVE HERE, the reason instead (--demo --search parliament --pick 1)](img/map-search-outside.png)
 
-On the car, Nav2's map is only the test site, so most of Ottawa is "outside" until a
-bigger map (or Nav2's GPS waypoints over a road map) exists. That's the right answer, not
+On the car, the navigation map is only the test site, so most of Ottawa is "outside" until a
+bigger map (or GPS waypoints over a road map) exists. That's the right answer, not
 a bug.
 
 #### How the search works
@@ -527,7 +527,7 @@ Try a search from a terminal: `cargo run --release -p map-core --example search 
 | `--search TEXT` | starts with TEXT typed |
 | `--pick N` | with `--search`: picks result N |
 | `--keyboard` | opens the box with the on-screen keyboard showing |
-| `--send-goal TEXT` | once `/map` and the car are known: sends the first result inside Nav2's map, and says so on the terminal |
+| `--send-goal TEXT` | once `/map` and the car are known: sends the first result inside the navigation map, and says so on the terminal |
 
 #### Tested (15 October, a Mac)
 
@@ -542,7 +542,7 @@ Try a search from a terminal: `cargo run --release -p map-core --example search 
 
 ![Gazebo: University Drive, sent by --send-goal, and Nav2 driving there](img/map-search-sim.png)
 
-The sim's datum is the placeholder near Carleton, so in Gazebo "University Drive" lands
+The sim's datum is the placeholder near Carleton, so in the simulator "University Drive" lands
 inside the test lot. On the car, the datum is the real test site.
 
 ## Themes: the screens' colours
@@ -584,7 +584,7 @@ no glow.
 | Screen | In `initial_d` |
 |---|---|
 | HUD | the speed as an arcade gauge (white ticks, a red needle, red redline blocks), 7-segment digits, our logo, a faint car in lines behind |
-| Map | a night street map in greys; highways dark red; Carleton's campus a faint red; Nav2's plan **white**, the street route **red**; black boxes with white edges; the faint car at the foot of the right panel |
+| Map | a night street map in greys; highways dark red; Carleton's campus a faint red; the plan **white**, the street route **red**; black boxes with white edges; the faint car at the foot of the right panel |
 | Debug screen | black 3D view, grey ground grid, the lidar's cubes teal, Nav2's cubes red wireframes; black side panel with a white edge; the faint car at its foot |
 | Hardware panel | white words on black, dark grey buttons with white edges, square pills; the faint car bottom right |
 

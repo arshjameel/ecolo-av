@@ -87,7 +87,7 @@ topics:
     type: geometry_msgs/msg/TwistStamped
     pub: [point_driver]
     sub: [twist_mux, language_drive, ego]
-    note: Priority 25 - below every person, test and script, above Nav2. Only while a /drive_to_point goal runs (aav_drive_to_point, pixi run drive-to-point; docs/a-to-b.md). Drives on GPS, so the stop-sign and sensor locks (30) hold it. It also reads /control/cmd_vel, to stop when someone else takes over.
+    note: Priority 25 - below every person, test and script, above navigation. Only while a /drive_to_point goal runs (aav_drive_to_point, pixi run drive-to-point; docs/a-to-b.md). Drives on GPS, so the stop-sign and sensor locks (30) hold it. It also reads /control/cmd_vel, to stop when someone else takes over.
   /drivers/nav/cmd_vel:
     type: geometry_msgs/msg/TwistStamped
     pub: [velocity_smoother, stop_zone]
@@ -103,7 +103,7 @@ topics:
     pub: [sensor_watchdog]
     sub: [twist_mux, point_driver, behaviour]
     live: [sim]
-    note: true while a sensor Nav2 or the AI slot needs is stale, NaN, frozen, jumped, or (the wheels) disagrees with the IMU, or the steering is STUCK off its command, or the car runs over ego's speed (OVERSPEED - 0.2 m/s over for 2 s while not slowing, sim only so far, TODO 207); false otherwise (aav_safety sensor_watchdog, 10 Hz) - a heartbeat. A twist_mux lock at priority 30, as the stop sign - it holds Nav2 and the AI slot, never a person or a test. Fail-safe - the lock's 1 s timeout holds them too when the watchdog dies or hangs (aav_command_mux mux.launch.py sensor_lock, true wherever a watchdog runs - Ravensim with watchdog:=true, the bench, and the car next to the mux; false on the turtle). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python).
+    note: true while a sensor Nav2 or the AI slot needs is stale, NaN, frozen, jumped, or (the wheels) disagrees with the IMU, or the steering is STUCK off its command, or the car runs over ego's speed (OVERSPEED - 0.2 m/s over for 2 s while not slowing, sim only so far, TODO 207); false otherwise (aav_safety sensor_watchdog, 10 Hz) - a heartbeat. A twist_mux lock at priority 30, as the stop sign - it holds navigation and the AI slot, never a person or a test. Fail-safe - the lock's 1 s timeout holds them too when the watchdog dies or hangs (aav_command_mux mux.launch.py sensor_lock, true wherever a watchdog runs - Ravensim with watchdog:=true, the bench, and the car next to the mux; false on the turtle). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python).
   /safety/legacy_uart_bridge/lock:
     type: std_msgs/msg/Bool
     pub: [legacy_uart_bridge]
@@ -239,7 +239,7 @@ topics:
     pub: [look_ahead]
     sub: [hud, dev_window]
     live: [turtle, sim, car, bench]
-    note: "The squiggly line's faint line - what the planner WANTS, in base_link, so a screen needs no TF (aav_ego look_ahead, 10 Hz while /ego/trace is fresh). /drivers/nav/local_plan while fresh (0.5 s), else Nav2's /plan, moved into base_link with the newest TF and cut from beside the car to plan_ahead_m (10 m) on. No poses - no plan (a person drives); it is still sent, so a screen clears its old line. Header as the trace's. With ego_impl:=rust (ego.launch.py, sim.launch.py) aav_ego_rs publishes it instead, from one Rust process holding the nodes ego and look_ahead, with the same names, QoS and answers (a challenger, TODO 185)."
+    note: "The squiggly line's faint line - what the planner WANTS, in base_link, so a screen needs no TF (aav_ego look_ahead, 10 Hz while /ego/trace is fresh). /drivers/nav/local_plan while fresh (0.5 s), else the planner's /plan, moved into base_link with the newest TF and cut from beside the car to plan_ahead_m (10 m) on. No poses - no plan (a person drives); it is still sent, so a screen clears its old line. Header as the trace's. With ego_impl:=rust (ego.launch.py, sim.launch.py) aav_ego_rs publishes it instead, from one Rust process holding the nodes ego and look_ahead, with the same names, QoS and answers (a challenger, TODO 185)."
   /ego/ahead:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [look_ahead]
@@ -336,7 +336,7 @@ topics:
     pub: [run_info]
     sub: []
     live: [sim]
-    note: Which algorithms this run uses, as the launch chose them (aav_run_info run_info; sim.launch.py always, car.launch.py where Nav2 runs). Latched (reliable, transient local, depth 1), again every 2 s. name algorithms, level OK, message one short line (lattice, mppi, voxels, NDT scored...), hardware_id the run (sim world:=road, car); values one row each - run, planner, path follower (MPPI or RPP, or a trial tracker), obstacles (lidar scan or voxels, radar), local EKF and global EKF (their inputs), NDT, KISS-ICP, AMCL (off, scored only, or into an EKF). What the launch asked for, not what is alive - a live tracker swap shows on /drivers/nav/track/status. The cockpit layout's Algorithms table shows it.
+    note: Which algorithms this run uses, as the launch chose them (aav_run_info run_info; sim.launch.py always, car.launch.py where navigation runs). Latched (reliable, transient local, depth 1), again every 2 s. name algorithms, level OK, message one short line (lattice, mppi, voxels, NDT scored...), hardware_id the run (sim world:=road, car); values one row each - run, planner, path follower (MPPI or RPP, or a trial tracker), obstacles (lidar scan or voxels, radar), local EKF and global EKF (their inputs), NDT, KISS-ICP, AMCL (off, scored only, or into an EKF). What the launch asked for, not what is alive - a live tracker swap shows on /drivers/nav/track/status. The cockpit layout's Algorithms table shows it.
   /system/sensor_mux/state:
     type: aav_interfaces/msg/SourceCheck
     pub: [sensor_mux]
@@ -621,7 +621,7 @@ topics:
     pub: [stop_sign_watcher]
     sub: [twist_mux, hud, language_drive, behaviour]
     live: [car]
-    note: true while the car stops for a stop sign. A twist_mux lock at priority 30 - it holds Nav2 and the AI slot, never a person; never expires on silence. On the car, the stop_signs part - one watcher, on the machine with the mux.
+    note: true while the car stops for a stop sign. A twist_mux lock at priority 30 - it holds navigation and the AI slot, never a person; never expires on silence. On the car, the stop_signs part - one watcher, on the machine with the mux.
   /perception/stop_sign/distance:
     type: geometry_msgs/msg/PointStamped
     pub: [stop_sign_watcher]
@@ -875,7 +875,7 @@ topics:
     type: geometry_msgs/msg/PoseStamped
     pub: [rviz2, map, dev_window]
     sub: [navigator, map]
-    note: RViz "2D Goal Pose", or the map window's place search (map, aav_hud - only after DRIVE HERE then CONFIRM, map frame, facing from the car, refused off Nav2's /map or with no car), starts a navigate_to_pose. The map window shows it until Nav2 plans for it.
+    note: RViz "2D Goal Pose", or the map window's place search (map, aav_hud - only after DRIVE HERE then CONFIRM, map frame, facing from the car, refused off the navigation map (/map) or with no car), starts a navigate_to_pose. The map window shows it until Nav2 plans for it.
   /drivers/nav/local_plan:
     type: nav_msgs/msg/Path
     pub: [mppi_lag]
@@ -1004,12 +1004,12 @@ topics:
     type: geographic_msgs/msg/GeoPath
     pub: [street_router]
     sub: []
-    note: Transient local (latched). The route as GPS waypoints spaced for Nav2 (10-30 m apart, each facing along the street, the car's own start left out) - what /drivers/nav/route/follow sends to /follow_gps_waypoints.
+    note: Transient local (latched). The route as GPS waypoints spaced for the navigator (10-30 m apart, each facing along the street, the car's own start left out) - what /drivers/nav/route/follow sends to /follow_gps_waypoints.
   /drivers/nav/route/path:
     type: nav_msgs/msg/Path
     pub: [street_router]
     sub: [map, dev_window]
-    note: Transient local (latched). The whole route in the map frame (each point through /fromLL). The map window (map, aav_hud) draws it violet under Nav2's blue plan; the developer window too (key H), and the chunks along its next 100 m are the ones it shows loaded (TODO 175); RViz and Foxglove can too. Not a plan Nav2 follows.
+    note: Transient local (latched). The whole route in the map frame (each point through /fromLL). The map window (map, aav_hud) draws it violet under the blue plan; the developer window too (key H), and the chunks along its next 100 m are the ones it shows loaded (TODO 175); RViz and Foxglove can too. Not a plan Nav2 follows.
   /drivers/nav/route/status:
     type: std_msgs/msg/String
     pub: [street_router]
@@ -1058,11 +1058,11 @@ services:
   /spine/arm:
     type: std_srvs/srv/SetBool
     server: spine_bridge
-    note: The spine ignores drive commands until armed. Refused while /safety/estop is true, and while the safety gate is shut - /safety/output_mux/state not OPEN for the bridge's target (car, bench or gazebo by its source), or not heard for gate_timeout (1.5 s) - with the reason, starting "the safety gate is shut" (Ben, 24 Oct). Disarming always works. The bench and Ravensim's spine profile arm through arm_when_open (aav_spine), which asks each second until the gate opens. On the car with the CAN spine (actuators:=can), the bench and Ravensim's spine profile; not with role:=sensors.
+    note: The spine ignores drive commands until armed. Refused while /safety/estop is true, and while the safety gate is shut - /safety/output_mux/state not OPEN for the bridge's target (car, bench or sim by its source), or not heard for gate_timeout (1.5 s) - with the reason, starting "the safety gate is shut" (Ben, 24 Oct). Disarming always works. The bench and Ravensim's spine profile arm through arm_when_open (aav_spine), which asks each second until the gate opens. On the car with the CAN spine (actuators:=can), the bench and Ravensim's spine profile; not with role:=sensors.
   /fromLL:
     type: robot_localization/srv/FromLL
     server: navsat_transform
-    note: Lat/lon -> map x, y. Nav2's follow_gps_waypoints calls it, and point_driver (aav_drive_to_point) for a lat/lon goal, and street_router, for /drivers/nav/route/path.
+    note: Lat/lon -> map x, y. The navigator's follow_gps_waypoints calls it, and point_driver (aav_drive_to_point) for a lat/lon goal, and street_router, for /drivers/nav/route/path.
   /toLL:
     type: robot_localization/srv/ToLL
     server: navsat_transform
@@ -1093,7 +1093,7 @@ services:
   /drivers/nav/route/follow:
     type: std_srvs/srv/Trigger
     server: street_router
-    note: A person sends street_router's newest route to Nav2, as a /follow_gps_waypoints goal. Nothing goes to Nav2 without it (unless follow_at_once is set). Nav2, twist_mux, ego and the spine stay in charge.
+    note: A person sends street_router's newest route to the navigator, as a /follow_gps_waypoints goal. Nothing goes to the navigator without it (unless follow_at_once is set). The navigator, twist_mux, ego and the spine stay in charge.
   /vehicle/sim/spawn_entity:
     type: simulation_interfaces/srv/SpawnEntity
     server: simulator

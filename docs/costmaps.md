@@ -6,16 +6,17 @@ A **costmap** is a grid laid on the ground. Every cell holds a cost:
 - inside something (lethal, 253–254);
 - unknown (255).
 
-Nav2's planner searches the grid for a path the car can drive. Its controller follows that
-path and slows down near high-cost cells. `nav2_costmap_2d` builds the grids from layers.
-The settings are in `ros/drivers/aav_navigation/config/nav2.yaml`.
-Our own costmap, in Rust, runs beside Nav2's as a trial: [Our own costmap](own-costmap.md).
+The planner searches the grid for a path the car can drive. The path follower follows that
+path and slows down near high-cost cells. Our costmap (`aav_costmap`, Rust) builds the grids
+from layers: Nav2's `nav2_costmap_2d` layers, ported ([Our own costmap](own-costmap.md);
+Nav2 itself went on 17 Nov: [as it was](history/nav2-as-it-was.md)). The settings are in
+`ros/drivers/aav_navigation/config/nav2.yaml`, in Nav2's layout.
 
 ## The two costmaps
 
 | | Local costmap | Global costmap |
 |---|---|---|
-| Used by | the controller (MPPI), each step | the planner (the State Lattice; Hybrid-A* forward only), once per path |
+| Used by | the path follower (`mppi_lag`), each step | the planner (the State Lattice, or Hybrid-A*), once per path |
 | Frame | `odom`: smooth, moves with the car | `map`: fixed to the ground by GPS |
 | Size | 20 m x 20 m rolling window, centred on the car | the size of the map that `map_server` loads |
 | Cell size | 0.10 m (200 x 200 cells) | 0.25 m |
@@ -28,22 +29,22 @@ A 20 m window means 10 m ahead and behind, about 5 s of driving at 2 m/s, the mo
 car is meant to do this year. Make it larger only if the car gets faster.
 
 - **Footprint:** the car's outline, made from `body` in `vehicle.yaml` by the launch
-  file. Nav2 checks that it doesn't enter lethal cells.
+  file. The planner checks that it doesn't enter lethal cells.
 - **Inflation:** at least the car's circumscribed radius, 1.93 m. This keeps paths away
   from walls rather than scraping them. The planner's is wider (22 Oct): with 2.0 m its
-  path passed a building's corner 0.86 m away, and the collision monitor stopped the car
+  path passed a building's corner 0.86 m away, and the stop zone stopped the car
   there ([Path followers](path-followers.md)).
 
 ## Obstacles from the sensors
 
-The local costmap has four sensor layers. Each is a stock Nav2 `ObstacleLayer`, switched on
-by `navigation.launch.py`.
+The local costmap has four sensor layers. Each is a port of Nav2's `ObstacleLayer`,
+switched on by `navigation.launch.py`.
 
 | Layer | Reads | On | Marks | Clears |
 |---|---|---|---|---|
 | `obstacle_layer` | `/sensors/radar/points` (in `radar_link`) | `radar:=true`: the bench always; the car where the machine file that runs `navigation` also runs `radar`; in the sim where the world has the radar stand-in (`road`, `test_lot`, `campus`; `radar:=false` drops it) | each point 0.3-8.4 m from the radar, -0.5 to 2 m high | the cells between the radar and each point |
 | `camera_layer` | `/perception/camera_obstacles`, `/perception/camera_view` | `camera_obstacles:=true`: the bench's argument, or the car's `camera_obstacles` part next to `navigation`. Off until the cameras are calibrated (Q22) | where each detected object stands on the road, out to 12 m | everything the camera sees, out to 12 m, before it marks |
-| `lidar_layer` | `/sensors/lidar/scan` (from `lidar_scan`, `aav_lidar`) | where the lidar runs: on by default on the car (the Orin) and in Gazebo; `lidar:=true` on the bench | points 0.3 m or more above the road ([below](#body-roll-and-the-lidar-todo-52e)), out to 12 m | along each beam, out to 15 m |
+| `lidar_layer` | `/sensors/lidar/scan` (from `lidar_scan`, `aav_lidar`) | where the lidar runs: on by default on the car (the Orin) and in Ravensim; `lidar:=true` on the bench | points 0.3 m or more above the road ([below](#body-roll-and-the-lidar-todo-52e)), out to 12 m | along each beam, out to 15 m |
 | `ghost_layer` | `/safety/ghost/scan` | `ghost:=true` only ([Ghost obstacles](ghost-obstacles.md)) | the pretend person | only old ghosts |
 
 Why the radar's numbers:
@@ -56,13 +57,14 @@ Why the radar's numbers:
 The camera layer is its own, so its clearing never wipes what the radar marked.
 [Perception](perception.md) says how a box becomes a point on the road.
 
-### collision_monitor
+### The stop zone
 
-Where the radar or the lidar runs, Nav2's command passes through `collision_monitor` on
-its way to twist_mux:
+Where the radar or the lidar runs, navigation's command passes through the stop zone
+(`aav_stop_zone`, Rust; a port of Nav2's `collision_monitor`, the lock since 17 Nov) on its
+way to twist_mux:
 
 ```
-controller -> velocity_smoother -> /control/cmd_vel_smoothed -> collision_monitor -> /drivers/nav/cmd_vel -> twist_mux
+mppi_lag -> velocity_smoother -> /control/cmd_vel_smoothed -> stop zone -> /drivers/nav/cmd_vel -> twist_mux
 ```
 
 | Setting | Value |
@@ -73,30 +75,29 @@ controller -> velocity_smoother -> /control/cmd_vel_smoothed -> collision_monito
 | Also stops | when a sensor it reads is silent for 1 s, or its TF is late |
 | Reads | the sensors' own points, not the costmap: it still works if the costmap goes wrong |
 
-- It only guards **Nav2**. A person, a test script or the AI slot reach twist_mux without
-  it.
-- After a stop it sends zeros for 2 s, then nothing; twist_mux then drops Nav2's slot and
-  ego holds the car.
-- `collision_monitor:=false` leaves it out, for a test.
+- It only guards **navigation**. A person, a test script or the AI slot reach twist_mux
+  without it.
+- After a stop it sends zeros for 2 s, then nothing; twist_mux then drops navigation's slot
+  and ego holds the car.
 
 ### What the car does at an obstacle
 
 On the bench (`pixi run bench-check --obstacle`, 11 October): a box as wide as the lane, 15 m
-ahead, Nav2 driving to a goal 30 m away. (A 1 m box first; but the car can weave a metre or
+ahead, navigation (then Nav2) driving to a goal 30 m away. (A 1 m box first; but the car can weave a metre or
 more off its line, N7 below, and once it passed beside the box.)
 
 | Step | What happened |
 |---|---|
 | The radar sees the box | 8.4 m out; the costmap marks it |
-| About 1 m before it | both stop the car, within 0.15-0.7 s of each other: `collision_monitor`'s stop zone (radar points) and Nav2's controller (the costmap). Either can be first |
+| About 1 m before it | both stop the car, within 0.15-0.7 s of each other: the stop zone (radar points) and the controller (the costmap). Either can be first |
 | The car stands still | 0.42 m before the box, from 1.02 m/s (0.53 m in a second run). With the lane-wide box on `main`: 0.44 m, and 0.26 m with the car starting 8° off the road |
-| The box is taken away | `collision_monitor` lets go at once; Nav2's recovery clears the costmap and the car drives on to the goal |
+| The box is taken away | the stop zone lets go at once; the recovery clears the costmap and the car drives on to the goal |
 
-!!! note "Since 22 Oct, Nav2 steers round it"
+!!! note "Since 22 Oct, the planner steers round it"
   The table above is with `plan_around:=false`: the planner sees only the map, so the car
   stops and waits (the stop zone's tests run like that). By default the global costmap
   has the radar and lidar too, so the planner plans round the box where there's room: in
-  Gazebo the car passed it 3.9 m clear and never stopped (`pixi run sim-check
+  the simulator (then Gazebo) the car passed it 3.9 m clear and never stopped (`pixi run sim-check
   --plan-around`). Where the map leaves no room round it, the car stops as before. On
   the bench the map is empty, so the planner would leave the road: `bench-check
   --obstacle` runs with `plan_around:=false`.
@@ -123,7 +124,7 @@ ros2 topic pub -r 10 /perception/detections vision_msgs/msg/Detection2DArray \
 ### Limits
 
 - **What the radar stops seeing stays marked.** A radar only clears along its points, so
-  a box taken away stays in the costmap until Nav2's recovery clears it (it does, when the
+  a box taken away stays in the costmap until the navigator's recovery clears it (it does, when the
   car is stuck).
 - **The camera assumes a flat road**, and ignores the lens's distortion. At 12 m, a camera
   tilted 1 degree more than `vehicle.yaml` says puts the point 2 m off.
@@ -162,7 +163,7 @@ At 5 m/s a sudden full lock still overshoots: the wheels turn faster than ego ca
 is gone. `tools/tests/test_lidar_roll.py` checks all of this together, and fails if
 someone raises `max_lateral_accel` or the 12 m, or lowers the 0.3 m.
 
-Gazebo has no suspension, so it can't show this. The scan itself (out to 30 m) has road
+The simulator has no suspension, so it can't show this. The scan itself (out to 30 m) has road
 in it from about 0.6° of roll, but nothing marks the costmap past 12 m.
 
 **Don't level the cloud with the IMU's roll.** `imu_filter_madgwick` finds "down" from
@@ -174,14 +175,14 @@ the accelerometer, and in a turn the sideways push looks like tilt: 2 m/s² read
 
 | Phase | Map | What it tests |
 |---|---|---|
-| 0, 1 (joystick, scripted) | none | Nav2 isn't running |
-| 2: Nav2 on an empty costmap | `maps/empty.yaml`: 200 m x 200 m, all free, 0.25 m cells, centred on the datum | planning and following within the turning limits, GPS goals |
-| 3: Nav2 on a pre-rendered costmap | your test site, drawn as a map, e.g. `maps/example_lot.yaml` (an 80 m x 60 m made-up lot) | planning around known walls and buildings |
-| perception | phase 2 or 3, plus the radar (and the cameras, after Q22) | the obstacle layers and `collision_monitor`: on the bench now |
+| 0, 1 (joystick, scripted) | none | navigation isn't running |
+| 2: navigation on an empty costmap | `maps/empty.yaml`: 200 m x 200 m, all free, 0.25 m cells, centred on the datum | planning and following within the turning limits, GPS goals |
+| 3: navigation on a pre-rendered costmap | your test site, drawn as a map, e.g. `maps/example_lot.yaml` (an 80 m x 60 m made-up lot) | planning around known walls and buildings |
+| perception | phase 2 or 3, plus the radar (and the cameras, after Q22) | the obstacle layers and the stop zone: on the bench now |
 
 ## Map files
 
-A Nav2 map is an image (PGM or PNG) plus a YAML file that says how to read it.
+A map is an image (PGM or PNG) plus a YAML file that says how to read it.
 `ros/drivers/aav_navigation/maps/README.md` covers the format line by line. In short:
 - one pixel is one cell;
 - white is free, black is blocked, grey is unknown;
@@ -228,21 +229,21 @@ passed at y = 4.4 m, beside a box that ends at y = 3 m.
 5. Put the map back: `git checkout ros/drivers/aav_navigation/maps/`.
 
 !!! note "Two things this teaches"
-  - The box is only in the map, not in Gazebo's world. Nav2 avoids it because the map
-    says so: that's how phase 3 works.
+  - The box is only in the map, not in the simulator's world. The planner avoids it
+    because the map says so: that's how phase 3 works.
   - Leave room in front of an obstacle. The car turns no tighter than 2.86 m, and the
     costmap keeps 2 m of clearance, so a box 5 m ahead can't be swerved around. (The
-    test tried it: Nav2 reported "collision ahead".)
+    test tried it, then with Nav2: it reported "collision ahead".)
 
 !!! warning "Known problem, 10 October: the car doesn't finish this drive"
-  In Gazebo the car follows the curve around the box, but overshoots the goal and ends
-  about 6 m off. Nav2 then can't plan a way back, because the car only drives forward,
+  In Gazebo (our simulator then), with Nav2, the car followed the curve around the box,
+  but overshot the goal and ended about 6 m off. Nav2 then couldn't plan a way back, because the car only drives forward,
   so the goal fails. It's open work for the navigation team (N7, the lookahead). A
   straight 8 m goal on the empty map succeeds.
 
-### N7: why Nav2's turn command flips (11 October)
+### N7: why Nav2's turn command flipped (11 October)
 
-In Gazebo, on the empty map, each run on a fresh simulator. This was Regulated Pure
+In Gazebo (then our simulator), with Nav2, on the empty map, each run on a fresh simulator. This was Regulated Pure
 Pursuit, before MPPI became the default (22 Oct; [Path followers](path-followers.md)):
 
 | Turn-sign flips a second | Straight goals (8 m, 25 m) | The curve to (15, 8) |
@@ -267,7 +268,7 @@ The map frame is pinned to the ground by the **datum** in
 - map (0, 0) is the datum's latitude and longitude;
 - x points east and y points north.
 
-So a point 20 m east and 5 m north of the datum is (20, 5) on the map, in Nav2 goals and
+So a point 20 m east and 5 m north of the datum is (20, 5) on the map, in goals and
 in RViz. The datum in the file now is a placeholder near Carleton.
 
 To draw the real test site:
@@ -276,7 +277,7 @@ To draw the real test site:
 2. Measure the drivable area in metres east and north of it, with a tape, or by measuring
    on satellite imagery from the datum.
 3. Write the spec: the size, then the blocked rectangles (buildings, curbs, parked cars).
-4. Build the map and drive phase 3 in Gazebo first (`world:=test_lot` pairs with
+4. Build the map and drive phase 3 in Ravensim first (`world:=test_lot` pairs with
    `example_lot`).
 
 ## A costmap is not a road map
@@ -285,10 +286,11 @@ The global costmap only says which cells may be driven on. Roads, junctions and 
 across a city are a separate kind of map: a road graph. Two tools handle that:
 - **A street router** (Valhalla, or OSRM). It turns a destination into a route of
   latitude/longitude points. Those points become a `follow_gps_waypoints` goal for
-  Nav2. Our offline router, and the node that turns its routes into waypoints
+  our navigator. Our offline router, and the node that turns its routes into waypoints
   (`street_router`): [Street routes](routes.md).
-- **Nav2's Route Server** (`nav2_route`). It's released for Jazzy, in Nav2 1.3.13 as of
-  October 2026, and follows a hand-made graph of lanes or paths. Consider it if the test site becomes a set of fixed lanes.
+- **A lane graph.** Nav2's Route Server (`nav2_route`) follows a hand-made graph of lanes or
+  paths; we read it for ideas. Ours is the lane map and the lane-centre planner
+  (`path:=lane`, [own planner](own-planner.md)).
 
 For this year's goals (an empty costmap, then a pre-rendered test site) a grid map plus
 GPS waypoints is enough.

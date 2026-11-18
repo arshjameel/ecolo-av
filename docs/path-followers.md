@@ -1,18 +1,22 @@
 # Path followers: Regulated Pure Pursuit and MPPI
 
-Nav2's planner draws a path; a **controller** turns it into a speed and a turn, 20 times a
-second. Nav2 has two, and a script that compares them on the same drives in the simulator.
-Our own followers are trials beside them: the trackers ([Trials](trials.md)) and the Rust
-MPPI with the actuators' lag ([page](mppi-lag.md)). The newest scores are there (8 Nov);
-this page is the 22-29 Oct record, all in Gazebo.
+The planner draws a path; a **path follower** (a controller) turns it into a speed and a
+turn, 20 times a second.
+
+!!! note "A record from 22-29 Oct, with Nav2 and Gazebo"
+    This page is how we chose MPPI over Regulated Pure Pursuit, in Nav2's
+    `controller_server`, in Gazebo. Both are gone: Gazebo on 16 Nov, Nav2 on 17 Nov
+    ([Nav2, as it was](history/nav2-as-it-was.md), [Gazebo, as it was](history/gazebo-as-it-was.md)).
+    Today the follower is ours, in Rust: **MPPI with the actuators' lag** (`aav_mppi_lag`,
+    [page](mppi-lag.md)), in Ravensim. Pure pursuit, Stanley, LQR and MPC are trials
+    (`tracker:=`, [Trials](trials.md)). The lessons below still hold.
 
 > **The short version**
-> - **MPPI** is the default (since 22 Oct): it tries 2000 possible futures every cycle through a model of the car, and picks the best blend. It turns to a goal's heading; it costs more computer.
-> - **Regulated Pure Pursuit (RPP)** is the other choice: it chases a point 2-4 m ahead on the path. Simple and light, but it aims only at a point, so it often arrives at a goal facing the wrong way.
-> - **Switch:** `controller:=rpp` on `sim.launch.py` or `navigation.launch.py`.
-> - **Compare:** `pixi run measure controllers` (about 25 min, headless, on this computer only; `--legs 1` for a quick check).
-> - **Results, night of 22 Oct (Gazebo's lot, four runs):** after five fixes (below), MPPI reached the first goal in 29-30 s in every run; Pure Pursuit looped there in two of three. In the best run both reached all 4 goals. MPPI uses twice the CPU (20% of a Mac core).
-> - **No more circling goals (29 Oct, TODO 17):** Nav2 planned a new path every second, also in the last metres, where a new path is often a loop for a car. Now it keeps its path for the last 8 m ([below](#circling-a-goal-found-and-fixed-29-october-todo-17)).
+> - **MPPI** won (22 Oct): it tries 2000 possible futures every cycle through a model of the car, and picks the best blend. It turns to a goal's heading; it costs more computer. Ours (`mppi_lag`) is it, ported, with the lag in its model.
+> - **Regulated Pure Pursuit (RPP)** chased a point 2-4 m ahead on the path. Simple and light, but it aimed only at a point, so it often arrived at a goal facing the wrong way. Our pure pursuit trial: `tracker:=pure_pursuit`.
+> - **Compare today:** `pixi run measure controllers` (Ravensim, headless, on this computer only; `--legs 1` for a quick check).
+> - **Results, night of 22 Oct (Gazebo's lot, four runs):** after five fixes (below), MPPI reached the first goal in 29-30 s in every run; Pure Pursuit looped there in two of three. In the best run both reached all 4 goals. MPPI used twice the CPU (20% of a Mac core).
+> - **No more circling goals (29 Oct, TODO 17):** Nav2 planned a new path every second, also in the last metres, where a new path is often a loop for a car. It then kept its path for the last 8 m; our navigator does the same ([below](#circling-a-goal-found-and-fixed-29-october-todo-17)).
 
 ## What each one does
 
@@ -26,33 +30,31 @@ this page is the 22-29 Oct record, all in Gazebo.
 | Paper | Macenski et al., 2023 | Williams et al., 2017 |
 
 Both read the same costmap and send the same message to the same velocity smoother,
-collision monitor, twist_mux and ego. Everything after the controller is the same.
+stop zone, twist_mux and ego. Everything after the controller is the same.
 
 ## Switch between them
 
 ```bash
-pixi run sim world:=test_lot controller:=rpp       # Gazebo, Pure Pursuit following the path
-ros2 launch aav_navigation navigation.launch.py controller:=rpp
+pixi run sim world:=test_lot tracker:=pure_pursuit   # Ravensim, pure pursuit following the path
 ```
 
-`controller:=` takes `mppi` (the default) or `rpp`. For MPPI, the launch file copies the `MPPI` block
-of `nav2.yaml` under the name the behaviour trees ask for, `FollowPath`, and sets its
-turning radius, its reverse speed and its top speed from `vehicle.yaml`
-(`aav_description/vehicle.py`, `nav2_tuned`).
+`controller:=` takes only `mppi` now (`mppi_lag`); `controller:=rpp` went with Nav2. The
+launch file reads the `MPPI` block of `nav2.yaml` and sets its turning radius, its reverse
+speed and its top speed from `vehicle.yaml` (`aav_description/vehicle.py`).
 
 ## Compare them
 
 ```bash
-pixi run measure controllers                    # both controllers, both tours
+pixi run measure controllers                    # the follower, both tours
 pixi run measure controllers --tours obstacle   # only the box in the lane
 pixi run measure controllers --controllers mppi --speed 2
 pixi run measure controllers --trackers lqr mpc --runs 3   # the trial trackers (docs/trials.md)
 ```
 
-For each tour and controller the script starts the test lot with no windows (our
-simulator since 8 Nov; Gazebo before, and with `--lag-scale`), on a ROS
+For each tour and controller the script starts the test lot with no windows (Ravensim;
+Gazebo before 8 Nov), on a ROS
 domain of its own (this computer only), sends the same goals, and records where the car
-really was (the simulator's ground truth). Forward only by default; `--reversing` lets Nav2 back
+really was (the simulator's ground truth). Forward only by default; `--reversing` lets the car back
 up, as it does by default in the sim and on the car. The results go to
 `log/controller-compare/<time>/`:
 
