@@ -67,8 +67,10 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **DBSCAN**: M. Ester et al., KDD 1996 | paper | idea, ported | the radar's clusters (`aav_radar_clusters`) |
 | **AB3DMOT**: X. Weng, J. Wang, D. Held, K. Kitani, "3D Multi-Object Tracking: A Baseline and New Evaluation Metrics", IROS 2020 | paper | idea | the things' tracker: a constant-velocity Kalman filter per thing, greedy association (`aav_things`, and its Rust twin `aav_things_rs`) |
 | **NumPy**'s pairwise summation (`loops_utils.h.src`) | BSD-3 | ported (the algorithm) | `things-core`'s `pairwise_sum`, so a radar cluster's mean is numpy's to the last bit (`aav_things_rs`) |
-| **nalgebra** | Apache-2.0 | runs | the things' 4 × 4 Kalman matrices (`things-core`), NDT's (`ndt-core`) |
-| OpenCV | Apache-2.0 | runs | lane finding |
+| **nalgebra** | Apache-2.0 | runs | the things' 4 × 4 Kalman matrices (`things-core`), NDT's (`ndt-core`); the Rust lane finder's least-squares fit (`lane-core`) |
+| OpenCV | Apache-2.0 | runs; ported (the formulas) | lane finding (the Python `aav_lane_finder`); its `projectPoints` lens model and its fixed-point bilinear `remap` rewritten in Rust for `aav_lane_finder_rs` (`lane-core`), so the bird's-eye view has OpenCV's grey levels exactly |
+| **NumPy**'s `polyfit`, `convolve` ('same') and `linspace` | BSD-3 | ported (the algorithms) | `lane-core`: the lane lines' fit, the line starts' histogram and the sliding windows' edges, as the Python lane finder computes them (`aav_lane_finder_rs`) |
+| **png** (image-rs) | MIT OR Apache-2.0 | runs (tests) | reads the Rust lane finder's test pictures (`lane-core`'s vectors) |
 | NVIDIA TensorRT; Apple Core ML Tools | NVIDIA licence; BSD-3 | runs | the detector on the Orin and on Macs |
 | **ONNX Runtime** (Microsoft) | MIT | runs | the Rust detector (`aav_detector_rs`), and `tools/onnx_check.py` ([ONNX](onnx.md)) |
 | **`ort`** crate (pyke), 2.0.0-rc.15, and its prebuilt ONNX Runtime | MIT or Apache-2.0 | runs | ONNX Runtime from Rust: `detector-core` |

@@ -78,6 +78,22 @@ The warp gives OpenCV's grey levels exactly: it uses OpenCV's own fixed point (p
 1/32 of a pixel, rounded half to even from a float32; weights in 2^15ths). So the masks are
 the same pixels, and the rest agrees to rounding.
 
+## Measured
+
+Ravensim, the campus, University Drive (`measure lane`: lane keeping, 150 s, 219 m), cameras
+on, on a MacBook (M-series). The Rust node ran as the default; the Python one beside it as
+`lane_finder_py` on the same pictures (`/perception/lane/geometry_py`). CPU from `ps`
+over 60 s, both at once, about 10 pictures a second.
+
+| | Python | Rust |
+|---|---|---|
+| CPU | 17.4 % of a core | **3.7 %** |
+| memory | 175 MB | **37 MB** |
+| lanes on the same 1,535 pictures | | the same: lines found in all, both in 965; offset within 6e-14 m |
+
+The drive itself (Rust steering): 1.9 cm from the lane's centre on average, 3.0 cm RMS,
+the lane never lost.
+
 ## Where it differs, on purpose
 
 | | Python | Rust |

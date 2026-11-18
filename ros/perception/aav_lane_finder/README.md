@@ -16,6 +16,11 @@ For each picture:
 
 A model can replace it later, behind the same topic.
 
+**Its Rust twin runs by default** since 18 Nov: [aav_lane_finder_rs](../aav_lane_finder_rs/README.md),
+the same node, topics, parameters and lanes, without OpenCV, at a fifth of the CPU.
+`lane_finder_impl:=python` (this launch file, `sim.launch.py`, `car.launch.py`,
+`bench.launch.py`) runs this package's node instead.
+
 ## Interface
 
 ### Node `lane_finder`
@@ -47,15 +52,18 @@ Every field of `Settings` in `lane_lines.py` is also a parameter (`windows`,
 
 ### Launch and modules
 
-- `launch/lane_finder.launch.py`: the node, with `config/lane_finder.yaml` and the camera's
-  place from `aav_description`'s `vehicle.yaml`. `bench.launch.py lane:=true` starts it
-  with lane keeping.
+- `launch/lane_finder.launch.py [lane_finder_impl:=rust]`: the node, Rust or Python, with
+  `config/lane_finder.yaml` and the camera's place from `aav_description`'s `vehicle.yaml`.
+  `bench.launch.py lane:=true` starts it with lane keeping.
 
 | Module | No ROS? | Holds |
 |---|---|---|
 | `birds_eye.py` | yes | `Lens`, `Mount`, `Grid`, `BirdsEye`, `project`, `rotation` |
 | `lane_lines.py` | yes | `Settings`, `Line`, `Lane`, `LaneFinder`, `paint_mask`, `follow`, `fit_line`, `lane_from`, `draw` |
 | `lane_finder.py` | no | the node; `message()` turns a `Lane` into `LaneGeometry` |
+
+`test/scenes.py` draws the made-up lanes the tests (and `aav_lane_finder_rs`'s vectors) use:
+solid or dashed (`dash=`), straight or bent, either line missing.
 
 ## Invariants
 
