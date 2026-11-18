@@ -244,7 +244,7 @@ reviewed these yet.**
 
 The table in full: [`spine-core`](../firmware/spine/crates/spine-core/README.md).
 
-A person stopping any other way is ego's job, and an obstacle stop is Nav2's and ego's: not
+A person stopping any other way is ego's job, and an obstacle stop is navigation's (the stop zone) and ego's: not
 built yet. The wheel speed reaches the firmware only once the Motor Pi sends frame
 version 4: until then the two speed rules stay off.
 

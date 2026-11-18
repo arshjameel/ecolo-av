@@ -110,10 +110,10 @@ Each has a TODO row to port its idea.
 
 | Source | Licence | Kind | Where we used it |
 |---|---|---|---|
-| **Gazebo** (Open Robotics) | Apache-2.0 | runs, idea | the first simulator, now a yardstick; its world files (SDF) and sensor models are what ours copies the numbers from |
+| **Gazebo** (Open Robotics) | Apache-2.0 | ran (until 16 Nov), idea | the first simulator, deleted 16 Nov ([as it was](history/gazebo-as-it-was.md)); its source stays in `vendor/gazebo/` to read; its world files (SDF) and sensor models are what ours copies the numbers from |
 | CARLA | MIT | runs | `pixi run carla-car` |
 | **Bevy** | MIT / Apache-2.0 | runs | our simulator's cameras, the developer window |
-| **Mesa** (llvmpipe, lavapipe), from conda-forge | MIT | runs | drawing with no GPU (`tools/software_gl.sh`): Gazebo's cameras through OpenGL, ours through Vulkan (lavapipe, 15 Nov) |
+| **Mesa** (llvmpipe, lavapipe), from conda-forge | MIT | runs | drawing with no GPU (`tools/software_gl.sh`): Gazebo's cameras through OpenGL (until 16 Nov), Ravensim's through Vulkan (lavapipe, 15 Nov) |
 | Khronos Vulkan loader (`libvulkan-loader`, conda-forge) | Apache-2.0 | runs | finds lavapipe for our cameras with no GPU (`tools/software_gl.sh`) |
 | **raylib** | zlib | runs | the HUD, the map window, the debug screen |
 | egui | MIT / Apache-2.0 | runs | the developer window's panels |

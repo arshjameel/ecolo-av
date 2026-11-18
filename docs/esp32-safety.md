@@ -18,7 +18,7 @@ against the code; the proofs are in the last table.
  keyboard ─┤
  hw_panel ─┤  slot 45, only while GO is held
  RC via ROS┤  slot 95 (rc_driver, from the uplink)
- Nav2 ...  ┘
+ nav ...   ┘
      │
      ▼
  twist_mux ──► ego ──────► output mux ──────────────► legacy_uart_bridge ──UART──► ESP32 ──I2C──► steering Jrk
@@ -67,7 +67,7 @@ with 1.0 until the team decides (section 8).
 
 ## 3. What releases the brake
 
-### Computer (joystick, keyboard, Nav2 through ROS)
+### Computer (joystick, keyboard, navigation through ROS)
 
 ```text
  boot ─► latched ─► a STOP frame with a new counter ─► unlatched ─► a DRIVE frame, new counter ─► drives

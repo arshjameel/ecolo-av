@@ -23,7 +23,7 @@ programs only meet through messages.
 | ego + look_ahead, behaviour, the sensor watchdog, localization_health | Rust (`rclrs`): `aav_ego_rs`, `aav_behaviour_rs`, `aav_watchdog_rs`, `aav_localization_health_rs` | Ports of the Python nodes, the same answers. The default on the car and in the simulator since 16 Nov (Ben); `*_impl:=python` falls back until a car day proves them |
 | Our older ROS nodes: drivers, bridges, adapters | Python | Glue that runs 50 times a second or less. Ported to Rust where possible (Ben, 16 Nov) |
 | Launch files | Python | That's how ROS 2 launch works |
-| Stock packages: Nav2, the EKFs, twist_mux | C++ | Not ours: we only configure them |
+| Stock packages: the EKFs, twist_mux (Nav2 until 17 Nov) | C++ | Not ours: we only configure them |
 | The IMU driver, `aav_imu_yahboom` | Rust (`rclrs`) | Ben's rewrite of the 2025-26 C++ driver, which it replaced on 11 Oct |
 | The radar clustering, `aav_radar_clusters` | Rust (`rclrs`) | A rewrite of the 2025-26 C++ node, which it replaced on 15 Oct |
 | The lidar's cubes, `aav_voxels_rs` | Rust (`rclrs`) | A port of `aav_voxels`' Python node (TODO 185, 15 Nov): the same cubes, 8 times faster. Picked with `voxels_impl:=rust`; the Python stays the default until the Rust one has run on the car |
@@ -32,7 +32,7 @@ programs only meet through messages.
 | The spine firmware, `firmware/spine` | Rust, `no_std` | Memory-safe, and its logic is tested on a laptop |
 | The in-car HUD and the map window, `aav_hud` | Rust (`rclrs`, raylib) | One program that is also its ROS node (Ben, 11 Oct). They stay raylib, on the Pi (Ben, 5 Nov) |
 | Screens on a laptop or desktop: the developer window (`aav_dev_window`), our simulator's cameras | Rust (Bevy) | Bevy only off the car: the Orin runs no graphics and no simulator (Ben, 5 Nov) |
-| Our trials beside Nav2 (costmap, planner, navigator, smoother, MPPI with lag) and our simulator | Rust (`rclrs`) | Where Rust pays off; stock stays the default until ours wins |
+| Our navigation (costmap, planner, navigator, smoother, MPPI with lag, stop zone) and our simulator | Rust (`rclrs`) | Where Rust pays off; each replaced Nav2's or Gazebo's part once it won |
 | Bench mode's spine, `aav_spine_sim` | Rust (`rclrs`) | Runs `spine-core` itself on the CAN frames |
 | Today's ESP32 firmware | C++ (Arduino, PlatformIO) | Inherited. Its Rust version (`boards/esp32-umod`) replaces it once flashed and proven: [Firmware](firmware.md) says where that stands |
 | The wheel sensors' Arduino | C++ (Arduino) | The hardware lead's board: it sends CAN 0x200/0x201 (the exception in CLAUDE.md) |
@@ -57,7 +57,7 @@ Memory bugs and crashes are a fair worry with C++. In this stack:
 | Memory safety and speed in every node | Official support: `rclpy` and `rclcpp` are official; `rclrs` is a community project |
 | One language from the firmware up | Examples: most ROS answers and tutorials are Python or C++ |
 | Cargo, and its tooling | Simple builds: colcon needs a cargo plugin, and builds get slower |
-| | Nothing in Nav2 or robot_localization: they stay C++, and we'd still only configure them |
+| | Nothing in robot_localization or twist_mux: they stay C++, and we only configure them |
 | | Launch files: they stay Python |
 | | An easy hand-over: the 2027-28 team has to know Rust |
 
@@ -94,5 +94,5 @@ pixi run build
 | When | What |
 |---|---|
 | Now (16 Nov) | Rust for new ROS nodes, the firmware (`spine-core`, tested on a laptop) and the four ports above, the car's defaults; Python for ML, launch files, tools and tests |
-| Done | the first `rclrs` nodes: the IMU, the radar clustering, the CAN bridge, the HUD; since 5 Nov our own trials beside Nav2 and our simulator |
+| Done | the first `rclrs` nodes: the IMU, the radar clustering, the CAN bridge, the HUD; since 5 Nov our own navigation (Nav2's parts ported) and our simulator |
 | Later | port the other Python nodes where possible (Ben, 16 Nov) |

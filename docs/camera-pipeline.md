@@ -89,7 +89,7 @@ Check it at the car, and fix it on the router.
 
 | Input | Watches | Wrong when | Then |
 |---|---|---|---|
-| `front_left_stream`, `front_right_stream` | `/perception/detections`, only its camera's `frame_id` | quiet 1 s; NaN in a box | stop Nav2 and the AI slot |
+| `front_left_stream`, `front_right_stream` | `/perception/detections`, only its camera's `frame_id` | quiet 1 s; NaN in a box | stop navigation and the AI slot |
 
 ### Tried on a Mac (24 Oct)
 
@@ -165,7 +165,7 @@ Check it at the car, and fix it on the router.
 ## Measured on a Mac (24 Oct)
 
 `pixi run -e ml measure stream`, Ben's Mac (Apple silicon), other helpers' work running
-(load average 5-12). Gazebo's road world, the car rolling at 0.3 m/s towards the stop
+(load average 5-12). Gazebo's road world (the simulator then), the car rolling at 0.3 m/s towards the stop
 sign, 60 s each. **measured**:
 
 | Decoder | Time code → decoded | → detections published | Detector |

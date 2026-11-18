@@ -332,7 +332,7 @@ With `uplink`, CH6 (the 2025-26 `RC_EN_CH`, index 5) reads three positions
 
 | CH6 | Mode | Who drives | The ESP32 |
 |---|---|---|---|
-| low (below 1301) | **computer** | Nav2, the joystick... | the Pi's frames |
+| low (below 1301) | **computer** | navigation, the joystick... | the Pi's frames |
 | middle (1301-1700) | **RC via ROS** | a person, through `rc_driver`, twist_mux (95), ego and the output mux | the Pi's frames; the sticks go up the uplink |
 | high (above 1700) | **RC direct** | a person, with no computer: the fallback | the sticks, as today |
 | no signal | — | nobody | in either RC mode: **full brake**, fault 256; via ROS also latched until a stop |
@@ -705,11 +705,11 @@ firmware's own `spine-core` code, so both ends of the bus share one implementati
 | | |
 |---|---|
 | Crates | `spine-bridge`: the logic, no ROS (arming edge, command timeout, e-stop, the wheel pairing, odometry). `bridge-node`: the rclrs node |
-| Commands | `/control/<target>/actuator_cmd` from the output mux, by the `source` parameter (real: `car`, bench: `bench`, sim: `gazebo`), as the Python node: never `/ego/actuator_cmd` |
-| The bus | the same `/can/tx` and `/can/rx` topics as the Python node: `ros2_socketcan` on the Orin (Linux); `spine_sim` on the bench and in Gazebo, so Macs work too |
+| Commands | `/control/<target>/actuator_cmd` from the output mux, by the `source` parameter (real: `car`, bench: `bench`, sim: `sim`), as the Python node: never `/ego/actuator_cmd` |
+| The bus | the same `/can/tx` and `/can/rx` topics as the Python node: `ros2_socketcan` on the Orin (Linux); `spine_sim` on the bench and in the simulator, so Macs work too |
 | Tests | the Python node's test cases, and the shared vectors (`firmware/can/test_vectors.json`) through the whole bridge: `cargo test -p spine-bridge` |
 | Checked, 23 Oct | `bench-check`: [[works]] with both bridges, the same results. `sim-check --spine` (Gazebo, the spine in the loop): [[works]] with the Rust one, every check (Nav2 goal, commands lost, both e-stops, not armed). `test_real_backend_guard.py` (`aav_io_mux`): neither bridge hears `/ego/actuator_cmd`, and a SIM source stops every DRIVE_CMD |
-| Default | Rust since 23 Oct, in `spine.launch.py`, the bench and Gazebo's spine profile. `bridge:=python` runs aav_spine's node, kept until the Rust one has run on the car |
+| Default | Rust since 23 Oct, in `spine.launch.py`, the bench and the simulator's spine profile. `bridge:=python` runs aav_spine's node, kept until the Rust one has run on the car |
 
 The wheel sensors are read by an Arduino (the hardware lead's board, Ben, 23 Oct), which
 sends WHEEL_SPEED_L and WHEEL_SPEED_R as `aav.dbc` says; both bridges decode them the same way.

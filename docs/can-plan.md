@@ -112,10 +112,10 @@ Orin #1 ── CAN Pal (40-pin header) ──┬──────────�
 |---|---|---|
 | `aav.dbc` | v0.2.0: add `WHEEL_SPEED_L` 0x200 and `WHEEL_SPEED_R` 0x201, node `WHEEL_L`, `WHEEL_R`; the timeout to 100 ms; the spine node is the ESP32 board | done |
 | `can_codec.py`, `protocol.rs`, test vectors | the two new frames, as `CLAUDE.md` says | done |
-| `spine_bridge` | the two wheel speeds into `/vehicle/odom`, and `/vehicle/wheels` (the front two; the same topic Gazebo fills) | done |
+| `spine_bridge` | the two wheel speeds into `/vehicle/odom`, and `/vehicle/wheels` (the front two; the same topic Ravensim fills) | done |
 | `spine-core` | stays: it has no chip in it. A new board crate for the ESP32 (`esp-hal`, Embassy, the TWAI CAN driver) beside the Pico 2 one | done: `boards/esp32-umod --features can`; its CAN pins are unknown |
 | Wheel nodes | a small Rust program for the ESP32-CAN-X2 | not written: the hardware lead's Arduino sends the frames (23 Oct) |
-| Gazebo, bench | the bench's spine simulator sends the two wheel frames too | done |
+| Ravensim, bench | the bench's spine simulator sends the two wheel frames too | done |
 
 !!! note "Rust on an ESP32"
     The ESP32 and ESP32-S3 use Xtensa cores. Rust needs Espressif's toolchain

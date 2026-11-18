@@ -78,7 +78,7 @@ the ESP32, and the CAN bus goes to the Orin with the wheel sensors on it
 
 | Machine file | Runs |
 |---|---|
-| `orin.yaml` | description, mux, ego, scripted, drive_to_point, the roof lidar (Velodyne), localization, Nav2, Foxglove; the two front camera streams (`camera_stream`, RF-DETR inside each) and the stop-sign watcher; the CAN bus (`spine_bridge role:=sensors`: the wheels) |
+| `orin.yaml` | description, mux, ego, scripted, drive_to_point, the roof lidar (Velodyne), localization, navigation, Foxglove; the two front camera streams (`camera_stream`, RF-DETR inside each) and the stop-sign watcher; the CAN bus (`spine_bridge role:=sensors`: the wheels) |
 | `motor_pi.yaml` | `legacy_uart_bridge`: the ESP32 is wired to it. The 2025-26 UDP encoder (`encoder_udp`) is off: the wheels are on CAN now |
 | `motor_pi_alone.yaml` | the Motor Pi without the Orin, for the stands: mux, ego, the stop-sign watcher, the joystick, `legacy_uart_bridge`. Never beside the Orin's stack ([Rolling out](rollout.md)) |
 | `localization.yaml` | the IMU and GPS drivers only, on the localization Pi they are plugged into; the Orin does the maths |
@@ -113,8 +113,8 @@ hardware: the cameras (Q22), the radar, or which USB port a device is on.
 | `stop_signs` | the stop-sign watcher: one per car, next to the mux |
 | `radar_clusters` | the radar's clustering |
 | `lane` | lane keeping with the camera; off in every car machine file |
-| `camera_obstacles` | the detectors' boxes as points on the road, for Nav2's costmap ([Costmaps](costmaps.md)) |
-| `localization`, `navigation` | the two EKFs and `navsat_transform`; Nav2. Its costmap reads the `radar` and `camera_obstacles` parts on the same computer, and `collision_monitor` comes with the radar |
+| `camera_obstacles` | the detectors' boxes as points on the road, for the costmap ([Costmaps](costmaps.md)) |
+| `localization`, `navigation` | the two EKFs and `navsat_transform`; navigation (ours). Its costmap reads the `radar` and `camera_obstacles` parts on the same computer, and the stop zone comes with the radar |
 | `spine` | the CAN bus (Linux only): with `actuators:=uart`, the wheel sensors only (`spine_bridge role:=sensors`, no CAN sender); with `actuators:=can`, the CAN spine backend |
 | `legacy_uart`, `legacy_encoder` | today's backend, the ESP32 over UART (not with `actuators:=can`); the 2025-26 UDP wheel encoder (never beside `spine`) |
 | `foxglove` | `foxglove_bridge`, on port 8765: watch only, the WiFi topic list ([Watch from a laptop](foxglove.md)) |
@@ -131,7 +131,7 @@ They win over the machine file. With Pixi, put them after `--`:
 |---|---|
 | `gps:=false` | no GPS anywhere: no driver, and localization without it |
 | `gps_driver:=ublox` | which GPS driver: `ublox` (the default, Tentative: Q18), `nmea`, or `ublox_dgnss` (apt only, the car) |
-| `map:=`, `start_x:=`, `start_y:=`, `start_yaw:=` | Nav2's map, and where the car starts on it |
+| `map:=`, `start_x:=`, `start_y:=`, `start_yaw:=` | the navigation map, and where the car starts on it |
 | `lidar:=false` | no lidar anywhere, whatever the machine file says |
 | `actuators:=uart` | who drives the actuators: `uart` (the default: the Motor Pi's `legacy_uart_bridge`) or `can` (the CAN spine) |
 

@@ -100,7 +100,7 @@ A result saved earlier can be filed by hand:
 |---|---|
 | `camera_stream_front_left` (its next start) | undistorts every picture; publishes `/sensors/camera/front_left/camera_info` |
 | `stop_sign_watcher` | takes the camera's focal length from it: stops 4.7 m before a sign ([perception](perception.md#how-far-the-boxs-height-and-the-lens-24-oct)) |
-| `camera_obstacles` | can put the camera's boxes on the road for Nav2 |
+| `camera_obstacles` | can put the camera's boxes on the road for the costmap |
 | `car.launch.py` | stops warning "no calibration" for that camera |
 
 Check it: a real stop sign 4.7 m in front of the camera (tape measure). The watcher's log

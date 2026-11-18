@@ -97,7 +97,7 @@ ROS 2 quirk, found 15 Oct: if a launch file sets a **global** parameter (`SetPar
 as `sim.launch.py` does for `use_sim_time`), then a YAML file that **names the node**
 (`ego:`) beats any dict passed **after** it. The override is ignored, with no warning.
 `sim_speed:=3` left ego at 1.0 m/s that way, and (again, 15 Oct) `watchdog:=false` left
-twist_mux's sensors lock at its 1 s timeout, so Nav2 never drove.
+twist_mux's sensors lock at its 1 s timeout, so navigation never drove.
 
 | Do | Don't |
 |---|---|

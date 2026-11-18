@@ -1,7 +1,7 @@
 # CARLA: photo-real towns, and Carleton's streets
 
 CARLA is a driving simulator built on Unreal Engine: real-looking towns, traffic and
-cameras. Gazebo stays our everyday simulator. CARLA is for what Gazebo can't do well:
+cameras. Ravensim stays our everyday simulator. CARLA is for what Ravensim can't do well:
 testing the cameras and the detectors on real-looking streets.
 
 **Status (15 Oct):** the research is done and the ROS side is built and tested without a
@@ -15,7 +15,7 @@ no Mac version. Running it needs the team's NVIDIA Linux computer, or a cloud GP
  +---------------------------+   TCP 2000-2001  +----------------------------------+
  | CARLA server, headless     | <-------------> | carla_adapter (CARLA's Python    |
  | (Docker or the package)    |  CARLA's own    |   client) -> our topics          |
- | Town10, or Carleton's roads|  protocol       | mux, ego, EKFs, Nav2, watchdog   |
+ | Town10, or Carleton's roads|  protocol       | mux, ego, EKFs, nav, watchdog    |
  +---------------------------+                  +----------------------------------+
                                                      | ROS 2 (only if you share it)
                                                      v
@@ -135,7 +135,7 @@ The bridge listens on 127.0.0.1 only: from the Mac, `ssh -L 8765:127.0.0.1:8765
 
 ## What the adapter publishes
 
-The same topics as Gazebo, so nothing else can tell them apart
+The same topics as Ravensim, so nothing else can tell them apart
 ([Interfaces](interfaces.md)):
 
 | Topic | From |
@@ -143,9 +143,9 @@ The same topics as Gazebo, so nothing else can tell them apart
 | `/vehicle/odom`, `/vehicle/status`, `/vehicle/wheels`, `/vehicle/steering` | the CARLA car's motion |
 | `/sensors/imu/data_raw` | CARLA's IMU, at `imu_link` |
 | `/sensors/gps/fix` | the antenna (`gps_link`) round our datum, plus 0.5 m of noise |
-| `/sensors/camera/{front_left,front_right,rear}/image_raw` and `camera_info` | CARLA's cameras, with Gazebo's lens (640 x 360) |
+| `/sensors/camera/{front_left,front_right,rear}/image_raw` and `camera_info` | CARLA's cameras, with the simulators' lens (640 x 360) |
 | `/sensors/radar/points` | CARLA's radar, with the TI driver's fields |
-| `/sensors/lidar/points` | CARLA's lidar, 16 beams like Gazebo's |
+| `/sensors/lidar/points` | CARLA's lidar, 16 beams like Ravensim's |
 | `/clock`, `/system/source` (all SIM), `/vehicle/carla/truth` | the adapter |
 
 Every sensor sits where `vehicle.yaml` puts ours. The CARLA car is bigger than ours, so
@@ -194,7 +194,7 @@ x east, y north. The adapter builds the CARLA map with a projection centred on t
 - CARLA's world origin **is** the datum, and its x points east;
 - `frame:=auto` sees that (CARLA's own georeference puts the origin within 20 km of the
   datum) and uses CARLA's world as our map frame;
-- the GPS, Nav2's maps, GPS goals and the map window all agree with the streets CARLA
+- the GPS, the navigation maps, GPS goals and the map window all agree with the streets CARLA
   draws.
 
 A Digital Twin Tool map lines up the same way if its georeference is right: the adapter

@@ -35,7 +35,7 @@ name in `/etc/hosts`, reboot. Then update the Keychain entry's name and `hosts.t
 
 | Computer | Plugged in | Runs | Machine file |
 |---|---|---|---|
-| Orin | the lidar (network), CAN | the brain: ego, Nav2, localization, perception | `machines/orin.yaml` |
+| Orin | the lidar (network), CAN | the brain: ego, navigation, localization, perception | `machines/orin.yaml` |
 | Motor Pi | the ESP32 (UART) | the bridge to the ESP32 | `machines/motor_pi.yaml`; alone: `motor_pi_alone.yaml` |
 | Localization Pi | the IMU, the GPS (USB) | their drivers only; the Orin does the maths | `machines/localization.yaml` |
 | Camera Pis | the front cameras | video streams, no ROS (Pi OS) | none |
@@ -73,8 +73,8 @@ stay as they were.** The new pieces are off, or run only in the simulator.
 | ESP32 firmware | Same behaviour (one line changed, for the car model) | `CONFIG` line at boot |
 | Motor Pi setup | No change | `car_setup.sh motor_pi check` |
 | Ego (Orin) | **New:** the lag lead, the 2 s trace ahead, the stop point | `/ego/trace`, `/ego/stop_point` |
-| Nav2 | Still the default: costmap, planner, navigator, smoother | |
-| Our costmap, planner, navigator, smoother, MPPI with lag, MPC with lag | Simulator switches only | [Switches](switches.md) |
+| Navigation | Ours since 17 Nov: costmap, planner, navigator, `mppi_lag`, smoother, stop zone (Nav2 deleted) | [Nav2, as it was](history/nav2-as-it-was.md) |
+| MPC with lag, the other trials | Simulator switches only | [Switches](switches.md) |
 | Diffusion planner | **Locked off.** `diffusion_trial:=true` turns it on, capped at 0.5 m/s | [A12](car-day.md#a12-the-diffusion-planners-trial) |
 | Adaptive brake | Refused with the ESP32 (the firmware brakes). Needs A7's brake limits first | [Stopping](stopping.md) |
 

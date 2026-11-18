@@ -83,7 +83,7 @@ keyboard → `/drivers/keyboard/cmd_vel` → twist_mux → ego → `/ego/actuato
 ## On a Mac
 
 [Your Mac](mac.md) has the Mac's own steps: copying the code over, joining the car's
-network, driving and watching the car, and Gazebo.
+network, driving and watching the car, and Ravensim.
 
 ## When something goes wrong
 

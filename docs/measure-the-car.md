@@ -170,10 +170,10 @@ The route steps for these rows: [the measuring map](#the-measuring-map).
 
 !!! note "Two wheel angles, one number"
     `max_steering_angle` in `vehicle.yaml` is neither wheel: it's the **middle** of the
-    front axle (the bicycle model, which ego and Nav2 use). The inside wheel turns
+    front axle (the bicycle model, which ego and the planner use). The inside wheel turns
     further, the outside one less. To get it from M5's two angles (in radians):
     `vehicle.centre_angle(v, inside, outside)` in `aav_description/vehicle.py`.
-    Use the smaller of left and right. Gazebo's own number is worked out from it.
+    Use the smaller of left and right. The simulator's own number is worked out from it.
 
 ## 5. Where each sensor is
 
