@@ -37,7 +37,7 @@ The Rust node started by hand with a detector or `opencv` stops, saying
 
 | Crate | Is | ROS? |
 |---|---|---|
-| `crates/stream-core` | `decoders`, `pipe`, `reader`, `latest`, `lens`, `timecode`, `preview`, `models` | no: `cargo test -p stream-core` |
+| `crates/stream-core` | `decoders`, `pipe`, `reader`, `latest`, `lens` (the remap shared between up to 4 threads, as OpenCV's), `timecode`, `preview`, `models` | no: `cargo test -p stream-core` |
 | `crates/stream-node` | the node, binary `camera_stream` | yes (rclrs 0.8, `ros-env` 0.3) |
 
 colcon builds it through `CMakeLists.txt` (`cargo build --release --locked`).
@@ -79,6 +79,8 @@ pixi run python ros/sources/aav_camera_stream_rs/gen_vectors.py        # after a
 pixi run build && colcon test --packages-select aav_camera_stream_rs aav_camera_stream
 ```
 
+`cargo run --release -p stream-core --example undistort_time` times one 720p picture's
+undistortion (0.8 ms on a Mac; OpenCV 0.9) and preview.
 `test/test_camera_stream_node.py` runs both nodes on a GStreamer test pattern;
 `aav_camera_stream`'s `test/test_launch_reaches_node.py` checks the launch file's values
 reach either node. End to end with MediaMTX: `pixi run measure stream --detector none

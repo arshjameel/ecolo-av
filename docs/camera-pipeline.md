@@ -126,12 +126,14 @@ same name, topics, parameters and diagnostics. It runs **no model**.
 | the published pictures, lens, detections, diagnostics | both nodes on one test stream (`test_camera_stream_node.py`) |
 
 `pixi run measure stream --pattern --detector none --impl rust|python` (a Mac, 18 Nov,
-load average 13-19, 40 s, gst-mac): **measured**
+other helpers' work running: load average 5-19; 40 s each, gst-mac, the stream check's
+calibration, so each picture is undistorted): **measured**
 
-| Node | CPU (with its decoder) | Memory | Time code → detections |
-|---|---|---|---|
-| Rust | 4 % of a core | 51 MB | 9 ms median, 11 p95 |
-| Python | 14 % | 233 MB | 8 ms median, 10 p95 |
+| Node | CPU (with its decoder) | Memory | Work a picture | Time code → detections |
+|---|---|---|---|---|
+| Rust (last run) | 6 % of a core | 41 MB | 0.9 ms | 7 ms median, 10 p95 |
+| Python (last run) | 17 % | 235 MB | 1.1 ms | 7 ms median, 9 p95 |
+| Earlier runs | Rust 4-6 %, Python 14 % | Rust 41-51, Python 233 | | one Rust run had p95 174 ms while the load jumped from 6 to 13: the decoder's side too (arrival p95 174) |
 
 The Orin with JetPack's decoder: [[untested]].
 

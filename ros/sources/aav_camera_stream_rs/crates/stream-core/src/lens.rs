@@ -402,33 +402,42 @@ pub fn undistort_map(lens: &Lens, new_k: &[f64; 9]) -> Result<Vec<(f64, f64)>> {
 const TAB_BITS: u32 = 5;
 const TAB_SIZE: i32 = 1 << TAB_BITS;
 const COEF_BITS: u32 = 15;
+/// Threads one picture is shared between, at most (OpenCV's remap splits it too).
+const MAX_THREADS: usize = 4;
 
-/// One output pixel's four source pixels: the top-left one, and each one's weight.
+/// One output pixel's source: the top-left of its four pixels, and where it falls
+/// between them in 1/32 px (OpenCV's `CV_16SC2` map and its table index). 12 bytes, so
+/// a 1280 x 720 map is 11 MB.
 #[derive(Debug, Clone, Copy)]
 struct Tap {
     x: i32,
     y: i32,
-    weights: [i32; 4],
+    frac: u16,
 }
 
 impl Tap {
-    /// The place to 1/32 of a pixel, rounded half to even (`CV_16SC2`), and OpenCV's
-    /// bilinear weights for it: exact, so they sum to 2^15 as its table does.
+    /// The place to 1/32 of a pixel, rounded half to even, as OpenCV's `CV_16SC2`.
     fn new(u: f64, v: f64) -> Self {
         let clamp = |z: f64| (z * f64::from(TAB_SIZE)).round_ties_even().clamp(-1e9, 1e9) as i32;
         let (ix, iy) = (clamp(u), clamp(v));
-        let (fx, fy) = (ix & (TAB_SIZE - 1), iy & (TAB_SIZE - 1));
-        let s = 1 << (COEF_BITS - 2 * TAB_BITS);
         Tap {
             x: ix >> TAB_BITS,
             y: iy >> TAB_BITS,
-            weights: [
-                (TAB_SIZE - fx) * (TAB_SIZE - fy) * s,
-                fx * (TAB_SIZE - fy) * s,
-                (TAB_SIZE - fx) * fy * s,
-                fx * fy * s,
-            ],
+            frac: ((iy & (TAB_SIZE - 1)) * TAB_SIZE + (ix & (TAB_SIZE - 1))) as u16,
         }
+    }
+
+    /// OpenCV's bilinear weights: exact, so they sum to 2^15 as its table does.
+    fn weights(self) -> [i32; 4] {
+        let fx = i32::from(self.frac) & (TAB_SIZE - 1);
+        let fy = i32::from(self.frac) >> TAB_BITS;
+        let s = 1 << (COEF_BITS - 2 * TAB_BITS);
+        [
+            (TAB_SIZE - fx) * (TAB_SIZE - fy) * s,
+            fx * (TAB_SIZE - fy) * s,
+            (TAB_SIZE - fx) * fy * s,
+            fx * fy * s,
+        ]
     }
 }
 
@@ -462,37 +471,69 @@ impl Undistorter {
         &self.out
     }
 
-    /// The undistorted picture of a packed BGR one of the lens's size.
+    /// The undistorted picture of a packed BGR one of the lens's size: rows shared
+    /// between up to 4 threads, each pixel the same either way.
     pub fn apply(&self, bgr: &[u8]) -> Result<Vec<u8>> {
-        let (w, h) = (self.out.width as i32, self.out.height as i32);
-        if bgr.len() != (w * h * 3) as usize {
+        let (w, h) = (self.out.width as usize, self.out.height as usize);
+        if bgr.len() != w * h * 3 {
             return Err(Error::Invalid(format!(
                 "a picture of {} bytes is not {w}x{h} BGR",
                 bgr.len()
             )));
         }
-        let half = 1 << (COEF_BITS - 1);
-        let mut out = Vec::with_capacity(bgr.len());
-        for tap in &self.taps {
-            let corners = [
-                (tap.x, tap.y),
-                (tap.x + 1, tap.y),
-                (tap.x, tap.y + 1),
-                (tap.x + 1, tap.y + 1),
-            ];
-            let mut sum = [0i32; 3];
-            for ((x, y), weight) in corners.into_iter().zip(tap.weights) {
-                if weight == 0 || x < 0 || y < 0 || x >= w || y >= h {
-                    continue; // the border: black
-                }
-                let at = ((y * w + x) * 3) as usize;
-                for (s, &b) in sum.iter_mut().zip(&bgr[at..at + 3]) {
-                    *s += i32::from(b) * weight;
-                }
+        let mut out = vec![0u8; bgr.len()];
+        let threads = std::thread::available_parallelism()
+            .map_or(1, |n| n.get())
+            .clamp(1, MAX_THREADS);
+        let rows = h.div_ceil(threads).max(1);
+        std::thread::scope(|scope| {
+            for (taps, part) in self.taps.chunks(rows * w).zip(out.chunks_mut(rows * w * 3)) {
+                scope.spawn(move || remap(bgr, w, h, taps, part));
             }
-            out.extend(sum.map(|s| ((s + half) >> COEF_BITS).clamp(0, 255) as u8));
-        }
+        });
         Ok(out)
+    }
+}
+
+/// OpenCV's `remap`, `INTER_LINEAR`, a black border, for some of the output's pixels.
+fn remap(bgr: &[u8], w: usize, h: usize, taps: &[Tap], out: &mut [u8]) {
+    let half = 1 << (COEF_BITS - 1);
+    let row = 3 * w;
+    let (wi, hi) = (w as i32, h as i32);
+    for (tap, px) in taps.iter().zip(out.as_chunks_mut::<3>().0) {
+        let [w0, w1, w2, w3] = tap.weights();
+        // Most taps: all four pixels inside, no checks per pixel.
+        if tap.x >= 0 && tap.y >= 0 && tap.x + 1 < wi && tap.y + 1 < hi {
+            let at = 3 * (tap.y as usize * w + tap.x as usize);
+            let (top, bottom) = (&bgr[at..at + 6], &bgr[at + row..at + row + 6]);
+            for (c, p) in px.iter_mut().enumerate() {
+                let s = i32::from(top[c]) * w0
+                    + i32::from(top[c + 3]) * w1
+                    + i32::from(bottom[c]) * w2
+                    + i32::from(bottom[c + 3]) * w3;
+                *p = ((s + half) >> COEF_BITS).clamp(0, 255) as u8;
+            }
+            continue;
+        }
+        let corners = [
+            (tap.x, tap.y, w0),
+            (tap.x + 1, tap.y, w1),
+            (tap.x, tap.y + 1, w2),
+            (tap.x + 1, tap.y + 1, w3),
+        ];
+        let mut sum = [0i32; 3];
+        for (x, y, weight) in corners {
+            if weight == 0 || x < 0 || y < 0 || x >= wi || y >= hi {
+                continue; // the border: black
+            }
+            let at = 3 * (y as usize * w + x as usize);
+            for (s, &b) in sum.iter_mut().zip(&bgr[at..at + 3]) {
+                *s += i32::from(b) * weight;
+            }
+        }
+        for (p, s) in px.iter_mut().zip(sum) {
+            *p = ((s + half) >> COEF_BITS).clamp(0, 255) as u8;
+        }
     }
 }
 
