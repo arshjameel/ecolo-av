@@ -39,6 +39,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 |---|---|---|
 | `test.sh` | every test that needs no ROS: Python units, Rust, interfaces.md, stand-ins stay local | inside `test` |
 | `lint.sh` | ament_flake8 and ament_pep257 on our Python | `lint` |
+| `release_charts/` | the 0.4 guide's charts (`charts.py <out dir>`) and its screenshot crops (`crop.py`); run by hand with matplotlib and Pillow | by hand |
 | `check_graph.py` | the running graph against `docs/interfaces.yaml`; then `/localization/health`'s line (warn only) | `check <profile>` |
 | `bench_check.py` | starts bench mode, tests the whole graph: contract, drive, e-stops | `bench-check` |
 | `sim_check.py` | Ravensim's road world headless, the whole graph, a drive (`--voxels`: the costmap on the lidar's cubes) | `sim-check` |
