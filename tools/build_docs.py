@@ -34,7 +34,7 @@ OUT = DOCS / 'html'
 STYLE = DOCS / 'style.css'
 WPM = 150          # an unhurried reading speed, so the times are a promise
 READ_FIRST = 26    # PAGES[:26] are the reading list
-LEARN_END = 41     # PAGES[26:41] are the learn pages; the rest are reference
+LEARN_END = 42     # PAGES[26:42] are the learn pages; the rest are reference
 
 # (file in docs/, menu title, what it's for). A name in ROOT_PAGES is a page kept at the
 # repository's root instead, built the same way (none since 25 Oct: every page is in docs/).
@@ -76,6 +76,7 @@ PAGES = [
     ('rollout.md', 'Rolling out on the car',
      "The names, the order (ESP32 and Motor Pi first), each computer's upgrade"),
     ('tests.md', 'Every test', 'Every test, in order: sim, bench, stands, lot, the drive'),
+    ('testing-plan.md', 'The testing plan', 'Seven phases, stands to campus twin, each automated'),
     ('know-the-car.md', 'Know the car', 'The car tests: the order, and when to stop'),
     ('measure-the-car.md', 'Measure the car', 'The sheet for whoever measures the car'),
     ('decisions.md', 'Decisions', 'Decided, Tentative, Proposed, and Q1–Q34'),
@@ -204,7 +205,8 @@ SHARED = {RELEASE: (RELEASE_PDF, 'release notes'),
           'release-0.2.md': ('aav-0.2.pdf', 'the 0.2 guide'),
           'whats-new.md': ('aav-whats-new.pdf', "what's new"),
           'what-we-built.md': ('aav-what-we-built.pdf', 'what we built'),
-          'release-0.4-guide.md': ('aav-0.4-guide.pdf', 'the 0.4 guide')}
+          'release-0.4-guide.md': ('aav-0.4-guide.pdf', 'the 0.4 guide'),
+          'testing-plan.md': ('aav-testing-plan.pdf', 'the testing plan')}
 # A shared page's own PDF: a running footer, and the cover on a page of its own.
 RELEASE_STYLE = """
 @page {

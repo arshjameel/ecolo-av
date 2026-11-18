@@ -25,6 +25,23 @@ and `path:=lane` (148, swapped in 16 Nov), the loose ends (162, 164), faults on 
 | 8 | The Rust crates to try (rayon, tracing first); the Rust made more Rust-like | 195-205, 176 |
 | waits | The car (hardware lead; being upgraded 18 Nov); one car drive scored | 157, 158, 173 |
 
+## The testing plan (Ben, 18 Nov)
+
+Ben, 18 Nov: "My prof wanted a full automated testing system"; the map screen as a debug
+screen "were we can see the commands being sent and maybe by who". The whole plan:
+[The testing plan](docs/testing-plan.md) (`docs/html/aav-testing-plan.pdf`, for the team).
+
+| # | Task | Status |
+|---|---|---|
+| 246 | **Phase A: `pixi run car-test --stands`**: the preflight, every sensor, the steering tests, throttle on free wheels, then faults on purpose (the Orin's heartbeat stopped, each sensor driver stopped, a Pi's link, the e-stop, a pulled cable when told), one report | ⬜ |
+| 247 | **The debug screen** on the map window: who is driving (a new topic: the command mux's current driver), what it asks, what ego sends, the output gate and why, what the car did | ⬜ |
+| 248 | **Phase B: the transfer functions in the hallway**: `speed-up`, `coast`, `brake`, steering on the ground; the IMU's acceleration blended with the wheel speed; each run laid over the model's (10 % speed, 0.2 m stop); with error bars (TODO 104) | ⬜ the car |
+| 249 | **Phase C: the recording kit**: `record.sh` full mode for mapping drives (raw lidar, IMU at full rate, wheels, raw GPS, every camera), clocks checked first, ~40 GB/h | ⬜ |
+| 250 | **Phase D: maps from hand drives**: KISS-SLAM offline (check its licence), NDT map and a 2D map in chunks, several drives merged (keep what is there every time); then NDT as the main position (TODO 210), AMCL as recovery (231) | ⬜ |
+| 251 | **Phase E: the map editor** (developer window): layers (OpenStreetMap, ours, labels), align, box-delete, relabel, approve, save the chunks | ⬜ |
+| 252 | **Phase F: the labelling loop**: open-vocabulary models offline (check licences), camera boxes onto lidar points (156), fixed in the editor, our small model trained and scored after each drive; no non-commercial datasets | ⬜ |
+| 253 | **Phase G: the campus twin** in Ravensim from the labelled maps; passes when a replayed drive scores within NDT's error of the real one | ⬜ |
+
 ## Ben, 17 Nov: ready to install by Wednesday
 
 | # | Task | Status |
