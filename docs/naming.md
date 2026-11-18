@@ -20,11 +20,11 @@ match a folder under `ros/` (the `/sensors/` topics come from `ros/sources/`), p
 | Area | Holds | Who publishes |
 |---|---|---|
 | `/sensors/` | raw sensor data | the drivers on the Pis and the Orins |
-| `/vehicle/` | what the car says about itself | the backend (spine, legacy, Gazebo, bench) |
+| `/vehicle/` | what the car says about itself | the backend (spine, legacy, Ravensim, bench) |
 | `/can/` | raw CAN frames | the socketcan bridge |
 | `/localization/` | where the car is | the EKFs, navsat_transform |
 | `/perception/` | what the car sees | the detectors, the lane finder, radar clusters |
-| `/drivers/` | one command per driver | joystick, RC, keyboard, tests, scripted, replay, go-to, Nav2, AI |
+| `/drivers/` | one command per driver | joystick, RC, keyboard, tests, scripted, replay, go-to, navigation, AI |
 | `/control/` | the chosen command; ego's command for one target, `/control/<target>/actuator_cmd` | twist_mux, the smoother, the output mux (23 Oct) |
 | `/ego/` | the command for the wheels | ego |
 | `/safety/` | e-stop, collision monitor, the sensor watchdog's lock, the output mux's state, ghost obstacles | the HUD button, collision_monitor, sensor_watchdog, output_mux, ghost_obstacle |
@@ -34,8 +34,8 @@ match a folder under `ros/` (the `/sensors/` topics come from `ros/sources/`), p
 
 Global names stay global, because every ROS tool expects them: `/tf`, `/tf_static`,
 `/clock`, `/robot_description`, `/joint_states`, `/diagnostics`, `/rosout`,
-`/parameter_events`. Nav2 keeps its own names for now: `/map`, `/plan`, `/goal_pose`, its
-actions, `/cmd_vel_nav` and the costmaps' topics.
+`/parameter_events`. Nav2's old names stay (our nodes took over its jobs on 17 Nov, names and all): `/map`, `/plan`, `/goal_pose`, its
+actions and `/cmd_vel_nav`. Our costmaps are in the area: `/drivers/nav/costmap/*`.
 
 ## How the drivers get their names
 
@@ -47,7 +47,7 @@ actions, `/cmd_vel_nav` and the costmaps' topics.
 | tests | `actuator_test` publishes `drivers/tests/cmd_vel` | `/drivers/tests/cmd_vel` |
 | scripted | `scripted_driver` publishes `drivers/scripted/cmd_vel` | `/drivers/scripted/cmd_vel` |
 | drive to point | `point_driver` (`aav_drive_to_point`) | `/drivers/point/cmd_vel` |
-| Nav2 | `velocity_smoother` or `collision_monitor`, remapped | `/drivers/nav/cmd_vel` |
+| navigation | `velocity_smoother` (`aav_smoother`) or the stop zone (`aav_stop_zone`) | `/drivers/nav/cmd_vel` |
 | AI | `control_interface` (lane keeping) | `/drivers/ai/cmd_vel` |
 | replay | `tools/replay_commands.sh` | `/drivers/replay/cmd_vel` |
 
@@ -72,7 +72,7 @@ config files name their nodes `/**/joy_node` and so on, so they match in any nam
 | `/battery_status` | `/vehicle/battery` |
 | `/battery_monitor_heartbeat` | `/vehicle/battery/heartbeat` |
 | `/vehicle/odom`, `/vehicle/status`, `/vehicle/joint_states` | unchanged |
-| (new: each wheel's speed: Gazebo, and the CAN wheel nodes) | `/vehicle/wheels` (one topic for both) |
+| (new: each wheel's speed: Ravensim, and the CAN wheel nodes) | `/vehicle/wheels` (one topic for both) |
 | `/bench/truth`, `/bench/hw_estop`, `/bench/driver_faults` | `/vehicle/bench/truth`, `/vehicle/bench/hw_estop`, `/vehicle/bench/driver_faults` |
 | `/to_can_bus`, `/from_can_bus` | `/can/tx`, `/can/rx` |
 | `/odometry/local` | `/localization/odom/local` |
@@ -106,10 +106,10 @@ Changed from the proposal, once the code showed it:
 
 | Name | Why |
 |---|---|
-| `/fromLL`, `/toLL`, `/datum` (navsat_transform's services) | Nav2's `waypoint_follower` calls `/fromLL` by its absolute name. Moving them needs a remap on two nodes, one of them inside Nav2: not a clean remap |
+| `/fromLL`, `/toLL`, `/datum` (navsat_transform's services) | Nav2's `waypoint_follower` called `/fromLL` by its absolute name, and our navigator, `street_router` and `point_driver` do too. Moving them needs a remap on each: not done |
 | `/spine/arm`, `/scripted_drive`, `/ekf_*/set_pose` | services and actions, not topics: the rule is for topics |
-| `/vehicle/sim/cmd_vel`, `/vehicle/sim/odom`, `/vehicle/sim/imu`, `/vehicle/sim/navsat` | Gazebo's own side of `sim_adapter` and its sensor nodes, like `/turtle1/...` for turtlesim; not in the contract |
-| `/map`, `/plan`, `/goal_pose`, `/cmd_vel_nav`, the costmaps | Nav2's own, for now |
+| `/vehicle/sim/cmd_vel`, `/vehicle/sim/odom`, `/vehicle/sim/imu`, `/vehicle/sim/navsat` | Ravensim's own side of `sim_adapter` and its sensor nodes, like `/turtle1/...` for turtlesim; not in the contract |
+| `/map`, `/plan`, `/goal_pose`, `/cmd_vel_nav` | Nav2's names, kept by our nodes so every sender and screen stayed the same |
 | Bags recorded before 15 Oct | they hold the old names: play them with `--remap` (for example `/cmd_vel:=/control/cmd_vel`) |
 
 ## Why the two EKFs don't talk
@@ -122,7 +122,7 @@ standard setup. Each one fuses the raw sensors itself.
 | Uses | wheel speed, IMU | wheel speed, IMU, **GPS** |
 | Gives | a smooth position that never jumps | a true position that may jump |
 | Publishes | `odom → base_link` | `map → odom` |
-| Who uses it | Nav2's controller (steering) | Nav2's planner, the HUD's map |
+| Who uses it | the path follower (steering) | the planner, the HUD's map |
 
 If the global EKF used the local one's output, the same wheel and IMU data would count
 twice, and it would be too sure of itself. Feeding both from the raw sensors avoids that.

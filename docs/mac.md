@@ -282,7 +282,7 @@ Paste these into Claude (or a team chat), and it can usually say what to fix:
 | The laptop's own detector against the bench (`laptop-bench`) | [[works]] 11 Oct: Core ML on the compressed pictures, 21 ms each; it saw the stop sign from 20 m |
 | `pixi run test` on a Mac | [[works]] all green, after the `coreutils` fix above |
 | The turtle, driving it the keyboard's way, the scripted drive, the e-stop | [[works]] on Linux and the Mac. The real keyboard keys are [[untested]] on a Mac |
-| Gazebo without its window, and a Nav2 goal (until 16 Nov) | [[works]] on the Mac, without `GZ_IP` |
+| Gazebo without its window, and a Nav2 goal (until 16 Nov; Ravensim since, [[works]]) | [[works]] on the Mac, without `GZ_IP` |
 | Gazebo's window on a Mac (until 16 Nov) | [[works]] 10 Oct: `pixi run sim` opened it; the car drives in it (pictures in [Your first day](first-day.md)) |
 | Gazebo's cameras and lidar on a Mac | [[works]] 15 Oct: headless, about 10 Hz each; with YOLO too, `-e ml sim-check --perception` passed 2 of 2 on a quiet Mac, so the lidar is on by default |
 | RViz and rqt_graph on a Mac | [[untested]] they open without errors (RViz logs one shader warning); nobody has looked at them yet |

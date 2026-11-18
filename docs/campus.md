@@ -1,6 +1,6 @@
 # The campus
 
-Carleton in Ravensim (Gazebo too, until 16 Nov), on one Nav2 costmap, with a guessed NDT map. It's for practice while the
+Carleton in Ravensim (Gazebo too, until 16 Nov), on one costmap, with a guessed NDT map. It's for practice while the
 hardware catches up (Ben, 5 Nov). Nothing here has met the real campus yet. Its map, cut
 into 64 m chunks (`maps/campus/chunks/`), is **RavenTiles** ([Own costmap](own-costmap.md)).
 
@@ -35,7 +35,7 @@ you read by hand are for checking it.
 | File | What it is |
 |---|---|
 | `maps/campus/campus.sdf`, `meshes/`, `textures/` | the world: 355,000 triangles, bump-mapped |
-| `maps/campus/campus.pgm`, `.yaml` | one Nav2 map: 1.6 x 1.6 km at 0.25 m (6400 x 6400 cells) |
+| `maps/campus/campus.pgm`, `.yaml` | one map (Nav2's format): 1.6 x 1.6 km at 0.25 m (6400 x 6400 cells) |
 | `maps/campus/place.yaml` | where the car starts, what went in, the credit |
 | `maps/campus/lanes.yaml` | the painted roads' centre lines and widths: `measure lane` scores lane keeping by them; the lane map (`sim world:=campus behaviour:=true lane_map:=world`): the road ahead on the right lane's centre |
 | `maps/ndt/campus.pcd` | NDT's map, **a guess**: points on the same shapes |
@@ -47,11 +47,11 @@ Other roads have none.
 **The shape (Ben, 5 Nov):** everything that isn't pavement is a foot up, held in by a concrete
 kerb, with grass on top.
 
-**One costmap, no segments.** It works on a Mac: only roads and lots are free. Gazebo held
-real time (0.98-1.01). Nav2's planner loop runs at about 8 Hz, not the 20 Hz it wants, and warns
+**One costmap, no segments.** It works on a Mac: only roads and lots are free. Gazebo (then) held
+real time (0.98-1.01). Nav2's planner loop ran at about 8 Hz, not the 20 Hz it wanted, and warned
 about it in the console. Paths and grass are blocked: the car stays on roads and lots.
 
-**Sent once.** At this size Nav2 sending the whole costmap every second froze the window (up to
+**Sent once.** At this size Nav2's costmap sending the whole grid every second froze the window (up to
 1.66 s) and may have caused the flashing. `world:=campus` sends it once, then only changes. The
 window also skips a grid it already has.
 
@@ -74,7 +74,7 @@ score about 1.6-1.9 on the guess, and 2.00-2.31 on a recorded map. So this world
 
 **Floors.** The grass is at 0.30 m, right on the car's usual 0.3 m floor. NDT looked at it and
 got lost, so here NDT looks above 0.45 m. The window's cubes look down to 0.12 m, so kerbs and
-grass show as the lidar's rings. Nav2's flat scan keeps 0.3 m: untested against kerbs (TODO 119).
+grass show as the lidar's rings. The flat scan keeps 0.3 m: untested against kerbs (TODO 119).
 
 **Not measured:** how high a *wrong* pose scores here. Until it is, leave `ndt_ekf` off on the
 campus: NDT is watched, and doesn't steer the estimate.
@@ -86,7 +86,7 @@ campus: NDT is watched, and doesn't steer the estimate.
 | With `reversing` on, the car backs a long way to a goal behind it, at 0.5 m/s | reversing stays on (a must-have for 0.4-rc1): our stack reached 9 of 9 campus legs with it (TODO 167); `reversing:=false` for forward only |
 | MPPI stayed near 1 m/s at any `sim_speed`: its 3 m of path was shorter than its futures | fixed: the path now grows with the speed. Campus default 2.5 m/s (mean 2.2) |
 | The car wiggles: the turn rate flips about once a second | TODO 124; to be tested on its own (TODO 149) |
-| Kerbs sit at Nav2's 0.3 m floor | TODO 119: test it now this world exists |
+| Kerbs sit at the flat scan's 0.3 m floor | TODO 119: test it now this world exists |
 | A lot's middle is far from anything | the lidar sees little there: NDT may lose the fit |
 | Lidar cubes reach 30 m, NDT's points 45 m | so the top view can look empty in open space |
 

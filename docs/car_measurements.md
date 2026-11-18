@@ -10,7 +10,7 @@ other part reads them from there, so a number only ever changes in one place.
 | `aav_spine` (spine.launch.py) | wheelbase, track |
 | `aav_legacy` (legacy.launch.py) | wheel diameter, encoder counts per revolution |
 | `aav_navigation` (navigation.launch.py) | footprint (both costmaps), minimum turning radius (SmacPlannerHybrid), reverse speed |
-| `aav_turtlesim`, `aav_sim_models` | wheelbase, and in Gazebo the whole model |
+| `aav_turtlesim`, `aav_sim_models`, `aav_simulator` | wheelbase, and in Ravensim the whole model |
 | `aav_drive_to_point`, `carla_adapter` | `actuators.max_brake`; `actuators.max_accel` |
 | `firmware/spine` (`spine-core`) | **copies** of `max_steering_angle` and `max_reverse_speed` (it can't read the file). Change both together: `test_vehicle.py` checks they match |
 
@@ -142,10 +142,10 @@ z up). Each sensor is an orange box. A slider window moves the steering and whee
 
 The shapes are only for looking at, and every size comes from `vehicle.yaml`: a red tub
 over the wheels, a cabin with a white roof and a seat, a bumper and headlights at the
-front, and a white mark on each wheel so you can see it turn. Physics and Nav2 use only
+front, and a white mark on each wheel so you can see it turn. The simulator and the planner use only
 the collision shapes: the body's outline between the bumpers, and the four wheels.
 
-![The car model in Gazebo](img/gazebo-car.png)
+![The car model in Gazebo (before 16 Nov)](img/gazebo-car.png)
 
 After editing `vehicle.yaml`, rebuild and relaunch:
 
@@ -159,13 +159,13 @@ Two other ways to inspect the model:
 - Print the generated URDF: `xacro ros/bringup/aav_description/urdf/aav.urdf.xacro`.
 - Draw the frame tree as a diagram: `ros2 run rqt_tf_tree rqt_tf_tree`.
 
-## In Gazebo
+## In Ravensim
 
-`aav.gazebo.xacro` adds the simulation parts when `sim:=true`:
-- the Ackermann steering system (gz-sim 8);
-- IMU and NavSat sensors;
-- the joint-state publisher.
+Ravensim (`aav_simulator`, [its page](own-simulator.md)) builds the simulated car from the
+same `vehicle.yaml`: the wheelbase, the steering's full lock, the outline it hits things
+with, and where each sensor sits. So the simulated car turns like the real one. It
+publishes its own odometry on `/vehicle/sim/odom`, but no TF: `robot_localization` owns
+`odom -> base_link`, exactly as on the car.
 
-Gazebo builds the simulated car from the same `vehicle.yaml`, so the simulated car turns
-like the real one. Its odometry frames are bridged but its TF is not:
-`robot_localization` owns `odom -> base_link`, exactly as on the car.
+Until 16 Nov Gazebo did this job, with `aav.gazebo.xacro` adding its Ackermann steering,
+IMU and NavSat plugins ([Gazebo, as it was](history/gazebo-as-it-was.md)).

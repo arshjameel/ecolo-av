@@ -33,8 +33,8 @@ ecolo-av/
     localization/       the two EKFs and navsat_transform, the GPS heading, NDT and KISS-ICP
     perception/         the detector (RF-DETR, YOLO), radar clustering, lanes, the lidar, voxels
     drivers/            everything that proposes a command: teleop, RC, actuator tests, scripted,
-                        drive to point, plain English, Nav2, street routes, and our own
-                        trials beside Nav2 (costmap, planner, navigator, smoother, MPPI)
+                        drive to point, plain English, navigation (ours, in Rust: costmap,
+                        planner, navigator, smoother, MPPI with lag), street routes, trials
     command_mux/        twist_mux: picks one command
     io_mux/             the sensor mux and the output mux: real or simulated, never mixed
     ego/                the virtual car: one command into speed and steering
@@ -65,7 +65,7 @@ the checks tell you if the two disagree.
 |---|---|---|---|
 | `docs/interfaces.yaml` | every topic: its type, who publishes it, who reads it, and in which profiles it must be live | `pixi run check <profile>` on a running system; `pixi run test` checks that the Topics page matches | `pixi run python tools/gen_interfaces_md.py > docs/interfaces.md` |
 | `firmware/can/aav.dbc` | every CAN frame between ROS and the spine | test vectors, shared by the Python codec and the Rust tests | update `can_codec.py` and `protocol.rs`, run `firmware/can/gen_test_vectors.py`, run both test suites |
-| `ros/bringup/aav_description/config/vehicle.yaml` | every measurement of the car | its unit test; ego, the URDF, Nav2 and the adapters all read it | measure the car: [Car numbers](car_measurements.md) |
+| `ros/bringup/aav_description/config/vehicle.yaml` | every measurement of the car | its unit test; ego, the URDF, navigation and the simulator all read it | measure the car: [Car numbers](car_measurements.md) |
 
 ## The environment: Pixi
 
@@ -126,7 +126,7 @@ Every one, with what it does: README's [Every command](../README.md#every-comman
 | `can_load.py` | the CAN bus load from the DBC's frames and rates (no ROS) | `pixi run python3 tools/can_load.py` |
 | `record.sh` | records a drive into `bags/` | `pixi run tools/record.sh <name>` |
 | `replay_commands.sh` | plays a recorded drive's commands back into the mux | `pixi run tools/ros.sh tools/replay_commands.sh <bag>` |
-| `make_map.py` | draws a Nav2 map from a short spec | `pixi run python tools/make_map.py <spec>` |
+| `make_map.py` | draws a map (PGM and YAML, Nav2's format) from a short spec | `pixi run python tools/make_map.py <spec>` |
 | `build_docs.py` | builds the docs pages and the PDF | `pixi run docs` |
 | `progress_mail.py` | emails a blue-and-white progress report: Ben only | see its docstring |
 | `bench_check.py` | starts bench mode and tests the whole graph | `pixi run bench-check` |
@@ -154,8 +154,8 @@ changes.
 | `sim` | `pixi run sim` | Ravensim, our own simulator (with no GPU: `tools/software_gl.sh` in front, the cameras in lockstep) | the whole stack: both EKFs, `navsat_transform`, Nav2 |
 | `car` | `pixi run car <machine>` | the real car | the parts its machine file switches on |
 | `carla` | `pixi run carla-car host:=<the CARLA computer>` | a CARLA car (untested against a server) | the same as `sim` ([CARLA](carla.md)) |
-| `replay` | `ros2 launch aav_bringup replay.launch.py`, with a bag playing | a recorded drive | localization (and Nav2) on real sensor data |
-| `bench` | `pixi run bench` | a model car, driven by the spine's own firmware logic | the car's whole graph: the spine bridge, both EKFs with GPS, Nav2, and pretend sensors |
+| `replay` | `ros2 launch aav_bringup replay.launch.py`, with a bag playing | a recorded drive | localization (and navigation) on real sensor data |
+| `bench` | `pixi run bench` | a model car, driven by the spine's own firmware logic | the car's whole graph: the spine bridge, both EKFs with GPS, navigation, and pretend sensors |
 
 ## The computers, and what runs where
 
@@ -251,7 +251,7 @@ Without a sign-in GitHub allows 60 of these calls an hour, so don't poll fast. A
 at most 10 annotations: 9 failing tests, then the rest by name, or the log's last 40 lines.
 
 The `sim` job's annotations (`ci_annotate.py --sim`): each `FAIL` line of sim-check, then
-the launch log's last errors (Gazebo's crash, a node that died). Its whole logs (sim-check's
+the launch log's last errors (a simulator crash, a node that died). Its whole logs (sim-check's
 output, the launch log, every node's ROS log) are kept 14 days as the artifact `sim-logs`.
 Anyone can list artifacts
 (`https://api.github.com/repos/AAV-2025-2026/ecolo-av/actions/artifacts`), but downloading one

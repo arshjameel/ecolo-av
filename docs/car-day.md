@@ -117,7 +117,7 @@ Our stack runs in **ROS domain 42**, so it never mixes with theirs (domain 0).
 | all day | What to record | [session 10](#session-10-what-to-record) | laptop person | |
 | B1-B4 | Day B | [Day B](#day-b-upgrades-and-the-reflash) | laptop person, hardware lead, approver | Day A done; a restore proven |
 
-Autonomy (Nav2 goals on the ground) comes after A11, on another day: [Every test](tests.md), stage 5.
+Autonomy (navigation goals on the ground) comes after A11, on another day: [Every test](tests.md), stage 5.
 
 ## Ready for car day (the 0.2 checklist)
 
@@ -727,7 +727,7 @@ before, without the positions coming back.
 | ☐ | which ESP32 firmware: the Rust (session 6 passed). The C++ (**no timeout**) only for 3.1-3.8, never the joystick or the ground |
 | ☐ | `legacy.yaml`'s `frame_version`: 2 with the Rust, 1 with the C++ |
 | ☐ | A6 done: the steering's ends on the sheet (3.0). A7 done: the brake holds |
-| ☐ | with the C++ (1): the bridge's log says `no-timeout lock ON`. twist_mux then holds every program (scripted, point, Nav2, AI); the keyboard and the actuator tests below still drive. Leave `allow_programs_without_timeout: false` |
+| ☐ | with the C++ (1): the bridge's log says `no-timeout lock ON`. twist_mux then holds every program (scripted, point, navigation, AI); the keyboard and the actuator tests below still drive. Leave `allow_programs_without_timeout: false` |
 | ☐ | everyone knows: **the throttle's strength is a guess.** Two guesses disagree by 5 times ([the car's model](vehicle-model.md): full throttle holds 15 m/s by the drag guess, 3 m/s by the ESP32's open loop). 0.3 m/s asked may spin the wheels much faster: the e-stop person watches 3.2 |
 
 | Where | Run |
@@ -862,10 +862,10 @@ the lattice has driven the same goals on the ground ([4f](tests.md#4f-reversing-
 | Layer | What | Changed for the trial? |
 |---|---|---|
 | The switch | `diffusion_trial:=true`; without it `planner:=diffusion` is **refused** on the car | new |
-| The speed | **0.5 m/s at most** for ego, Nav2 and the geofence; `max_speed:=` above 0.5 is **refused** | new |
+| The speed | **0.5 m/s at most** for ego, navigation and the geofence; `max_speed:=` above 0.5 is **refused** | new |
 | The guard | G1-G8 on every path the model draws; the lattice's path if none passes, or after 150 ms | no |
 | Below it | MPPI, collision_monitor (front and back), twist_mux's locks, ego, the geofence, the watchdog, the spine | **no** |
-| A person | the joystick or keyboard outranks Nav2; the Kar-Tech stop | no |
+| A person | the joystick or keyboard outranks navigation; the Kar-Tech stop | no |
 
 Why 0.5 m/s: walking pace; the car's own reverse limit, so forwards and backwards alike;
 at ego's 2 m/s² it stops in 6 cm, plus 15 cm for a 0.3 s stale command. Half of ego's
@@ -967,7 +967,7 @@ Step 10, calibration:
 
 At home: the delay goes in `orin.yaml`'s `camera_stream` `delay` (0.06 s today); commit
 the two calibration files (`docs/camera-calibration.md`). Until they're in, the stop-sign
-rule uses Gazebo's lens and the car stops too early.
+rule uses the simulator's lens and the car stops too early.
 
 **Stop point:** both streams at 15 fps on the Orin, the delay measured, both cameras calibrated.
 
@@ -1083,7 +1083,7 @@ can't). At the drive, Ben's MacBook is the ground station: it does everything el
 | 1 | Which CARLA: `docker images \| grep carla`, or the folder's name (`CarlaUE4` = 0.9.x, `CarlaUnreal` = 0.10); `lsb_release -d; nvidia-smi` | the version, Ubuntu's, the GPU and its memory: write them in the machines table | 0.10 needs 16 GB of video memory; Carleton's map needs 0.9.16 ([CARLA](carla.md)) |
 | 2 | Clone ecolo-av, then `pixi run build` and `pixi run test` | all green | as on any laptop ([Getting started](getting-started.md)) |
 | 3 | CARLA's server, headless ([CARLA](carla.md), steps 1-2), its Python client the same version | the server listens on 2000 | the client must match the server |
-| 4 | **The rehearsal:** `pixi run carla-car host:=127.0.0.1`, then the car day's own steps: the keyboard, a scripted drive, a Nav2 goal, a goal behind (the U-turn) | the car drives each, in CARLA | write down what failed: fix it before the day |
+| 4 | **The rehearsal:** `pixi run carla-car host:=127.0.0.1`, then the car day's own steps: the keyboard, a scripted drive, a goal, a goal behind (the U-turn) | the car drives each, in CARLA | write down what failed: fix it before the day |
 
 ### 11b. In the lab: the Orin's full image
 
