@@ -27,10 +27,11 @@ The real car. One launch file for every machine; a machine file picks the parts.
       [voxels_impl:=python] (rust: the same cubes from aav_voxels_rs, the Rust port)
       [ego_impl:=rust] [behaviour_impl:=rust] [watchdog_impl:=rust]
       [localization_health_impl:=rust] [lidar_impl:=rust] [things_impl:=rust]
-      [io_mux_impl:=rust]
+      [io_mux_impl:=rust] [legacy_impl:=rust] [rc_impl:=rust]
                           (Rust on the car since Ben, 16 Nov: aav_ego_rs, aav_behaviour_rs,
                            aav_watchdog_rs, aav_localization_health_rs; since 17 Nov
-                           aav_lidar_rs, aav_things_rs and aav_io_mux_rs (both muxes).
+                           aav_lidar_rs, aav_things_rs, aav_io_mux_rs (both muxes),
+                           aav_legacy_rs (legacy_uart_bridge) and aav_rc_rs (rc_driver).
                            python: the Python node instead, the same names and topics;
                            one switch each, the fall-back if one misbehaves.
                            docs/car-day.md)
@@ -435,7 +436,9 @@ def launch_setup(context):
                  arg('localization_health_impl')),
              'lidar_impl': vehicle.check_lidar_impl(arg('lidar_impl')),
              'things_impl': vehicle.check_things_impl(arg('things_impl')),
-             'io_mux_impl': vehicle.check_io_mux_impl(arg('io_mux_impl'))}
+             'io_mux_impl': vehicle.check_io_mux_impl(arg('io_mux_impl')),
+             'legacy_impl': vehicle.check_legacy_impl(arg('legacy_impl')),
+             'rc_impl': vehicle.check_rc_impl(arg('rc_impl'))}
     get_logger('car.launch.py').info(
         'languages: ' + ' '.join(f'{k}:={v}' for k, v in impls.items())
         + ' (any of them :=python falls back)')
@@ -643,7 +646,8 @@ def launch_setup(context):
                                'backend may')
         uart = False
     if uart or encoder:
-        actions.append(include('aav_legacy', 'legacy.launch.py', uart=uart, encoder=encoder))
+        actions.append(include('aav_legacy', 'legacy.launch.py', uart=uart, encoder=encoder,
+                               legacy_impl=impls['legacy_impl'], rc_impl=impls['rc_impl']))
     if on('foxglove'):
         # On the car's network (every interface: its addresses aren't fixed yet), for
         # watching only: anyone on its WiFi reaches the bridge, so no client may publish,
@@ -717,6 +721,13 @@ def generate_launch_description():
         DeclareLaunchArgument('io_mux_impl', default_value=vehicle.DEFAULT_IO_MUX_IMPL,
                               description='rust (aav_io_mux_rs) or python (aav_io_mux): '
                                           'the sensor mux and the output mux'),
+        # Ben, 17 Nov ("Rust tomorrow"): the ESP32's UART bridge and rc_driver too.
+        DeclareLaunchArgument('legacy_impl', default_value=vehicle.DEFAULT_LEGACY_IMPL,
+                              description='rust (aav_legacy_rs) or python (aav_legacy): '
+                                          'legacy_uart_bridge, actuators:=uart'),
+        DeclareLaunchArgument('rc_impl', default_value=vehicle.DEFAULT_RC_IMPL,
+                              description='rust (aav_rc_rs) or python (aav_rc): rc_driver, '
+                                          'beside legacy_uart_bridge'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL,
                               description='rust (aav_localization_health_rs) or python '

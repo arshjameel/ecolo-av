@@ -18,6 +18,7 @@ import os
 import random
 import time
 
+from conftest import ros_nodes, RustNode
 import pytest
 
 try:
@@ -47,7 +48,7 @@ def uplink(sequence, counts, calibration):
 class Run:
     """The bridge on a pseudo-terminal, and a test node playing the panel."""
 
-    def __init__(self, where='stands'):
+    def __init__(self, where='stands', impl='python'):
         os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
         self.master, self.slave = os.openpty()
         port = os.ttyname(self.slave)
@@ -57,9 +58,11 @@ class Run:
                 '-p', 'legacy_uart_bridge:frame_version:=3',
                 '-p', 'legacy_uart_bridge:uplink:=true',
                 '-p', f'legacy_uart_bridge:steering_calibration:={where}']
-        rclpy.init(args=args, domain_id=random.randint(150, 230))
+        domain = random.randint(150, 230)
+        rclpy.init(args=args, domain_id=domain)
         self.executor = SingleThreadedExecutor()
-        self.bridge = LegacyUartBridge()
+        self.bridge = (RustNode('aav_legacy_rs', 'legacy_uart_bridge', args, domain)
+                       if impl == 'rust' else LegacyUartBridge())
         self.test = rclpy.create_node('steering_calibration_test')
         self.ask = self.test.create_publisher(SteeringCalibration,
                                               '/drivers/buttons/steering_calibration', 10)
@@ -68,7 +71,7 @@ class Run:
                                       lambda m: self.raw.append(m), 100)
         self.test.create_subscription(String, '/vehicle/steering_actuator/calibration',
                                       lambda m: self.lines.append(m.data), 100)
-        for n in (self.bridge, self.test):
+        for n in ros_nodes((self.bridge, self.test)):
             self.executor.add_node(n)
         self.buf = bytearray()
         self.sequence = 0
@@ -123,8 +126,8 @@ class Run:
 
 
 @pytest.fixture
-def run(request):
-    r = Run(**getattr(request, 'param', {}))
+def run(request, impl):
+    r = Run(**getattr(request, 'param', {}), impl=impl)
     yield r
     r.close()
 

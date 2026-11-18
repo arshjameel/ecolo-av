@@ -995,6 +995,19 @@ def test_io_mux_impl_is_python_or_rust():
         vehicle.check_io_mux_impl('c')
 
 
+def test_legacy_and_rc_impls_are_python_or_rust():
+    # Ben, 17 Nov: "Rust tomorrow": the UART bridge and rc_driver; *_impl:=python falls back.
+    assert vehicle.DEFAULT_LEGACY_IMPL == vehicle.DEFAULT_RC_IMPL == 'rust'
+    assert vehicle.LEGACY_IMPLS == {'python': 'aav_legacy', 'rust': 'aav_legacy_rs'}
+    assert vehicle.RC_IMPLS == {'python': 'aav_rc', 'rust': 'aav_rc_rs'}
+    assert vehicle.check_legacy_impl(' Python ') == 'python'
+    assert vehicle.check_rc_impl('rust') == 'rust'
+    with pytest.raises(ValueError, match='legacy_impl:=c'):
+        vehicle.check_legacy_impl('c')
+    with pytest.raises(ValueError, match='rc_impl:=c'):
+        vehicle.check_rc_impl('c')
+
+
 def test_localization_health_impl_is_python_or_rust():
     assert vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL == 'rust'
     assert vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL == 'rust'

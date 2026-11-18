@@ -6,7 +6,7 @@ Ravensim as the car: the world, the car, its sensors, the adapter and the camera
       [radar:=true] [cameras:=true] [chase_camera:=true] [camera_lockstep:=auto]
       [actuator_model:=true] [payload:=0] [adaptive_brake:=false]
       [faults:=false] [spine:=false] [arm:=true]
-      [esp32:=false] [esp32_loop:=pi] [bridge:=rust|python]
+      [esp32:=false] [esp32_loop:=pi] [bridge:=rust|python] [legacy_impl:=rust|python]
 
 Ravensim is our own simulator (aav_simulator, Rust; docs/own-simulator.md). It reads the
 world file (worlds/*.sdf, model:// from models/), moves the car, casts the lidar's and
@@ -146,7 +146,10 @@ def esp32_in_the_loop(context, car, sim_time):
              parameters=[{'port': port}, steering, sim_time]),
         # One dict, legacy.yaml's values first: a parameter file's node-specific values
         # would beat any dict given beside it (launch_ros sends dicts as /**).
-        Node(package='aav_legacy', executable='legacy_uart_bridge', name='legacy_uart_bridge',
+        # legacy_impl:= picks its language: rust (aav_legacy_rs, the default) or python.
+        Node(package=vehicle.LEGACY_IMPLS[vehicle.check_legacy_impl(
+                 LaunchConfiguration('legacy_impl').perform(context))],
+             executable='legacy_uart_bridge', name='legacy_uart_bridge',
              parameters=[{**legacy, **steering, **model,
                           'port': f'socket://127.0.0.1:{port}', 'source': 'sim',
                           'frame_version': 1, 'allow_programs_without_timeout': True,
@@ -372,6 +375,9 @@ def generate_launch_description():
                                           'pi or open'),
         DeclareLaunchArgument('arm', default_value='true',
                               description='with spine:=true: arm the spine after 12 s'),
+        DeclareLaunchArgument('legacy_impl', default_value=vehicle.DEFAULT_LEGACY_IMPL,
+                              description='with esp32:=true: legacy_uart_bridge in rust '
+                                          '(aav_legacy_rs) or python (aav_legacy)'),
         DeclareLaunchArgument('bridge', default_value=bridges.DEFAULT,
                               description='with spine:=true: spine_bridge in rust '
                                           '(aav_spine_bridge) or python (aav_spine)'),

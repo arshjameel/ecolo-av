@@ -522,6 +522,36 @@ def check_io_mux_impl(impl):
     return name
 
 
+# Which legacy_uart_bridge runs (legacy.launch.py, car.launch.py, sim.launch.py esp32:=true;
+# legacy_impl:=): rust (aav_legacy_rs, the default since Ben decided, 17 Nov: "Rust
+# tomorrow ... I don't think we want to do this again later") or python (aav_legacy: the
+# same node name, topics, parameters and frames; kept until a car day proves the Rust).
+LEGACY_IMPLS = {'python': 'aav_legacy', 'rust': 'aav_legacy_rs'}
+DEFAULT_LEGACY_IMPL = 'rust'
+
+
+def check_legacy_impl(impl):
+    """Return the UART bridge's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in LEGACY_IMPLS:
+        raise ValueError(f'legacy_impl:={impl}: pick one of {", ".join(LEGACY_IMPLS)}')
+    return name
+
+
+# Which rc_driver runs (rc.launch.py, legacy.launch.py, car.launch.py; rc_impl:=): rust
+# (aav_rc_rs, the default since 17 Nov, with the bridge) or python (aav_rc).
+RC_IMPLS = {'python': 'aav_rc', 'rust': 'aav_rc_rs'}
+DEFAULT_RC_IMPL = 'rust'
+
+
+def check_rc_impl(impl):
+    """Return rc_driver's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in RC_IMPLS:
+        raise ValueError(f'rc_impl:={impl}: pick one of {", ".join(RC_IMPLS)}')
+    return name
+
+
 # Which localization_health runs (localization.launch.py, car.launch.py, sim.launch.py
 # localization_health_impl:=): rust (aav_localization_health_rs, the default on the car and
 # in the simulator, Ben, 16 Nov: the same answers at 1.5 % of a core against 9.4 %) or
