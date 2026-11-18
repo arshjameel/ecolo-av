@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run every test that doesn't need ROS: our packages' Python unit tests, the Rust spine
 # library, the HUD's, the map window's, the debug HUD's and the hardware panel's logic
-# (hud-core, map-core, debug-core, panel-core), NDT (ndt-core), and the check that docs/interfaces.md matches
+# (hud-core, map-core, debug-core, panel-core), NDT (ndt-core), AMCL (amcl-core), and the check that docs/interfaces.md matches
 # docs/interfaces.yaml. Where the mcp environment is installed, also the MCP server over
 # stdio (on a private, local domain).
 # Needs Python 3 with pytest and PyYAML; Rust (cargo) for the spine. Works on any OS.
@@ -86,6 +86,8 @@ if command -v cargo >/dev/null; then
   (cd ros/safety/aav_stop_zone && cargo test -q --locked -p stop-zone)
   echo "== ros/localization/aav_ndt: NDT's maths, the filters, LOST; the design's checks"
   (cd ros/localization/aav_ndt && cargo test -q --locked -p ndt-core)
+  echo "== ros/localization/aav_amcl_rs: AMCL's filter: a near guess, a kidnap, KLD's bounds"
+  (cd ros/localization/aav_amcl_rs && cargo test -q --locked -p amcl-core)
   echo "== ros/sim/aav_simulator: Ravensim's core: the car, the rays, the worlds, the camera lockstep"
   (cd ros/sim/aav_simulator && cargo test -q --locked -p sim-core --features shared)
   echo "== ros/sim/aav_spine_sim: bench mode's car: the spine's real logic on a model car"
