@@ -155,7 +155,7 @@ def launch_setup(context):
     actions = []
     if on('imu'):
         actions += [
-            Node(package='aav_imu_yahboom', executable='imu_node', name='imu_node',
+            Node(package='aav_imu_yahboom', executable='imu_node', name='imu_node', namespace='/',
                  parameters=[os.path.join(config, 'imu.yaml'), use_sim_time]),
             Node(package='imu_filter_madgwick', executable='imu_filter_madgwick_node',
                  name='imu_filter_madgwick',

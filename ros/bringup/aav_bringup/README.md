@@ -100,6 +100,7 @@ The parts are listed in `PARTS` in `car.launch.py` and its docstring.
 pixi run build && colcon test --packages-select aav_bringup && colcon test-result --verbose
 ```
 
-The tests (`test/`) load each launch file and check what it starts. `pixi run test`
+The tests (`test/`) load each launch file and check what it starts; `test_rust_overrides.py`
+starts ego, the legacy bridge and the output mux and reads launch's values back. `pixi run test`
 runs every package's tests. Against a running profile: `pixi run check <profile>`,
 `pixi run bench-check`, `pixi run sim-check`.

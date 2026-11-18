@@ -102,7 +102,9 @@ def launch_setup(context):
         # ego's commands go to spine_bridge (source bench) only while everything is BENCH.
         include('aav_io_mux', 'io_mux.launch.py', target='bench', source='bench'),
         include('aav_scripted', 'scripted.launch.py'),
-        include('aav_drive_to_point', 'drive_to_point.launch.py'),
+        include('aav_drive_to_point', 'drive_to_point.launch.py',
+                drive_to_point_impl=vehicle.check_drive_to_point_impl(
+                    LaunchConfiguration('drive_to_point_impl').perform(context))),
         Node(package='imu_filter_madgwick', executable='imu_filter_madgwick_node',
              name='imu_filter_madgwick',
              parameters=[os.path.join(share('aav_sensors'), 'config', 'imu_filter.yaml')],
@@ -111,7 +113,7 @@ def launch_setup(context):
                          ('imu/mag', '/sensors/imu/mag')]),
         include('aav_localization', 'localization.launch.py', gps='true'),
         Node(package=bridges.package(LaunchConfiguration('bridge').perform(context)),
-             executable=bridges.EXECUTABLE, name='spine_bridge',
+             executable=bridges.EXECUTABLE, name='spine_bridge', namespace='/',
              parameters=[os.path.join(share('aav_spine'), 'config', 'spine.yaml'),
                          vehicle.spine_params(v),
                          # /system/source: the spine is spine_sim, not the real board.
@@ -207,7 +209,9 @@ def launch_setup(context):
     if flag['arm']:
         # Once the safety gate is OPEN: spine_bridge refuses before.
         actions.append(TimerAction(period=12.0, actions=[Node(
-            package='aav_spine', executable='arm_when_open', name='arm_when_open',
+            package=vehicle.ARM_WHEN_OPEN_IMPLS[vehicle.check_arm_when_open_impl(
+                LaunchConfiguration('arm_when_open_impl').perform(context))],
+            executable='arm_when_open', name='arm_when_open',
             output='screen')]))
     return actions
 
@@ -228,6 +232,14 @@ def generate_launch_description():
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher '
                                           '(the ml environment)'),
+        DeclareLaunchArgument('drive_to_point_impl',
+                              default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,
+                              description='rust or python: which point_driver drives to a '
+                                          'point (aav_drive_to_point_rs, or aav_drive_to_point)'),
+        DeclareLaunchArgument('arm_when_open_impl',
+                              default_value=vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL,
+                              description='rust or python: which arm_when_open arms the spine '
+                                          "(aav_spine_bridge's, or aav_spine's)"),
         DeclareLaunchArgument('lane_finder_impl',
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
                               description='rust or python: which lane_finder finds the lane '

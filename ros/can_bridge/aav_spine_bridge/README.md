@@ -14,7 +14,7 @@ workspace that colcon builds through `CMakeLists.txt`.
 | Crate | Holds |
 |---|---|
 | [`spine-bridge`](./crates/spine-bridge/README.md) | the logic, no ROS: commands to frames, frames to motion |
-| `crates/bridge-node` | the ROS node, binary `spine_bridge`: messages in, calls to `spine-bridge`, messages out |
+| `crates/bridge-node` | the ROS node, binary `spine_bridge`: messages in, calls to `spine-bridge`, messages out; and binary `arm_when_open` |
 
 ### Node `spine_bridge`
 
@@ -29,6 +29,10 @@ Topics, service and parameters are `aav_spine`'s, word for word: see
 
 Parameters: `aav_spine`'s `config/spine.yaml`, plus `wheelbase` and `track` from
 `vehicle.yaml`, `source` and `role`. Start it with `aav_spine`'s `spine.launch.py`.
+
+### `arm_when_open`
+
+`aav_spine`'s `arm_when_open.py` in Rust (18 Nov), the default in bench mode and Ravensim's `spine:=true` (`arm_when_open_impl:=python` falls back): it asks `/spine/arm` each `retry` s while the gate alone refuses, for `give_up` s; exits 0 once armed, 1 otherwise. The rule is `spine-bridge`'s `try_again`, tested with the Python's cases.
 
 Where it differs from the Python, on purpose:
 

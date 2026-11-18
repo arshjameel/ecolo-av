@@ -72,6 +72,8 @@ if command -v cargo >/dev/null; then
   (cd ros/safety/aav_joy_alive_rs && cargo test -q --locked -p joy-alive-core)
   echo "== ros/perception/aav_stop_sign_rs: stop_sign_watcher's rules in Rust, stop_sign.py's answers"
   (cd ros/perception/aav_stop_sign_rs && cargo test -q --locked -p stop-sign-core)
+  echo "== ros/drivers/aav_drive_to_point_rs: the point driver in Rust, the Python modules' answers"
+  (cd ros/drivers/aav_drive_to_point_rs && cargo test -q --locked -p point-core)
   echo "== ros/bringup/aav_description/car-model: the car model's Rust twin, the shared vectors"
   (cd ros/bringup/aav_description/car-model && cargo test -q --locked)
   echo "== ros/bringup/aav_description/map-chunks: the map's fixed 64 m chunks (TODO 175)"
@@ -138,6 +140,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/drivers/aav_rc_rs -p rc-core
   rust_style ros/safety/aav_joy_alive_rs -p joy-alive-core
   rust_style ros/perception/aav_stop_sign_rs -p stop-sign-core
+  rust_style ros/drivers/aav_drive_to_point_rs -p point-core
   rust_style ros/bringup/aav_description/car-model
   rust_style ros/bringup/aav_description/map-chunks
   rust_style ros/bringup/aav_description/lanelet-map

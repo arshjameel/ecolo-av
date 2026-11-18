@@ -30,6 +30,6 @@ pub use bridge::{
     ArmError, Arming, BadFrame, Bridge, Command, Drive, Geometry, Motion, Role, Settings, Status,
     UnknownRole, Update,
 };
-pub use gate::{GateShut, OutputGate, Target, UnknownTarget, GATE_SHUT};
+pub use gate::{try_again, GateShut, OutputGate, Target, UnknownTarget, GATE_SHUT};
 pub use spine_core::protocol::{DriveCmd, EstopCmd, Mode, DRIVE_CMD_ID, ESTOP_CMD_ID};
 pub use wheels::{Direction, Reading, Side};

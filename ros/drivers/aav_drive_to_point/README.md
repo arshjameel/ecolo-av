@@ -26,7 +26,14 @@ pixi run drive-to-point --lat 45.38630 --lon -75.69580  # the real car: asks you
 
 ## Interface
 
-**`point_driver`**: `ros2 launch aav_drive_to_point drive_to_point.launch.py [use_sim_time:=false] [watchdog:=true]`
+**`point_driver`**: `ros2 launch aav_drive_to_point drive_to_point.launch.py [use_sim_time:=false] [watchdog:=true] [drive_to_point_impl:=rust]`
+
+| Switch | `rust` (the default since 18 Nov) | `python` (the fall-back) |
+|---|---|---|
+| `drive_to_point_impl` | [`aav_drive_to_point_rs`](../aav_drive_to_point_rs/README.md)'s `point_driver` | this package's |
+| `tools/drive_to_point.sh` (`pixi run drive-to-point`) | its `drive_to_point` | `--python`: this package's `point_cli` |
+
+The same node name, action, topics, parameters and answers: the Rust replays this package's modules' vectors.
 
 | Item | What |
 |---|---|
@@ -73,11 +80,12 @@ Modules (all but the two nodes have no ROS):
 | `line.py` | `Pose`, `Line`, `pursuit_curvature`, `reachable`, `min_radius`, `turn_speed_limit`; `Fence`, the drive's corridor |
 | `drive.py` | `Drive`, `Steering`, `Command`: speed and steering together, one tick |
 | `rules.py` | `check_numbers`, `refuse_start`, `refuse_target`, `refuse_outside` (the geofence), `stop_reason`, `not_moving`, `tolerance`, `confirmed` |
+| `run.py` | `plan` (ego's caps), `Run.tick` (one tick: stops, limits, the corridor, the end), `Run.outcome` (the result) |
 | `point_driver.py`, `point_cli.py` | the action server and its client |
 
 ## Invariants
 
-- `approach.py`, `line.py`, `drive.py`, `rules.py` have no ROS imports.
+- `approach.py`, `line.py`, `drive.py`, `rules.py`, `run.py` have no ROS imports.
 - One goal at a time.
 - Refuses B over `max_distance` away, under 0.5 m away (it is there already), or inside
   the car's tightest turn (it would circle B for ever), or outside the geofence's fence. Refuses REPLAY. On REAL (or nobody announcing) it needs `confirmed`; the client asks the
@@ -120,3 +128,5 @@ runs it). `pixi run test` runs everything. In Ravensim: `pixi run sim-check --dr
 | `test_line.py` | pure pursuit, reachable |
 | `test_drive.py` | whole drives on a fake car, with brake lag |
 | `test_rules.py` | refusals and stop reasons |
+| `test_run.py` | the plan from ego's caps; a drive's stop, cancel and stuck car |
+| `test_rust_vectors.py` | these modules still give `aav_drive_to_point_rs`'s vectors |

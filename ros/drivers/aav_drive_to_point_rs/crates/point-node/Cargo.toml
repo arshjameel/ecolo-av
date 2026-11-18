@@ -1,0 +1,28 @@
+[package]
+name = "point-node"
+description = "point_driver (the /drive_to_point action server) and drive_to_point (its command-line client)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "point_driver"
+path = "src/main.rs"
+
+[[bin]]
+name = "drive_to_point"
+path = "src/cli.rs"
+
+[dependencies]
+anyhow = "1"
+# The geofence's outline and depth (aav_safety geofence.py's Polygon), ours; reused.
+behaviour-core = { path = "../../../aav_behaviour_rs/crates/behaviour-core" }
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"] }
+# The one-shot channels from the goal's task to the drive, and the time-outs.
+futures = "0.3"
+point-core = { path = "../point-core" }
+rclrs = "0.8"
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = "0.3"

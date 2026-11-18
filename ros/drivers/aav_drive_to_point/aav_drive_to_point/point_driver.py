@@ -49,12 +49,11 @@ import signal
 import time
 
 from aav_actuator_tests.safety import source_kind, taken_over
-from aav_description import stop_law, vehicle
+from aav_description import vehicle
 from aav_description.car_model import ActuatorConfig
 from aav_drive_to_point import rules
-from aav_drive_to_point.approach import Approach, planned_deceleration, STOPPING
-from aav_drive_to_point.drive import Drive, Steering
-from aav_drive_to_point.line import Fence, min_radius, Pose
+from aav_drive_to_point import run as run_mod
+from aav_drive_to_point.line import min_radius, Pose
 from aav_interfaces.action import DriveToPoint
 from aav_interfaces.msg import DataSource
 from aav_safety.geofence import Polygon
@@ -78,7 +77,6 @@ EGO_PARAMS = ('max_speed', 'max_acceleration', 'max_deceleration', 'max_jerk')
 # stopping law (aav_description stop_law.py), a trial until it wins.
 STOP_LAWS = ('approach', 'hybrid')
 TAKEOVER_TIME = 0.3   # s of twist_mux passing someone else's commands: stop
-ZEROS = 5             # zero commands at the end, so twist_mux and ego see the stop
 
 
 def yaw_of(q):
@@ -111,6 +109,11 @@ class PointDriver(Node):
                                    gps_timeout=p['gps_timeout'], require_gps=p['require_gps'],
                                    watchdog_timeout=p['watchdog_timeout'])
         self.radius = min_radius(p['wheelbase'], p['max_steering_angle'])
+        self.settings = run_mod.Settings(**{k: float(p[k]) for k in (
+            'cruise_speed', 'acceleration', 'max_brake', 'brake_fraction', 'deceleration',
+            'brake_lead', 'stop_band', 'creep', 'lookahead_min', 'lookahead_time',
+            'lateral_accel', 'still_speed', 'stuck_time', 'still_time', 'max_off_line',
+            'max_overrun')})
         self.busy = False
         self.pose = None            # (Pose, speed)
         self.pose_time = None       # s, this node's clock
@@ -271,24 +274,8 @@ class PointDriver(Node):
 
     def plan(self, goal, caps):
         """Return (the Approach, None) for this goal and ego's caps, or (None, why not)."""
-        p = self.p
-        why = rules.check_numbers(goal.cruise_speed, goal.acceleration, goal.deceleration)
-        if why:
-            return None, why
-        cruise = goal.cruise_speed or p['cruise_speed']
-        accel = goal.acceleration or p['acceleration']
-        decel = goal.deceleration or p['deceleration'] or planned_deceleration(
-            p['max_brake'], p['brake_fraction'])
-        # Ego's caps: it would cut a faster command anyway, and the plan must know.
-        # Without ego, the real car's 1 m/s (ego.yaml).
-        cruise = min(cruise, caps.get('max_speed', 1.0))
-        accel = min(accel, caps.get('max_acceleration', accel))
-        decel = min(decel, caps.get('max_deceleration', decel))
-        curve = None if self.car is None else stop_law.from_car_model(
-            self.car, caps.get('max_deceleration', 2.0), caps.get('max_jerk', 2.0))
-        return Approach(cruise=cruise, accel=accel, decel=decel, lead=p['brake_lead'],
-                        stop_band=p['stop_band'], creep=min(p['creep'], cruise),
-                        curve=curve), None
+        return run_mod.plan(goal.cruise_speed, goal.acceleration, goal.deceleration, caps,
+                            self.settings, self.car)
 
     async def execute(self, handle):
         # A coroutine on one thread, driven by a timer, as aav_scripted's driver: a
@@ -329,96 +316,35 @@ class PointDriver(Node):
             return self.refuse(handle, why, target)
 
         p = self.p
-        steering = Steering(max_curvature=1.0 / self.radius, lookahead_min=p['lookahead_min'],
-                            lookahead_time=p['lookahead_time'],
-                            lateral_accel=p['lateral_accel'])
-        run = Drive(target, approach, steering, start)
-        # The drive's own corridor (line.Fence, TODO 187), apart from the site's geofence
-        # and from Nav2: a wrong steering sign or a bad pose can't take the car far.
-        corridor = Fence((start.x, start.y), target, turn_radius=self.radius,
-                         max_off_line=p['max_off_line'], max_overrun=p['max_overrun'])
-        distance = math.hypot(target[0] - start.x, target[1] - start.y)
-        # Limits for the whole drive, from the plan: a turn round costs up to a circle.
-        max_path = 2.0 * distance + 2.0 * math.pi * self.radius + 10.0
-        max_time = 2.0 * approach.ideal_time(distance + math.pi * self.radius) + 30.0
+        run = run_mod.Run(target, approach, self.settings, self.limits, self.radius, start,
+                          self.seconds())
         self.get_logger().info(
-            f'drive to ({target[0]:.2f}, {target[1]:.2f}): {distance:.1f} m; cruise '
+            f'drive to ({target[0]:.2f}, {target[1]:.2f}): {run.distance:.1f} m; cruise '
             f'{approach.cruise:g} m/s, up {approach.accel:g} m/s^2, down {approach.decel:g} '
             f'm/s^2 (max_brake {p["max_brake"]:g} x {p["brake_fraction"]:g})')
         self.ours.clear()
         self.other_since = None
 
         finished = Future()
-        st = {'last': self.seconds(), 't0': self.seconds(), 'tick': 0, 'zeros': 0,
-              'still': None, 'stuck': None, 'path': 0.0, 'stop': None,
-              'cancel': False, 'cmd': None}
         feedback = DriveToPoint.Feedback()
 
-        def stop(reason):
-            if st['stop'] is None and not st['cancel']:
-                st['stop'] = reason
-                self.get_logger().warning(f'drive to point stopping: {reason}')
-
         def tick():
-            if st['stop'] is not None or st['cancel']:
-                self.publish(0.0, 0.0)
-                st['zeros'] += 1
-                if st['zeros'] >= ZEROS and not finished.done():
-                    finished.set_result(None)
-                return
-            if handle.is_cancel_requested:
-                st['cancel'] = True
-                return
-            t = self.seconds()
-            dt, st['last'] = min(max(t - st['last'], 0.0), 0.5), t
-            why = rules.stop_reason(self.now(), self.limits)
-            if why:
-                return stop(why)
             pose, measured = self.pose
-            # The distance driven, from the speed: the global EKF's position jitters with
-            # the GPS, and summing its steps counted double (sim_check, 15 Oct).
-            st['path'] += abs(measured) * dt
-            if st['path'] > max_path:
-                return stop(f'drove {st["path"]:.0f} m, over the limit of {max_path:.0f} m')
-            if t - st['t0'] > max_time:
-                return stop(f'ran {t - st["t0"]:.0f} s, over the limit of {max_time:.0f} s')
-            if abs(measured) > approach.cruise * 1.2 + 0.3:
-                return stop(f'speed {measured:.2f} m/s, over the cruise speed '
-                            f'{approach.cruise:g} m/s')
-            # The corridor, every tick until the car stands still at B: then it asks for
-            # nothing more, and a GPS jump there shouldn't turn a good stop into an abort.
-            standing_at_b = (st['cmd'] is not None and st['cmd'].phase == STOPPING
-                             and abs(measured) < p['still_speed'])
-            why = None if standing_at_b else corridor.breach((pose.x, pose.y), run.line)
-            if why:
-                return stop(why)
-            cmd = run.tick(pose, measured, dt)
-            st['cmd'] = cmd
-            # Asked to move, standing still: something holds the car (a lock this driver
-            # can't see, a brake, a wall). Stop asking.
-            if rules.not_moving(cmd.speed, measured, p['still_speed']):
-                st['stuck'] = st['stuck'] if st['stuck'] is not None else t
-                if t - st['stuck'] > p['stuck_time']:
-                    return stop(f'the car stood still for {p["stuck_time"]:g} s though asked '
-                                'to move: something holds it')
-            else:
-                st['stuck'] = None
-            self.publish(cmd.speed, cmd.curvature)
-            if cmd.phase == STOPPING:
-                if abs(measured) < p['still_speed']:
-                    st['still'] = st['still'] if st['still'] is not None else t
-                    if t - st['still'] >= p['still_time'] and not finished.done():
-                        finished.set_result(None)
-                else:
-                    st['still'] = None
-            if st['tick'] % 5 == 0:
-                feedback.phase = cmd.phase
-                feedback.distance_left = float(cmd.left)
-                feedback.cross_track = float(cmd.cross)
-                feedback.commanded_speed = float(cmd.speed)
+            step = run.tick(self.seconds(), self.now(), pose, measured,
+                            handle.is_cancel_requested)
+            if step.stopped:
+                self.get_logger().warning(f'drive to point stopping: {step.stopped}')
+            if step.send is not None:
+                self.publish(*step.send)
+            if step.feedback is not None:
+                feedback.phase = step.feedback.phase
+                feedback.distance_left = float(step.feedback.left)
+                feedback.cross_track = float(step.feedback.cross)
+                feedback.commanded_speed = float(step.feedback.speed)
                 feedback.measured_speed = float(measured)
                 handle.publish_feedback(feedback)
-            st['tick'] += 1
+            if step.finished and not finished.done():
+                finished.set_result(None)
 
         self.publish_line([(start.x, start.y), target])
         timer = self.create_timer(1.0 / p['rate_hz'], tick)
@@ -430,27 +356,19 @@ class PointDriver(Node):
             self.publish_line([])
 
         pose, _ = self.pose
-        left = math.hypot(target[0] - pose.x, target[1] - pose.y)
-        tolerance = rules.tolerance(self.fix_status if p['require_gps'] else
-                                    rules.STATUS_GBAS_FIX)
+        end = run.outcome(pose, self.fix_status, p['require_gps'], self.seconds())
         result = DriveToPoint.Result(target_x=float(target[0]), target_y=float(target[1]),
-                                     distance_left=float(left), tolerance=float(tolerance),
-                                     distance_travelled=float(st['path']),
-                                     duration=float(self.seconds() - st['t0']))
-        if st['cancel']:
+                                     distance_left=float(end.left),
+                                     tolerance=float(end.tolerance),
+                                     distance_travelled=float(end.travelled),
+                                     duration=float(end.duration), success=end.success,
+                                     message=end.message)
+        if end.status == 'cancelled':
             handle.canceled()
-            result.message = f'cancelled; stopped {left:.2f} m from B'
-        elif st['stop'] is not None:
-            handle.abort()
-            result.message = f'stopped {left:.2f} m from B: {st["stop"]}'
+        elif end.status == 'succeeded':
+            handle.succeed()
         else:
-            result.success = left <= tolerance
-            result.message = (f'stopped {left:.2f} m from B (tolerance {tolerance:g} m)'
-                              + ('' if result.success else ': too far'))
-            if result.success:
-                handle.succeed()
-            else:
-                handle.abort()
+            handle.abort()
         self.get_logger().info(f'drive to point: {result.message}')
         return result
 

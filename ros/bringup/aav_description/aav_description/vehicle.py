@@ -552,6 +552,39 @@ def check_rc_impl(impl):
     return name
 
 
+# Which point_driver drives to one point (drive_to_point.launch.py, and the sim, bench and car
+# profiles that start it; drive_to_point_impl:=): rust (aav_drive_to_point_rs, the default
+# since 18 Nov: the same node name, action, topics and answers) or python
+# (aav_drive_to_point, the fall-back). Each one's package.
+DRIVE_TO_POINT_IMPLS = {'python': 'aav_drive_to_point', 'rust': 'aav_drive_to_point_rs'}
+DEFAULT_DRIVE_TO_POINT_IMPL = 'rust'
+
+
+def check_drive_to_point_impl(impl):
+    """Return point_driver's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in DRIVE_TO_POINT_IMPLS:
+        raise ValueError(f'drive_to_point_impl:={impl}: pick one of '
+                         f'{", ".join(DRIVE_TO_POINT_IMPLS)}')
+    return name
+
+
+# Which arm_when_open arms the stand-ins' spine (bench.launch.py arm:=true, ravensim.launch.py
+# spine:=true; arm_when_open_impl:=): rust (aav_spine_bridge's, beside the Rust bridge, the
+# default since 18 Nov) or python (aav_spine's). Each one's package.
+ARM_WHEN_OPEN_IMPLS = {'python': 'aav_spine', 'rust': 'aav_spine_bridge'}
+DEFAULT_ARM_WHEN_OPEN_IMPL = 'rust'
+
+
+def check_arm_when_open_impl(impl):
+    """Return arm_when_open's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in ARM_WHEN_OPEN_IMPLS:
+        raise ValueError(f'arm_when_open_impl:={impl}: pick one of '
+                         f'{", ".join(ARM_WHEN_OPEN_IMPLS)}')
+    return name
+
+
 # Which lane_finder finds the lane lines (lane_finder.launch.py, and every profile that starts
 # it: lane:=true, lane_pose:=true, the car's lane part; lane_finder_impl:=): rust
 # (aav_lane_finder_rs, the default since Ben, 18 Nov: "it helps the car stay on the correct

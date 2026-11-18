@@ -74,6 +74,8 @@ The fall-backs, one per node (the others stay Rust):
 | lane_finder (lane keeping, the lane pose) | `lane_finder_impl:=python` |
 | joy_alive (the joystick's check, between joy_node and teleop) | `joy_alive_impl:=python` |
 | stop_sign_watcher (twist_mux's stop-sign lock) | `stop_sign_impl:=python` |
+| point_driver (drive to a point; the Orin) and its client | `drive_to_point_impl:=python`; `pixi run drive-to-point --python ...` |
+| arm_when_open (bench and Ravensim's spine only) | `arm_when_open_impl:=python` |
 
 ## Untested on the car (everything since 13 Nov)
 

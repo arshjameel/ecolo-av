@@ -162,3 +162,13 @@ impl OutputGate {
         }
     }
 }
+
+/// `arm_when_open`: ask `/spine/arm` again? Only while the gate alone refused (a message
+/// starting with [`GATE_SHUT`]), for `give_up` (`output_gate.py`'s `try_again`).
+///
+/// An e-stop's refusal is final: a person pressed it, and a launch must not keep arming
+/// behind them.
+#[must_use]
+pub fn try_again(success: bool, message: &str, waited: Duration, give_up: Duration) -> bool {
+    !success && message.starts_with(GATE_SHUT) && waited < give_up
+}

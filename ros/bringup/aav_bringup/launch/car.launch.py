@@ -28,14 +28,15 @@ The real car. One launch file for every machine; a machine file picks the parts.
       [ego_impl:=rust] [behaviour_impl:=rust] [watchdog_impl:=rust]
       [localization_health_impl:=rust] [lidar_impl:=rust] [things_impl:=rust]
       [io_mux_impl:=rust] [legacy_impl:=rust] [rc_impl:=rust] [lane_finder_impl:=rust]
-      [joy_alive_impl:=rust] [stop_sign_impl:=rust]
+      [joy_alive_impl:=rust] [stop_sign_impl:=rust] [drive_to_point_impl:=rust]
                           (Rust on the car since Ben, 16 Nov: aav_ego_rs, aav_behaviour_rs,
                            aav_watchdog_rs, aav_localization_health_rs; since 17 Nov
                            aav_lidar_rs, aav_things_rs, aav_io_mux_rs (both muxes),
                            aav_legacy_rs (legacy_uart_bridge), aav_rc_rs (rc_driver),
                            aav_joy_alive_rs (joy_alive) and aav_stop_sign_rs
                            (stop_sign_watcher); since 18 Nov aav_lane_finder_rs
-                           (lane_finder, the lane part).
+                           (lane_finder, the lane part) and aav_drive_to_point_rs
+                           (point_driver).
                            python: the Python node instead, the same names and topics;
                            one switch each, the fall-back if one misbehaves.
                            docs/car-day.md)
@@ -445,7 +446,9 @@ def launch_setup(context):
              'rc_impl': vehicle.check_rc_impl(arg('rc_impl')),
              'lane_finder_impl': vehicle.check_lane_finder_impl(arg('lane_finder_impl')),
              'joy_alive_impl': vehicle.check_joy_alive_impl(arg('joy_alive_impl')),
-             'stop_sign_impl': vehicle.check_stop_sign_impl(arg('stop_sign_impl'))}
+             'stop_sign_impl': vehicle.check_stop_sign_impl(arg('stop_sign_impl')),
+             'drive_to_point_impl': vehicle.check_drive_to_point_impl(
+                 arg('drive_to_point_impl'))}
     get_logger('car.launch.py').info(
         'languages: ' + ' '.join(f'{k}:={v}' for k, v in impls.items())
         + ' (any of them :=python falls back)')
@@ -528,7 +531,8 @@ def launch_setup(context):
     if on('scripted'):
         actions.append(include('aav_scripted', 'scripted.launch.py'))
     if on('drive_to_point'):
-        actions.append(include('aav_drive_to_point', 'drive_to_point.launch.py'))
+        actions.append(include('aav_drive_to_point', 'drive_to_point.launch.py',
+                               drive_to_point_impl=impls['drive_to_point_impl']))
     if any(on(s) for s in ('imu', 'gps', 'radar', 'lidar', 'battery')):
         actions.append(include('aav_sensors', 'sensors.launch.py',
                                imu=on('imu'), gps=on('gps'), radar=on('radar'), lidar=on('lidar'),
@@ -711,6 +715,10 @@ def generate_launch_description():
         DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
                               description='python or rust: which lidar_scan flattens the '
                                           'lidar (aav_lidar, or aav_lidar_rs)'),
+        DeclareLaunchArgument('drive_to_point_impl',
+                              default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,
+                              description='rust or python: which point_driver drives to a '
+                                          'point (aav_drive_to_point_rs, or aav_drive_to_point)'),
         DeclareLaunchArgument('lane_finder_impl',
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
                               description='rust or python: which lane_finder finds the lane '

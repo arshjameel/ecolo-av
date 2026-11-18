@@ -19,6 +19,8 @@
   <exec_depend>aav_description</exec_depend>
   <exec_depend>aav_actuator_tests</exec_depend>
   <exec_depend>aav_safety</exec_depend>
+  <!-- drive_to_point.launch.py starts the Rust point_driver by default. -->
+  <exec_depend>aav_drive_to_point_rs</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>

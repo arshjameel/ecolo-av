@@ -81,7 +81,7 @@ def health_node(context):
     return [Node(
         package=vehicle.LOCALIZATION_HEALTH_IMPLS[impl],
         executable='localization_health',
-        name='localization_health',
+        name='localization_health', namespace='/',
         # The Rust one reads the Python package's settings too: one file for both.
         parameters=[os.path.join(FindPackageShare('aav_localization_health').perform(context),
                                  'config', 'localization_health.yaml'),

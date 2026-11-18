@@ -17,12 +17,13 @@ set(CARGO_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR}/target)
 add_custom_target(cargo_build ALL
   COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS --unset=MFLAGS --unset=CARGO_MAKEFLAGS
     CARGO_TARGET_DIR=${CARGO_TARGET_DIR}
-    ${CARGO} build --release --locked --quiet --bin spine_bridge
+    ${CARGO} build --release --locked --quiet --bin spine_bridge --bin arm_when_open
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMENT "cargo build --release --bin spine_bridge"
+  COMMENT "cargo build --release --bin spine_bridge --bin arm_when_open"
   VERBATIM)
 
 install(PROGRAMS ${CARGO_TARGET_DIR}/release/spine_bridge
+  ${CARGO_TARGET_DIR}/release/arm_when_open
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)

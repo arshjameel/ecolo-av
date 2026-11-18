@@ -339,6 +339,7 @@ def nodes(context):
             LaunchConfiguration('behaviour_impl').perform(context))
         actions.append(Node(
             package=vehicle.BEHAVIOUR_IMPLS[impl], executable='behaviour', name='behaviour',
+            namespace='/',
             output='screen', respawn=True, respawn_delay=1.0,
             parameters=[vehicle.behaviour_params(nav2, cfg, ego, max_speed, controller,
                                                  speed_loop),
@@ -381,7 +382,7 @@ def nodes(context):
         # vehicle.yaml, so the lidar's mount and the car's outline come with it.
         car = voxels_car(cfg) if lidar_impl == 'rust' else {}
         actions.append(Node(package=vehicle.LIDAR_IMPLS[lidar_impl], executable='lidar_scan',
-                            name='lidar_scan', output='screen',
+                            name='lidar_scan', namespace='/', output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time, **car}]))
     if voxels or screen_cubes or things or kerbs:
         # The cubes, for the costmap and the stop zone (voxels:=true), or only for the
@@ -395,14 +396,14 @@ def nodes(context):
         if kerbs:
             car['steps'] = True
         actions.append(Node(package=vehicle.VOXELS_IMPLS[impl], executable='voxels',
-                            name='voxels', output='screen',
+                            name='voxels', namespace='/', output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time, **car}]))
     if things:
         # The cubes as things, on /world/things (aav_things; things_impl:=rust: the Rust
         # port, aav_things_rs, the same name, topics and settings file).
         config = FindPackageShare('aav_things').perform(context) + '/config/things.yaml'
         actions.append(Node(package=vehicle.THINGS_IMPLS[things_impl], executable='things',
-                            name='things',
+                            name='things', namespace='/',
                             output='screen',
                             parameters=[config, {'radar': radar,
                                                  'background': flag(context,
@@ -484,7 +485,7 @@ def nodes(context):
     # aav_smoother (Rust): Nav2's velocity_smoother's block from the same tuned file (its
     # node name), the car from vehicle.yaml through the car model, ego's steering ramp.
     actions.append(Node(
-        package='aav_smoother', executable='car_smoother', name='velocity_smoother',
+        package='aav_smoother', executable='car_smoother', name='velocity_smoother', namespace='/',
         output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
         parameters=[params, vehicle.smoother_params(cfg, ego, vehicle.config_path()),
                     {'use_sim_time': use_sim_time}],
@@ -510,7 +511,7 @@ def nodes(context):
         # aav_mpc_lag (Rust): aav_track's mpc_lag ported, a challenger beside it.
         own = FindPackageShare('aav_mpc_lag').perform(context) + '/config/mpc_lag_rs.yaml'
         actions.append(Node(
-            package='aav_mpc_lag', executable='mpc_lag_rs', name='mpc_lag_rs',
+            package='aav_mpc_lag', executable='mpc_lag_rs', name='mpc_lag_rs', namespace='/',
             output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
             parameters=[own, vehicle.mpc_lag_rs_params(nav2, cfg, ego, max_speed,
                                                        speed_loop),
@@ -522,7 +523,7 @@ def nodes(context):
         # costmap.
         own = FindPackageShare('aav_mppi_lag').perform(context) + '/config/mppi_lag.yaml'
         actions.append(Node(
-            package='aav_mppi_lag', executable='mppi_lag', name='mppi_lag',
+            package='aav_mppi_lag', executable='mppi_lag', name='mppi_lag', namespace='/',
             output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
             parameters=[own, vehicle.mppi_lag_params(nav2, cfg, ego, max_speed,
                                                      reversing, lane, speed_loop),
