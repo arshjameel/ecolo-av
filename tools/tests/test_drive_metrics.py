@@ -142,7 +142,7 @@ def test_the_table_has_a_column_each_and_leaves_out_numbers_nobody_has():
     assert lines[:4] == ['|  | rpp | mppi |', '|---|---:|---:|',
                          '| Reached the goal | **no** | yes |', '| Time (s) | 10 | 10 |']
     assert 'Closest to the box' not in text and 'Off the path' not in text
-    assert '| follower CPU (%): controller_server, or aav_track | - | 12 |' in lines
+    assert '| follower CPU (%): mppi_lag, or aav_track | - | 12 |' in lines
 
 
 def test_the_picture_puts_north_up():
