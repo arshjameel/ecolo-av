@@ -295,6 +295,17 @@ def test_the_rust_nodes_are_the_cars_default_and_python_one_switch_away():
         started(CAR, machine='all', watchdog_impl='c')
 
 
+def test_joy_alive_is_rust_by_default_and_python_one_switch_away():
+    # Ben, 17 Nov: the Motor Pi alone's joystick path in Rust too (joy_alive_impl).
+    for machine in ('motor_pi_alone', 'all'):
+        assert included(started(CAR, machine=machine))['teleop.launch.py'][
+            'joy_alive_impl'] == 'rust', machine
+    assert included(started(CAR, machine='motor_pi_alone', joy_alive_impl='python'))[
+        'teleop.launch.py']['joy_alive_impl'] == 'python'
+    with pytest.raises(ValueError, match='joy_alive_impl'):
+        started(CAR, machine='motor_pi_alone', joy_alive_impl='c')
+
+
 def test_the_output_mux_runs_next_to_ego_for_the_real_car():
     # The real backends read only /control/car/actuator_cmd: the output mux, target car,
     # must run wherever ego does, and nowhere else (two would both judge the same ego).

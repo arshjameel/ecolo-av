@@ -1,0 +1,11 @@
+[package]
+name = "joy-alive-core"
+description = "joy_alive's rules without ROS: is the joystick really there, and really moving? (the Rust twin of aav_safety's joy_alive.py)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dev-dependencies]
+# Reads the shared vectors, tests/vectors.json (gen_vectors.py, from joy_alive.py).
+serde_json = { version = "1", features = ["float_roundtrip"] }

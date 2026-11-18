@@ -87,6 +87,11 @@ In the namespace `/drivers/joy` (aav_teleop `teleop.launch.py`).
 Parameters: aav_teleop `config/joy_alive.yaml`: `enable_button` 0, `motion_axes` [1],
 `motion_threshold` 0.05, `silent_after` 0.5, `frozen_after` 2.0, `rate_hz` 10.
 
+Since 17 Nov the Rust twin, [`aav_joy_alive_rs`](../aav_joy_alive_rs/README.md), runs by
+default (`teleop.launch.py joy_alive_impl:=rust`); this one with `joy_alive_impl:=python`.
+`test_joy_alive_vectors.py` checks this module still gives the answers the Rust is checked
+against: after a change here, run `aav_joy_alive_rs/gen_vectors.py` (and port it).
+
 ### Node `goal_leash` (TODO 116)
 
 The language driver (`aav_language`) runs on a laptop and sends goals to drivers on the

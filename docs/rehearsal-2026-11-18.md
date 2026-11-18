@@ -124,6 +124,7 @@ If a Rust node misbehaves, restart the launch with its fall-back:
 | The muxes (output and sensor) | `io_mux_impl:=python` |
 | The ESP32's UART bridge | `legacy_impl:=python` |
 | The RC driver | `rc_impl:=python` |
+| The joystick's check (joy_alive; Rust since after the rehearsal) | `joy_alive_impl:=python` |
 
 With `aav.sh car motor_pi_alone`, put them after `--`: `~/aav-jazzy/aav.sh car motor_pi_alone -- legacy_impl:=python`.
 Each passed the same checks tonight (the bridge's after its fix: pull tonight's commits first).

@@ -66,6 +66,8 @@ if command -v cargo >/dev/null; then
   (cd ros/can_bridge/aav_legacy_rs && cargo test -q --locked -p legacy-bridge)
   echo "== ros/drivers/aav_rc_rs: rc_driver's rules in Rust, rc_drive.py's answers"
   (cd ros/drivers/aav_rc_rs && cargo test -q --locked -p rc-core)
+  echo "== ros/safety/aav_joy_alive_rs: joy_alive's rules in Rust, joy_alive.py's answers"
+  (cd ros/safety/aav_joy_alive_rs && cargo test -q --locked -p joy-alive-core)
   echo "== ros/bringup/aav_description/car-model: the car model's Rust twin, the shared vectors"
   (cd ros/bringup/aav_description/car-model && cargo test -q --locked)
   echo "== ros/bringup/aav_description/map-chunks: the map's fixed 64 m chunks (TODO 175)"
@@ -129,6 +131,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/can_bridge/aav_spine_bridge -p spine-bridge
   rust_style ros/can_bridge/aav_legacy_rs -p legacy-bridge
   rust_style ros/drivers/aav_rc_rs -p rc-core
+  rust_style ros/safety/aav_joy_alive_rs -p joy-alive-core
   rust_style ros/bringup/aav_description/car-model
   rust_style ros/bringup/aav_description/map-chunks
   rust_style ros/bringup/aav_description/lanelet-map
