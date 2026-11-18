@@ -6,7 +6,7 @@
 # , reverse, k stop, q/z faster/slower.
 #
 # usage: tools/keyboard.sh [--sim | --local]
-#   --sim    simulation time (Gazebo, replay), and stay on this computer
+#   --sim    simulation time (Ravensim, replay), and stay on this computer
 #   --local  stay on this computer, on the wall clock (the bench, the turtle)
 #   neither  drive whatever shares this ROS domain: on the car's network, the car
 set -euo pipefail

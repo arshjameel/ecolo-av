@@ -57,11 +57,11 @@ Writes      frames at rate_hz on the serial port (uart_relay, legacy_protocol):
             frame_version 1   the 2025-26 13-byte frame, for the C++ firmware on the car
                               today: no counter, and that firmware has no timeout
 
-port is a device (/dev/ttyAMA0) or any pyserial URL: in Gazebo, socket://127.0.0.1:<n> to
+port is a device (/dev/ttyAMA0) or any pyserial URL: in Ravensim, socket://127.0.0.1:<n> to
 sim_esp32, the C++ firmware's stand-in (sim.launch.py esp32:=true). If it won't open,
 the bridge says so and tries again every second, rather than dying: no frames go out
 until it opens, and the ESP32 keeps (or, from boot, holds) its brake. source (real, the
-default; sim in Gazebo) is what it announces on system/source.
+default; sim in Ravensim) is what it announces on system/source.
 
 speed_loop.mode picks how ego's speed becomes throttle and brake: open (the default, as the
 2025-26 team drove: speed / full_throttle_speed, the brake only standing still) or pi

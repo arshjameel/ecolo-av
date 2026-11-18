@@ -1,16 +1,16 @@
-//! planner: our own path planner (Nav2's State Lattice, or its Hybrid-A*, in Rust), beside
-//! planner_server.
+//! planner: our own path planner (Nav2's State Lattice, or its Hybrid-A*, in Rust), in
+//! Nav2's planner_server's place (the only planner since 17 Nov).
 //!
 //! Action      drivers/nav/planner/compute_path_to_pose
 //!                                         nav2_msgs/action/ComputePathToPose: one path from
 //!                                         the car (or the goal's start, use_start) to the
 //!                                         goal, in map. navigation.launch.py planner:=own
-//!                                         points bt_navigator's compute_path_to_pose here
+//!                                         points the navigator's compute_path_to_pose here
 //!             drivers/nav/planner/compute_path_through_poses
 //!                                         nav2_msgs/action/ComputePathThroughPoses: one path
 //!                                         through each goal in turn (a plan a leg, joined, as
-//!                                         planner_server does); bt_navigator's and our
-//!                                         navigator's (aav_navigator) are pointed here
+//!                                         Nav2's planner_server did); our navigator's
+//!                                         (aav_navigator) is pointed here
 //! Subscribes  costmap_topic               nav2_msgs/Costmap: the global costmap the plan is
 //!                                         made on: Nav2's /global_costmap/costmap_raw
 //!                                         (latched, with costmap_updates_topic's
@@ -21,8 +21,7 @@
 //!                                         car's pose in map (when use_start is false).
 //!                                         Either older than TRANSFORM_TIMEOUT: goals
 //!                                         fail, TF_ERROR (the EKFs send at 30 Hz)
-//! Publishes   /plan                       nav_msgs/Path: each path found (planner_server's
-//!                                         own goes to /drivers/nav/planner/nav2_plan)
+//! Publishes   /plan                       nav_msgs/Path: each path found
 //!             drivers/nav/planner/status  diagnostic_msgs/DiagnosticStatus, one a plan: the
 //!                                         times, iterations, length, cusps, error; with
 //!                                         a lane map, "how": lane, pass (and pass_m:
@@ -34,7 +33,7 @@
 //!                                         start and the goals off it), for a costmap
 //!                                         made of chunks (costmap_chunks:=, TODO 175)
 //! Serves      is_path_valid_service (empty: none; navigation.launch.py gives
-//!             /is_path_valid where planner_server doesn't run)
+//!             /is_path_valid)
 //!                                         nav2_msgs/srv/IsPathValid, as planner_server's:
 //!                                         from the pose nearest the car on, a pose on a
 //!                                         lethal or inscribed cell is invalid. No costmap,

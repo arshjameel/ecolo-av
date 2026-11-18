@@ -3,7 +3,7 @@ How well the car followed Nav2's path: the numbers controller_compare.py reports
 
 No ROS here, so the tests run anywhere (tools/tests/test_drive_metrics.py).
 
-One leg is one Nav2 goal. It records, on Gazebo's clock:
+One leg is one navigation goal. It records, on the simulator's clock:
 
   truth     [(t, x, y, yaw)]        where the car really was (/vehicle/sim/truth, map frame)
   plans     [(t, [(x, y), ...])]    each path the planner sent (/plan), as it arrived
@@ -14,9 +14,9 @@ One leg is one Nav2 goal. It records, on Gazebo's clock:
                                     none while |v| < STILL): what ego had to clip
   start, end                        s: the goal sent, and its result (or the time-out)
   goal      (x, y, yaw)             where it was sent, map frame, rad
-  reached   bool                    Nav2 said it succeeded
+  reached   bool                    the navigator said it succeeded
   cpu       percent or None         the follower's share of one core over the leg:
-                                    controller_server's, or aav_track's with a tracker
+                                    mppi_lag's, or aav_track's with a tracker
   amcl      [(t, x, y, yaw)]        optional: AMCL's pose (/localization/amcl/pose), a trial
   ndt       [(t, x, y, yaw)]        optional: NDT's pose (/localization/ndt/pose), a trial
   ndt_status [(t, ok, match_ms, restarts)]  optional: NDT's status, one per cloud
@@ -743,10 +743,10 @@ COLUMNS = [
     ('reversals', 'Reversals', '{:d}'),
     ('reversed_m', 'Driven in reverse (m)', '{:.1f}'),
     ('clearance_m', 'Closest to the box (m)', '{:.2f}'),
-    ('cpu_percent', 'follower CPU (%): controller_server, or aav_track', '{:.0f}'),
+    ('cpu_percent', 'follower CPU (%): mppi_lag, or aav_track', '{:.0f}'),
     ('route_switches', 'The planner changed its route (times)', '{:d}'),
     ('plan_found', 'The planner alone: found a path', lambda v: 'yes' if v else '**no**'),
-    ('plan_ms', "The planner alone: planning time (ms, its own clock: Gazebo's)", '{:.0f}'),
+    ('plan_ms', "The planner alone: planning time (ms, its own clock: the simulator's)", '{:.0f}'),
     ('plan_wall_ms', 'The planner alone: the whole call (ms, wall clock)', '{:.0f}'),
     ('plan_m', 'The planner alone: path length (m)', '{:.1f}'),
     ('plan_cusps', 'The planner alone: changes between forward and reverse', '{:d}'),

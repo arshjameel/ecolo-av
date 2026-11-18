@@ -25,9 +25,9 @@ KISS_PYTHON = '.pixi/envs/kiss/bin/python'
 
 # What to start: the pixi task (and its flag), and what it is.
 PROGRAMS = [
-    ('demo --debug', 'Gazebo, RViz, the HUD, the map window and the debug HUD (cubes, NDT)'),
-    ('demo', 'Gazebo, RViz, the HUD and the map window'),
-    ('sim', 'Gazebo and the car only (add windows yourself)'),
+    ('demo --debug', 'Ravensim, RViz, the HUD, the map window and the debug HUD (cubes, NDT)'),
+    ('demo', 'Ravensim, RViz, the HUD and the map window'),
+    ('sim', 'Ravensim and the car only (add windows yourself)'),
 ]
 
 # Who steers along the path: ours (mppi_lag, the champion; Nav2's own controllers went on

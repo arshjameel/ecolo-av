@@ -5,7 +5,7 @@ The debug screen (aav_hud): one window, which is also the ROS node `debug_hud`.
   ros2 launch aav_hud debug_hud.launch.py fullscreen:=true monitor:=1
 
 What the car sees and what it thinks: the lidar's cubes round the car in 3D, where each
-localizer puts the car (EKF local blue, EKF global green, Gazebo's truth white, AMCL
+localizer puts the car (EKF local blue, EKF global green, the sim's truth white, AMCL
 orange), Nav2's plan (yellow), and a panel of every sensor straight from its own topic.
 It only listens: it never touches an actuator.
 

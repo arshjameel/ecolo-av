@@ -1,6 +1,6 @@
 [package]
 name = "planner-node"
-description = "planner: the ROS 2 node around the lattice-planner crate, beside Nav2's planner_server"
+description = "planner: the ROS 2 node around the lattice-planner crate, Nav2's planner_server ported"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

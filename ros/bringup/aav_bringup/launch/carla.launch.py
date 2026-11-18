@@ -8,7 +8,7 @@ The whole stack with CARLA as the car: the same nodes and configs as sim.launch.
   pixi run carla-car host:=192.168.1.50                  a town, navigation and the sensors
   pixi run carla-car host:=127.0.0.1 osm:=maps/carla/carleton.osm   Carleton's roads
 
-Only the backend differs from Gazebo: aav_carla's carla_adapter in place of
+Only the backend differs from Ravensim: aav_carla's carla_adapter in place of
 sim_adapter, so mux, ego, the EKFs, navsat_transform, navigation, radar_clusters and the
 sensor watchdog run with the car's own configs. Every node runs on CARLA's clock.
 
@@ -20,7 +20,7 @@ stand-in). To watch from a Mac: AAV_DISCOVERY=SUBNET pixi run carla-car ..., on 
 with no real car on the same ROS_DOMAIN_ID.
 
 The map: navigation gets the empty map. In a town the car starts at the map origin facing east,
-as in Gazebo; on a Carleton map (osm:=) the map frame is CARLA's world, round the datum.
+as in Ravensim; on a Carleton map (osm:=) the map frame is CARLA's world, round the datum.
 """
 
 import os

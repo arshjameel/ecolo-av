@@ -4,14 +4,14 @@
 #
 # usage: tools/measure.sh <what> [args]   (pixi run measure <what>)
 #
-#   controllers  drive Pure Pursuit and MPPI (and the trials) over the same routes in
-#                Gazebo, headless, and compare them (about 15 min; docs/controllers.md)
-#   timing       are messages on time? Gazebo parked, then driving (about 10 min; docs/mac.md)
+#   controllers  drive MPPI with lag (and the trials) over the same routes in
+#                Ravensim, headless, and compare them (about 15 min; docs/controllers.md)
+#   timing       are messages on time? Ravensim parked, then driving (about 10 min; docs/mac.md)
 #   stream       the camera stream end to end, without the car (pixi run get mediamtx first;
 #                docs/camera-pipeline.md)
 #   atob         score A-to-B runs from bags or CSVs (docs/a-to-b.md)
 #   lane         a long lane drive, scored by the truth: lateral error, lane lost, speed
-#                (Gazebo or ours; the road world or the campus; docs/perception.md)
+#                (Ravensim; the road world or the campus; docs/perception.md)
 #   bandwidth    every topic of a running system: Hz, size, MB/s (docs/bandwidth.md)
 #   diffusion    the diffusion planner's time a plan against its budget, on this computer
 #                (the learn environment; on the Orin, JetPack's Python: docs/car-day.md)
@@ -26,8 +26,8 @@ cd "$(dirname "$0")/.."
 
 usage() {
   echo "usage: pixi run measure <controllers|timing|stream|atob|lane|bandwidth|diffusion> [args]" >&2
-  echo "  controllers  Pure Pursuit vs MPPI (and the trials) in Gazebo (about 15 min)" >&2
-  echo "  timing       are messages on time? Gazebo parked, then driving (about 10 min)" >&2
+  echo "  controllers  MPPI with lag (and the trials) in Ravensim (about 15 min)" >&2
+  echo "  timing       are messages on time? Ravensim parked, then driving (about 10 min)" >&2
   echo "  stream       the camera stream end to end, without the car" >&2
   echo "  atob         score A-to-B runs: pixi run measure atob <bag or CSV>..." >&2
   echo "  lane         a long lane drive, scored: lateral error, lane lost, speed (2-5 min)" >&2

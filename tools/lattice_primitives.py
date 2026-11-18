@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Make the car's own motion primitives for Nav2's State Lattice planner (planner:=lattice).
+Make the car's own motion primitives for the State Lattice planner (ours, planner:=own),
+by Nav2's generator.
 
 Run it with pixi run python3 tools/lattice_primitives.py [option] (no pixi task):
 

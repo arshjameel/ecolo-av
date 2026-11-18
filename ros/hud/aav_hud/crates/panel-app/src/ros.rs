@@ -23,7 +23,7 @@
 //!   (the GRAPHS page's ego, mux, link_frame and uplink_health among them).
 //!
 //! The command's stamp is left at 0: twist_mux and ego go by arrival, and ego warns only
-//! about a stamp that is set and far from its clock (sim time in Gazebo).
+//! about a stamp that is set and far from its clock (sim time in Ravensim).
 
 use std::{
     sync::{

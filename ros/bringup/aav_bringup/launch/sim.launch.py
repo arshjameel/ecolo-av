@@ -965,7 +965,7 @@ def generate_launch_description():
                                           'strong; best: nav2)'),
         DeclareLaunchArgument('lattice_headings',
                               default_value=str(vehicle.LATTICE_HEADINGS[0]),
-                              description='with planner:=lattice: 16 headings (the default) '
+                              description='with planner:=own: 16 headings (the default) '
                                           'or 32 (a trial file)'),
         DeclareLaunchArgument('lidar_memory', default_value='0.0',
                               description='s the local lidar layer keeps a mark after the '
@@ -1058,7 +1058,7 @@ def generate_launch_description():
                               description='the path follower: ' +
                                           ', '.join(vehicle.TRACKERS) +
                                           " (aav_track's with reversing:=false; "
-                                          'docs/trials.md); none: controller_server. Empty: '
+                                          'docs/trials.md). Empty: '
                                           "the stack's choice"),
         DeclareLaunchArgument('amcl', default_value='false',
                               description='stock AMCL beside the EKF, scored only '

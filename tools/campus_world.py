@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Carleton's campus for Gazebo, Nav2 and NDT, from OpenStreetMap.
+Carleton's campus for Ravensim, our costmap and NDT, from OpenStreetMap.
 
     pixi run campus              download the map if it's missing, then build maps/campus/
     pixi run campus --osm FILE   build from another .osm (tools/get_carla_osm.sh makes one)

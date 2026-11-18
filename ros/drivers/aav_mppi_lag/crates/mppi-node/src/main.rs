@@ -1,6 +1,6 @@
-//! mppi_lag: MPPI that knows the actuators' lag, in controller_server's FollowPath place.
+//! mppi_lag: MPPI that knows the actuators' lag, in Nav2's controller_server's FollowPath place.
 //!
-//! Action      follow_path                 nav2_msgs/action/FollowPath: bt_navigator's, a new
+//! Action      follow_path                 nav2_msgs/action/FollowPath: the navigator's, a new
 //!                                         goal each time the planner replans (the newest
 //!                                         replaces the last without a stop)
 //! Subscribes  localization/odom/local     nav_msgs/Odometry (odom_topic): the pose in odom
@@ -48,8 +48,7 @@
 //!             model's PI; lqi: the shared car model), as sim.launch.py speed_loop:=
 //!             (TODO 163); an unknown name is refused.
 //!
-//! navigation.launch.py tracker:=mppi_lag starts it and renames controller_server's own
-//! action follow_path_unused. With reversing:=true it reverses as Nav2's MPPI does (vx_min
+//! navigation.launch.py tracker:=mppi_lag (the default) starts it. With reversing:=true it reverses as Nav2's MPPI does (vx_min
 //! below 0, enforce_path_inversion: it stops at each cusp, then follows the next stretch). Everything after cmd_vel_nav is unchanged. The maths is the
 //! `mppi-lag` crate; this file only moves messages.
 

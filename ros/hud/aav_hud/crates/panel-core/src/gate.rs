@@ -85,7 +85,7 @@ pub struct Situation<'a> {
 /// The caps, from the settings.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Caps {
-    /// m/s in Gazebo and on the bench.
+    /// m/s in Ravensim and on the bench.
     pub sim: f64,
     /// m/s on stands.
     pub stands: f64,

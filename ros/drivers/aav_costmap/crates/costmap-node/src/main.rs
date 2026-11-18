@@ -1,4 +1,4 @@
-//! costmap: our own local and global costmaps, beside Nav2's (a trial).
+//! costmap: our own local and global costmaps (Nav2's layers ported; the only ones since 17 Nov).
 //!
 //! Subscribes  /map                        nav_msgs/OccupancyGrid, transient local: the
 //!                                         static layer (not when every costmap is made

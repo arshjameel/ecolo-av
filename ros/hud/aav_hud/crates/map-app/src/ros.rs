@@ -10,7 +10,7 @@
 //!   window opened later still gets the map;
 //! - the car's position: best effort (SensorDataQoS), which takes reliable publishers too;
 //! - the plan and the goal: reliable, as Nav2 and RViz send them; the goal we publish:
-//!   reliable, volatile, depth 10, as RViz's "2D Goal Pose" (bt_navigator listens);
+//!   reliable, volatile, depth 10, as RViz's "2D Goal Pose" (the navigator listens);
 //! - `/system/source`: reliable, transient local, depth 1, as the HUD;
 //! - the sensor watchdog's verdict: reliable, depth 1, as the HUD;
 //! - street_router's street route: reliable, transient local, depth 1 (latched).

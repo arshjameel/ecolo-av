@@ -376,7 +376,7 @@ class Recorder(Node):
     """Where the car really is, what navigation planned and asked for, the safety layers."""
 
     def __init__(self):
-        # On Gazebo's clock, like every node in the sim.
+        # On the simulator's clock, like every node in the sim.
         super().__init__('controller_compare', parameter_overrides=[
             Parameter('use_sim_time', value=True)])
         self.recording = False
@@ -436,7 +436,7 @@ class Recorder(Node):
                                 vehicle.navigator_action('follow_gps_waypoints'))
         self.from_ll = self.create_client(FromLL, '/fromLL')
         self.planner = ActionClient(self, ComputePathToPose, '/compute_path_to_pose')
-        # planner:=own: ours (aav_planner), beside planner_server's lattice.
+        # planner:=own: ours (aav_planner).
         self.own_planner = ActionClient(self, ComputePathToPose, vehicle.OWN_PLANNER_ACTION)
         self.clear = self.create_client(Trigger, '/safety/sensor_watchdog/clear')
 
@@ -731,7 +731,7 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='lib/aav_mppi_lag/
         notes.append('the navigator refused the goal')
     else:
         result = handle.get_result_async()
-        # Gazebo's time for the limit, and twice that in wall time in case it stalls.
+        # The simulator's time for the limit, and twice that in wall time in case it stalls.
         end_wall = time.monotonic() + 2.0 * timeout + 30.0
         while not result.done() and rec.now() < start + timeout and (
                 time.monotonic() < end_wall):
@@ -1072,7 +1072,7 @@ def session(tour, follower, args, out_dir, body, used, run=1):
     if args.speed:
         command.append(f'sim_speed:={args.speed:g}')
     if args.lag_scale != 1.0:
-        # Only Gazebo's adapter scales the car's lags (sim.launch.py refuses it otherwise).
+        # Only the sim's adapter scales the car's lags (sim.launch.py refuses it otherwise).
         command += [f'lag_scale:={args.lag_scale:g}']
     domain = private(used)
     print(f'\n== {tour}, {label}' + (f' (run {run} of {args.runs})' if args.runs > 1
@@ -1210,7 +1210,7 @@ def report(results, args, started):
     runs = ('One run each' if args.runs == 1 else
             f'{args.runs} runs each: every run, then the mean and its spread (SD)')
     lines = [f'# Controller comparison, {started:%Y-%m-%d %H:%M}', '',
-             f"Gazebo ({', '.join(args.tours)}), headless, on this computer; "
+             f"Ravensim ({', '.join(args.tours)}), headless, on this computer; "
              'the follower and ego at up to '
              f'{args.speed or 1.0:g} m/s, ' +
              ('reversing allowed' if args.reversing else 'forward only') +
@@ -1410,7 +1410,7 @@ def main():
                         help="m/s, up to 5: sim_speed:= (the car's own top speed: 1.0)")
     parser.add_argument('--lag-scale', type=float, default=1.0,
                         help="the car's throttle, brake and steering lags times this "
-                             "(sim's lag_scale:=, in Gazebo): the followers still read "
+                             "(sim's lag_scale:=): the followers still read "
                              "vehicle.yaml's")
     parser.add_argument('--reversing', action='store_true',
                         help="let the car reverse (reversing:=true; the car's own default is "

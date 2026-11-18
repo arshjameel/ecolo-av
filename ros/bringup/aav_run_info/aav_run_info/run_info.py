@@ -17,7 +17,7 @@ Parameters  profile, nav, planner, controller, tracker, lidar, radar, voxels, am
             (sim.launch.py, car.launch.py fill them); period (2.0 s).
 
 It says what the launch asked for, not what is alive: the cockpit's tracker panel may swap
-the tracker later in Gazebo (/drivers/nav/track/status says which then). The words are in
+the tracker later in the simulator (/drivers/nav/track/status says which then). The words are in
 algorithms.py (no ROS).
 """
 

@@ -2,7 +2,7 @@
 """
 Directions on the campus, without ROS: the route from one place to another (docs/routes.md).
 
-    pixi run campus-route "Mackenzie Building"               from P4, where Gazebo starts
+    pixi run campus-route "Mackenzie Building"               from P4, where the sim starts
     pixi run campus-route --from "Dunton Tower" Fieldhouse
     pixi run campus-route --from 45.3853,-75.6954 P18 --waypoints
     pixi run campus-route --list                             every place it knows

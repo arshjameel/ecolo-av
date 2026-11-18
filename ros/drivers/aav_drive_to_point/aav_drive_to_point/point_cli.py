@@ -10,7 +10,7 @@ drive_to_point: drive the car to a point and stop there (point_driver's /drive_t
 Ctrl-C stops the car (it cancels the goal: zero commands). On the real car (/system/source
 REAL, or nobody announcing) it shows what it will do and a checklist, and drives only after
 you type "drive". --sim keeps ROS on this computer (tools/drive_to_point.sh) and uses
-Gazebo's clock.
+the simulator's clock.
 
 Subscribes  system/source             aav_interfaces/DataSource, latched
             localization/odom/global  nav_msgs/Odometry: for --ahead/--left, and the distance
@@ -50,7 +50,7 @@ def parse(argv):
     ap.add_argument('--ahead', type=float, help="m ahead of the car's nose")
     ap.add_argument('--left', type=float, default=0.0, help='m to its left, with --ahead')
     ap.add_argument('--speed', type=float, default=0.0, help='cruise speed, m/s (0: default)')
-    ap.add_argument('--sim', action='store_true', help="Gazebo: this computer, Gazebo's clock")
+    ap.add_argument('--sim', action='store_true', help="Ravensim: this computer, the simulator's clock")
     a = ap.parse_args(argv)
     kinds = [a.lat is not None or a.lon is not None, a.x is not None or a.y is not None,
              a.ahead is not None]

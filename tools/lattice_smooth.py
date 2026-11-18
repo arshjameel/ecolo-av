@@ -7,7 +7,7 @@ Run it with pixi run python3 tools/lattice_smooth.py [option] (no pixi task):
     (no option)       writes both files below, and their pictures
     --check           are the committed files still right for the car?
 
-A trial beside Nav2's moves (tools/lattice_primitives.py), picked with lattice_moves:=:
+A trial beside the moves Nav2's generator makes (tools/lattice_primitives.py), picked with lattice_moves:=:
 
     smooth            config/lattice_ackermann_smooth.json, for 1 m/s (ego's max_speed)
     smooth_fast       config/lattice_ackermann_smooth_fast.json, for 2.5 m/s (the campus)

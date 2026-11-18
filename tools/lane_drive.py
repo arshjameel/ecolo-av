@@ -5,7 +5,7 @@ A long lane drive in the simulator, scored by its truth.
 How far the car strays from its lane's centre, how often the camera loses the lane, how
 fast it goes.
 
-    pixi run measure lane                                   # the road world, on Gazebo
+    pixi run measure lane                                   # the road world, on Ravensim
     pixi run measure lane --simulator own                   # the same on our simulator
     pixi run measure lane --world campus --road "Library Road" [--from 20] [--seconds 120]
 

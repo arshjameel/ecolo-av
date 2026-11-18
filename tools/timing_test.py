@@ -2,7 +2,7 @@
 """
 Timing test: whether every message arrives on time, for minutes, parked and driving.
 
-Starts Gazebo's test lot headless with the car's whole graph, then measures every topic's
+Starts Ravensim's test lot headless with the car's whole graph, then measures every topic's
 arrivals, first with the car parked, then while Nav2 drives controller_compare.py's lot
 tour round and round. Made to compare the messaging (TODO 11 and 32, docs/mac.md):
 
@@ -65,7 +65,7 @@ import topic_load  # noqa: E402
 
 # (topic, what it is): the ones the stack can't drive without, and the big ones.
 KEY = [
-    ('/clock', "Gazebo's clock"),
+    ('/clock', "the simulator's clock"),
     ('/sensors/imu/data', 'IMU'),
     ('/vehicle/odom', 'wheel odometry'),
     ('/sensors/gps/fix', 'GPS'),
@@ -85,7 +85,7 @@ KEY = [
 WHILE_DRIVING = {'/drivers/nav/cmd_vel'}
 PROBE = '(probe)'
 STALL_TOPICS = 3        # key topics quiet together: a stall
-UP_TIME = 150.0         # s for Gazebo and the EKF, then again for Nav2
+UP_TIME = 150.0         # s for the simulator and the EKF, then again for navigation
 READY_TIME = 30.0       # s for the sensor watchdog to let Nav2 drive
 CPU_EVERY = 10.0        # s between samples of the computer's load
 GIVE_UP = 4             # goals failed in a row: the car is stuck, stop driving

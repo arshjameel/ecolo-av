@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The simulator's cameras (ros/sim/aav_sim_cameras): Bevy draws the world from each camera
-# on the car, offscreen, and the pictures go out on Gazebo's camera topics.
+# on the car, offscreen, and the pictures go out on the car's camera topics (Gazebo's, until 16 Nov).
 #
 #   pixi run sim-cameras                      # the test world, 10 s: the timing check, no ROS
 #   pixi run sim-cameras --save /tmp/pics     # and keep each camera's first picture

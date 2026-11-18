@@ -1,6 +1,6 @@
 [package]
 name = "stop-zone-node"
-description = "stop_zone: the stop zone as a ROS 2 node, in shadow beside Nav2's collision_monitor (its own output topic) until it scores the same"
+description = "stop_zone: the stop zone as a ROS 2 node, the safety lock since 17 Nov (it ran in shadow beside Nav2's collision_monitor first)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

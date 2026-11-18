@@ -2,7 +2,7 @@
 //! (/safety/output_mux/state, aav_io_mux). The bridge refuses to arm unless the gate is
 //! OPEN for its own target, and was heard recently (Ben, 24 Oct).
 //!
-//! Its times are a steady clock's ([`Instant`]), never the node's: in Gazebo the node's
+//! Its times are a steady clock's ([`Instant`]), never the node's: in the simulator the node's
 //! clock is simulated, and a paused simulation must not keep an old OPEN fresh. The output
 //! mux keeps its own time on a steady clock too.
 

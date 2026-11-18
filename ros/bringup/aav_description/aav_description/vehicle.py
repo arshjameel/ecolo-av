@@ -158,13 +158,13 @@ SEES_BEHIND = ('lidar', 'rear_camera')
 
 def blind_behind(reversing, **sensors):
     """
-    Why Nav2 must not reverse with these sensors, or None if it may.
+    Why navigation must not reverse with these sensors, or None if it may.
 
     sensors: name=True for each one running (lidar=..., radar=..., rear_camera=...).
     """
     if not reversing or any(sensors.get(name) for name in SEES_BEHIND):
         return None
-    return ('nothing sees behind the car (the radar faces forward): Nav2 stays forward '
+    return ('nothing sees behind the car (the radar faces forward): navigation stays forward '
             "only. Start the lidar (or the rear camera's obstacles) to let it reverse")
 
 

@@ -50,7 +50,7 @@ Nav2's own (checks.py, with nav2.yaml's numbers):
 | TF_ERROR | the path's frame can't be moved into odom (transform_tolerance) |
 | INVALID_PATH | an empty path, or one that isn't numbers |
 | UNKNOWN | no odometry for odom_timeout s |
-| canceled | bt_navigator cancelled it (zero command sent) |
+| canceled | the navigator cancelled it (zero command sent) |
 """
 
 import math

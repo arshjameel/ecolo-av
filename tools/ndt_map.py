@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-NDT's map of Gazebo's test lot: the lidar's clouds, laid down where the car truly was.
+NDT's map of the simulator's test lot: the lidar's clouds, laid down where the car truly was.
 
     pixi run ndt-map drive              start the test lot headless, drive the mapping route,
                                         record the lidar and the truth, build the map (~6 min)
@@ -362,7 +362,7 @@ def drive(bag):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     sub = parser.add_subparsers(dest='command', required=True)
-    d = sub.add_parser('drive', help='drive the mapping route in Gazebo, then build')
+    d = sub.add_parser('drive', help='drive the mapping route in Ravensim, then build')
     d.add_argument('--keep-bag', action='store_true', help='keep the recorded bag')
     b = sub.add_parser('build', help='build the map from a bag')
     b.add_argument('bag', type=Path)

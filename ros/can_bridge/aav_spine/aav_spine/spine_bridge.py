@@ -21,7 +21,7 @@ Publishes   can/tx            can_msgs/Frame  (ros2_socketcan sender)
             vehicle/throttle, vehicle/brake  aav_interfaces/ActuatorState  (measured, from
                               VEHICLE_STATUS; command NaN: the spine's speed loop decides)
             system/source     aav_interfaces/DataSource, latched: REAL on the car, BENCH on
-                              the bench, SIM in Gazebo's spine profile (the `source`
+                              the bench, SIM in the simulator's spine profile (the `source`
                               parameter)
 Service     spine/arm         std_srvs/SetBool: refused during an e-stop, and while the
                               safety gate is shut: the output mux not OPEN for this
@@ -177,7 +177,7 @@ class SpineBridge(Node):
             self.send_estop()
 
     def on_gate(self, msg):
-        # A steady clock: in Gazebo the node's is simulated, and may pause.
+        # A steady clock: in the simulator the node's is simulated, and may pause.
         self.gate.heard(msg.data, time.monotonic())
 
     def on_arm(self, request, response):

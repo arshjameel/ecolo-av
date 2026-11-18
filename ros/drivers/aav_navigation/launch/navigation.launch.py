@@ -206,7 +206,7 @@ def lattice_for(share, v, map_yaml, headings=vehicle.LATTICE_HEADINGS[0],
     if meta.get('num_of_headings') != int(headings):
         wrong.append(f"{meta.get('num_of_headings')} headings, not {headings}")
     if wrong:
-        raise ValueError(f'planner:=lattice: {path}: ' + '; '.join(wrong) +
+        raise ValueError(f'the lattice: {path}: ' + '; '.join(wrong) +
                          '. Run pixi run python3 tools/lattice_primitives.py, '
                          'or pick another planner')
     return path
@@ -703,11 +703,11 @@ def generate_launch_description():
                                           'empty: none'),
         DeclareLaunchArgument('lattice_headings',
                               default_value=str(vehicle.LATTICE_HEADINGS[0]),
-                              description='with planner:=lattice: 16 headings (the default '
+                              description='with planner:=own: 16 headings (the default '
                                           'file) or 32 (a trial: '
                                           'config/lattice_ackermann_32.json)'),
         DeclareLaunchArgument('lattice_moves', default_value=vehicle.LATTICE_MOVES[0],
-                              description="with planner:=lattice (or own): nav2, Nav2's "
+                              description="with planner:=own: nav2, Nav2's "
                                           'moves (the default); smooth or smooth_fast, a '
                                           'trial: curvature no faster than the steering '
                                           'turns at 1 or 2.5 m/s, the smoother off '

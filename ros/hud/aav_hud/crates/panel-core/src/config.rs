@@ -288,7 +288,7 @@ pub struct PanelConfig {
     pub steer_step: f64,
     /// m/s while CENTRE straightens the wheels.
     pub creep: f64,
-    /// m/s: the most the buttons ask for in Gazebo or on the bench.
+    /// m/s: the most the buttons ask for in Ravensim or on the bench.
     pub sim_cap: f64,
     /// m/s: on stands.
     pub stands_cap: f64,

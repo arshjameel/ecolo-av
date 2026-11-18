@@ -190,7 +190,7 @@ class Check(Node):
         self.detections = []        # (size in bytes, labels)
         self.previews = []          # (time, size in bytes)
         self.status = None
-        self.x = None               # the car's x in Gazebo's world (its truth), m
+        self.x = None               # the car's x in the simulator's world (its truth), m
         self.sign_seen_at = []      # the car's x at each picture where the sign was found
         self.speed = 0.0
         if not pattern:

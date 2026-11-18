@@ -23,7 +23,7 @@ What you can set:
   picture     an image or video file, published as the camera (image_publisher), for tests
   node_name   the node's name: object_detector, or object_detector_<machine> on the car. One
               detector per computer, each under its own name, all on /perception/detections
-  use_sim_time  true in Gazebo (sim.launch.py): the detector is a process, not a launch_ros
+  use_sim_time  true in Ravensim (sim.launch.py): the detector is a process, not a launch_ros
               Node, so launch_ros's SetParameter doesn't reach it
   detector_impl  python (the default: aav_detector, PyTorch) or rust (aav_detector_rs, a
               challenger: RF-DETR's ONNX through ONNX Runtime, models/rf-detr-nano.onnx;

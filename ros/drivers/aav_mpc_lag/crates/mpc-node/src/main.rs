@@ -2,7 +2,7 @@
 //! challenger beside aav_track's Python mpc_lag (TODO 132, 199): the same maths, the same
 //! numbers, the same checks.
 //!
-//! Action      follow_path                 nav2_msgs/action/FollowPath: bt_navigator's, a new
+//! Action      follow_path                 nav2_msgs/action/FollowPath: the navigator's, a new
 //!                                         goal each time the planner replans (the newest
 //!                                         replaces the last without a stop)
 //! Subscribes  localization/odom/local     nav_msgs/Odometry (odom_topic): the pose in odom
@@ -29,8 +29,7 @@
 //! Parameters  read once at start (config/mpc_lag_rs.yaml, and navigation.launch.py's
 //!             vehicle.mpc_lag_rs_params: nav2.yaml, vehicle.yaml, ego.yaml): see the README.
 //!
-//! navigation.launch.py tracker:=mpc_lag_rs starts it and renames controller_server's own
-//! action follow_path_unused. Forward only. Everything after cmd_vel_nav is unchanged. The
+//! navigation.launch.py tracker:=mpc_lag_rs starts it in mppi_lag's place. Forward only. Everything after cmd_vel_nav is unchanged. The
 //! maths is the `mpc-lag` crate; the map correction and Nav2's goal and progress checks are
 //! `mppi-lag`'s (aav_mppi_lag); this file only moves messages.
 
