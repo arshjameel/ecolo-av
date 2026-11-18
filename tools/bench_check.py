@@ -109,7 +109,7 @@ LOOKAHEAD = 3.0         # m: where lane_finder measures the offset (its config, 
 GEOFENCE_RADIUS = 12.0  # m: --geofence's fence round the start, short of the bench's sign
 JOY_THROTTLE = 0.5      # the pad's throttle axis: 0.5 m/s (teleop_twist_joy scale 1.0)
 with open(os.path.join(ROOT, 'ros', 'drivers', 'aav_teleop', 'config', 'joy_alive.yaml')) as f:
-    JOY_ALIVE = yaml.safe_load(f)['/**/joy_alive']['ros__parameters']
+    JOY_ALIVE = yaml.safe_load(f)['/drivers/joy/joy_alive']['ros__parameters']
 with open(os.path.join(ROOT, 'ros', 'sim', 'aav_bench', 'config', 'bench.yaml')) as f:
     ROAD = yaml.safe_load(f)['mock_camera']['ros__parameters']
 ROAD_Y = ROAD['road_y']            # m: the centre

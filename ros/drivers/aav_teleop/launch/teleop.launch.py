@@ -21,7 +21,9 @@ plugged into (any machine on the same ROS_DOMAIN_ID).
 
 All four nodes run in the namespace /drivers/joy, so their relative topics land there:
 joy_node's joy is /drivers/joy/joy, teleop_twist_joy's cmd_vel is /drivers/joy/cmd_vel.
-Their config files name the nodes as /**/<node>, so they match in any namespace.
+The stock nodes' config files name them /**/<node>, so they match in any namespace.
+joy_alive's names it in full (/drivers/joy/joy_alive): the Rust joy_alive (rclrs) never
+matches /**/, so a value there would be silently ignored (found 18 Nov).
 """
 
 from aav_description import vehicle

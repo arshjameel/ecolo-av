@@ -2,7 +2,7 @@
 # joystick is really there and moving (TODO 74a; docs/car-day.md, A9b). The rules:
 # aav_safety joy_alive.py. tools/tests/test_joy_alive_config.py checks that the deadman and
 # the motion axis match teleop_twist_joy.yaml.
-/**/joy_alive:                  # any namespace: teleop.launch.py puts it in /drivers/joy
+/drivers/joy/joy_alive:         # in full: rclrs (the Rust joy_alive) never matches /**/ (18 Nov)
   ros__parameters:
     enable_button: 0            # teleop_twist_joy's enable_button (the deadman)
     motion_axes: [1]            # teleop_twist_joy's axis_linear.x: the axis that moves the car
