@@ -570,6 +570,42 @@ def check_lane_finder_impl(impl):
     return name
 
 
+# Which camera_stream pulls each camera Pi stream (camera_stream.launch.py, the car's
+# camera_stream part; camera_stream_impl:=): rust (aav_camera_stream_rs, the default since
+# Ben, 18 Nov: "lets port them to rust"; the same node name, topics, parameters and
+# diagnostics) or python (aav_camera_stream, the fallback). The Rust one runs no model: with
+# a detector (rfdetr, yolo) or decoder:=opencv, the Python one runs (camera_stream_runs).
+CAMERA_STREAM_IMPLS = {'python': 'aav_camera_stream', 'rust': 'aav_camera_stream_rs'}
+DEFAULT_CAMERA_STREAM_IMPL = 'rust'
+
+
+def check_camera_stream_impl(impl):
+    """Return camera_stream's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in CAMERA_STREAM_IMPLS:
+        raise ValueError(f'camera_stream_impl:={impl}: pick one of '
+                         f'{", ".join(CAMERA_STREAM_IMPLS)}')
+    return name
+
+
+def camera_stream_runs(impl, detector, decoder):
+    """
+    Return (the language that runs, why it isn't the one asked for, or '').
+
+    The Rust camera_stream has no model and no in-process OpenCV decoder: with a detector
+    or decoder:=opencv, the Python one runs instead.
+    """
+    name = check_camera_stream_impl(impl)
+    if name == 'python':
+        return name, ''
+    if str(detector).strip().lower() != 'none':
+        return 'python', (f'detector:={detector} runs inside the Python camera_stream '
+                          '(the Rust one has no model)')
+    if str(decoder).strip() == 'opencv':
+        return 'python', 'decoder:=opencv decodes inside the Python camera_stream'
+    return name, ''
+
+
 # Which joy_alive runs (teleop.launch.py, car.launch.py; joy_alive_impl:=): rust
 # (aav_joy_alive_rs, the default since Ben, 17 Nov: "I don't think we want to do this again
 # later") or python (aav_safety's: the same node name, topics, parameters and answers).

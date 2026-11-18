@@ -1018,6 +1018,22 @@ def test_lane_finder_impl_is_rust_or_python():
         vehicle.check_lane_finder_impl('c')
 
 
+def test_camera_stream_impl_is_rust_unless_a_model_runs():
+    # Ben, 18 Nov: camera_stream in Rust, the default; camera_stream_impl:=python falls back.
+    assert vehicle.DEFAULT_CAMERA_STREAM_IMPL == 'rust'
+    assert vehicle.CAMERA_STREAM_IMPLS == {'python': 'aav_camera_stream',
+                                           'rust': 'aav_camera_stream_rs'}
+    assert vehicle.check_camera_stream_impl(' Rust ') == 'rust'
+    with pytest.raises(ValueError, match='camera_stream_impl:=c'):
+        vehicle.check_camera_stream_impl('c')
+    assert vehicle.camera_stream_runs('rust', 'none', 'gst-nvidia') == ('rust', '')
+    assert vehicle.camera_stream_runs('python', 'none', 'ffmpeg') == ('python', '')
+    runs, why = vehicle.camera_stream_runs('rust', 'rfdetr', 'gst-nvidia')
+    assert runs == 'python' and 'detector:=rfdetr' in why
+    runs, why = vehicle.camera_stream_runs('rust', 'None', 'opencv')
+    assert runs == 'python' and 'opencv' in why
+
+
 def test_localization_health_impl_is_python_or_rust():
     assert vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL == 'rust'
     assert vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL == 'rust'

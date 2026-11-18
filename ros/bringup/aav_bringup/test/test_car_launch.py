@@ -556,6 +556,12 @@ def test_detector_none_streams_without_pytorch(monkeypatch, tmp_path):
     sent = included(started(CAR, machine='orin'))
     assert sent['camera_stream.launch.py']['detector'] == 'none'
     assert 'front_left_stream' in sent['watchdog.launch.py']['inputs']
+    # The Rust camera_stream by default (Ben, 18 Nov); camera_stream_impl:=python falls back.
+    assert sent['camera_stream.launch.py']['camera_stream_impl'] == 'rust'
+    back = included(started(CAR, machine='orin', camera_stream_impl='python'))
+    assert back['camera_stream.launch.py']['camera_stream_impl'] == 'python'
+    with pytest.raises(ValueError, match='camera_stream_impl'):
+        started(CAR, machine='orin', camera_stream_impl='c')
 
 
 def test_the_stream_settings_are_checked(orin_kit, monkeypatch):

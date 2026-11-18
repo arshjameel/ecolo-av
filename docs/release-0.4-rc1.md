@@ -74,6 +74,7 @@ The fall-backs, one per node (the others stay Rust):
 | lane_finder (lane keeping, the lane pose) | `lane_finder_impl:=python` |
 | joy_alive (the joystick's check, between joy_node and teleop) | `joy_alive_impl:=python` |
 | stop_sign_watcher (twist_mux's stop-sign lock) | `stop_sign_impl:=python` |
+| camera_stream (each camera Pi stream; Rust only with `detector: none`: with RF-DETR the Python runs anyway) | `camera_stream_impl:=python` |
 
 ## Untested on the car (everything since 13 Nov)
 

@@ -13,6 +13,10 @@ camera Pi: MediaMTX ─RTSP H.264─> decoder ─> undistort ─> detector ─> 
                                  (child)     (OpenCV)    (aav_detector)
 ```
 
+- **Its Rust twin runs by default** with `detector:=none` (since 18 Nov):
+  [aav_camera_stream_rs](../aav_camera_stream_rs/README.md), the same node with no model.
+  With a detector (the car's RF-DETR) or `decoder:=opencv`, this Python node runs;
+  `camera_stream_impl:=python` picks it always.
 - Only the newest picture is worked on. A slow detector drops frames instead of
   falling behind.
 - `pi/` holds the camera Pi's MediaMTX settings and how to install them:
@@ -32,8 +36,10 @@ Arguments: `cameras` (front_left,front_right), `host`, `port` (8554), `decoder`,
 `pipeline`, `program`, `hwaccel`, `transport` (tcp), `width`, `height`, `fps` (1280, 720,
 15), `delay` (s), `detector`, `model`, `device`, `confidence`, `labels`,
 `preview_period` (s), `preview_width` (320), `publish_image` (false),
-`publish_camera_info` (true), `source`, `time_code`, `use_sim_time` (false). Each camera runs as `camera_stream_<name>`, with `python3 -m`, so
-`pixi run -e ml` gives it PyTorch.
+`publish_camera_info` (true), `source`, `time_code`, `use_sim_time` (false),
+`camera_stream_impl` (rust; python). Each camera runs as `camera_stream_<name>`: the
+Rust binary, or with a detector `python3 -m`, so `pixi run -e ml` gives it PyTorch.
+Either reads the same parameters file, under its own name.
 
 ### Node: `camera_stream` (`aav_camera_stream/camera_stream.py`)
 
@@ -91,6 +97,9 @@ gst-soft, gst-mac, opencv), `transport` (tcp or udp), `calibration`, `alpha`, `d
 ```sh
 pixi run build && colcon test --packages-select aav_camera_stream && colcon test-result --verbose
 ```
+
+`test/test_launch_reaches_node.py` starts the launch file both ways on a GStreamer test
+pattern: the values given reach the node.
 
 `pixi run test` runs everything. End to end without the car: `pixi run get mediamtx`
 once, then `pixi run measure stream`.
