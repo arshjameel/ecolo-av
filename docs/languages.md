@@ -114,7 +114,7 @@ What the audit found (18 Nov, every launch profile run without starting anything
 | `ego` (rust), `point_driver` | - | ego.yaml as a dict / one file per node | | no | already safe |
 | `ndt`, `lane_finder` | - | | | no: fixed before (5 and 18 Nov) | `namespace='/'` |
 | spine_bridge, lidar_scan, voxels, things, mppi_lag, mpc_lag_rs, velocity_smoother, localization_health, sensor_watchdog, imu_node, behaviour, rc_driver, spine_sim | none today | | | no | `namespace='/'`, so a future key can't be lost |
-| `joy_alive` (being ported) | its whole YAML | `/**/joy_alive:` | | would be: rclrs skips wildcards | name it in full when ported |
+| `joy_alive` | its whole YAML | `/**/joy_alive:` | | would have been: rclrs skips wildcards (its built-in values equal the file's) | fixed 18 Nov: `/drivers/joy/joy_alive:` |
 
 ## Rust on the Pi and the ESP32
 

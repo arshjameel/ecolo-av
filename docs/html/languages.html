@@ -418,12 +418,12 @@ reaches the Python node and <strong>not</strong> the Rust one: name a Rust node 
 <td><code>namespace='/'</code>, so a future key can't be lost</td>
 </tr>
 <tr>
-<td><code>joy_alive</code> (being ported)</td>
+<td><code>joy_alive</code></td>
 <td>its whole YAML</td>
 <td><code>/**/joy_alive:</code></td>
 <td></td>
-<td>would be: rclrs skips wildcards</td>
-<td>name it in full when ported</td>
+<td>would have been: rclrs skips wildcards (its built-in values equal the file's)</td>
+<td>fixed 18 Nov: <code>/drivers/joy/joy_alive:</code></td>
 </tr>
 </tbody>
 </table></div>

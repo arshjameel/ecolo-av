@@ -18,7 +18,11 @@ import yaml  # noqa: E402, I100
 
 
 def params(name, node):
-    return yaml.safe_load((CONFIG / name).read_text())[f'/**/{node}']['ros__parameters']
+    doc = yaml.safe_load((CONFIG / name).read_text())
+    # The stock nodes' files say /**/<node>; joy_alive's names it in full, as the Rust
+    # joy_alive (rclrs) never matches /**/ (18 Nov).
+    key = next(k for k in (f'/**/{node}', f'/drivers/joy/{node}') if k in doc)
+    return doc[key]['ros__parameters']
 
 
 def test_the_same_deadman_and_throttle():
