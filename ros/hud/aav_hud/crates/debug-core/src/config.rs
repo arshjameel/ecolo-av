@@ -47,7 +47,7 @@ pub enum Topic {
     Tf,
     /// `/tf_static`: base_link to the sensors.
     TfStatic,
-    /// Nav2's cubes, from the voxels trial.
+    /// The costmap's cubes, from the voxels trial.
     VoxelsCubes,
     /// The voxels trial's status.
     VoxelsStatus,
@@ -273,7 +273,7 @@ pub struct DebugConfig {
     pub keep_cubes_for: f64,
     /// One NDT map cube's edge, metres.
     pub ndt_map_cell: f64,
-    /// One of Nav2's cubes (the voxels trial's), metres.
+    /// One of the costmap's cubes (the voxels trial's), metres.
     pub voxels_cube_size: f64,
     /// Seconds without `/localization/health` before it shows STALE (it comes at 1 Hz).
     pub health_stale_after: f64,
@@ -514,7 +514,7 @@ impl DebugConfig {
         Duration::from_secs_f64(self.health_stale_after)
     }
 
-    /// What Nav2's cubes need.
+    /// What the costmap's cubes need.
     #[must_use]
     pub fn voxel_settings(&self) -> VoxelSettings {
         VoxelSettings {

@@ -29,10 +29,10 @@ map-frame layers (EKF global, AMCL, NDT, truth, plan, particles, NDT's map)
 | `flat` | `ground_the_flat(cubes, road, FlatRule)`: flat ground a little higher than the road (the lidar's rings on raised grass) becomes `Band::Ground`; a low cube beside the road (a kerb) or under a taller one (a wall's foot) still stands. Both screens use it |
 | `scan` | `place(...)`: a cloud start to finish, or a `ScanError` |
 | `persist` | `KeptCubes`: each scan's cubes kept by cell; `Fade` (four steps over `keep_cubes_for`); `FadedCube` |
-| `voxels` | Nav2's cubes (the voxels trial's): `place(...)` / `build(...)` move each cube centre from base_link into odom with the pose at the stamp (no second snap), `VoxelSettings`; `VoxelStatus::from_message` (road `Fitted` / `Flat`, cubes, ms) |
+| `voxels` | The costmap's cubes (the voxels trial's): `place(...)` / `build(...)` move each cube centre from base_link into odom with the pose at the stamp (no second snap), `VoxelSettings`; `VoxelStatus::from_message` (road `Fitted` / `Flat`, cubes, ms) |
 | `localization_health` | `Verdict::parse`: `/localization/health`'s `OK`, or `WARN` and each check |
 | `ndt` | `NdtStatus::from_message` (TRACKING / WAITING / LOST, score per point, ms per match); `MapFile::read` (a PCD, with ndt-core's reader) into `MapCells` (1 m, 3 points or more) and its `Footprint` from above (the points thinned to 15 cm, one `Ellipse` per column at 2 sigma, `covers`) |
-| `keys` | `Layers` (L the layout: the seeing screen or the panel, K cubes kept or this scan's, G the ground (off), V Nav2's cubes, M NDT's map, A particles, H the legend), `Layout`, `Action`, `KeyLine` for the on-screen legend |
+| `keys` | `Layers` (L the layout: the seeing screen or the panel, K cubes kept or this scan's, G the ground (off), V the costmap's cubes, M NDT's map, A particles, H the legend), `Layout`, `Action`, `KeyLine` for the on-screen legend |
 | `topdown` | the seeing screen's top-downs: `View::fit` (the whole map) and `View::around` (round the car), map metres to window points, `ellipse` |
 | `orbit` | `Orbit`: the 3D camera; `Mode` chase / follow / free |
 | `track` | `TrackStatus::from_values`: aav_track's `/drivers/nav/track/status` |

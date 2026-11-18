@@ -1,4 +1,4 @@
-//! Nav2's cubes: what the voxels trial (aav_voxels, `voxels:=true`) tells the costmap
+//! The costmap's cubes: what the voxels trial (aav_voxels, `voxels:=true`) tells the costmap
 //! and the stop zone to stop for. The screen's own cubes are its own reading of the
 //! lidar; these are Nav2's, drawn over them as red wireframes (key V).
 //!
@@ -22,7 +22,7 @@ use crate::{
 };
 use map_core::geom::Pose;
 
-/// What Nav2's cubes need from the settings.
+/// What the costmap's cubes need from the settings.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VoxelSettings {
     /// One cube's edge (aav_voxels' `size`).
@@ -31,7 +31,7 @@ pub struct VoxelSettings {
     pub max_cubes: usize,
 }
 
-/// Nav2's cubes from one cloud, in odom.
+/// The costmap's cubes from one cloud, in odom.
 ///
 /// `points` are the cube centres in the cloud's frame; `cloud_to_base` takes them to
 /// base_link; `car` is base_link's pose in odom at the cloud's stamp. Over

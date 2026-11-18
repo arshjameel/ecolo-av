@@ -37,9 +37,9 @@ pub enum Refusal {
 impl fmt::Display for Refusal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NoMap => write!(f, "No Nav2 map yet: can't send a goal"),
+            Self::NoMap => write!(f, "No map yet: can't send a goal"),
             Self::OutsideMap { from_edge } => {
-                write!(f, "Outside Nav2's map: {} away", far(*from_edge))
+                write!(f, "Outside the map: {} away", far(*from_edge))
             }
             Self::NoCar => write!(f, "No car position: can't send a goal"),
         }
@@ -366,14 +366,14 @@ mod tests {
         );
         assert_eq!(
             far.expect_err("refused").to_string(),
-            "Outside Nav2's map: 3.2 km away"
+            "Outside the map: 3.2 km away"
         );
         assert_eq!(
             Refusal::OutsideMap {
                 from_edge: Metres(42.4)
             }
             .to_string(),
-            "Outside Nav2's map: 42 m away"
+            "Outside the map: 42 m away"
         );
         assert_eq!(
             goal_for(Point::new(5.0, 5.0), None, Some(&lot())),

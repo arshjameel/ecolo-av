@@ -13,9 +13,9 @@ node (rclrs):
   the plan, the goal, the distance left, and a place search;
 - `debug_hud`, the debug screen, which opens as the **seeing screen**: the lidar's cubes
   in 3D (kept and fading), where each localizer puts the car (NDT too), AMCL's particles,
-  NDT's map, the plan, the costmap's cubes (the voxels trial's, red wireframes, key V; the screen still calls them "Nav2's cubes");
+  NDT's map, the plan, the costmap's cubes (the voxels trial's, red wireframes, key V);
   on the right, NDT's map from above with every car, NDT's match (its cells, the scan,
-  the score), Nav2's cubes' status and the localization health checks. Key L swaps
+  the score), the costmap's cubes' status and the localization health checks. Key L swaps
   the right side for every sensor from its own topic. It only listens;
 - `hw_panel`, the **hardware screen**: every sensor's number from its own node, and very
   simple buttons for the actuators (Speed +/-, steering, CENTRE, STOP, GO held, E-STOP),
@@ -108,7 +108,7 @@ Other parameters: `stale_after` (1.0 s), `plan_stale_after` (3.0 s; `plan_kept_f
 |---|---|---|
 | sub | `lidar_topic`: `/sensors/lidar/points` (reliable, keep last 1) | sensor_msgs/PointCloud2 |
 | sub | `voxels_cubes_topic`: `/perception/voxels/cubes` (reliable, keep last 1, base_link; red wireframes, key V) | sensor_msgs/PointCloud2 |
-| sub | `voxels_status_topic`: `/perception/voxels/status` (Nav2's cubes section: road fit, count, ms) | diagnostic_msgs/DiagnosticStatus |
+| sub | `voxels_status_topic`: `/perception/voxels/status` (the costmap's cubes section: road fit, count, ms) | diagnostic_msgs/DiagnosticStatus |
 | sub | `health_topic`: `/localization/health` (OK, or WARN and each check) | std_msgs/String |
 | sub | `local_odom_topic`: `/localization/odom/local`; `global_odom_topic`: `/localization/odom/global`; `truth_topic`: `/vehicle/sim/truth`; `wheel_odom_topic`: `/vehicle/odom` | nav_msgs/Odometry |
 | sub | `amcl_topic`: `/localization/amcl/pose`; `ndt_pose_topic`: `/localization/ndt/pose` (purple) | geometry_msgs/PoseWithCovarianceStamped |
@@ -213,7 +213,7 @@ it; never vehicle.yaml); the MEASURE page's SAVE, `~/.local/share/aav/measuremen
   rules. A value that never changed is NOT TESTED: a parked car never shows OK.
 - `debug_hud`'s clouds never go through the shared queue: a newest-only slot to the
   `cubes` thread, then a newest-only slot to the screen. Each is placed with the local
-  EKF's pose at its own stamp. Nav2's cubes go the same way, through their own slots
+  EKF's pose at its own stamp. the costmap's cubes go the same way, through their own slots
   and their own thread (`nav2_cubes`).
 - Kept cubes age by the clouds' stamps, never the window's clock: when the lidar stops,
   they stop fading (and the lidar row says STALE).

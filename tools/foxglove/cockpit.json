@@ -178,7 +178,7 @@
           "operator": "=",
           "rawValue": "true",
           "color": "#c62828",
-          "label": "STOP: a sensor Nav2 needs has failed"
+          "label": "STOP: a sensor the navigation needs has failed"
         }
       ]
     },

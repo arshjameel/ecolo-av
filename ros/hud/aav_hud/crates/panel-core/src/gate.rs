@@ -53,7 +53,7 @@ impl fmt::Display for Off {
                  buttons stay off",
             ),
             Self::OnTheGround => f.write_str(
-                "the real car on the ground: the buttons drive only Gazebo, the bench, \
+                "the real car on the ground: the buttons drive only Ravensim, the bench, \
                  and the car on stands (--stands) once TODO 49b is answered",
             ),
             Self::Refused(r) => write!(f, "on stands: {r}"),

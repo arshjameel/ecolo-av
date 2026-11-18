@@ -103,7 +103,7 @@ mod tests {
     fn origins(list: &[Origin]) -> Origins {
         let mut o = Origins::default();
         o.apply(Announcement {
-            announcer: "gazebo".into(),
+            announcer: "ravensim".into(),
             entries: list
                 .iter()
                 .enumerate()

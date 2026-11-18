@@ -139,7 +139,7 @@ impl Search {
             Action::Show(place) => view.look_at(self.on_map(&place)),
             Action::Send(place) => {
                 let (text, good) = match self.send(&place, state, source) {
-                    Ok(()) => (format!("Goal sent to Nav2: {}", place.title), true),
+                    Ok(()) => (format!("Goal sent to the navigator: {}", place.title), true),
                     Err(why) => (why, false),
                 };
                 self.notice = Some(Notice {
@@ -196,7 +196,7 @@ impl Search {
                         state.frame()
                     );
                     self.notice = Some(Notice {
-                        text: format!("Goal sent to Nav2: {}", place.title),
+                        text: format!("Goal sent to the navigator: {}", place.title),
                         good: true,
                         at: now,
                     });
@@ -208,7 +208,10 @@ impl Search {
         if results.is_empty() {
             Err(format!("no place found for {query:?}"))
         } else {
-            Err(format!("no result Nav2 can take: {}", refused.join("; ")))
+            Err(format!(
+                "no result the navigator can take: {}",
+                refused.join("; ")
+            ))
         }
     }
 }

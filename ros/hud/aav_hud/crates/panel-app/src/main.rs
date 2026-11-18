@@ -940,7 +940,7 @@ mod tests {
     /// --nocapture gazebo_self_test`, beside a running sim on the same domain.
     #[cfg(feature = "ros")]
     #[test]
-    #[ignore = "needs a running Gazebo on this ROS domain"]
+    #[ignore = "needs a running Ravensim on this ROS domain"]
     fn gazebo_self_test() -> Result<()> {
         let spec = std::env::var("HW_PANEL_SELF_TEST").unwrap_or_else(|_| "0.3:8".into());
         let mut test = SelfTest::parse(&spec)?;

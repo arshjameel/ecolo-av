@@ -158,7 +158,7 @@ pub enum Goal {
     Picked(Point),
     /// DRIVE HERE pressed, waiting for CONFIRM.
     Armed(Point),
-    /// Confirmed: pretend Nav2 is driving there.
+    /// Confirmed: pretend the navigator is driving there.
     Driving(Point),
 }
 
@@ -1190,7 +1190,7 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
         painter.text(
             rect.center(),
             egui::Align2::CENTER_CENTER,
-            "waiting for Nav2's map",
+            "waiting for the map",
             egui::FontId::proportional(16.0),
             egui::Color32::from_gray(170),
         );

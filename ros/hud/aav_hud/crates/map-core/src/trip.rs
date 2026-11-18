@@ -23,7 +23,7 @@ pub enum Trip {
     Driving,
     /// Within `arrive_within` of the goal.
     Arrived,
-    /// The goal still ahead, but Nav2 stopped planning: cancelled, failed, or gone.
+    /// The goal still ahead, but the navigator stopped planning: cancelled, failed, or gone.
     PlanStopped,
 }
 
@@ -84,10 +84,10 @@ impl Trip {
         match self {
             Self::NoGoal => "Send a goal from RViz or Foxglove",
             Self::NoPosition => "Nothing on the car's position topic",
-            Self::WaitingForPlan => "Nav2 hasn't planned yet",
-            Self::Driving => "Nav2 is driving to the goal",
+            Self::WaitingForPlan => "The navigator hasn't planned yet",
+            Self::Driving => "The navigator is driving to the goal",
             Self::Arrived => "At the goal",
-            Self::PlanStopped => "Nav2 stopped: cancelled or failed?",
+            Self::PlanStopped => "The navigator stopped: cancelled or failed?",
         }
     }
 

@@ -81,7 +81,7 @@ pub struct Layers {
     pub ndt_map: bool,
     /// AMCL's particles (key A).
     pub particles: bool,
-    /// Nav2's cubes, the voxels trial's, as red wireframes (key V).
+    /// The costmap's cubes, the voxels trial's, as red wireframes (key V).
     pub nav2_cubes: bool,
     /// The key legend itself (key H).
     pub keys: bool,
@@ -116,7 +116,7 @@ pub enum Action {
     NdtMap,
     /// A: AMCL's particles.
     Particles,
-    /// V: Nav2's cubes (the voxels trial).
+    /// V: the costmap's cubes (the voxels trial).
     Nav2Cubes,
     /// H: the key legend.
     Keys,
@@ -168,7 +168,7 @@ impl Action {
             Self::Ground => "ground (the lidar's rings)",
             Self::NdtMap => "NDT's map",
             Self::Particles => "AMCL's particles",
-            Self::Nav2Cubes => "Nav2's cubes (red)",
+            Self::Nav2Cubes => "the costmap's cubes (red)",
             Self::Keys => "hide these keys",
             Self::Layout => "layout",
             Self::FullScreen => "full screen",

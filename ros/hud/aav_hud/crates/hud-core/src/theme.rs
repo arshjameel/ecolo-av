@@ -16,7 +16,7 @@
 //! check every pair against WCAG's contrast ratios.
 //!
 //! The debug screen's localizers keep their colours too (local blue, global green, truth
-//! white, AMCL orange, NDT purple; Nav2's cubes red, the plan yellow). The tests check
+//! white, AMCL orange, NDT purple; the costmap's cubes red, the plan yellow). The tests check
 //! they stand out on the 3D view and stay apart from each other ([`Rgba::difference`]).
 //!
 //! `config/hud.yaml`, `map.yaml`, `debug_hud.yaml` and `hw_panel.yaml` each choose one:
@@ -321,7 +321,7 @@ pub struct SceneColours {
     pub scan_on: Rgba,
     /// A scan point off the map.
     pub scan_off: Rgba,
-    /// Nav2's cubes (the voxels trial's): red wireframes; dimmer once STALE.
+    /// The costmap's cubes (the voxels trial's): red wireframes; dimmer once STALE.
     pub nav2_cube: Rgba,
     /// A cube once STALE.
     pub nav2_cube_stale: Rgba,
@@ -690,7 +690,7 @@ const ESTOP_RED: Rgba = catppuccin::latte::RED;
 const ESTOP_RED_ALT: Rgba = ESTOP_RED.mix(Rgba::hex(0xff2050), 30);
 const ESTOP_INK: Rgba = Rgba::WHITE;
 
-/// Nav2's cubes in Mocha: half way from Mocha's pink-red to the e-stop's red, so they
+/// The costmap's cubes in Mocha: half way from Mocha's pink-red to the e-stop's red, so they
 /// read as red, not as NDT's purple or AMCL's orange.
 const MOCHA_NAV2_RED: Rgba = catppuccin::mocha::RED.mix(ESTOP_RED, 50);
 
@@ -984,7 +984,7 @@ pub const CARLETON_RED: Rgba = Rgba::hex(0xe91c24);
 ///
 /// The map: a night street map in greys, highways dark red, Carleton's campus a faint
 /// red; Nav2's plan white, the street route red. The debug screen: a grey ground grid,
-/// the cubes teal on black, Nav2's cubes Carleton's red. Only the localizers keep
+/// the cubes teal on black, the costmap's cubes Carleton's red. Only the localizers keep
 /// Mocha's colours (blue, green, orange, purple, yellow), so a picture means the same
 /// in every theme. Nothing else comes from Catppuccin.
 pub const INITIAL_D: Theme = {
@@ -1337,8 +1337,8 @@ mod tests {
         out
     }
 
-    /// The marks that must be told apart on the debug screen: each localizer, Nav2's
-    /// plan and its cubes.
+    /// The marks that must be told apart on the debug screen: each localizer, the
+    /// plan and the costmap's cubes.
     fn marks(s: &SceneColours) -> [(&'static str, Rgba); 7] {
         let l = s.localizers;
         [
@@ -1347,8 +1347,8 @@ mod tests {
             ("truth", l.truth),
             ("AMCL", l.amcl),
             ("NDT", l.ndt),
-            ("Nav2's plan", s.plan),
-            ("Nav2's cubes", s.nav2_cube.alpha(255)),
+            ("the plan", s.plan),
+            ("the costmap's cubes", s.nav2_cube.alpha(255)),
         ]
     }
 
@@ -1426,7 +1426,12 @@ mod tests {
             1.05,
         );
         want("NDT's map in 3D", scene.ndt_map, back, SHOWS);
-        want("Nav2's stale cubes", scene.nav2_cube_stale, back, 1.5);
+        want(
+            "the costmap's stale cubes",
+            scene.nav2_cube_stale,
+            back,
+            1.5,
+        );
         out
     }
 
@@ -1510,7 +1515,10 @@ mod tests {
             assert!(l.amcl.r > l.amcl.g && l.amcl.g > l.amcl.b, "{name}: AMCL");
             assert!(l.ndt.r > l.ndt.g && l.ndt.b > l.ndt.g, "{name}: NDT");
             let red = s.nav2_cube;
-            assert!(red.r > red.g && red.r > red.b, "{name}: Nav2's cubes");
+            assert!(
+                red.r > red.g && red.r > red.b,
+                "{name}: the costmap's cubes"
+            );
             assert!(
                 s.plan.r > s.plan.b && s.plan.g > s.plan.b,
                 "{name}: the plan"
@@ -1704,7 +1712,7 @@ mod tests {
         // The map's red marks and the cubes are Carleton's red.
         for (what, c) in [
             ("the street route", t.street_route),
-            ("Nav2's cubes", scene.nav2_cube.alpha(255)),
+            ("the costmap's cubes", scene.nav2_cube.alpha(255)),
             ("the scan off the map", scene.scan_off),
         ] {
             assert_eq!(c, CARLETON_RED, "initial_d: {what}");

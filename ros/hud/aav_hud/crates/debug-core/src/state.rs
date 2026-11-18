@@ -3,7 +3,7 @@
 //!
 //! News comes in as [`Update`]s (the ROS thread or the demo makes them); the cubes come
 //! separately, newest only ([`DebugState::set_scan`]), so a burst of clouds never queues.
-//! Each scan also goes into the kept cubes ([`crate::persist`]), which fade. Nav2's cubes
+//! Each scan also goes into the kept cubes ([`crate::persist`]), which fade. the costmap's cubes
 //! (the voxels trial's) come the same way ([`DebugState::set_nav2_cubes`]), and are
 //! never kept: the newest cloud only, as Nav2 has it.
 
@@ -101,7 +101,7 @@ pub enum Source {
     NdtStatus,
     /// AMCL's particles (drawn, not a row).
     Particles,
-    /// Nav2's cubes from the voxels trial (`voxels:=true`).
+    /// The costmap's cubes from the voxels trial (`voxels:=true`).
     Nav2Cubes,
     /// The voxels trial's status (its own section, not a row).
     VoxelsStatus,
@@ -144,7 +144,7 @@ impl Source {
             Self::MapToOdom => "map > odom",
             Self::NdtStatus => "NDT status",
             Self::Particles => "particles",
-            Self::Nav2Cubes => "Nav2 cubes",
+            Self::Nav2Cubes => "costmap cubes",
             Self::VoxelsStatus => "voxels status",
             Self::LocalizationHealth => "loc. health",
         }
@@ -452,7 +452,7 @@ impl DebugState {
         self.heard(Source::Nav2Cubes, now);
     }
 
-    /// The Nav2 cubes row's words: the status's numbers, or the cloud's count.
+    /// The costmap cubes row's words: the status's numbers, or the cloud's count.
     fn nav2_detail(&mut self) {
         let words = match (&self.voxels, &self.nav2) {
             (Some(status), _) => format!("{}, road {}", status.numbers(), status.road.word()),
@@ -462,7 +462,7 @@ impl DebugState {
         self.details.insert(Source::Nav2Cubes, words);
     }
 
-    /// Nav2's cubes to draw: none with key V off.
+    /// The costmap's cubes to draw: none with key V off.
     pub fn nav2_cubes(&self) -> impl Iterator<Item = [f32; 3]> + '_ {
         self.nav2
             .iter()

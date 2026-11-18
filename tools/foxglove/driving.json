@@ -44,7 +44,7 @@
       "fallbackColor": "#2e7d32",
       "fallbackLabel": "Sensors OK (or no watchdog yet)",
       "rules": [{"operator": "=", "rawValue": "true", "color": "#c62828",
-                 "label": "STOP: a sensor Nav2 needs has failed"}]
+                 "label": "STOP: a sensor the navigation needs has failed"}]
     },
     "RawMessages!gate": {
       "topicPath": "/safety/output_mux/state.data",

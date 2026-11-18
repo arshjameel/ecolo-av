@@ -1251,7 +1251,7 @@ bottom. A mouse click counts as a tap, so it works the same on a Mac.</p>
 </tr>
 <tr>
 <td>Refused</td>
-<td>outside the navigation map (<code>/map</code>) (<strong>Outside Nav2's map: 3.8 km away</strong>, from its edge), no <code>/map</code> yet, or no car position</td>
+<td>outside the navigation map (<code>/map</code>) (<strong>Outside the map: 3.8 km away</strong>, from its edge), no <code>/map</code> yet, or no car position</td>
 </tr>
 <tr>
 <td><code>--demo</code></td>
@@ -1362,7 +1362,7 @@ a bug.</p>
 </tr>
 <tr>
 <td>The same, <code>--send-goal "carleton university"</code></td>
-<td>nothing sent: every result "Outside Nav2's map" (109 m to 700 m away)</td>
+<td>nothing sent: every result "Outside the map" (109 m to 700 m away)</td>
 </tr>
 <tr>
 <td>Typing, clicks, Up/Down, DRIVE HERE and CONFIRM by hand</td>
@@ -1497,7 +1497,7 @@ no glow.</p>
 </tr>
 <tr>
 <td>Debug screen</td>
-<td>black 3D view, grey ground grid, the lidar's cubes teal, Nav2's cubes red wireframes; black side panel with a white edge; the faint car at its foot</td>
+<td>black 3D view, grey ground grid, the lidar's cubes teal, the costmap's cubes red wireframes; black side panel with a white edge; the faint car at its foot</td>
 </tr>
 <tr>
 <td>Hardware panel</td>
@@ -1721,11 +1721,11 @@ by night:</p>
 <td>purple</td>
 </tr>
 <tr>
-<td>Nav2's plan</td>
+<td>The plan</td>
 <td>yellow</td>
 </tr>
 <tr>
-<td>Nav2's cubes</td>
+<td>The costmap's cubes</td>
 <td>red wireframes</td>
 </tr>
 <tr>
@@ -1772,7 +1772,7 @@ on the right two views from above. Key <strong>L</strong> swaps the right side f
 <td><code>/localization/ndt/status</code>; the scan</td>
 </tr>
 <tr>
-<td>Nav2's cubes</td>
+<td>The costmap's cubes</td>
 <td>the road's fit (<strong>OK</strong> green, <strong>WARN</strong> amber: taken as flat), how many cubes, ms per cloud; "off (voxels:=false)" when none came; STALE when quiet</td>
 <td><code>/perception/voxels/status</code>, <code>/perception/voxels/cubes</code></td>
 </tr>
@@ -1801,7 +1801,7 @@ drive</code>). No map -&gt; odom yet: only the map-frame cars are drawn.</p>
 <td>lidar_link -&gt; base_link -&gt; odom</td>
 </tr>
 <tr>
-<td><strong>Nav2's cubes</strong>: red 0.25 m wireframes over the screen's own (key V), the newest cloud only; dimmer when STALE. What Nav2 stops for (<code>voxels:=true</code>), beside what the lidar sees</td>
+<td><strong>The costmap's cubes</strong>: red 0.25 m wireframes over the screen's own (key V), the newest cloud only; dimmer when STALE. What the car stops for (<code>voxels:=true</code>), beside what the lidar sees</td>
 <td><code>/perception/voxels/cubes</code></td>
 <td>base_link -&gt; odom, EKF local's pose at the cloud's stamp</td>
 </tr>
@@ -1826,7 +1826,7 @@ drive</code>). No map -&gt; odom yet: only the map-frame cars are drawn.</p>
 <td>map, through map -&gt; odom</td>
 </tr>
 <tr>
-<td>Nav2's plan (yellow), the car's trail (grey)</td>
+<td>The plan (yellow), the car's trail (grey)</td>
 <td><code>/plan</code>; EKF local</td>
 <td>map; odom</td>
 </tr>
@@ -1836,7 +1836,7 @@ drive</code>). No map -&gt; odom yet: only the map-frame cars are drawn.</p>
 <td>-</td>
 </tr>
 <tr>
-<td>Panel (key L): IMU, GPS, lidar, Nav2 cubes, wheels, wheel odom, vehicle, each estimate, map -&gt; odom, loc. health (amber when WARN), tracker</td>
+<td>Panel (key L): IMU, GPS, lidar, costmap cubes, wheels, wheel odom, vehicle, each estimate, map -&gt; odom, loc. health (amber when WARN), tracker</td>
 <td>each topic: OK, STALE or NEVER, and what it said</td>
 <td>-</td>
 </tr>
@@ -1917,7 +1917,7 @@ another tracker, in the simulator only (the design's D3: never an actuator).</p>
 </tr>
 <tr>
 <td>V</td>
-<td>Nav2's cubes (red wireframes): on by default</td>
+<td>The costmap's cubes (red wireframes): on by default</td>
 </tr>
 <tr>
 <td>M</td>
@@ -1981,7 +1981,7 @@ tracker live, start it with one of <code>aav_track</code>'s, forward only:
 <td>every topic name, the frames, <code>cube_size</code>, <code>max_cubes</code>, <code>pose_window</code>, <code>stale_after</code>, <code>keep_cubes_for</code>, <code>ndt_map</code>, <code>ndt_map_cell</code>, <code>voxels_cube_size</code> (0.25 m), <code>health_stale_after</code> (3 s)</td>
 </tr>
 <tr>
-<td>Nav2's cubes</td>
+<td>The costmap's cubes</td>
 <td>their own newest-only slots and thread (<code>nav2_cubes</code>), as the lidar's; <code>debug-core</code>'s <code>voxels</code> moves each centre into odom (no second snap)</td>
 </tr>
 <tr>
@@ -2046,7 +2046,7 @@ the car's cable. Not the Orin's own screen: it runs no graphics (Ben, 5 Nov).</p
 </tr>
 </tbody>
 </table></div>
-<h3 id="tested-1-november-bens-mac-nav2s-cubes-and-localization-health">Tested (1 November, Ben's Mac): Nav2's cubes and localization health</h3>
+<h3 id="tested-1-november-bens-mac-the-costmaps-cubes-and-localization-health">Tested (1 November, Ben's Mac): the costmap's cubes and localization health</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
