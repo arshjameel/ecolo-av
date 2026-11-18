@@ -944,11 +944,11 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>Run alone</strong></td>
-<td><code>ros2 launch aav_io_mux io_mux.launch.py target:=car</code></td>
+<td><code>ros2 launch aav_io_mux io_mux.launch.py target:=car</code> (Rust, <code>aav_io_mux_rs</code>, the default since 17 Nov; <code>io_mux_impl:=python</code> for these)</td>
 </tr>
 <tr>
 <td><strong>Test</strong></td>
-<td><code>test/test_provenance.py</code> (in <code>tools/test.sh</code>), <code>test/test_real_backend_guard.py</code> (<code>pixi run test</code>)</td>
+<td><code>test/test_provenance.py</code>, <code>test_vectors.py</code> (in <code>tools/test.sh</code>), <code>test/test_real_backend_guard.py</code> (<code>pixi run test</code>); the Rust: <code>cargo test -p io-mux-core</code> (the shared vectors)</td>
 </tr>
 <tr>
 <td><strong>Read first</strong></td>

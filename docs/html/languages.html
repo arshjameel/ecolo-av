@@ -158,6 +158,11 @@ programs only meet through messages.</p></div>
 <td>Ports of the Python nodes, the same answers. The default on the car and in the simulator since 16 Nov (Ben); <code>*_impl:=python</code> falls back until a car day proves them</td>
 </tr>
 <tr>
+<td>The sensor mux and the output mux, <code>aav_io_mux_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Ports of <code>aav_io_mux</code>'s nodes (Ben, 17 Nov: "Rust tomorrow"): the same answers, step by step. The default; <code>io_mux_impl:=python</code> falls back</td>
+</tr>
+<tr>
 <td>Our older ROS nodes: drivers, bridges, adapters</td>
 <td>Python</td>
 <td>Glue that runs 50 times a second or less. Ported to Rust where possible (Ben, 16 Nov)</td>

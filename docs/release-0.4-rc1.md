@@ -64,13 +64,14 @@ The fall-backs, one per node (the others stay Rust):
 | localization_health | `localization_health_impl:=python` |
 | lidar_scan | `lidar_impl:=python` |
 | things | `things_impl:=python` |
+| sensor mux + output mux (the ESP32's heartbeat) | `io_mux_impl:=python` |
 
 ## Untested on the car (everything since 13 Nov)
 
 | Item | Since | Tried in |
 |---|---|---|
 | Our own stack as the only stack (Nav2 gone) | 14-17 Nov | Ravensim, the league |
-| The six Rust defaults above | 16-17 Nov | Ravensim, unit tests |
+| The Rust defaults above | 16-17 Nov | Ravensim, unit tests |
 | `path:=lane`: the plan keeps the right lane | 16 Nov | Ravensim (University Drive) |
 | The behaviour planner and the stopping law | 14 Nov | Ravensim |
 | Map chunks (RavenTiles) for NDT, the costmap, the things | 16 Nov | Ravensim (campus) |
