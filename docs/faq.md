@@ -33,7 +33,7 @@ boards that move the actuators.
 | Where | What runs |
 |---|---|
 | turtlesim | the command path, on a turtle that steers like the car |
-| Gazebo | the whole stack: the EKFs, Nav2 driving to a goal |
+| Ravensim | the whole stack: the EKFs, navigation driving to a goal |
 | Bench mode | the car's own software, with stand-ins for every board |
 | The real car | the 2025-26 team's code, on ROS 2 Humble |
 
@@ -57,14 +57,14 @@ network, so every computer moves together. Decided by the team (Decision 6 in
 ### Why not just keep the 2025-26 team's code?
 
 Most of their own estimator, planner and command picker was where the bugs were. Stock
-ROS packages now do those jobs:
+ROS packages took those jobs, and since 17 Nov our own Rust ports of some of them:
 
 | Their code | Ours now |
 |---|---|
 | their odometry and SLAM | `robot_localization`: two EKFs |
-| their grid planner (A*, D* Lite) | Nav2 |
+| their grid planner (A*, D* Lite) | Nav2's planners, then ours (`aav_planner`, Rust) |
 | the QNX command picker | `twist_mux` |
-| their lidar costmap and e-stop | Nav2's costmaps and `collision_monitor` |
+| their lidar costmap and e-stop | Nav2's costmaps and `collision_monitor`, then our Rust ports (`aav_costmap`, `aav_stop_zone`) |
 
 We kept what works: the ESP32 firmware, the wheel encoder, the IMU and radar drivers,
 lane keeping and the HUD. Each keeps a `PROVENANCE.md`. See [The older code](older-code.md).
@@ -106,11 +106,11 @@ The highest priority that spoke in the last 0.5 s.
 | Scripted | 50 |
 | Replay | 40 |
 | Go-to (one GPS point) | 25 |
-| Nav2 | 20 |
+| Navigation | 20 |
 | AI | 10 |
 
 A lock holds every driver below its priority. A stop sign (30) and the sensor watchdog
-(30) hold go-to, Nav2 and the AI, never a person or a test. The no-timeout lock (60)
+(30) hold go-to, navigation and the AI, never a person or a test. The no-timeout lock (60)
 holds every program while the car's ESP32 runs firmware with no command timeout
 (`frame_version: 1`): only people and the actuator tests drive then. The e-stop (255)
 holds everyone. The table lives in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
@@ -118,7 +118,7 @@ holds everyone. The table lives in `ros/command_mux/aav_command_mux/config/twist
 ### What happens when I let go of the joystick?
 
 Nothing is sent for 0.5 s, then twist_mux hands control to the next driver that is
-talking, such as Nav2. Whether it should stay stopped instead is open (Q28).
+talking, such as navigation. Whether it should stay stopped instead is open (Q28).
 
 ## The hardware
 
@@ -142,15 +142,15 @@ car. The team's Tentative choice was a new Pico 2 or STM32, and a Pico 2 program
 ### Why two Orins?
 
 The KEFC request splits the work. Orin #1 keeps control (the EKFs, twist_mux, ego, the
-CAN master); Orin #2 (new) does the heavy seeing: cameras, lidar, costmaps and Nav2. A
+CAN master); Orin #2 (new) does the heavy seeing: cameras, lidar, costmaps and navigation. A
 slow camera frame then can't delay a brake command. See [The car, box by box](learn-car.md).
 
 ### Is there a lidar?
 
 Yes: a Velodyne VLP-16 on the roof (the 16 Oct audit). We run the stock ROS `velodyne`
 driver for it, no code of our own: `pixi run car orin` starts it on the Jetson, where the
-lidar sends its data ([Perception](perception.md#the-roof-lidar)). Gazebo has a generic
-one too: `pixi run sim world:=road` ([Simulation](simulation.md#the-lidar-gazebo-only)).
+lidar sends its data ([Perception](perception.md#the-roof-lidar)). Ravensim has a generic
+one too: `pixi run sim world:=road` ([Simulation](simulation.md#the-lidar-the-sim-only)).
 
 ### How does the car know where it is?
 
@@ -164,11 +164,11 @@ Two EKFs from `robot_localization`:
 GPS meets the map at one point, the datum: today a placeholder near Carleton. See
 `maps-and-position.md` and [Topic areas](naming.md#why-the-two-ekfs-dont-talk).
 
-### Does Nav2 follow the roads?
+### Does navigation follow the roads?
 
 Not by itself. `street_router` (`aav_routes`) asks Valhalla, an offline router on
-OpenStreetMap, for the way along the streets, and gives Nav2 that route as GPS points.
-Nav2 doesn't know where the road is between them. Staying in the lane is lane keeping's
+OpenStreetMap, for the way along the streets, and gives the navigator that route as GPS points.
+The planner doesn't know where the road is between them, unless the lane map is on (`path:=lane`, in `stack:=ours`). Staying in the lane is lane keeping's
 job. See [Street routes](routes.md).
 
 ## Working on it
@@ -180,7 +180,7 @@ No. Almost everything runs on one laptop:
 | Run | You get |
 |---|---|
 | `pixi run turtle` | the command path, on a turtle |
-| `pixi run sim` | Gazebo: the car, its IMU, GPS and wheel speed; `world:=road` adds its camera and radar |
+| `pixi run sim` | Ravensim: the car, its IMU, GPS and wheel speed; `world:=road` adds its camera and radar |
 | `pixi run bench` | the car's real software, with pretend boards |
 
 ### Can I use a Mac?

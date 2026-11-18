@@ -16,7 +16,7 @@ steps, what's done, and the work left in each area. Who owns each area is Q33: s
 
 | Part | State |
 |---|---|
-| The software stack | [[works]] end to end in simulation: the turtle, Gazebo, Nav2 goals, replay. On Linux, and on a Mac since 10 Oct |
+| The software stack | [[works]] end to end in simulation: the turtle, Ravensim, navigation goals, replay. On Linux, and on a Mac since 10 Oct |
 | The car | [[untested]] nothing has run on it yet. It runs the 2025-26 software on Humble, and the spine's board code is missing |
 | Phase 0 on the car | waits on Jazzy on the car's computers (Q24), and on the spine (Q10–Q17) or the legacy path |
 
@@ -39,8 +39,8 @@ From the design doc's next steps, in order.
 | 9 | **CAN frame map:** finish the DBC with the firmware owner; bench-test the spine with a USB-CAN adapter and `candump` | [[untested]] the DBC is a draft; no spine board yet |
 | 10 | **URDF:** from the measurements | [[untested]] it exists, with guessed numbers |
 | | **On the car** | |
-| 11 | **Phase 0:** CAN to the Orin and the spine, then the `car` profile on stands with localization and Nav2 off, then on the ground at walking pace | [[missing]] |
-| 12 | **Phase 1:** the scripted drive on the car. GPS A→B in Gazebo first, then on the car | [[missing]] |
+| 11 | **Phase 0:** CAN to the Orin and the spine, then the `car` profile on stands with localization and navigation off, then on the ground at walking pace | [[missing]] |
+| 12 | **Phase 1:** the scripted drive on the car. GPS A→B in Ravensim first, then on the car | [[missing]] |
 
 ## Done so far
 
@@ -95,9 +95,9 @@ From the design doc's next steps, in order.
 
 ### Navigation and costmaps
 
-- Draw the real test site (Q21) and drive it in Gazebo first.
-- Nav2's lookahead (N7): its turn command flips sign about once a second.
-- Restart crashed sensor drivers (N3): Nav2 gives up without TF.
+- Draw the real test site (Q21) and drive it in Ravensim first.
+- The follower's lookahead (N7, found with Nav2): its turn command flips sign about once a second.
+- Restart crashed sensor drivers (N3): navigation gives up without TF.
 - Later: the radar obstacle layer, and the collision monitor. The radar's clusters are ready on `/perception/radar/clusters`.
 
 ### Drivers and teleop
@@ -121,7 +121,7 @@ From the design doc's next steps, in order.
 
 ### Simulation
 
-- Look at the Gazebo window and RViz on a Mac, and say what they show.
+- Look at the developer window (`pixi run ravensim`) and RViz on a Mac, and say what they show.
 - Make the bench's model car match the measured car (Q1-Q5), once it's measured.
 - CARLA on the NVIDIA computer: the adapter is ready ([CARLA](carla.md), Q31).
 

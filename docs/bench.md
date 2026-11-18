@@ -33,18 +33,18 @@ don't.
 
 | Argument | Default | Does |
 |---|---|---|
-| `nav` | `true` | Nav2: goals from RViz's 2D Goal Pose |
+| `nav` | `true` | navigation (our stack): goals from RViz's 2D Goal Pose |
 | `teleop` | `false` | the joystick, if one is plugged in |
 | `perception` | `false` | the object detector (RF-DETR Nano; YOLO with `detector:=yolo`) and the stop-sign watcher. Needs `pixi run -e ml` |
 | `lane` | `false` | lane keeping on a pretend straight lane: the car drives itself on `/drivers/ai/cmd_vel` |
 | `hud` | `false` | the HUD window (raylib, as `pixi run hud`); needs a screen |
 | `arm` | `true` | arms the spine 12 s after start-up |
 | `rviz`, `foxglove` | `false` | RViz; foxglove_bridge on 127.0.0.1:8765, with the camera's preview ([Watch from a laptop](foxglove.md)) |
-| `obstacle` | `false` | a 1 m box in the lane 15 m ahead, which only the pretend radar sees: Nav2 stops for it |
-| `camera_obstacles` | `false` | the detectors' boxes into Nav2's local costmap ([Costmaps](costmaps.md)) |
-| `lidar` | `false` | the roof lidar: `mock_lidar`'s packets through the stock velodyne driver, into Nav2 |
-| `plan_around` | `true` | Nav2 plans round what the radar and lidar see; `false`: the car stops for it |
-| `reversing` | `true` | Nav2 may drive backwards |
+| `obstacle` | `false` | a 1 m box in the lane 15 m ahead, which only the pretend radar sees: navigation stops for it |
+| `camera_obstacles` | `false` | the detectors' boxes into the local costmap ([Costmaps](costmaps.md)) |
+| `lidar` | `false` | the roof lidar: `mock_lidar`'s packets through the stock velodyne driver, into the costmap and the stop zone |
+| `plan_around` | `true` | the planner plans round what the radar and lidar see; `false`: the car stops for it |
+| `reversing` | `true` | navigation may drive backwards |
 | `bridge` | `rust` | which `spine_bridge`: `rust` or `python` |
 | `speed_loop` | `default` | `spine_sim`'s speed loop: `default`, `smooth`, `lqi` or `firm` ([The car as a linear model](vehicle-model.md)); ego's trace and a lag-aware follower assume the same (TODO 163) |
 
@@ -86,7 +86,7 @@ The bench world is `aav_bench/config/bench.yaml`. The model car starts at the ma
 `obstacle:=true`, a 1 m box stands in the lane 15 m ahead; a test can move it, or take it
 away, with `mock_radar`'s parameters.
 
-Nav2 on the bench always has the radar in its local costmap, and `collision_monitor`
+Navigation on the bench always has the radar in its local costmap, and the stop zone
 between it and the mux, as on a car with a radar.
 
 ### The model car
@@ -110,7 +110,7 @@ In a terminal opened with `pixi shell`, then `source install/setup.zsh`
 | To test | Do |
 |---|---|
 | A scripted drive | `ros2 action send_goal /scripted_drive aav_interfaces/action/ScriptedDrive "{target_speed: 1.0, acceleration: 0.5, deceleration: 1.0, hold_time: 5.0}"` |
-| A Nav2 goal | RViz's 2D Goal Pose, or the command in [Your first day](first-day.md) |
+| A goal | RViz's 2D Goal Pose, or the command in [Your first day](first-day.md) |
 | The e-stop | `pixi run estop`, then `pixi run clear estop` |
 | The hardware e-stop | `ros2 topic pub -t 3 /vehicle/bench/hw_estop std_msgs/msg/Bool "{data: true}"`, then `false` |
 | A driver failing | `ros2 topic pub -t 3 /vehicle/bench/driver_faults std_msgs/msg/UInt16 "{data: 8}"` (8 = steering, 16 = brake, 32 = throttle DAC, 64 = encoder) |
@@ -134,10 +134,10 @@ nothing on the network sees it. Then it runs these checks. Results on Ben's Mac,
 | Global EKF against the truth | under 1.5 m apart | [[works]] 0.06 m |
 | Software e-stop | 1 m/s to a stop, and the spine reports it | [[works]] |
 | Hardware e-stop | the same, from `/vehicle/bench/hw_estop` | [[works]] |
-| Stop sign (`pixi run -e ml bench-check --perception`) | Nav2 drives 40 m east: the car stops before the sign, waits, and reaches the goal | [[works]] locked 4.7 m before the sign, stopped, reached the goal |
-| Obstacle (`pixi run bench-check --obstacle`) | a box as wide as the lane, 15 m ahead, Nav2 driving 30 m: `collision_monitor`'s stop zone stops the car before it; with the box gone, the car reaches the goal. If a busy computer latches the spine, the check arms it again | [[works]] on `main`, 11 Oct: stood still 0.44 m before the box, from 0.95 m/s; reached the goal once the box was gone |
-| Weave (`pixi run bench-check --weave`) | Nav2 drives 40 m straight, nothing in the way: the car's side-to-side swing round its own 4 s average is under 0.1 m RMS. Also says how far it strays from its best straight line, and how often a second Nav2's turn command changes sign (N7) | untested |
-| Stop zone's edge (`pixi run bench-check --zone-edge`) | the car stands still, a box as wide as the lane right at the far edge of the stop zone, Nav2 asked to drive on, for 20 s: after the first stop no forward command reaches ego, and the car creeps under 0.1 m. Says how often collision_monitor itself flickered (`stop_hold` keeps it from reaching the car) | untested |
+| Stop sign (`pixi run -e ml bench-check --perception`) | navigation drives 40 m east: the car stops before the sign, waits, and reaches the goal | [[works]] locked 4.7 m before the sign, stopped, reached the goal |
+| Obstacle (`pixi run bench-check --obstacle`) | a box as wide as the lane, 15 m ahead, navigation driving 30 m: the stop zone stops the car before it; with the box gone, the car reaches the goal. If a busy computer latches the spine, the check arms it again | [[works]] on `main`, 11 Oct: stood still 0.44 m before the box, from 0.95 m/s; reached the goal once the box was gone |
+| Weave (`pixi run bench-check --weave`) | navigation drives 40 m straight, nothing in the way: the car's side-to-side swing round its own 4 s average is under 0.1 m RMS. Also says how far it strays from its best straight line, and how often a second Nav2's turn command changes sign (N7) | untested |
+| Stop zone's edge (`pixi run bench-check --zone-edge`) | the car stands still, a box as wide as the lane right at the far edge of the stop zone, navigation asked to drive on, for 20 s: after the first stop no forward command reaches ego, and the car creeps under 0.1 m. Says how often collision_monitor itself flickered (`stop_hold` keeps it from reaching the car) | untested |
 
 Run it after changing anything between the drivers and the spine.
 
@@ -163,7 +163,7 @@ pixi run bench-check --lane                         # the same, measured: 1 more
   0.15 m lines and 0.5 m of tarmac outside them.
 - **The picture follows the car:** each pixel below the horizon is traced down to the
   ground and coloured by where it lands on the road. About 4 ms a picture.
-- **Nothing else drives:** `nav:=false` leaves out Nav2, which outranks lane keeping.
+- **Nothing else drives:** `nav:=false` leaves out navigation, which outranks lane keeping.
 
 ### What `bench-check --lane` checks
 
