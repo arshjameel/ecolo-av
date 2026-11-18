@@ -886,7 +886,7 @@ press --> panel-core (cap, hold-to-drive) --> /drivers/buttons/cmd_vel --> twist
 pixi run hw-panel --demo                 # a pretend car: no ROS, any laptop
 pixi run sim world:=test_lot           # the simulator (or: pixi run demo --debug) ...
 pixi run hw-panel                      # ... and the panel beside it, localhost-only
-pixi run hw-panel stands:=true         # on the car's stands (speed stays off until 49b)
+pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true   # the car on stands, from a laptop on its network (pixi run hw-panel stays on this computer)
 ```
 
 Run it from a wired laptop, not a Mac over WiFi (and not the Orin: it runs no graphics, Ben, 5 Nov). For checks,

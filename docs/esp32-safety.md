@@ -196,7 +196,7 @@ Works with **no Pi and no Orin**. The ESP32 reads the receiver itself.
 |---|---|
 | Does hw_panel's `/hud/hw_panel/heartbeat` reach the ESP32? | **No.** The bridge reads only `/control/car/heartbeat`. The output mux reads screens only with `screens:=`, and refuses it for the car (the node won't start) |
 | Can a laptop run the output mux for the real car? | In principle: it is a ROS node. **No command or machine file does it.** `laptop.yaml` has only the joystick and the detector. Never tried |
-| What a laptop can do | drive (`pixi run keyboard`), watch (`pixi run hw-panel stands:=true`), e-stop |
+| What a laptop can do | drive (`pixi run keyboard`), watch (`pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true`; not `pixi run hw-panel`, which stays on the laptop), e-stop |
 | hw_panel's speed buttons on the real car | **off** (on stands too, until a driven-wheel speed exists, TODO 49b) |
 
 ### The command that works today, with no Orin
@@ -207,7 +207,7 @@ Works with **no Pi and no Orin**. The ESP32 reads the receiver itself.
 |---|---|
 | the Motor Pi | `~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=motor_pi_alone max_speed:=0.3` |
 | the laptop (to drive) | `export ROS_DOMAIN_ID=42`, then `pixi run keyboard` |
-| the laptop (to watch) | `export ROS_DOMAIN_ID=42`, then `pixi run hw-panel stands:=true` |
+| the laptop (to watch) | `export ROS_DOMAIN_ID=42`, then `pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true` (`pixi run hw-panel` is localhost-only: it never sees the car) |
 
 The heartbeat is made on the Motor Pi, beside the ESP32. The laptop can drop off: its
 slot times out and ego stops the car.
