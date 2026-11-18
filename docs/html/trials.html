@@ -7,7 +7,7 @@
 <!-- Generated from docs/trials.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Trials: new path followers and localizers beside the main ones</h1>
-<div class="meta">97 min read · 21 sections</div></header>
+<div class="meta">99 min read · 20 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -125,7 +125,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#what-is-on-trial">What is on trial</a><a href="#where-a-tracker-sits">Where a tracker sits</a><a href="#fair-rules">Fair rules</a><a href="#run-it">Run it</a><a href="#results">Results</a><a href="#ndt-into-the-global-ekf-30-oct">NDT into the global EKF (30 Oct)</a><a href="#kiss-icp-into-the-local-ekf-1-nov">KISS-ICP into the local EKF (1 Nov)</a><a href="#scoring-a-localizer-fairly">Scoring a localizer fairly</a><a href="#scoring-an-odometry-fairly-kiss-icp-ekf_local">Scoring an odometry fairly (KISS-ICP, ekf_local)</a><a href="#before-a-winner-goes-on-the-car">Before a winner goes on the car</a><a href="#results-29-october">Results, 29 October</a><a href="#results-29-october-afternoon-lqr-rebuilt-and-mpc_full">Results, 29 October (afternoon): LQR rebuilt, and mpc_full</a><a href="#lag-aware-mpc-7-nov-mpc_lag">Lag-aware MPC, 7 Nov (mpc_lag)</a><a href="#planners-29-oct-hybrid-lattice-and-smac2d">Planners, 29 Oct: hybrid, lattice and smac2d</a><a href="#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">Planners, 30 Oct: reversing on, hybrid, lattice and lattice32</a><a href="#diffusion-2-nov-a-model-draws-the-lattice-guards">Diffusion, 2 Nov: a model draws, the lattice guards</a><a href="#diffusion-7-8-nov-the-u-turn-the-orin-the-car">Diffusion, 7-8 Nov: the U-turn, the Orin, the car</a><a href="#voxels-30-oct-the-lidar-as-cubes">Voxels, 30 Oct: the lidar as cubes</a><a href="#3-nov-everything-for-02">3 Nov: everything, for 0.2</a><a href="#the-wiggle-14-nov-todo-124-149">The wiggle, 14 Nov (TODO 124, 149)</a><a href="#the-lane-finder-as-a-pose-sensor-15-nov-todo-155">The lane finder as a pose sensor, 15 Nov (TODO 155)</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#what-is-on-trial">What is on trial</a><a href="#where-a-tracker-sits">Where a tracker sits</a><a href="#fair-rules">Fair rules</a><a href="#run-it">Run it</a><a href="#results">Results</a><a href="#kiss-icp-into-the-local-ekf-1-nov">KISS-ICP into the local EKF (1 Nov)</a><a href="#scoring-a-localizer-fairly">Scoring a localizer fairly</a><a href="#scoring-an-odometry-fairly-kiss-icp-ekf_local">Scoring an odometry fairly (KISS-ICP, ekf_local)</a><a href="#before-a-winner-goes-on-the-car">Before a winner goes on the car</a><a href="#results-29-october">Results, 29 October</a><a href="#results-29-october-afternoon-lqr-rebuilt-and-mpc_full">Results, 29 October (afternoon): LQR rebuilt, and mpc_full</a><a href="#lag-aware-mpc-7-nov-mpc_lag">Lag-aware MPC, 7 Nov (mpc_lag)</a><a href="#planners-29-oct-hybrid-lattice-and-smac2d">Planners, 29 Oct: hybrid, lattice and smac2d</a><a href="#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">Planners, 30 Oct: reversing on, hybrid, lattice and lattice32</a><a href="#diffusion-2-nov-a-model-draws-the-lattice-guards">Diffusion, 2 Nov: a model draws, the lattice guards</a><a href="#diffusion-7-8-nov-the-u-turn-the-orin-the-car">Diffusion, 7-8 Nov: the U-turn, the Orin, the car</a><a href="#voxels-30-oct-the-lidar-as-cubes">Voxels, 30 Oct: the lidar as cubes</a><a href="#3-nov-everything-for-02">3 Nov: everything, for 0.2</a><a href="#the-wiggle-14-nov-todo-124-149">The wiggle, 14 Nov (TODO 124, 149)</a><a href="#the-lane-finder-as-a-pose-sensor-15-nov-todo-155">The lane finder as a pose sensor, 15 Nov (TODO 155)</a></nav>
 <div class="lead"><p>Ben, 29 Oct: "We want to make other nodes or plugins that we can test and then replace
 the main ones if they work." Each trial runs <strong>beside</strong> today's default, chosen at launch,
 and is <strong>scored on the same routes</strong>. It becomes the default only once it wins.</p>
@@ -142,7 +142,7 @@ and followers (MPPI, RPP) went with it.</p>
 <p><strong>The short version</strong></p>
 <ul>
 <li><strong>Trackers</strong> (<code>aav_track</code>): pure pursuit, Stanley, LQR, MPC, and <code>mpc_full</code> (speed and steering together), in our chain, in <code>mppi_lag</code>'s place (in controller_server's, until 17 Nov). <code>tracker:=lqr</code>.</li>
-<li><strong>AMCL</strong> (stock <code>nav2_amcl</code>): a particle filter on the map and the lidar, scored against the EKF, never steering. <code>amcl:=true</code>.</li>
+<li><strong>AMCL</strong> (ours in Rust, <code>aav_amcl_rs</code>, since 18 Nov; stock <code>nav2_amcl</code> with <code>amcl_impl:=stock</code>): a particle filter on the map and the lidar, scored against the EKF, never steering. <code>amcl:=true</code>. <a href="#18-nov-amcl-in-rust-against-stock">Ours against stock</a>.</li>
 <li><strong>NDT</strong> (<code>aav_ndt</code>, ours in Rust): the lidar matched to a saved lidar map, scored against the EKF, never steering. <code>ndt:=true</code>.</li>
 <li><strong>Score:</strong> <code>pixi run measure controllers --trackers pure_pursuit lqr --runs 3</code>.</li>
 <li><strong>Results (29 Oct, Gazebo, 3 runs):</strong> pure pursuit, Stanley and MPC finished every leg; MPPI, RPP and LQR lost legs on the U-turn. AMCL lost itself; the EKF wins. <a href="#results-29-october">Results</a>.</li>
@@ -570,8 +570,60 @@ one run, <code>--tours lot --controllers mppi --amcl</code>):</p>
   mean, then AMCL dropped 68 scans (its transforms came late) and published nothing more.
   With the computer this loaded, AMCL's numbers are only worth what its pose count says.</li>
 </ul>
-</section>
-<section class="card"><h2 id="ndt-into-the-global-ekf-30-oct">NDT into the global EKF (30 Oct)</h2>
+<h3 id="18-nov-amcl-in-rust-against-stock">18 Nov: AMCL in Rust against stock</h3>
+<p>TODO 231: <code>nav2_amcl</code> was the last Nav2 node. Ours (<code>aav_amcl_rs</code>, <code>amcl_impl:=rust</code>, now
+the default) reads the same <code>amcl.yaml</code>, topics and frames. Stock stays as
+<code>amcl_impl:=stock</code>.</p>
+<p><strong>How:</strong> <code>measure controllers --amcl --tours lot --runs 3 --launch amcl_impl:=stock</code>, then
+<code>amcl_impl:=rust</code>. Ravensim on a Mac (M4 Max, with a GPU), <code>mppi_lag</code>, 1 m/s, AMCL's own
+0.05 m map. Results in <code>/tmp/amcl_cmp/</code> (not in git).</p>
+<p>AMCL off the truth, mean of each run's mean (m), and the worst of all runs (m):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Leg</th>
+<th>Stock, 3 runs</th>
+<th>Ours, 3 runs</th>
+<th>EKF</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a left turn</td>
+<td>0.103 (0.09-0.11), worst 0.16</td>
+<td>0.089 (0.08-0.10), worst 0.14</td>
+<td>0.10</td>
+</tr>
+<tr>
+<td>round the building</td>
+<td>0.051, worst 0.15</td>
+<td>0.053, worst 0.11</td>
+<td>0.11</td>
+</tr>
+<tr>
+<td>turn back</td>
+<td>0.067, worst 0.20</td>
+<td>0.060, worst 0.15</td>
+<td>0.09</td>
+</tr>
+<tr>
+<td>home</td>
+<td>0.075, worst 0.18</td>
+<td>0.076, worst 0.13</td>
+<td>0.10</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>A tie</strong>, as a port should be: means within 0.015 m a leg, every leg reached, the same
+  number of poses (each resample), heading within 1°.</li>
+<li><strong>One bad start</strong>, in a single run before these (seed from the clock): ours was 0.27 m
+  mean on leg 1, 0.94 m worst, over 1 m off or without a pose for 5.8 s, then 0.06-0.09 m
+  on the other legs. Stock's single run then: 0.11 m, 0.15 worst. Not seen in the next 4
+  runs of leg 1 (0.08-0.10 m). The first pose comes from the start's 0.5 m cloud after one
+  scan; watch for it in more runs.</li>
+<li>Recovery (<code>recovery_alpha_*</code>) is still off, in both, as <code>amcl.yaml</code> had it.</li>
+</ul>
 <p><code>ndt_ekf:=true</code>: <code>ekf_global</code> takes NDT's x, y and yaw beside the GPS. Off by default.</p>
 <pre class="highlight"><code>lidar ─► NDT + map ─► /localization/ndt/pose (good fits only) ─┐
 GPS ─► navsat_transform ─► /localization/gps/odom ─────────────┼─► ekf_global ─► map → odom
