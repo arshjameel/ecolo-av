@@ -50,7 +50,7 @@ The message: `name` algorithms, `level` OK, `message` one short line
 ## Invariants
 
 - It says what the launch **asked for**, not what is alive. A live tracker swap in
-  Gazebo shows on `/drivers/nav/track/status`.
+  Ravensim shows on `/drivers/nav/track/status`.
 - Every planner, controller and tracker `vehicle.py` knows has words here (a test checks).
 - `sim.launch.py` always starts it; `car.launch.py` where Nav2 runs.
 

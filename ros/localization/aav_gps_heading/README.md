@@ -66,5 +66,5 @@ cd ros/localization/aav_gps_heading && python3 -m pytest -q   # the maths, no RO
 pixi run build && colcon test --packages-select aav_gps_heading && colcon test-result --verbose
 ```
 
-`tools/test.sh` runs the first; `pixi run test` runs everything. Against Gazebo's
+`tools/test.sh` runs the first; `pixi run test` runs everything. Against Ravensim's
 truth, forward and reversing: `pixi run tools/ros.sh --local python3 tools/heading_check.py` (about 4 min a run).

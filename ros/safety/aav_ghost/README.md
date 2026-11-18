@@ -42,7 +42,7 @@ keeps it where it stands. Defaults are in `config/ghost_obstacle.yaml`.
 | `at <x> <y>` | a ghost at map x, y |
 | `size <width> <height>` | change its size (m) |
 | `on`, `off` | the last ghost again; take it away |
-| `--local ...` | Gazebo or the bench on this computer (`ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`) |
+| `--local ...` | Ravensim or the bench on this computer (`ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`) |
 
 It calls `/ghost_obstacle/set_parameters_atomically`, so every value of one command lands at once.
 
@@ -76,5 +76,5 @@ cd ros/safety/aav_ghost && python3 -m pytest -q          # the maths and the com
 pixi run build && colcon test --packages-select aav_ghost && colcon test-result --verbose
 ```
 
-`tools/test.sh` runs the first; `pixi run test` runs everything. In Gazebo:
+`tools/test.sh` runs the first; `pixi run test` runs everything. In Ravensim:
 `pixi run sim-check --ghost`.

@@ -54,7 +54,7 @@ none), `max_speed:=` empty or at most 0.5, and `diffusion_provider:=`, `diffusio
 | `aav_diffusion_planner/worker.py` | the model, in the learn environment's Python (ONNX Runtime) | no |
 | `aav_diffusion_planner/planner_node.py` | the node | yes |
 | `training/model.py`, `training/train.py` | the network (PyTorch), training, its score, ONNX export (FP16 too) | no |
-| `training/replay.py` | a Gazebo run's recorded plans through any model, offline: the guard's score by check | no |
+| `training/replay.py` | a sim run's recorded plans through any model, offline: the guard's score by check | no |
 | `training/measure.py` | the time a plan, part by part, against the budget (`pixi run measure diffusion`; on the Orin with any Python that has ONNX Runtime) | no |
 | `tools/diffusion_data.py` (repo) | the teachers' paths on random maps | yes |
 
@@ -62,7 +62,7 @@ none), `max_speed:=` empty or at most 0.5, and `diffusion_provider:=`, `diffusio
 
 ```bash
 pixi install --locked -e learn     # PyTorch, ONNX, ONNX Runtime: once
-pixi run diffusion data            # the lattice's and Hybrid-A*'s paths (no Gazebo)
+pixi run diffusion data            # the lattice's and Hybrid-A*'s paths (no simulator)
 pixi run diffusion data --first 800 --maps 400 --uturn 0.6 --out models/diffusion/data_uturn
 pixi run diffusion train --data models/diffusion/data models/diffusion/data_uturn --suffixes 3
 pixi run diffusion export --fp16   # planner_fp16.onnx too, for a GPU
