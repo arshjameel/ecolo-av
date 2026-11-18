@@ -62,6 +62,10 @@ if command -v cargo >/dev/null; then
   (cd ros/localization/aav_localization_health_rs && cargo test -q --locked -p health-core)
   echo "== ros/can_bridge/aav_spine_bridge: the Rust CAN bridge's logic, the shared CAN vectors"
   (cd ros/can_bridge/aav_spine_bridge && cargo test -q --locked -p spine-bridge)
+  echo "== ros/can_bridge/aav_legacy_rs: the Rust UART bridge's logic, the Python modules' answers"
+  (cd ros/can_bridge/aav_legacy_rs && cargo test -q --locked -p legacy-bridge)
+  echo "== ros/drivers/aav_rc_rs: rc_driver's rules in Rust, rc_drive.py's answers"
+  (cd ros/drivers/aav_rc_rs && cargo test -q --locked -p rc-core)
   echo "== ros/bringup/aav_description/car-model: the car model's Rust twin, the shared vectors"
   (cd ros/bringup/aav_description/car-model && cargo test -q --locked)
   echo "== ros/bringup/aav_description/map-chunks: the map's fixed 64 m chunks (TODO 175)"
@@ -123,6 +127,8 @@ if command -v cargo >/dev/null; then
   rust_style ros/safety/aav_watchdog_rs -p watchdog-core
   rust_style ros/io_mux/aav_io_mux_rs -p io-mux-core
   rust_style ros/can_bridge/aav_spine_bridge -p spine-bridge
+  rust_style ros/can_bridge/aav_legacy_rs -p legacy-bridge
+  rust_style ros/drivers/aav_rc_rs -p rc-core
   rust_style ros/bringup/aav_description/car-model
   rust_style ros/bringup/aav_description/map-chunks
   rust_style ros/bringup/aav_description/lanelet-map

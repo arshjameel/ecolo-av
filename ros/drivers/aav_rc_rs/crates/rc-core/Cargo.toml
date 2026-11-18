@@ -1,0 +1,11 @@
+[package]
+name = "rc-core"
+description = "rc_driver's rules without ROS: the RC transmitter's sticks to a command (the Rust twin of aav_rc's rc_drive.py)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dev-dependencies]
+# Reads the shared vectors, tests/vectors.json (gen_vectors.py, from rc_drive.py).
+serde_json = { version = "1", features = ["float_roundtrip"] }

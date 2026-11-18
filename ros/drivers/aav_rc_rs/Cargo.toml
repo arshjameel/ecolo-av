@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+# rc-core: rc_driver's rules without ROS (aav_rc's rc_drive.py, ported): cargo test -p rc-core
+# rc-node: the ROS node (rclrs), binary `rc_driver`. colcon builds it through CMakeLists.txt.
+members = ["crates/rc-core", "crates/rc-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
