@@ -33,8 +33,8 @@ DOCS = ROOT / 'docs'
 OUT = DOCS / 'html'
 STYLE = DOCS / 'style.css'
 WPM = 150          # an unhurried reading speed, so the times are a promise
-READ_FIRST = 25    # PAGES[:25] are the reading list
-LEARN_END = 40     # PAGES[25:40] are the learn pages; the rest are reference
+READ_FIRST = 26    # PAGES[:26] are the reading list
+LEARN_END = 41     # PAGES[26:41] are the learn pages; the rest are reference
 
 # (file in docs/, menu title, what it's for). A name in ROOT_PAGES is a page kept at the
 # repository's root instead, built the same way (none since 25 Oct: every page is in docs/).
@@ -47,6 +47,8 @@ PAGES = [
      'The release candidate: what it means, one command per job, ours against Nav2'),
     ('release-0.4-rc1.md', '0.4-rc1 on the car',
      'Wednesday 18 Nov: install on the car, check first, untested there, the seven blockers'),
+    ('release-0.4-guide.md', 'The 0.4 guide',
+     'Each area of 0.4 with a picture: what it is, why, how to see it; what is next'),
     ('release-notes.md', 'Release notes',
      'Release 0.2: what it does, the screens, how to use it, the words, what is left; 0.1 below'),
     ('getting-started.md', 'Getting started', 'A new laptop to the turtle in 30 minutes (T1.1)'),
@@ -197,7 +199,8 @@ RELEASE_PDF = 'aav-release-notes.pdf'
 SHARED = {RELEASE: (RELEASE_PDF, 'release notes'),
           'release-0.2.md': ('aav-0.2.pdf', 'the 0.2 guide'),
           'whats-new.md': ('aav-whats-new.pdf', "what's new"),
-          'what-we-built.md': ('aav-what-we-built.pdf', 'what we built')}
+          'what-we-built.md': ('aav-what-we-built.pdf', 'what we built'),
+          'release-0.4-guide.md': ('aav-0.4-guide.pdf', 'the 0.4 guide')}
 # A shared page's own PDF: a running footer, and the cover on a page of its own.
 RELEASE_STYLE = """
 @page {

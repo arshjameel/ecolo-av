@@ -33,6 +33,8 @@ Every page is in [`docs/`](docs/). The ones people ask for most:
 
 What we built, on one page to share: [What we built](docs/what-we-built.md)
 (a PDF of it: `docs/html/aav-what-we-built.pdf`).
+Each area of 0.4 with a picture, for the team: [The 0.4 guide](docs/release-0.4-guide.md)
+(`docs/html/aav-0.4-guide.pdf`).
 
 Open **`docs/html/index.html`** in a browser: short pages with pictures. There's also a
 single PDF, built by `pixi run docs` into `docs/html/aav-docs.pdf`.

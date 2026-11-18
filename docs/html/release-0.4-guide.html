@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The 0.4 guide: what is in it, with pictures · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/release-0.4-guide.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>The 0.4 guide: what is in it, with pictures</h1>
+<div class="meta">18 min read · 19 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a class="here" href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#04-on-one-page">0.4 on one page</a><a href="#ravensim-our-simulator">Ravensim, our simulator</a><a href="#the-developer-window">The developer window</a><a href="#raventiles-the-map-in-chunks">RavenTiles: the map in chunks</a><a href="#the-three-planning-levels">The three planning levels</a><a href="#lanes-keep-right">Lanes: keep right</a><a href="#kerbs">Kerbs</a><a href="#things-and-stopping-for-moving-things">Things, and stopping for moving things</a><a href="#behaviour-the-rules-of-the-road">Behaviour: the rules of the road</a><a href="#safety-the-locks">Safety: the locks</a><a href="#localization-where-am-i">Localization: where am I</a><a href="#our-own-stack-in-place-of-nav2-and-gazebo">Our own stack, in place of Nav2 and Gazebo</a><a href="#rust-ports">Rust ports</a><a href="#the-detector-through-onnx">The detector through ONNX</a><a href="#the-leagues-scores">The league&#x27;s scores</a><a href="#tools">Tools</a><a href="#untested-on-the-car">Untested on the car</a><a href="#whats-next">What&#x27;s next</a><a href="#read-more">Read more</a></nav>
+<div class="lead"><p>For the team meeting on Wednesday 18 Nov. <strong>0.4 is a phase, not a formal release</strong>
+(Ben, 17 Nov). Each section is one area: a picture, then what it is, why, and how to
+see it. About 15 minutes to read.</p>
+<div class="admonition warning">
+<p class="admonition-title">Almost all of this has run only in our simulator</p>
+<p>Every number here comes from <strong>Ravensim</strong> (our simulator), bench mode, QEMU or
+unit tests. The real car last drove on 13 Nov, with only the localization update
+installed. What nobody has tried on the car: <a href="#untested-on-the-car">Untested on the car</a>.</p>
+</div></div>
+<section class="card"><h2 id="04-on-one-page">0.4 on one page</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Area</th>
+<th>New since 0.3 (7 Nov)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Simulator</td>
+<td>Ravensim is the only one (Gazebo deleted 16 Nov); <code>graphics:=pretty</code></td>
+</tr>
+<tr>
+<td>Screens</td>
+<td>the developer window: scene, console, lidar, the map with its chunks</td>
+</tr>
+<tr>
+<td>Maps</td>
+<td>RavenTiles: the map in 64 m chunks; three planning levels</td>
+</tr>
+<tr>
+<td>Driving</td>
+<td>our own stack is the default; Nav2 deleted 17 Nov</td>
+</tr>
+<tr>
+<td>Road rules</td>
+<td>lanes (keep right), kerbs, stop for anything moving, the behaviour planner</td>
+</tr>
+<tr>
+<td>Safety</td>
+<td>the stop zone, the watchdog's STUCK and OVERSPEED latches</td>
+</tr>
+<tr>
+<td>Speed</td>
+<td>7 heavy nodes in Rust; the detector through ONNX</td>
+</tr>
+</tbody>
+</table></div>
+<p>The words: a <strong>champion</strong> is the default; a <strong>challenger</strong> runs beside it and takes over
+only when it wins on the same routes (<a href="league.html">the league</a>).</p>
+</section>
+<section class="card"><h2 id="ravensim-our-simulator">Ravensim, our simulator</h2>
+<p><img alt="Ravensim's chase camera on the campus, graphics:=pretty, our stack driving (17 Nov)" src="../img/release-0.4-ravensim.jpg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>Our own simulator, in Rust: the world, the car, lidar, radar, IMU, GPS, wheels, cameras and the clock, on the car's own topics</td>
+</tr>
+<tr>
+<td><strong>Why</strong></td>
+<td>Ben, 14 Nov: "We want to run everythign ourselves". It passed every check Gazebo passed, so Gazebo went on 16 Nov</td>
+</tr>
+<tr>
+<td><strong>New in 0.4</strong></td>
+<td><code>graphics:=pretty</code> (17 Nov): grain, a sky, haze, a warm sun, sharper shadows, painted stop lines. The sensors read the same world: the checks pass as before</td>
+</tr>
+<tr>
+<td><strong>Also new</strong></td>
+<td>seeded wheel noise and slip (<code>wheel_noise:=</code>, <code>wheel_slip:=</code>), wheels that find the ground (a kerb stops the car), <code>clock_hz:=</code></td>
+</tr>
+<tr>
+<td><strong>How to see it</strong></td>
+<td><code>pixi run ravensim</code> (an empty world; <code>world:=road</code> for the road), or <code>pixi run campus</code> once, then <code>pixi run ravensim world:=campus</code></td>
+</tr>
+<tr>
+<td><strong>Without a GPU</strong></td>
+<td>put <code>tools/software_gl.sh</code> in front: the clock waits for each camera picture</td>
+</tr>
+</tbody>
+</table></div>
+<p>The campus before <code>graphics:=pretty</code>, for comparison (<a href="own-simulator.html#looks-graphicspretty-17-nov">Looks</a>):</p>
+<p><img alt="The campus, before graphics:=pretty" src="../img/ravensim-campus-before.png" /></p>
+</section>
+<section class="card"><h2 id="the-developer-window">The developer window</h2>
+<p><img alt="The developer window, live on Ravensim's campus, our stack driving down University Drive (17 Nov)" src="../img/release-0.4-dev-window.jpg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Panel</th>
+<th>What it shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The scene</strong> (top left)</td>
+<td>the 3D world, the car, its plan</td>
+</tr>
+<tr>
+<td><strong>The console</strong> (bottom left)</td>
+<td>every node's log; All, Warnings, Errors</td>
+</tr>
+<tr>
+<td><strong>What the lidar sees</strong> (top right)</td>
+<td>the cubes, by height; the squiggly line ahead; "stops in", "on plan"</td>
+</tr>
+<tr>
+<td><strong>The map</strong> (middle right)</td>
+<td>the costmap, NDT's map, the plan; RavenTiles chunks and lanes on the campus. Click to send a goal</td>
+</tr>
+<tr>
+<td><strong>Keys</strong> (bottom right)</td>
+<td>every layer on or off (G ground, H chunks, L lanes, K things, F follow)</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Why</strong></td>
+<td>everything at once on a laptop, so a bug is seen, not guessed</td>
+</tr>
+<tr>
+<td><strong>Language</strong></td>
+<td>Rust, Bevy (laptops only; the Orin runs no graphics)</td>
+</tr>
+<tr>
+<td><strong>How to see it</strong></td>
+<td><code>pixi run ravensim</code> starts it with the sim; <code>pixi run dev-window</code> alone shows pretend data</td>
+</tr>
+<tr>
+<td><strong>New on 17 Nov</strong></td>
+<td>the ground hidden (key G): no more rings of "obstacles" on raised grass; the map pans, zooms and follows the car</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="raventiles-the-map-in-chunks">RavenTiles: the map in chunks</h2>
+<p><img alt="The map panel on the campus: the 64 m chunks loaded round the car (blue squares), the lane lines, the route (light blue), the plan (green)" src="../img/release-0.4-map.jpg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>The map cut into fixed 64 m squares. Only the 3 x 3 round the car and those along the route are loaded</td>
+</tr>
+<tr>
+<td><strong>Why</strong></td>
+<td>the whole campus at once was slow and big. With chunks: NDT ready in <strong>0.02 s</strong> (was 2.5 s); the costmap <strong>145 MB</strong> (was 474 MB); the planner 65 MB (was 403)</td>
+</tr>
+<tr>
+<td><strong>Who uses it</strong></td>
+<td>NDT, our costmap, the things tracker, the planner, the developer window (key H)</td>
+</tr>
+<tr>
+<td><strong>How to see it</strong></td>
+<td><code>pixi run campus</code> once (makes <code>maps/campus/chunks/</code>), then <code>pixi run ravensim world:=campus</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-three-planning-levels">The three planning levels</h2>
+<pre class="highlight"><code class="language-text"> ZOOMED OUT  route planner   "which roads"
+             the street graph / Lanelet2, once a goal
+                  │ the route: a line of roads
+                  ▼
+ MIDDLE      path planner    "cube to cube"
+             chunks along the route, ~100 m ahead
+                  │ the path (/plan), and the road ahead's line
+                  ▼
+ CLOSE UP    local planner   "don't hit it"
+             a 20 x 20 m costmap at 0.1 m, MPPI;
+             the stop zone underneath, always</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>Three planners, each on its own scale. The behaviour planner reads all three</td>
+</tr>
+<tr>
+<td><strong>Why</strong></td>
+<td>one planner over the whole campus was too slow and too big; each level now looks only as far as it needs</td>
+</tr>
+<tr>
+<td><strong>Numbers</strong></td>
+<td>the middle level: 20 of 20 legs, the same as the whole map; Lanelet2 routes in under 1 ms (998 lanes on the campus)</td>
+</tr>
+<tr>
+<td><strong>Left</strong></td>
+<td>far campus goals in steps stay a challenger (TODO 175)</td>
+</tr>
+<tr>
+<td><strong>Read more</strong></td>
+<td><a href="../designs/2026-11-15_three-levels.md">Three levels</a></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="lanes-keep-right">Lanes: keep right</h2>
+<p><img alt="A campus road in Ravensim: the car keeps the right lane, the centre line on its left" src="../img/ravensim-campus-after.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td><code>path:=lane</code>: on mapped road, the plan is the right lane's centre. Something parked is passed only as far and as long as needed, then back (<code>pass.rs</code>)</td>
+</tr>
+<tr>
+<td><strong>Why</strong></td>
+<td>Ben: "we want to stick to the right side of the lane unless we need to for obstical avoidance"</td>
+</tr>
+<tr>
+<td><strong>Numbers</strong></td>
+<td>University Drive: <strong>0 %</strong> of the time over the centre line (61 % before; other planners 45-74 %); 0.11 m off the lane's centre. A 1 m box: over the line 4.8 s, back in 9 m</td>
+</tr>
+<tr>
+<td><strong>Default?</strong></td>
+<td>yes, in <code>stack:=ours</code> since 16 Nov. The lot has no lanes: there the lattice plans</td>
+</tr>
+<tr>
+<td><strong>How to see it</strong></td>
+<td><code>pixi run ravensim world:=campus</code>; key L shows the lane lines</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="kerbs">Kerbs</h2>
+<p><img alt="Where the car stopped before a 0.3 m kerb" src="../img/release-0.4-kerbs.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>The <strong>step finder</strong>: in the lidar's cubes, a rise of more than 0.10 m is a kerb. A 10 s memory keeps it once it is out of sight</td>
+</tr>
+<tr>
+<td><strong>Why</strong></td>
+<td>Ben, 15 Nov: "we don't want to hit a curb". The flat scan keeps only what stands 0.3 m up, so it never saw one</td>
+</tr>
+<tr>
+<td><strong>Numbers</strong></td>
+<td>a 0.3 m kerb seen 8.4 m out; a 0.15 m kerb from 4.7 m; a 0.10 m kerb: not seen</td>
+</tr>
+<tr>
+<td><strong>Default?</strong></td>
+<td>yes, in <code>stack:=ours</code> (sim) since 16 Nov. Not on the car yet</td>
+</tr>
+<tr>
+<td><strong>How to see it</strong></td>
+<td><code>pixi run sim-check --kerb-only</code></td>
+</tr>
+<tr>
+<td><strong>Read more</strong></td>
+<td><a href="kerbs.html">Kerbs</a></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="things-and-stopping-for-moving-things">Things, and stopping for moving things</h2>
+<p><img alt="The developer window's lidar view: the cubes by height, and the things as boxes (orange: one being tracked)" src="../img/release-0.4-things.jpg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>The <strong>things tracker</strong>: the lidar's cubes grouped into things, each with a speed. Cubes on the map's own walls are dropped</td>
+</tr>
+<tr>
+<td><strong>Stop for moving</strong></td>
+<td>a thing moving 0.3 m/s or more within 10 m, or onto the road ahead within 3 s, holds the car (WAIT) until 1 s after it has gone. Only a still thing is passed</td>
+</tr>
+<tr>
+<td><strong>Why</strong></td>
+<td>Ben, 16 Nov: "if we see a car people or stuff moving around us we should likely just stop"</td>
+</tr>
+<tr>
+<td><strong>Numbers</strong></td>
+<td>false things 9.9 → 1.7 a moment, every walker still found within 0.2 s; held for a car, a person crossing and cross traffic every run; the parked box never</td>
+</tr>
+<tr>
+<td><strong>How to see it</strong></td>
+<td><code>pixi run sim-check --movers</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="behaviour-the-rules-of-the-road">Behaviour: the rules of the road</h2>
+<pre class="highlight"><code class="language-text">   DRIVE ── a stop line, an obstacle, the road's end ──► APPROACH
+     ▲                                     (slows by the stopping law)
+     │                                                   │
+     │                                                   ▼
+     └──── GO ◄──── WAIT (until clear) ◄──────────── STOPPED
+
+   ASK: held too long; a person decides</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>One state machine for the road rules: stop signs, the end of the road, things moving, something parked</td>
+</tr>
+<tr>
+<td><strong>The stopping law</strong></td>
+<td>one law S(v) for every planned stop, from the car model</td>
+</tr>
+<tr>
+<td><strong>The road ahead</strong></td>
+<td><code>/world/road_ahead</code>: the line, edges, speed limits and the end. Ego holds every follower to it, so no follower can drive past it</td>
+</tr>
+<tr>
+<td><strong>Numbers</strong></td>
+<td>Rust: 1.3 % of a core against 9.0 % in Python</td>
+</tr>
+<tr>
+<td><strong>How to see it</strong></td>
+<td><code>pixi run sim-check --behaviour</code>; the HUD's state line</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="safety-the-locks">Safety: the locks</h2>
+<pre class="highlight"><code class="language-text">   a driver ──► twist_mux ──► ego ──► the spine ──► the car
+                    ▲                     ▲
+   e-stop ──────────┤                     │ brakes if commands
+   stop zone ───────┤ (ahead, behind)     │ stop for 100 ms
+   watchdog ────────┤ (STUCK, OVERSPEED)
+   geofence ────────┘ (outside the area)</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Lock</th>
+<th>What it does</th>
+<th>Number (sim)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Stop zone</strong> (<code>aav_stop_zone</code>, Rust)</td>
+<td>stops for anything in a box ahead or behind; took the lock from Nav2 on 17 Nov</td>
+<td>stops 0.16-0.55 m before a post; matched 24 of 24 of Nav2's stops, never later</td>
+</tr>
+<tr>
+<td><strong>Watchdog</strong>: STUCK steering</td>
+<td>steering more than 0.15 rad off its command for 1 s: latched</td>
+<td>noticed in 3.6 s (was: 19 m, nothing)</td>
+</tr>
+<tr>
+<td><strong>Watchdog</strong>: OVERSPEED</td>
+<td>the wheels 0.2 m/s over ego's speed while not slowing, 2 s: latched</td>
+<td>a stuck throttle caught 4.6 s after; healthy stops never</td>
+</tr>
+<tr>
+<td><strong>Watchdog</strong>: our own nodes</td>
+<td>warns when one stops; never stops the car for it</td>
+<td>-</td>
+</tr>
+<tr>
+<td>e-stop, geofence, the spine's 100 ms timeout</td>
+<td>as in 0.3</td>
+<td>the spine brakes 111-120 ms after (QEMU)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The locks are <strong>never swapped out</strong>. A latch is cleared only by a person: <code>pixi run clear watchdog</code>.
+<code>sim-check --faults</code>: 14 of 14 fault cases, 3 runs in a row (17 Nov).</p>
+</section>
+<section class="card"><h2 id="localization-where-am-i">Localization: where am I</h2>
+<p><img alt="ekf (today) against ndt_ekf (next) on University Drive" src="../img/release-0.4-localization.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Today</strong></td>
+<td>two EKFs (wheels, IMU, GPS), plus <strong>lane pose</strong>: the painted lines correct the side-to-side error (9.2-9.9 → 6.9-7.8 cm)</td>
+</tr>
+<tr>
+<td><strong>NDT</strong></td>
+<td>matches the lidar to a saved map, loading only the chunks round the car</td>
+</tr>
+<tr>
+<td><strong><code>ndt_ekf</code></strong></td>
+<td>NDT fed into the global EKF: calmer on every tour, but stopped once on University Drive in 2 of 3 runs. <strong>Recommended next</strong>, not yet the default</td>
+</tr>
+<tr>
+<td><strong>New on 17 Nov</strong></td>
+<td>both EKFs take the car's command, so a quiet wheel sensor no longer lets them run on (the 9 m jump is gone)</td>
+</tr>
+<tr>
+<td><strong>How to see it</strong></td>
+<td><code>pixi run sim world:=test_lot ndt_ekf:=true</code> (NDT has a map of the test lot); <code>pixi run measure controllers --ndt-ekf</code> scores it</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="our-own-stack-in-place-of-nav2-and-gazebo">Our own stack, in place of Nav2 and Gazebo</h2>
+<p><img alt="The league: ours against Nav2's last score" src="../img/release-0.4-league.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Replaced</th>
+<th>By</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nav2's costmap, planner, navigator, controller, smoother</td>
+<td>our costmap (on chunks), lattice planner, navigator, <code>mppi_lag_calm</code>, smoother: all Rust</td>
+<td>default 14 Nov; Nav2 deleted 17 Nov</td>
+</tr>
+<tr>
+<td>Nav2's collision monitor</td>
+<td>our stop zone</td>
+<td>17 Nov</td>
+</tr>
+<tr>
+<td>Gazebo</td>
+<td>Ravensim</td>
+<td>16 Nov</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Why</strong></td>
+<td>Ben, 14 Nov: "We want to run everythign ourselves in rust and/or python"</td>
+</tr>
+<tr>
+<td><strong>Drop-in</strong></td>
+<td>our navigator serves the same action names, so no goal sender can tell</td>
+</tr>
+<tr>
+<td><strong>Kept</strong></td>
+<td>small, proven stock parts: <code>robot_localization</code>, <code>twist_mux</code>, teleop</td>
+</tr>
+<tr>
+<td><strong>What it was</strong></td>
+<td><a href="../history/nav2-as-it-was.md">Nav2, as it was</a>, <a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="rust-ports">Rust ports</h2>
+<p><img alt="CPU of one core, Python against Rust, in Ravensim" src="../img/release-0.4-rust-cpu.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Node</th>
+<th>Rust package</th>
+<th>Default in Rust</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ego + look_ahead</td>
+<td><code>aav_ego_rs</code></td>
+<td>sim and car</td>
+</tr>
+<tr>
+<td>behaviour</td>
+<td><code>aav_behaviour_rs</code></td>
+<td>sim and car</td>
+</tr>
+<tr>
+<td>sensor watchdog</td>
+<td><code>aav_watchdog_rs</code></td>
+<td>sim and car</td>
+</tr>
+<tr>
+<td>localization_health</td>
+<td><code>aav_localization_health_rs</code></td>
+<td>sim and car</td>
+</tr>
+<tr>
+<td>lidar_scan</td>
+<td><code>aav_lidar_rs</code></td>
+<td>sim and car</td>
+</tr>
+<tr>
+<td>things</td>
+<td><code>aav_things_rs</code></td>
+<td>sim and car</td>
+</tr>
+<tr>
+<td>lidar cubes</td>
+<td><code>aav_voxels_rs</code></td>
+<td>built; the car next</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Why</strong></td>
+<td>Ben, 16 Nov: "I trust rust more then python"</td>
+</tr>
+<tr>
+<td><strong>How we know they match</strong></td>
+<td>each one gives the Python's answers on shared test vectors (thousands of ticks, often bit for bit)</td>
+</tr>
+<tr>
+<td><strong>Fall back</strong></td>
+<td>one switch: <code>ego_impl:=python</code>, <code>watchdog_impl:=python</code>... (<a href="release-0.4-rc1.html#check-first-on-the-car">on the car</a>)</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-detector-through-onnx">The detector through ONNX</h2>
+<p><img alt="RF-DETR Nano, ms a picture" src="../img/release-0.4-detector.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>The stop-sign detector (RF-DETR Nano), exported once to ONNX, run from Rust (<code>aav_detector_rs</code>) with ONNX Runtime; on a Mac through Core ML</td>
+</tr>
+<tr>
+<td><strong>Why</strong></td>
+<td>one model file for every computer; train in PyTorch, run anywhere; TensorRT on the Orin later</td>
+</tr>
+<tr>
+<td><strong>Numbers</strong></td>
+<td>the same boxes as Python (overlap 0.9999); <strong>8.0 ms</strong> a picture against 14.7 ms today; the GPU does the work</td>
+</tr>
+<tr>
+<td><strong>Default?</strong></td>
+<td>no: a challenger. It builds on macOS only for now; the Python detector stays the default</td>
+</tr>
+<tr>
+<td><strong>Read more</strong></td>
+<td><a href="onnx.html">ONNX from Rust</a></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-leagues-scores">The league's scores</h2>
+<p>The league scores every option of every level on the same tours (lot, campus,
+University Drive), with everything else at <code>stack:=ours</code>. A challenger wins by a margin on
+3 or more runs, with no column worse.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Champion</th>
+<th>Closest challenger</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pose</td>
+<td><code>ekf</code></td>
+<td><code>ndt_ekf</code>: calmer, one stop to find</td>
+</tr>
+<tr>
+<td>costmap</td>
+<td><code>ours_chunks</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td>path</td>
+<td><code>lane</code> (+ pass)</td>
+<td>Hybrid-A*: least sway, but the wrong lane</td>
+</tr>
+<tr>
+<td>steer</td>
+<td><code>mppi_lag_calm</code></td>
+<td><code>mpc_lag_rs</code>: 2-7 times closer to the path, but sways, can't reverse</td>
+</tr>
+<tr>
+<td>speed loop</td>
+<td><code>default</code></td>
+<td><code>smooth</code>: a tie</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>16 Nov: no champion changed.</strong> The full table: <a href="league-results-2026-11-16.html">the league, 16 Nov</a>.</p>
+</section>
+<section class="card"><h2 id="tools">Tools</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it does</th>
+<th>Run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>sim-check</strong></td>
+<td>the whole graph headless, then a drive; every line PASS</td>
+<td><code>pixi run sim-check</code> (2 min); modes <code>--kerb</code>, <code>--movers</code>, <code>--faults</code>, <code>--three-point</code>...</td>
+</tr>
+<tr>
+<td><strong>measure</strong></td>
+<td>scores stacks on tours: legs, time, sway, off the path</td>
+<td><code>pixi run measure controllers</code></td>
+</tr>
+<tr>
+<td><strong>car kit</strong></td>
+<td>our Jazzy for the car's ARM computers, offline, on a stick</td>
+<td><code>pixi run car-kit</code> (68 s, 1.9 GB, 804 Rust crates)</td>
+</tr>
+<tr>
+<td><strong>ravensim</strong></td>
+<td>the sim and the developer window in one go</td>
+<td><code>pixi run ravensim</code></td>
+</tr>
+<tr>
+<td><strong>record, score</strong></td>
+<td>record any drive; one scorecard for sim or car</td>
+<td><code>tools/record.sh</code>, <code>tools/score_drive.py</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>On 17 Nov every <code>sim-check</code> mode passed in a row on Ben's Mac, and CI was green on
+Linux x86, ARM and both car-kit builds (<a href="release-0.4-rc1.html#checked-on-17-nov-bens-mac">0.4-rc1 on the car</a>).</p>
+</section>
+<section class="card"><h2 id="untested-on-the-car">Untested on the car</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Since</th>
+<th>Tried in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Our own stack as the only stack</td>
+<td>14-17 Nov</td>
+<td>Ravensim, the league</td>
+</tr>
+<tr>
+<td>The Rust defaults</td>
+<td>16-17 Nov</td>
+<td>Ravensim, unit tests</td>
+</tr>
+<tr>
+<td><code>path:=lane</code>, kerbs, stop for moving things</td>
+<td>16-17 Nov</td>
+<td>Ravensim</td>
+</tr>
+<tr>
+<td>The behaviour planner and the stopping law</td>
+<td>14 Nov</td>
+<td>Ravensim</td>
+</tr>
+<tr>
+<td>RavenTiles for NDT, the costmap, the things</td>
+<td>16 Nov</td>
+<td>Ravensim (campus)</td>
+</tr>
+<tr>
+<td>The watchdog's OVERSPEED latch</td>
+<td>16 Nov</td>
+<td>Ravensim, unit tests</td>
+</tr>
+<tr>
+<td>The Rust ESP32 firmware</td>
+<td>-</td>
+<td>QEMU only; never flashed</td>
+</tr>
+<tr>
+<td>The kit on the Orin and the Motor Pi</td>
+<td>-</td>
+<td>CI's ARM runner only</td>
+</tr>
+</tbody>
+</table></div>
+<p>Before any of it drives the car: the <strong>seven hardware blockers</strong> (the firmware timeout,
+the brake, wheel speed, clocks, the steering's centre, a truth for "1 m"). The hardware
+lead decides each (<a href="release-0.4-rc1.html#the-seven-hardware-blockers">the list</a>).</p>
+</section>
+<section class="card"><h2 id="whats-next">What's next</h2>
+<p>Tonight's queue (17 Nov), one helper at a time:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Next</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Six more ports to Rust</strong></td>
+<td>the rest of the heavy Python (TODO 185)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>NDT in the EKF</strong> (<code>ndt_ekf</code>)</td>
+<td>find its one stop, add a fall back where a world has no NDT map, score again, swap (TODO 210)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Slow down for still obstacles</strong></td>
+<td>today the behaviour slows only for things that move; a still wall is stopped by the stop zone alone</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>AMCL out</strong></td>
+<td>the last Nav2 node; NDT with a start-up search replaces it (TODO 231)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>The survey's picks</strong></td>
+<td>smooth MPPI (212), an MPC that reverses (213), passing with a jerk limit (214), the ground ring by ring (215), Kinematic-ICP (216), a motion model per thing (217)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Then the car: the blockers, car day, one drive recorded and scored (<a href="car-day.html">Car day</a>).</p>
+</section>
+<section class="card"><h2 id="read-more">Read more</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Page</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="what-we-built.html">What we built</a></td>
+<td>the whole stack, every area's numbers</td>
+</tr>
+<tr>
+<td><a href="release-0.4.html">0.4-rc1: start here</a></td>
+<td>one command per job</td>
+</tr>
+<tr>
+<td><a href="release-0.4-rc1.html">0.4-rc1 on the car</a></td>
+<td>install, check first, the blockers</td>
+</tr>
+<tr>
+<td><a href="features.html">Features</a></td>
+<td>every feature, why, and who built it</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="release-0.4-rc1.html"><small>Previous</small>← 0.4-rc1 on the car</a>
+<a class="next" href="release-notes.html"><small>Next</small>Release notes →</a></nav>
+</main>
+<footer>Source: <code>docs/release-0.4-guide.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>
